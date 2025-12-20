@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, User, Bot, RotateCcw } from "lucide-react";
+import AITextLoading from "@/components/kokonutui/ai-text-loading";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { io } from "socket.io-client";
@@ -148,20 +149,11 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     });
 
     socket.on("chat:message", (message) => {
-      // Set loading false if it's the assistant's message (we received it)
-      // Or set it false if it's a user message (we got echo back)
-      // Actually original logic was: setIsLoading(message.role !== "assistant"). 
-      // i.e. if we get user message, we are now waiting for assistant? Yes.
-      // If we get assistant message, we are done waiting? 
-      // Wait, original: setIsLoading(!isAssistant).
-      // If assistant message comes, isAssistant=true -> isLoading=false. Correct.
-      // If user echo comes, isAssistant=false -> isLoading=true. Correct.
-      setIsLoading((message?.role || "").toLowerCase() !== "assistant");
-
       setMessages((prev) => {
         const validMessage = message?.content && message?.role;
         const incomingContent = (message?.content || "").trim();
         const incomingRole = (message?.role || "").toLowerCase();
+        const isAssistantMessage = incomingRole === "assistant";
 
         // Remove pending messages that match the incoming one to avoid duplicates
         const filtered = prev.filter(
@@ -195,7 +187,12 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
 
           const next = [...currentMessages, message];
           persistMessagesToStorage(messageStorageKey, next);
-          setIsLoading(false);
+
+          // Only set loading to false when we receive an assistant message
+          if (isAssistantMessage) {
+            setIsLoading(false);
+          }
+
           return next;
         };
         if (message?.role === "assistant") {
@@ -702,11 +699,12 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
                     <div className="p-2 rounded-full bg-muted">
                       <Bot className="w-4 h-4" />
                     </div>
-                    <div className="p-3 rounded-lg bg-muted flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm text-muted-foreground">
-                        Thinking<span className="animate-pulse">...</span>
-                      </span>
+                    <div className="p-3 rounded-lg bg-muted">
+                      <AITextLoading
+                        texts={["thinking..."]}
+                        interval={1000}
+                        className="text-sm font-normal p-0 m-0"
+                      />
                     </div>
                   </div>
                 )}

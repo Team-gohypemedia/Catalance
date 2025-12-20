@@ -149,6 +149,26 @@ export const login = ({ email, password }) => {
   });
 };
 
+export const forgotPassword = (email) => {
+  return request("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+};
+
+export const verifyResetToken = (token) => {
+  return request(`/auth/verify-reset-token/${token}`, {
+    method: "GET"
+  });
+};
+
+export const resetPassword = ({ token, password }) => {
+  return request("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, password })
+  });
+};
+
 export const chat = ({ message, service, history = [] }) => {
   return request("/chat", {
     method: "POST",
