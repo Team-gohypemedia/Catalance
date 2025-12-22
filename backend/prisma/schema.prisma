@@ -24,6 +24,7 @@ enum ProjectStatus {
   DRAFT
   OPEN
   IN_PROGRESS
+  AWAITING_PAYMENT
   COMPLETED
 }
 
@@ -51,6 +52,7 @@ model User {
   hourlyRate   Decimal?   @db.Decimal(10, 2)
   resetPasswordToken   String?   @unique
   resetPasswordExpires DateTime?
+  fcmToken     String?    // Firebase Cloud Messaging token for push notifications
   ownedProjects Project[] @relation("ProjectOwner")
   proposals    Proposal[]
   createdChats ChatConversation[] @relation("ChatCreator")

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Bell,
+  BellRing,
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
@@ -42,7 +43,7 @@ export const AdminTopBar = ({ label, interactive = true }) => {
   const { state, toggleSidebar } = useSidebar();
   const { theme, setTheme } = useTheme();
   const [sessionUser, setSessionUser] = useState(null);
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, pushEnabled, requestPushPermission } = useNotifications();
 
   useEffect(() => {
     const session = getSession();
@@ -73,6 +74,10 @@ export const AdminTopBar = ({ label, interactive = true }) => {
 
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
+  };
+
+  const handleEnablePush = async () => {
+    await requestPushPermission();
   };
 
   return (
@@ -120,6 +125,23 @@ export const AdminTopBar = ({ label, interactive = true }) => {
                 </Button>
               )}
             </div>
+            
+            {/* Enable Push Notifications Banner - Required for Firebase Messaging */}
+            {!pushEnabled && (
+              <div className="border-b bg-primary/5 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <BellRing className="h-5 w-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium">Enable notifications</p>
+                    <p className="text-xs text-muted-foreground">Receive updates instantly</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleEnablePush}>
+                    Enable
+                  </Button>
+                </div>
+              </div>
+            )}
+            
             <ScrollArea className="h-72">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
@@ -162,3 +184,4 @@ export const AdminTopBar = ({ label, interactive = true }) => {
     </div>
   );
 };
+

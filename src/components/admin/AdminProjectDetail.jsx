@@ -97,6 +97,11 @@ const AdminProjectDetail = () => {
     return 0;
   }, [project]);
 
+  const effectiveStatus = useMemo(() => {
+    if (overallProgress >= 100) return "COMPLETED";
+    return project?.status;
+  }, [overallProgress, project?.status]);
+
   const derivedPhases = useMemo(() => {
     const phases = activeSOP.phases;
     const step = 100 / phases.length;
@@ -131,6 +136,60 @@ const AdminProjectDetail = () => {
       };
     });
   }, [derivedPhases, activeSOP, completedTaskIds, verifiedTaskIds]);
+
+  // Handle task click to toggle completion
+  const handleTaskClick = async (e, uniqueKey) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    let newCompleted, newVerified;
+
+    setCompletedTaskIds((prev) => {
+      const updated = new Set(prev);
+      if (updated.has(uniqueKey)) {
+        updated.delete(uniqueKey);
+      } else {
+        updated.add(uniqueKey);
+      }
+      newCompleted = Array.from(updated);
+      return updated;
+    });
+
+    // Also remove from verified if unchecking
+    setVerifiedTaskIds((prev) => {
+      const updated = new Set(prev);
+      if (!newCompleted.includes(uniqueKey)) {
+        updated.delete(uniqueKey);
+      }
+      newVerified = Array.from(updated);
+      return updated;
+    });
+
+    // Calculate new progress based on tasks
+    const allTasks = activeSOP.tasks;
+    const totalTasks = allTasks.length;
+    const completedCount = newCompleted.length;
+    const newProgress = Math.round((completedCount / totalTasks) * 100);
+
+    // Save to database via admin endpoint
+    if (project?.id && authFetch) {
+      try {
+        await authFetch(`/projects/${project.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            completedTasks: newCompleted,
+            verifiedTasks: newVerified,
+            progress: newProgress
+          })
+        });
+        // Update local project state
+        setProject(prev => ({ ...prev, progress: newProgress }));
+      } catch (error) {
+        console.error("Failed to save task state:", error);
+      }
+    }
+  };
 
   const getPhaseIcon = (status) => {
     switch (status) {
@@ -182,7 +241,7 @@ const AdminProjectDetail = () => {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold tracking-tight">{project.title}</h1>
-                {getStatusBadge(project.status)}
+                {getStatusBadge(effectiveStatus)}
               </div>
               <p className="text-muted-foreground">
                 Created on {format(new Date(project.createdAt), "PPP")}
@@ -346,7 +405,11 @@ const AdminProjectDetail = () => {
                         <AccordionContent>
                            <div className="space-y-2 pt-2">
                              {phaseTasks.map(task => (
-                               <div key={task.uniqueKey} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
+                               <div 
+                                 key={task.uniqueKey} 
+                                 className="flex items-center gap-3 p-3 rounded-lg border bg-card/50 cursor-pointer hover:bg-accent/50 transition-colors"
+                                 onClick={(e) => handleTaskClick(e, task.uniqueKey)}
+                               >
                                   {task.status === "completed" ? (
                                     <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                                   ) : (
