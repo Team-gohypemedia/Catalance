@@ -26,6 +26,7 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [proposalUnreadCount, setProposalUnreadCount] = useState(0);
   const [socket, setSocket] = useState(null);
   const [fcmToken, setFcmToken] = useState(null);
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -53,6 +54,10 @@ export const NotificationProvider = ({ children }) => {
     if (notification.type === "chat") {
       setChatUnreadCount((prev) => prev + 1);
     }
+    // Track proposal-specific notifications
+    if (notification.type === "proposal") {
+      setProposalUnreadCount((prev) => prev + 1);
+    }
   }, []);
 
   // Remove a notification when clicked/read
@@ -66,6 +71,7 @@ export const NotificationProvider = ({ children }) => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
     setChatUnreadCount(0);
+    setProposalUnreadCount(0);
   }, []);
 
   // Clear all notifications
@@ -73,6 +79,7 @@ export const NotificationProvider = ({ children }) => {
     setNotifications([]);
     setUnreadCount(0);
     setChatUnreadCount(0);
+    setProposalUnreadCount(0);
   }, []);
 
   // Request push notification permission
@@ -190,7 +197,10 @@ export const NotificationProvider = ({ children }) => {
       connectedRef.current = false;
     });
 
-    // NOTE: notification:new listener REMOVED - we use Firebase messaging for notifications now
+    newSocket.on("notification:new", (notification) => {
+      console.log("[Notification] 📨 Socket notification received:", notification);
+      addNotification(notification);
+    });
     
     // NOTE: chat:message listener REMOVED from here - chat messages are handled by Chat components 
     // and notifications for new messages come via Firebase Push Notifications
@@ -212,11 +222,17 @@ export const NotificationProvider = ({ children }) => {
     setChatUnreadCount(0);
   }, []);
 
+  // Function to mark proposal notifications as read
+  const markProposalsAsRead = useCallback(() => {
+    setProposalUnreadCount(0);
+  }, []);
+
   const value = useMemo(
     () => ({
       notifications,
       unreadCount,
       chatUnreadCount,
+      proposalUnreadCount,
       socket,
       fcmToken,
       pushEnabled,
@@ -224,10 +240,11 @@ export const NotificationProvider = ({ children }) => {
       markAsRead,
       markAllAsRead,
       markChatAsRead,
+      markProposalsAsRead,
       clearAll,
       requestPushPermission
     }),
-    [notifications, unreadCount, chatUnreadCount, socket, fcmToken, pushEnabled, addNotification, markAsRead, markAllAsRead, markChatAsRead, clearAll, requestPushPermission]
+    [notifications, unreadCount, chatUnreadCount, proposalUnreadCount, socket, fcmToken, pushEnabled, addNotification, markAsRead, markAllAsRead, markChatAsRead, markProposalsAsRead, clearAll, requestPushPermission]
   );
 
   return (

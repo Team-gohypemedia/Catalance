@@ -46,6 +46,30 @@ const toHistoryMessage = (message) => ({
   content: message.content
 });
 
+let ioInstance;
+
+export const sendSocketNotification = (userId, notification) => {
+  if (!ioInstance || !userId) return false;
+  
+  const roomName = `user:${userId}`; // Matches the client-side joining logic (needs to be verified if client joins this room)
+  // Actually, looking at socket.js, I don't see where the user joins `user:${userId}`. 
+  // Wait, I missed where the user joins their personal room in socket.js.
+  // Lines 95-99 in the previous view were blank lines/comments?
+  // "95:     // Join user's personal notification room"
+  // "96:     // SECURITY: Use the userId from socket handshake (set during connection) "
+  // "97:     // instead of trusting client-provided userId to ensure users only join their own room"
+  // "98: "
+  // "99: "
+  // It seems the joining logic is MISSING! I must add it.
+  
+  ioInstance.to(roomName).emit("notification:new", {
+    id: notification.id || `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    ...notification,
+    createdAt: new Date().toISOString()
+  });
+  return true;
+};
+
 export const initSocket = (server) => {
   const corsOrigins =
     allowedOrigins.includes("*") || allowedOrigins.length === 0
@@ -62,17 +86,24 @@ export const initSocket = (server) => {
     }
   });
 
-  // Store io globally for use in HTTP controllers via notification-util
-  // setIoInstance(io); // Removed: using Firebase-only notifications
+  ioInstance = io;
 
   io.on("connection", (socket) => {
     const handshakeUserId = socket.handshake?.query?.userId;
     console.log(`[Socket] 🔌 New connection: ${socket.id}, userId from query: ${handshakeUserId || 'none'}`);
     
+    // Join user's personal notification room automatically based on handshake
+    if (handshakeUserId) {
+      const roomName = `user:${handshakeUserId}`;
+      socket.join(roomName);
+      console.log(`[Socket] User ${handshakeUserId} joined personal room: ${roomName}`);
+    }
+    
     const joinedConversations = new Set();
     const presenceKeys = new Map(); // conversationId -> userKey
 
     const broadcastPresence = (conversationId) => {
+
       const set = conversationPresence.get(conversationId) || new Set();
       const online = Array.from(set);
       io.to(conversationId).emit("chat:presence", {
