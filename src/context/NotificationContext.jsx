@@ -91,6 +91,14 @@ export const NotificationProvider = ({ children }) => {
             body: JSON.stringify({ fcmToken: token })
           });
           console.log("[Notification] FCM token saved to backend");
+          
+          // Show local confirmation
+          addNotification({
+            type: "system",
+            title: "Notifications Enabled",
+            message: "You will now receive updates on this device.",
+            createdAt: new Date().toISOString()
+          });
         } catch (saveError) {
           console.error("[Notification] Failed to save FCM token to backend:", saveError);
         }

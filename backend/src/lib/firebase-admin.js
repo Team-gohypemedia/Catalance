@@ -54,13 +54,15 @@ export const sendPushNotification = async (userId, notification) => {
     // Get user's FCM token from database
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { fcmToken: true, fullName: true }
+      select: { fcmToken: true, fullName: true, email: true }
     });
 
     if (!user?.fcmToken) {
-      console.log(`[Firebase Admin] No FCM token for user ${userId}`);
+      console.log(`[Firebase Admin] ❌ No FCM token for user ${userId} (${user?.email || 'unknown email'})`);
       return { success: false, reason: "no_token" };
     }
+
+    console.log(`[Firebase Admin] 🔍 Found FCM token for ${user.email}: ${user.fcmToken.substring(0, 10)}...`);
 
     const message = {
       token: user.fcmToken,
@@ -84,11 +86,13 @@ export const sendPushNotification = async (userId, notification) => {
       }
     };
 
+    console.log(`[Firebase Admin] 🚀 Attempting to send message to ${userId}...`);
     const response = await admin.messaging().send(message);
-    console.log(`[Firebase Admin] ✅ Push notification sent to ${user.fullName}:`, response);
+    console.log(`[Firebase Admin] ✅ Push notification sent successfully! Message ID:`, response);
     return { success: true, messageId: response };
   } catch (error) {
-    console.error(`[Firebase Admin] ❌ Failed to send push notification to user ${userId}:`, error);
+    console.error(`[Firebase Admin] ❌ CRITICAL ERROR sending to user ${userId}:`, error);
+    if (error.code) console.error(`[Firebase Admin] Error Code: ${error.code}`);
     
     // If token is invalid, remove it from database
     if (error.code === "messaging/invalid-registration-token" || 
@@ -97,7 +101,7 @@ export const sendPushNotification = async (userId, notification) => {
         where: { id: userId },
         data: { fcmToken: null }
       });
-      console.log(`[Firebase Admin] Removed invalid FCM token for user ${userId}`);
+      console.log(`[Firebase Admin] 🗑️ Removed invalid FCM token for user ${userId}`);
     }
     
     return { success: false, error: error.message };
