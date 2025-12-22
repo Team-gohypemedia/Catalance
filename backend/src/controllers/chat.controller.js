@@ -31,6 +31,7 @@ import {
   shouldDetectLocaleFromMessage,
   detectLocaleWithAI,
   translateAssistantReply,
+  detectLocalePreference,
 } from "../lib/i18n.js";
 
 
@@ -519,6 +520,15 @@ const cleanAIResponse = (content = "") => {
   return result;
 };
 
+const stripEmojis = (value = "") => {
+  const text = (value || "").toString();
+  return text
+    .replace(/[\p{Extended_Pictographic}]/gu, "")
+    .replace(/[\uFE0F\uFE0E]/g, "")
+    .replace(/[\u200D]/g, "")
+    .replace(/[\u{1F3FB}-\u{1F3FF}]/gu, "");
+};
+
 const getCounterQuestion = () => `Counter question (ask first):
 - Ask: "To get started, please share 1) a brief project summary, 2) must-have features, 3) expected timeline."
 - Offer suggestions:
@@ -1000,7 +1010,11 @@ export const generateChatReplyWithState = async ({
 
   let locale = existingLocale || "en";
   let lockedToStart = localeLockedToStart;
-  if (!localeLockedToStart) {
+  const preferredLocale = detectLocalePreference(normalizedMessage);
+  if (preferredLocale) {
+    locale = preferredLocale;
+    lockedToStart = true;
+  } else if (!localeLockedToStart) {
     const scriptLocale = detectLocaleFromScript(localeSample);
     if (scriptLocale) {
       locale = scriptLocale;
@@ -1164,6 +1178,8 @@ export const generateChatReplyWithState = async ({
       console.error("Reply translation failed:", error?.message || error);
     }
   }
+
+  reply = stripEmojis(reply);
 
   const state = {
     ...stateWithLocale,

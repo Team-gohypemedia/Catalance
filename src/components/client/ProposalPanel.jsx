@@ -120,6 +120,7 @@ const ProposalPanel = ({ content }) => {
             "";
 
         const projectName =
+            getValue("Project Category") ||
             getValue("Project Name") ||
             getValue("Project Title") ||
             getValue("Project") ||

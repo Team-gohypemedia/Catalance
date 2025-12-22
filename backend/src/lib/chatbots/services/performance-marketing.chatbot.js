@@ -14,14 +14,14 @@ export const questions = [
   },
   {
     key: "objective",
-    patterns: ["objective", "goal", "leads", "sales", "traffic"],
-    templates: ["What is your primary objective?"],
+    patterns: ["objective", "goal", "category", "leads", "sales", "traffic"],
+    templates: ["What is your project category?"],
     suggestions: ["Leads", "Sales", "Traffic", "App installs"],
   },
   {
     key: "ad_spend",
-    patterns: ["ad spend", "monthly spend", "budget"],
-    templates: ["What is your monthly ad spend range?"],
+    patterns: ["ad budget", "ad spend", "monthly spend", "monthly budget"],
+    templates: ["What is your ad budget per month?"],
     suggestions: null,
   },
   {
@@ -45,7 +45,7 @@ export const questions = [
   {
     key: "timeline",
     patterns: ["duration", "timeline", "campaign length"],
-    templates: ["What is the expected campaign duration?"],
+    templates: ["What is the expected campaign duration (in months)?"],
     suggestions: null,
   },
 ];
