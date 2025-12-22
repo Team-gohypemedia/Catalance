@@ -50,6 +50,7 @@ model User {
   bio          String?    @db.Text
   skills       String[]   @default([])
   hourlyRate   Decimal?   @db.Decimal(10, 2)
+  fcmToken     String?    // Firebase Cloud Messaging token for push notifications
   ownedProjects Project[] @relation("ProjectOwner")
   proposals    Proposal[]
   createdChats ChatConversation[] @relation("ChatCreator")

@@ -9,7 +9,7 @@ import {
   listMessages,
   getConversation
 } from "./chat-store.js";
-import { setIoInstance, sendNotificationToUser } from "./notification-util.js";
+import { sendNotificationToUser } from "./notification-util.js";
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
 const parseOrigins = (value = "") =>
@@ -63,7 +63,7 @@ export const initSocket = (server) => {
   });
 
   // Store io globally for use in HTTP controllers via notification-util
-  setIoInstance(io);
+  // setIoInstance(io); // Removed: using Firebase-only notifications
 
   io.on("connection", (socket) => {
     const handshakeUserId = socket.handshake?.query?.userId;
@@ -95,30 +95,7 @@ export const initSocket = (server) => {
     // Join user's personal notification room
     // SECURITY: Use the userId from socket handshake (set during connection) 
     // instead of trusting client-provided userId to ensure users only join their own room
-    socket.on("notification:join", ({ userId }) => {
-      // Use the authenticated userId from the socket's handshake query
-      const authenticatedUserId = socket.handshake?.query?.userId;
-      
-      if (!authenticatedUserId) {
-        console.log(`[Socket] ❌ notification:join rejected - no authenticated userId`);
-        socket.emit("notification:join_error", { error: "No authenticated userId" });
-        return;
-      }
-      
-      // Only allow joining own notification room
-      if (userId && userId !== authenticatedUserId) {
-        console.log(`[Socket] ❌ notification:join rejected - userId mismatch: requested ${userId}, authenticated ${authenticatedUserId}`);
-        socket.emit("notification:join_error", { error: "userId mismatch" });
-        return;
-      }
-      
-      const roomName = `user:${authenticatedUserId}`;
-      socket.join(roomName);
-      console.log(`[Socket] ✅ User ${authenticatedUserId} joined notification room: ${roomName}`);
-      
-      // Send confirmation back to client
-      socket.emit("notification:joined", { room: roomName, userId: authenticatedUserId });
-    });
+
 
     socket.on("chat:join", async ({ conversationId, service, senderId }) => {
       console.log(`[Socket] chat:join request:`, { conversationId, service, senderId, socketId: socket.id });
