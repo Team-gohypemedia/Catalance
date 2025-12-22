@@ -97,6 +97,11 @@ const AdminProjectDetail = () => {
     return 0;
   }, [project]);
 
+  const effectiveStatus = useMemo(() => {
+    if (overallProgress >= 100) return "COMPLETED";
+    return project?.status;
+  }, [overallProgress, project?.status]);
+
   const derivedPhases = useMemo(() => {
     const phases = activeSOP.phases;
     const step = 100 / phases.length;
@@ -182,7 +187,7 @@ const AdminProjectDetail = () => {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold tracking-tight">{project.title}</h1>
-                {getStatusBadge(project.status)}
+                {getStatusBadge(effectiveStatus)}
               </div>
               <p className="text-muted-foreground">
                 Created on {format(new Date(project.createdAt), "PPP")}
