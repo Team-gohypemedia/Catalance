@@ -89,8 +89,23 @@ export const FreelancerTopBar = ({ label }) => {
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
     // Navigate based on notification type
-    if (notification.type === "chat" && notification.data?.conversationId) {
-      navigate("/freelancer/messages");
+    if (notification.type === "chat" && notification.data) {
+      // Chat notification logic
+      // Service string format: CHAT:projectId:clientId:freelancerId
+      const service = notification.data.service || "";
+      const parts = service.split(":");
+      let projectId = notification.data.projectId; 
+      
+      // Extract projectId from service string if not explicitly in data
+      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
+         projectId = parts[1];
+      }
+
+      if (projectId) {
+        navigate(`/freelancer/messages?projectId=${projectId}`);
+      } else {
+        navigate("/freelancer/messages");
+      }
     } else if (notification.type === "proposal") {
       navigate("/freelancer/proposals");
     }

@@ -91,10 +91,24 @@ export const ClientTopBar = ({ label, interactive = true }) => {
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id)
     // Navigate based on notification type
-    if (notification.type === "chat" && notification.data?.conversationId) {
-      // Pass senderId (freelancerId) to auto-select conversation
-      const senderId = notification.data.senderId;
-      navigate(`/client/messages?conversationId=${notification.data.conversationId}&freelancerId=${senderId || ""}`);
+    if (notification.type === "chat" && notification.data) {
+      // Chat notification logic
+      // Service string format: CHAT:projectId:clientId:freelancerId
+      const service = notification.data.service || "";
+      const parts = service.split(":");
+      let projectId = notification.data.projectId; 
+      
+      // Extract projectId from service string if not explicitly in data
+      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
+         projectId = parts[1];
+      }
+
+      if (projectId) {
+        navigate(`/client/messages?projectId=${projectId}`);
+      } else {
+        // Fallback or just go to messages
+        navigate("/client/messages");
+      }
     } else if (notification.type === "proposal" && notification.data?.projectId) {
        // Navigate to Project Detail (owner view)
       navigate(`/client/project/${notification.data.projectId}`);
