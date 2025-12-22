@@ -166,6 +166,9 @@ export const resetPassword = ({ token, password }) => {
   return request("/auth/reset-password", {
     method: "POST",
     body: JSON.stringify({ token, password })
+  });
+};
+
 export const loginWithGoogle = (idToken) => {
   return request("/auth/google", {
     method: "POST",
