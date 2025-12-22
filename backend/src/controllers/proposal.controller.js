@@ -401,11 +401,11 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
         console.error("Failed to notify client about acceptance:", err);
       }
 
-      // 1. Update Project Status to "IN_PROGRESS" to close it for other proposals
+      // 1. Update Project Status to "AWAITING_PAYMENT" - client must pay before project starts
       try {
         await prisma.project.update({
           where: { id: updated.projectId },
-          data: { status: "IN_PROGRESS" }
+          data: { status: "AWAITING_PAYMENT" }
         });
       } catch (projError) {
         console.error("Failed to update project status:", projError);

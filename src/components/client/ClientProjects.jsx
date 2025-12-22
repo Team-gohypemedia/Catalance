@@ -193,17 +193,23 @@ const ClientProjectsContent = () => {
             );
             if (!accepted) return null; // only surface projects with an accepted freelancer
             
+            // Exclude projects awaiting payment - they should only appear in dashboard pending payments section
+            // Check both the explicit status AND if no money has been spent yet (spent === 0 or null)
+            const rawStatus = (p.status || "").toUpperCase();
+            const hasNoPayment = !p.spent || p.spent === 0;
+            if (rawStatus === "AWAITING_PAYMENT" || hasNoPayment) return null;
+            
             // Calculate progress - use project.progress if available, default to 0
             const projectProgress = typeof p.progress === "number" 
               ? p.progress 
               : 0;
             
             // Determine status based on progress
-            let projectStatus = "pending";
+            let displayStatus = "pending";
             if (projectProgress === 100) {
-              projectStatus = "completed";
+              displayStatus = "completed";
             } else if (projectProgress > 0) {
-              projectStatus = "in-progress";
+              displayStatus = "in-progress";
             }
 
             return {
@@ -214,7 +220,7 @@ const ClientProjectsContent = () => {
                 accepted.freelancer?.name ||
                 accepted.freelancer?.email ||
                 "Freelancer",
-              status: projectStatus,
+              status: displayStatus,
               budget: p.budget || 0,
               deadline: p.deadline || "",
               progress: projectProgress,
