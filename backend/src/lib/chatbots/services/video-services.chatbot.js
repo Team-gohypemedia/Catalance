@@ -1,189 +1,56 @@
-export const service = "Video Services";
+﻿export const service = "Video Services";
 export const openingMessage = "Hey! I'm here to help you create an amazing video. Let's figure out exactly what you need!";
 export const serviceDetails = `Sub-types: Reels/Shorts, Explainer Videos, Ad Films, Corporate Videos
 Deliverables: Script & storyboard, editing & motion graphics, multiple export formats
-Pricing: Reels ₹1,500–₹5,000/video | Explainer ₹10,000–₹40,000 | Ad video ₹5,000–₹25,000
-Timelines: Full video project 7–14 days | Partial scope: Editing only 3–5 days (₹1,000–₹8,000), Script only 2–3 days (₹2,000–₹6,000)
-Timeline policy: timelines include buffer days (10–20%); delays due to missing client inputs pause the timeline.`;
+Pricing: Reels â‚¹1,500â€“â‚¹5,000/video | Explainer â‚¹10,000â€“â‚¹40,000 | Ad video â‚¹5,000â€“â‚¹25,000
+Timelines: Full video project 7â€“14 days | Partial scope: Editing only 3â€“5 days (â‚¹1,000â€“â‚¹8,000), Script only 2â€“3 days (â‚¹2,000â€“â‚¹6,000)
+Timeline policy: timelines include buffer days (10â€“20%); delays due to missing client inputs pause the timeline.`;
 export const questions = [
   {
-    "key": "name",
-    "patterns": [
-      "name",
-      "call you"
-    ],
-    "templates": [
-      "Hey! Ready to create something amazing? What's your name?",
-      "Hi there! Let's make some great video content. What should I call you?"
-    ],
-    "suggestions": null
+    key: "video_type",
+    patterns: ["video type", "reel", "ad", "explainer"],
+    templates: ["What type of video do you need?"],
+    suggestions: ["Reel", "Ad", "Explainer", "Other"],
   },
   {
-    "key": "video_type",
-    "patterns": [
-      "type",
-      "kind",
-      "what video"
-    ],
-    "templates": [
-      "Nice to meet you, {name}! What type of video are you looking for?"
-    ],
-    "suggestions": [
-      "3D model",
-      "3D video",
-      "Normal video",
-      "Other"
-    ]
+    key: "goal",
+    patterns: ["purpose", "goal", "branding", "ads", "education"],
+    templates: ["What is the purpose of the video?"],
+    suggestions: ["Branding", "Ads", "Education", "Other"],
   },
   {
-    "key": "goal",
-    "patterns": [
-      "goal",
-      "purpose",
-      "objective",
-      "why"
-    ],
-    "templates": [
-      "What's the main goal for this {video_type}?"
-    ],
-    "suggestions": [
-      "Brand Awareness",
-      "Lead Generation",
-      "Engagement",
-      "Product Launch"
-    ]
+    key: "footage",
+    patterns: ["raw footage", "footage"],
+    templates: ["Do you have raw footage?"],
+    suggestions: ["Yes", "No"],
   },
   {
-    "key": "footage",
-    "patterns": [
-      "footage",
-      "raw",
-      "production",
-      "shoot"
-    ],
-    "templates": [
-      "Do you already have assets/footage for this {video_type}, or do you need full production?"
-    ],
-    "suggestions": [
-      "I have footage",
-      "Need full production",
-      "Not sure yet"
-    ]
+    key: "script_voiceover",
+    patterns: ["script", "voice-over", "voiceover"],
+    templates: ["Do you need script and voice-over?"],
+    suggestions: ["Yes", "No"],
   },
   {
-    "key": "duration",
-    "patterns": [
-      "duration",
-      "length",
-      "how long",
-      "seconds",
-      "minutes"
-    ],
-    "templates": [
-      "How long should the final video be?"
-    ],
-    "suggestions": [
-      "Under 30 seconds",
-      "30-60 seconds",
-      "1-3 minutes",
-      "3+ minutes"
-    ]
+    key: "deliverables_quantity",
+    patterns: ["number of videos", "quantity", "count"],
+    templates: ["How many videos do you need?"],
+    suggestions: null,
   },
   {
-    "key": "style",
-    "patterns": [
-      "style",
-      "mood",
-      "tone",
-      "vibe",
-      "feel"
-    ],
-    "templates": [
-      "What style or mood are you going for?"
-    ],
-    "suggestions": [
-      "Professional",
-      "Fun/Energetic",
-      "Emotional",
-      "Cinematic",
-      "Educational"
-    ]
+    key: "timeline",
+    patterns: ["timeline", "deadline", "when"],
+    templates: ["What is your timeline?"],
+    suggestions: null,
   },
   {
-    "key": "platforms",
-    "patterns": [
-      "platform",
-      "where",
-      "publish",
-      "channel",
-      "social"
-    ],
-    "templates": [
-      "Where will this video be shared?"
-    ],
-    "suggestions": [
-      "Website",
-      "YouTube",
-      "Instagram",
-      "LinkedIn",
-      "TikTok",
-      "Multiple"
-    ]
+    key: "budget",
+    patterns: ["budget", "range", "cost"],
+    templates: ["What is your budget range?"],
+    suggestions: null,
   },
-  {
-    "key": "budget",
-    "patterns": [
-      "budget",
-      "cost",
-      "price",
-      "spend"
-    ],
-    "templates": [
-      "What's your budget for this project?"
-    ],
-    "suggestions": [
-      "Under INR 125000",
-      "INR 125000 - INR 160000",
-      "INR 160000 - INR 1125000",
-      "INR 1125000+"
-    ]
-  },
-  {
-    "key": "timeline",
-    "patterns": [
-      "timeline",
-      "deadline",
-      "when",
-      "delivery"
-    ],
-    "templates": [
-      "When do you need the final deliverable?"
-    ],
-    "suggestions": [
-      "Within 1 week",
-      "2-4 weeks",
-      "1-2 months",
-      "Flexible"
-    ]
-  },
-  {
-    "key": "notes",
-    "patterns": [
-      "notes",
-      "else",
-      "anything",
-      "special",
-      "reference"
-    ],
-    "templates": [
-      "Any special requests or reference videos you'd like to share? (Optional - just type 'done' to skip)"
-    ],
-    "suggestions": [
-      "Skip this"
-    ]
-  }
 ];
 
 const chatbot = { service, openingMessage, questions, serviceDetails };
 export default chatbot;
+
 
