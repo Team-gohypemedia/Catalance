@@ -1,114 +1,51 @@
-export const service = "SEO Optimization";
+﻿export const service = "SEO Optimization";
 export const openingMessage = "Hi! Ready to rank higher on Google? Let's boost your visibility.";
 export const serviceDetails = `Sub-types: On-page SEO, Off-page SEO, Technical SEO, Local SEO (GMB)
 Deliverables: Keyword research, on-page optimization, backlink building, monthly SEO report
-Pricing: Starter ₹15,000/month | Growth ₹25,000–₹60,000/month
-Timelines: Results typically start in 60–90 days | Partial scope: Audit only 7–10 days (₹8,000–₹20,000), On-page SEO only 15–20 days (₹15,000–₹30,000)
-Timeline policy: timelines are in working days; 10–20% buffer included; delays due to missing client inputs pause the timeline.`;
+Pricing: Starter â‚¹15,000/month | Growth â‚¹25,000â€“â‚¹60,000/month
+Timelines: Results typically start in 60â€“90 days | Partial scope: Audit only 7â€“10 days (â‚¹8,000â€“â‚¹20,000), On-page SEO only 15â€“20 days (â‚¹15,000â€“â‚¹30,000)
+Timeline policy: timelines are in working days; 10â€“20% buffer included; delays due to missing client inputs pause the timeline.`;
 export const questions = [
   {
-    "key": "name",
-    "patterns": [
-      "name",
-      "call you"
-    ],
-    "templates": [
-      "Hey! Ready to rank higher on Google? What's your name?"
-    ],
-    "suggestions": null
+    key: "website_live",
+    patterns: ["website live", "live site"],
+    templates: ["Is your website live?"],
+    suggestions: ["Yes", "No", "In progress"],
   },
   {
-    "key": "website",
-    "patterns": [
-      "website",
-      "url",
-      "site"
-    ],
-    "templates": [
-      "Nice to meet you, {name}! What's your website URL?"
-    ],
-    "suggestions": null
+    key: "business_niche",
+    patterns: ["business niche", "industry", "niche"],
+    templates: ["What is your business niche?"],
+    suggestions: null,
   },
   {
-    "key": "goals",
-    "patterns": [
-      "goal",
-      "achieve",
-      "want",
-      "need"
-    ],
-    "templates": [
-      "What's your main goal with SEO?"
-    ],
-    "suggestions": [
-      "Rank higher",
-      "More traffic",
-      "More leads",
-      "Brand visibility"
-    ]
+    key: "target_location",
+    patterns: ["target location", "global", "local"],
+    templates: ["What is your target location?"],
+    suggestions: ["Global", "Local", "Both"],
   },
   {
-    "key": "keywords",
-    "patterns": [
-      "keyword",
-      "search",
-      "term",
-      "rank for"
-    ],
-    "templates": [
-      "Any specific keywords you want to rank for?"
-    ],
-    "suggestions": null
+    key: "seo_scope",
+    patterns: ["full seo", "specific services", "audit"],
+    templates: ["Do you want full SEO or specific services only?"],
+    suggestions: ["Full SEO", "Specific services"],
   },
   {
-    "key": "competitors",
-    "patterns": [
-      "competitor",
-      "competition",
-      "similar"
-    ],
-    "templates": [
-      "Who are your main competitors?"
-    ],
-    "suggestions": null
+    key: "keywords",
+    patterns: ["keywords", "rank for"],
+    templates: ["Any keywords you want to rank for?"],
+    suggestions: null,
   },
   {
-    "key": "budget",
-    "patterns": [
-      "budget",
-      "cost",
-      "spend"
-    ],
-    "templates": [
-      "What's your monthly budget for SEO?"
-    ],
-    "suggestions": [
-      "Under ₹10,000/mo",
-      "₹10,000 - ₹25,000/mo",
-      "₹25,000 - ₹50,000/mo",
-      "₹50,000+/mo"
-    ]
+    key: "budget",
+    patterns: ["monthly budget", "budget"],
+    templates: ["What is your monthly SEO budget?"],
+    suggestions: null,
   },
-  {
-    "key": "timeline",
-    "patterns": [
-      "timeline",
-      "when",
-      "start"
-    ],
-    "templates": [
-      "SEO requires a minimum 3-month commitment. How long would you like to run it?"
-    ],
-    "suggestions": [
-      "3 months (minimum)",
-      "6 months",
-      "12 months",
-      "More"
-    ]
-  }
 ];
 
 const chatbot = { service, openingMessage, questions, serviceDetails };
 export default chatbot;
+
 
 

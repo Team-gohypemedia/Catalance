@@ -5,8 +5,8 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
+
 
 enum UserRole {
   CLIENT
@@ -50,6 +50,8 @@ model User {
   bio          String?    @db.Text
   skills       String[]   @default([])
   hourlyRate   Decimal?   @db.Decimal(10, 2)
+  resetPasswordToken   String?   @unique
+  resetPasswordExpires DateTime?
   fcmToken     String?    // Firebase Cloud Messaging token for push notifications
   ownedProjects Project[] @relation("ProjectOwner")
   proposals    Proposal[]

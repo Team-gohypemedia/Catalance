@@ -1,9 +1,9 @@
-import Onboading from "./Onboading";
+import CatalanceHero from "@/components/catalance-hero";
 
 const Home = () => {
   return (
     <main>
-      <Onboading />
+      <CatalanceHero />
     </main>
   );
 };

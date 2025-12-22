@@ -2,7 +2,10 @@ import { asyncHandler } from "../utils/async-handler.js";
 import {
   authenticateUser,
   getUserById,
-  registerUser
+  registerUser,
+  requestPasswordReset,
+  verifyResetToken,
+  resetPassword
 } from "../modules/users/user.service.js";
 import { AppError } from "../utils/app-error.js";
 
@@ -27,3 +30,20 @@ export const profileHandler = asyncHandler(async (req, res) => {
   res.json({ data: user });
 });
 
+export const forgotPasswordHandler = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const result = await requestPasswordReset(email);
+  res.json({ data: result });
+});
+
+export const verifyResetTokenHandler = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  const result = await verifyResetToken(token);
+  res.json({ data: result });
+});
+
+export const resetPasswordHandler = asyncHandler(async (req, res) => {
+  const { token, password } = req.body;
+  const result = await resetPassword(token, password);
+  res.json({ data: result });
+});

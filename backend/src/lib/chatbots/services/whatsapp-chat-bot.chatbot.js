@@ -1,69 +1,54 @@
-export const service = "WhatsApp Chat Bot";
+﻿export const service = "WhatsApp Chat Bot";
 export const openingMessage =
-  "Hi! Let’s build a WhatsApp bot for your business. What’s your name?";
+  "Hi! Let's build a WhatsApp bot for your business. Tell me what you need.";
 
 export const serviceDetails = `Sub-types: Lead Capture Bot, Sales Bot, Support Bot
 Deliverables: Bot flow design, API integration, dashboard access
-Pricing: Setup ₹15,000–₹50,000 | Monthly ₹3,000–₹15,000 (API extra)
-Timelines: Full bot setup 7–14 days | Partial scope: Bot flow design only 3–5 days (₹5,000–₹15,000), API integration only 5–7 days (₹8,000–₹25,000)
-Timeline policy: timelines are in working days; 10–20% buffer included; delays due to missing client inputs pause the timeline.`;
+Pricing: Setup â‚¹15,000â€“â‚¹50,000 | Monthly â‚¹3,000â€“â‚¹15,000 (API extra)
+Timelines: Full bot setup 7â€“14 days | Partial scope: Bot flow design only 3â€“5 days (â‚¹5,000â€“â‚¹15,000), API integration only 5â€“7 days (â‚¹8,000â€“â‚¹25,000)
+Timeline policy: timelines are in working days; 10â€“20% buffer included; delays due to missing client inputs pause the timeline.`;
 
 export const questions = [
   {
-    key: "name",
-    patterns: ["name", "call you"],
-    templates: ["What’s your name?"],
-    suggestions: null,
-  },
-  {
-    key: "business",
-    patterns: ["business", "company", "brand"],
-    templates: ["Nice to meet you, {name}! What’s your business/brand name?"],
-    suggestions: null,
-  },
-  {
     key: "bot_type",
-    patterns: ["lead", "sales", "support", "bot type"],
-    templates: ["What type of WhatsApp bot do you need?"],
-    suggestions: ["Lead Capture Bot", "Sales Bot", "Support Bot"],
+    patterns: ["primary use", "leads", "support", "sales"],
+    templates: ["What is the primary use of the bot?"],
+    suggestions: ["Leads", "Support", "Sales"],
   },
   {
-    key: "features",
-    patterns: ["features", "flow", "faq", "handoff", "tracking"],
-    templates: ["What should the bot handle? (Select all that apply)"],
-    suggestions: [
-      "Lead capture",
-      "FAQs",
-      "Product/service info",
-      "Order updates",
-      "Order tracking",
-      "Human handoff to agent",
-      "Broadcast messages",
-      "Other",
-    ],
-    multiSelect: true,
+    key: "flow_count",
+    patterns: ["conversation flows", "flows", "paths"],
+    templates: ["How many conversation flows are needed?"],
+    suggestions: null,
+  },
+  {
+    key: "languages",
+    patterns: ["languages", "language"],
+    templates: ["What languages are required?"],
+    suggestions: null,
   },
   {
     key: "integrations",
-    patterns: ["integrations", "api", "crm", "dashboard"],
-    templates: ["Any integrations required? (Select all that apply)"],
-    suggestions: ["CRM", "Google Sheets", "Shopify", "Payment links", "Other", "None"],
-    multiSelect: true,
-  },
-  {
-    key: "budget",
-    patterns: ["budget", "cost", "price"],
-    templates: ["What’s your budget for setup (and monthly, if needed)?"],
-    suggestions: ["Setup ₹15,000–₹50,000", "Setup ₹50,000+", "Not sure yet"],
+    patterns: ["crm", "website", "integration"],
+    templates: ["Do you need CRM or website integration?"],
+    suggestions: ["CRM", "Website", "Both", "No"],
   },
   {
     key: "timeline",
-    patterns: ["timeline", "when", "deadline"],
-    templates: ["When do you want the bot ready?"],
-    suggestions: ["7–14 days", "2–4 weeks", "Flexible"],
+    patterns: ["go-live", "timeline", "deadline"],
+    templates: ["What is your go-live timeline?"],
+    suggestions: null,
+  },
+  {
+    key: "budget",
+    patterns: ["budget", "range", "cost"],
+    templates: ["What is your budget range?"],
+    suggestions: null,
   },
 ];
 
 const chatbot = { service, openingMessage, questions, serviceDetails };
 export default chatbot;
+
+
 

@@ -189,6 +189,14 @@ function Login({ className, ...props }) {
                     <FieldDescription>
                       Must be at least 8 characters long.
                     </FieldDescription>
+                    <div className="text-sm text-right">
+                      <a
+                        href="/forgot-password"
+                        className="text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </a>
+                    </div>
                   </Field>
                   <Field>
                     <Button type="submit" disabled={isSubmitting}>
@@ -237,7 +245,7 @@ function Login({ className, ...props }) {
                 <img
                   src={image}
                   alt="Login illustration"
-                  className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+                  className="absolute inset-0 h-full w-full object-cover dark:brightness-75"
                 />
               </div>
             </CardContent>
