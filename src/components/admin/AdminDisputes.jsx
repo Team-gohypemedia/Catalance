@@ -13,6 +13,7 @@ import DisputeDetailsDialog from "./DisputeDetailsDialog";
 const AdminDisputes = () => {
   const { authFetch } = useAuth();
   const [disputes, setDisputes] = useState([]);
+  const [pmCount, setPmCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedDispute, setSelectedDispute] = useState(null);
@@ -20,7 +21,20 @@ const AdminDisputes = () => {
 
   useEffect(() => {
     fetchDisputes();
+    fetchPmCount();
   }, []);
+
+  const fetchPmCount = async () => {
+    try {
+      const res = await authFetch("/admin/users?role=PROJECT_MANAGER");
+      const data = await res.json();
+      if (data?.data?.users) {
+        setPmCount(data.data.users.length);
+      }
+    } catch (err) {
+      console.error("Failed to fetch PM count:", err);
+    }
+  };
 
   const fetchDisputes = async () => {
     setLoading(true);
@@ -71,7 +85,14 @@ const AdminDisputes = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Active Disputes</h1>
-              <p className="text-muted-foreground mt-2">Manage ongoing project disputes and resolutions.</p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2">
+                  <p className="text-muted-foreground">Manage ongoing project disputes and resolutions.</p>
+                   <div className="hidden sm:block h-4 w-[1px] bg-border"></div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground bg-primary/10 px-3 py-1 rounded-full text-primary">
+                    <User className="h-4 w-4" />
+                    <span>Total Project Managers: {pmCount}</span>
+                  </div>
+              </div>
             </div>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

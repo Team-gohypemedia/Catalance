@@ -218,6 +218,7 @@ const FreelancerMultiStepForm = () => {
     experience: "",
     portfolioWebsite: "",
     linkedinProfile: "",
+    githubProfile: "",
     portfolioFileName: "",
     termsAccepted: false,
     fullName: "",
@@ -310,6 +311,9 @@ const FreelancerMultiStepForm = () => {
       case 5: {
         if (!data.portfolioWebsite.trim() || !data.linkedinProfile.trim()) {
           return "Please provide both your portfolio website and LinkedIn profile.";
+        }
+        if (data.professionalField === "Development & Tech" && !data.githubProfile.trim()) {
+          return "As a developer, you must provide your GitHub profile URL.";
         }
         return "";
       }
@@ -415,6 +419,7 @@ const FreelancerMultiStepForm = () => {
         portfolio: {
           portfolioUrl: formData.portfolioWebsite,
           linkedinUrl: formData.linkedinProfile,
+          githubUrl: formData.githubProfile,
         },
         acceptedTerms: formData.termsAccepted,
         phone: formData.phone,
@@ -653,12 +658,17 @@ const FreelancerMultiStepForm = () => {
                     <StepPortfolio
                       website={formData.portfolioWebsite}
                       linkedin={formData.linkedinProfile}
+                      github={formData.githubProfile}
                       fileName={formData.portfolioFileName}
+                      isDeveloper={formData.professionalField === "Development & Tech"}
                       onWebsiteChange={(value) =>
                         handleFieldChange("portfolioWebsite", value)
                       }
                       onLinkedinChange={(value) =>
                         handleFieldChange("linkedinProfile", value)
+                      }
+                      onGithubChange={(value) => 
+                        handleFieldChange("githubProfile", value)
                       }
                       onFileChange={handleFileChange}
                     />
@@ -1117,10 +1127,13 @@ const StepExperience = ({ experience, onSelectExperience }) => {
 const StepPortfolio = ({
   website,
   linkedin,
+  github,
   fileName,
   onWebsiteChange,
   onLinkedinChange,
+  onGithubChange,
   onFileChange,
+  isDeveloper
 }) => {
   return (
     <div className="space-y-6">
@@ -1164,6 +1177,23 @@ const StepPortfolio = ({
             value={linkedin}
             onChange={(event) => onLinkedinChange(event.target.value)}
             placeholder="https://linkedin.com/in/yourprofile"
+            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="githubProfile"
+            className="text-sm text-foreground font-semibold"
+          >
+            GitHub Profile {isDeveloper ? "(Mandatory)" : "(Optional)"}
+          </Label>
+          <Input
+            id="githubProfile"
+            type="url"
+            value={github}
+            onChange={(event) => onGithubChange(event.target.value)}
+            placeholder="https://github.com/yourusername"
             className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
         </div>

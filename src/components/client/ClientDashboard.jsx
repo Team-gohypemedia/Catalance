@@ -434,6 +434,29 @@ const ClientDashboardContent = () => {
     setSessionUser(session?.user ?? null);
   }, []);
 
+  // Fetch upcoming meetings (disputes with future meeting dates)
+  const [upcomingMeetings, setUpcomingMeetings] = useState([]);
+  useEffect(() => {
+    const fetchMeetings = async () => {
+        if (!authFetch) return;
+        try {
+            const res = await authFetch('/disputes');
+            if (res.ok) {
+                const payload = await res.json();
+                const disputes = payload.data || [];
+                // Filter for future meetings
+                const future = disputes.filter(d => 
+                    d.meetingDate && new Date(d.meetingDate) > new Date()
+                ).sort((a, b) => new Date(a.meetingDate) - new Date(b.meetingDate));
+                setUpcomingMeetings(future);
+            }
+        } catch (e) {
+            console.error("Failed to load meetings", e);
+        }
+    };
+    fetchMeetings();
+  }, [authFetch]);
+
   useEffect(() => {
     setSavedProposal(loadSavedProposalFromStorage());
   }, []);
@@ -1097,6 +1120,60 @@ const ClientDashboardContent = () => {
             </Card>
           )}
         </section>
+
+        {/* Upcoming Meetings Section */}
+        {upcomingMeetings.length > 0 && (
+            <section className="space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <CalendarRange className="h-5 w-5 text-primary" />
+                    </div>
+                     <div>
+                        <h2 className="text-xl font-semibold">Upcoming Meetings</h2>
+                        <p className="text-sm text-muted-foreground">
+                            Scheduled calls with your Project Managers
+                        </p>
+                    </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {upcomingMeetings.map((meeting) => (
+                        <Card key={meeting.id} className="border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base font-medium flex items-center justify-between">
+                                    <span>{new Date(meeting.meetingDate).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                                    <Badge variant="outline" className="text-xs font-normal">
+                                        {new Date(meeting.meetingDate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                    </Badge>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Briefcase className="h-4 w-4" />
+                                        <span className="truncate font-medium text-foreground">{meeting.project?.title || "Project Issue"}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <MessageSquare className="h-4 w-4" />
+                                        <span className="truncate">{meeting.description.split('\n')[0].substring(0, 50)}...</span>
+                                    </div>
+                                    {meeting.meetingLink ? (
+                                        <Button variant="outline" size="sm" className="w-full mt-2 gap-2" asChild>
+                                            <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer">
+                                                <Zap className="h-3 w-3" /> Join Meeting
+                                            </a>
+                                        </Button>
+                                    ) : (
+                                        <div className="mt-2 text-xs bg-muted p-2 rounded text-center text-muted-foreground">
+                                            Link pending from PM
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </section>
+        )}
 
         {/* Pending Payments Section */}
         {pendingPaymentProjects.length > 0 && (

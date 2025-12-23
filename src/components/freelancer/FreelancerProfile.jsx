@@ -42,6 +42,11 @@ const FreelancerProfile = () => {
     phone: "",
     location: "",
   });
+  const [portfolio, setPortfolio] = useState({
+    portfolioUrl: "",
+    linkedinUrl: "",
+    githubUrl: ""
+  });
   const [session, setSession] = useState(null);
 
   // Derive initials for avatar
@@ -91,6 +96,12 @@ const FreelancerProfile = () => {
           avatar: data.personal?.avatar ?? "",
           available: data.personal?.available ?? true,
         }));
+
+        setPortfolio({
+            portfolioUrl: data.portfolio?.portfolioUrl || "",
+            linkedinUrl: data.portfolio?.linkedinUrl || "",
+            githubUrl: data.portfolio?.githubUrl || ""
+        });
 
         const skillsFromApi = Array.isArray(data.skills) ? data.skills : [];
         setSkills(
@@ -181,6 +192,15 @@ const FreelancerProfile = () => {
       return;
     }
 
+    // Validation for Developers
+    const isDeveloper = services.some(s => s.toLowerCase().includes('development') || s.toLowerCase().includes('tech') || s.toLowerCase().includes('developer'));
+    if (isDeveloper && !portfolio.githubUrl?.trim()) {
+        toast.error("Validation Failed", {
+            description: "GitHub URL is mandatory for developers."
+        });
+        return;
+    }
+
     const skillsForApi = skills
       .map((s) => (typeof s === "string" ? s : s.name))
       .map((s) => s?.trim())
@@ -198,6 +218,7 @@ const FreelancerProfile = () => {
       skills: skillsForApi,
       workExperience,
       services,
+      portfolio // Add portfolio to payload
     };
 
     console.log("Saving profile payload:", payload);
@@ -389,6 +410,55 @@ const FreelancerProfile = () => {
                 No services selected yet. Click a service to add it to your profile.
               </p>
             )}
+          </div>
+        </section>
+
+        {/* Online Presence Section */}
+        <section className="mb-20">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
+                Online Presence
+              </p>
+              <h2 className="text-2xl font-bold text-foreground">Social Links</h2>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+              onClick={() => setModalType("portfolio")}
+            >
+              <Edit2 className="w-4 h-4 mr-2" /> Edit
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             {/* Portfolio */}
+             <div className="p-4 rounded-xl bg-card border border-border flex flex-col gap-2">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Portfolio</span>
+                {portfolio.portfolioUrl ? (
+                    <a href={portfolio.portfolioUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
+                        {portfolio.portfolioUrl}
+                    </a>
+                ) : <span className="text-muted-foreground text-sm">Not added</span>}
+             </div>
+             {/* LinkedIn */}
+             <div className="p-4 rounded-xl bg-card border border-border flex flex-col gap-2">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">LinkedIn</span>
+                {portfolio.linkedinUrl ? (
+                    <a href={portfolio.linkedinUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
+                        {portfolio.linkedinUrl}
+                    </a>
+                ) : <span className="text-muted-foreground text-sm">Not added</span>}
+             </div>
+             {/* GitHub */}
+             <div className="p-4 rounded-xl bg-card border border-border flex flex-col gap-2">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">GitHub</span>
+                {portfolio.githubUrl ? (
+                    <a href={portfolio.githubUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
+                        {portfolio.githubUrl}
+                    </a>
+                ) : <span className="text-muted-foreground text-sm">Not added (Mandatory for Devs)</span>}
+             </div>
           </div>
         </section>
 
@@ -596,7 +666,54 @@ const FreelancerProfile = () => {
                   </button>
                 </div>
               </>
-            ) : modalType === "personal" ? (
+            ) : modalType === "portfolio" ? (
+                <>
+                 <h1 className="text-lg font-semibold text-foreground">
+                   Edit Online Presence
+                 </h1>
+                 <p className="mt-1 text-sm text-muted-foreground">
+                   Update your social and portfolio links.
+                 </p>
+                 <div className="mt-4 space-y-4">
+                    <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                        Portfolio Website
+                        <input
+                            value={portfolio.portfolioUrl}
+                            onChange={(e) => setPortfolio(prev => ({ ...prev, portfolioUrl: e.target.value }))}
+                            placeholder="https://yourportfolio.com"
+                            className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                        />
+                    </label>
+                    <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                        LinkedIn URL
+                        <input
+                            value={portfolio.linkedinUrl}
+                            onChange={(e) => setPortfolio(prev => ({ ...prev, linkedinUrl: e.target.value }))}
+                            placeholder="https://linkedin.com/..."
+                            className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                        />
+                    </label>
+                    <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                        GitHub URL {services.some(s => s.toLowerCase().includes('development') || s.toLowerCase().includes('tech') || s.toLowerCase().includes('developer')) ? '(Mandatory)' : '(Optional)'}
+                        <input
+                            value={portfolio.githubUrl}
+                            onChange={(e) => setPortfolio(prev => ({ ...prev, githubUrl: e.target.value }))}
+                            placeholder="https://github.com/..."
+                            className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                        />
+                    </label>
+                 </div>
+                 <div className="mt-5 flex justify-end gap-3">
+                   <button
+                     type="button"
+                     onClick={() => setModalType(null)}
+                     className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                   >
+                     Done
+                   </button>
+                 </div>
+                </>
+             ) : modalType === "personal" ? (
                <>
                 <h1 className="text-lg font-semibold text-foreground">
                   Edit Personal Details

@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import { Input } from "@/components/ui/input";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -29,6 +29,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Skeleton Loading Component
 const ProjectDetailSkeleton = () => (
@@ -185,23 +197,129 @@ const ProjectDashboard = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
+  const [date, setDate] = useState();
+  const [time, setTime] = useState("");
+
+  // Mock PM Availability Slots
+  const allTimeSlots = [
+    "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
+    "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
+  ];
+  
+  const [bookedSlots, setBookedSlots] = useState([]);
+
+  useEffect(() => {
+    if (!date || !authFetch) return;
+
+    const fetchAvailability = async () => {
+        try {
+            const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
+            if (res.ok) {
+                const payload = await res.json();
+                setBookedSlots(payload.data || []);
+            }
+        } catch (e) {
+            console.error("Failed to fetch availability", e);
+        }
+    };
+    fetchAvailability();
+  }, [date, authFetch]);
+
+  // Holidays (Mock Data year 2024-2025)
+  const holidays = [
+    new Date(2025, 11, 25), // Christmas Dec 25 2025
+    new Date(2025, 0, 1),   // New Year Jan 1 2025
+    new Date(2024, 11, 25), // Christmas Dec 25 2024
+    new Date(new Date().setDate(new Date().getDate() + 3)) // Mock holiday 3 days from now for demo
+  ];
+
+  // Filter time slots based on selected date
+  // Filter time slots based on selected date
+  const availableTimeSlots = useMemo(() => {
+    if (!date) return allTimeSlots;
+    
+    // 1. Filter past times if today
+    const isToday = new Date().toDateString() === date.toDateString();
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    let slots = allTimeSlots;
+    
+    if (isToday) {
+        slots = slots.filter(slot => {
+            const [time, period] = slot.split(' ');
+            let [hours, minutes] = time.split(':').map(Number);
+            if (period === 'PM' && hours !== 12) hours += 12;
+            if (period === 'AM' && hours === 12) hours = 0;
+            return hours > currentHour;
+        });
+    }
+
+    // 2. Filter booked slots
+    if (bookedSlots.length > 0) {
+        slots = slots.filter(slot => {
+            // Check if this slot matches any booked meeting
+            return !bookedSlots.some(bookedIso => {
+                const bookedDate = new Date(bookedIso);
+                // Extract time from slot to compare hour/minute
+                const [time, period] = slot.split(' ');
+                let [slotH, slotM] = time.split(':').map(Number);
+                if (period === 'PM' && slotH !== 12) slotH += 12;
+                if (period === 'AM' && slotH === 12) slotH = 0;
+
+                // Match exact hour (assuming 1 hour slots)
+                return bookedDate.getHours() === slotH && bookedDate.getMinutes() === slotM;
+            });
+        });
+    }
+
+    return slots;
+  }, [date, bookedSlots]);
 
   const handleReport = async () => {
     if (!issueText.trim()) {
       toast.error("Please describe the issue");
       return;
     }
+
+    let fullDescription = issueText;
+    let meetingDateIso = undefined;
+
+    if (date) {
+      fullDescription += `\n\nDate of Issue: ${format(date, "PPP")}`;
+      
+      // Combine date + time for structural saving
+      const combined = new Date(date);
+      if (time) {
+         fullDescription += `\nTime: ${time}`;
+         const [timeStr, period] = time.split(' ');
+         let [hours, minutes] = timeStr.split(':').map(Number);
+         if (period === 'PM' && hours !== 12) hours += 12;
+         if (period === 'AM' && hours === 12) hours = 0;
+         combined.setHours(hours, minutes, 0, 0);
+      } else {
+         combined.setHours(9, 0, 0, 0); // Default to 9 AM if no time?? Or just omit time?
+      }
+      meetingDateIso = combined.toISOString();
+    }
+
     setIsReporting(true);
     try {
       const res = await authFetch('/disputes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: issueText, projectId: project?.id || projectId })
+        body: JSON.stringify({ 
+          description: fullDescription, 
+          projectId: project?.id || projectId,
+          meetingDate: meetingDateIso
+        })
       });
       if (res.ok) {
         toast.success("Dispute raised. A Project Manager will review it shortly.");
         setReportOpen(false);
         setIssueText("");
+        setDate(undefined);
+        setTime("");
       } else {
         toast.error("Failed to raise dispute");
       }
@@ -502,16 +620,30 @@ const ProjectDashboard = () => {
 
   const activeSOP = useMemo(() => {
     if (!project?.title) return SOP_TEMPLATES.WEBSITE;
+
     const title = project.title.toLowerCase();
+
+    // Helper for word boundary check
+    const has = (word) => new RegExp(`\\b${word}\\b`, 'i').test(title);
+
     if (
-      title.includes("app") ||
-      title.includes("mobile") ||
-      title.includes("ios") ||
-      title.includes("android")
+      has("app") ||
+      has("apps") ||
+      has("mobile") ||
+      has("ios") ||
+      has("android") ||
+      title.includes("application")
     ) {
       return SOP_TEMPLATES.APP;
     }
-    if (title.includes("software") || title.includes("platform") || title.includes("system") || title.includes("crm")) {
+    if (
+      title.includes("software") ||
+      title.includes("platform") ||
+      title.includes("system") ||
+      has("crm") ||
+      has("erp") ||
+      has("saas")
+    ) {
       return SOP_TEMPLATES.SOFTWARE;
     }
     if (
@@ -519,31 +651,31 @@ const ProjectDashboard = () => {
       title.includes("audit") ||
       title.includes("penetration") ||
       title.includes("cyber") ||
-      title.includes("iso") ||
-      title.includes("gdpr")
+      has("iso") ||
+      has("gdpr")
     ) {
       return SOP_TEMPLATES.CYBERSECURITY;
     }
     if (
-      title.includes("brand") ||
+      has("brand") ||
       title.includes("strategy") ||
       title.includes("identity") ||
       title.includes("positioning")
     ) {
       return SOP_TEMPLATES.BRAND_STRATEGY;
     }
-    if (title.includes("pr") || title.includes("public relations")) {
+    if (has("pr") || title.includes("public relations")) {
       return SOP_TEMPLATES.PUBLIC_RELATIONS;
     }
-    if (title.includes("seo") || title.includes("search engine")) {
+    if (has("seo") || title.includes("search engine")) {
       return SOP_TEMPLATES.SEO;
     }
-    if (title.includes("smo") || title.includes("social media")) {
+    if (has("smo") || title.includes("social media")) {
       return SOP_TEMPLATES.SMO;
     }
     if (
       title.includes("lead generation") ||
-      title.includes("sales") ||
+      has("sales") ||
       title.includes("prospecting")
     ) {
       return SOP_TEMPLATES.LEAD_GENERATION;
@@ -570,9 +702,10 @@ const ProjectDashboard = () => {
     if (title.includes("technical support") || title.includes("it support")) {
       return SOP_TEMPLATES.TECHNICAL_SUPPORT;
     }
+    // Strict check for Project Management to avoid "Development" matching "pm"
     if (
       title.includes("project management") ||
-      title.includes("pm") ||
+      has("pm") ||
       title.includes("coordination")
     ) {
       return SOP_TEMPLATES.PROJECT_MANAGEMENT;
@@ -593,12 +726,12 @@ const ProjectDashboard = () => {
     }
     if (
       title.includes("tutoring") ||
-      title.includes("tutor") ||
+      has("tutor") ||
       title.includes("teaching")
     ) {
       return SOP_TEMPLATES.TUTORING;
     }
-    if (title.includes("coaching") || title.includes("coach")) {
+    if (title.includes("coaching") || has("coach")) {
       return SOP_TEMPLATES.COACHING;
     }
     if (title.includes("course") || title.includes("curriculum")) {
@@ -606,7 +739,7 @@ const ProjectDashboard = () => {
     }
     if (
       title.includes("legal") ||
-      title.includes("law") ||
+      has("law") ||
       title.includes("contract")
     ) {
       return SOP_TEMPLATES.LEGAL_CONSULTING;
@@ -615,7 +748,8 @@ const ProjectDashboard = () => {
       title.includes("intellectual property") ||
       title.includes("trademark") ||
       title.includes("patent") ||
-      title.includes("copyright")
+      title.includes("copyright") ||
+      has("ip")
     ) {
       return SOP_TEMPLATES.IP_SERVICES;
     }
@@ -825,12 +959,10 @@ const ProjectDashboard = () => {
 
   return (
     <RoleAwareSidebar>
-      <div className="mt-5 ml-5">
-        <ClientTopBar title={pageTitle} />
-      </div>
-
       <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
         <div className="w-full max-w-full mx-auto space-y-6">
+          <ClientTopBar title={pageTitle} />
+
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h1 className="text-3xl font-semibold tracking-tight text-foreground">{pageTitle}</h1>
@@ -1116,25 +1248,85 @@ const ProjectDashboard = () => {
       </div>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Report an Issue</DialogTitle>
             <DialogDescription>
               Describe the issue or dispute regarding this project. A Project Manager will get involved to resolve it.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
+          <div className="space-y-4 py-4">
             <Textarea
               placeholder="Describe the issue..."
               value={issueText}
-              onChange={e => setIssueText(e.target.value)}
-              rows={4}
+              onChange={(e) => setIssueText(e.target.value)}
+              className="min-h-[100px]"
             />
+            <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">Date & Time (Optional)</label>
+                <div className="flex gap-2">
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant={"outline"}
+                        className={cn(
+                            "w-[240px] justify-start text-left font-normal",
+                            !date && "text-muted-foreground"
+                        )}
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                        disabled={[
+                            { dayOfWeek: [0, 6] }, // Disable weekends (Sunday=0, Saturday=6)
+                            ...holidays
+                        ]}
+                        modifiers={{
+                            holiday: holidays
+                        }}
+                        modifiersStyles={{
+                            holiday: { color: "var(--destructive)", fontWeight: "bold", textDecoration: "line-through" }
+                        }}
+                        className="rounded-md border"
+                        />
+                    </PopoverContent>
+                    </Popover>
+                    <div className="flex items-center gap-2">
+                         <Select value={time} onValueChange={setTime}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Select time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {availableTimeSlots.length > 0 ? (
+                                availableTimeSlots.map((slot) => (
+                                <SelectItem key={slot} value={slot}>
+                                  {slot}
+                                </SelectItem>
+                              ))
+                              ) : (
+                                <div className="p-2 text-xs text-muted-foreground text-center">No slots available</div>
+                              )}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReportOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setReportOpen(false)}>
+              Cancel
+            </Button>
             <Button variant="destructive" onClick={handleReport} disabled={isReporting}>
-              {isReporting ? "Sending..." : "Submit Report"}
+              {isReporting ? "Submit Report" : "Submit Report"}
             </Button>
           </DialogFooter>
         </DialogContent>
