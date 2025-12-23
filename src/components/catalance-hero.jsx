@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Spotlight } from "@/components/ui/spotlight";
 import { ArrowRight, Sparkles, Users, TrendingUp, CheckCircle2, Briefcase, Zap, ShieldCheck, Target } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 
@@ -182,6 +183,19 @@ const CatalanceHero = () => {
                     backgroundSize: "80px 80px",
                 }}
             />
+
+            {/* Spotlight Effect - Left */}
+            <Spotlight
+                className="-top-40 left-0 md:left-60 md:-top-20"
+                fill={isDark ? "#fdc800" : "#f59e0b"}
+            />
+            {/* Spotlight Effect - Right */}
+            <div className="absolute -top-40 right-0 md:-right-60 md:-top-20 [transform:rotateY(180deg)]">
+                <Spotlight
+                    className="!static"
+                    fill={isDark ? "#fdc800" : "#f59e0b"}
+                />
+            </div>
 
             {/* Content */}
             <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 text-center">
