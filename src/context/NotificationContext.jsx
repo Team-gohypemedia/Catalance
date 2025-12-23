@@ -12,7 +12,8 @@ import {
 } from "react";
 import { io } from "socket.io-client";
 import { useAuth } from "@/context/AuthContext";
-import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
+import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED, apiClient } from "@/lib/api-client";
+import { requestNotificationPermission, onForegroundMessage } from "@/lib/firebase";
 
 const NotificationContext = createContext(null);
 NotificationContext.displayName = "NotificationContext";
@@ -25,8 +26,12 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [proposalUnreadCount, setProposalUnreadCount] = useState(0);
   const [socket, setSocket] = useState(null);
+  const [fcmToken, setFcmToken] = useState(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const connectedRef = useRef(false);
+  const fcmListenerRef = useRef(null);
 
   // Add a new notification
   const addNotification = useCallback((notification) => {
@@ -49,15 +54,15 @@ export const NotificationProvider = ({ children }) => {
     if (notification.type === "chat") {
       setChatUnreadCount((prev) => prev + 1);
     }
+    // Track proposal-specific notifications
+    if (notification.type === "proposal") {
+      setProposalUnreadCount((prev) => prev + 1);
+    }
   }, []);
 
-  // Mark a single notification as read
+  // Remove a notification when clicked/read
   const markAsRead = useCallback((notificationId) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === notificationId ? { ...n, read: true } : n
-      )
-    );
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     setUnreadCount((prev) => Math.max(0, prev - 1));
   }, []);
 
@@ -66,6 +71,7 @@ export const NotificationProvider = ({ children }) => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
     setChatUnreadCount(0);
+    setProposalUnreadCount(0);
   }, []);
 
   // Clear all notifications
@@ -73,6 +79,76 @@ export const NotificationProvider = ({ children }) => {
     setNotifications([]);
     setUnreadCount(0);
     setChatUnreadCount(0);
+    setProposalUnreadCount(0);
+  }, []);
+
+  // Request push notification permission
+  const requestPushPermission = useCallback(async () => {
+    try {
+      const token = await requestNotificationPermission();
+      if (token) {
+        setFcmToken(token);
+        setPushEnabled(true);
+        console.log("[Notification] FCM token obtained:", token);
+        
+        // Save token to backend for push notifications
+        try {
+          await apiClient("/profile/fcm-token", {
+            method: "POST",
+            body: JSON.stringify({ fcmToken: token })
+          });
+          console.log("[Notification] FCM token saved to backend");
+          
+          // Show local confirmation
+          addNotification({
+            type: "system",
+            title: "Notifications Enabled",
+            message: "You will now receive updates on this device.",
+            createdAt: new Date().toISOString()
+          });
+        } catch (saveError) {
+          console.error("[Notification] Failed to save FCM token to backend:", saveError);
+        }
+        
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error("[Notification] Error requesting push permission:", error);
+      return null;
+    }
+  }, []);
+
+  // Set up FCM foreground message listener
+  useEffect(() => {
+    if (!pushEnabled || fcmListenerRef.current) return;
+
+    fcmListenerRef.current = onForegroundMessage((payload) => {
+      console.log("[Notification] FCM foreground message:", payload);
+      
+      if (payload.notification) {
+        // Extract type from data payload if available, otherwise default to "push"
+        const notificationType = payload.data?.type || "push";
+        
+        addNotification({
+          type: notificationType,
+          title: payload.notification.title,
+          message: payload.notification.body,
+          data: payload.data || {}
+        });
+      }
+    });
+
+    return () => {
+      fcmListenerRef.current = null;
+    };
+  }, [pushEnabled, addNotification]);
+
+  // Check initial push permission state
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPushEnabled(Notification.permission === 'granted');
+    }
   }, []);
 
   // Connect to socket.io for real-time notifications
@@ -107,35 +183,13 @@ export const NotificationProvider = ({ children }) => {
 
     newSocket.on("connect", () => {
       console.log("[Notification] ✅ Socket connected! Socket ID:", newSocket.id);
-      // Join the user's notification room
-      newSocket.emit("notification:join", { userId: user.id });
-      console.log("[Notification] Emitted notification:join for user:", user.id);
+      // Removed notification:join since we use Firebase Cloud Messaging now
     });
 
     // Listen for room join confirmation
     newSocket.on("notification:joined", ({ room, userId }) => {
+      // Legacy - kept to prevent errors if server still emits it
       console.log(`[Notification] 🎉 Successfully joined room: ${room} for user: ${userId}`);
-    });
-
-    // Listen for room join errors
-    newSocket.on("notification:join_error", ({ error }) => {
-      console.error(`[Notification] ❌ Failed to join notification room:`, error);
-    });
-
-    // Listen for new notifications
-    newSocket.on("notification:new", (notification) => {
-      console.log("[Notification] 📬 Received notification:new:", notification);
-      
-      // Filter "New Proposal Received" notifications - only clients should see these
-      // But allow freelancers to see their own proposal status updates (accepted, rejected, awarded to another)
-      if (notification.type === "proposal" && 
-          notification.title === "New Proposal Received" && 
-          user?.role?.toUpperCase() === "FREELANCER") {
-        console.log("[Notification] Skipping 'New Proposal Received' for freelancer");
-        return;
-      }
-      
-      addNotification(notification);
     });
 
     newSocket.on("disconnect", () => {
@@ -143,27 +197,14 @@ export const NotificationProvider = ({ children }) => {
       connectedRef.current = false;
     });
 
-    // Listen for chat messages (create notification for new messages)
-    newSocket.on("chat:message", (message) => {
-      // Only notify if the message is not from the current user
-      if (message.senderId !== user.id && message.senderRole !== user.role) {
-        addNotification({
-          type: "chat",
-          title: "New Message",
-          message: `${message.senderName || "Someone"}: ${message.content?.slice(0, 50)}${message.content?.length > 50 ? "..." : ""}`,
-          data: { 
-            conversationId: message.conversationId, 
-            messageId: message.id,
-            senderId: message.senderId,
-            service: message.service
-          }
-        });
-      }
+    newSocket.on("notification:new", (notification) => {
+      console.log("[Notification] 📨 Socket notification received:", notification);
+      addNotification(notification);
     });
+    
+    // NOTE: chat:message listener REMOVED from here - chat messages are handled by Chat components 
+    // and notifications for new messages come via Firebase Push Notifications
 
-    newSocket.on("disconnect", () => {
-      console.log("[Notification] Socket disconnected");
-    });
 
     newSocket.on("connect_error", (error) => {
       console.error("[Notification] Connection error:", error.message);
@@ -181,19 +222,29 @@ export const NotificationProvider = ({ children }) => {
     setChatUnreadCount(0);
   }, []);
 
+  // Function to mark proposal notifications as read
+  const markProposalsAsRead = useCallback(() => {
+    setProposalUnreadCount(0);
+  }, []);
+
   const value = useMemo(
     () => ({
       notifications,
       unreadCount,
       chatUnreadCount,
+      proposalUnreadCount,
       socket,
+      fcmToken,
+      pushEnabled,
       addNotification,
       markAsRead,
       markAllAsRead,
       markChatAsRead,
-      clearAll
+      markProposalsAsRead,
+      clearAll,
+      requestPushPermission
     }),
-    [notifications, unreadCount, chatUnreadCount, socket, addNotification, markAsRead, markAllAsRead, markChatAsRead, clearAll]
+    [notifications, unreadCount, chatUnreadCount, proposalUnreadCount, socket, fcmToken, pushEnabled, addNotification, markAsRead, markAllAsRead, markChatAsRead, markProposalsAsRead, clearAll, requestPushPermission]
   );
 
   return (
@@ -218,3 +269,4 @@ export const useNotifications = () => {
 };
 
 export { NotificationContext };
+

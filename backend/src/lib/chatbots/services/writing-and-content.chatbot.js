@@ -1,126 +1,49 @@
-export const service = "Writing & Content";
-export const openingMessage = "Hey! ✍️ Ready to create amazing content? Let's talk about what you need!";
+﻿export const service = "Writing & Content";
+export const openingMessage = "Hey! âœï¸ Ready to create amazing content? Let's talk about what you need!";
 export const serviceDetails = `Sub-types: Website Content, Blogs & Articles, Ad Copy, Scripts
 Deliverables: SEO-optimized content, proofreading, plagiarism-free writing
-Pricing: Blogs ₹1–₹5/word | Website content ₹10,000–₹50,000
-Timelines: Full content package 2–4 weeks | Partial scope: Single blog 3–5 days (₹1–₹5/word), Landing page copy 5–7 days (₹5,000–₹15,000)
-Timeline policy: timelines are in working days; 10–20% buffer included; delays due to missing client inputs pause the timeline.`;
+Pricing: Blogs â‚¹1â€“â‚¹5/word | Website content â‚¹10,000â€“â‚¹50,000
+Timelines: Full content package 2â€“4 weeks | Partial scope: Single blog 3â€“5 days (â‚¹1â€“â‚¹5/word), Landing page copy 5â€“7 days (â‚¹5,000â€“â‚¹15,000)
+Timeline policy: timelines are in working days; 10â€“20% buffer included; delays due to missing client inputs pause the timeline.`;
 export const questions = [
   {
-    "key": "name",
-    "patterns": [
-      "name",
-      "call you"
-    ],
-    "templates": [
-      "Hey! ✍️ Ready to create amazing content? What's your name?"
-    ],
-    "suggestions": null
+    key: "content_type",
+    patterns: ["content type", "website", "blogs", "ads", "scripts"],
+    templates: ["What type of content do you need?"],
+    suggestions: ["Website", "Blogs", "Ads", "Scripts", "Other"],
   },
   {
-    "key": "company",
-    "patterns": [
-      "company",
-      "brand",
-      "business"
-    ],
-    "templates": [
-      "Nice, {name}! What's your company or brand called?"
-    ],
-    "suggestions": null
+    key: "goal",
+    patterns: ["purpose", "seo", "branding", "conversions"],
+    templates: ["What is the purpose of the content?"],
+    suggestions: ["SEO", "Branding", "Conversions", "Other"],
   },
   {
-    "key": "content_type",
-    "patterns": [
-      "type",
-      "kind",
-      "need",
-      "content"
-    ],
-    "templates": [
-      "What type of content do you need? 📝"
-    ],
-    "suggestions": [
-      "Blog posts",
-      "Website copy",
-      "Social media",
-      "Email campaigns",
-      "Scripts",
-      "Other"
-    ]
+    key: "word_count",
+    patterns: ["word count", "pages", "length"],
+    templates: ["Approximate word count or number of pages?"],
+    suggestions: null,
   },
   {
-    "key": "tone",
-    "patterns": [
-      "tone",
-      "style",
-      "voice",
-      "sound"
-    ],
-    "templates": [
-      "What tone should the content have?"
-    ],
-    "suggestions": [
-      "Professional",
-      "Friendly",
-      "Persuasive",
-      "Educational",
-      "Fun/Casual"
-    ]
+    key: "tone",
+    patterns: ["tone", "seo optimized", "creative"],
+    templates: ["Do you need SEO-optimized or creative tone?"],
+    suggestions: ["SEO-optimized", "Creative tone", "Both", "Not sure"],
   },
   {
-    "key": "volume",
-    "patterns": [
-      "volume",
-      "how much",
-      "many",
-      "pieces"
-    ],
-    "templates": [
-      "How much content do you need?"
-    ],
-    "suggestions": [
-      "1-5 pieces",
-      "5-10 pieces",
-      "10-20 pieces",
-      "Ongoing monthly"
-    ]
+    key: "timeline",
+    patterns: ["timeline", "deadline"],
+    templates: ["What is your timeline?"],
+    suggestions: null,
   },
   {
-    "key": "budget",
-    "patterns": [
-      "budget",
-      "cost",
-      "spend"
-    ],
-    "templates": [
-      "What's your budget for this? 💰"
-    ],
-    "suggestions": [
-      "Under ₹5,000",
-      "₹5,000 - ₹15,000",
-      "₹15,000 - ₹30,000",
-      "₹30,000+"
-    ]
+    key: "budget",
+    patterns: ["budget", "range", "cost"],
+    templates: ["What is your budget range?"],
+    suggestions: null,
   },
-  {
-    "key": "timeline",
-    "patterns": [
-      "timeline",
-      "when",
-      "deadline"
-    ],
-    "templates": [
-      "When do you need the content? ⏰"
-    ],
-    "suggestions": [
-      "ASAP",
-      "This week",
-      "2 weeks",
-      "Flexible"
-    ]
-  }
 ];
 
 const chatbot = { service, openingMessage, questions, serviceDetails };
 export default chatbot;
+

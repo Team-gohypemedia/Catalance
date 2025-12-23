@@ -14,6 +14,8 @@ import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
+import ForgotPasswordPage from "./components/forms/ForgotPassword";
+import ResetPasswordPage from "./components/forms/ResetPassword";
 import PMLogin from "@/components/project-manager/PMLogin";
 import FreelancerDashboard from "@/components/freelancer/FreelancerDashboard";
 import FreelancerProposal from "@/components/freelancer/FreelancerProposal";
@@ -56,6 +58,22 @@ const App = () => {
             element={
               <LayoutWithNavbar>
                 <LoginPage />
+              </LayoutWithNavbar>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <LayoutWithNavbar>
+                <ForgotPasswordPage />
+              </LayoutWithNavbar>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <LayoutWithNavbar>
+                <ResetPasswordPage />
               </LayoutWithNavbar>
             }
           />

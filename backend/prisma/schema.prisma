@@ -5,8 +5,12 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+<<<<<<< HEAD
   directUrl = env("DIRECT_DATABASE_URL")
+=======
+>>>>>>> b9687c9847c278c6d88676db7823bc3adc5a88ea
 }
+
 
 enum UserRole {
   CLIENT
@@ -24,6 +28,7 @@ enum ProjectStatus {
   DRAFT
   OPEN
   IN_PROGRESS
+  AWAITING_PAYMENT
   COMPLETED
 }
 
@@ -49,6 +54,9 @@ model User {
   bio          String?    @db.Text
   skills       String[]   @default([])
   hourlyRate   Decimal?   @db.Decimal(10, 2)
+  resetPasswordToken   String?   @unique
+  resetPasswordExpires DateTime?
+  fcmToken     String?    // Firebase Cloud Messaging token for push notifications
   ownedProjects Project[] @relation("ProjectOwner")
   proposals    Proposal[]
   createdChats ChatConversation[] @relation("ChatCreator")

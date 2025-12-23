@@ -20,6 +20,7 @@ import {
   X,
   Trash2,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
@@ -421,6 +422,8 @@ const ClientDashboardContent = () => {
   const heroSubtitle = "Review proposals, unlock talent, and keep budgets on track.";
   const [metrics, setMetrics] = useState([]);
   const [viewProfileFreelancer, setViewProfileFreelancer] = useState(null);
+  const [pendingPaymentProjects, setPendingPaymentProjects] = useState([]);
+  const [isPayingProject, setIsPayingProject] = useState(null); // stores project id being paid
 
   const handleViewProfile = (freelancer) => {
     setViewProfileFreelancer(freelancer);
@@ -511,6 +514,19 @@ const ClientDashboardContent = () => {
             icon: Banknote,
           },
         ]);
+
+        // Filter projects awaiting payment (freelancer accepted but client hasn't paid yet)
+        // Check both explicit AWAITING_PAYMENT status AND projects with no money spent
+        const awaitingPayment = list.filter((p) => {
+          const hasAccepted = (p.proposals || []).some(
+            (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+          );
+          const rawStatus = (p.status || "").toUpperCase();
+          const hasNoPayment = !p.spent || p.spent === 0;
+          // Show if accepted + (AWAITING_PAYMENT status OR no money spent yet)
+          return hasAccepted && (rawStatus === "AWAITING_PAYMENT" || hasNoPayment);
+        });
+        setPendingPaymentProjects(awaitingPayment);
 
         // Check if saved proposal's project has an accepted proposal - if so, clear it
         // IMPORTANT: Only clear if we have a matching projectId - title matching alone is too broad
@@ -998,6 +1014,42 @@ const ClientDashboardContent = () => {
     toast.success("Proposal updated.");
   };
 
+  // Handle 50% upfront payment
+  const handlePayUpfront = async (project) => {
+    if (!project?.id) return;
+    
+    try {
+      setIsPayingProject(project.id);
+      const response = await authFetch(`/projects/${project.id}/pay-upfront`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || "Payment failed");
+      }
+
+      const data = await response.json();
+      toast.success(`Payment of ₹${data.data.paymentAmount?.toLocaleString()} processed! Project is now active.`);
+
+      // Remove from pending payments list
+      setPendingPaymentProjects((prev) => prev.filter((p) => p.id !== project.id));
+
+      // Refresh projects to update metrics
+      const refreshResponse = await authFetch("/projects");
+      const refreshPayload = await refreshResponse.json().catch(() => null);
+      if (refreshPayload?.data) {
+        setProjects(refreshPayload.data);
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast.error(error?.message || "Unable to process payment");
+    } finally {
+      setIsPayingProject(null);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col gap-6 p-6">
@@ -1045,6 +1097,82 @@ const ClientDashboardContent = () => {
             </Card>
           )}
         </section>
+
+        {/* Pending Payments Section */}
+        {pendingPaymentProjects.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Pending Payments</h2>
+                <p className="text-sm text-muted-foreground">
+                  Complete 50% upfront payment to start these projects
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {pendingPaymentProjects.map((project) => {
+                const acceptedProposal = (project.proposals || []).find(
+                  (p) => (p.status || "").toUpperCase() === "ACCEPTED"
+                );
+                const freelancerName =
+                  acceptedProposal?.freelancer?.fullName ||
+                  acceptedProposal?.freelancer?.name ||
+                  "Freelancer";
+                const amount = acceptedProposal?.amount || project.budget || 0;
+                const upfrontAmount = Math.round(amount * 0.5);
+
+                return (
+                  <Card
+                    key={project.id}
+                    className="border-primary/20 dark:border-primary/30 bg-gradient-to-br from-primary/5 to-background dark:from-primary/10 dark:to-background"
+                  >
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-primary" />
+                        {project.title}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Freelancer: <span className="font-medium text-foreground">{freelancerName}</span>
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Total Budget</span>
+                        <span className="font-semibold">₹{amount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">50% Upfront Payment</span>
+                        <span className="font-bold text-lg text-primary">
+                          ₹{upfrontAmount.toLocaleString()}
+                        </span>
+                      </div>
+                      <Button
+                        className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                        onClick={() => handlePayUpfront(project)}
+                        disabled={isPayingProject === project.id}
+                      >
+                        {isPayingProject === project.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="h-4 w-4" />
+                            Pay ₹{upfrontAmount.toLocaleString()} Now
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {hasSavedProposal && (
         <section className="grid gap-6">

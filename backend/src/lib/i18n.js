@@ -29,9 +29,22 @@ const LOCALE_LABELS = Object.freeze({
   tr: "Turkish",
   id: "Indonesian",
   vi: "Vietnamese",
+  "hi-Latn": "Hinglish (Hindi in Latin script)",
 });
 
 const normalizeText = (value = "") => (value || "").toString().trim();
+
+export const detectLocalePreference = (message = "") => {
+  const text = normalizeText(message).toLowerCase();
+  if (!text) return null;
+
+  if (/\bhinglish\b/.test(text)) return "hi-Latn";
+  if (/\broman(?:ized)?\s*hindi\b/.test(text)) return "hi-Latn";
+  if (/\bhindi\s+in\s+(?:english|roman|latin)\b/.test(text)) return "hi-Latn";
+  if (/\blatin\s*hindi\b/.test(text)) return "hi-Latn";
+
+  return null;
+};
 
 export const canonicalizeForI18n = (value = "") =>
   normalizeText(value)
@@ -107,9 +120,10 @@ const parseLocaleFromModelOutput = (value = "") => {
   const raw = normalizeText(value).toLowerCase();
   if (!raw) return "en";
 
-  const codeMatch = raw.match(/\b[a-z]{2}(?:-[a-z]{2})?\b/);
+  const codeMatch = raw.match(/\b[a-z]{2}(?:-[a-z]{2,4})?\b/);
   if (codeMatch) {
     const code = codeMatch[0].toLowerCase();
+    if (code === "hi-latn" || code === "hi-latin") return "hi-Latn";
     return code.startsWith("zh") ? "zh" : code.slice(0, 2);
   }
 
@@ -132,7 +146,8 @@ export const detectLocaleWithAI = async (
       role: "system",
       content:
         "Identify the language of the user's text. " +
-        "Return ONLY a lowercase ISO 639-1 language code like 'en', 'hi', 'es', 'ar', 'ru', 'zh', 'ja'. " +
+        "Return ONLY a lowercase language code like 'en', 'hi', 'es', 'ar', 'ru', 'zh', 'ja'. " +
+        "If the text is Hindi written in Latin script (Hinglish), return 'hi-Latn'. " +
         "If the text is mixed/unclear, return 'en'.",
     },
     { role: "user", content: sample.slice(0, 600) },

@@ -85,3 +85,26 @@ export const saveProfile = asyncHandler(async (req, res) => {
 
   res.json({ data: { success: true } });
 });
+
+// Save FCM token for push notifications
+export const saveFcmToken = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { fcmToken } = req.body;
+
+  if (!userId) {
+    throw new AppError("User not authenticated", 401);
+  }
+
+  if (!fcmToken) {
+    throw new AppError("FCM token is required", 400);
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { fcmToken }
+  });
+
+  console.log(`[Profile] Saved FCM token for user ${userId}`);
+  res.json({ data: { success: true } });
+});
+

@@ -550,9 +550,8 @@ const FreelancerChatContent = () => {
          setConversations((prev) => {
            console.log("[FreelancerChat] Updating conversations for service:", service, "Sender:", senderId);
            const updated = prev.map(c => {
-             // Match by serviceKey (best) or ID (fallback)
-             const isMatch = (c.serviceKey && c.serviceKey === service) || 
-                             (c.id === senderId); // Match client ID
+             // Match strictly by serviceKey to avoid duplicates across multiple projects with same client
+             const isMatch = (c.serviceKey && c.serviceKey === service);
              
              if (isMatch) {
                console.log("[FreelancerChat] Matched conversation:", c.name);

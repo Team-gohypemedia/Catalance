@@ -212,7 +212,8 @@ export const getProjects = asyncHandler(async (req, res) => {
         },
         _count: {
           select: { proposals: true }
-        }
+        },
+        progress: true
       },
       orderBy: { createdAt: 'desc' }
     });

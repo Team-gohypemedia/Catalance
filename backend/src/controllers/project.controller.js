@@ -214,3 +214,61 @@ export const updateProject = asyncHandler(async (req, res) => {
     throw new AppError(`Failed to update project: ${error.message}`, 500);
   }
 });
+
+// Pay 50% upfront to activate project
+export const payUpfront = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  // Find the project
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      proposals: {
+        where: { status: "ACCEPTED" },
+        include: { freelancer: true }
+      }
+    }
+  });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  // Only owner can pay
+  if (project.ownerId !== userId) {
+    throw new AppError("Only the project owner can make payments", 403);
+  }
+
+  // Project must not have been paid yet (spent === 0 or null) OR be in AWAITING_PAYMENT status
+  const hasBeenPaid = project.spent && project.spent > 0;
+  if (hasBeenPaid) {
+    throw new AppError("Payment has already been made for this project", 400);
+  }
+
+  // Calculate 50% of budget
+  const acceptedProposal = project.proposals?.[0];
+  const amount = acceptedProposal?.amount || project.budget || 0;
+  const upfrontPayment = Math.round(amount * 0.5);
+
+  // Update project: set spent and change status to IN_PROGRESS
+  const updatedProject = await prisma.project.update({
+    where: { id },
+    data: {
+      spent: upfrontPayment,
+      status: "IN_PROGRESS"
+    }
+  });
+
+  res.json({
+    data: {
+      project: updatedProject,
+      paymentAmount: upfrontPayment,
+      message: "50% upfront payment processed. Project is now active."
+    }
+  });
+});

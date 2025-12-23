@@ -67,6 +67,37 @@ const stripMarkdownFormatting = (value = "") => {
 
 const CHANGE_TECH_SENTINEL = "__CHANGE_TECH__";
 
+const withMandatoryBrief = (questions = []) => {
+    const list = Array.isArray(questions) ? questions : [];
+    const briefKeys = new Set([
+        "brief",
+        "summary",
+        "description",
+        "problem",
+        "use_case",
+        "business_info",
+        "vision",
+    ]);
+
+    if (list.some((q) => briefKeys.has(q?.key))) return list;
+
+    const briefQuestion = {
+        key: "brief",
+        patterns: ["brief", "summary", "overview", "requirements"],
+        templates: ["Please share a short brief of what you need (2-3 lines)."],
+        suggestions: null,
+    };
+
+    if (!list.length) return [briefQuestion];
+
+    const insertIndex = Math.min(1, list.length);
+    return [
+        ...list.slice(0, insertIndex),
+        briefQuestion,
+        ...list.slice(insertIndex),
+    ];
+};
+
 const isChangeTechnologyMessage = (value = "") => {
     const canon = canonicalize(value);
     if (!canon) return false;
@@ -1418,13 +1449,19 @@ const extractKnownFieldsFromMessage = (questions = [], message = "", collectedDa
     }
 
     const descriptionKey =
-        keys.has("description")
-            ? "description"
-            : keys.has("summary")
-                ? "summary"
-                : keys.has("vision")
-                    ? "vision"
-                    : null;
+        keys.has("brief")
+            ? "brief"
+            : keys.has("description")
+                ? "description"
+                : keys.has("summary")
+                    ? "summary"
+                    : keys.has("vision")
+                        ? "vision"
+                        : keys.has("problem")
+                            ? "problem"
+                            : keys.has("business_info")
+                                ? "business_info"
+                                : null;
 
     if (descriptionKey && !collectedData[descriptionKey] && !treatAsQuestionForInference) {
         const hasIntentVerb = /(need|looking|build|create|develop|want|require|make)\b/i.test(parsingText);
@@ -1754,7 +1791,8 @@ const extractAnswerForQuestion = (question, rawMessage) => {
  * @returns {Object} State with collectedData and currentStep
  */
 export function buildConversationState(history, service) {
-    const { questions } = getChatbot(service);
+    const { questions: rawQuestions } = getChatbot(service);
+    const questions = withMandatoryBrief(rawQuestions);
     const safeHistory = Array.isArray(history) ? history : [];
     const collectedData = {};
 
@@ -1822,7 +1860,9 @@ export function buildConversationState(history, service) {
  * @returns {Object} Updated state
  */
 export function processUserAnswer(state, message) {
-    const questions = Array.isArray(state?.questions) ? state.questions : [];
+    const questions = withMandatoryBrief(
+        Array.isArray(state?.questions) ? state.questions : []
+    );
     const collectedData = { ...(state?.collectedData || {}) };
     const rawMessage = normalizeText(message);
     const normalized = (() => {
@@ -2161,6 +2201,31 @@ const parseTimelineWeeks = (value = "") => {
     return null;
 };
 
+const parseDurationMonths = (value = "") => {
+    const text = normalizeText(value).toLowerCase();
+    if (!text) return null;
+
+    let match = text.match(/\b(\d+(?:\.\d+)?)\s*months?\b/);
+    if (match) {
+        const months = parseFloat(match[1]);
+        return Number.isFinite(months) ? Math.max(1, Math.round(months)) : null;
+    }
+
+    match = text.match(/\b(\d+(?:\.\d+)?)\s*weeks?\b/);
+    if (match) {
+        const weeks = parseFloat(match[1]);
+        return Number.isFinite(weeks) ? Math.max(1, Math.ceil(weeks / 4)) : null;
+    }
+
+    match = text.match(/\b(\d+(?:\.\d+)?)\s*days?\b/);
+    if (match) {
+        const days = parseFloat(match[1]);
+        return Number.isFinite(days) ? Math.max(1, Math.ceil(days / 30)) : null;
+    }
+
+    return null;
+};
+
 const collectRoadmapFeatureParts = (collectedData = {}) => {
     const normalizeList = (raw = "") =>
         splitSelections(raw)
@@ -2439,6 +2504,7 @@ export function generateProposalFromState(state) {
         rawService && rawService.toLowerCase() !== "default"
             ? rawService
             : "General Services";
+    const isPerformanceMarketing = serviceName === "Performance Marketing";
 
     const durationServices = new Set([
         "Social Media Management",
@@ -2458,6 +2524,8 @@ export function generateProposalFromState(state) {
         service_type: "Service Type",
         solution_type: "Solution Type",
         project_stage: "Project Stage",
+        project_category: "Project Category",
+        brief: "Brief",
         summary: "Summary",
         description: "Summary",
         use_case: "Use Case",
@@ -2510,6 +2578,37 @@ export function generateProposalFromState(state) {
         design: "Design Preferences",
         tech: "Preferred Tech Stack",
         offer: "Offer/CTA",
+        scope: "Scope",
+        software_type: "Software Type",
+        target_users: "Target Users",
+        problem: "Problem to Solve",
+        feature_list: "Feature List/Reference",
+        target_market: "Target Market",
+        geo: "Target Geography",
+        business_niche: "Business Niche",
+        target_location: "Target Location",
+        seo_scope: "SEO Scope",
+        website_live: "Website Live",
+        posts_per_month: "Posts per Month",
+        reels_needed: "Reels/Videos Needed",
+        objective: "Primary Objective",
+        ad_spend: "Ad budget (per month)",
+        ad_budget: "Ad budget (per month)",
+        ad_accounts: "Ad Accounts",
+        creative_scope: "Creative Scope",
+        brand_identity: "Brand Identity",
+        concept_count: "Concept Count",
+        content_type: "Content Type",
+        daily_volume: "Daily Volume",
+        influencer_type: "Influencer Type",
+        content_format: "Content Format",
+        departments: "Departments",
+        current_crm: "Current CRM/ERP",
+        automation_process: "Automation Process",
+        complexity: "Complexity Level",
+        flow_count: "Conversation Flow Count",
+        languages: "Languages",
+        script_voiceover: "Script/Voice-over",
     };
 
     const normalizeValue = (value = "") => {
@@ -2562,6 +2661,51 @@ export function generateProposalFromState(state) {
         return `${formatInrAscii(parsed.min)} - ${formatInrAscii(parsed.max)}`;
     };
 
+    const inferReadinessLevel = (data = {}) => {
+        const readinessKeys = [
+            "design_assets",
+            "feature_list",
+            "references",
+            "footage",
+            "brand_identity",
+            "website_live",
+            "ad_accounts",
+            "current_crm",
+            "core_features",
+            "problem",
+        ];
+
+        const values = readinessKeys
+            .map((key) => normalizeValue(data[key]))
+            .filter(Boolean);
+
+        if (!values.length) return "To be discussed";
+
+        let hasReady = false;
+        let hasPartial = false;
+        let hasNotReady = false;
+
+        for (const value of values) {
+            const text = value.toLowerCase();
+            if (text.includes("http") || /\b(yes|ready|have|existing|live|already)\b/.test(text)) {
+                hasReady = true;
+                continue;
+            }
+            if (/\b(partial|some|in progress|maybe|not sure)\b/.test(text)) {
+                hasPartial = true;
+                continue;
+            }
+            if (/\b(no|not yet|need|none)\b/.test(text)) {
+                hasNotReady = true;
+            }
+        }
+
+        if (hasReady) return "Ready";
+        if (hasPartial) return "In progress";
+        if (hasNotReady) return "Needs discovery";
+        return "To be discussed";
+    };
+
     const clientName = normalizeValue(collectedData.name) || "Client";
     if (normalizeValue(collectedData.name)) usedKeys.add("name");
 
@@ -2575,17 +2719,86 @@ export function generateProposalFromState(state) {
     ]);
 
     const summary = getFirstValue([
+        "brief",
         "summary",
         "description",
         "use_case",
         "business_info",
         "vision",
+        "problem",
     ]);
 
-    const budget = formatBudgetForProposal(collectedData.budget);
+    const summaryFallback =
+        normalizeValue(collectedData.problem) ||
+        normalizeValue(collectedData.core_features) ||
+        normalizeValue(collectedData.goal) ||
+        normalizeValue(collectedData.objective) ||
+        normalizeValue(collectedData.content_type);
+
+    const summaryValue = summary || summaryFallback || "To be discussed";
+    const scopeValue = normalizeValue(collectedData.scope) || "To be discussed";
+    const deliverablesValue =
+        normalizeValue(collectedData.deliverables) ||
+        normalizeValue(collectedData.core_features) ||
+        normalizeValue(collectedData.features) ||
+        normalizeValue(collectedData.modules) ||
+        normalizeValue(collectedData.deliverables_quantity) ||
+        normalizeValue(collectedData.content_type) ||
+        normalizeValue(collectedData.video_type) ||
+        "To be discussed";
     const timelineRaw = normalizeValue(collectedData.timeline);
     const timeline = timelineRaw || "To be discussed";
     const durationLabel = durationServices.has(serviceName) ? "Duration" : "Timeline";
+    const timelineLabel =
+        durationLabel === "Duration" ? "Duration (with buffer)" : "Timeline (with buffer)";
+    const readinessLevel = inferReadinessLevel(collectedData);
+
+    const adBudgetRaw =
+        normalizeValue(collectedData.ad_spend) || normalizeValue(collectedData.ad_budget);
+    const adBudgetClean = adBudgetRaw
+        ? adBudgetRaw.replace(/\b(per\s+month|monthly|per\s+mo|\/month)\b/gi, "").trim()
+        : "";
+    const adBudgetParsed = adBudgetClean ? parseInrBudgetRange(adBudgetClean) : null;
+    const adBudgetDisplay =
+        adBudgetParsed && !adBudgetParsed.flexible
+            ? formatBudgetDisplay(adBudgetParsed)
+            : adBudgetParsed?.flexible
+                ? "Flexible"
+                : adBudgetRaw;
+    const durationMonths = isPerformanceMarketing ? parseDurationMonths(timelineRaw) : null;
+    const adBudgetHasRange =
+        adBudgetParsed &&
+        Number.isFinite(adBudgetParsed.min) &&
+        Number.isFinite(adBudgetParsed.max) &&
+        Number.isFinite(durationMonths);
+    const totalAdBudgetParsed = adBudgetHasRange
+        ? {
+            min: adBudgetParsed.min * durationMonths,
+            max: adBudgetParsed.max * durationMonths,
+        }
+        : null;
+    const totalAdBudgetDisplay = totalAdBudgetParsed
+        ? formatBudgetDisplay(totalAdBudgetParsed)
+        : "";
+
+    const budgetBase = formatBudgetForProposal(collectedData.budget);
+    const budget = isPerformanceMarketing
+        ? totalAdBudgetDisplay || adBudgetDisplay || budgetBase
+        : budgetBase;
+
+    const objectiveValue = normalizeValue(collectedData.objective);
+    const projectCategoryValue = isPerformanceMarketing
+        ? normalizeValue(collectedData.project_category) ||
+        objectiveValue ||
+        projectName
+        : projectName;
+
+    if (isPerformanceMarketing && objectiveValue && projectCategoryValue === objectiveValue) {
+        usedKeys.add("objective");
+    }
+    if (isPerformanceMarketing && adBudgetDisplay) {
+        usedKeys.add("ad_spend");
+    }
 
     const requirementLines = [];
     for (const question of questions) {
@@ -2609,7 +2822,9 @@ export function generateProposalFromState(state) {
         `Client Name: ${clientName}`,
     ];
 
-    if (projectName) {
+    if (isPerformanceMarketing && projectCategoryValue) {
+        sections.push(`Project Category: ${projectCategoryValue}`);
+    } else if (projectName) {
         sections.push(`Project Name: ${projectName}`);
     }
 
@@ -2617,11 +2832,25 @@ export function generateProposalFromState(state) {
     sections.push(`Prepared for: ${clientName}`);
     sections.push("");
 
-    if (summary) {
-        sections.push("PROJECT OVERVIEW");
-        sections.push(summary);
-        sections.push("");
+    sections.push("PROJECT SUMMARY");
+    sections.push(`Summary: ${summaryValue}`);
+    sections.push(`Scope: ${scopeValue}`);
+    sections.push(`Deliverables: ${deliverablesValue}`);
+    sections.push(`${timelineLabel}: ${timeline}`);
+    if (isPerformanceMarketing) {
+        const monthlyBudgetLine = adBudgetDisplay || "To be discussed";
+        sections.push(`Ad budget (per month): ${monthlyBudgetLine}`);
+        if (totalAdBudgetDisplay) {
+            const monthsNote = durationMonths ? ` (${durationMonths} months)` : "";
+            sections.push(`Estimated ad budget total: ${totalAdBudgetDisplay}${monthsNote}`);
+        } else {
+            sections.push("Estimated ad budget total: To be discussed");
+        }
+    } else {
+        sections.push(`Budget range: ${budget}`);
     }
+    sections.push(`Client readiness level: ${readinessLevel}`);
+    sections.push("");
 
     if (requirementLines.length) {
         sections.push("REQUIREMENTS");
