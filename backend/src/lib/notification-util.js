@@ -1,7 +1,7 @@
 // Notification utility - uses Firebase Cloud Messaging for push notifications
 
 import { sendPushNotification } from "./firebase-admin.js";
-import { sendSocketNotification } from "./socket.js";
+import { sendSocketNotification } from "./socket-manager.js";
 
 // Send a notification to a specific user via Firebase Push AND Socket.io
 export const sendNotificationToUser = async (userId, notification) => {

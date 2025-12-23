@@ -10,6 +10,7 @@ import {
   getConversation
 } from "./chat-store.js";
 import { sendNotificationToUser } from "./notification-util.js";
+import { setIo } from "./socket-manager.js";
 
 const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
 const parseOrigins = (value = "") =>
@@ -48,27 +49,7 @@ const toHistoryMessage = (message) => ({
 
 let ioInstance;
 
-export const sendSocketNotification = (userId, notification) => {
-  if (!ioInstance || !userId) return false;
-  
-  const roomName = `user:${userId}`; // Matches the client-side joining logic (needs to be verified if client joins this room)
-  // Actually, looking at socket.js, I don't see where the user joins `user:${userId}`. 
-  // Wait, I missed where the user joins their personal room in socket.js.
-  // Lines 95-99 in the previous view were blank lines/comments?
-  // "95:     // Join user's personal notification room"
-  // "96:     // SECURITY: Use the userId from socket handshake (set during connection) "
-  // "97:     // instead of trusting client-provided userId to ensure users only join their own room"
-  // "98: "
-  // "99: "
-  // It seems the joining logic is MISSING! I must add it.
-  
-  ioInstance.to(roomName).emit("notification:new", {
-    id: notification.id || `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    ...notification,
-    createdAt: new Date().toISOString()
-  });
-  return true;
-};
+
 
 export const initSocket = (server) => {
   const corsOrigins =
@@ -87,6 +68,7 @@ export const initSocket = (server) => {
   });
 
   ioInstance = io;
+  setIo(io);
 
   io.on("connection", (socket) => {
     const handshakeUserId = socket.handshake?.query?.userId;
