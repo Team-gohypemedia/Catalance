@@ -166,31 +166,28 @@ const issueAccessToken = (user) => {
  * @param {string} email - User's email address
  * @returns {Promise<{message: string}>}
  */
+// Request a password reset
 export const requestPasswordReset = async (email) => {
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() }
   });
 
-  // For security, always return success even if user doesn't exist
-  // This prevents email enumeration attacks
   if (!user) {
     return { message: "If an account exists with that email, a password reset link has been sent." };
   }
 
-  // Generate secure random token
   const resetToken = crypto.randomBytes(32).toString("hex");
-  const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+  const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-  // Save token to database
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      resetPasswordToken: resetToken,
-      resetPasswordExpires: resetTokenExpiry
-    }
-  });
+  // Use raw query to bypass stale Prisma Client definitions
+  await prisma.$executeRaw`
+    UPDATE "User" 
+    SET "resetPasswordToken" = ${resetToken}, 
+        "resetPasswordExpires" = ${resetTokenExpiry},
+        "updatedAt" = NOW()
+    WHERE "id" = ${user.id}
+  `;
 
-  // Send reset email if Resend is configured
   if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
     try {
       const resend = ensureResendClient();
@@ -207,84 +204,72 @@ export const requestPasswordReset = async (email) => {
       console.error("Failed to send password reset email:", emailError);
       throw new AppError("Failed to send reset email. Please try again later.", 500);
     }
-  } else {
-    console.warn("Resend not configured - password reset email not sent");
   }
 
   return { message: "If an account exists with that email, a password reset link has been sent." };
 };
 
-/**
- * Verify if a reset token is valid and not expired
- * @param {string} token - The reset token to verify
- * @returns {Promise<{valid: boolean, email?: string}>}
- */
 export const verifyResetToken = async (token) => {
-  if (!token) {
-    throw new AppError("Reset token is required", 400);
-  }
+  if (!token) throw new AppError("Reset token is required", 400);
 
-  const user = await prisma.user.findUnique({
-    where: { resetPasswordToken: token }
-  });
+  // Raw query to find user by token
+  const users = await prisma.$queryRaw`
+    SELECT * FROM "User" 
+    WHERE "resetPasswordToken" = ${token} 
+    LIMIT 1
+  `;
+  const user = users[0];
 
   if (!user || !user.resetPasswordExpires) {
     return { valid: false };
   }
 
-  // Check if token has expired
   const now = new Date();
-  if (now > user.resetPasswordExpires) {
+  // Ensure expiry is a Date object (pg driver returns Date usually)
+  const expiry = new Date(user.resetPasswordExpires);
+  
+  if (now > expiry) {
     return { valid: false };
   }
 
-  return {
-    valid: true,
-    email: user.email
-  };
+  return { valid: true, email: user.email };
 };
 
-/**
- * Reset user's password using a valid token
- * @param {string} token - The reset token
- * @param {string} newPassword - The new password
- * @returns {Promise<{message: string}>}
- */
 export const resetPassword = async (token, newPassword) => {
-  if (!token) {
-    throw new AppError("Reset token is required", 400);
-  }
-
+  if (!token) throw new AppError("Reset token is required", 400);
   if (!newPassword || newPassword.length < 8) {
     throw new AppError("Password must be at least 8 characters long", 400);
   }
 
-  const user = await prisma.user.findUnique({
-    where: { resetPasswordToken: token }
-  });
+  const users = await prisma.$queryRaw`
+    SELECT * FROM "User" 
+    WHERE "resetPasswordToken" = ${token} 
+    LIMIT 1
+  `;
+  const user = users[0];
 
   if (!user || !user.resetPasswordExpires) {
     throw new AppError("Invalid or expired reset token", 400);
   }
 
-  // Check if token has expired
   const now = new Date();
-  if (now > user.resetPasswordExpires) {
+  const expiry = new Date(user.resetPasswordExpires);
+  
+  if (now > expiry) {
     throw new AppError("Reset token has expired", 400);
   }
 
-  // Hash the new password
   const newPasswordHash = await hashPassword(newPassword);
 
-  // Update password and clear reset token fields
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      passwordHash: newPasswordHash,
-      resetPasswordToken: null,
-      resetPasswordExpires: null
-    }
-  });
+  // Raw update to clear token and set password
+  await prisma.$executeRaw`
+    UPDATE "User"
+    SET "passwordHash" = ${newPasswordHash},
+        "resetPasswordToken" = NULL,
+        "resetPasswordExpires" = NULL,
+        "updatedAt" = NOW()
+    WHERE "id" = ${user.id}
+  `;
 
   return { message: "Password has been reset successfully" };
 };
