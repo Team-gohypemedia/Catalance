@@ -5,7 +5,8 @@ import {
   profileHandler,
   forgotPasswordHandler,
   verifyResetTokenHandler,
-  resetPasswordHandler
+  resetPasswordHandler,
+  verifyOtpHandler
 } from "../controllers/auth.controller.js";
 import { validateResource } from "../middlewares/validate-resource.js";
 import {
@@ -21,6 +22,7 @@ import { requireAuth } from "../middlewares/require-auth.js";
 export const authRouter = Router();
 
 authRouter.post("/signup", validateResource(createUserSchema), signupHandler);
+authRouter.post("/verify-otp", verifyOtpHandler);
 authRouter.post("/login", validateResource(loginSchema), loginHandler);
 authRouter.get("/profile", requireAuth, profileHandler);
 

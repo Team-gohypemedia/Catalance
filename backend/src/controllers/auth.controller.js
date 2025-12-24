@@ -5,13 +5,20 @@ import {
   registerUser,
   requestPasswordReset,
   verifyResetToken,
-  resetPassword
+  resetPassword,
+  verifyUserOtp
 } from "../modules/users/user.service.js";
 import { AppError } from "../utils/app-error.js";
 
 export const signupHandler = asyncHandler(async (req, res) => {
-  const authPayload = await registerUser(req.body);
-  res.status(201).json({ data: authPayload });
+  const result = await registerUser(req.body);
+  res.status(201).json({ data: result });
+});
+
+export const verifyOtpHandler = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  const authPayload = await verifyUserOtp({ email, otp });
+  res.json({ data: authPayload });
 });
 
 export const loginHandler = asyncHandler(async (req, res) => {

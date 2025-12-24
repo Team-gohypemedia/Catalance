@@ -165,7 +165,7 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { status } = req.body;
 
-  if (!["ACTIVE", "SUSPENDED"].includes(status)) {
+  if (!["ACTIVE", "SUSPENDED", "PENDING_APPROVAL"].includes(status)) {
     throw new Error("Invalid status");
   }
 

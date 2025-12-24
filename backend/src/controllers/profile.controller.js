@@ -39,7 +39,8 @@ export const getProfile = asyncHandler(async (req, res) => {
       skills: user.skills ?? [],
       workExperience: extras.workExperience ?? [],
       services: extras.services ?? [],
-      portfolio: extras.portfolio ?? {} // New: Return portfolio
+      portfolio: extras.portfolio ?? {}, // New: Return portfolio
+      portfolioProjects: user.portfolioProjects ?? []
     }
   });
 });
@@ -76,6 +77,7 @@ export const saveProfile = asyncHandler(async (req, res) => {
         portfolio: payload.portfolio ?? {} // New: Save portfolio
     };
     updateData.skills = skills ?? [];
+    updateData.portfolioProjects = payload.portfolioProjects ?? [];
     updateData.bio = JSON.stringify(extras);
   }
 

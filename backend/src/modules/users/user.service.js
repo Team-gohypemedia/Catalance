@@ -14,7 +14,8 @@ import {
 export const listUsers = async (filters = {}) => {
   const users = await prisma.user.findMany({
     where: {
-      role: filters.role
+      role: filters.role,
+      status: filters.status || 'ACTIVE'
     },
     orderBy: {
       createdAt: "desc"
@@ -30,10 +31,79 @@ export const createUser = async (payload) => {
 };
 
 export const registerUser = async (payload) => {
-  const user = await createUserRecord(payload);
+  const otpCode = crypto.randomInt(100000, 999999).toString();
+  const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  const user = await createUserRecord({ ...payload, otpCode, otpExpires });
+
+  // Send OTP Email
+  if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
+    try {
+      const resend = ensureResendClient();
+      await resend.emails.send({
+        from: env.RESEND_FROM_EMAIL,
+        to: user.email,
+        subject: "Verify Your Email - Catalance",
+        html: `<p>Your verification code is: <strong>${otpCode}</strong></p><p>This code expires in 15 minutes.</p>`
+      });
+    } catch (error) {
+      console.error("Failed to send OTP email:", error);
+      // In dev, log the OTP so we can proceed
+      console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
+    }
+  } else {
+      console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
+  }
+
   return {
-    user: sanitizeUser(user),
-    accessToken: issueAccessToken(user)
+    message: "Verification code sent to your email",
+    email: user.email,
+    userId: user.id
+  };
+};
+
+export const verifyUserOtp = async ({ email, otp }) => {
+  const user = await prisma.user.findUnique({
+    where: { email }
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.isVerified) {
+    // Already verified, just log them in
+    return {
+      user: sanitizeUser(user),
+      accessToken: issueAccessToken(user)
+    };
+  }
+
+  if (!user.otpCode || !user.otpExpires) {
+    throw new AppError("Invalid verification request", 400);
+  }
+
+  if (String(user.otpCode) !== String(otp)) {
+    throw new AppError("Invalid verification code", 400);
+  }
+
+  if (new Date() > new Date(user.otpExpires)) {
+    throw new AppError("Verification code expired", 400);
+  }
+
+  // Verify user
+  const updatedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      isVerified: true,
+      otpCode: null,
+      otpExpires: null
+    }
+  });
+
+  return {
+    user: sanitizeUser(updatedUser),
+    accessToken: issueAccessToken(updatedUser)
   };
 };
 
@@ -64,6 +134,11 @@ export const authenticateUser = async ({ email, password }) => {
     throw new AppError("Invalid email or password", 401);
   }
 
+  if (!user.isVerified) {
+    // Optionally resend OTP here if needed, or just tell them to verify
+    throw new AppError("Please verify your email address before logging in.", 403);
+  }
+
   return {
     user: sanitizeUser(user),
     accessToken: issueAccessToken(user)
@@ -92,11 +167,20 @@ const createUserRecord = async (payload) => {
         role: payload.role ?? "FREELANCER",
         bio: payload.bio,
         skills: payload.skills ?? [],
-        hourlyRate: payload.hourlyRate ?? null
+        hourlyRate: payload.hourlyRate ?? null,
+        otpCode: payload.otpCode,
+        otpExpires: payload.otpExpires,
+        isVerified: false,
+        status: (payload.role === "FREELANCER") ? "PENDING_APPROVAL" : "ACTIVE",
+        portfolio: payload.portfolio,
+        linkedin: payload.linkedin,
+        github: payload.github,
+        portfolioProjects: payload.portfolioProjects ?? []
       }
     });
 
-    await maybeSendWelcomeEmail(user);
+    // Don't send welcome email yet, wait for verification
+    // await maybeSendWelcomeEmail(user);
 
     return user;
   } catch (error) {

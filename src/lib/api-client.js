@@ -176,6 +176,13 @@ export const loginWithGoogle = (idToken) => {
   });
 };
 
+export const verifyOtp = ({ email, otp }) => {
+  return request("/auth/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ email, otp })
+  });
+};
+
 export const chat = ({ message, service, history = [] }) => {
   return request("/chat", {
     method: "POST",
@@ -246,5 +253,6 @@ export const apiClient = {
   createChatConversation,
   fetchChatConversations,
   fetchChatMessages,
-  sendChatMessage
+  sendChatMessage,
+  verifyOtp
 };

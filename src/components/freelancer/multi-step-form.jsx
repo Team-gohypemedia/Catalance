@@ -11,15 +11,22 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-import { API_BASE_URL, signup } from "@/lib/api-client";
+import { API_BASE_URL, signup, verifyOtp } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 
 const PROFESSIONAL_FIELD_ICONS = {
@@ -68,6 +75,12 @@ const SPECIALTY_SKILLS_MAP = {
     "TypeScript",
     "Next.js",
     "Svelte",
+    "WordPress",
+    "Shopify",
+    "Webflow",
+    "HTML5",
+    "CSS3",
+    "Bootstrap",
   ],
   "Back-end Development": [
     "Node.js",
@@ -77,6 +90,12 @@ const SPECIALTY_SKILLS_MAP = {
     "PostgreSQL",
     "MongoDB",
     "Docker",
+    "PHP",
+    "Laravel",
+    "Ruby on Rails",
+    "Go",
+    "Redis",
+    "GraphQL",
   ],
   "Full-stack Development": [
     "React",
@@ -86,6 +105,12 @@ const SPECIALTY_SKILLS_MAP = {
     "TypeScript",
     "AWS",
     "Git",
+    "Next.js",
+    "GraphQL",
+    "Firebase",
+    "Supabase",
+    "PHP",
+    "Laravel",
   ],
   "Mobile App Development": [
     "Swift (iOS)",
@@ -93,6 +118,8 @@ const SPECIALTY_SKILLS_MAP = {
     "React Native",
     "Flutter",
     "Firebase",
+    "Ionic",
+    "Xamarin",
   ],
   "DevOps & Cloud": [
     "AWS",
@@ -102,6 +129,10 @@ const SPECIALTY_SKILLS_MAP = {
     "Linux",
     "Terraform",
     "GitHub Actions",
+    "Azure",
+    "Google Cloud",
+    "Jenkins",
+    "Ansible",
   ],
   "Data & Analytics": [
     "Python",
@@ -111,6 +142,10 @@ const SPECIALTY_SKILLS_MAP = {
     "Machine Learning",
     "Pandas",
     "Data Science",
+    "R",
+    "BigQuery",
+    "Apache Spark",
+    "Hadoop",
   ],
   "SEO Specialist": [
     "SEO",
@@ -119,6 +154,9 @@ const SPECIALTY_SKILLS_MAP = {
     "Keyword Research",
     "Content Optimization",
     "Link Building",
+    "Ahrefs",
+    "Semrush",
+    "Google Search Console",
   ],
   "Performance Marketer": [
     "Google Ads",
@@ -126,6 +164,8 @@ const SPECIALTY_SKILLS_MAP = {
     "Conversion Optimization",
     "A/B Testing",
     "Analytics",
+    "LinkedIn Ads",
+    "TikTok Ads",
   ],
   "Content Marketing": [
     "Content Writing",
@@ -133,6 +173,8 @@ const SPECIALTY_SKILLS_MAP = {
     "Blog Writing",
     "SEO Writing",
     "Social Media Content",
+    "Email Copy",
+    "Technical Writing",
   ],
   "Email Marketing": [
     "Email Campaigns",
@@ -140,6 +182,9 @@ const SPECIALTY_SKILLS_MAP = {
     "Segmentation",
     "Copy Writing",
     "A/B Testing",
+    "Mailchimp",
+    "Klaviyo",
+    "HubSpot",
   ],
   "UI/UX Design": [
     "Figma",
@@ -148,6 +193,8 @@ const SPECIALTY_SKILLS_MAP = {
     "Prototyping",
     "User Research",
     "Wireframing",
+    "InVision",
+    "Framer",
   ],
   "Graphic Design": [
     "Adobe Creative Suite",
@@ -156,6 +203,9 @@ const SPECIALTY_SKILLS_MAP = {
     "Branding",
     "Typography",
     "Illustration",
+    "Photoshop",
+    "Illustrator",
+    "InDesign",
   ],
   "Product Design": [
     "Figma",
@@ -163,6 +213,7 @@ const SPECIALTY_SKILLS_MAP = {
     "User Testing",
     "Design Systems",
     "Interaction Design",
+    "Product Strategy",
   ],
   "Brand Identity": [
     "Logo Design",
@@ -170,11 +221,46 @@ const SPECIALTY_SKILLS_MAP = {
     "Color Theory",
     "Typography",
     "Visual Identity",
+    "Brand Guidelines",
   ],
-  "General Specialist": ["General Services", "Consulting", "Strategy"],
+  "WordPress Development": [
+    "Theme Development",
+    "Plugin Development",
+    "Elementor",
+    "WooCommerce",
+    "PHP",
+    "Speed Optimization",
+    "Security",
+    "Divi",
+  ],
+  "Shopify Development": [
+    "Liquid",
+    "Theme Customization",
+    "Shopify Plus",
+    "App Development",
+    "Store Setup",
+    "Migration",
+    "Headless Shopify",
+  ],
+  "CMS & No-Code": [
+    "Webflow",
+    "Wix",
+    "Squarespace",
+    "Bubble",
+    "Framer",
+    "Zapier",
+    "Airtable",
+  ],
+  "General Specialist": [
+    "General Services",
+    "Consulting",
+    "Strategy",
+    "Project Management",
+    "Virtual Assistance",
+  ],
 };
 
-const EXPERIENCE_OPTIONS = ["0-1", "1-3", "3-5", "5-8", "10+"];
+const EXPERIENCE_OPTIONS = ["Fresher", "0-1", "1-3", "3-5", "5-8", "10+"];
 
 const specialtyOptionsByField = {
   "Development & Tech": [
@@ -183,7 +269,11 @@ const specialtyOptionsByField = {
     "Full-stack Development",
     "Mobile App Development",
     "DevOps & Cloud",
+    "DevOps & Cloud",
     "Data & Analytics",
+    "WordPress Development",
+    "Shopify Development",
+    "CMS & No-Code",
   ],
   "Digital Marketing": [
     "SEO Specialist",
@@ -210,15 +300,18 @@ const FreelancerMultiStepForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otp, setOtp] = useState("");
   const [formData, setFormData] = useState({
     professionalField: "",
-    specialty: "",
+    specialty: [],
     skills: [],
     customSkillInput: "",
     experience: "",
     portfolioWebsite: "",
     linkedinProfile: "",
     githubProfile: "",
+    portfolioProjects: [],
     portfolioFileName: "",
     termsAccepted: false,
     fullName: "",
@@ -239,6 +332,22 @@ const FreelancerMultiStepForm = () => {
     if (stepError) {
       setStepError("");
     }
+  };
+
+  const toggleSpecialty = (specialtyValue) => {
+    setFormData((prev) => {
+      const currentSpecialties = Array.isArray(prev.specialty)
+        ? prev.specialty
+        : [];
+      const exists = currentSpecialties.includes(specialtyValue);
+      return {
+        ...prev,
+        specialty: exists
+          ? currentSpecialties.filter((s) => s !== specialtyValue)
+          : [...currentSpecialties, specialtyValue],
+      };
+    });
+    if (stepError) setStepError("");
   };
 
   const toggleSkill = (skill) => {
@@ -291,8 +400,8 @@ const FreelancerMultiStepForm = () => {
         return "";
       }
       case 2: {
-        if (!data.specialty) {
-          return "Please select your specialty to continue.";
+        if (!data.specialty || data.specialty.length === 0) {
+          return "Please select at least one specialty to continue.";
         }
         return "";
       }
@@ -309,6 +418,16 @@ const FreelancerMultiStepForm = () => {
         return "";
       }
       case 5: {
+        if (data.experience === "Fresher") {
+           if (!data.linkedinProfile.trim()) {
+             return "Please provide your LinkedIn profile.";
+           }
+           if (!data.portfolioFileName) {
+               return "Please upload your resume/portfolio file.";
+           }
+           return "";
+        }
+
         if (!data.portfolioWebsite.trim() || !data.linkedinProfile.trim()) {
           return "Please provide both your portfolio website and LinkedIn profile.";
         }
@@ -434,6 +553,15 @@ const FreelancerMultiStepForm = () => {
         freelancerProfile,
       });
 
+      // If signup returns an accessToken, it means verification wasn't required (legacy or changed)
+      // Otherwise, it prompts for OTP
+      if (!authPayload?.accessToken) {
+        setIsVerifying(true);
+        setIsSubmitting(false);
+        toast.success("Verification code sent to your email!");
+        return;
+      }
+
       setAuthSession(authPayload?.user, authPayload?.accessToken);
 
       const profilePayload = {
@@ -447,9 +575,10 @@ const FreelancerMultiStepForm = () => {
           ? formData.skills.filter(Boolean)
           : [],
         workExperience: [],
-        services: [formData.professionalField, formData.specialty].filter(
-          Boolean
-        ),
+        services: [
+            formData.professionalField,
+             ...(Array.isArray(formData.specialty) ? formData.specialty : [formData.specialty])
+          ].filter(Boolean),
       };
 
       try {
@@ -487,11 +616,77 @@ const FreelancerMultiStepForm = () => {
     }
   };
 
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length < 6) {
+      toast.error("Please enter a valid verification code");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const normalizedEmail = formData.email.trim().toLowerCase();
+      const authPayload = await verifyOtp({ email: normalizedEmail, otp });
+
+      setAuthSession(authPayload?.user, authPayload?.accessToken);
+
+      // Now create the profile
+      const profilePayload = {
+        personal: {
+          name: formData.fullName.trim(),
+          email: normalizedEmail,
+          phone: formData.phone.trim(),
+          location: formData.location.trim(),
+        },
+        skills: Array.isArray(formData.skills)
+          ? formData.skills.filter(Boolean)
+          : [],
+        workExperience: [],
+        services: [
+          formData.professionalField,
+           ...(Array.isArray(formData.specialty) ? formData.specialty : [formData.specialty])
+        ].filter(Boolean),
+      };
+
+      try {
+        const baseUrl = API_BASE_URL || "/api";
+        const response = await fetch(`${baseUrl}/profile`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authPayload.accessToken}`,
+          },
+          body: JSON.stringify(profilePayload),
+        });
+        if (!response.ok) console.warn("Profile creation warn:", response.status);
+      } catch (err) {
+        console.warn("Profile creation failed:", err);
+      }
+
+      toast.success("Account verified and created successfully!");
+      navigate("/freelancer", { replace: true });
+    } catch (error) {
+      toast.error(error.message || "Invalid verification code");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
   const currentSpecialtyOptions =
     specialtyOptionsByField[formData.professionalField] ||
     fallbackSpecialtyOptions;
 
-  const currentSpecialtySkills = SPECIALTY_SKILLS_MAP[formData.specialty] || [];
+  const currentSpecialtySkills = React.useMemo(() => {
+    const specialties = Array.isArray(formData.specialty) 
+      ? formData.specialty 
+      : [formData.specialty];
+      
+    // Collect all skills from all selected specialties
+    const allSkills = specialties.flatMap(spec => SPECIALTY_SKILLS_MAP[spec] || []);
+    
+    // Return unique skills
+    return [...new Set(allSkills)];
+  }, [formData.specialty]);
 
   const isLastStep = currentStep === totalSteps;
   const disableNext =
@@ -615,6 +810,41 @@ const FreelancerMultiStepForm = () => {
               <CardContent className="pt-8 pb-6 space-y-6 flex flex-col justify-between h-full">
                 {/* Step Content */}
                 <div className="space-y-6">
+                {isVerifying ? (
+                    <div className="space-y-6 py-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <div className="text-center">
+                        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                          <span className="text-3xl">✉️</span>
+                        </div>
+                        <h2 className="text-2xl font-semibold text-foreground">Verify Your Email</h2>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          We sent a verification code to <span className="font-medium text-foreground">{formData.email}</span>
+                        </p>
+                      </div>
+
+                      <div className="space-y-4 max-w-sm mx-auto">
+                        <Input
+                          type="text"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                          placeholder="000000"
+                          className="text-center text-3xl tracking-[0.5em] font-mono h-16"
+                          maxLength={6}
+                        />
+                        <Button 
+                          className="w-full h-12 text-lg" 
+                          onClick={handleVerifyOtp}
+                          disabled={isSubmitting || otp.length < 6}
+                        >
+                          {isSubmitting ? "Verifying..." : "Verify & Continue"}
+                        </Button>
+                        <p className="text-xs text-center text-muted-foreground cursor-pointer hover:text-primary" onClick={() => setIsVerifying(false)}>
+                          Incorrect email? Go back
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   {currentStep === 1 && (
                     <StepProfessional
                       selectedField={formData.professionalField}
@@ -624,13 +854,11 @@ const FreelancerMultiStepForm = () => {
                     />
                   )}
                   {currentStep === 2 && (
-                    <StepSpecialty
-                      specialty={formData.specialty}
-                      onChange={(value) =>
-                        handleFieldChange("specialty", value)
-                      }
-                      options={currentSpecialtyOptions}
-                    />
+                      <StepSpecialty
+                        selectedSpecialties={formData.specialty}
+                        onToggle={toggleSpecialty}
+                        options={currentSpecialtyOptions}
+                      />
                   )}
                   {currentStep === 3 && (
                     <StepSkills
@@ -655,23 +883,24 @@ const FreelancerMultiStepForm = () => {
                     />
                   )}
                   {currentStep === 5 && (
-                    <StepPortfolio
-                      website={formData.portfolioWebsite}
-                      linkedin={formData.linkedinProfile}
-                      github={formData.githubProfile}
-                      fileName={formData.portfolioFileName}
-                      isDeveloper={formData.professionalField === "Development & Tech"}
-                      onWebsiteChange={(value) =>
-                        handleFieldChange("portfolioWebsite", value)
-                      }
-                      onLinkedinChange={(value) =>
-                        handleFieldChange("linkedinProfile", value)
-                      }
-                      onGithubChange={(value) => 
-                        handleFieldChange("githubProfile", value)
-                      }
-                      onFileChange={handleFileChange}
-                    />
+                      <StepPortfolio
+                        website={formData.portfolioWebsite}
+                        linkedin={formData.linkedinProfile}
+                        github={formData.githubProfile}
+                        fileName={formData.portfolioFileName}
+                        isDeveloper={formData.professionalField === "Development & Tech"}
+                        isFresher={formData.experience === "Fresher"}
+                        onWebsiteChange={(value) =>
+                          handleFieldChange("portfolioWebsite", value)
+                        }
+                        onLinkedinChange={(value) =>
+                          handleFieldChange("linkedinProfile", value)
+                        }
+                        onGithubChange={(value) => 
+                          handleFieldChange("githubProfile", value)
+                        }
+                        onFileChange={handleFileChange}
+                      />
                   )}
                   {currentStep === 6 && (
                     <StepTerms
@@ -691,6 +920,8 @@ const FreelancerMultiStepForm = () => {
                       onChange={handleFieldChange}
                     />
                   )}
+                  </>
+                )}
 
                   {stepError && (
                     <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/40">
@@ -699,7 +930,8 @@ const FreelancerMultiStepForm = () => {
                   )}
                 </div>
                 <div className="md:hidden flex justify-center">
-
+                
+                {!isVerifying && (
                 <Button
                   type="button"
                   disabled={disableNext}
@@ -717,6 +949,7 @@ const FreelancerMultiStepForm = () => {
                     )}
                   </span>
                 </Button>
+                )}
                 </div>
               </CardContent>
 
@@ -746,6 +979,7 @@ const FreelancerMultiStepForm = () => {
               </div>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 w-full">
 
+                {!isVerifying && (
                 <Button
                   type="button"
                   disabled={disableNext}
@@ -763,6 +997,7 @@ const FreelancerMultiStepForm = () => {
                     )}
                   </span>
                 </Button>
+                )}
               </div>
             </div>
           </div>
@@ -801,13 +1036,13 @@ const StepVisualPanel = ({ currentStep, formData }) => {
             <div className="text-6xl">🎯</div>
             <div>
               <h3 className="text-xl font-semibold text-foreground">
-                {formData.specialty
-                  ? "Specialty Confirmed"
-                  : "Select Your Specialty"}
+                {formData.specialty && formData.specialty.length > 0
+                  ? "Specialties Selected"
+                  : "Select Your Specialties"}
               </h3>
               <p className="text-sm text-muted-foreground mt-2">
-                {formData.specialty
-                  ? `Your specialty: ${formData.specialty}`
+                {formData.specialty && formData.specialty.length > 0
+                  ? `Selected: ${formData.specialty.join(", ")}`
                   : "Narrow down your focus area to attract the right clients"}
               </p>
             </div>
@@ -953,30 +1188,40 @@ const StepProfessional = ({ selectedField, onSelectField }) => {
   );
 };
 
-const StepSpecialty = ({ specialty, onChange, options }) => {
+const StepSpecialty = ({ selectedSpecialties, onToggle, options }) => {
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-foreground">
-          Select Your Specialty
+          Select Your Specialties
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Choose your specific skill within your professional field.
+          Choose your specific skills within your professional field. You can select multiple.
         </p>
       </div>
 
-      <Select value={specialty} onValueChange={onChange}>
-        <SelectTrigger className="h-12 rounded-lg bg-background border border-input text-foreground font-medium focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background">
-          <SelectValue placeholder="-- Select a specialty to continue --" />
-        </SelectTrigger>
-        <SelectContent className="bg-popover border border-border">
-          {options.map((option) => (
-            <SelectItem key={option} value={option} className="text-foreground">
-              {option}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="grid gap-3 md:grid-cols-2">
+        {options.map((option) => {
+          const isActive = selectedSpecialties.includes(option);
+          return (
+            <button
+              key={option}
+              onClick={() => onToggle(option)}
+              className={cn(
+                "w-full px-4 py-3 rounded-lg border text-left text-sm font-medium transition-all duration-300 transform hover:-translate-y-[1px] flex items-center justify-between shadow-xs",
+                isActive
+                  ? "border-primary bg-primary/10 text-primary shadow-sm"
+                  : "border-border bg-muted text-foreground hover:bg-secondary"
+              )}
+            >
+              <span>{option}</span>
+              {isActive && (
+                <Check className="h-4 w-4 text-primary animate-in zoom-in spin-in-45" />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -1005,7 +1250,7 @@ const StepSkills = ({
           Select Your Skills
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Choose the skills related to {specialty}. You can also add custom
+          Choose skills related to your specialties. You can also add custom
           skills.
         </p>
       </div>
@@ -1038,7 +1283,7 @@ const StepSkills = ({
 
       <div className="space-y-3">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Recommended Skills for {specialty}
+          Recommended Skills
         </p>
         <div className="flex flex-wrap gap-2">
           {currentSpecialtySkills.map((skill) => {
@@ -1115,7 +1360,7 @@ const StepExperience = ({ experience, onSelectExperience }) => {
                   : "border-border bg-muted text-foreground hover:bg-secondary"
               )}
             >
-              {option} years
+              {option === "Fresher" ? option : `${option} years`}
             </button>
           );
         })}
@@ -1129,20 +1374,21 @@ const StepPortfolio = ({
   linkedin,
   github,
   fileName,
+  isDeveloper,
+  isFresher,
   onWebsiteChange,
   onLinkedinChange,
   onGithubChange,
   onFileChange,
-  isDeveloper
 }) => {
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Portfolio &amp; Online Presence
+    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          Showcase Your Work
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Share your portfolio and professional profiles.
+        <p className="text-sm text-muted-foreground">
+          Link your portfolio, LinkedIn, and GitHub to stand out.
         </p>
       </div>
 
@@ -1152,7 +1398,7 @@ const StepPortfolio = ({
             htmlFor="portfolioWebsite"
             className="text-sm text-foreground font-semibold"
           >
-            Portfolio Website
+            Portfolio Website {isFresher ? "(Optional)" : ""}
           </Label>
           <Input
             id="portfolioWebsite"
@@ -1186,7 +1432,7 @@ const StepPortfolio = ({
             htmlFor="githubProfile"
             className="text-sm text-foreground font-semibold"
           >
-            GitHub Profile {isDeveloper ? "(Mandatory)" : "(Optional)"}
+            GitHub Profile {isDeveloper && !isFresher ? "(Mandatory)" : "(Optional)"}
           </Label>
           <Input
             id="githubProfile"
@@ -1203,7 +1449,7 @@ const StepPortfolio = ({
             htmlFor="portfolioFile"
             className="text-sm text-foreground font-semibold"
           >
-            Upload PDF File (Optional)
+            Upload Resume/PDF {isFresher ? "(Mandatory)" : "(Optional)"}
           </Label>
           <Input
             id="portfolioFile"

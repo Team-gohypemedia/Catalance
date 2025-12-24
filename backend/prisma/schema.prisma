@@ -19,6 +19,7 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   SUSPENDED
+  PENDING_APPROVAL
 }
 
 enum ProjectStatus {
@@ -54,6 +55,16 @@ model User {
   resetPasswordToken   String?   @unique
   resetPasswordExpires DateTime?
   fcmToken     String?    // Firebase Cloud Messaging token for push notifications
+  otpCode      String?
+  otpExpires   DateTime?
+  isVerified   Boolean    @default(false)
+  
+  // Social/Portfolio
+  portfolio    String?
+  linkedin     String?
+  github       String?
+  portfolioProjects Json?    @default("[]")
+
   ownedProjects Project[] @relation("ProjectOwner")
   proposals    Proposal[]
   createdChats ChatConversation[] @relation("ChatCreator")

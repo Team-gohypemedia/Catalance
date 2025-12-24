@@ -1,4 +1,4 @@
-import { Plus, Trash2, Edit2, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Edit2, ExternalLink, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getSession } from "@/lib/auth-storage";
 import { toast } from "sonner";
@@ -47,6 +47,9 @@ const FreelancerProfile = () => {
     linkedinUrl: "",
     githubUrl: ""
   });
+  const [portfolioProjects, setPortfolioProjects] = useState([]); // [{ link, image, title }]
+  const [newProjectUrl, setNewProjectUrl] = useState("");
+  const [newProjectLoading, setNewProjectLoading] = useState(false);
   const [session, setSession] = useState(null);
 
   // Derive initials for avatar
@@ -102,6 +105,7 @@ const FreelancerProfile = () => {
             linkedinUrl: data.portfolio?.linkedinUrl || "",
             githubUrl: data.portfolio?.githubUrl || ""
         });
+        setPortfolioProjects(data.portfolioProjects || []);
 
         const skillsFromApi = Array.isArray(data.skills) ? data.skills : [];
         setSkills(
@@ -218,7 +222,8 @@ const FreelancerProfile = () => {
       skills: skillsForApi,
       workExperience,
       services,
-      portfolio // Add portfolio to payload
+      portfolio, // Add portfolio to payload
+      portfolioProjects // Add portfolioProjects to payload
     };
 
     console.log("Saving profile payload:", payload);
@@ -278,6 +283,63 @@ const FreelancerProfile = () => {
     }
     setServiceForm("");
     setModalType(null);
+  };
+
+  // ----- Portfolio Projects Logic -----
+  const handleUrlBlur = async () => {
+    if (!newProjectUrl) return;
+    if (portfolioProjects.some(p => p.link === newProjectUrl)) {
+      toast.error("Project already added");
+      setNewProjectUrl("");
+      return;
+    }
+
+    setNewProjectLoading(true);
+    try {
+      const res = await fetch(buildUrl(`/utils/metadata?url=${encodeURIComponent(newProjectUrl)}`));
+      const data = await res.json();
+      
+      if (data.success) {
+        setPortfolioProjects(prev => [
+          ...prev, 
+          { 
+            link: newProjectUrl, 
+            image: data.data.image,
+            title: newProjectUrl.replace(/^https?:\/\//, '').split('/')[0] 
+          }
+        ]);
+        setNewProjectUrl("");
+        toast.success("Project added!");
+      } else {
+        setPortfolioProjects(prev => [
+          ...prev, 
+          { 
+            link: newProjectUrl, 
+            image: null,
+            title: newProjectUrl
+          }
+        ]);
+        setNewProjectUrl("");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not fetch preview, but link added.");
+      setPortfolioProjects(prev => [
+          ...prev, 
+          { 
+            link: newProjectUrl, 
+            image: null,
+            title: newProjectUrl
+          }
+      ]);
+      setNewProjectUrl("");
+    } finally {
+      setNewProjectLoading(false);
+    }
+  };
+
+  const removeProject = (index) => {
+    setPortfolioProjects(prev => prev.filter((_, i) => i !== index));
   };
 
   // Merge default options with any custom ones saved in the profile
@@ -459,6 +521,83 @@ const FreelancerProfile = () => {
                     </a>
                 ) : <span className="text-muted-foreground text-sm">Not added (Mandatory for Devs)</span>}
              </div>
+          </div>
+        </section>
+
+        {/* Portfolio Projects Section */}
+        <section className="mb-20">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
+                Showcase
+              </p>
+              <h2 className="text-2xl font-bold text-foreground">Featured Projects</h2>
+            </div>
+          </div>
+          
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {portfolioProjects.map((project, idx) => (
+              <div key={idx} className="group relative rounded-xl border border-border bg-card p-3 shadow-sm transition-all hover:shadow-md hover:border-primary/50">
+                <button
+                  type="button"
+                  onClick={() => removeProject(idx)}
+                  className="absolute -right-2 -top-2 z-10 hidden rounded-full bg-destructive p-1.5 text-destructive-foreground shadow-sm group-hover:flex items-center justify-center transition-all hover:scale-110"
+                  title="Remove Project"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+                <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted/50 object-cover border border-border/50 relative">
+                  {project.image ? (
+                    <img src={project.image} alt="Preview" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-4xl bg-secondary/30">🚀</div>
+                  )}
+                  <a 
+                    href={project.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  >
+                    <ExternalLink className="text-white w-8 h-8 drop-shadow-md" />
+                  </a>
+                </div>
+                <div className="mt-3 px-1">
+                  <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold hover:text-primary transition-colors truncate block" title={project.link}>
+                    {project.title || project.link}
+                  </a>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{project.link}</p>
+                </div>
+              </div>
+            ))}
+            
+            {/* Add New Project Card */}
+            <div className="flex aspect-video w-full flex-col items-center justify-center rounded-xl border border-dashed border-border/70 hover:bg-secondary/20 hover:border-primary/50 transition-all p-6 gap-3 group bg-card/30">
+               {newProjectLoading ? (
+                 <span className="loading loading-spinner text-primary" />
+               ) : (
+                 <>
+                   <div className="p-3 rounded-full bg-secondary text-secondary-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                      <Plus className="w-6 h-6" />
+                   </div>
+                   <div className="w-full text-center space-y-2">
+                       <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Add New Project</p>
+                       <input 
+                          placeholder="Paste URL & Press Enter" 
+                          value={newProjectUrl}
+                          onChange={(e) => setNewProjectUrl(e.target.value)}
+                          onBlur={handleUrlBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleUrlBlur();
+                            }
+                          }}
+                          className="h-9 w-full rounded-lg bg-background border border-input px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-center"
+                       />
+                   </div>
+                 </>
+               )}
+            </div>
           </div>
         </section>
 

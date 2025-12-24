@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Briefcase, FileText, DollarSign } from "lucide-react";
+import { Users, Briefcase, FileText, DollarSign, Check, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ const AdminDashboard = () => {
   });
   const [recentDisputes, setRecentDisputes] = useState([]);
   const [recentFreelancers, setRecentFreelancers] = useState([]);
+  const [pendingFreelancers, setPendingFreelancers] = useState([]);
   const [recentClients, setRecentClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +49,9 @@ const AdminDashboard = () => {
         
         if (freelancersData?.data?.users) {
           const activeFreelancers = freelancersData.data.users.filter(u => u.status === 'ACTIVE');
+          const pending = freelancersData.data.users.filter(u => u.status === 'PENDING_APPROVAL');
           setRecentFreelancers(activeFreelancers.slice(0, 4));
+          setPendingFreelancers(pending);
         }
         
         if (clientsData?.data?.users) {
@@ -64,6 +67,23 @@ const AdminDashboard = () => {
 
     fetchDashboardData();
   }, [authFetch]);
+
+  const handleApproveUser = async (userId) => {
+    try {
+      const response = await authFetch(`/admin/users/status/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ACTIVE" }),
+      });
+      if (response.ok) {
+        setPendingFreelancers((prev) => prev.filter((u) => u.id !== userId));
+        // Optionally add to active list if we want to reflect it immediately
+        // setRecentFreelancers(prev => [updatedUser, ...prev].slice(0, 4)); // would need updatedUser from response
+      }
+    } catch (error) {
+      console.error("Failed to approve user:", error);
+    }
+  };
 
   const statCards = [
     {
@@ -145,7 +165,47 @@ const AdminDashboard = () => {
             ))}
           </div>
 
+
+
+
           <div className="grid gap-6 md:grid-cols-2">
+            
+            {/* Pending Approvals Section */}
+            {pendingFreelancers.length > 0 && (
+              <Card className="md:col-span-2 border-yellow-500/50 bg-yellow-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                    <AlertTriangle className="h-5 w-5" />
+                    Pending Approvals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {pendingFreelancers.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-4 bg-background border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-bold">
+                            {user.fullName.charAt(0)}
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="font-medium truncate">{user.fullName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleApproveUser(user.id)}
+                        >
+                          <Check className="h-4 w-4 mr-1" /> Approve
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Active Disputes (Project Manager Work) Section */}
             <Card className="md:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between">

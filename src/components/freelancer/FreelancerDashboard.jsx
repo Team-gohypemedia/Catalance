@@ -1,11 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Briefcase, Clock, Sparkles, Banknote } from "lucide-react";
+import { Briefcase, Clock, Sparkles, Banknote, AlertTriangle, User } from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { getSession } from "@/lib/auth-storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
 
 // No static template data - all metrics loaded from API
 
@@ -14,6 +25,7 @@ export const DashboardContent = ({ roleOverride }) => {
   const { authFetch } = useAuth();
   const [metrics, setMetrics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const session = getSession();
@@ -112,7 +124,32 @@ export const DashboardContent = ({ roleOverride }) => {
       <div className="relative flex flex-col gap-6 p-6">
         <FreelancerTopBar label={dashboardLabel} />
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <Dialog open={sessionUser?.status === "PENDING_APPROVAL"}>
+          <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader>
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/20">
+                <AlertTriangle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <DialogTitle className="text-center">Account Under Review</DialogTitle>
+              <DialogDescription className="text-center pt-2 space-y-2">
+                <p>
+                  Your account is currently being verified by the admin. Once verified, you will be able to access the dashboard and go live.
+                </p>
+                <p>
+                  In the meantime, you can complete your profile to speed up the approval process.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-center">
+              <Button onClick={() => navigate("/freelancer/profile")}>
+                <User className="mr-2 h-4 w-4" />
+                Complete Your Profile
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <section className={`grid gap-4 md:grid-cols-4 ${sessionUser?.status === "PENDING_APPROVAL" ? "blur-sm pointer-events-none opacity-50" : ""}`}>
           {isLoading ? (
             [1, 2, 3, 4].map((i) => <MetricSkeleton key={i} />)
           ) : metrics.length > 0 ? (
@@ -142,7 +179,7 @@ export const DashboardContent = ({ roleOverride }) => {
               </CardContent>
             </Card>
           )}
-        </section>        
+        </section>
       </div>
     </>
   );
