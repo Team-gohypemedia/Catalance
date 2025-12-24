@@ -21,7 +21,13 @@ import {
   Trash2,
   Loader2,
   CreditCard,
+  Code,
+  MonitorSmartphone,
+  PenTool,
+  Globe,
+  ArrowRight,
 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -424,6 +430,7 @@ const ClientDashboardContent = () => {
   const [viewProfileFreelancer, setViewProfileFreelancer] = useState(null);
   const [pendingPaymentProjects, setPendingPaymentProjects] = useState([]);
   const [isPayingProject, setIsPayingProject] = useState(null); // stores project id being paid
+  const navigate = useNavigate();
 
   const handleViewProfile = (freelancer) => {
     setViewProfileFreelancer(freelancer);
@@ -1407,6 +1414,78 @@ const ClientDashboardContent = () => {
             </CardContent>
           </Card>
         </section>
+        )}
+        
+        {!hasSavedProposal && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Popular Services</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Find the perfect talent for your next project
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                className="gap-2 text-primary hover:text-primary/80"
+                onClick={() => navigate("/service")}
+              >
+                See more <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  title: "Website Development",
+                  icon: Code,
+                  desc: "Custom sites & web apps",
+                },
+                {
+                  title: "App Development",
+                  icon: MonitorSmartphone,
+                  desc: "iOS & Android solutions",
+                },
+                {
+                  title: "Creative & Design",
+                  icon: PenTool,
+                  desc: "Brand identity & UI/UX",
+                },
+                {
+                  title: "Performance Marketing",
+                  icon: Globe,
+                  desc: "SEO, Ads & Social Media",
+                },
+              ].map((service, idx) => (
+                <Card
+                  key={idx}
+                  className="group cursor-pointer border-muted bg-gradient-to-br from-card to-muted/20 hover:border-primary/50 hover:shadow-lg transition-all duration-300"
+                  onClick={() =>
+                    navigate("/service", {
+                      state: { openChat: true, serviceTitle: service.title },
+                    })
+                  }
+                >
+                  <CardContent className="p-6">
+                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                      <service.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="mb-1 font-semibold group-hover:text-primary transition-colors">
+                      {service.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {service.desc}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
         )}
         <Dialog
           open={isFreelancerModalOpen}
