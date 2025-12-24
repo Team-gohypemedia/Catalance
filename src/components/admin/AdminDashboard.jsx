@@ -70,8 +70,8 @@ const AdminDashboard = () => {
 
   const handleApproveUser = async (userId) => {
     try {
-      const response = await authFetch(`/admin/users/status/${userId}`, {
-        method: "PUT",
+      const response = await authFetch(`/admin/users/${userId}/status`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "ACTIVE" }),
       });
@@ -173,16 +173,28 @@ const AdminDashboard = () => {
             {/* Pending Approvals Section */}
             {pendingFreelancers.length > 0 && (
               <Card className="md:col-span-2 border-yellow-500/50 bg-yellow-500/5">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
                     <AlertTriangle className="h-5 w-5" />
                     Pending Approvals
                   </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-yellow-700 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300"
+                    onClick={() => navigate("/admin/approvals")}
+                  >
+                    See More
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {pendingFreelancers.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-4 bg-background border rounded-lg">
+                      <div 
+                        key={user.id} 
+                        className="flex items-center justify-between p-4 bg-background border rounded-lg cursor-pointer hover:border-yellow-500/50 transition-colors"
+                        onClick={() => navigate(`/admin/users/${user.id}`)}
+                      >
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-bold">
                             {user.fullName.charAt(0)}
@@ -195,7 +207,10 @@ const AdminDashboard = () => {
                         <Button 
                           size="sm" 
                           className="bg-green-600 hover:bg-green-700"
-                          onClick={() => handleApproveUser(user.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleApproveUser(user.id);
+                          }}
                         >
                           <Check className="h-4 w-4 mr-1" /> Approve
                         </Button>
