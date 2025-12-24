@@ -26,12 +26,14 @@ import {
   generateRoadmapFromState,
 } from "../lib/conversation-state.js";
 import { getChatbot } from "../lib/chatbots/index.js";
- 
+import { translateAssistantReply } from "../lib/i18n.js";
 
 
 const MIN_WEBSITE_PRICE = 10000;
 const MIN_WEBSITE_PRICE_DISPLAY = "INR 10,000";
 const MAX_COMPLETION_TOKENS = 900;
+const i18nModel = env.OPENROUTER_MODEL || "openai/gpt-4o";
+const i18nTranslateFallbackModel = env.OPENROUTER_MODEL_FALLBACK || "meta-llama/llama-3.2-3b-instruct:free";
 // Stack-specific minimum viable budgets (in INR) to steer users toward realistic options.
 const STACK_BUDGET_FLOORS = {
   "React/Next.js": 60000,
@@ -194,7 +196,7 @@ const normalizeService = (service = "") => {
   return safe.length ? safe : null;
 };
 
- 
+
 
 const serializeMessage = (message) => ({
   ...message,
@@ -1100,7 +1102,25 @@ export const generateChatReplyWithState = async ({
       : aiAnswer || "Could you share a bit more detail?";
   }
 
-  const reply = baseReply;
+  let reply = baseReply;
+  let lastOptions = null;
+  if (locale && locale !== "en") {
+    try {
+      const translated = await translateAssistantReply(openai, baseReply, {
+        targetLocale: locale,
+        model: i18nModel,
+        fallbackModel: i18nTranslateFallbackModel,
+      });
+      reply = translated.reply || baseReply;
+      lastOptions =
+        translated.lastOptions?.map &&
+          Object.keys(translated.lastOptions.map).length
+          ? translated.lastOptions
+          : null;
+    } catch (error) {
+      console.error("Reply translation failed:", error?.message || error);
+    }
+  }
 
   return { reply: stripEmojis(reply), state: stateWithLocale };
 };
@@ -1150,6 +1170,81 @@ export const listUserConversations = asyncHandler(async (req, res) => {
     throw new AppError("Unauthorized", 401);
   }
 
+  // Check if user is a Project Manager
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, fullName: true }
+  });
+
+  const isProjectManager = currentUser?.role === "PROJECT_MANAGER";
+
+  // For Project Managers: Find conversations where they've sent messages
+  if (isProjectManager) {
+    // Find all conversations where this PM has sent messages
+    const pmMessages = await prisma.chatMessage.findMany({
+      where: {
+        OR: [
+          { senderId: userId },
+          { senderRole: "PROJECT_MANAGER" }
+        ]
+      },
+      select: { conversationId: true },
+      distinct: ['conversationId']
+    });
+
+    const conversationIds = pmMessages.map(m => m.conversationId).filter(Boolean);
+
+    // Also get all project conversations (PM can see all)
+    const allProjectConversations = await prisma.chatConversation.findMany({
+      where: {
+        OR: [
+          { id: { in: conversationIds } },
+          { service: { startsWith: "CHAT:" } }
+        ]
+      },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        _count: {
+          select: { messages: true },
+        },
+      },
+      take: 50
+    });
+
+    // Filter to only show conversations with messages
+    const conversationsWithMessages = allProjectConversations.filter(
+      c => c._count?.messages > 0
+    );
+
+    // Build meta from service key
+    const data = conversationsWithMessages.map((conversation) => {
+      // Parse service key: CHAT:projectId:clientId:freelancerId
+      const parts = (conversation.service || "").split(":");
+      let projectTitle = conversation.projectTitle || "Project Chat";
+
+      return {
+        id: conversation.id,
+        service: conversation.service,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+        createdById: conversation.createdById,
+        projectTitle: projectTitle,
+        lastMessage: conversation.messages?.[0]
+          ? serializeMessage(conversation.messages[0])
+          : null,
+        messageCount: conversation._count?.messages || 0
+      };
+    });
+
+    res.json({ data });
+    return;
+  }
+
+  // Regular flow for Clients/Freelancers
   // Gather proposals for projects owned by this user (accepted) to derive project-specific chat threads.
   const proposals = await prisma.proposal.findMany({
     where: {
@@ -1314,7 +1409,7 @@ export const createConversation = asyncHandler(async (req, res) => {
       if (parts.length === 4) {
         const [, projectId, clientId, freelancerId] = parts;
         const legacyKey = `CHAT:${clientId}:${freelancerId}`;
-        
+
         const legacyCandidates = await prisma.chatConversation.findMany({
           where: { service: legacyKey },
           include: {
@@ -1324,12 +1419,12 @@ export const createConversation = asyncHandler(async (req, res) => {
         });
 
         const legacyConvo = legacyCandidates.find((c) => c._count.messages > 0) || legacyCandidates[0];
-        
+
         if (legacyConvo) {
           // Update the legacy conversation to use the new service key
           conversation = await prisma.chatConversation.update({
             where: { id: legacyConvo.id },
-            data: { 
+            data: {
               service: serviceKey,
               projectTitle: projectTitle || legacyConvo.projectTitle
             },
@@ -1549,7 +1644,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
   if (convService.startsWith("CHAT:")) {
     const parts = convService.split(":");
     let recipientId = null;
-    
+
     // Support both formats:
     // Old: CHAT:clientId:freelancerId (3 parts)
     // New: CHAT:projectId:clientId:freelancerId (4 parts)
@@ -1562,7 +1657,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
       const [, id1, id2] = parts;
       recipientId = String(actualSenderId) === String(id1) ? id2 : id1;
     }
-    
+
     console.log(`[Notification] Service: ${convService}, Sender: ${actualSenderId}, Recipient: ${recipientId}`);
     if (recipientId && String(recipientId) !== String(actualSenderId)) {
       sendNotificationToUser(recipientId, {
@@ -1620,5 +1715,76 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
       message: serializeMessage(userMessage),
       assistant: assistantMessage ? serializeMessage(assistantMessage) : null,
     },
+  });
+});
+
+/**
+ * Get messages for a specific project (for Project Managers and Admins)
+ * This allows PMs to view client-freelancer conversations
+ */
+export const getProjectMessages = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { projectId } = req.params;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  // Verify user is a Project Manager or Admin
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
+  });
+
+  if (!user || (user.role !== "PROJECT_MANAGER" && user.role !== "ADMIN")) {
+    throw new AppError("Access denied. Only Project Managers can access this.", 403);
+  }
+
+  // Find conversations that include this project ID in their service key
+  // Service key format: CHAT:projectId:clientId:freelancerId
+  const conversations = await prisma.chatConversation.findMany({
+    where: {
+      OR: [
+        { service: { startsWith: `CHAT:${projectId}:` } },
+        { service: { contains: projectId } }
+      ]
+    },
+    orderBy: { updatedAt: "desc" }
+  });
+
+  if (conversations.length === 0) {
+    // No conversations found
+    res.json({ data: { messages: [], conversation: null } });
+    return;
+  }
+
+  // Get messages from the first (most recent) conversation
+  const conversation = conversations[0];
+
+  const messages = await prisma.chatMessage.findMany({
+    where: { conversationId: conversation.id },
+    orderBy: { createdAt: "asc" },
+    take: 100
+  });
+
+  // Format messages with sender info
+  const formattedMessages = messages.map(msg => ({
+    id: msg.id,
+    content: msg.content,
+    senderName: msg.senderName || (msg.role === "assistant" ? "Assistant" : "User"),
+    senderRole: msg.senderRole || msg.role,
+    createdAt: msg.createdAt,
+    role: msg.role
+  }));
+
+  res.json({
+    data: {
+      conversation: {
+        id: conversation.id,
+        service: conversation.service,
+        projectTitle: conversation.projectTitle
+      },
+      messages: formattedMessages
+    }
   });
 });

@@ -89,7 +89,7 @@ export const ProjectManagerDashboardContent = () => {
                                     </div>
                                 ) : (
                                     <div className="grid gap-6">
-                                        <h2 id="active-disputes" className="text-xl font-semibold scroll-mt-20">Active Projects</h2>
+                                        <h2 id="active-disputes" className="text-xl font-semibold scroll-mt-20">Active Disputes</h2>
                                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                             {[...openDisputes, ...inProgressDisputes].length > 0 ? (
                                                 [...openDisputes, ...inProgressDisputes].map(dispute => (
@@ -137,69 +137,60 @@ const PMOverview = ({ disputes }) => {
         .filter(d => d.meetingDate && new Date(d.meetingDate) > new Date())
         .sort((a, b) => new Date(a.meetingDate) - new Date(b.meetingDate));
 
-    const resolvedConflictsCount = disputes.filter(d => d.status === 'RESOLVED').length;
-    const pendingConflictsCount = disputes.filter(d => ['OPEN', 'IN_PROGRESS'].includes(d.status)).length;
+    const resolvedCount = disputes.filter(d => d.status === 'RESOLVED').length;
+    const pendingCount = disputes.filter(d => ['OPEN', 'IN_PROGRESS'].includes(d.status)).length;
+    const totalCount = disputes.length;
+    const resolutionRate = totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0;
+
+    const metrics = [
+        {
+            label: "Active Disputes",
+            value: String(pendingCount),
+            trend: "Requires attention",
+            icon: AlertCircle,
+        },
+        {
+            label: "Upcoming Meetings",
+            value: String(upcomingMeetings.length),
+            trend: upcomingMeetings.length > 0 ? `Next: ${new Date(upcomingMeetings[0].meetingDate).toLocaleDateString()}` : "No meetings scheduled",
+            icon: Video,
+        },
+        {
+            label: "Resolved Projects",
+            value: String(resolvedCount),
+            trend: "Successfully closed",
+            icon: CheckCircle2,
+        },
+        {
+            label: "Resolution Rate",
+            value: `${resolutionRate}%`,
+            trend: "Overall performance",
+            icon: Clock,
+        }
+    ];
 
     return (
-        <div className="grid gap-4 md:grid-cols-3">
-            <Card className="md:col-span-1 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium flex items-center gap-2">
-                        <Video className="w-4 h-4 text-blue-500" />
-                        Upcoming Meetings
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {upcomingMeetings.length > 0 ? (
-                        <div className="space-y-3">
-                            {upcomingMeetings.slice(0, 3).map(meet => (
-                                <div key={meet.id} className="flex flex-col p-2 bg-background/50 rounded border text-sm">
-                                    <div className="font-semibold truncate">{meet.project?.title || "Project Issue"}</div>
-                                    <div className="flex justify-between items-center mt-1 text-xs text-muted-foreground">
-                                        <span>{new Date(meet.meetingDate).toLocaleDateString()}</span>
-                                        <span>{new Date(meet.meetingDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    </div>
-                                    {meet.meetingLink && (
-                                        <a href={meet.meetingLink} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 mt-1 hover:underline">
-                                            Join Meeting
-                                        </a>
-                                    )}
-                                </div>
-                            ))}
-                            {upcomingMeetings.length > 3 && <p className="text-xs text-muted-foreground text-center">+{upcomingMeetings.length - 3} more</p>}
-                        </div>
-                    ) : (
-                        <div className="text-sm text-muted-foreground py-4 text-center">No upcoming meetings scheduled.</div>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-orange-500" />
-                        Pending Conflicts
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-3xl font-bold">{pendingConflictsCount}</div>
-                    <p className="text-sm text-muted-foreground mt-1">Active disputes requiring attention</p>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        Resolved Conflicts
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-3xl font-bold">{resolvedConflictsCount}</div>
-                    <p className="text-sm text-muted-foreground mt-1">Successfully closed disputes</p>
-                </CardContent>
-            </Card>
-        </div>
+        <section className="grid gap-4 md:grid-cols-4">
+            {metrics.map((metric) => {
+                const Icon = metric.icon;
+                return (
+                    <Card key={metric.label} className="border-dashed">
+                        <CardHeader className="flex-row items-center justify-between">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Icon className="size-4 text-primary" />
+                                {metric.label}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            <p className="text-3xl font-semibold">{metric.value}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {metric.trend}
+                            </p>
+                        </CardContent>
+                    </Card>
+                );
+            })}
+        </section>
     );
 };
 
@@ -391,11 +382,17 @@ const DisputeCard = ({ dispute, onUpdate, readOnly = false }) => {
                 <CardTitle className="text-base leading-tight line-clamp-1">
                     {dispute.project?.title || "Unknown Project"}
                 </CardTitle>
-                <CardDescription className="text-xs">
-                    Raised by <span className="font-semibold text-foreground">{dispute.raisedBy?.fullName}</span>
-                    {dispute.raisedBy?.role && (
-                        <span className="text-[10px] ml-1 bg-muted px-1.5 py-0.5 rounded text-muted-foreground capitalize">
-                            {dispute.raisedBy.role.toLowerCase()}
+                <CardDescription className="text-xs flex items-center gap-2 flex-wrap">
+                    <span>Raised by</span>
+                    <span className="font-semibold text-foreground">{dispute.raisedBy?.fullName}</span>
+                    {dispute.raisedBy?.role === 'CLIENT' && (
+                        <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-1.5 py-0.5 rounded font-medium">
+                            Client
+                        </span>
+                    )}
+                    {dispute.raisedBy?.role === 'FREELANCER' && (
+                        <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 px-1.5 py-0.5 rounded font-medium">
+                            Freelancer
                         </span>
                     )}
                 </CardDescription>

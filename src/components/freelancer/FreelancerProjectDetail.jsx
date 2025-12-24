@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
+import BookAppointment from "@/components/appointments/BookAppointment";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { useAuth } from "@/context/AuthContext";
@@ -167,22 +168,22 @@ const FreelancerProjectDetailContent = () => {
     "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
     "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
   ];
-  
+
   const [bookedSlots, setBookedSlots] = useState([]);
 
   useEffect(() => {
     if (!date || !authFetch) return;
 
     const fetchAvailability = async () => {
-        try {
-            const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
-            if (res.ok) {
-                const payload = await res.json();
-                setBookedSlots(payload.data || []);
-            }
-        } catch (e) {
-            console.error("Failed to fetch availability", e);
+      try {
+        const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
+        if (res.ok) {
+          const payload = await res.json();
+          setBookedSlots(payload.data || []);
         }
+      } catch (e) {
+        console.error("Failed to fetch availability", e);
+      }
     };
     fetchAvailability();
   }, [date, authFetch]);
@@ -199,44 +200,47 @@ const FreelancerProjectDetailContent = () => {
   // Filter time slots based on selected date
   const availableTimeSlots = useMemo(() => {
     if (!date) return allTimeSlots;
-    
+
     // 1. Filter past times if today
     const isToday = new Date().toDateString() === date.toDateString();
     const now = new Date();
     const currentHour = now.getHours();
 
     let slots = allTimeSlots;
-    
+
     if (isToday) {
-        slots = slots.filter(slot => {
-            const [time, period] = slot.split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
-            if (period === 'PM' && hours !== 12) hours += 12;
-            if (period === 'AM' && hours === 12) hours = 0;
-            return hours > currentHour;
-        });
+      slots = slots.filter(slot => {
+        const [time, period] = slot.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        if (period === 'PM' && hours !== 12) hours += 12;
+        if (period === 'AM' && hours === 12) hours = 0;
+        return hours > currentHour;
+      });
     }
 
     // 2. Filter booked slots
     if (bookedSlots.length > 0) {
-        slots = slots.filter(slot => {
-            // Check if this slot matches any booked meeting
-            return !bookedSlots.some(bookedIso => {
-                const bookedDate = new Date(bookedIso);
-                // Extract time from slot to compare hour/minute
-                const [time, period] = slot.split(' ');
-                let [slotH, slotM] = time.split(':').map(Number);
-                if (period === 'PM' && slotH !== 12) slotH += 12;
-                if (period === 'AM' && slotH === 12) slotH = 0;
+      slots = slots.filter(slot => {
+        // Check if this slot matches any booked meeting
+        return !bookedSlots.some(bookedIso => {
+          const bookedDate = new Date(bookedIso);
+          // Extract time from slot to compare hour/minute
+          const [time, period] = slot.split(' ');
+          let [slotH, slotM] = time.split(':').map(Number);
+          if (period === 'PM' && slotH !== 12) slotH += 12;
+          if (period === 'AM' && slotH === 12) slotH = 0;
 
-                // Match exact hour (assuming 1 hour slots)
-                return bookedDate.getHours() === slotH && bookedDate.getMinutes() === slotM;
-            });
+          // Match exact hour (assuming 1 hour slots)
+          return bookedDate.getHours() === slotH && bookedDate.getMinutes() === slotM;
         });
+      });
     }
 
     return slots;
   }, [date, bookedSlots]);
+
+  // Book Appointment State
+  const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
 
   // Handle reporting a dispute (same logic as client)
   const handleReport = async () => {
@@ -250,7 +254,7 @@ const FreelancerProjectDetailContent = () => {
 
     if (date) {
       fullDescription += `\n\nDate of Issue: ${format(date, "PPP")}`;
-      
+
       // Combine for structural save
       const combined = new Date(date);
       if (time) {
@@ -271,10 +275,10 @@ const FreelancerProjectDetailContent = () => {
       const res = await authFetch('/disputes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-           description: fullDescription, 
-           projectId: project?.id || projectId,
-           meetingDate: meetingDateIso
+        body: JSON.stringify({
+          description: fullDescription,
+          projectId: project?.id || projectId,
+          meetingDate: meetingDateIso
         })
       });
       if (res.ok) {
@@ -362,16 +366,16 @@ const FreelancerProjectDetailContent = () => {
   // Create or reuse a chat conversation for this project
   useEffect(() => {
     if (!project || !authFetch || !user?.id) return;
-    
+
     // Key Logic: CHAT:PROJECT_ID:OWNER_ID:FREELANCER_ID (User is Freelancer)
     // Fallback to project:ID only if owner unknown, but for sync needs CHAT:...
     let key = `project:${project.id}`;
     if (project.ownerId && user.id) {
-        key = `CHAT:${project.id}:${project.ownerId}:${user.id}`;
+      key = `CHAT:${project.id}:${project.ownerId}:${user.id}`;
     }
-    
+
     console.log("Freelancer Chat Init - Key:", key);
-    
+
     let cancelled = false;
 
     const ensureConversation = async () => {
@@ -413,37 +417,37 @@ const FreelancerProjectDetailContent = () => {
         const list = Array.isArray(payload?.data?.messages)
           ? payload.data.messages
           : payload?.messages || [];
-          
+
         if (!cancelled) {
           const normalized = list.map((msg) => {
-             // Logic: I am the freelancer.
-             // If senderId == my id, it's me.
-             // If senderRole == 'FREELANCER', it's me.
-             // Everything else (Client/Assistant) is 'other'.
-             const isMe = (user?.id && String(msg.senderId) === String(user.id)) || 
-                          msg.senderRole === "FREELANCER"; // Check for explicit role
-             
-             return {
-                id: msg.id,
-                sender: msg.role === "assistant" ? "assistant" : (isMe ? "user" : "other"),
-                text: msg.content,
-                timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
-                attachment: msg.attachment,
-                senderName: msg.senderName
-             };
+            // Logic: I am the freelancer.
+            // If senderId == my id, it's me.
+            // If senderRole == 'FREELANCER', it's me.
+            // Everything else (Client/Assistant) is 'other'.
+            const isMe = (user?.id && String(msg.senderId) === String(user.id)) ||
+              msg.senderRole === "FREELANCER"; // Check for explicit role
+
+            return {
+              id: msg.id,
+              sender: msg.role === "assistant" ? "assistant" : (isMe ? "user" : "other"),
+              text: msg.content,
+              timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
+              attachment: msg.attachment,
+              senderName: msg.senderName
+            };
           });
-          
+
           // Merge logic to keep pending messages
           setMessages(prev => {
-             const pending = prev.filter(m => m.pending);
-             // Dedupe based on signature (sender + text) as ID might change from temp to DB
-             const backendSignatures = new Set(normalized.map(m => `${m.sender}:${m.text}`));
-             
-             const stillPending = pending.filter(p => {
-                const signature = `${p.sender}:${p.text}`;
-                return !backendSignatures.has(signature);
-             });
-             return [...normalized, ...stillPending];
+            const pending = prev.filter(m => m.pending);
+            // Dedupe based on signature (sender + text) as ID might change from temp to DB
+            const backendSignatures = new Set(normalized.map(m => `${m.sender}:${m.text}`));
+
+            const stillPending = pending.filter(p => {
+              const signature = `${p.sender}:${p.text}`;
+              return !backendSignatures.has(signature);
+            });
+            return [...normalized, ...stillPending];
           });
         }
       } catch (error) {
@@ -460,7 +464,7 @@ const FreelancerProjectDetailContent = () => {
 
   const handleSendMessage = async () => {
     if (!input.trim() || !conversationId || !authFetch) return;
-    
+
     // Optimistic message
     const tempId = Date.now().toString();
     const userMessage = {
@@ -470,29 +474,29 @@ const FreelancerProjectDetailContent = () => {
       timestamp: new Date(),
       pending: true
     };
-    
+
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsSending(true);
 
     try {
       // Build the correct service key for notifications
-      const serviceKey = (project?.ownerId && user?.id) 
-        ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}` 
+      const serviceKey = (project?.ownerId && user?.id)
+        ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
         : `project:${project?.id || projectId}`;
-        
+
       await authFetch(`/chat/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: userMessage.text,
-            service: serviceKey,
-            senderRole: "FREELANCER",
-            senderName: user?.fullName || user?.name || user?.email || "Freelancer",
-            skipAssistant: true // Persist to DB
-          })
-        });
-        // Polling will fetch the real message
+        body: JSON.stringify({
+          content: userMessage.text,
+          service: serviceKey,
+          senderRole: "FREELANCER",
+          senderName: user?.fullName || user?.name || user?.email || "Freelancer",
+          skipAssistant: true // Persist to DB
+        })
+      });
+      // Polling will fetch the real message
     } catch (error) {
       console.error("Failed to send project chat message", error);
     } finally {
@@ -504,11 +508,11 @@ const FreelancerProjectDetailContent = () => {
     const file = e.target.files?.[0];
     if (file && conversationId) {
       const attachment = {
-          name: file.name,
-          size: `${(file.size / 1024).toFixed(2)} KB`,
-          type: file.type
+        name: file.name,
+        size: `${(file.size / 1024).toFixed(2)} KB`,
+        type: file.type
       };
-      
+
       const userMessage = {
         id: Date.now().toString(),
         sender: "user",
@@ -521,25 +525,25 @@ const FreelancerProjectDetailContent = () => {
       setMessages((prev) => [...prev, userMessage]);
 
       try {
-         // Build the correct service key for notifications
-         const serviceKey = (project?.ownerId && user?.id) 
-           ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}` 
-           : `project:${project?.id || projectId}`;
-           
-         await authFetch(`/chat/conversations/${conversationId}/messages`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                content: `Uploaded document: ${file.name}`,
-                service: serviceKey,
-                senderRole: "FREELANCER",
-                senderName: user?.fullName || user?.name || user?.email || "Freelancer",
-                attachment,
-                skipAssistant: true
-            })
-         });
-      } catch(e) {
-         console.error("Upload failed", e);
+        // Build the correct service key for notifications
+        const serviceKey = (project?.ownerId && user?.id)
+          ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
+          : `project:${project?.id || projectId}`;
+
+        await authFetch(`/chat/conversations/${conversationId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `Uploaded document: ${file.name}`,
+            service: serviceKey,
+            senderRole: "FREELANCER",
+            senderName: user?.fullName || user?.name || user?.email || "Freelancer",
+            attachment,
+            skipAssistant: true
+          })
+        });
+      } catch (e) {
+        console.error("Upload failed", e);
       }
 
       if (fileInputRef.current) {
@@ -742,13 +746,13 @@ const FreelancerProjectDetailContent = () => {
     }
     return 0;
   }, [project]);
-  
+
   const spentBudget = useMemo(() => {
-     // If database has spent value, use it. Otherwise derive from progress.
-     if (project?.spent && project.spent > 0) return Number(project.spent);
-     return Math.round((totalBudget * overallProgress) / 100);
+    // If database has spent value, use it. Otherwise derive from progress.
+    if (project?.spent && project.spent > 0) return Number(project.spent);
+    return Math.round((totalBudget * overallProgress) / 100);
   }, [project, totalBudget, overallProgress]);
-  
+
   const remainingBudget = useMemo(() => Math.max(0, totalBudget - spentBudget), [spentBudget, totalBudget]);
 
   const activePhase = useMemo(() => {
@@ -774,6 +778,7 @@ const FreelancerProjectDetailContent = () => {
 
   return (
     <RoleAwareSidebar>
+
       <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
         <div className="w-full max-w-full mx-auto space-y-6">
           <FreelancerTopBar label={pageTitle} />
@@ -785,11 +790,15 @@ const FreelancerProjectDetailContent = () => {
                 {isLoading
                   ? "Loading project details..."
                   : isFallback
-                  ? "Previewing layout with sample data."
-                  : "Track project progress and deliverables in one place."}
+                    ? "Previewing layout with sample data."
+                    : "Track project progress and deliverables in one place."}
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setBookAppointmentOpen(true)}>
+                <Calendar className="w-4 h-4 mr-2" />
+                Book Appointment
+              </Button>
               <Button variant="destructive" size="sm" onClick={() => setReportOpen(true)}>
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Report Issue
@@ -797,6 +806,14 @@ const FreelancerProjectDetailContent = () => {
               <ProjectNotepad projectId={project?.id || projectId} />
             </div>
           </div>
+
+          {/* Book Appointment Dialog */}
+          <BookAppointment
+            isOpen={bookAppointmentOpen}
+            onClose={() => setBookAppointmentOpen(false)}
+            projectId={project?.id || projectId}
+            projectTitle={project?.title}
+          />
 
           {!isLoading && isFallback && (
             <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
@@ -854,8 +871,8 @@ const FreelancerProjectDetailContent = () => {
                             {phase.status === "in-progress"
                               ? "In Progress"
                               : phase.status === "completed"
-                              ? "Completed"
-                              : "Pending"}
+                                ? "Completed"
+                                : "Pending"}
                           </Badge>
                         </div>
                         <Progress value={phase.progress} className="h-2" />
@@ -879,29 +896,28 @@ const FreelancerProjectDetailContent = () => {
                 <CardContent className="space-y-3">
                   {visibleTasks.length > 0 ? (
                     visibleTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent transition-colors"
-                    >
-                      {task.status === "completed" ? (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                      ) : (
-                        <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                      )}
-                      <span
-                        className={`flex-1 text-sm ${
-                          task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
-                        }`}
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent transition-colors"
                       >
-                        {task.title}
-                      </span>
-                      <Badge variant="outline" className="text-xs border-border/60 text-muted-foreground">
-                        Phase {task.phase}
-                      </Badge>
-                    </div>
-                  ))
+                        {task.status === "completed" ? (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <span
+                          className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
+                            }`}
+                        >
+                          {task.title}
+                        </span>
+                        <Badge variant="outline" className="text-xs border-border/60 text-muted-foreground">
+                          Phase {task.phase}
+                        </Badge>
+                      </div>
+                    ))
                   ) : (
-                     <p className="text-sm text-muted-foreground">No tasks available for this phase.</p>
+                    <p className="text-sm text-muted-foreground">No tasks available for this phase.</p>
                   )}
                 </CardContent>
               </Card>
@@ -922,21 +938,19 @@ const FreelancerProjectDetailContent = () => {
                     >
                       <div className="space-y-1">
                         <div
-                          className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
-                            message.sender === "user"
-                              ? "bg-primary text-primary-foreground rounded-br-none"
-                              : "bg-muted text-foreground rounded-bl-none border border-border/60"
-                          }`}
+                          className={`max-w-xs px-3 py-2 rounded-lg text-sm ${message.sender === "user"
+                            ? "bg-primary text-primary-foreground rounded-br-none"
+                            : "bg-muted text-foreground rounded-bl-none border border-border/60"
+                            }`}
                         >
                           {message.text}
                         </div>
                         {message.attachment && (
                           <div
-                            className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                              message.sender === "user"
+                            className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${message.sender === "user"
                               ? "bg-primary/20 text-foreground"
                               : "bg-accent text-accent-foreground border border-border/60"
-                            }`}
+                              }`}
                           >
                             <FileText className="w-3 h-3" />
                             {message.attachment.name} ({message.attachment.size})
@@ -989,9 +1003,9 @@ const FreelancerProjectDetailContent = () => {
                     <div className="space-y-2">
                       {docs.map((doc, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20">
-                           <FileText className="w-4 h-4 text-primary" />
-                           <span className="truncate flex-1">{doc.name}</span>
-                           <span className="text-xs text-muted-foreground">{doc.size}</span>
+                          <FileText className="w-4 h-4 text-primary" />
+                          <span className="truncate flex-1">{doc.name}</span>
+                          <span className="text-xs text-muted-foreground">{doc.size}</span>
                         </div>
                       ))}
                     </div>
@@ -1046,62 +1060,62 @@ const FreelancerProjectDetailContent = () => {
               className="min-h-[100px]"
             />
             <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">Date & Time (Optional)</label>
-                <div className="flex gap-2">
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                        variant={"outline"}
-                        className={cn(
-                            "w-[240px] justify-start text-left font-normal",
-                            !date && "text-muted-foreground"
+              <label className="text-sm font-medium">Date & Time (Optional)</label>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      initialFocus
+                      disabled={[
+                        { dayOfWeek: [0, 6] }, // Disable weekends
+                        ...holidays
+                      ]}
+                      modifiers={{
+                        holiday: holidays
+                      }}
+                      modifiersStyles={{
+                        holiday: { color: "var(--destructive)", fontWeight: "bold", textDecoration: "line-through" }
+                      }}
+                      className="rounded-md border"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <div className="flex items-center gap-2">
+                  <Select value={time} onValueChange={setTime}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {availableTimeSlots.length > 0 ? (
+                          availableTimeSlots.map((slot) => (
+                            <SelectItem key={slot} value={slot}>
+                              {slot}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-xs text-muted-foreground text-center">No slots available</div>
                         )}
-                        >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                        disabled={[
-                            { dayOfWeek: [0, 6] }, // Disable weekends
-                            ...holidays
-                        ]}
-                        modifiers={{
-                            holiday: holidays
-                        }}
-                        modifiersStyles={{
-                            holiday: { color: "var(--destructive)", fontWeight: "bold", textDecoration: "line-through" }
-                        }}
-                        className="rounded-md border"
-                        />
-                    </PopoverContent>
-                    </Popover>
-                    <div className="flex items-center gap-2">
-                       <Select value={time} onValueChange={setTime}>
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Select time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {availableTimeSlots.length > 0 ? (
-                                availableTimeSlots.map((slot) => (
-                                <SelectItem key={slot} value={slot}>
-                                  {slot}
-                                </SelectItem>
-                              ))
-                              ) : (
-                                <div className="p-2 text-xs text-muted-foreground text-center">No slots available</div>
-                              )}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                    </div>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

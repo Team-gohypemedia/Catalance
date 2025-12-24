@@ -10,6 +10,11 @@ import ClientProjectDetail from "@/components/client/ClientProjectDetail.jsx";
 import ClientChat from "@/components/client/ClientChat.jsx";
 import ClientProfile from "@/components/client/ClientProfile.jsx";
 import ProjectManagerDashboard from "@/components/project-manager/ProjectManagerDashboard";
+import ManagerAvailability from "@/components/project-manager/ManagerAvailability";
+import ManagerAppointments from "@/components/project-manager/ManagerAppointments";
+import ManagerProjects from "@/components/project-manager/ManagerProjects";
+import ManagerProjectDetail from "@/components/project-manager/ManagerProjectDetail";
+import ManagerChat from "@/components/project-manager/ManagerChat";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
 import SignupPage from "./components/forms/Signup";
@@ -144,6 +149,46 @@ const App = () => {
             element={
               <ProtectedRoute loginPath="/project-manager/login">
                 <ProjectManagerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/project-manager/availability"
+            element={
+              <ProtectedRoute loginPath="/project-manager/login">
+                <ManagerAvailability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/project-manager/appointments"
+            element={
+              <ProtectedRoute loginPath="/project-manager/login">
+                <ManagerAppointments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/project-manager/projects"
+            element={
+              <ProtectedRoute loginPath="/project-manager/login">
+                <ManagerProjects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/project-manager/projects/:projectId"
+            element={
+              <ProtectedRoute loginPath="/project-manager/login">
+                <ManagerProjectDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/project-manager/messages"
+            element={
+              <ProtectedRoute loginPath="/project-manager/login">
+                <ManagerChat />
               </ProtectedRoute>
             }
           />

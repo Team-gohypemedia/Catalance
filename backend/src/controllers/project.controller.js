@@ -121,14 +121,43 @@ export const listProjects = asyncHandler(async (req, res) => {
   }
 
   try {
+    // Get user role to determine what projects to show
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true }
+    });
+
+    // Build query based on role
+    let where = {};
+
+    // Project Managers and Admins can see all projects
+    if (user?.role === "PROJECT_MANAGER" || user?.role === "ADMIN") {
+      // No filter - show all projects
+      where = {};
+    } else {
+      // Clients only see their own projects
+      where = { ownerId: userId };
+    }
+
     const projects = await prisma.project.findMany({
-      where: { ownerId: userId },
+      where,
       include: {
+        owner: {
+          select: { id: true, fullName: true, email: true }
+        },
         proposals: {
           include: {
-            freelancer: true
+            freelancer: {
+              select: { id: true, fullName: true, email: true }
+            }
           },
           orderBy: { createdAt: "desc" }
+        },
+        disputes: {
+          select: { id: true, status: true }
+        },
+        _count: {
+          select: { proposals: true }
         }
       },
       orderBy: { createdAt: "desc" }
@@ -151,11 +180,22 @@ export const getProject = asyncHandler(async (req, res) => {
   const project = await prisma.project.findUnique({
     where: { id },
     include: {
+      owner: {
+        select: { id: true, fullName: true, email: true }
+      },
       proposals: {
         include: {
-          freelancer: true
+          freelancer: {
+            select: { id: true, fullName: true, email: true }
+          }
         },
         orderBy: { createdAt: "desc" }
+      },
+      disputes: {
+        select: { id: true, status: true }
+      },
+      _count: {
+        select: { proposals: true }
       }
     }
   });
@@ -191,15 +231,15 @@ export const updateProject = asyncHandler(async (req, res) => {
   if (!existing) {
     throw new AppError("Project not found", 404);
   }
-  
+
   // Allow owner OR accepted freelancer to update progress/tasks
   const isOwner = existing.ownerId === userId;
   const isAcceptedFreelancer = existing.proposals?.some(
     p => p.freelancerId === userId && p.status === "ACCEPTED"
   );
-  
+
   if (!isOwner && !isAcceptedFreelancer) {
-     throw new AppError("Permission denied", 403);
+    throw new AppError("Permission denied", 403);
   }
 
   try {

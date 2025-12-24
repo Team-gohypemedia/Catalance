@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
+import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
@@ -205,22 +206,22 @@ const ProjectDashboard = () => {
     "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
     "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
   ];
-  
+
   const [bookedSlots, setBookedSlots] = useState([]);
 
   useEffect(() => {
     if (!date || !authFetch) return;
 
     const fetchAvailability = async () => {
-        try {
-            const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
-            if (res.ok) {
-                const payload = await res.json();
-                setBookedSlots(payload.data || []);
-            }
-        } catch (e) {
-            console.error("Failed to fetch availability", e);
+      try {
+        const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
+        if (res.ok) {
+          const payload = await res.json();
+          setBookedSlots(payload.data || []);
         }
+      } catch (e) {
+        console.error("Failed to fetch availability", e);
+      }
     };
     fetchAvailability();
   }, [date, authFetch]);
@@ -237,44 +238,47 @@ const ProjectDashboard = () => {
   // Filter time slots based on selected date
   const availableTimeSlots = useMemo(() => {
     if (!date) return allTimeSlots;
-    
+
     // 1. Filter past times if today
     const isToday = new Date().toDateString() === date.toDateString();
     const now = new Date();
     const currentHour = now.getHours();
 
     let slots = allTimeSlots;
-    
+
     if (isToday) {
-        slots = slots.filter(slot => {
-            const [time, period] = slot.split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
-            if (period === 'PM' && hours !== 12) hours += 12;
-            if (period === 'AM' && hours === 12) hours = 0;
-            return hours > currentHour;
-        });
+      slots = slots.filter(slot => {
+        const [time, period] = slot.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        if (period === 'PM' && hours !== 12) hours += 12;
+        if (period === 'AM' && hours === 12) hours = 0;
+        return hours > currentHour;
+      });
     }
 
     // 2. Filter booked slots
     if (bookedSlots.length > 0) {
-        slots = slots.filter(slot => {
-            // Check if this slot matches any booked meeting
-            return !bookedSlots.some(bookedIso => {
-                const bookedDate = new Date(bookedIso);
-                // Extract time from slot to compare hour/minute
-                const [time, period] = slot.split(' ');
-                let [slotH, slotM] = time.split(':').map(Number);
-                if (period === 'PM' && slotH !== 12) slotH += 12;
-                if (period === 'AM' && slotH === 12) slotH = 0;
+      slots = slots.filter(slot => {
+        // Check if this slot matches any booked meeting
+        return !bookedSlots.some(bookedIso => {
+          const bookedDate = new Date(bookedIso);
+          // Extract time from slot to compare hour/minute
+          const [time, period] = slot.split(' ');
+          let [slotH, slotM] = time.split(':').map(Number);
+          if (period === 'PM' && slotH !== 12) slotH += 12;
+          if (period === 'AM' && slotH === 12) slotH = 0;
 
-                // Match exact hour (assuming 1 hour slots)
-                return bookedDate.getHours() === slotH && bookedDate.getMinutes() === slotM;
-            });
+          // Match exact hour (assuming 1 hour slots)
+          return bookedDate.getHours() === slotH && bookedDate.getMinutes() === slotM;
         });
+      });
     }
 
     return slots;
   }, [date, bookedSlots]);
+
+  // Book Appointment State
+  const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
 
   const handleReport = async () => {
     if (!issueText.trim()) {
@@ -287,18 +291,18 @@ const ProjectDashboard = () => {
 
     if (date) {
       fullDescription += `\n\nDate of Issue: ${format(date, "PPP")}`;
-      
+
       // Combine date + time for structural saving
       const combined = new Date(date);
       if (time) {
-         fullDescription += `\nTime: ${time}`;
-         const [timeStr, period] = time.split(' ');
-         let [hours, minutes] = timeStr.split(':').map(Number);
-         if (period === 'PM' && hours !== 12) hours += 12;
-         if (period === 'AM' && hours === 12) hours = 0;
-         combined.setHours(hours, minutes, 0, 0);
+        fullDescription += `\nTime: ${time}`;
+        const [timeStr, period] = time.split(' ');
+        let [hours, minutes] = timeStr.split(':').map(Number);
+        if (period === 'PM' && hours !== 12) hours += 12;
+        if (period === 'AM' && hours === 12) hours = 0;
+        combined.setHours(hours, minutes, 0, 0);
       } else {
-         combined.setHours(9, 0, 0, 0); // Default to 9 AM if no time?? Or just omit time?
+        combined.setHours(9, 0, 0, 0); // Default to 9 AM if no time?? Or just omit time?
       }
       meetingDateIso = combined.toISOString();
     }
@@ -308,8 +312,8 @@ const ProjectDashboard = () => {
       const res = await authFetch('/disputes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          description: fullDescription, 
+        body: JSON.stringify({
+          description: fullDescription,
           projectId: project?.id || projectId,
           meetingDate: meetingDateIso
         })
@@ -971,6 +975,10 @@ const ProjectDashboard = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setBookAppointmentOpen(true)}>
+                <Calendar className="w-4 h-4 mr-2" />
+                Book Appointment
+              </Button>
               <Button variant="destructive" size="sm" onClick={() => setReportOpen(true)}>
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Report Issue
@@ -978,6 +986,14 @@ const ProjectDashboard = () => {
               <ProjectNotepad projectId={project?.id || projectId} />
             </div>
           </div>
+
+          {/* Book Appointment Dialog */}
+          <BookAppointment
+            isOpen={bookAppointmentOpen}
+            onClose={() => setBookAppointmentOpen(false)}
+            projectId={project?.id || projectId}
+            projectTitle={project?.title}
+          />
           {!isLoading && !project && (
             <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
               No project data found for this link. Showing sample progress so you can preview the layout.
@@ -1141,8 +1157,8 @@ const ProjectDashboard = () => {
                         )}
                         <div
                           className={`max-w-xs px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${message.sender === "user"
-                              ? "bg-primary text-primary-foreground rounded-br-none"
-                              : "bg-muted text-foreground rounded-bl-none border border-border/60"
+                            ? "bg-primary text-primary-foreground rounded-br-none"
+                            : "bg-muted text-foreground rounded-bl-none border border-border/60"
                             }`}
                         >
                           {message.text}
@@ -1150,8 +1166,8 @@ const ProjectDashboard = () => {
                         {message.attachment && (
                           <div
                             className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${message.sender === "user"
-                                ? "bg-primary/20 text-foreground"
-                                : "bg-accent text-accent-foreground border border-border/60"
+                              ? "bg-primary/20 text-foreground"
+                              : "bg-accent text-accent-foreground border border-border/60"
                               }`}
                           >
                             <FileText className="w-3 h-3" />
@@ -1263,62 +1279,62 @@ const ProjectDashboard = () => {
               className="min-h-[100px]"
             />
             <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">Date & Time (Optional)</label>
-                <div className="flex gap-2">
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                        variant={"outline"}
-                        className={cn(
-                            "w-[240px] justify-start text-left font-normal",
-                            !date && "text-muted-foreground"
+              <label className="text-sm font-medium">Date & Time (Optional)</label>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      initialFocus
+                      disabled={[
+                        { dayOfWeek: [0, 6] }, // Disable weekends (Sunday=0, Saturday=6)
+                        ...holidays
+                      ]}
+                      modifiers={{
+                        holiday: holidays
+                      }}
+                      modifiersStyles={{
+                        holiday: { color: "var(--destructive)", fontWeight: "bold", textDecoration: "line-through" }
+                      }}
+                      className="rounded-md border"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <div className="flex items-center gap-2">
+                  <Select value={time} onValueChange={setTime}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {availableTimeSlots.length > 0 ? (
+                          availableTimeSlots.map((slot) => (
+                            <SelectItem key={slot} value={slot}>
+                              {slot}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-xs text-muted-foreground text-center">No slots available</div>
                         )}
-                        >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                        disabled={[
-                            { dayOfWeek: [0, 6] }, // Disable weekends (Sunday=0, Saturday=6)
-                            ...holidays
-                        ]}
-                        modifiers={{
-                            holiday: holidays
-                        }}
-                        modifiersStyles={{
-                            holiday: { color: "var(--destructive)", fontWeight: "bold", textDecoration: "line-through" }
-                        }}
-                        className="rounded-md border"
-                        />
-                    </PopoverContent>
-                    </Popover>
-                    <div className="flex items-center gap-2">
-                         <Select value={time} onValueChange={setTime}>
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Select time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {availableTimeSlots.length > 0 ? (
-                                availableTimeSlots.map((slot) => (
-                                <SelectItem key={slot} value={slot}>
-                                  {slot}
-                                </SelectItem>
-                              ))
-                              ) : (
-                                <div className="p-2 text-xs text-muted-foreground text-center">No slots available</div>
-                              )}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                    </div>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

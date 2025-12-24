@@ -34,37 +34,42 @@ export function NavMain({
 
           // Show badge on Messages item when there are unread chat notifications
           const showMessageBadge = item.title === "Messages" && chatUnreadCount > 0;
-          
+
           // Show badge on Proposals items
           const isProposalsItem = item.title === "Proposals" || item.title === "Proposal";
           const showProposalBadge = isProposalsItem && proposalUnreadCount > 0;
 
           if (!hasChildren) {
-             const isActive = location.pathname === item.url;
-             
-             // When clicking Messages, mark chat as read
-             const handleClick = () => {
-               if (item.title === "Messages") {
-                 markChatAsRead();
-               }
-             };
-             
-             return (
-               <SidebarMenuItem key={item.title}>
-                 <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
-                   <Link to={item.url ?? "#"} className={`relative ${isActive ? "text-primary font-medium" : ""}`} onClick={handleClick}>
-                     {Icon && <Icon className={isActive ? "text-primary" : ""} />}
-                     <span>{item.title}</span>
-                     {showMessageBadge && (
-                       <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white animate-pulse">
-                          {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
-                        </span>
-                      )}
-                   </Link>
-                 </SidebarMenuButton>
-               </SidebarMenuItem>
-             );
-           }
+            const currentPath = location.pathname + location.search;
+            let isActive = currentPath === item.url;
+
+            if (!isActive && !item.url.includes("?")) {
+              isActive = location.pathname === item.url && !location.search.includes("view=");
+            }
+
+            // When clicking Messages, mark chat as read
+            const handleClick = () => {
+              if (item.title === "Messages") {
+                markChatAsRead();
+              }
+            };
+
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
+                  <Link to={item.url ?? "#"} className={`relative ${isActive ? "text-primary font-medium" : ""}`} onClick={handleClick}>
+                    {Icon && <Icon className={isActive ? "text-primary" : ""} />}
+                    <span>{item.title}</span>
+                    {showMessageBadge && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white animate-pulse">
+                        {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                      </span>
+                    )}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          }
 
           return (
             <Collapsible
@@ -80,9 +85,9 @@ export function NavMain({
                     {Icon && <Icon />}
                     <span>{item.title}</span>
                     {showProposalBadge && (
-                       <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white animate-pulse mr-2">
-                          {proposalUnreadCount > 99 ? "99+" : proposalUnreadCount}
-                        </span>
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white animate-pulse mr-2">
+                        {proposalUnreadCount > 99 ? "99+" : proposalUnreadCount}
+                      </span>
                     )}
                     <ChevronRight
                       className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -93,7 +98,7 @@ export function NavMain({
                     {item.items.map((subItem) => {
                       const isReceived = subItem.title === "Received";
                       const showSubBadge = isReceived && showProposalBadge;
-                      
+
                       const handleSubClick = () => {
                         if (isReceived) {
                           markProposalsAsRead();

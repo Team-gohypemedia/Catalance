@@ -72,6 +72,9 @@ model User {
   raisedDisputes Dispute[] @relation("DisputeRaiser")
   managedDisputes Dispute[] @relation("DisputeManager")
   notifications Notification[]
+  availabilitySlots ManagerAvailability[] @relation("ManagerAvailability")
+  bookedAppointments Appointment[] @relation("AppointmentBooker")
+  managedAppointments Appointment[] @relation("AppointmentManager")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
@@ -91,6 +94,7 @@ model Project {
   ownerId         String
   proposals       Proposal[]
   disputes        Dispute[]
+  appointments    Appointment[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -180,4 +184,55 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+enum AppointmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model ManagerAvailability {
+  id          String   @id @default(cuid())
+  managerId   String
+  manager     User     @relation("ManagerAvailability", fields: [managerId], references: [id])
+  date        DateTime @db.Date
+  startHour   Int      // 0-23 (e.g., 10 for 10:00 AM)
+  endHour     Int      // 0-23 (e.g., 11 for 11:00 AM)
+  isBooked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([managerId, date, startHour])
+  @@index([managerId, date])
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  title           String
+  description     String?           @db.Text
+  date            DateTime          @db.Date
+  startHour       Int               // 0-23
+  endHour         Int               // 0-23
+  status          AppointmentStatus @default(PENDING)
+  meetingLink     String?
+  
+  // Who booked the appointment
+  bookedById      String
+  bookedBy        User              @relation("AppointmentBooker", fields: [bookedById], references: [id])
+  
+  // Which manager's slot
+  managerId       String
+  manager         User              @relation("AppointmentManager", fields: [managerId], references: [id])
+  
+  // Optional: related project
+  projectId       String?
+  project         Project?          @relation(fields: [projectId], references: [id])
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([managerId, date])
+  @@index([bookedById])
 }
