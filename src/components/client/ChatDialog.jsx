@@ -230,7 +230,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
               ...clearedPending,
               {
                 role: "assistant",
-                senderName: "Assistant",
+                senderName: "Cata",
                 senderRole: "assistant",
                 content: noticeContent,
                 localOnly: true,
@@ -478,7 +478,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   }, [proposalMessage, messageStorageKey, serviceKey]);
 
   const resolveSenderChip = (msg) => {
-    if ((msg.role || "").toLowerCase() === "assistant" || (msg.senderName || "").toLowerCase() === "assistant") return "Assistant";
+    if ((msg.role || "").toLowerCase() === "assistant" || (msg.senderName || "").toLowerCase() === "assistant") return "Cata";
     return "You";
   };
 

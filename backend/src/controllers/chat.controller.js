@@ -1566,7 +1566,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
 
         assistantMessage = addMessage({
           conversationId: conversation.id,
-          senderName: "Assistant",
+          senderName: "Cata",
           senderRole: "assistant",
           role: "assistant",
           content: assistantReply,
@@ -1703,7 +1703,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
       assistantMessage = await prisma.chatMessage.create({
         data: {
           conversationId: conversation.id,
-          senderName: "Assistant",
+          senderName: "Cata",
           senderRole: "assistant",
           role: "assistant",
           content: assistantReply,
@@ -1775,7 +1775,7 @@ export const getProjectMessages = asyncHandler(async (req, res) => {
   const formattedMessages = messages.map(msg => ({
     id: msg.id,
     content: msg.content,
-    senderName: msg.senderName || (msg.role === "assistant" ? "Assistant" : "User"),
+    senderName: msg.senderName || (msg.role === "assistant" ? "Cata" : "User"),
     senderRole: msg.senderRole || msg.role,
     createdAt: msg.createdAt,
     role: msg.role

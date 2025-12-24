@@ -196,7 +196,7 @@ const normalizeForSuggestionMatching = (value = "") => {
             .replace(/\bwish\s*list\b/g, "wishlist")
             .replace(/\breview\b/g, "reviews")
             .replace(/\brating\b/g, "ratings")
-            // Keep punctuation as-is; tokenization happens later.
+        // Keep punctuation as-is; tokenization happens later.
     );
 };
 
@@ -717,13 +717,35 @@ const extractBudget = (value = "") => {
 
     // Chip/label style: "Custom React.js + Node.js (₹1,50,000+)" or "(1,50,000+)"
     match = text.match(/\(([^)]{0,60})\)\s*$/);
+    let match = text.match(
+        /(?:\u20B9|inr|rs\.?|rupees?)?\s*([\d,]{4,}(?:\.\d+)?)\s*(?:-|to)\s*(?:\u20B9|inr|rs\.?|rupees?)?\s*([\d,]{4,}(?:\.\d+)?)\b/i
+    );
+    if (match) {
+        return `${match[1].replace(/,/g, "")}-${match[2].replace(/,/g, "")}`;
+    }
+
+    match = text.match(/under\s+(?:\u20B9|inr|rs\.?|rupees?)?\s*([\d,]{4,})\b/i);
+    if (match) return match[1].replace(/,/g, "");
+
+    match = text.match(/(?:\u20B9|inr|rs\.?|rupees?)\s*([\d,]+(?:\.\d+)?)\b/i);
+    if (match) return match[1].replace(/,/g, "");
+
+    // Chip/label style: "Custom React.js + Node.js (₹1,50,000+)" or "(1,50,000+)"
+    match = text.match(/\(([^)]{0,60})\)\s*$/);
     if (match && /(?:\u20B9|inr|rs\.?|rupees?|\+|\/-)/i.test(match[1])) {
         const insideNumber = match[1].match(/([\d,]{4,})/);
         if (insideNumber) return insideNumber[1].replace(/,/g, "");
     }
 
-    match = text.match(/\b(\d+(?:\.\d+)?)\s*(k)\b/i);
-    if (match) return `${match[1]}k`;
+    match = text.match(/\b(\d+(?:\.\d+)?)\s*(k|thousand|thousands)\b/i);
+    if (match) {
+        const unit = match[2].toLowerCase();
+        if (unit.startsWith("k")) return `${match[1]}k`;
+        return `${match[1]}000`; // crude normalization for "thousand"
+    }
+
+    match = text.match(/\b(\d+(?:\.\d+)?)\s*(m|mn|million|millions)\b/i);
+    if (match) return `${match[1]}M`;
 
     match = text.match(/\b(\d+(?:\.\d+)?)\s*(l)\b/i);
     if (match) return `${match[1]}L`;
@@ -1143,23 +1165,7 @@ const validateWebsiteBudget = (collectedData = {}) => {
 const buildWebsiteBudgetSuggestions = (requirement) => {
     if (!requirement) return null;
 
-    const requiredMin = Number.isFinite(requirement?.min) ? requirement.min : null;
-    const minLabel = requiredMin ? formatInr(requiredMin) : "";
-    const suggestions = [];
-
-    if (requirement?.range && Number.isFinite(requirement.range?.max)) {
-        const rangeMin = Number.isFinite(requiredMin) ? requiredMin : requirement.range.min;
-        const rangeMax = requirement.range.max;
-        if (Number.isFinite(rangeMin) && Number.isFinite(rangeMax)) {
-            suggestions.push(`${formatInr(rangeMin)} - ${formatInr(rangeMax)}`);
-        }
-    } else if (minLabel) {
-        suggestions.push(`${minLabel}+`);
-    }
-
-    suggestions.push("Change technology");
-
-    return suggestions.filter(Boolean);
+    return ["Change technology"];
 };
 
 const MANAGED_HOSTING_TECH_CANONS = new Set(["shopify"]);
@@ -1745,324 +1751,67 @@ const extractKnownFieldsFromMessage = (questions = [], message = "", collectedDa
                             : keys.has("business_info")
                                 ? "business_info"
                                 : null;
-
-    if (descriptionKey && !collectedData[descriptionKey] && !treatAsQuestionForInference) {
-        const hasIntentVerb = /(need|looking|build|create|develop|want|require|make)\b/i.test(parsingText);
-        const hasIsA = /\b(?:it\s+is|it's|it’s|this\s+is)\b/i.test(parsingText);
-        const hasProjectNoun =
-            /(website|web\s*app|app|platform|tool|manager|system|dashboard|store|marketplace|landing\s*page|e-?commerce|portfolio|saas|product)\b/i.test(
-                parsingText
-            );
-
-        const looksDescriptive =
-            parsingText.length >= 25 && (hasIntentVerb || (hasIsA && hasProjectNoun));
-        if (looksDescriptive) {
-            const refined = extractDescriptionFromMixedMessage(parsingText);
-            if (refined) {
-                updates[descriptionKey] = refined;
-            } else if (!/\b(budget|tech|timeline)\b/i.test(parsingText) && parsingText.length <= 240) {
-                updates[descriptionKey] = parsingText;
-            }
-        }
-    }
-
-    if (keys.has("website_type") && !treatAsQuestionForInference) {
-        const already =
-            normalizeText(collectedData.website_type) || normalizeText(updates.website_type);
-        if (!already) {
-            const lower = normalizeForSuggestionMatching(parsingText).toLowerCase();
-
-            let score = 0;
-            if (/\b(e-?\s*commerce|ecommerce)\b/i.test(lower)) score += 4;
-            if (/\bmarketplace\b/i.test(lower)) score += 3;
-            if (/\bonline\b[\s\S]{0,40}\b(?:store|shop|boutique)\b/i.test(lower)) score += 3;
-            if (/\b(?:store|shop|boutique)\b/i.test(lower)) score += 1;
-            if (/\b(?:sell|selling|buy|purchase|purchases)\b/i.test(lower)) score += 2;
-            if (/\b(?:product|products|catalog(?:ue)?|collection|collections)\b/i.test(lower)) score += 1;
-            if (/\b(?:cart|checkout)\b/i.test(lower)) score += 2;
-            if (/\b(?:payments?|payment|pay\b|razorpay|stripe)\b/i.test(lower)) score += 2;
-            if (/\b(?:order|orders)\b/i.test(lower)) score += 1;
-            if (/\b(?:tracking|track)\b/i.test(lower)) score += 1;
-            if (/\b(?:inventory|stock|sku|discount|coupon|wishlist)\b/i.test(lower)) score += 1;
-
-            const looksEcom =
-                score >= 3 ||
-                (/\b(?:cart|checkout)\b/i.test(lower) &&
-                    /\b(?:products?|shop|store|boutique)\b/i.test(lower));
-
-            if (looksEcom) updates.website_type = "E-commerce";
-        }
-    }
-
-    if (
-        keys.has("pages") &&
-        !treatAsQuestionForInference &&
-        isBrief &&
-        !collectedData.pages &&
-        !collectedData.pages_inferred &&
-        !updates.pages_inferred
-    ) {
-        const pagesQuestion = questions.find((q) => q?.key === "pages");
-        const websiteTypeHint = updates.website_type || collectedData.website_type || "";
-        const inferred = inferPagesFromBrief(pagesQuestion, parsingText, websiteTypeHint);
-        if (inferred.length) {
-            updates.pages_inferred = inferred.join(", ");
-        }
-    }
-
-    // Out-of-sequence extraction for closed-set questions (suggestions).
-    // This helps when users mention things early like "React + Node" or "host on Vercel".
-    for (const question of questions) {
-        const key = question?.key;
-        if (!key) continue;
-        if (!keys.has(key)) continue;
-        if (updates[key] !== undefined) continue;
-
-        // Avoid inferring selections from user questions (they're often exploratory, not confirmations).
-        if (treatAsQuestionForInference) continue;
-        if (collectedData[key] !== undefined && collectedData[key] !== null && normalizeText(collectedData[key]) !== "") {
-            continue;
-        }
-        if (!Array.isArray(question?.suggestions) || question.suggestions.length === 0) continue;
-
-        // Pages can be accidentally inferred from generic words (e.g. "help"), so always ask explicitly.
-        if (key === "pages") continue;
-
-        const matches = matchSuggestionsInMessage(question, parsingText);
-        if (!matches.length) continue;
-
-        // Website type is high-signal and safe to infer from one-shot briefs.
-        if (key === "website_type" && !question.multiSelect) {
-            updates[key] = matches[0];
-            continue;
-        }
-
-        const textCanonical = canonicalize(parsingText.toLowerCase());
-        const isShort = parsingText.length <= 90;
-        const hasListSeparators = /[,|\n]/.test(parsingText);
-        const hasKeyPatterns = Array.isArray(question.patterns)
-            ? question.patterns.some((pattern) => {
-                const canon = canonicalize(pattern || "");
-                return canon ? textCanonical.includes(canon) : false;
-            })
-            : false;
-
-        const hasDeploymentContext =
-            key === "deployment"
-                ? /\b(deploy|deployment|host(?:ed|ing)?|hosting)\b/i.test(parsingText)
-                : false;
-        const effectiveHasKeyPatterns =
-            key === "deployment" ? hasKeyPatterns || hasDeploymentContext : hasKeyPatterns;
-
-        const singleMatchCanon =
-            matches.length === 1 ? canonicalize(String(matches[0] || "").toLowerCase()) : null;
-        const isLowSignalSingleMatch =
-            Boolean(singleMatchCanon) &&
-            (singleMatchCanon === "notsureyet" || singleMatchCanon === "nopreference");
-
-        // Prevent generic answers like "Not sure" from accidentally populating unrelated fields
-        // when the user sends a long brief (e.g. "not sure about design" should not auto-fill deployment).
-        if (!isShort && isLowSignalSingleMatch) {
-            if (key === "deployment") {
-                if (!hasDeploymentContext) continue;
-            } else if (!effectiveHasKeyPatterns) {
-                continue;
-            }
-        }
-
-        // Deployment providers can overlap with generic words (e.g. "render") inside long briefs.
-        // Only infer deployment out-of-sequence when the user explicitly talks about hosting/deployment
-        // (or they list multiple providers).
-        if (
-            key === "deployment" &&
-            !isShort &&
-            !effectiveHasKeyPatterns &&
-            !(question.multiSelect && matches.length >= 2)
-        ) {
-            continue;
-        }
-
-        // Only accept out-of-sequence suggestion inference when the message looks like a direct selection.
-        // This avoids accidental matches in long, descriptive messages.
-        if (
-            !isShort &&
-            !hasListSeparators &&
-            !effectiveHasKeyPatterns &&
-            !(question.multiSelect && matches.length >= 2)
-        ) {
-            continue;
-        }
-
-        const limitedMatches =
-            question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
-                ? matches.slice(0, question.maxSelect)
-                : matches;
-
-        updates[key] = question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
-    }
-
-    // If we inferred a tech stack option (e.g. "React.js + Node.js"), append any extra stack details
-    // provided in a one-shot message (e.g. "Prisma", "Neon DB", "open-source model").
-    if (keys.has("tech") && !treatAsQuestionForInference) {
-        const base = normalizeText(updates.tech || collectedData.tech || "");
-        const details = extractTechDetailsFromMessage(parsingText);
-        if (details.length) {
-            const baseCanon = canonicalize(base.toLowerCase());
-            const extras = details.filter((item) => {
-                const canon = canonicalize(item.toLowerCase());
-                if (!canon) return false;
-                if (baseCanon && baseCanon.includes(canon)) return false;
-                return true;
-            });
-
-            if (!base && extras.length) {
-                updates.tech = extras.join(", ");
-            } else if (base && extras.length) {
-                updates.tech = `${base}, ${extras.join(", ")}`;
-            }
-        }
-    }
-
-    // Out-of-sequence extraction for closed-set questions (suggestions).
-    // This helps when users mention things early like "React + Node" or "host on Vercel".
-    for (const question of questions) {
-        const key = question?.key;
-        if (!key) continue;
-        if (!keys.has(key)) continue;
-        if (updates[key] !== undefined) continue;
-
-        // Avoid inferring selections from user questions (they're often exploratory, not confirmations).
-        if (userAskedQuestion) continue;
-        if (collectedData[key] !== undefined && collectedData[key] !== null && normalizeText(collectedData[key]) !== "") {
-            continue;
-        }
-        if (!Array.isArray(question?.suggestions) || question.suggestions.length === 0) continue;
-
-        // Pages can be accidentally inferred from generic words (e.g. "help"), so always ask explicitly.
-        if (key === "pages") continue;
-
-        const matches = matchSuggestionsInMessage(question, text);
-        if (!matches.length) continue;
-
-        const textCanonical = canonicalize(text.toLowerCase());
-        const isShort = text.length <= 90;
-        const hasListSeparators = /[,|\n]/.test(text);
-        const hasKeyPatterns = Array.isArray(question.patterns)
-            ? question.patterns.some((pattern) => {
-                const canon = canonicalize(pattern || "");
-                return canon ? textCanonical.includes(canon) : false;
-            })
-            : false;
-
-        // Only accept out-of-sequence suggestion inference when the message looks like a direct selection.
-        // This avoids accidental matches in long, descriptive messages.
-        if (!isShort && !hasListSeparators && !hasKeyPatterns && !(question.multiSelect && matches.length >= 2)) {
-            continue;
-        }
-
-        const limitedMatches =
-            question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
-                ? matches.slice(0, question.maxSelect)
-                : matches;
-
-        updates[key] = question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
-    }
-
-    return updates;
-};
-
-const extractAnswerForQuestion = (question, rawMessage) => {
-    const message = normalizeText(rawMessage);
-    if (!question || !message) return null;
-    if (isGreetingMessage(message)) return null;
-    if (isSkipMessage(message)) return "[skipped]";
-
-    switch (question.key) {
-        case "company":
-        case "business":
-        case "business_name":
-        case "brand":
-        case "project": {
-            if (isUserQuestion(message)) return null;
-            if (isBareBudgetAnswer(message) || isBareTimelineAnswer(message)) return null;
-            const budget = extractBudget(message);
-            if (budget && message.length <= 30) return null;
-            const timeline = extractTimeline(message);
-            if (timeline && message.length <= 30) return null;
-
-            const org = extractOrganizationName(message);
-            if (org) return org;
-            return message.length <= 60 ? trimEntity(message) : null;
-        }
-        case "budget": {
-            if (isChangeTechnologyMessage(message)) return CHANGE_TECH_SENTINEL;
-            return extractBudget(message);
-        }
-        case "timeline": {
-            return extractTimeline(message);
-        }
-        case "name": {
-            return extractName(message);
-        }
+    return extractName(message);
+}
         default: {
-            const exactSelections = matchExactSuggestionSelections(question, message);
-            if (exactSelections.length) {
-                const limitedMatches =
-                    question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
-                        ? exactSelections.slice(0, question.maxSelect)
-                        : exactSelections;
+    const exactSelections = matchExactSuggestionSelections(question, message);
+    if (exactSelections.length) {
+        const limitedMatches =
+            question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
+                ? exactSelections.slice(0, question.maxSelect)
+                : exactSelections;
 
-                return question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
-            }
+        return question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
+    }
 
-            const suggestionMatches = matchSuggestionsInMessage(question, message);
-            if (suggestionMatches.length) {
-                const limitedMatches =
-                    question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
-                        ? suggestionMatches.slice(0, question.maxSelect)
-                        : suggestionMatches;
+    const suggestionMatches = matchSuggestionsInMessage(question, message);
+    if (suggestionMatches.length) {
+        const limitedMatches =
+            question.multiSelect && Number.isFinite(question.maxSelect) && question.maxSelect > 0
+                ? suggestionMatches.slice(0, question.maxSelect)
+                : suggestionMatches;
 
-                return question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
-            }
+        return question.multiSelect ? limitedMatches.join(", ") : limitedMatches[0];
+    }
 
-            if (Array.isArray(question.suggestions) && question.suggestions.length) {
-                // If this is a closed-set question and nothing matched, avoid incorrectly
-                // capturing a long multi-field message as the answer.
-                if (message.length > 80) return null;
-            }
+    if (Array.isArray(question.suggestions) && question.suggestions.length) {
+        // If this is a closed-set question and nothing matched, avoid incorrectly
+        // capturing a long multi-field message as the answer.
+        if (message.length > 80) return null;
+    }
 
-            if (isUserQuestion(message)) {
-                const qMatch = message.match(/\?(?![a-z0-9])/i);
-                const qIndex = qMatch && typeof qMatch.index === "number" ? qMatch.index : -1;
-                const beforeQuestion = qIndex >= 0 ? message.slice(0, qIndex).trim() : "";
-                const cutAt = Math.max(
-                    beforeQuestion.lastIndexOf("."),
-                    beforeQuestion.lastIndexOf("!"),
-                    beforeQuestion.lastIndexOf("\n")
-                );
-                const candidate = (cutAt > -1
-                    ? beforeQuestion.slice(0, cutAt)
-                    : beforeQuestion
-                ).trim();
+    if (isUserQuestion(message)) {
+        const qMatch = message.match(/\?(?![a-z0-9])/i);
+        const qIndex = qMatch && typeof qMatch.index === "number" ? qMatch.index : -1;
+        const beforeQuestion = qIndex >= 0 ? message.slice(0, qIndex).trim() : "";
+        const cutAt = Math.max(
+            beforeQuestion.lastIndexOf("."),
+            beforeQuestion.lastIndexOf("!"),
+            beforeQuestion.lastIndexOf("\n")
+        );
+        const candidate = (cutAt > -1
+            ? beforeQuestion.slice(0, cutAt)
+            : beforeQuestion
+        ).trim();
 
-                if (!candidate) return null;
-                if (isUserQuestion(candidate)) return null;
-                if (isBareBudgetAnswer(candidate) || isBareTimelineAnswer(candidate)) return null;
-                if (extractBudget(candidate) && candidate.length <= 30) return null;
-                if (extractTimeline(candidate) && candidate.length <= 30) return null;
+        if (!candidate) return null;
+        if (isUserQuestion(candidate)) return null;
+        if (isBareBudgetAnswer(candidate) || isBareTimelineAnswer(candidate)) return null;
+        if (extractBudget(candidate) && candidate.length <= 30) return null;
+        if (extractTimeline(candidate) && candidate.length <= 30) return null;
 
-                return candidate;
-            }
+        return candidate;
+    }
 
-            // Avoid capturing pure budget/timeline answers for unrelated questions.
-            if (isBareBudgetAnswer(message) || isBareTimelineAnswer(message)) return null;
-            const budget = extractBudget(message);
-            if (budget && message.length <= 30) return null;
-            const timeline = extractTimeline(message);
-            if (timeline && message.length <= 30) return null;
+    // Avoid capturing pure budget/timeline answers for unrelated questions.
+    if (isBareBudgetAnswer(message) || isBareTimelineAnswer(message)) return null;
+    const budget = extractBudget(message);
+    if (budget && message.length <= 30) return null;
+    const timeline = extractTimeline(message);
+    if (timeline && message.length <= 30) return null;
 
-            return message;
-        }
+    return message;
+}
     }
 };
 
@@ -2269,8 +2018,8 @@ export function processUserAnswer(state, message) {
         : null;
     const nextQuestionKey =
         focusKey &&
-        (!collectedData[focusKey] || normalizeText(collectedData[focusKey]) === "") &&
-        focusKey !== questions[currentStep]?.key
+            (!collectedData[focusKey] || normalizeText(collectedData[focusKey]) === "") &&
+            focusKey !== questions[currentStep]?.key
             ? focusKey
             : null;
 
@@ -2371,14 +2120,6 @@ export function getNextHumanizedQuestion(state) {
     if (question?.key === "budget" && applyWebsiteBudgetRules) {
         const budgetCheck = validateWebsiteBudget(collectedData);
         const requirement = budgetCheck?.requirement || null;
-        const requiredMin = Number.isFinite(requirement?.min) ? requirement.min : null;
-        const minLabel = requiredMin ? formatInr(requiredMin) : "";
-        suggestionsOverride = buildWebsiteBudgetSuggestions(requirement);
-        const hasRange = Boolean(requirement?.range);
-        const rangeHint =
-            hasRange && requirement?.range
-                ? `${formatInr(requirement.range.min)} - ${formatInr(requirement.range.max)}`
-                : "";
         const requirementLabel = (() => {
             if (requirement?.baseLabel && requirement?.wants3D) {
                 return `${requirement.baseLabel} + 3D`;
@@ -2388,20 +2129,16 @@ export function getNextHumanizedQuestion(state) {
 
         const providedRaw = normalizeText(collectedData?.budget);
         if (providedRaw && !budgetCheck.isValid) {
-            if (budgetCheck.reason === "too_low" && budgetCheck.parsed && minLabel) {
+            if (budgetCheck.reason === "too_low" && budgetCheck.parsed) {
                 const provided = formatBudgetDisplay(budgetCheck.parsed) || providedRaw;
-                const extra = rangeHint
-                    ? ` 3D custom websites typically range ${rangeHint}.`
-                    : "";
-
                 const reply =
-                    `Your budget of ${provided} is below the minimum for ${requirementLabel} ` +
-                    `(minimum: ${minLabel}). Would you like to increase your budget or change the technology?${extra}`;
-
+                    `Your budget of ${provided} looks low for ${requirementLabel}. ` +
+                    "Would you like to increase your budget or change the technology?";
+                const suggestionsOverride = buildWebsiteBudgetSuggestions(requirement);
                 const suggestionsText =
                     Array.isArray(suggestionsOverride) && suggestionsOverride.length
                         ? suggestionsOverride.join(" | ")
-                        : [minLabel, "Change technology"].filter(Boolean).join(" | ");
+                        : "Change technology";
 
                 return withQuestionKeyTag(
                     `${reply}\n[SUGGESTIONS: ${suggestionsText}]`,
@@ -2409,17 +2146,9 @@ export function getNextHumanizedQuestion(state) {
                 );
             }
 
-            if (budgetCheck.reason === "unparsed" && minLabel) {
-                const extra = rangeHint ? ` 3D projects typically range ${rangeHint}.` : "";
-                text =
-                    `What budget are you comfortable with in INR? Minimum for ${requirementLabel} ` +
-                    `is ${minLabel}.${extra}`;
+            if (budgetCheck.reason === "unparsed") {
+                text = "What budget are you comfortable with in INR?";
             }
-        } else if (minLabel) {
-            const extra = rangeHint ? ` 3D projects typically range ${rangeHint}.` : "";
-            text =
-                `What's your budget for this project? Minimum for ${requirementLabel} ` +
-                `is ${minLabel}.${extra}`;
         }
     }
 
