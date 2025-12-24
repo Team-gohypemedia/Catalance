@@ -1,0 +1,43 @@
+import { asyncHandler } from "../utils/async-handler.js";
+import { prisma } from "../lib/prisma.js";
+import { AppError } from "../utils/app-error.js";
+
+// ... existing imports
+
+export const getAvailability = asyncHandler(async (req, res) => {
+  // Publicly accessible within authenticated app - no specific role check needed?
+  // Or maybe just generic check.
+  const { date } = req.query;
+  if (!date) {
+    throw new AppError("Date query parameter is required", 400);
+  }
+
+  const queryDate = new Date(date);
+  if (isNaN(queryDate.getTime())) {
+    throw new AppError("Invalid date format", 400);
+  }
+
+  // Range: Start of day to End of day (in UTC or relevant timezone?)
+  // Assuming frontend sends "YYYY-MM-DD" or ISO. 
+  // Let's match by day.
+  const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
+
+  const bookedDisputes = await prisma.dispute.findMany({
+    where: {
+      meetingDate: {
+        gte: startOfDay,
+        lte: endOfDay
+      },
+      status: { not: "RESOLVED" } // assuming resolved meetings might still count? Or maybe only open ones. Let's block all.
+    },
+    select: {
+      meetingDate: true
+    }
+  });
+
+  // Extract times
+  const bookedSlots = bookedDisputes.map(d => d.meetingDate);
+
+  res.json({ data: bookedSlots });
+});

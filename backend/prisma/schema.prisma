@@ -60,6 +60,7 @@ model User {
   sentMessages ChatMessage[]      @relation("ChatSender")
   raisedDisputes Dispute[] @relation("DisputeRaiser")
   managedDisputes Dispute[] @relation("DisputeManager")
+  notifications Notification[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
@@ -154,4 +155,18 @@ model ChatMessage {
   readAt          DateTime?
   createdAt       DateTime         @default(now())
   @@index([conversationId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   @default("general")
+  title     String
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  data      Json?    // Extra data like link, relatedId etc.
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

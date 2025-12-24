@@ -6,7 +6,7 @@ export const createDispute = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   if (!userId) throw new AppError("Authentication required", 401);
 
-  const { description, projectId } = req.body;
+  const { description, projectId, meetingDate } = req.body;
 
   if (!description || !projectId) {
     throw new AppError("Description and Project ID are required", 400);
@@ -17,7 +17,8 @@ export const createDispute = asyncHandler(async (req, res) => {
       description,
       projectId,
       raisedById: userId,
-      status: "OPEN"
+      status: "OPEN",
+      meetingDate: meetingDate ? new Date(meetingDate) : undefined
     }
   });
 
@@ -192,4 +193,34 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
   });
 
   res.json({ message: "Project reassigned successfully" });
+});
+
+export const getAvailability = asyncHandler(async (req, res) => {
+  const { date } = req.query;
+  if (!date) {
+    throw new AppError("Date query parameter is required", 400);
+  }
+
+  const queryDate = new Date(date);
+  if (isNaN(queryDate.getTime())) {
+    throw new AppError("Invalid date format", 400);
+  }
+
+  const startOfDay = new Date(queryDate.getFullYear(), queryDate.getMonth(), queryDate.getDate(), 0, 0, 0, 0);
+  const endOfDay = new Date(queryDate.getFullYear(), queryDate.getMonth(), queryDate.getDate(), 23, 59, 59, 999);
+
+  const bookedDisputes = await prisma.dispute.findMany({
+    where: {
+      meetingDate: {
+        gte: startOfDay,
+        lte: endOfDay
+      },
+      status: { not: "RESOLVED" }
+    },
+    select: {
+      meetingDate: true
+    }
+  });
+
+  res.json({ data: bookedDisputes.map(d => d.meetingDate) });
 });

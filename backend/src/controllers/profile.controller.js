@@ -38,7 +38,8 @@ export const getProfile = asyncHandler(async (req, res) => {
       },
       skills: user.skills ?? [],
       workExperience: extras.workExperience ?? [],
-      services: extras.services ?? []
+      services: extras.services ?? [],
+      portfolio: extras.portfolio ?? {} // New: Return portfolio
     }
   });
 });
@@ -67,12 +68,12 @@ export const saveProfile = asyncHandler(async (req, res) => {
     // Legacy mapping logic
     const { personal, skills, workExperience, services } = payload;
     const extras = {
-        phone: personal.phone,
         location: personal.location,
         headline: personal.headline, // NEW: Support headline
         available: personal.available, // NEW: Support availability
         workExperience: workExperience ?? [],
-        services: services ?? []
+        services: services ?? [],
+        portfolio: payload.portfolio ?? {} // New: Save portfolio
     };
     updateData.skills = skills ?? [];
     updateData.bio = JSON.stringify(extras);

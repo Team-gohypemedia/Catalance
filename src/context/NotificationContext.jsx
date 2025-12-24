@@ -151,6 +151,29 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
+  // Fetch initial notifications
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchNotifications = async () => {
+      try {
+        const res = await apiClient("/notifications");
+        const data = await res.json();
+        
+        if (data.status === "success") {
+          setNotifications(data.data.notifications || []);
+          setUnreadCount(data.data.unreadCount || 0);
+          setChatUnreadCount(data.data.chatUnreadCount || 0);
+          setProposalUnreadCount(data.data.proposalUnreadCount || 0);
+        }
+      } catch (error) {
+        console.error("[Notification] Failed to fetch notifications:", error);
+      }
+    };
+
+    fetchNotifications();
+  }, [isAuthenticated]);
+
   // Connect to socket.io for real-time notifications
   useEffect(() => {
     console.log("[Notification] Checking connection prerequisites:", {

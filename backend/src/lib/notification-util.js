@@ -1,9 +1,8 @@
-// Notification utility - uses Firebase Cloud Messaging for push notifications
-
 import { sendPushNotification } from "./firebase-admin.js";
 import { sendSocketNotification } from "./socket-manager.js";
+import { prisma } from "./prisma.js";
 
-// Send a notification to a specific user via Firebase Push AND Socket.io
+// Send a notification to a specific user via DB, Firebase Push AND Socket.io
 export const sendNotificationToUser = async (userId, notification) => {
   if (!userId) {
     console.log(`[NotificationUtil] ❌ Cannot send - no userId provided`);
@@ -13,6 +12,29 @@ export const sendNotificationToUser = async (userId, notification) => {
   console.log(`[NotificationUtil] 📤 Sending notification to user: ${userId}`);
   console.log(`[NotificationUtil] 📦 Payload:`, { type: notification.type, title: notification.title });
 
+  // 1. Persist to Database
+  let dbNotification = null;
+  try {
+    dbNotification = await prisma.notification.create({
+      data: {
+        userId,
+        type: notification.type || "general",
+        title: notification.title,
+        message: notification.message || notification.body || "",
+        data: notification.data || {},
+        read: false
+      }
+    });
+    console.log(`[NotificationUtil] 💾 Notification saved to DB with ID: ${dbNotification.id}`);
+    
+    // Enrich notification with DB ID
+    notification.id = dbNotification.id;
+    notification.createdAt = dbNotification.createdAt;
+  } catch (dbError) {
+    console.error(`[NotificationUtil] ⚠️ Failed to save notification to DB:`, dbError);
+  }
+
+  // 2. Send via Socket.io
   let sentViaSocket = false;
   try {
     sentViaSocket = sendSocketNotification(userId, notification);
@@ -25,6 +47,7 @@ export const sendNotificationToUser = async (userId, notification) => {
     console.error(`[NotificationUtil] ⚠️ Socket notification error:`, err);
   }
 
+  // 3. Send via Firebase Cloud Messaging
   try {
     const pushResult = await sendPushNotification(userId, notification);
     if (pushResult.success) {

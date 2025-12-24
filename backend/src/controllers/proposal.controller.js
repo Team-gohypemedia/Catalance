@@ -437,10 +437,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
 
         // 3. Create the message with earnings after 30% platform fee
         const freelancerName = updated.freelancer.fullName || updated.freelancer.name || updated.freelancer.email || "Freelancer";
-        const proposalAmount = updated.amount || 0;
-        const freelancerEarnings = Math.round(proposalAmount * 0.7); // 70% after 30% platform fee
-        const formattedEarnings = freelancerEarnings.toLocaleString('en-IN');
-        const messageContent = `I have accepted your proposal for "${projectTitle}". My earnings for this project: ₹${formattedEarnings} (after platform fee). I'm ready to start!`;
+        const messageContent = `I have accepted the proposal. Let's start the work!`;
         const userMessage = await prisma.chatMessage.create({
           data: {
             conversationId: conversation.id,
