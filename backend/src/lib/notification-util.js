@@ -2,14 +2,27 @@ import { sendPushNotification } from "./firebase-admin.js";
 import { sendSocketNotification } from "./socket-manager.js";
 import { prisma } from "./prisma.js";
 
+import { sendEmail } from "./email-service.js";
+
 // Send a notification to a specific user via DB, Firebase Push AND Socket.io
-export const sendNotificationToUser = async (userId, notification) => {
+export const sendNotificationToUser = async (userId, notification, shouldEmail = true) => {
   if (!userId) {
     console.log(`[NotificationUtil] ❌ Cannot send - no userId provided`);
     return false;
   }
 
-  console.log(`[NotificationUtil] 📤 Sending notification to user: ${userId}`);
+  // Fetch user to get email and settings
+  let user = null;
+  try {
+      user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true, fullName: true }
+      });
+  } catch (e) {
+      console.warn(`[NotificationUtil] Failed to fetch user ${userId} for email`);
+  }
+
+  console.log(`[NotificationUtil] 📤 Sending to user: ${userId} (${user?.email})`);
   console.log(`[NotificationUtil] 📦 Payload:`, { type: notification.type, title: notification.title });
 
   // 1. Persist to Database
@@ -25,40 +38,51 @@ export const sendNotificationToUser = async (userId, notification) => {
         read: false
       }
     });
-    console.log(`[NotificationUtil] 💾 Notification saved to DB with ID: ${dbNotification.id}`);
+    console.log(`[NotificationUtil] 💾 Saved to DB: ${dbNotification.id}`);
     
     // Enrich notification with DB ID
     notification.id = dbNotification.id;
     notification.createdAt = dbNotification.createdAt;
   } catch (dbError) {
-    console.error(`[NotificationUtil] ⚠️ Failed to save notification to DB:`, dbError);
+    console.error(`[NotificationUtil] ⚠️ Failed to save to DB:`, dbError);
   }
 
-  // 2. Send via Socket.io
+  // 2. Send via Email (if user found and enabled)
+  if (shouldEmail && user?.email) {
+      // Don't await email to prevent blocking response
+      sendEmail({
+          to: user.email,
+          subject: notification.title || "New Notification - Catalance",
+          title: notification.title,
+          text: notification.message || notification.body || "You have a new notification."
+      });
+  }
+
+  // 3. Send via Socket.io
   let sentViaSocket = false;
   try {
     sentViaSocket = sendSocketNotification(userId, notification);
     if (sentViaSocket) {
-      console.log(`[NotificationUtil] ✅ Socket notification sent to user ${userId}`);
+      console.log(`[NotificationUtil] ✅ Socket sent`);
     } else {
-      console.log(`[NotificationUtil] ℹ️ Socket notification skipped (user offline or socket not init)`);
+      console.log(`[NotificationUtil] ℹ️ Socket skipped (offline)`);
     }
   } catch (err) {
-    console.error(`[NotificationUtil] ⚠️ Socket notification error:`, err);
+    console.error(`[NotificationUtil] ⚠️ Socket error:`, err);
   }
 
-  // 3. Send via Firebase Cloud Messaging
+  // 4. Send via Firebase Cloud Messaging
   try {
     const pushResult = await sendPushNotification(userId, notification);
     if (pushResult.success) {
-      console.log(`[NotificationUtil] ✅ Push notification sent to user ${userId}`);
+      console.log(`[NotificationUtil] ✅ Push sent`);
       return true;
     } else {
-      console.log(`[NotificationUtil] ⚠️ Push notification not sent:`, pushResult.reason || pushResult.error);
-      return sentViaSocket; // Return true if at least socket worked
+      console.log(`[NotificationUtil] ⚠️ Push not sent:`, pushResult.reason || pushResult.error);
+      return sentViaSocket; 
     }
   } catch (error) {
-    console.error(`[NotificationUtil] ❌ Push notification failed:`, error.message);
+    console.error(`[NotificationUtil] ❌ Push failed:`, error.message);
     return sentViaSocket;
   }
 };

@@ -37,6 +37,8 @@ import AdminProjects from "@/components/admin/AdminProjects";
 import AdminProjectDetail from "@/components/admin/AdminProjectDetail";
 import AdminDisputes from "@/components/admin/AdminDisputes";
 import AdminLogin from "@/components/admin/AdminLogin";
+import AdminApprovals from "@/components/admin/AdminApprovals";
+import AdminUserDetails from "@/components/admin/AdminUserDetails";
 import AdminRoute from "@/components/auth/AdminRoute";
 
 const App = () => {
@@ -320,10 +322,26 @@ const App = () => {
             }
           />
           <Route
+            path="/admin/users/:userId"
+            element={
+              <AdminRoute>
+                <AdminUserDetails />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/projects/:id"
             element={
               <AdminRoute>
                 <AdminProjectDetail />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/approvals"
+            element={
+              <AdminRoute>
+                <AdminApprovals />
               </AdminRoute>
             }
           />
