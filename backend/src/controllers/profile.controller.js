@@ -69,6 +69,7 @@ export const saveProfile = asyncHandler(async (req, res) => {
     // Legacy mapping logic
     const { personal, skills, workExperience, services } = payload;
     const extras = {
+        phone: personal.phone, // NEW: Support phone
         location: personal.location,
         headline: personal.headline, // NEW: Support headline
         available: personal.available, // NEW: Support availability

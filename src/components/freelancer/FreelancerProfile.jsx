@@ -196,14 +196,9 @@ const FreelancerProfile = () => {
       return;
     }
 
-    // Validation for Developers
-    const isDeveloper = services.some(s => s.toLowerCase().includes('development') || s.toLowerCase().includes('tech') || s.toLowerCase().includes('developer'));
-    if (isDeveloper && !portfolio.githubUrl?.trim()) {
-        toast.error("Validation Failed", {
-            description: "GitHub URL is mandatory for developers."
-        });
-        return;
-    }
+    // Validation removed as per user request
+    // const isDeveloper = services.some(s => ...);
+    // if (isDeveloper && !portfolio.githubUrl?.trim()) ...
 
     const skillsForApi = skills
       .map((s) => (typeof s === "string" ? s : s.name))
@@ -519,7 +514,7 @@ const FreelancerProfile = () => {
                     <a href={portfolio.githubUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
                         {portfolio.githubUrl}
                     </a>
-                ) : <span className="text-muted-foreground text-sm">Not added (Mandatory for Devs)</span>}
+                ) : <span className="text-muted-foreground text-sm">Not added</span>}
              </div>
           </div>
         </section>
@@ -833,7 +828,7 @@ const FreelancerProfile = () => {
                         />
                     </label>
                     <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                        GitHub URL {services.some(s => s.toLowerCase().includes('development') || s.toLowerCase().includes('tech') || s.toLowerCase().includes('developer')) ? '(Mandatory)' : '(Optional)'}
+                        GitHub URL (Optional)
                         <input
                             value={portfolio.githubUrl}
                             onChange={(e) => setPortfolio(prev => ({ ...prev, githubUrl: e.target.value }))}
