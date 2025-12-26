@@ -315,7 +315,7 @@ const FreelancerProfile = () => {
           { 
             link: newProjectUrl, 
             image: data.data.image,
-            title: newProjectUrl.replace(/^https?:\/\//, '').split('/')[0] 
+            title: data.data.title || newProjectUrl.replace(/^https?:\/\//, '').split('/')[0] 
           }
         ]);
         setNewProjectUrl("");
