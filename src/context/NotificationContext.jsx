@@ -12,7 +12,7 @@ import {
 } from "react";
 import { io } from "socket.io-client";
 import { useAuth } from "@/context/AuthContext";
-import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED, apiClient } from "@/lib/api-client";
+import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED, request as apiClient } from "@/lib/api-client";
 import { requestNotificationPermission, onForegroundMessage } from "@/lib/firebase";
 
 const NotificationContext = createContext(null);
@@ -155,17 +155,14 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const fetchNotifications = async () => {
+      const fetchNotifications = async () => {
       try {
-        const res = await apiClient("/notifications");
-        const data = await res.json();
+        const data = await apiClient("/notifications");
         
-        if (data.status === "success") {
-          setNotifications(data.data.notifications || []);
-          setUnreadCount(data.data.unreadCount || 0);
-          setChatUnreadCount(data.data.chatUnreadCount || 0);
-          setProposalUnreadCount(data.data.proposalUnreadCount || 0);
-        }
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+        setChatUnreadCount(data.chatUnreadCount || 0);
+        setProposalUnreadCount(data.proposalUnreadCount || 0);
       } catch (error) {
         console.error("[Notification] Failed to fetch notifications:", error);
       }
