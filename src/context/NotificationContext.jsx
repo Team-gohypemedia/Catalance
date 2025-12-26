@@ -62,17 +62,31 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   // Remove a notification when clicked/read
-  const markAsRead = useCallback((notificationId) => {
+  const markAsRead = useCallback(async (notificationId) => {
+    // Optimistically remove from UI
     setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     setUnreadCount((prev) => Math.max(0, prev - 1));
+
+    try {
+      await apiClient(`/notifications/${notificationId}/read`, { method: "PATCH" });
+    } catch (error) {
+      console.error("Failed to mark notification as read", error);
+    }
   }, []);
 
   // Mark all notifications as read
-  const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = useCallback(async () => {
+    // Optimistically clear all
+    setNotifications([]);
     setUnreadCount(0);
     setChatUnreadCount(0);
     setProposalUnreadCount(0);
+
+    try {
+      await apiClient("/notifications/read-all", { method: "PATCH" });
+    } catch (error) {
+      console.error("Failed to mark all as read", error);
+    }
   }, []);
 
   // Clear all notifications
@@ -171,7 +185,9 @@ export const NotificationProvider = ({ children }) => {
       try {
         const data = await apiClient("/notifications");
         
-        setNotifications(data.notifications || []);
+        // User wants notifications to be "one time" (removed when read)
+        // So we only filter unread ones
+        setNotifications((data.notifications || []).filter(n => !n.read));
         setUnreadCount(data.unreadCount || 0);
         setChatUnreadCount(data.chatUnreadCount || 0);
         setProposalUnreadCount(data.proposalUnreadCount || 0);

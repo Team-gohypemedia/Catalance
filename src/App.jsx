@@ -1,6 +1,9 @@
 import PropTypes from "prop-types";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "@/components/home/Home.jsx";
+import About from "@/components/home/About.jsx";
+import Services from "@/components/home/Services.jsx";
+import Contact from "@/components/home/Contact.jsx";
 import Client from "@/components/client/Client.jsx";
 import ClientDashboard from "@/components/client/ClientDashboard.jsx";
 import ClientProposal from "@/components/client/ClientProposal.jsx";
@@ -58,6 +61,30 @@ const App = () => {
             path="/signup"
             element={
               <SignupPage />
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <LayoutWithNavbar>
+                <About />
+              </LayoutWithNavbar>
+            }
+          />
+          <Route
+            path="/services"
+            element={
+              <LayoutWithNavbar>
+                <Services />
+              </LayoutWithNavbar>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <LayoutWithNavbar>
+                <Contact />
+              </LayoutWithNavbar>
             }
           />
           <Route
