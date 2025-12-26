@@ -151,26 +151,33 @@ const About = () => {
         
     }, { scope: containerRef });
 
-    // Stats Counter Animation
+    // Stats Counter Animation (GSAP for smoothness)
     useEffect(() => {
         const counters = document.querySelectorAll(".stat-number");
-        counters.forEach((counter) => {
-            const target = parseInt(counter.getAttribute("data-target"));
-            const duration = 2000;
-            const increment = target / (duration / 16);
-            let current = 0;
-
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    counter.textContent = target + (counter.getAttribute("data-suffix") || "");
-                    clearInterval(timer);
-                } else {
-                    counter.textContent = Math.floor(current) + (counter.getAttribute("data-suffix") || "");
-                }
-            }, 16);
-            return () => clearInterval(timer);
+        const ctx = gsap.context(() => {
+            counters.forEach((counter) => {
+                const target = parseInt(counter.getAttribute("data-target"));
+                const suffix = counter.getAttribute("data-suffix") || "";
+                
+                // Animate from 0 to target
+                const obj = { value: 0 };
+                
+                // Use ScrollTrigger logic if possible, otherwise just on mount/view
+                // Since there's a parent animation that fades them in, we can start counting effectively immediately 
+                // or wait for the fade in. Given the parent GSAP timeline, the elements fade in. 
+                // Let's just run it immediately as they appear.
+                
+                gsap.to(obj, {
+                    value: target,
+                    duration: 2.5,
+                    ease: "power2.out",
+                    onUpdate: () => {
+                        counter.textContent = Math.floor(obj.value) + suffix;
+                    }
+                });
+            });
         });
+        return () => ctx.revert();
     }, []);
 
     const stats = [

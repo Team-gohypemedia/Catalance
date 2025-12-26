@@ -20,6 +20,7 @@ import ManagerProjectDetail from "@/components/project-manager/ManagerProjectDet
 import ManagerChat from "@/components/project-manager/ManagerChat";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
+import Footer from "@/components/Footer";
 import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
 import ForgotPasswordPage from "./components/forms/ForgotPassword";
@@ -390,6 +391,7 @@ const LayoutWithNavbar = ({ children }) => (
   <>
     <Navbar />
     {children}
+    <Footer />
   </>
 );
 
