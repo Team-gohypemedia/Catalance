@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
+import { API_BASE_URL } from "@/lib/api-client";
 
 const serviceOptions = [
   "Web development",
@@ -15,8 +16,6 @@ const serviceOptions = [
   "AI/ML integration",
 ];
 
-// Use relative path to leverage Vite proxy in development
-const API_BASE_URL = "/api";
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 
 const initialWorkForm = {
