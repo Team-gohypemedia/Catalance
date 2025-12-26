@@ -5,13 +5,13 @@ const prisma = new PrismaClient();
 
 async function createPM() {
     // Hash the password
-    const password = 'Kshitij@123'; // Default password - should be changed on first login
+    const password = process.env.PM_PASSWORD || 'DefaultPass123!'; 
     const passwordHash = await bcrypt.hash(password, 10);
 
     const newPM = await prisma.user.create({
         data: {
-            fullName: 'Kshitij Sharma',
-            email: 'kshitij@catalance.com',
+            fullName: 'Project Manager',
+            email: process.env.PM_EMAIL || 'pm@catalance.com',
             passwordHash: passwordHash,
             role: 'PROJECT_MANAGER'
         }
