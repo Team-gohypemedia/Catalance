@@ -11,6 +11,7 @@ import {
   useRef
 } from "react";
 import { io } from "socket.io-client";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED, request as apiClient } from "@/lib/api-client";
 import { requestNotificationPermission, onForegroundMessage } from "@/lib/firebase";
@@ -106,15 +107,26 @@ export const NotificationProvider = ({ children }) => {
             message: "You will now receive updates on this device.",
             createdAt: new Date().toISOString()
           });
+          toast.success("Notifications enabled successfully");
         } catch (saveError) {
           console.error("[Notification] Failed to save FCM token to backend:", saveError);
         }
         
         return token;
+      } else {
+        // Token null means permission denied or error
+        if (Notification.permission === 'denied') {
+          toast.error("Notifications are blocked", {
+            description: "Please enable notifications for this site in your browser settings (click the lock icon in address bar)."
+          });
+        } else {
+           toast.error("Could not enable notifications");
+        }
+        return null;
       }
-      return null;
     } catch (error) {
       console.error("[Notification] Error requesting push permission:", error);
+      toast.error("Failed to request permission");
       return null;
     }
   }, []);
