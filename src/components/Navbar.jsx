@@ -20,7 +20,7 @@ import { Sun, Moon } from "lucide-react";
 const navItems = [
   { name: "Home", link: "/" },
   { name: "About", link: "/about" },
-  { name: "Pricing", link: "/pricing" },
+  { name: "Service", link: "/service" },
   { name: "Contact", link: "/contact" },
 ];
 

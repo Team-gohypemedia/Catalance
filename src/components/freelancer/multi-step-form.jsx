@@ -25,6 +25,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { COUNTRY_CODES } from "@/data/countryCodes";
 
 import { API_BASE_URL, signup, verifyOtp } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -318,6 +327,7 @@ const FreelancerMultiStepForm = () => {
     email: "",
     password: "",
     phone: "",
+    countryCode: "US", // Store ISO code (e.g., "US") instead of dial code
     location: "",
   });
 
@@ -541,7 +551,11 @@ const FreelancerMultiStepForm = () => {
           githubUrl: formData.githubProfile,
         },
         acceptedTerms: formData.termsAccepted,
-        phone: formData.phone,
+        phone: (() => {
+           const country = COUNTRY_CODES.find(c => c.code === formData.countryCode);
+           const dialCode = country ? country.dial_code : "+1";
+           return `${dialCode} ${formData.phone}`;
+        })(),
         location: formData.location,
       };
 
@@ -568,7 +582,11 @@ const FreelancerMultiStepForm = () => {
         personal: {
           name: formData.fullName.trim(),
           email: normalizedEmail,
-          phone: formData.phone.trim(),
+          phone: (() => {
+             const country = COUNTRY_CODES.find(c => c.code === formData.countryCode);
+             const dialCode = country ? country.dial_code : "+1";
+             return `${dialCode} ${formData.phone}`;
+          })(),
           location: formData.location.trim(),
         },
         skills: Array.isArray(formData.skills)
@@ -634,7 +652,11 @@ const FreelancerMultiStepForm = () => {
         personal: {
           name: formData.fullName.trim(),
           email: normalizedEmail,
-          phone: formData.phone.trim(),
+          phone: (() => {
+             const country = COUNTRY_CODES.find(c => c.code === formData.countryCode);
+             const dialCode = country ? country.dial_code : "+1";
+             return `${dialCode} ${formData.phone}`;
+          })(),
           location: formData.location.trim(),
         },
         skills: Array.isArray(formData.skills)
@@ -916,6 +938,7 @@ const FreelancerMultiStepForm = () => {
                       email={formData.email}
                       password={formData.password}
                       phone={formData.phone}
+                      countryCode={formData.countryCode}
                       location={formData.location}
                       onChange={handleFieldChange}
                     />
@@ -1530,6 +1553,7 @@ const StepPersonalInfo = ({
   password,
   phone,
   location,
+  countryCode,
   onChange,
 }) => {
   return (
@@ -1602,14 +1626,40 @@ const StepPersonalInfo = ({
           >
             Phone Number
           </Label>
-          <Input
-            id="phone"
-            type="tel"
-            value={phone}
-            onChange={(event) => onChange("phone", event.target.value)}
-            placeholder="+1 (555) 000-0000"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
+          <div className="flex gap-2">
+            <Select
+              value={countryCode}
+              onValueChange={(value) => onChange("countryCode", value)}
+            >
+              <SelectTrigger className="w-[140px] h-11 bg-background border border-input">
+                {/* Render selected value manually to keep trigger compact */}
+                <span className="truncate">
+                   {(() => {
+                      const selected = COUNTRY_CODES.find(c => c.code === countryCode);
+                      return selected ? `${selected.code} ${selected.dial_code}` : "Code";
+                   })()}
+                </span>
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                {COUNTRY_CODES.map((country) => (
+                  <SelectItem key={country.code} value={country.code}>
+                    <span className="flex items-center gap-2">
+                      <span className="font-medium">{country.name}</span>
+                      <span className="text-muted-foreground">({country.dial_code})</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(event) => onChange("phone", event.target.value)}
+              placeholder="(555) 000-0000"
+              className="flex-1 h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            />
+          </div>
         </div>
 
         <div className="space-y-2">

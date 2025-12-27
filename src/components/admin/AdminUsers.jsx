@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,16 +8,15 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Search, Eye, Ban, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
-import UserDetailsDialog from "./UserDetailsDialog";
+
 
 const AdminUsers = ({ roleFilter }) => {
   const { authFetch } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   const pageTitle = roleFilter 
     ? (roleFilter === "CLIENT" ? "Clients" : roleFilter === "PROJECT_MANAGER" ? "Project Managers" : "Freelancers")
@@ -77,8 +77,7 @@ const AdminUsers = ({ roleFilter }) => {
   };
 
   const handleView = (userId) => {
-    setSelectedUserId(userId);
-    setDetailsDialogOpen(true);
+    navigate(`/admin/users/${userId}`);
   };
 
   return (
@@ -154,9 +153,15 @@ const AdminUsers = ({ roleFilter }) => {
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           user.status === 'SUSPENDED' 
                             ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                            : (user.status === 'PENDING_APPROVAL' || (user.role === 'FREELANCER' && !user.isVerified))
+                              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         }`}>
-                          {user.status === 'SUSPENDED' ? 'Suspended' : 'Active'}
+                          {user.status === 'SUSPENDED' 
+                            ? 'Suspended' 
+                            : (user.status === 'PENDING_APPROVAL' || (user.role === 'FREELANCER' && !user.isVerified))
+                              ? 'Pending'
+                              : 'Active'}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
@@ -205,11 +210,6 @@ const AdminUsers = ({ roleFilter }) => {
       </div>
     </AdminLayout>
     
-    <UserDetailsDialog
-      userId={selectedUserId}
-      open={detailsDialogOpen}
-      onOpenChange={setDetailsDialogOpen}
-    />
     </>
   );
 };

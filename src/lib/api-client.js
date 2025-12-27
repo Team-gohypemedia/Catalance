@@ -60,7 +60,7 @@ const defaultHeaders = {
   "Content-Type": "application/json"
 };
 
-const request = async (path, options = {}) => {
+export const request = async (path, options = {}) => {
   const session = getSession();
   const authHeaders = session?.accessToken
     ? { Authorization: `Bearer ${session.accessToken}` }
