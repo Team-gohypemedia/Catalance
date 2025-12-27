@@ -127,20 +127,7 @@ export const AdminTopBar = ({ label, interactive = true }) => {
             </div>
             
             {/* Enable Push Notifications Banner - Required for Firebase Messaging */}
-            {!pushEnabled && (
-              <div className="border-b bg-primary/5 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <BellRing className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium">Enable notifications</p>
-                    <p className="text-xs text-muted-foreground">Receive updates instantly</p>
-                  </div>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleEnablePush}>
-                    Enable
-                  </Button>
-                </div>
-              </div>
-            )}
+            {/* Enable Push Notifications Banner - Removed per user request */}
             
             <ScrollArea className="h-72">
               {notifications.length === 0 ? (

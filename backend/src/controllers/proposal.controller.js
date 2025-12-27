@@ -467,7 +467,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
               service: serviceKey,
               senderId: freelancerId
             }
-          });
+          }, false); // No email for chat messages
         } catch (notifyErr) {
           console.error("Failed to notify client about auto-message:", notifyErr);
         }

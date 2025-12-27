@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
+import { API_BASE_URL } from "@/lib/api-client";
 
 const serviceOptions = [
   "Web development",
@@ -15,8 +16,6 @@ const serviceOptions = [
   "AI/ML integration",
 ];
 
-// Use relative path to leverage Vite proxy in development
-const API_BASE_URL = "/api";
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 
 const initialWorkForm = {
@@ -51,6 +50,7 @@ const FreelancerProfile = () => {
   const [newProjectUrl, setNewProjectUrl] = useState("");
   const [newProjectLoading, setNewProjectLoading] = useState(false);
   const [session, setSession] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   // Derive initials for avatar
   const initials =
@@ -75,7 +75,11 @@ const FreelancerProfile = () => {
     }
 
     const loadProfile = async () => {
-      if (!authSession?.user?.email) return;
+      setProfileLoading(true);
+      if (!authSession?.user?.email) {
+          setProfileLoading(false);
+          return;
+      }
 
       try {
         const response = await fetch(
@@ -114,10 +118,14 @@ const FreelancerProfile = () => {
           )
         );
 
+
         setWorkExperience(data.workExperience ?? []);
         setServices(Array.isArray(data.services) ? data.services : []);
       } catch (error) {
         console.error("Unable to load profile", error);
+        toast.error("Failed to load profile data");
+      } finally {
+        setProfileLoading(false);
       }
     };
 
@@ -162,11 +170,17 @@ const FreelancerProfile = () => {
 
   const saveExperience = () => {
     const { company, position, from, to, description } = workForm;
-    if (!company.trim() || !position.trim() || !from.trim() || !to.trim()) return;
+    
+    if (!company.trim() || !position.trim() || !from.trim()) {
+        toast.error("Please fill in Company, Position, and Start Date");
+        return;
+    }
+
+    const toDate = to.trim() || "Present";
 
     const newItem = {
       title: `${position.trim()} · ${company.trim()}`,
-      period: `${from.trim()} – ${to.trim()}`,
+      period: `${from.trim()} – ${toDate}`,
       description: description.trim(),
     };
 
@@ -300,7 +314,7 @@ const FreelancerProfile = () => {
           { 
             link: newProjectUrl, 
             image: data.data.image,
-            title: newProjectUrl.replace(/^https?:\/\//, '').split('/')[0] 
+            title: data.data.title || newProjectUrl.replace(/^https?:\/\//, '').split('/')[0] 
           }
         ]);
         setNewProjectUrl("");
@@ -723,8 +737,9 @@ const FreelancerProfile = () => {
             size="lg"
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg shadow-sm w-full sm:w-auto"
             onClick={handleSave}
+            disabled={profileLoading}
           >
-            Save Profile
+            {profileLoading ? "Loading..." : "Save Profile"}
           </Button>
         </section>
       </main>

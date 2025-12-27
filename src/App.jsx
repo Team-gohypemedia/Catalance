@@ -1,6 +1,9 @@
 import PropTypes from "prop-types";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "@/components/home/Home.jsx";
+import About from "@/components/home/About.jsx";
+import Services from "@/components/home/Services.jsx";
+import Contact from "@/components/home/Contact.jsx";
 import Client from "@/components/client/Client.jsx";
 import ClientDashboard from "@/components/client/ClientDashboard.jsx";
 import ClientProposal from "@/components/client/ClientProposal.jsx";
@@ -17,6 +20,7 @@ import ManagerProjectDetail from "@/components/project-manager/ManagerProjectDet
 import ManagerChat from "@/components/project-manager/ManagerChat";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
+import Footer from "@/components/Footer";
 import SignupPage from "./components/forms/Signup";
 import LoginPage from "./components/forms/Login";
 import ForgotPasswordPage from "./components/forms/ForgotPassword";
@@ -37,6 +41,8 @@ import AdminProjects from "@/components/admin/AdminProjects";
 import AdminProjectDetail from "@/components/admin/AdminProjectDetail";
 import AdminDisputes from "@/components/admin/AdminDisputes";
 import AdminLogin from "@/components/admin/AdminLogin";
+import AdminApprovals from "@/components/admin/AdminApprovals";
+import AdminUserDetails from "@/components/admin/AdminUserDetails";
 import AdminRoute from "@/components/auth/AdminRoute";
 
 const App = () => {
@@ -56,6 +62,30 @@ const App = () => {
             path="/signup"
             element={
               <SignupPage />
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <LayoutWithNavbar>
+                <About />
+              </LayoutWithNavbar>
+            }
+          />
+          <Route
+            path="/services"
+            element={
+              <LayoutWithNavbar>
+                <Services />
+              </LayoutWithNavbar>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <LayoutWithNavbar>
+                <Contact />
+              </LayoutWithNavbar>
             }
           />
           <Route
@@ -320,10 +350,26 @@ const App = () => {
             }
           />
           <Route
+            path="/admin/users/:userId"
+            element={
+              <AdminRoute>
+                <AdminUserDetails />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/projects/:id"
             element={
               <AdminRoute>
                 <AdminProjectDetail />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/approvals"
+            element={
+              <AdminRoute>
+                <AdminApprovals />
               </AdminRoute>
             }
           />
@@ -345,6 +391,7 @@ const LayoutWithNavbar = ({ children }) => (
   <>
     <Navbar />
     {children}
+    <Footer />
   </>
 );
 

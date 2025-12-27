@@ -101,6 +101,9 @@ export const verifyUserOtp = async ({ email, otp }) => {
     }
   });
 
+  // Send welcome email now that they are verified
+  await maybeSendWelcomeEmail(updatedUser);
+
   return {
     user: sanitizeUser(updatedUser),
     accessToken: issueAccessToken(updatedUser)
