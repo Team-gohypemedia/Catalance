@@ -206,9 +206,34 @@ export const getAvailability = asyncHandler(async (req, res) => {
     throw new AppError("Invalid date format", 400);
   }
 
+  // Set time to midnight for exact date matching if stored as such, 
+  // or use range if stored as DateTime with time.
+  // Schema says @db.Date, so usually it stores just the date part or midnight.
+  // We'll trust prisma to handle Date object comparison or use start/end of day.
+  
+  // Actually, let's fetch any availability for this calendar date.
   const startOfDay = new Date(queryDate.getFullYear(), queryDate.getMonth(), queryDate.getDate(), 0, 0, 0, 0);
   const endOfDay = new Date(queryDate.getFullYear(), queryDate.getMonth(), queryDate.getDate(), 23, 59, 59, 999);
 
+  // 1. Get explicitly available slots from PMs
+  // We want slots that are NOT booked in ManagerAvailability
+  // And also NOT booked by an existing Dispute (double check)
+  
+  const availableSlots = await prisma.managerAvailability.findMany({
+    where: {
+      date: {
+        gte: startOfDay,
+        lte: endOfDay
+      },
+      isBooked: false
+    },
+    select: {
+      startHour: true
+    },
+    distinct: ['startHour'] // If any PM is available, show the slot
+  });
+
+  // 2. Get existing disputes to double-check collision (optional but safe)
   const bookedDisputes = await prisma.dispute.findMany({
     where: {
       meetingDate: {
@@ -222,5 +247,39 @@ export const getAvailability = asyncHandler(async (req, res) => {
     }
   });
 
-  res.json({ data: bookedDisputes.map(d => d.meetingDate) });
+  const bookedHours = new Set(bookedDisputes.map(d => new Date(d.meetingDate).getHours()));
+
+  // 3. Filter and Format
+  const validSlots = availableSlots
+    .filter(slot => !bookedHours.has(slot.startHour))
+    .map(slot => {
+      const hour = slot.startHour;
+      const period = hour >= 12 ? 'PM' : 'AM';
+      let displayHour = hour % 12;
+      if (displayHour === 0) displayHour = 12;
+      return `${displayHour.toString().padStart(2, '0')}:00 ${period}`;
+    })
+    .sort((a, b) => {
+       // Simple sort helper if needed, but strings "09:00 AM" sort okay-ish? 
+       // No, "01:00 PM" comes before "09:00 AM" alphabetically.
+       // Re-sorting by integer value is better.
+       return 0; 
+    });
+    
+  // Better sort: map back to int, sort, map to string? 
+  // Let's just return the strings, client can sort if needed, 
+  // or we sort the source array first.
+  
+  const sortedSlots = availableSlots
+    .filter(slot => !bookedHours.has(slot.startHour))
+    .sort((a, b) => a.startHour - b.startHour)
+    .map(slot => {
+      const hour = slot.startHour;
+      const period = hour >= 12 ? 'PM' : 'AM';
+      let displayHour = hour % 12;
+      if (displayHour === 0) displayHour = 12;
+      return `${displayHour.toString().padStart(2, '0')}:00 ${period}`;
+    });
+
+  res.json({ data: sortedSlots });
 });
