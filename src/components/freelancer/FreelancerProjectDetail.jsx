@@ -185,10 +185,17 @@ const FreelancerProjectDetailContent = () => {
 
     const fetchAvailability = async () => {
       try {
+        console.log("Fetching availability for date:", date.toISOString());
         const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
+        console.log("Availability response status:", res.status);
         if (res.ok) {
           const payload = await res.json();
+          console.log("Availability payload:", payload);
           setServerAvailableSlots(payload.data || []);
+        } else {
+          console.error("Availability fetch failed with status:", res.status);
+          const errorText = await res.text();
+          console.error("Error response:", errorText);
         }
       } catch (e) {
         console.error("Failed to fetch availability", e);
