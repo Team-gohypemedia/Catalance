@@ -58,6 +58,7 @@ model User {
   otpCode      String?
   otpExpires   DateTime?
   isVerified   Boolean    @default(false)
+  suspendedAt  DateTime?  // Track when user was suspended for 90-day deletion countdown
   
   // Social/Portfolio
   portfolio    String?

@@ -51,6 +51,7 @@ import { ClientTopBar } from "@/components/client/ClientTopBar";
 import { listFreelancers } from "@/lib/api-client";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { SuspensionAlert } from "@/components/ui/suspension-alert";
 
 // No static fallback data - all metrics loaded from API
 
@@ -560,9 +561,16 @@ const ClientDashboardContent = () => {
     setViewProfileFreelancer(freelancer);
   };
 
+  const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
+
   useEffect(() => {
     const session = getSession();
     setSessionUser(session?.user ?? null);
+    
+    // Show suspension alert if user is suspended
+    if (session?.user?.status === "SUSPENDED") {
+      setShowSuspensionAlert(true);
+    }
   }, []);
 
   // Fetch upcoming meetings (disputes with future meeting dates)
@@ -1211,6 +1219,13 @@ const ClientDashboardContent = () => {
     <>
       <div className="flex flex-col gap-6 p-6">
         <ClientTopBar label={dashboardLabel} />
+
+        {/* Suspension Alert */}
+        <SuspensionAlert
+          open={showSuspensionAlert}
+          onOpenChange={setShowSuspensionAlert}
+          suspendedAt={sessionUser?.suspendedAt}
+        />
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {isLoadingProjects ? (
