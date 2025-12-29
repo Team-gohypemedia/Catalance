@@ -450,7 +450,7 @@ const ClientDashboardContent = () => {
       setSelectedFreelancer(null);
       
       toast.success(`Proposal sent to ${freelancer.fullName || freelancer.name}!`);
-      navigate(`/client/project/${project.id}`);
+      // navigate(`/client/project/${project.id}`);
       
     } catch (error) {
       console.error("Failed to send proposal:", error);
