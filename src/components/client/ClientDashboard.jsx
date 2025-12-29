@@ -322,15 +322,11 @@ const ClientDashboardContent = () => {
         if (chatFreelancers.length > 0) {
           setFreelancers(chatFreelancers);
         } else {
-          // Fallback to listFreelancers if no chats
-          const fallbackData = await listFreelancers();
-          setFreelancers(Array.isArray(fallbackData) ? fallbackData.slice(0, 3) : []);
+          setFreelancers([]);
         }
       } catch (error) {
         console.error("Failed to load chat freelancers", error);
-        // Fallback on error
-        const fallbackData = await listFreelancers().catch(() => []);
-        setFreelancers(Array.isArray(fallbackData) ? fallbackData.slice(0, 3) : []);
+        setFreelancers([]);
       }
     };
     loadChatFreelancers();
@@ -1217,7 +1213,7 @@ const ClientDashboardContent = () => {
                         />
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">No freelancers found</p>
+                      <p className="text-sm text-muted-foreground italic py-4 text-center">No active chats yet</p>
                     )}
                   </ul>
                 </CardContent>

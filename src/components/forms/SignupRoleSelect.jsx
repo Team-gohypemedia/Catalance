@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -93,9 +94,9 @@ export function SignupRoleSelect({ onContinue }) {
         </Button>
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
-          <a href="/login" className="text-primary underline-offset-4 hover:underline">
+          <Link to="/login" className="text-primary underline-offset-4 hover:underline">
             Log in
-          </a>
+          </Link>
         </p>
       </div>
     </div>
