@@ -1661,6 +1661,8 @@ const buildLowBudgetWarning = (state) => {
     const collectedData = state?.collectedData || {};
     const rawBudget = normalizeText(collectedData.budget || "");
     if (!rawBudget || rawBudget === "[skipped]") return null;
+    const techValue = normalizeText(collectedData.tech || "");
+    if (!techValue || techValue === "[skipped]") return null;
 
     const budgetCheck = validateWebsiteBudget(collectedData);
     if (!budgetCheck || budgetCheck.reason !== "too_low") return null;
