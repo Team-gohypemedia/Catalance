@@ -227,8 +227,8 @@ const ClientDashboardContent = () => {
           // Try to extract timeline from content if not set
           if (!parsed.timeline && (parsed.content || parsed.summary)) {
             const text = parsed.content || parsed.summary || "";
-            // Look for timeline patterns in content
-            const timelineMatch = text.match(/Timeline(?:\s*\(with buffer\))?[:\s]*([^\n]+)/i);
+            // Look for timeline patterns in content (handles: Timeline: ..., Timeline - ..., Timeline\n- ...)
+            const timelineMatch = text.match(/Timeline[:\s\-\n\u2022]*([^\n]+)/i);
             if (timelineMatch) {
               // Clean up the timeline value
               parsed.timeline = timelineMatch[1].trim().replace(/\(with buffer\)/gi, "").trim();
@@ -237,8 +237,8 @@ const ClientDashboardContent = () => {
           // Try to extract budget from content if not set properly
           if ((!parsed.budget || parsed.budget === "Not set") && (parsed.content || parsed.summary)) {
             const text = parsed.content || parsed.summary || "";
-            const budgetMatch = text.match(/Budget[:\s]*(?:INR\s*)?([₹\d,]+)/i)
-              || text.match(/Budget range[:\s]*(?:INR\s*)?([₹\d,]+)/i);
+            // Look for budget patterns (handles: Budget: ..., Budget - INR ..., Budget\n- ₹...)
+            const budgetMatch = text.match(/Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹)?\s*([₹\d,]+)/i);
             if (budgetMatch) {
               parsed.budget = budgetMatch[1].trim();
             }
