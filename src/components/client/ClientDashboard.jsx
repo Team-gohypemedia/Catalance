@@ -418,7 +418,7 @@ const ClientDashboardContent = () => {
         body: JSON.stringify({
           title: savedProposal.projectTitle || "New Project",
           description: savedProposal.summary || savedProposal.content || "",
-          budget: parseInt(savedProposal.budget?.replace(/[₹,]/g, "")) || 0,
+          budget: parseInt(String(savedProposal.budget || "0").replace(/[^0-9]/g, "")) || 0,
           timeline: savedProposal.timeline || "1 month",
           status: "OPEN"
         }),
@@ -435,7 +435,7 @@ const ClientDashboardContent = () => {
         body: JSON.stringify({
           projectId: project.id,
           freelancerId: freelancer.id,
-          amount: parseInt(savedProposal.budget?.replace(/[₹,]/g, "")) || 0,
+          amount: parseInt(String(savedProposal.budget || "0").replace(/[^0-9]/g, "")) || 0,
           coverLetter: savedProposal.summary || savedProposal.content || "",
         }),
       });
