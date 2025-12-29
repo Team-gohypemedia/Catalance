@@ -65,21 +65,39 @@ export const saveProfile = asyncHandler(async (req, res) => {
   // If sent from new frontend, payload.bio is already a JSON string containing text+extras
   if (payload.bio !== undefined) {
     updateData.bio = payload.bio;
+    // Try to extract portfolio from bio if it exists to keep flat columns in sync
+    try {
+        const bioObj = JSON.parse(payload.bio);
+        if (bioObj.portfolio) {
+            updateData.portfolio = bioObj.portfolio.portfolioUrl || null;
+            updateData.linkedin = bioObj.portfolio.linkedinUrl || null;
+            updateData.github = bioObj.portfolio.githubUrl || null;
+        }
+    } catch (e) {
+        // Ignore parsing error
+    }
   } else if (payload.personal) {
     // Legacy mapping logic
     const { personal, skills, workExperience, services } = payload;
+    const portfolioData = payload.portfolio ?? {};
+    
     const extras = {
-        phone: personal.phone, // NEW: Support phone
+        phone: personal.phone, 
         location: personal.location,
-        headline: personal.headline, // NEW: Support headline
-        available: personal.available, // NEW: Support availability
+        headline: personal.headline, 
+        available: personal.available, 
         workExperience: workExperience ?? [],
         services: services ?? [],
-        portfolio: payload.portfolio ?? {} // New: Save portfolio
+        portfolio: portfolioData
     };
     updateData.skills = skills ?? [];
     updateData.portfolioProjects = payload.portfolioProjects ?? [];
     updateData.bio = JSON.stringify(extras);
+    
+    // Update flat columns
+    updateData.portfolio = portfolioData.portfolioUrl || null;
+    updateData.linkedin = portfolioData.linkedinUrl || null;
+    updateData.github = portfolioData.githubUrl || null;
   }
 
   await prisma.user.update({

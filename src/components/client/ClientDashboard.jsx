@@ -21,7 +21,18 @@ import {
   Trash2,
   Loader2,
   CreditCard,
+  Code,
+  MonitorSmartphone,
+  PenTool,
+  Globe,
+  ArrowRight,
+  User,
+  Wallet,
+  Eye,
+  Edit2,
 } from "lucide-react";
+import { SOP_TEMPLATES } from "../../data/sopTemplates";
+import { Link, useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +51,7 @@ import { ClientTopBar } from "@/components/client/ClientTopBar";
 import { listFreelancers } from "@/lib/api-client";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { SuspensionAlert } from "@/components/ui/suspension-alert";
 
 // No static fallback data - all metrics loaded from API
 
@@ -316,30 +328,41 @@ const FreelancerProfileDialog = ({ freelancer, isOpen, onClose }) => {
           </div>
 
           {/* Projects Section - Image Gallery */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Projects</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {/* Sample project images - in real app, these would come from freelancer.projects */}
-              {[1, 2, 3].map((i) => (
-                <div 
-                  key={i} 
-                  className="aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted/30 border border-border/40 hover:border-primary/40 transition-all duration-200 cursor-pointer group"
-                >
-                  {freelancer.projectImages?.[i - 1] ? (
-                    <img 
-                      src={freelancer.projectImages[i - 1]} 
-                      alt={`Project ${i}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
-                      <FileText className="w-8 h-8" />
+          {/* Projects Section - Image Gallery */}
+          {freelancer.featuredProjects && freelancer.featuredProjects.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Projects</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {freelancer.featuredProjects.map((project, i) => (
+                  <a 
+                    key={i} 
+                    href={project.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted/30 border border-border/40 hover:border-primary/40 transition-all duration-200 cursor-pointer group relative block"
+                  >
+                    {project.image ? (
+                      <img 
+                        src={project.image} 
+                        alt={project.title || `Project ${i + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/40 gap-2 p-2 text-center bg-secondary/20">
+                        <Globe className="w-8 h-8" />
+                        <span className="text-xs font-medium truncate w-full px-2">{project.title || project.link}</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                        <span className="text-white text-xs font-bold uppercase tracking-wider border border-white/30 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm">
+                            View Project
+                        </span>
                     </div>
-                  )}
-                </div>
-              ))}
+                  </a>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Skills Section */}
           <div className="space-y-3">
@@ -402,6 +425,113 @@ const FreelancerProfileDialog = ({ freelancer, isOpen, onClose }) => {
   );
 };
 
+
+
+export function ProposalView({ details, onView, onEdit, onSave, onSend, onDelete }) {
+  if (!details) return null;
+  return (
+    <Card className="w-full border-border/60 bg-card/20 shadow-xl overflow-hidden">
+      <CardContent className="p-6 space-y-6">
+        {/* Top Header Section - More Compact */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-border/40 pb-5">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary">Project Proposal</span>
+              <div className="h-1 w-1 rounded-full bg-border" />
+              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">
+                Created on {details.createdAtDisplay}
+              </span>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-balance">{details.projectTitle}</h1>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-[11px] gap-1.5 px-3 text-muted-foreground hover:text-foreground"
+              onClick={onView}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              View
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-[11px] gap-1.5 px-3 border-border/50 bg-transparent"
+              onClick={onSave}
+            >
+              <Save className="h-3.5 w-3.5" />
+              Save
+            </Button>
+            <Button size="sm" className="h-8 text-[11px] gap-1.5 px-4 shadow-md shadow-primary/10" onClick={onSend}>
+              <Send className="h-3.5 w-3.5" />
+              Send
+            </Button>
+             <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-lg bg-accent/5 border border-border/30 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 text-muted-foreground/70">
+                <User className="h-3 w-3" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Client</span>
+              </div>
+              <span className="text-sm font-semibold tracking-tight">{details.preparedFor}</span>
+            </div>
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 text-primary/80">
+                <Wallet className="h-3 w-3" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Budget</span>
+              </div>
+              <span className="text-sm font-bold tracking-tight text-primary">{details.budget || "N/A"}</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Helper to map service string to SOP key
+const getSOPForProposal = (service, subtype) => {
+  if (!service) return SOP_TEMPLATES.WEBSITE; // Fallback
+  
+  const s = service.toLowerCase();
+  const sub = subtype ? subtype.toLowerCase() : "";
+
+  if (s.includes("website") || s.includes("web")) return SOP_TEMPLATES.WEBSITE;
+  if (s.includes("app") || sub.includes("app")) return SOP_TEMPLATES.APP;
+  if (s.includes("software") || s.includes("saas")) return SOP_TEMPLATES.SOFTWARE;
+  if (s.includes("cyber") || s.includes("security")) return SOP_TEMPLATES.CYBERSECURITY;
+  if (s.includes("brand")) return SOP_TEMPLATES.BRAND_STRATEGY;
+  if (s.includes("pr") || s.includes("public relations")) return SOP_TEMPLATES.PUBLIC_RELATIONS;
+  if (s.includes("seo")) return SOP_TEMPLATES.SEO;
+  if (s.includes("smo") || s.includes("social media")) return SOP_TEMPLATES.SMO; // Or SOCIAL_MEDIA_LEAD_GEN depending on context
+  if (s.includes("lead") && s.includes("gen")) return SOP_TEMPLATES.LEAD_GENERATION;
+  if (s.includes("content")) return SOP_TEMPLATES.CONTENT_MARKETING;
+  if (s.includes("support")) return SOP_TEMPLATES.CUSTOMER_SUPPORT;
+  if (s.includes("data entry")) return SOP_TEMPLATES.DATA_ENTRY;
+  if (s.includes("transcription")) return SOP_TEMPLATES.TRANSCRIPTION;
+  if (s.includes("translation")) return SOP_TEMPLATES.TRANSLATION;
+  if (s.includes("tutoring")) return SOP_TEMPLATES.TUTORING;
+  if (s.includes("coaching")) return SOP_TEMPLATES.COACHING;
+  if (s.includes("course")) return SOP_TEMPLATES.COURSE_DEVELOPMENT;
+  if (s.includes("legal")) return SOP_TEMPLATES.LEGAL_CONSULTING;
+  if (s.includes("ip") || s.includes("intellectual")) return SOP_TEMPLATES.IP_SERVICES;
+
+  return SOP_TEMPLATES.WEBSITE; // Default fallback
+};
+
 const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const [savedProposal, setSavedProposal] = useState(null);
@@ -424,14 +554,23 @@ const ClientDashboardContent = () => {
   const [viewProfileFreelancer, setViewProfileFreelancer] = useState(null);
   const [pendingPaymentProjects, setPendingPaymentProjects] = useState([]);
   const [isPayingProject, setIsPayingProject] = useState(null); // stores project id being paid
+  const [isViewProposalOpen, setIsViewProposalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleViewProfile = (freelancer) => {
     setViewProfileFreelancer(freelancer);
   };
 
+  const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
+
   useEffect(() => {
     const session = getSession();
     setSessionUser(session?.user ?? null);
+    
+    // Show suspension alert if user is suspended
+    if (session?.user?.status === "SUSPENDED") {
+      setShowSuspensionAlert(true);
+    }
   }, []);
 
   // Fetch upcoming meetings (disputes with future meeting dates)
@@ -975,6 +1114,9 @@ const ClientDashboardContent = () => {
                 // Dates
                 createdAt: f.createdAt,
                 memberSince: f.createdAt ? new Date(f.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null,
+                featuredProjects: Array.isArray(f.portfolioProjects) && f.portfolioProjects.length > 0 
+                  ? f.portfolioProjects 
+                  : [],
               };
             })
           : [];
@@ -1077,6 +1219,13 @@ const ClientDashboardContent = () => {
     <>
       <div className="flex flex-col gap-6 p-6">
         <ClientTopBar label={dashboardLabel} />
+
+        {/* Suspension Alert */}
+        <SuspensionAlert
+          open={showSuspensionAlert}
+          onOpenChange={setShowSuspensionAlert}
+          suspendedAt={sessionUser?.suspendedAt}
+        />
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {isLoadingProjects ? (
@@ -1252,161 +1401,88 @@ const ClientDashboardContent = () => {
         )}
 
         {hasSavedProposal && (
-        <section className="grid gap-6">
-          <Card className="overflow-hidden border border-border bg-card text-card-foreground shadow-lg">
-            <CardHeader className="space-y-1 border-b border-border bg-card">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary">
-                    <Briefcase className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl font-semibold text-foreground">
-                      Saved Proposal
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      {hasSavedProposal
-                        ? `${savedProposalDetails.service} • Created ${savedProposalDetails.createdAtDisplay}`
-                        : "Save a proposal before logging in and it will appear here."}
-                    </p>
-                  </div>
+          <section className="grid gap-6">
+             <ProposalView 
+                details={savedProposalDetails}
+                onView={() => setIsViewProposalOpen(true)}
+                onEdit={handleOpenProposalEditor}
+                onSave={handleSaveProposalToDashboard}
+                onSend={handleSendProposal}
+                onDelete={handleClearSavedProposal}
+             />
+          </section>
+        )}
+        
+        {!hasSavedProposal && sessionUser?.role === "CLIENT" && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </div>
-                <div className="flex items-center gap-3">
-                  <Badge className="border border-primary/50 bg-primary/20 text-primary">
-                    Ready to Send
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    onClick={handleClearSavedProposal}
-                    disabled={!hasSavedProposal}
-                    aria-label="Delete saved proposal"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6 p-6">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">
-                  Project details
-                </p>
-                <div
-                  className="mt-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-lg"
-                  style={{
-                    backgroundColor: "var(--card)",
-                    color: "var(--card-foreground)",
-                    backgroundImage:
-                      "linear-gradient(to bottom, rgba(0,0,0,0.03), rgba(0,0,0,0.05))",
-                  }}
-                >
-                  <p className="text-[11px] uppercase tracking-[0.5em] text-primary">
-                    --- Project Proposal ---
+                <div>
+                  <h2 className="text-xl font-semibold">Popular Services</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Find the perfect talent for your next project
                   </p>
-                  {hasSavedProposal ? (
-                    <div className="mt-4 space-y-5">
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">
-                          Project Title
-                        </p>
-                        <div className="flex flex-col gap-1">
-                          <p className="text-xl font-semibold text-primary">
-                            {savedProposalDetails.projectTitle}
-                          </p>
-                          {savedProposalDetails.projectSubtype ? (
-                            <p className="text-xs uppercase tracking-[0.25em] text-primary/70">
-                              {savedProposalDetails.projectSubtype}
-                            </p>
-                          ) : null}
-                          <p className="text-xs text-muted-foreground">
-                            Service: {savedProposalDetails.service}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid gap-4 text-sm sm:grid-cols-3">
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold uppercase text-primary/70">
-                            Prepared for
-                          </p>
-                          <p className="text-foreground">
-                            {savedProposalDetails.preparedFor}
-                          </p>
-                        </div>
-                        {savedProposalDetails.budget ? (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold uppercase text-primary/70">
-                              Budget
-                            </p>
-                            <p className="text-foreground">
-                              {savedProposalDetails.budget}
-                            </p>
-                          </div>
-                        ) : null}
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold uppercase text-primary/70">
-                            Created
-                          </p>
-                          <p className="text-foreground">
-                            {savedProposalDetails.createdAtDisplay}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-4 text-sm leading-relaxed text-foreground">
-                        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
-                          Proposal Overview
-                        </p>
-                        <div className="max-h-80 overflow-y-auto pr-2 scrollbar-thin">
-                          <pre className="whitespace-pre-wrap font-sans text-[14px] leading-7 text-foreground">
-                            {savedProposalDetails.summary ||
-                              "Proposal details recovered from your previous session."}
-                          </pre>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="mt-4 text-sm text-muted-foreground">
-                      Draft a proposal from the services page and we&apos;ll
-                      keep a copy here so you can send it once you sign in.
-                    </p>
-                  )}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-11 flex-1 min-w-[140px] gap-2 rounded-full border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground"
-                  onClick={handleOpenProposalEditor}
-                  disabled={!hasSavedProposal}
+              <Button
+                variant="ghost"
+                className="gap-2 text-primary hover:text-primary/80"
+                onClick={() => navigate("/service")}
+              >
+                See more <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  title: "Website Development",
+                  icon: Code,
+                  desc: "Custom sites & web apps",
+                },
+                {
+                  title: "App Development",
+                  icon: MonitorSmartphone,
+                  desc: "iOS & Android solutions",
+                },
+                {
+                  title: "Creative & Design",
+                  icon: PenTool,
+                  desc: "Brand identity & UI/UX",
+                },
+                {
+                  title: "Performance Marketing",
+                  icon: Globe,
+                  desc: "SEO, Ads & Social Media",
+                },
+              ].map((service, idx) => (
+                <Card
+                  key={idx}
+                  className="group cursor-pointer border-muted bg-gradient-to-br from-card to-muted/20 hover:border-primary/50 hover:shadow-lg transition-all duration-300"
+                  onClick={() =>
+                    navigate("/service", {
+                      state: { openChat: true, serviceTitle: service.title },
+                    })
+                  }
                 >
-                  <Copy className="h-4 w-4" />
-                  Edit your proposal
-                </Button>
-                <Button
-                  size="lg"
-                  className="h-11 flex-1 min-w-[160px] gap-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30"
-                  onClick={handleSendProposal}
-                  disabled={!hasSavedProposal}
-                >
-                  <Send className="h-4 w-4" />
-                  Send to Freelancer
-                </Button>
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="h-11 flex-1 min-w-[120px] gap-2 rounded-full border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-30"
-                  onClick={handleSaveProposalToDashboard}
-                  disabled={!hasSavedProposal}
-                >
-                  <Save className="h-4 w-4" />
-                  Save
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+                  <CardContent className="p-6">
+                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                      <service.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="mb-1 font-semibold group-hover:text-primary transition-colors">
+                      {service.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {service.desc}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
         )}
         <Dialog
           open={isFreelancerModalOpen}
@@ -1531,6 +1607,151 @@ const ClientDashboardContent = () => {
           isOpen={Boolean(viewProfileFreelancer)}
           onClose={() => setViewProfileFreelancer(null)}
         />
+        <Dialog open={isViewProposalOpen} onOpenChange={setIsViewProposalOpen}>
+          <DialogContent showCloseButton={false} className="!max-w-4xl w-full p-0 border-0 bg-transparent shadow-none overflow-hidden flex flex-col max-h-[90vh]">
+             <div className="relative w-full h-full flex flex-col bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
+                {/* Header */}
+                <div className="flex items-start justify-between p-6 border-b border-border shrink-0 bg-muted/50">
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-3">
+                            <span className="px-2.5 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider border border-primary/20">
+                                Draft
+                            </span>
+                            <span className="text-muted-foreground text-sm flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                Created on {savedProposalDetails?.createdAtDisplay}
+                            </span>
+                        </div>
+                        <h1 className="text-foreground text-2xl md:text-3xl font-bold tracking-tight mt-1">
+                            {savedProposalDetails?.projectTitle || "Untitled Project"}
+                        </h1>
+                    </div>
+                    <button 
+                        onClick={() => setIsViewProposalOpen(false)}
+                        className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-full hover:bg-muted"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {/* Main Content Scrollable Area */}
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Left Column: Summary & Details */}
+                        <div className="lg:col-span-2 space-y-8">
+                            {/* Project Summary Section */}
+                            <div className="space-y-3">
+                                <h3 className="text-foreground text-lg font-bold flex items-center gap-2">
+                                    <FileText className="w-5 h-5 text-primary" />
+                                    Project Summary
+                                </h3>
+                                <div className="bg-muted/50 rounded-xl p-6 border border-border space-y-4">
+                                    <pre className="whitespace-pre-wrap text-muted-foreground leading-relaxed font-sans text-sm">
+                                        {savedProposalDetails?.summary || "No description provided."}
+                                    </pre>
+                                </div>
+                            </div>
+
+                            {/* Service Type Section */}
+                             <div className="space-y-3">
+                                <h3 className="text-foreground text-lg font-bold flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5 text-primary" />
+                                    Service Details
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted transition-colors group border border-transparent hover:border-border">
+                                        <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                            <Code className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-foreground font-medium text-sm">Service Category</p>
+                                            <p className="text-muted-foreground text-xs">{savedProposalDetails?.service || "General"}</p>
+                                        </div>
+                                    </div>
+                                    
+                                     {savedProposalDetails?.projectSubtype && (
+                                        <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted transition-colors group border border-transparent hover:border-border">
+                                            <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                                <MonitorSmartphone className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-foreground font-medium text-sm">Project Type</p>
+                                                <p className="text-muted-foreground text-xs">{savedProposalDetails.projectSubtype}</p>
+                                            </div>
+                                        </div>
+                                     )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column: Sidebar */}
+                        <div className="lg:col-span-1 space-y-6">
+                            {/* Client Card */}
+                            <div className="bg-muted/50 border border-border rounded-xl p-5">
+                                <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider mb-2">Client</p>
+                                <h4 className="text-foreground font-bold text-lg leading-tight">
+                                    {savedProposalDetails?.preparedFor || "Valued Client"}
+                                </h4>
+                            </div>
+
+                            {/* Investment Card */}
+                            <div className="bg-gradient-to-b from-muted to-transparent border border-border rounded-xl p-6 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-primary/20 blur-3xl rounded-full"></div>
+                                <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider mb-2">Budget</p>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-primary text-2xl md:text-3xl font-black tracking-tight">
+                                        ₹ {savedProposalDetails?.budget || "N/A"}
+                                    </span>
+                                </div>
+                                <p className="text-muted-foreground text-xs mt-3 flex items-center gap-2">
+                                    <CheckCircle className="w-3.5 h-3.5 text-primary" />
+                                    Estimated Budget
+                                </p>
+                            </div>
+
+                            {/* Timeline Card */}
+                            <div className="bg-muted/50 border border-border rounded-xl p-5">
+                                <h4 className="text-foreground font-bold mb-4 text-sm uppercase tracking-wide">Typical Timeline</h4>
+                                <div className="relative pl-4 border-l border-border space-y-6">
+                                    {getSOPForProposal(savedProposalDetails?.service, savedProposalDetails?.projectSubtype).phases.slice(0, 4).map((phase, index) => (
+                                        <div key={phase.id} className="relative">
+                                            <div className={`absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-background ${index === 0 ? "bg-primary" : "bg-muted"}`}></div>
+                                            <p className="text-foreground text-sm font-semibold">{phase.name}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="p-6 border-t border-border bg-muted/30 backdrop-blur-md flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 mt-auto">
+                    <button 
+                         onClick={() => {
+                            setIsViewProposalOpen(false);
+                            handleClearSavedProposal();
+                        }}
+                        className="text-muted-foreground hover:text-destructive text-sm font-medium flex items-center gap-2 transition-colors"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        Discard
+                    </button>
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <button 
+                            onClick={() => {
+                                setIsViewProposalOpen(false);
+                                handleOpenProposalEditor();
+                            }}
+                            className="flex-1 sm:flex-none px-6 py-2.5 rounded-lg border border-border bg-muted text-foreground font-medium hover:bg-muted/80 transition-all focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                            Edit
+                        </button>
+                    </div>
+                </div>
+             </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );

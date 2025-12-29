@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
-import BookAppointment from "@/components/appointments/BookAppointment";
+
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { useAuth } from "@/context/AuthContext";
@@ -37,7 +37,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Skeleton Loading Component
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 const ProjectDetailSkeleton = () => (
   <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
     <div className="w-full max-w-full mx-auto space-y-6">
@@ -143,6 +148,15 @@ const mapStatus = (status = "") => {
   return "pending";
 };
 
+const COMMON_ISSUES = [
+  "Client Unresponsive",
+  "Payment Issue",
+  "Scope Creep",
+  "Project Stalled",
+  "Harassment/Unprofessional Behavior",
+  "Other"
+];
+
 const FreelancerProjectDetailContent = () => {
   const { projectId } = useParams();
   const { authFetch, isAuthenticated, user } = useAuth();
@@ -160,26 +174,28 @@ const FreelancerProjectDetailContent = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
+  const [selectedIssueType, setSelectedIssueType] = useState("");
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
 
-  // Mock PM Availability Slots
-  const allTimeSlots = [
-    "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-    "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
-  ];
-
-  const [bookedSlots, setBookedSlots] = useState([]);
+  const [serverAvailableSlots, setServerAvailableSlots] = useState([]);
 
   useEffect(() => {
     if (!date || !authFetch) return;
 
     const fetchAvailability = async () => {
       try {
+        console.log("Fetching availability for date:", date.toISOString());
         const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
+        console.log("Availability response status:", res.status);
         if (res.ok) {
           const payload = await res.json();
-          setBookedSlots(payload.data || []);
+          console.log("Availability payload:", payload);
+          setServerAvailableSlots(payload.data || []);
+        } else {
+          console.error("Availability fetch failed with status:", res.status);
+          const errorText = await res.text();
+          console.error("Error response:", errorText);
         }
       } catch (e) {
         console.error("Failed to fetch availability", e);
@@ -188,25 +204,20 @@ const FreelancerProjectDetailContent = () => {
     fetchAvailability();
   }, [date, authFetch]);
 
-  // Holidays (Mock Data)
-  const holidays = [
-    new Date(2025, 11, 25), // Christmas
-    new Date(2025, 0, 1),   // New Year
-    new Date(2024, 11, 25),
-    new Date(new Date().setDate(new Date().getDate() + 3)) // Demo holiday
-  ];
+
 
   // Filter time slots based on selected date
   // Filter time slots based on selected date
   const availableTimeSlots = useMemo(() => {
-    if (!date) return allTimeSlots;
+    if (!date) return [];
+
+    // The backend now returns explicitly available slots as strings ["09:00 AM", ...]
+    let slots = [...serverAvailableSlots];
 
     // 1. Filter past times if today
     const isToday = new Date().toDateString() === date.toDateString();
     const now = new Date();
     const currentHour = now.getHours();
-
-    let slots = allTimeSlots;
 
     if (isToday) {
       slots = slots.filter(slot => {
@@ -218,38 +229,19 @@ const FreelancerProjectDetailContent = () => {
       });
     }
 
-    // 2. Filter booked slots
-    if (bookedSlots.length > 0) {
-      slots = slots.filter(slot => {
-        // Check if this slot matches any booked meeting
-        return !bookedSlots.some(bookedIso => {
-          const bookedDate = new Date(bookedIso);
-          // Extract time from slot to compare hour/minute
-          const [time, period] = slot.split(' ');
-          let [slotH, slotM] = time.split(':').map(Number);
-          if (period === 'PM' && slotH !== 12) slotH += 12;
-          if (period === 'AM' && slotH === 12) slotH = 0;
-
-          // Match exact hour (assuming 1 hour slots)
-          return bookedDate.getHours() === slotH && bookedDate.getMinutes() === slotM;
-        });
-      });
-    }
-
     return slots;
-  }, [date, bookedSlots]);
+  }, [date, serverAvailableSlots]);
 
-  // Book Appointment State
-  const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
+
 
   // Handle reporting a dispute (same logic as client)
   const handleReport = async () => {
-    if (!issueText.trim()) {
-      toast.error("Please describe the issue");
+    if (!issueText.trim() || !selectedIssueType) {
+      toast.error("Please select an issue type and describe the issue");
       return;
     }
 
-    let fullDescription = issueText;
+    let fullDescription = `Issue Type: ${selectedIssueType || "Not Specified"}\n\n${issueText}`;
     let meetingDateIso = undefined;
 
     if (date) {
@@ -285,6 +277,7 @@ const FreelancerProjectDetailContent = () => {
         toast.success("Dispute raised. A Project Manager will review it shortly.");
         setReportOpen(false);
         setIssueText("");
+        setSelectedIssueType("");
         setDate(undefined);
         setTime("");
       } else {
@@ -795,25 +788,24 @@ const FreelancerProjectDetailContent = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setBookAppointmentOpen(true)}>
-                <Calendar className="w-4 h-4 mr-2" />
-                Book Appointment
-              </Button>
-              <Button variant="destructive" size="sm" onClick={() => setReportOpen(true)}>
-                <AlertCircle className="w-4 h-4 mr-2" />
-                Report Issue
-              </Button>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="default" size="sm" onClick={() => setReportOpen(true)}>
+                      PC
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Project Catalyst</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <ProjectNotepad projectId={project?.id || projectId} />
             </div>
           </div>
 
-          {/* Book Appointment Dialog */}
-          <BookAppointment
-            isOpen={bookAppointmentOpen}
-            onClose={() => setBookAppointmentOpen(false)}
-            projectId={project?.id || projectId}
-            projectTitle={project?.title}
-          />
+
 
           {!isLoading && isFallback && (
             <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
@@ -1047,20 +1039,37 @@ const FreelancerProjectDetailContent = () => {
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Report an Issue</DialogTitle>
+            <DialogTitle>Contact your Project Catalyst</DialogTitle>
             <DialogDescription>
               Describe the issue or dispute regarding this project. A Project Manager will get involved to resolve it.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Issue Type</label>
+              <Select value={selectedIssueType} onValueChange={setSelectedIssueType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an issue type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {COMMON_ISSUES.map((issue) => (
+                      <SelectItem key={issue} value={issue}>
+                        {issue}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
             <Textarea
               placeholder="Describe the issue..."
               value={issueText}
               onChange={(e) => setIssueText(e.target.value)}
-              className="min-h-[100px]"
+              className="min-h-[100px] whitespace-pre-wrap break-all"
             />
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Date & Time (Optional)</label>
+              <label className="text-sm font-medium">Project Manager Availability</label>
               <div className="flex gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1082,15 +1091,9 @@ const FreelancerProjectDetailContent = () => {
                       onSelect={setDate}
                       initialFocus
                       disabled={[
-                        { dayOfWeek: [0, 6] }, // Disable weekends
-                        ...holidays
+                        { dayOfWeek: [0] }, // Disable Sundays only (Enable Saturday)
+                        { before: new Date() }, // Disable past dates
                       ]}
-                      modifiers={{
-                        holiday: holidays
-                      }}
-                      modifiersStyles={{
-                        holiday: { color: "var(--destructive)", fontWeight: "bold", textDecoration: "line-through" }
-                      }}
                       className="rounded-md border"
                     />
                   </PopoverContent>
@@ -1122,7 +1125,7 @@ const FreelancerProjectDetailContent = () => {
             <Button variant="outline" onClick={() => setReportOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleReport} disabled={isReporting}>
+            <Button variant="destructive" onClick={handleReport} disabled={isReporting || !issueText.trim() || !selectedIssueType}>
               {isReporting ? "Submit Report" : "Submit Report"}
             </Button>
           </DialogFooter>

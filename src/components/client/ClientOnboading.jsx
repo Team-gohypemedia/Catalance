@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { EvervaultCard, CardPattern, generateRandomString } from "@/components/ui/evervault-card";
 import { useMotionValue, useMotionTemplate, motion } from "motion/react";
 import ChatDialog from "./ChatDialog";
@@ -148,6 +149,7 @@ function MatrixPattern({ mouseX, mouseY, randomString }) {
 const ClientOnboading = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const location = useLocation();
 
   // Matrix effect state
   const mouseX = useMotionValue(0);
@@ -170,6 +172,23 @@ const ClientOnboading = () => {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
+
+  // Handle auto-open from dashboard
+  useEffect(() => {
+    if (location.state?.openChat && location.state?.serviceTitle) {
+      const feature = features.find(
+        (f) => f.title === location.state.serviceTitle
+      );
+      if (feature) {
+        setSelectedService(feature);
+        setIsChatOpen(true);
+        // Clean up state to prevent reopening on casual refreshes/rerenders if desired
+        // history.replaceState({}, document.title) // valid JS but react-router handles differently. 
+        // We can leave it or clear it. Leaving it ensures back/forward works expectedly? 
+        // Actually, better to just let it be for now.
+      }
+    }
+  }, [location.state]);
 
   const handleCardClick = (feature) => {
     setSelectedService(feature);

@@ -11,8 +11,9 @@ import {
   useRef
 } from "react";
 import { io } from "socket.io-client";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED, apiClient } from "@/lib/api-client";
+import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED, request as apiClient } from "@/lib/api-client";
 import { requestNotificationPermission, onForegroundMessage } from "@/lib/firebase";
 
 const NotificationContext = createContext(null);
@@ -61,17 +62,31 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   // Remove a notification when clicked/read
-  const markAsRead = useCallback((notificationId) => {
+  const markAsRead = useCallback(async (notificationId) => {
+    // Optimistically remove from UI
     setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     setUnreadCount((prev) => Math.max(0, prev - 1));
+
+    try {
+      await apiClient(`/notifications/${notificationId}/read`, { method: "PATCH" });
+    } catch (error) {
+      console.error("Failed to mark notification as read", error);
+    }
   }, []);
 
   // Mark all notifications as read
-  const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = useCallback(async () => {
+    // Optimistically clear all
+    setNotifications([]);
     setUnreadCount(0);
     setChatUnreadCount(0);
     setProposalUnreadCount(0);
+
+    try {
+      await apiClient("/notifications/read-all", { method: "PATCH" });
+    } catch (error) {
+      console.error("Failed to mark all as read", error);
+    }
   }, []);
 
   // Clear all notifications
@@ -106,15 +121,26 @@ export const NotificationProvider = ({ children }) => {
             message: "You will now receive updates on this device.",
             createdAt: new Date().toISOString()
           });
+          toast.success("Notifications enabled successfully");
         } catch (saveError) {
           console.error("[Notification] Failed to save FCM token to backend:", saveError);
         }
         
         return token;
+      } else {
+        // Token null means permission denied or error
+        if (Notification.permission === 'denied') {
+          toast.error("Notifications are blocked", {
+            description: "Please enable notifications for this site in your browser settings (click the lock icon in address bar)."
+          });
+        } else {
+           toast.error("Could not enable notifications");
+        }
+        return null;
       }
-      return null;
     } catch (error) {
       console.error("[Notification] Error requesting push permission:", error);
+      toast.error("Failed to request permission");
       return null;
     }
   }, []);
@@ -155,17 +181,16 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const fetchNotifications = async () => {
+      const fetchNotifications = async () => {
       try {
-        const res = await apiClient("/notifications");
-        const data = await res.json();
+        const data = await apiClient("/notifications");
         
-        if (data.status === "success") {
-          setNotifications(data.data.notifications || []);
-          setUnreadCount(data.data.unreadCount || 0);
-          setChatUnreadCount(data.data.chatUnreadCount || 0);
-          setProposalUnreadCount(data.data.proposalUnreadCount || 0);
-        }
+        // User wants notifications to be "one time" (removed when read)
+        // So we only filter unread ones
+        setNotifications((data.notifications || []).filter(n => !n.read));
+        setUnreadCount(data.unreadCount || 0);
+        setChatUnreadCount(data.chatUnreadCount || 0);
+        setProposalUnreadCount(data.proposalUnreadCount || 0);
       } catch (error) {
         console.error("[Notification] Failed to fetch notifications:", error);
       }

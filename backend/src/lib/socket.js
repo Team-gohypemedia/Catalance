@@ -403,7 +403,7 @@ export const initSocket = (server) => {
                     service: convService,
                     senderId
                   }
-                });
+                }, false); // No email for chat messages
               }
             } else {
               console.log(`[Socket] Skipping notification - service doesn't start with CHAT: ${convService}`);

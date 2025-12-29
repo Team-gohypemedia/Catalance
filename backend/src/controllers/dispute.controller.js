@@ -13,14 +13,65 @@ export const createDispute = asyncHandler(async (req, res) => {
     throw new AppError("Description and Project ID are required", 400);
   }
 
-  const dispute = await prisma.dispute.create({
-    data: {
-      description,
-      projectId,
-      raisedById: userId,
-      status: "OPEN",
-      meetingDate: meetingDate ? new Date(meetingDate) : undefined
+  // Transaction to handle availability booking and dispute creation atomically
+  const dispute = await prisma.$transaction(async (tx) => {
+    let managerId = undefined;
+    let availabilityId = undefined;
+
+    // Automatic PM Assignment Logic
+    if (meetingDate) {
+      const dateObj = new Date(meetingDate);
+      if (isNaN(dateObj.getTime())) {
+        throw new AppError("Invalid meeting date format", 400);
+      }
+
+      // We need to match the date and hour logic used in getAvailability
+      // Start of day for the date query
+      const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23, 59, 59, 999);
+      const startHour = dateObj.getHours();
+
+      // Find available PMs for this specific slot
+      const availableSlots = await tx.managerAvailability.findMany({
+        where: {
+          date: {
+            gte: startOfDay,
+            lte: endOfDay
+          },
+          startHour: startHour,
+          isBooked: false
+        }
+      });
+
+      if (availableSlots.length === 0) {
+        throw new AppError("The selected time slot is no longer available. Please choose another time.", 409);
+      }
+
+      // Randomly select one available PM
+      const randomIndex = Math.floor(Math.random() * availableSlots.length);
+      const selectedSlot = availableSlots[randomIndex];
+      
+      managerId = selectedSlot.managerId;
+      availabilityId = selectedSlot.id;
+
+      // Mark the slot as booked
+      await tx.managerAvailability.update({
+        where: { id: availabilityId },
+        data: { isBooked: true }
+      });
     }
+
+    // Create the dispute
+    return await tx.dispute.create({
+      data: {
+        description,
+        projectId,
+        raisedById: userId,
+        status: "OPEN",
+        meetingDate: meetingDate ? new Date(meetingDate) : undefined,
+        managerId: managerId // Assign the selected PM
+      }
+    });
   });
 
   res.status(201).json({ data: dispute });
@@ -214,31 +265,91 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
 });
 
 export const getAvailability = asyncHandler(async (req, res) => {
-  const { date } = req.query;
-  if (!date) {
-    throw new AppError("Date query parameter is required", 400);
-  }
-
-  const queryDate = new Date(date);
-  if (isNaN(queryDate.getTime())) {
-    throw new AppError("Invalid date format", 400);
-  }
-
-  const startOfDay = new Date(queryDate.getFullYear(), queryDate.getMonth(), queryDate.getDate(), 0, 0, 0, 0);
-  const endOfDay = new Date(queryDate.getFullYear(), queryDate.getMonth(), queryDate.getDate(), 23, 59, 59, 999);
-
-  const bookedDisputes = await prisma.dispute.findMany({
-    where: {
-      meetingDate: {
-        gte: startOfDay,
-        lte: endOfDay
-      },
-      status: { not: "RESOLVED" }
-    },
-    select: {
-      meetingDate: true
+  try {
+    // Check if prisma is available
+    if (!prisma) {
+      console.error("Prisma client is not initialized!");
+      return res.status(500).json({ error: "Database not available" });
     }
-  });
 
-  res.json({ data: bookedDisputes.map(d => d.meetingDate) });
+    const { date } = req.query;
+    
+    if (!date) {
+      return res.status(400).json({ error: "Date parameter required" });
+    }
+
+    console.log("=== getAvailability called ===");
+    console.log("Input date:", date);
+
+    // Parse the incoming date - client sends UTC timestamp
+    const queryDate = new Date(date);
+    console.log("Parsed queryDate:", queryDate.toISOString());
+    
+    // For IST (+5:30), when user picks Dec 27th, it becomes Dec 26 18:30 UTC
+    // So if UTC hour >= 18, add a day to get the intended date
+    let targetDate = new Date(queryDate);
+    if (queryDate.getUTCHours() >= 18) {
+      targetDate.setUTCDate(targetDate.getUTCDate() + 1);
+    }
+    const targetDateStr = targetDate.toISOString().split('T')[0]; // "2025-12-27"
+    console.log("Target date string:", targetDateStr);
+
+    // Get ALL unbooked availability slots from DB
+    console.log("About to query managerAvailability...");
+    const allSlots = await prisma.managerAvailability.findMany({
+      where: { isBooked: false }
+    });
+    console.log("Total unbooked slots from DB:", allSlots.length);
+
+    // Filter by date in JavaScript (to avoid Prisma @db.Date issues)
+    const matchingSlots = allSlots.filter(slot => {
+      const slotDateStr = slot.date.toISOString().split('T')[0];
+      return slotDateStr === targetDateStr;
+    });
+    console.log("Matching slots for target date:", matchingSlots.length);
+
+    if (matchingSlots.length === 0) {
+      console.log("No matching slots found, returning empty array");
+      return res.json({ data: [] });
+    }
+
+    // Get booked hours from disputes
+    const startOfDay = new Date(`${targetDateStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${targetDateStr}T23:59:59.999Z`);
+    
+    const disputes = await prisma.dispute.findMany({
+      where: {
+        meetingDate: { gte: startOfDay, lte: endOfDay },
+        status: { not: "RESOLVED" }
+      }
+    });
+    console.log("Disputes on that day:", disputes.length);
+    
+    const bookedHours = new Set(disputes.map(d => d.meetingDate?.getUTCHours()));
+
+    // Format to 12-hour time strings
+    const seen = new Set();
+    const result = [];
+    
+    matchingSlots
+      .filter(s => !bookedHours.has(s.startHour))
+      .sort((a, b) => a.startHour - b.startHour)
+      .forEach(slot => {
+        if (!seen.has(slot.startHour)) {
+          seen.add(slot.startHour);
+          const h = slot.startHour;
+          const period = h >= 12 ? 'PM' : 'AM';
+          const hour12 = h % 12 || 12;
+          result.push(`${hour12.toString().padStart(2, '0')}:00 ${period}`);
+        }
+      });
+
+    console.log("Final result:", result);
+    res.json({ data: result });
+  } catch (error) {
+    console.error("=== getAvailability ERROR ===");
+    console.error(error);
+    res.status(500).json({ error: "Server error", message: error.message });
+  }
 });
+

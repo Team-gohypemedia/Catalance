@@ -1,5 +1,7 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
+import { sendNotificationToUser } from "../lib/notification-util.js";
+import { sendEmail } from "../lib/email-service.js";
 
 // Get dashboard stats
 export const getDashboardStats = asyncHandler(async (req, res) => {
@@ -83,44 +85,70 @@ export const getUsers = asyncHandler(async (req, res) => {
     const limit = Number(req.query.limit) || 10;
     const search = req.query.search || "";
     const role = req.query.role || undefined;
+    const status = req.query.status || undefined;
+    const isVerified = req.query.isVerified === 'true' ? true : req.query.isVerified === 'false' ? false : undefined;
+    const view = req.query.view || undefined;
 
-    console.log("getUsers called with role:", role, "search:", search);
+    console.log("getUsers called with role:", role, "status:", status, "isVerified:", isVerified, "view:", view, "search:", search);
 
-    // Very simple query - just get all users
-    const allUsers = await prisma.user.findMany({
+    // Build where clause for Prisma
+    let where = {
+      role: { not: 'ADMIN' }, // Always exclude admins from general user list
+      ...(role && { role }),
+      ...(status && { status }),
+      ...(isVerified !== undefined && { isVerified }),
+      ...(search && {
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } }
+        ]
+      })
+    };
+
+    // Special view for approvals page
+    if (view === 'approvals') {
+      where = {
+        role: { not: 'ADMIN' },
+        OR: [
+          { status: 'PENDING_APPROVAL' },
+          { 
+            AND: [
+              { role: 'FREELANCER' },
+              { isVerified: false } // Catch unverified freelancers
+            ]
+          }
+        ],
+        ...(search && {
+          AND: [
+            {
+              OR: [
+                { fullName: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } }
+              ]
+            }
+          ]
+        })
+      };
+    }
+
+    const total = await prisma.user.count({ where });
+    const users = await prisma.user.findMany({
+      where,
       select: {
         id: true,
         fullName: true,
         email: true,
         role: true,
+        status: true,
+        isVerified: true,
         createdAt: true
-      }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit
     });
-
-    console.log("Total users found:", allUsers.length);
-
-    // Filter by role in memory
-    let filteredUsers = role 
-      ? allUsers.filter(u => u.role === role)
-      : allUsers;
-
-    console.log("After role filter:", filteredUsers.length);
-
-    // Filter by search in memory
-    if (search && search.trim()) {
-      const searchLower = search.toLowerCase();
-      filteredUsers = filteredUsers.filter(u => 
-        u.fullName?.toLowerCase().includes(searchLower) ||
-        u.email?.toLowerCase().includes(searchLower)
-      );
-    }
     
-    // Add default status
-    const users = filteredUsers.map(u => ({ ...u, status: 'ACTIVE' }));
-
-    const total = users.length;
-    const sortedUsers = users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    const paginatedUsers = sortedUsers.slice((page - 1) * limit, page * limit);
+    const paginatedUsers = users; // Already paginated via Prisma
 
     console.log("Returning", paginatedUsers.length, "users");
 
@@ -160,6 +188,8 @@ export const updateUserRole = asyncHandler(async (req, res) => {
   res.json({ data: updatedUser });
 });
 
+
+
 // Update user status (suspend/activate)
 export const updateUserStatus = asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -169,11 +199,63 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
     throw new Error("Invalid status");
   }
 
+  // Build update data
+  const updateData = { status };
+  
+  // Set or clear suspendedAt based on status
+  if (status === "SUSPENDED") {
+    updateData.suspendedAt = new Date();
+  } else if (status === "ACTIVE") {
+    updateData.suspendedAt = null; // Clear suspension date on reactivation
+  }
+
   const updatedUser = await prisma.user.update({
     where: { id: userId },
-    data: { status },
-    select: { id: true, status: true }
+    data: updateData,
+    select: { id: true, status: true, fullName: true, email: true, suspendedAt: true }
   });
+
+  // Notify user about status change
+  try {
+      let title = "Account Status Updated";
+      let message = `Your account status has been updated to ${status}.`;
+      
+      if (status === "ACTIVE") {
+          title = "Account Activated! 🎉";
+          message = "Congratulations! Your account has been approved and is now active. You can now access all features.";
+      } else if (status === "SUSPENDED") {
+          title = "Account Suspended";
+          message = "Your account has been suspended. You have 90 days to verify your account, otherwise it will be permanently deleted. Please contact support for more information.";
+          
+          // Send suspension email
+          try {
+            await sendEmail({
+              to: updatedUser.email,
+              subject: "Account Suspended - Action Required",
+              title: "Your Account Has Been Suspended",
+              html: `
+                <p>Dear ${updatedUser.fullName},</p>
+                <p>Your Catalance account has been suspended.</p>
+                <p><strong>Important:</strong> You have <strong>90 days</strong> to verify your account. If you do not take action within this period, your account and all associated data will be permanently deleted.</p>
+                <p>If you believe this was a mistake or would like to appeal this decision, please contact our support team immediately.</p>
+                <p>Thank you,<br>The Catalance Team</p>
+              `
+            });
+            console.log(`[Admin] Suspension email sent to ${updatedUser.email}`);
+          } catch (emailErr) {
+            console.error("[Admin] Failed to send suspension email:", emailErr);
+          }
+      }
+
+      await sendNotificationToUser(userId, {
+          type: "system",
+          title,
+          message,
+          data: { status }
+      });
+  } catch (e) {
+      console.error("Failed to notify user about status change:", e);
+  }
 
   res.json({ data: updatedUser });
 });
@@ -255,6 +337,10 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         status: true,
         createdAt: true,
         updatedAt: true,
+        portfolioProjects: true,
+        portfolio: true,
+        linkedin: true,
+        github: true,
         // For clients: get their owned projects
         ownedProjects: {
           select: {
@@ -373,7 +459,11 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           hourlyRate: user.hourlyRate,
           status: user.status || 'ACTIVE',
           createdAt: user.createdAt,
-          updatedAt: user.updatedAt
+          updatedAt: user.updatedAt,
+          portfolioProjects: user.portfolioProjects,
+          portfolio: user.portfolio,
+          linkedin: user.linkedin,
+          github: user.github
         },
         stats,
         projects: user.role === "CLIENT" ? user.ownedProjects : [],

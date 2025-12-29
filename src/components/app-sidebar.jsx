@@ -13,6 +13,7 @@ import {
   Users,
   AlertCircle,
   History,
+  CheckCircle,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -190,6 +191,12 @@ const navConfigs = {
       title: "Projects",
       url: "/admin/projects",
       icon: Briefcase,
+      isActive: true,
+    },
+    {
+      title: "Approvals",
+      url: "/admin/approvals",
+      icon: CheckCircle,
       isActive: true,
     },
   ],

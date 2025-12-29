@@ -78,21 +78,21 @@ const UserDetailsDialog = ({ userId, open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl min-h-[400px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-[95vw] h-[95vh] p-0 gap-0 overflow-hidden flex flex-col bg-background">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center flex-1">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : error ? (
-          <div className="text-center py-20 text-destructive">{error}</div>
+          <div className="flex items-center justify-center flex-1 text-destructive">{error}</div>
         ) : data ? (() => {
           const bioData = parseBio(data.user.bio);
           const isFreelancer = data.user.role === "FREELANCER";
           
           return (
-            <div className="flex flex-col">
-              {/* Header Section */}
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-5 border-b">
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Header Section - Fixed at top */}
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6 border-b shrink-0">
                 <div className="flex items-start gap-4">
                   <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                     <User className="h-8 w-8 text-primary" />
@@ -140,8 +140,9 @@ const UserDetailsDialog = ({ userId, open, onOpenChange }) => {
                 </div>
               </div>
 
-              {/* Main Content */}
-              <div className="p-5 space-y-5">
+
+              {/* Main Content - Scrollable */}
+              <div className="p-8 space-y-8 flex-1 overflow-y-auto">
                 {/* Services Row */}
                 {bioData?.services && bioData.services.length > 0 && (
                   <div className="flex items-start gap-2">
@@ -153,29 +154,7 @@ const UserDetailsDialog = ({ userId, open, onOpenChange }) => {
                   </div>
                 )}
 
-                {/* Stats Grid */}
-                <div>
-                  <h4 className="text-sm font-semibold mb-3">Statistics</h4>
-                  <div className="grid grid-cols-3 gap-3 justify-items-center">
-                    {data.user.role === "CLIENT" ? (
-                      <>
-                        <StatCard icon={Briefcase} label="Projects" value={data.stats.totalProjects} color="blue" />
-                        <StatCard icon={Clock} label="Active" value={data.stats.activeProjects} color="yellow" />
-                        <StatCard icon={CheckCircle} label="Completed" value={data.stats.completedProjects} color="green" />
-                        <StatCard icon={DollarSign} label="Spent" value={formatCurrency(data.stats.totalSpent)} color="emerald" />
-                        <StatCard icon={DollarSign} label="Remaining" value={formatCurrency(data.stats.moneyRemaining)} color="purple" />
-                      </>
-                    ) : (
-                      <>
-                        <StatCard icon={FileText} label="Proposals" value={data.stats.totalProposals} color="blue" />
-                        <StatCard icon={CheckCircle} label="Accepted" value={data.stats.acceptedProposals} color="green" />
-                        <StatCard icon={Clock} label="Pending" value={data.stats.pendingProposals} color="yellow" />
-                        <StatCard icon={DollarSign} label="Earnings" value={formatCurrency(data.stats.totalEarnings)} color="emerald" />
-                        <StatCard icon={DollarSign} label="Pending Amt" value={formatCurrency(data.stats.pendingAmount)} color="orange" />
-                      </>
-                    )}
-                  </div>
-                </div>
+
 
                 {/* Freelancer Additional Details - Full Width */}
                 {isFreelancer && (
@@ -277,13 +256,49 @@ const UserDetailsDialog = ({ userId, open, onOpenChange }) => {
                     })()}
                   </div>
                 )}
-                {/* Bio Text */}
-                {bioData?.bio && typeof bioData.bio === 'string' && bioData.bio.length > 5 && (
-                  <div className="pt-2 border-t">
-                    <p className="text-sm text-muted-foreground">{bioData.bio}</p>
+
+                    {/* Portfolio Projects - Full Width */}
+                    {data.user.portfolioProjects && data.user.portfolioProjects.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-semibold mb-3">Featured Projects</h4>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          {data.user.portfolioProjects.map((project, idx) => (
+                            <div key={idx} className="group relative rounded-md border border-border bg-card p-3 shadow-sm hover:shadow-md transition-all">
+                              <div className="aspect-video w-full overflow-hidden rounded bg-muted/50 object-cover border border-border/50 relative">
+                                {project.image ? (
+                                  <img src={project.image} alt="Preview" className="h-full w-full object-cover" />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-sm bg-secondary/30">No Image</div>
+                                )}
+                                <a 
+                                  href={project.link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                >
+                                  <ExternalLink className="text-white w-8 h-8 drop-shadow-md" />
+                                </a>
+                              </div>
+                              <div className="mt-3 px-1">
+                                <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold hover:text-primary transition-colors truncate block">
+                                  {project.title || project.link}
+                                </a>
+                                <p className="text-xs text-muted-foreground truncate mt-1">{project.link}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bio Text */}
+                    {bioData?.bio && typeof bioData.bio === 'string' && bioData.bio.length > 5 && (
+                      <div className="pt-2 border-t">
+                        <h4 className="text-sm font-semibold mb-1">About</h4>
+                        <p className="text-sm text-muted-foreground">{bioData.bio}</p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
             </div>
           );
         })() : null}
