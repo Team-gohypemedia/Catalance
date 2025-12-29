@@ -42,6 +42,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Skeleton Loading Component
 const ProjectDetailSkeleton = () => (
@@ -198,16 +204,11 @@ const ProjectDashboard = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
+  const [selectedIssueType, setSelectedIssueType] = useState("");
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
 
-  // Mock PM Availability Slots
-  const allTimeSlots = [
-    "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-    "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
-  ];
-
-  const [bookedSlots, setBookedSlots] = useState([]);
+  const [serverAvailableSlots, setServerAvailableSlots] = useState([]);
 
   useEffect(() => {
     if (!date || !authFetch) return;
@@ -217,7 +218,7 @@ const ProjectDashboard = () => {
         const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
         if (res.ok) {
           const payload = await res.json();
-          setBookedSlots(payload.data || []);
+          setServerAvailableSlots(payload.data || []);
         }
       } catch (e) {
         console.error("Failed to fetch availability", e);
@@ -226,25 +227,17 @@ const ProjectDashboard = () => {
     fetchAvailability();
   }, [date, authFetch]);
 
-  // Holidays (Mock Data year 2024-2025)
-  const holidays = [
-    new Date(2025, 11, 25), // Christmas Dec 25 2025
-    new Date(2025, 0, 1),   // New Year Jan 1 2025
-    new Date(2024, 11, 25), // Christmas Dec 25 2024
-    new Date(new Date().setDate(new Date().getDate() + 3)) // Mock holiday 3 days from now for demo
-  ];
-
-  // Filter time slots based on selected date
   // Filter time slots based on selected date
   const availableTimeSlots = useMemo(() => {
-    if (!date) return allTimeSlots;
+    if (!date) return [];
+
+    // The backend now returns explicitly available slots as strings ["09:00 AM", ...]
+    let slots = [...serverAvailableSlots];
 
     // 1. Filter past times if today
     const isToday = new Date().toDateString() === date.toDateString();
     const now = new Date();
     const currentHour = now.getHours();
-
-    let slots = allTimeSlots;
 
     if (isToday) {
       slots = slots.filter(slot => {
@@ -256,37 +249,19 @@ const ProjectDashboard = () => {
       });
     }
 
-    // 2. Filter booked slots
-    if (bookedSlots.length > 0) {
-      slots = slots.filter(slot => {
-        // Check if this slot matches any booked meeting
-        return !bookedSlots.some(bookedIso => {
-          const bookedDate = new Date(bookedIso);
-          // Extract time from slot to compare hour/minute
-          const [time, period] = slot.split(' ');
-          let [slotH, slotM] = time.split(':').map(Number);
-          if (period === 'PM' && slotH !== 12) slotH += 12;
-          if (period === 'AM' && slotH === 12) slotH = 0;
-
-          // Match exact hour (assuming 1 hour slots)
-          return bookedDate.getHours() === slotH && bookedDate.getMinutes() === slotM;
-        });
-      });
-    }
-
     return slots;
-  }, [date, bookedSlots]);
+  }, [date, serverAvailableSlots]);
 
   // Book Appointment State
   const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
 
   const handleReport = async () => {
-    if (!issueText.trim()) {
-      toast.error("Please describe the issue");
+    if (!issueText.trim() || !selectedIssueType) {
+      toast.error("Please select an issue type and describe the issue");
       return;
     }
 
-    let fullDescription = issueText;
+    let fullDescription = `Issue Type: ${selectedIssueType || "Not Specified"}\n\n${issueText}`;
     let meetingDateIso = undefined;
 
     if (date) {
@@ -975,14 +950,18 @@ const ProjectDashboard = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setBookAppointmentOpen(true)}>
-                <Calendar className="w-4 h-4 mr-2" />
-                Book Appointment
-              </Button>
-              <Button variant="destructive" size="sm" onClick={() => setReportOpen(true)}>
-                <AlertCircle className="w-4 h-4 mr-2" />
-                Report Issue
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="default" size="sm" onClick={() => setReportOpen(true)}>
+                      PC
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Project Catalyst</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <ProjectNotepad projectId={project?.id || projectId} />
             </div>
           </div>
@@ -1266,20 +1245,39 @@ const ProjectDashboard = () => {
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Report an Issue</DialogTitle>
+            <DialogTitle>Contact your Project Catalyst</DialogTitle>
             <DialogDescription>
               Describe the issue or dispute regarding this project. A Project Manager will get involved to resolve it.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Issue Type</label>
+              <Select value={selectedIssueType} onValueChange={setSelectedIssueType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an issue type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="Payment Issue">Payment Issue</SelectItem>
+                    <SelectItem value="Communication Problem">Communication Problem</SelectItem>
+                    <SelectItem value="Quality of Work">Quality of Work</SelectItem>
+                    <SelectItem value="Missed Deadline">Missed Deadline</SelectItem>
+                    <SelectItem value="Scope Creep">Scope Creep</SelectItem>
+                    <SelectItem value="Technical Issue">Technical Issue</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
             <Textarea
               placeholder="Describe the issue..."
               value={issueText}
               onChange={(e) => setIssueText(e.target.value)}
-              className="min-h-[100px]"
+              className="min-h-[100px] whitespace-pre-wrap break-all"
             />
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Date & Time (Optional)</label>
+              <label className="text-sm font-medium">Project Manager Availability</label>
               <div className="flex gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1301,15 +1299,9 @@ const ProjectDashboard = () => {
                       onSelect={setDate}
                       initialFocus
                       disabled={[
-                        { dayOfWeek: [0, 6] }, // Disable weekends (Sunday=0, Saturday=6)
-                        ...holidays
+                        { dayOfWeek: [0] }, // Disable only Sunday
+                        { before: new Date() } // Disable past dates
                       ]}
-                      modifiers={{
-                        holiday: holidays
-                      }}
-                      modifiersStyles={{
-                        holiday: { color: "var(--destructive)", fontWeight: "bold", textDecoration: "line-through" }
-                      }}
                       className="rounded-md border"
                     />
                   </PopoverContent>
@@ -1341,8 +1333,12 @@ const ProjectDashboard = () => {
             <Button variant="outline" onClick={() => setReportOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleReport} disabled={isReporting}>
-              {isReporting ? "Submit Report" : "Submit Report"}
+            <Button 
+              variant="destructive" 
+              onClick={handleReport} 
+              disabled={isReporting || !issueText.trim() || !selectedIssueType}
+            >
+              {isReporting ? "Submitting..." : "Submit Report"}
             </Button>
           </DialogFooter>
         </DialogContent>

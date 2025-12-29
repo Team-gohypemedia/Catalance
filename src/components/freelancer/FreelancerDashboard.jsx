@@ -17,6 +17,7 @@ import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
+import { SuspensionAlert } from "@/components/ui/suspension-alert";
 
 // No static template data - all metrics loaded from API
 
@@ -25,11 +26,17 @@ export const DashboardContent = ({ roleOverride }) => {
   const { authFetch } = useAuth();
   const [metrics, setMetrics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const session = getSession();
     setSessionUser(session?.user ?? null);
+    
+    // Show suspension alert if user is suspended
+    if (session?.user?.status === "SUSPENDED") {
+      setShowSuspensionAlert(true);
+    }
   }, []);
 
   const effectiveRole = roleOverride ?? sessionUser?.role ?? "FREELANCER";
@@ -148,6 +155,13 @@ export const DashboardContent = ({ roleOverride }) => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Suspension Alert */}
+        <SuspensionAlert
+          open={showSuspensionAlert}
+          onOpenChange={setShowSuspensionAlert}
+          suspendedAt={sessionUser?.suspendedAt}
+        />
 
         <section className={`grid gap-4 md:grid-cols-4 ${sessionUser?.status === "PENDING_APPROVAL" ? "blur-sm pointer-events-none opacity-50" : ""}`}>
           {isLoading ? (

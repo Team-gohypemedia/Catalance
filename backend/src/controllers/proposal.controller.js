@@ -56,11 +56,16 @@ export const createProposal = asyncHandler(async (req, res) => {
   // - If FREELANCER is sending the proposal TO a client's project -> notify the CLIENT (owner)
   // The sender should NEVER receive the notification
   
-  const isClientSendingToFreelancer = isOwner && freelancerId && freelancerId !== userId;
-  const isFreelancerSendingToClient = !isOwner && actingFreelancerId === userId;
+  const isClientSendingToFreelancer = isOwner && freelancerId && String(freelancerId) !== String(userId);
+  const isFreelancerSendingToClient = !isOwner && String(actingFreelancerId) === String(userId);
   
-  console.log(`[Proposal] Notification check - isOwner: ${isOwner}, userId: ${userId}, freelancerId: ${freelancerId}, actingFreelancerId: ${actingFreelancerId}`);
+  console.log(`[Proposal] Notification check - isOwner: ${isOwner}, userId: ${userId}, freelancerId: ${freelancerId}`);
   console.log(`[Proposal] isClientSendingToFreelancer: ${isClientSendingToFreelancer}, isFreelancerSendingToClient: ${isFreelancerSendingToClient}`);
+  
+  // Prevent self-notifications just in case
+  if (String(actingFreelancerId) === String(project.ownerId)) {
+    console.log("[Proposal] Sender is project owner - checking direction");
+  }
   
   if (isClientSendingToFreelancer) {
     // Client is sending a proposal TO a freelancer - notify the freelancer
@@ -68,8 +73,8 @@ export const createProposal = asyncHandler(async (req, res) => {
     try {
       sendNotificationToUser(freelancerId, {
         type: "proposal",
-        title: "New Proposal Received",
-        message: `You received a new proposal for project "${project.title}" from a client.`,
+        title: "Project Invite Received",
+        message: `You have been invited to submit a proposal for project "${project.title}" by the client.`,
         data: { 
           projectId: projectId,
           proposalId: proposal.id 
@@ -84,8 +89,8 @@ export const createProposal = asyncHandler(async (req, res) => {
     try {
       sendNotificationToUser(project.ownerId, {
         type: "proposal",
-        title: "New Proposal Received",
-        message: `You received a new proposal for project "${project.title}" from a freelancer.`,
+        title: "New Proposal Application",
+        message: `A freelancer has submitted a proposal for your project "${project.title}".`,
         data: { 
           projectId: projectId,
           proposalId: proposal.id 
@@ -263,8 +268,8 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
     throw new AppError("Proposal project not found", 404);
   }
 
-  const isOwner = proposal.project.ownerId === userId;
-  const isFreelancer = proposal.freelancerId === userId;
+  const isOwner = String(proposal.project.ownerId) === String(userId);
+  const isFreelancer = String(proposal.freelancerId) === String(userId);
 
   if (!isOwner && !isFreelancer) {
     throw new AppError("You do not have permission to update this proposal", 403);

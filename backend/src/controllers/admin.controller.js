@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
+import { sendEmail } from "../lib/email-service.js";
 
 // Get dashboard stats
 export const getDashboardStats = asyncHandler(async (req, res) => {
@@ -198,10 +199,20 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
     throw new Error("Invalid status");
   }
 
+  // Build update data
+  const updateData = { status };
+  
+  // Set or clear suspendedAt based on status
+  if (status === "SUSPENDED") {
+    updateData.suspendedAt = new Date();
+  } else if (status === "ACTIVE") {
+    updateData.suspendedAt = null; // Clear suspension date on reactivation
+  }
+
   const updatedUser = await prisma.user.update({
     where: { id: userId },
-    data: { status },
-    select: { id: true, status: true, fullName: true, email: true }
+    data: updateData,
+    select: { id: true, status: true, fullName: true, email: true, suspendedAt: true }
   });
 
   // Notify user about status change
@@ -214,7 +225,26 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
           message = "Congratulations! Your account has been approved and is now active. You can now access all features.";
       } else if (status === "SUSPENDED") {
           title = "Account Suspended";
-          message = "Your account has been suspended. Please contact support for more information.";
+          message = "Your account has been suspended. You have 90 days to verify your account, otherwise it will be permanently deleted. Please contact support for more information.";
+          
+          // Send suspension email
+          try {
+            await sendEmail({
+              to: updatedUser.email,
+              subject: "Account Suspended - Action Required",
+              title: "Your Account Has Been Suspended",
+              html: `
+                <p>Dear ${updatedUser.fullName},</p>
+                <p>Your Catalance account has been suspended.</p>
+                <p><strong>Important:</strong> You have <strong>90 days</strong> to verify your account. If you do not take action within this period, your account and all associated data will be permanently deleted.</p>
+                <p>If you believe this was a mistake or would like to appeal this decision, please contact our support team immediately.</p>
+                <p>Thank you,<br>The Catalance Team</p>
+              `
+            });
+            console.log(`[Admin] Suspension email sent to ${updatedUser.email}`);
+          } catch (emailErr) {
+            console.error("[Admin] Failed to send suspension email:", emailErr);
+          }
       }
 
       await sendNotificationToUser(userId, {
