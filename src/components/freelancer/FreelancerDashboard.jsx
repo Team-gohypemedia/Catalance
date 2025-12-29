@@ -58,6 +58,7 @@ export const DashboardContent = ({ roleOverride }) => {
     pendingEarnings: 0,
     totalProposals: 0
   });
+  const [upcomingMeeting, setUpcomingMeeting] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const navigate = useNavigate();
@@ -139,7 +140,35 @@ export const DashboardContent = ({ roleOverride }) => {
       }
     };
 
+    const loadAppointments = async () => {
+       if (!authFetch) return;
+       try {
+          const today = new Date().toISOString().split('T')[0];
+          // Fetch APPROVED appointments from today onwards
+          const res = await authFetch(`/appointments?status=APPROVED&startDate=${today}`);
+          const data = await res.json();
+          
+          if (data?.data && Array.isArray(data.data)) {
+             // Find the first future meeting
+             const now = new Date();
+             const future = data.data
+                .map(a => ({ ...a, dateObj: new Date(`${a.date.split('T')[0]}T${a.startHour.toString().padStart(2, '0')}:00:00`) }))
+                .filter(a => a.dateObj > now)
+                .sort((a, b) => a.dateObj - b.dateObj);
+
+             if (future.length > 0) {
+                setUpcomingMeeting(future[0]);
+             } else {
+                setUpcomingMeeting(null);
+             }
+          }
+       } catch (err) {
+          console.error("Failed to load appointments:", err);
+       }
+    };
+
     loadMetrics();
+    loadAppointments();
   }, [authFetch]);
 
   // Format currency
@@ -391,37 +420,16 @@ export const DashboardContent = ({ roleOverride }) => {
             <div className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-6">
 
             {/* Dynamic Upcoming Meeting Widget (Moved to TOP for visibility) */}
+            {/* Dynamic Upcoming Meeting Widget (Moved to TOP for visibility) */}
               {(() => {
-                const meetingNotif = notifications.find(n => n.title?.includes("Meeting Scheduled"));
-                
-                // If no meeting notification, hide the widget entirely
-                if (!meetingNotif) return null;
+                // If no upcoming meeting, hide the widget
+                if (!upcomingMeeting) return null;
 
-                // Parse date from message "Meeting for [Date]" or similar
-                // improved regex to catch various date formats
-                let meetingDate = null;
-                try {
-                  // Attempt 1: Extract after "for"
-                  const match = meetingNotif.message?.match(/for\s+([^.]+)/i);
-                  if (match && match[1]) {
-                     meetingDate = new Date(match[1]);
-                  }
-                  
-                  // If date parsing failed or invalid, we fallback to showing it (safe default)
-                  // But if valid date and it's in the past, we hide it.
-                  if (meetingDate && !isNaN(meetingDate.getTime())) {
-                     const now = new Date();
-                     // If meeting was yesterday or before, hide it. (Keep it for today)
-                     // Set meeting date to end of day to include today's meetings until tomorrow
-                     meetingDate.setHours(23, 59, 59, 999);
-                     if (meetingDate < now) {
-                        return null; // Meeting is over
-                     }
-                  }
-                } catch (e) {
-                  // ignore parse error, show widget
-                }
-                
+                const meetingDate = new Date(upcomingMeeting.date);
+                const isToday = new Date().toDateString() === meetingDate.toDateString();
+                const dateDisplay = isToday ? "Today" : meetingDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                const timeDisplay = `${upcomingMeeting.startHour}:00 - ${upcomingMeeting.endHour}:00`;
+
                 return (
                   <div className="bg-card rounded-2xl border border-border p-6 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -mr-6 -mt-6"></div>
@@ -429,11 +437,17 @@ export const DashboardContent = ({ roleOverride }) => {
                       <Video className="h-5 w-5 text-primary" /> 
                       Upcoming Meeting
                     </h3>
-                    <p className="text-sm text-muted-foreground mb-4 relative z-10 line-clamp-2">
-                       {meetingNotif.message}
-                    </p>
+                    <div className="relative z-10 mb-4">
+                       <p className="text-sm font-bold text-foreground">{upcomingMeeting.title}</p>
+                       <p className="text-xs text-muted-foreground">
+                          {dateDisplay} • {timeDisplay}
+                       </p>
+                       {upcomingMeeting.manager && (
+                          <p className="text-xs text-muted-foreground mt-1">with {upcomingMeeting.manager.fullName}</p>
+                       )}
+                    </div>
                     <div className="flex gap-2 relative z-10">
-                      <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-lg shadow-primary/20 text-xs sm:text-sm" onClick={() => window.open(meetingNotif.data?.meetingLink || 'https://meet.google.com/', '_blank')}>
+                      <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-lg shadow-primary/20 text-xs sm:text-sm" onClick={() => window.open(upcomingMeeting.meetingLink || 'https://meet.google.com/', '_blank')} disabled={!upcomingMeeting.meetingLink && !upcomingMeeting.meetingLink?.startsWith('http')}>
                         Join Meeting
                       </Button>
                       <Button variant="outline" className="flex-1 font-bold text-xs sm:text-sm">
