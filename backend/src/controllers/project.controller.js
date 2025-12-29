@@ -290,10 +290,22 @@ export const payUpfront = asyncHandler(async (req, res) => {
     throw new AppError("Payment has already been made for this project", 400);
   }
 
-  // Calculate 50% of budget
+  // Calculate upfront payment based on budget tiers
   const acceptedProposal = project.proposals?.[0];
   const amount = acceptedProposal?.amount || project.budget || 0;
-  const upfrontPayment = Math.round(amount * 0.5);
+  
+  let parts = 2; // Default to 2 parts (< 50k)
+  let percentage = 50;
+
+  if (amount > 200000) {
+    parts = 4; // 2L - 10L+
+    percentage = 25;
+  } else if (amount >= 50000) {
+    parts = 3; // 50k - 2L
+    percentage = 33;
+  }
+
+  const upfrontPayment = Math.round(amount / parts);
 
   // Update project: set spent and change status to IN_PROGRESS
   const updatedProject = await prisma.project.update({
@@ -308,7 +320,7 @@ export const payUpfront = asyncHandler(async (req, res) => {
     data: {
       project: updatedProject,
       paymentAmount: upfrontPayment,
-      message: "50% upfront payment processed. Project is now active."
+      message: `${percentage}% upfront payment processed. Project is now active.`
     }
   });
 });

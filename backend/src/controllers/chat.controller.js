@@ -1283,6 +1283,7 @@ export const listUserConversations = asyncHandler(async (req, res) => {
         proposal.freelancer?.email ||
         "Freelancer",
       projectTitle: proposal.project?.title || "Project Chat",
+      freelancer: proposal.freelancer, // Include full freelancer details
     });
   }
 
@@ -1361,6 +1362,7 @@ export const listUserConversations = asyncHandler(async (req, res) => {
         lastMessage: conversation.messages?.[0]
           ? serializeMessage(conversation.messages[0])
           : null,
+        freelancer: meta.freelancer, // Pass to frontend
       };
     });
 
