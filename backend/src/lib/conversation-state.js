@@ -1158,6 +1158,47 @@ const validateWebsiteBudget = (collectedData = {}) => {
     return { isValid: true, reason: null, requirement, parsed };
 };
 
+const LOW_BUDGET_SUGGESTIONS = ["Increase budget", "Continue with current budget"];
+
+const isIncreaseBudgetDecision = (value = "") => {
+    const canon = canonicalize(value);
+    return (
+        canon === "increasebudget" ||
+        canon === "increase" ||
+        canon === "raisebudget" ||
+        canon === "raisethebudget" ||
+        canon === "increaseyourbudget"
+    );
+};
+
+const isProceedWithLowBudgetDecision = (value = "") => {
+    const canon = canonicalize(value);
+    return (
+        canon === "continuewithcurrentbudget" ||
+        canon === "continuewithbudget" ||
+        canon === "continuebudget" ||
+        canon === "proceedwithcurrentbudget" ||
+        canon === "proceedwithbudget" ||
+        canon === "proceedbudget" ||
+        canon === "continue" ||
+        canon === "proceed" ||
+        canon === "goahead"
+    );
+};
+
+const formatBudgetForWarning = (rawBudget = "") => {
+    const range = parseInrBudgetRange(rawBudget);
+    if (!range) return rawBudget;
+    return formatBudgetDisplay(range) || rawBudget;
+};
+
+const formatMinimumBudgetLabel = (requirement) => {
+    if (!requirement) return "";
+    if (requirement.range) return formatBudgetDisplay(requirement.range);
+    if (Number.isFinite(requirement.min)) return `${formatInr(requirement.min)}+`;
+    return "";
+};
+
 const buildWebsiteBudgetSuggestions = (requirement) => {
     if (!requirement) return null;
 
@@ -1574,10 +1615,12 @@ const extractNameFromAssistantMessage = (value = "") => {
     return isLikelyName(limited) ? limited : null;
 };
 
+const shouldApplyWebsiteBudgetRules = (questions = []) =>
+    questions.some((q) => q?.key === "tech") &&
+    questions.some((q) => q?.key === "pages");
+
 const getCurrentStepFromCollected = (questions = [], collectedData = {}) => {
-    const applyWebsiteBudgetRules =
-        questions.some((q) => q?.key === "tech") &&
-        questions.some((q) => q?.key === "pages");
+    const applyWebsiteBudgetRules = shouldApplyWebsiteBudgetRules(questions);
     const applyWebsiteTimelineRules =
         applyWebsiteBudgetRules && questions.some((q) => q?.key === "timeline");
     const skipDeployment = shouldSkipDeploymentQuestion(collectedData);
@@ -1608,6 +1651,34 @@ const getCurrentStepFromCollected = (questions = [], collectedData = {}) => {
         }
     }
     return questions.length;
+};
+
+const buildLowBudgetWarning = (state) => {
+    const questions = Array.isArray(state?.questions) ? state.questions : [];
+    if (!shouldApplyWebsiteBudgetRules(questions)) return null;
+    if (state?.meta?.allowLowBudget) return null;
+
+    const collectedData = state?.collectedData || {};
+    const rawBudget = normalizeText(collectedData.budget || "");
+    if (!rawBudget || rawBudget === "[skipped]") return null;
+
+    const budgetCheck = validateWebsiteBudget(collectedData);
+    if (!budgetCheck || budgetCheck.reason !== "too_low") return null;
+
+    const requirement = budgetCheck.requirement || null;
+    const techLabel =
+        requirement?.label ||
+        normalizeText(collectedData.tech || "") ||
+        "this stack";
+    const budgetLabel = formatBudgetForWarning(rawBudget) || rawBudget;
+    const minLabel = formatMinimumBudgetLabel(requirement);
+    const minSuffix = minLabel ? ` (${minLabel})` : "";
+
+    return (
+        `Your budget of ${budgetLabel} is below the minimum for ${techLabel}${minSuffix}. ` +
+        "We can still build with your budget, but the quality and polish may vary. " +
+        "Would you like to increase the budget or continue with the current budget?"
+    );
 };
 
 const getQuestionFocusKeyFromUserMessage = (questions = [], message = "") => {
@@ -2193,6 +2264,20 @@ const applyTemplatePlaceholders = (text, state) => {
         output = output.replace(/\s{2,}/g, " ");
     }
 
+    if (/\{tech\}/i.test(output)) {
+        const tech = resolveSlotDisplayValue(state, "tech") || "your chosen stack";
+        output = output.replace(/\{tech\}/gi, tech);
+    }
+
+    if (/\{min_budget\}/i.test(output)) {
+        const requirement = resolveMinimumWebsiteBudget(state?.collectedData || {});
+        const rangeLabel = requirement?.range ? formatBudgetDisplay(requirement.range) : "";
+        const min = Number.isFinite(requirement?.min) ? requirement.min : null;
+        const minLabel = rangeLabel || (min ? `${formatInr(min)}+` : "");
+        const fallback = minLabel || "a realistic budget";
+        output = output.replace(/\{min_budget\}/gi, fallback);
+    }
+
     return output.trim();
 };
 
@@ -2296,6 +2381,40 @@ const createSlotDefaults = () => ({
 const ensureSlot = (slots, key) => {
     if (!slots[key]) slots[key] = createSlotDefaults();
     return slots[key];
+};
+
+const recomputeProgress = (state) => {
+    const questions = Array.isArray(state?.questions) ? state.questions : [];
+    const slots = state?.slots || {};
+    const { missingRequired, missingOptional } = buildMissingLists(questions, slots);
+    const nextKey = findNextQuestionKey(questions, missingRequired, missingOptional);
+    const currentStep = nextKey ? questions.findIndex((q) => q.key === nextKey) : questions.length;
+    const asked = Object.keys(slots).filter((key) => (slots[key]?.askedCount || 0) > 0);
+    const answered = Object.keys(slots).filter((key) => slots[key]?.status === "answered");
+
+    return {
+        ...state,
+        missingRequired,
+        missingOptional,
+        currentStep,
+        asked,
+        answered,
+        isComplete: missingRequired.length === 0 && missingOptional.length === 0,
+    };
+};
+
+const clearBudgetSlot = (state) => {
+    if (!state) return state;
+    const next = {
+        ...state,
+        slots: { ...(state.slots || {}) },
+        collectedData: { ...(state.collectedData || {}) },
+    };
+    if (next.slots.budget) {
+        next.slots.budget = createSlotDefaults();
+    }
+    delete next.collectedData.budget;
+    return next;
 };
 
 const applySlotResult = (slot, result, raw) => {
@@ -2654,17 +2773,60 @@ export function processUserAnswer(state, message) {
     );
 
     const normalizedMessage = normalizeText(message);
+    let workingState = state;
+    const hasLowBudgetPending = Boolean(workingState?.meta?.lowBudgetPending);
+    const budgetDecisionIncrease = hasLowBudgetPending && isIncreaseBudgetDecision(normalizedMessage);
+    const budgetDecisionProceed = hasLowBudgetPending && isProceedWithLowBudgetDecision(normalizedMessage);
+    const budgetInputDetected =
+        hasLowBudgetPending && (hasBudgetSignal(normalizedMessage) || isBareBudgetAnswer(normalizedMessage));
+
+    if (hasLowBudgetPending) {
+        if (budgetDecisionProceed) {
+            const nextState = recomputeProgress({
+                ...workingState,
+                meta: {
+                    ...(workingState?.meta || {}),
+                    lowBudgetPending: false,
+                    allowLowBudget: true,
+                },
+            });
+            return nextState;
+        }
+        if (budgetDecisionIncrease) {
+            const cleared = clearBudgetSlot(workingState);
+            const nextState = recomputeProgress({
+                ...cleared,
+                meta: {
+                    ...(cleared?.meta || {}),
+                    lowBudgetPending: false,
+                    allowLowBudget: false,
+                },
+            });
+            return nextState;
+        }
+        if (!budgetInputDetected) {
+            return {
+                ...workingState,
+                meta: { ...(workingState?.meta || {}), wasQuestion: isUserQuestion(normalizedMessage) },
+            };
+        }
+        workingState = {
+            ...workingState,
+            meta: { ...(workingState?.meta || {}), lowBudgetPending: false, allowLowBudget: false },
+        };
+    }
+
     const greetingOnly =
-        !state?.pendingQuestionKey && isGreetingMessage(normalizedMessage);
+        !workingState?.pendingQuestionKey && isGreetingMessage(normalizedMessage);
 
     const activeKey =
-        state?.pendingQuestionKey ||
-        (greetingOnly ? null : questions[state?.currentStep || 0]?.key) ||
+        workingState?.pendingQuestionKey ||
+        (greetingOnly ? null : questions[workingState?.currentStep || 0]?.key) ||
         null;
 
     const nextState = applyMessageToState(
         {
-            ...state,
+            ...workingState,
             questions,
             serviceSource: source,
             serviceDefinition: definition,
@@ -2672,6 +2834,13 @@ export function processUserAnswer(state, message) {
         message,
         activeKey
     );
+
+    if (nextState?.meta?.allowLowBudget) {
+        const budgetCheck = validateWebsiteBudget(nextState?.collectedData || {});
+        if (budgetCheck?.isValid) {
+            nextState.meta.allowLowBudget = false;
+        }
+    }
 
     return {
         ...nextState,
@@ -2692,6 +2861,12 @@ export function getNextHumanizedQuestion(state) {
     const missingOptional = Array.isArray(state?.missingOptional) ? state.missingOptional : [];
 
     if (!questions.length) return null;
+
+    const lowBudgetWarning = buildLowBudgetWarning(state);
+    if (lowBudgetWarning) {
+        state.meta = { ...(state?.meta || {}), lowBudgetPending: true };
+        return `${lowBudgetWarning}\n[SUGGESTIONS: ${LOW_BUDGET_SUGGESTIONS.join(" | ")}]`;
+    }
 
     const findIssue = (requiredOnly) => {
         for (const question of questions) {
@@ -3203,6 +3378,110 @@ export function generateProposalFromState(state) {
     }
     if (timeline && /flexible|not sure/i.test(timeline)) {
         assumptions.push("Timeline will be finalized after scope confirmation.");
+    }
+
+    const isWebsiteFlow =
+        questions.some((q) => q?.key === "pages") && questions.some((q) => q?.key === "tech");
+
+    if (isWebsiteFlow) {
+        const primaryName =
+            resolveSlotDisplayValue(state, "name") ||
+            resolveSlotDisplayValue(state, "first_name") ||
+            resolveSlotDisplayValue(state, "full_name");
+        const projectName =
+            getSlotValue("company") ||
+            getSlotValue("project") ||
+            getSlotValue("brand") ||
+            "Website Project";
+        const websiteType = getSlotValue("website_type") || "Website";
+        const techStack = getSlotValue("tech") || "To be confirmed";
+        const design = getSlotValue("design");
+        const deployment = getSlotValue("deployment");
+        const domain = getSlotValue("domain");
+
+        const cleanList = (items = []) => {
+            const seen = new Set();
+            const result = [];
+            for (const item of items) {
+                const text = normalizeText(item);
+                if (!text || text === "[skipped]") continue;
+                const canon = canonicalize(text.toLowerCase());
+                if (!canon || canon === "none") continue;
+                if (seen.has(canon)) continue;
+                seen.add(canon);
+                result.push(text);
+            }
+            return result;
+        };
+
+        const listFromValue = (value) => cleanList(splitSelections(normalizeValue(value)));
+
+        const pagesRaw = getSlotValue("pages") || normalizeValue(collectedData.pages_inferred);
+        const pages = listFromValue(pagesRaw);
+        const integrations = listFromValue(getSlotValue("integrations"));
+        const deployments = listFromValue(deployment);
+
+        const corePages = ["Home", "About", "Contact", "Privacy Policy", "Terms"];
+
+        const sections = ["[PROPOSAL_DATA]", "PROJECT PROPOSAL", ""];
+
+        sections.push("Project Overview");
+        sections.push(`- Service: ${serviceName}`);
+        sections.push(`- Project: ${projectName}`);
+        if (primaryName) sections.push(`- Client: ${primaryName}`);
+        sections.push(`- Website type: ${websiteType}`);
+        if (techStack) sections.push(`- Tech stack: ${techStack}`);
+        sections.push("");
+
+        if (summary) {
+            sections.push("Summary");
+            sections.push(`- ${summary}`);
+            sections.push("");
+        }
+
+        sections.push("Pages & Features");
+        sections.push(`- Core pages included: ${corePages.join(", ")}`);
+        sections.push(`- Additional pages/features: ${pages.length ? pages.join(", ") : "None specified"}`);
+        sections.push("");
+
+        sections.push("Integrations");
+        sections.push(`- ${integrations.length ? integrations.join(", ") : "None specified"}`);
+        sections.push("");
+
+        const infraLines = [];
+        if (design) infraLines.push(`- Designs: ${design}`);
+        if (deployments.length) infraLines.push(`- Hosting/deployment: ${deployments.join(", ")}`);
+        if (domain) infraLines.push(`- Domain: ${domain}`);
+        if (infraLines.length) {
+            sections.push(...infraLines);
+            sections.push("");
+        }
+
+        if (assumptions.length) {
+            sections.push("Assumptions");
+            assumptions.forEach((item) => sections.push(`- ${item}`));
+            sections.push("");
+        }
+
+        if (timeline) {
+            sections.push("Timeline");
+            sections.push(`- ${timeline}`);
+            sections.push("");
+        }
+
+        if (budget) {
+            sections.push("Budget");
+            sections.push(`- ${budget}`);
+            sections.push("");
+        }
+
+        sections.push("Next Steps");
+        sections.push("- Confirm pages and integrations");
+        sections.push("- Share design files, content, and brand assets");
+        sections.push("- Approve proposal to start your project");
+        sections.push("[/PROPOSAL_DATA]");
+
+        return sections.join("\n").trim();
     }
 
     const sections = ["[PROPOSAL_DATA]"];

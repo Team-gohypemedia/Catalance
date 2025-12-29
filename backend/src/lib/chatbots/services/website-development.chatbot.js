@@ -162,6 +162,20 @@ export const questions = [
     ]
   },
   {
+    "key": "budget",
+    "patterns": [
+      "budget",
+      "cost",
+      "price",
+      "spend"
+    ],
+    "templates": [
+      "Based on your chosen stack ({tech}), budgets typically start around {min_budget}. What's your budget in INR?"
+    ],
+    "expectedType": "money",
+    "required": false
+  },
+  {
     "key": "deployment",
     "patterns": [
       "deploy",
@@ -201,28 +215,6 @@ export const questions = [
     ]
   },
   {
-    "key": "budget",
-    "patterns": [
-      "budget",
-      "cost",
-      "price",
-      "spend"
-    ],
-    "templates": [
-      "What's your budget for this project?"
-    ],
-    "suggestions": [
-      "WordPress (INR 130000+)",
-      "3D WordPress (INR 145000+)",
-      "Shopify (INR 130000+)",
-      "Custom Shopify (INR 180000+)",
-      "Custom React.js + Node.js (INR 150000+)",
-      "Next.js (INR 175000+)",
-      "3D Custom Website (INR 100000 - INR 400000)",
-      "Custom amount"
-    ]
-  },
-  {
     "key": "timeline",
     "patterns": [
       "timeline",
@@ -238,7 +230,8 @@ export const questions = [
       "1 month",
       "2-3 months",
       "Flexible"
-    ]
+    ],
+    "required": false
   }
 ];
 

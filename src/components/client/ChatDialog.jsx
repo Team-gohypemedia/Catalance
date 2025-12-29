@@ -38,6 +38,9 @@ const persistMessagesToStorage = (key, messages) => {
   }
 };
 
+const RESPONSE_TIMEOUT_MS = 25000;
+const normalizeContent = (value) => (value || "").trim();
+
 const ChatDialog = ({ isOpen, onClose, service }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -52,6 +55,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
   const inputRef = useRef(null);
   const socketRef = useRef(null);
   const loadingSinceRef = useRef(null);
+  const responseTimeoutRef = useRef(null);
   const serviceKey = service?.title || "Project";
   const messageStorageKey = useMemo(() => getMessageStorageKey(serviceKey), [serviceKey]);
   const getMessageKey = (msg, index) => msg?.id || msg?._id || msg?.createdAt || index;
@@ -64,6 +68,32 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) return "";
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const clearResponseTimeout = () => {
+    if (responseTimeoutRef.current) {
+      clearTimeout(responseTimeoutRef.current);
+      responseTimeoutRef.current = null;
+    }
+  };
+
+  const startResponseTimeout = (content) => {
+    clearResponseTimeout();
+    const expected = normalizeContent(content);
+    responseTimeoutRef.current = setTimeout(() => {
+      setIsLoading(false);
+      setMessages((prev) =>
+        prev.map((msg) => {
+          const isPendingUser =
+            msg?.pending &&
+            (msg?.role || "").toLowerCase() === "user" &&
+            normalizeContent(msg?.content) === expected;
+          if (!isPendingUser) return msg;
+          return { ...msg, pending: false, failed: true };
+        })
+      );
+      responseTimeoutRef.current = null;
+    }, RESPONSE_TIMEOUT_MS);
   };
 
   // Start or resume a conversation, persisting the id for the session.
@@ -157,7 +187,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
 
         // Remove optimistic messages that match the incoming one to avoid duplicates.
         const filtered = prev.filter((msg) => {
-          const isOptimistic = msg.pending || msg.optimistic;
+          const isOptimistic = msg.pending || msg.optimistic || msg.failed;
           if (!isOptimistic) return true;
 
           const optimisticContent = (msg.content || "").trim();
@@ -186,6 +216,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
 
           // Only set loading to false when we receive an assistant message
           if (isAssistantMessage) {
+            clearResponseTimeout();
             setIsLoading(false);
           }
 
@@ -243,6 +274,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
         persistMessagesToStorage(messageStorageKey, next);
         return next;
       });
+      clearResponseTimeout();
       setIsLoading(false);
     });
 
@@ -379,6 +411,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       ]);
       if (!contentOverride) setInput("");
       setIsLoading(true);
+      startResponseTimeout(msgContent);
       loadingSinceRef.current = Date.now();
       socketRef.current.emit("chat:message", payload);
       queueMicrotask(() => {
@@ -394,6 +427,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
     ]);
     if (!contentOverride) setInput("");
     setIsLoading(true);
+    startResponseTimeout(msgContent);
     loadingSinceRef.current = Date.now();
     apiClient
       .sendChatMessage(payload)
@@ -415,15 +449,20 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
 
         const finish = () => {
           setMessages((prev) => {
-            const withoutPending = prev.filter(
-              (msg) => !(msg.pending && msg.role === "user" && msg.content === msgContent)
-            );
+            const normalized = normalizeContent(msgContent);
+            const withoutPending = prev.filter((msg) => {
+              if ((msg?.role || "").toLowerCase() !== "user") return true;
+              const isOptimistic = msg?.pending || msg?.failed;
+              if (!isOptimistic) return true;
+              return normalizeContent(msg?.content) !== normalized;
+            });
             const next = assistant
               ? [...withoutPending, userMsg, assistant]
               : [...withoutPending, userMsg];
             persistMessagesToStorage(messageStorageKey, next);
             return next;
           });
+          clearResponseTimeout();
           setIsLoading(false);
         };
 
@@ -443,6 +482,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
               : msg
           )
         );
+        clearResponseTimeout();
         setIsLoading(false);
       })
       .finally(() => {
@@ -496,6 +536,7 @@ const ChatDialog = ({ isOpen, onClose, service }) => {
       window.localStorage.removeItem(storageKey);
       window.localStorage.removeItem(messageStorageKey);
     }
+    clearResponseTimeout();
     setIsLoading(false);
     loadingSinceRef.current = null;
     setConversationId(null);
