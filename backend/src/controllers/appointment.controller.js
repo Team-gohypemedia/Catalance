@@ -89,7 +89,7 @@ export const setManagerAvailability = asyncHandler(async (req, res) => {
     // Create new slots
     const createdSlots = [];
     for (const slot of slots) {
-        const { startHour, endHour } = slot;
+        const { startHour, endHour, isEnabled = true, remark = "" } = slot;
 
         if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24) {
             continue;
@@ -103,6 +103,8 @@ export const setManagerAvailability = asyncHandler(async (req, res) => {
                     startHour,
                     endHour,
                     isBooked: false,
+                    isEnabled,
+                    remark,
                 },
             });
             createdSlots.push(created);
@@ -156,6 +158,7 @@ export const getAvailableSlots = asyncHandler(async (req, res) => {
             managerId,
             date: dateObj,
             isBooked: false,
+            isEnabled: true,
         },
         orderBy: { startHour: "asc" },
         include: {
@@ -188,8 +191,10 @@ export const bookAppointment = asyncHandler(async (req, res) => {
         where: {
             managerId,
             date: dateObj,
+            date: dateObj,
             startHour,
             isBooked: false,
+            isEnabled: true,
         },
     });
 

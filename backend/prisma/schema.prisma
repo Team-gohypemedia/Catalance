@@ -46,6 +46,7 @@ model User {
   id           String     @id @default(cuid())
   email        String     @unique
   fullName     String
+  phoneNumber  String?
   passwordHash String
   role         UserRole   @default(FREELANCER)
   status       UserStatus @default(ACTIVE)
@@ -67,6 +68,7 @@ model User {
   portfolioProjects Json?    @default("[]")
 
   ownedProjects Project[] @relation("ProjectOwner")
+  managedProjects Project[] @relation("ProjectManager")
   proposals    Proposal[]
   createdChats ChatConversation[] @relation("ChatCreator")
   sentMessages ChatMessage[]      @relation("ChatSender")
@@ -94,6 +96,12 @@ model Project {
   notes           String?       @db.Text
   owner           User          @relation("ProjectOwner", fields: [ownerId], references: [id])
   ownerId         String
+<<<<<<< HEAD
+  
+  manager         User?         @relation("ProjectManager", fields: [managerId], references: [id])
+  managerId       String?
+=======
+>>>>>>> b0a8e25775ae0e23ef180d7a06eb597995bc4a1c
 
   proposals       Proposal[]
   disputes        Dispute[]
@@ -204,6 +212,8 @@ model ManagerAvailability {
   startHour   Int      // 0-23 (e.g., 10 for 10:00 AM)
   endHour     Int      // 0-23 (e.g., 11 for 11:00 AM)
   isBooked    Boolean  @default(false)
+  isEnabled   Boolean  @default(true)
+  remark      String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
