@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -1253,9 +1253,17 @@ const ProjectDashboard = () => {
               <div className="bg-muted/50 p-3 rounded-md mb-2 border">
                 <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Project Manager</p>
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-foreground">{project.manager.fullName}</span>
-                  <span className="text-xs text-muted-foreground">{project.manager.email}</span>
-                  {project.manager.phone && <span className="text-xs text-muted-foreground">{project.manager.phone}</span>}
+                  <span className="text-sm font-semibold text-foreground mb-1">{project.manager.fullName}</span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Mail className="w-3 h-3" />
+                    <span>{project.manager.email}</span>
+                  </div>
+                  {project.manager.phone && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <Phone className="w-3 h-3" />
+                      <span>{project.manager.phone}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
