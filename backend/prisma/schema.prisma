@@ -96,12 +96,8 @@ model Project {
   notes           String?       @db.Text
   owner           User          @relation("ProjectOwner", fields: [ownerId], references: [id])
   ownerId         String
-<<<<<<< HEAD
-  
   manager         User?         @relation("ProjectManager", fields: [managerId], references: [id])
   managerId       String?
-=======
->>>>>>> b0a8e25775ae0e23ef180d7a06eb597995bc4a1c
 
   proposals       Proposal[]
   disputes        Dispute[]
