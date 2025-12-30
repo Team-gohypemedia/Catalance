@@ -36,6 +36,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 import {
   Tooltip,
@@ -167,6 +173,8 @@ const FreelancerProjectDetailContent = () => {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState(null);
+  const [completedTaskIds, setCompletedTaskIds] = useState(new Set());
+  const [verifiedTaskIds, setVerifiedTaskIds] = useState(new Set());
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -332,6 +340,14 @@ const FreelancerProjectDetailContent = () => {
             spent: Number(match.project.spent || 0)
           });
           setIsFallback(false);
+          
+          // Load saved task progress from database
+          if (Array.isArray(match.project.completedTasks)) {
+            setCompletedTaskIds(new Set(match.project.completedTasks));
+          }
+          if (Array.isArray(match.project.verifiedTasks)) {
+            setVerifiedTaskIds(new Set(match.project.verifiedTasks));
+          }
         } else if (active) {
           setProject(null);
           setIsFallback(true);
@@ -715,17 +731,88 @@ const FreelancerProjectDetailContent = () => {
   }, [overallProgress, activeSOP]);
 
   const derivedTasks = useMemo(() => {
-    return activeSOP.tasks.map((task) => {
-      const phaseStatus = derivedPhases.find((p) => p.id === task.phase)?.status || task.status;
+    const tasks = activeSOP.tasks;
+    // Show ALL tasks from all phases
+    return tasks.map((task) => {
+      // Use unique key combining phase and task id
+      const uniqueKey = `${task.phase}-${task.id}`;
+      const isCompleted = completedTaskIds.has(uniqueKey);
+      const isVerified = verifiedTaskIds.has(uniqueKey);
+      const taskPhase = derivedPhases.find((p) => p.id === task.phase);
+      const phaseStatus = taskPhase?.status || task.status;
+
+      // Check if task is manually completed by user
+      if (isCompleted) {
+        return { ...task, uniqueKey, status: "completed", verified: isVerified, phaseName: taskPhase?.name };
+      }
       if (phaseStatus === "completed") {
-        return { ...task, status: "completed" };
+        return { ...task, uniqueKey, status: "completed", verified: isVerified, phaseName: taskPhase?.name };
       }
       if (phaseStatus === "in-progress" && task.status === "completed") {
-        return task;
+        return { ...task, uniqueKey, verified: isVerified, phaseName: taskPhase?.name };
       }
-      return { ...task, status: phaseStatus === "in-progress" ? "in-progress" : "pending" };
+      return {
+        ...task,
+        uniqueKey,
+        status: phaseStatus === "in-progress" ? "in-progress" : "pending",
+        verified: false,
+        phaseName: taskPhase?.name
+      };
     });
-  }, [derivedPhases, activeSOP]);
+  }, [derivedPhases, activeSOP, completedTaskIds, verifiedTaskIds]);
+
+  // Group tasks by phase for display
+  const tasksByPhase = useMemo(() => {
+    const grouped = {};
+    derivedTasks.forEach((task) => {
+      if (!grouped[task.phase]) {
+        const phase = derivedPhases.find((p) => p.id === task.phase);
+        grouped[task.phase] = {
+          phaseId: task.phase,
+          phaseName: phase?.name || `Phase ${task.phase}`,
+          phaseStatus: phase?.status || "pending",
+          tasks: []
+        };
+      }
+      grouped[task.phase].tasks.push(task);
+    });
+    return Object.values(grouped);
+  }, [derivedTasks, derivedPhases]);
+
+  // Handle task click to toggle completion
+  const handleTaskClick = async (e, uniqueKey) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    let newCompleted;
+
+    setCompletedTaskIds((prev) => {
+      const updated = new Set(prev);
+      if (updated.has(uniqueKey)) {
+        updated.delete(uniqueKey);
+      } else {
+        updated.add(uniqueKey);
+      }
+      newCompleted = Array.from(updated);
+      return updated;
+    });
+
+    // Save to database
+    if (project?.id && authFetch) {
+      try {
+        await authFetch(`/projects/${project.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            completedTasks: newCompleted,
+            // verifiedTasks remain unchanged by freelancer
+          })
+        });
+      } catch (error) {
+        console.error("Failed to save task state:", error);
+      }
+    }
+  };
 
   const completedPhases = derivedPhases.filter((p) => p.status === "completed").length;
   const pageTitle = project?.title ? `Project: ${project.title}` : "Project Dashboard";
@@ -851,7 +938,6 @@ const FreelancerProjectDetailContent = () => {
                       key={phase.id}
                       className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0 last:pb-0"
                     >
-                      <div className="mt-1">{getPhaseIcon(phase.status)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold text-sm text-foreground">{phase.name}</h3>
@@ -874,42 +960,67 @@ const FreelancerProjectDetailContent = () => {
                 </CardContent>
               </Card>
 
+              {/* All Tasks Grouped by Phase - Accordion */}
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-foreground">
-                    Tasks & Checklist {activePhase ? `- ${activePhase.name}` : ""}
-                  </CardTitle>
+                  <CardTitle className="text-lg text-foreground">Project Tasks</CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    {derivedTasks.filter((t) => t.status === "completed").length} of {derivedTasks.length} total tasks
-                    completed
+                    {derivedTasks.filter((t) => t.status === "completed").length} of {derivedTasks.length} tasks completed
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {visibleTasks.length > 0 ? (
-                    visibleTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent transition-colors"
-                      >
-                        {task.status === "completed" ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                        )}
-                        <span
-                          className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
-                            }`}
-                        >
-                          {task.title}
-                        </span>
-                        <Badge variant="outline" className="text-xs border-border/60 text-muted-foreground">
-                          Phase {task.phase}
-                        </Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No tasks available for this phase.</p>
-                  )}
+                <CardContent>
+                  <Accordion type="single" collapsible defaultValue={activePhase?.id} className="w-full">
+                    {tasksByPhase.map((phaseGroup) => (
+                      <AccordionItem key={phaseGroup.phaseId} value={phaseGroup.phaseId} className="border-border/60">
+                        <AccordionTrigger className="hover:no-underline py-3">
+                          <div className="flex items-center gap-3 flex-1">
+                            {getPhaseIcon(phaseGroup.phaseStatus)}
+                            <div className="flex-1 text-left">
+                              <div className="font-semibold text-sm text-foreground">{phaseGroup.phaseName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {phaseGroup.tasks.filter((t) => t.status === "completed").length} of {phaseGroup.tasks.length} completed
+                              </div>
+                            </div>
+                            <Badge
+                              variant={phaseGroup.phaseStatus === "completed" ? "default" : "outline"}
+                              className={phaseGroup.phaseStatus === "completed" ? "bg-emerald-500 text-white" : ""}
+                            >
+                              {phaseGroup.phaseStatus === "completed" ? "Completed" :
+                                phaseGroup.phaseStatus === "in-progress" ? "In Progress" : "Pending"}
+                            </Badge>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-2 pt-2">
+                            {phaseGroup.tasks.map((task) => (
+                              <div
+                                key={task.uniqueKey}
+                                className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent/60 transition-colors cursor-pointer"
+                                onClick={(e) => handleTaskClick(e, task.uniqueKey)}
+                              >
+                                {task.status === "completed" ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                )}
+                                <span
+                                  className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
+                                    }`}
+                                >
+                                  {task.title}
+                                </span>
+                                {task.verified && (
+                                  <Badge className="h-6 px-2 text-[10px] bg-emerald-500 text-white">
+                                    Verified
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
                 </CardContent>
               </Card>
             </div>

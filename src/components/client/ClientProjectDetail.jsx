@@ -1018,7 +1018,6 @@ const ProjectDashboard = () => {
                       key={phase.id}
                       className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0 last:pb-0 p-2 rounded"
                     >
-                      <div className="mt-1">{getPhaseIcon(phase.status)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold text-sm text-foreground">{phase.name}</h3>
