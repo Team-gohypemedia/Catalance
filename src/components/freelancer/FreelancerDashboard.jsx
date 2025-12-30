@@ -376,6 +376,7 @@ export const DashboardContent = ({ roleOverride }) => {
                       <tr className="bg-secondary/30 border-b border-border">
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Project Name</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Client</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Budget</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">Action</th>
                       </tr>
@@ -383,19 +384,27 @@ export const DashboardContent = ({ roleOverride }) => {
                     <tbody className="divide-y divide-border">
                       {metrics.acceptedProposals.length === 0 ? (
                          <tr>
-                           <td colSpan="4" className="px-6 py-8 text-center text-muted-foreground text-sm">No active jobs yet.</td>
+                           <td colSpan="5" className="px-6 py-8 text-center text-muted-foreground text-sm">No active jobs yet.</td>
                          </tr>
                       ) : (
                         metrics.acceptedProposals.map((proposal) => (
                           <tr key={proposal.id} className="group hover:bg-secondary/30 transition-colors">
                             <td className="px-6 py-4">
                               <div className="font-bold text-foreground">{proposal.project?.title || "Untitled Project"}</div>
-                              <div className="text-xs text-muted-foreground">Client: {proposal.project?.owner?.fullName || "Client"}</div>
+                              <div className="text-xs text-muted-foreground">{new Date(proposal.project?.createdAt || Date.now()).toLocaleDateString()}</div>
                             </td>
                             <td className="px-6 py-4">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50">
                                 Active
                               </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-xs font-bold border border-border">
+                                    {(proposal.project?.owner?.fullName || "C").charAt(0)}
+                                </div>
+                                <span className="text-sm font-medium">{proposal.project?.owner?.fullName || "Client"}</span>
+                               </div>
                             </td>
                             <td className="px-6 py-4">
                               <div className="text-sm font-bold text-foreground">{formatCurrency(proposal.amount * 0.7)}</div>
