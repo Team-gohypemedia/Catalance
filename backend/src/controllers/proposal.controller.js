@@ -167,7 +167,8 @@ export const listProposals = asyncHandler(async (req, res) => {
     include: {
       project: {
         include: {
-          owner: true
+          owner: true,
+          manager: { select: { id: true, fullName: true, email: true, phone: true } }
         }
       },
       freelancer: true
@@ -444,7 +445,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       // Notify the client that freelancer accepted their proposal
       try {
         const freelancerName = updated.freelancer?.fullName || updated.freelancer?.name || "A freelancer";
-        sendNotificationToUser(updated.project.ownerId, {
+        await sendNotificationToUser(updated.project.ownerId, {
           type: "proposal",
           title: "Proposal Accepted! 🎉",
           message: `${freelancerName} has accepted your proposal for "${updated.project.title}".`,

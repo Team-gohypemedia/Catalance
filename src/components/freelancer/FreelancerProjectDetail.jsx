@@ -337,7 +337,8 @@ const FreelancerProjectDetailContent = () => {
             status: match.project.status || match.status || "IN_PROGRESS",
             budget: normalizedBudget,
             currency: match.project.currency || match.currency || "₹",
-            spent: Number(match.project.spent || 0)
+            spent: Number(match.project.spent || 0),
+            manager: match.project.manager // Map manager details
           });
           setIsFallback(false);
           
@@ -1155,6 +1156,16 @@ const FreelancerProjectDetailContent = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {project?.manager && (
+              <div className="bg-muted/50 p-3 rounded-md mb-2 border">
+                <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Project Manager</p>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground">{project.manager.fullName}</span>
+                  <span className="text-xs text-muted-foreground">{project.manager.email}</span>
+                  {project.manager.phone && <span className="text-xs text-muted-foreground">{project.manager.phone}</span>}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
                <label className="text-sm font-medium">Add Note</label>
                <Textarea
