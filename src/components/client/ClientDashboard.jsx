@@ -80,7 +80,7 @@ const StatsCard = ({ title, value, trend, trendType = "up", icon: Icon, accentCo
       <div className={`absolute top-0 right-0 w-16 h-16 ${colors[accentColor]} rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110`} />
       <CardContent className="p-6 relative z-10">
         <p className="text-muted-foreground text-sm font-medium mb-1">{title}</p>
-        <h3 className="text-3xl font-bold tracking-tight">{value}</h3>
+        <h3 className="text-3xl tracking-tight">{value}</h3>
         {trend && (
           <p className={`text-xs mt-2 flex items-center font-bold ${
             trendType === "up" ? "text-green-600" : 
@@ -190,7 +190,8 @@ const ClientDashboardContent = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
-  const [freelancers, setFreelancers] = useState([]);
+  const [freelancers, setFreelancers] = useState([]); // Chat freelancers
+  const [suggestedFreelancers, setSuggestedFreelancers] = useState([]); // All freelancers for suggestions
   const [isLoading, setIsLoading] = useState(true);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [savedProposal, setSavedProposal] = useState(null);
@@ -226,8 +227,8 @@ const ClientDashboardContent = () => {
           // Try to extract timeline from content if not set
           if (!parsed.timeline && (parsed.content || parsed.summary)) {
             const text = parsed.content || parsed.summary || "";
-            // Look for timeline patterns in content
-            const timelineMatch = text.match(/Timeline(?:\s*\(with buffer\))?[:\s]*([^\n]+)/i);
+            // Look for timeline patterns in content (handles: Timeline: ..., Timeline - ..., Timeline\n- ...)
+            const timelineMatch = text.match(/Timeline[:\s\-\n\u2022]*([^\n]+)/i);
             if (timelineMatch) {
               // Clean up the timeline value
               parsed.timeline = timelineMatch[1].trim().replace(/\(with buffer\)/gi, "").trim();
@@ -236,8 +237,8 @@ const ClientDashboardContent = () => {
           // Try to extract budget from content if not set properly
           if ((!parsed.budget || parsed.budget === "Not set") && (parsed.content || parsed.summary)) {
             const text = parsed.content || parsed.summary || "";
-            const budgetMatch = text.match(/Budget[:\s]*(?:INR\s*)?([₹\d,]+)/i)
-              || text.match(/Budget range[:\s]*(?:INR\s*)?([₹\d,]+)/i);
+            // Look for budget patterns (handles: Budget: ..., Budget - INR ..., Budget\n- ₹...)
+            const budgetMatch = text.match(/Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹)?\s*([₹\d,]+)/i);
             if (budgetMatch) {
               parsed.budget = budgetMatch[1].trim();
             }
@@ -322,23 +323,72 @@ const ClientDashboardContent = () => {
         if (chatFreelancers.length > 0) {
           setFreelancers(chatFreelancers);
         } else {
-          // Fallback to listFreelancers if no chats
-          const fallbackData = await listFreelancers();
-          setFreelancers(Array.isArray(fallbackData) ? fallbackData.slice(0, 3) : []);
+          setFreelancers([]);
         }
       } catch (error) {
         console.error("Failed to load chat freelancers", error);
-        // Fallback on error
-        const fallbackData = await listFreelancers().catch(() => []);
-        setFreelancers(Array.isArray(fallbackData) ? fallbackData.slice(0, 3) : []);
+        setFreelancers([]);
       }
     };
     loadChatFreelancers();
+    loadChatFreelancers();
   }, []);
+
+  // Load all freelancers for suggestions
+  useEffect(() => {
+    const loadAllFreelancers = async () => {
+      try {
+        const all = await listFreelancers();
+        // Filter out suspended or invalid ones if needed
+        // For now, just take top 6
+        setSuggestedFreelancers(Array.isArray(all) ? all.slice(0, 6) : []);
+      } catch (err) {
+        console.error("Failed to load suggested freelancers:", err);
+      }
+    };
+    loadAllFreelancers();
+  }, []);
+
+  // Deduplicate projects: If a project title has an "Active" version (AWAITING_PAYMENT, IN_PROGRESS, COMPLETED),
+  // hide any "Open" or "Draft" versions of the same project context.
+  const uniqueProjects = useMemo(() => {
+    // Group by title
+    const groups = {};
+    projects.forEach(p => {
+      const title = (p.title || "").trim();
+      if (!groups[title]) groups[title] = [];
+      groups[title].push(p);
+    });
+
+    const result = [];
+    Object.values(groups).forEach(group => {
+      // Check if this group has any "definitive" status
+      const activeProject = group.find(p => 
+        ["AWAITING_PAYMENT", "IN_PROGRESS", "COMPLETED"].includes((p.status || "").toUpperCase()) ||
+        (p.proposals || []).some(prop => (prop.status || "").toUpperCase() === "ACCEPTED")
+      );
+
+      if (activeProject) {
+        // If there's an active project, only show that one (or multiple active ones if that somehow happens)
+        // Filter out OPEN/DRAFT duplicates
+        const activeOnes = group.filter(p => 
+          ["AWAITING_PAYMENT", "IN_PROGRESS", "COMPLETED"].includes((p.status || "").toUpperCase()) ||
+          (p.proposals || []).some(prop => (prop.status || "").toUpperCase() === "ACCEPTED")
+        );
+        result.push(...activeOnes);
+      } else {
+        // No active project, show all (these are likely multiple invites sent out)
+        result.push(...group);
+      }
+    });
+    
+    // Sort by date desc
+    return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [projects]);
 
   // Computed metrics
   const metrics = useMemo(() => {
-    const projectsWithAccepted = projects.filter((p) =>
+    const projectsWithAccepted = uniqueProjects.filter((p) =>
       (p.proposals || []).some((pr) => (pr.status || "").toUpperCase() === "ACCEPTED")
     );
     
@@ -349,15 +399,19 @@ const ClientDashboardContent = () => {
       return acc + spent;
     }, 0);
     
-    const activeProjectsCount = projects.filter((p) => {
+    const activeProjectsCount = uniqueProjects.filter((p) => {
       const status = (p.status || "").toUpperCase();
       return status === "IN_PROGRESS" || status === "OPEN" || status === "AWAITING_PAYMENT";
     }).length;
 
-    const totalBudget = projects
+    const totalBudget = uniqueProjects
       .filter(p => {
         const status = (p.status || "").toUpperCase();
-        return status !== "DRAFT" && status !== "COMPLETED";
+        const hasAcceptedProposal = (p.proposals || []).some(pr => (pr.status || "").toUpperCase() === "ACCEPTED");
+        
+        // Only count budget for projects that are actually active/committed
+        // Exclude purely "OPEN" projects (invites) that haven't been accepted yet
+        return status === "IN_PROGRESS" || status === "AWAITING_PAYMENT" || hasAcceptedProposal;
       })
       .reduce((acc, p) => acc + (parseInt(p.budget) || 0), 0);
 
@@ -366,7 +420,7 @@ const ClientDashboardContent = () => {
       activeProjects: activeProjectsCount,
       totalBudget: totalBudget,
     };
-  }, [projects]);
+  }, [uniqueProjects]);
 
   const budgetPercentage = useMemo(() => {
     if (!metrics.totalBudget) return 0;
@@ -405,7 +459,7 @@ const ClientDashboardContent = () => {
         body: JSON.stringify({
           title: savedProposal.projectTitle || "New Project",
           description: savedProposal.summary || savedProposal.content || "",
-          budget: parseInt(savedProposal.budget?.replace(/[₹,]/g, "")) || 0,
+          budget: parseInt(String(savedProposal.budget || "0").replace(/[^0-9]/g, "")) || 0,
           timeline: savedProposal.timeline || "1 month",
           status: "OPEN"
         }),
@@ -422,7 +476,7 @@ const ClientDashboardContent = () => {
         body: JSON.stringify({
           projectId: project.id,
           freelancerId: freelancer.id,
-          amount: parseInt(savedProposal.budget?.replace(/[₹,]/g, "")) || 0,
+          amount: parseInt(String(savedProposal.budget || "0").replace(/[^0-9]/g, "")) || 0,
           coverLetter: savedProposal.summary || savedProposal.content || "",
         }),
       });
@@ -437,7 +491,7 @@ const ClientDashboardContent = () => {
       setSelectedFreelancer(null);
       
       toast.success(`Proposal sent to ${freelancer.fullName || freelancer.name}!`);
-      navigate(`/client/project/${project.id}`);
+      // navigate(`/client/project/${project.id}`);
       
     } catch (error) {
       console.error("Failed to send proposal:", error);
@@ -512,7 +566,7 @@ const ClientDashboardContent = () => {
               {/* Welcome Section */}
               <div className="flex justify-between items-end">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-2">
+                  <h1 className="text-3xl md:text-4xl font-semibold mb-2">
                     {greeting}, {firstName}
                   </h1>
                   <p className="text-muted-foreground font-medium">
@@ -618,12 +672,11 @@ const ClientDashboardContent = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Freelancer Cards to Send Proposal */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-bold">Choose a Freelancer to Send Your Proposal</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {freelancers.length > 0 ? (
-                        freelancers.map((freelancer) => (
+                      {suggestedFreelancers.length > 0 ? (
+                        suggestedFreelancers.map((freelancer) => (
                           <Card 
                             key={freelancer.id} 
                             className="group hover:shadow-lg hover:border-primary/20 transition-all cursor-pointer relative"
@@ -996,7 +1049,7 @@ const ClientDashboardContent = () => {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold">Active Projects</h3>
-                  <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/projects")}>
+                  <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/project")}>
                     View All <ArrowRight className="w-4 h-4 ml-1" />
                   </Button>
                 </div>
@@ -1024,7 +1077,7 @@ const ClientDashboardContent = () => {
                           </TableRow>
                         ))
                       ) : (
-                        projects
+                        uniqueProjects
                           .filter(p => p.status !== "DRAFT" && p.status !== "COMPLETED")
                           .slice(0, 5)
                           .map((project) => {
@@ -1217,7 +1270,7 @@ const ClientDashboardContent = () => {
                         />
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">No freelancers found</p>
+                      <p className="text-sm text-muted-foreground italic py-4 text-center">No active chats yet</p>
                     )}
                   </ul>
                 </CardContent>

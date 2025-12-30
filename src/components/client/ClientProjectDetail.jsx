@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -204,7 +205,6 @@ const ProjectDashboard = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
-  const [selectedIssueType, setSelectedIssueType] = useState("");
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
 
@@ -256,12 +256,12 @@ const ProjectDashboard = () => {
   const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
 
   const handleReport = async () => {
-    if (!issueText.trim() || !selectedIssueType) {
-      toast.error("Please select an issue type and describe the issue");
+    if (!issueText.trim()) {
+      toast.error("Please describe the issue");
       return;
     }
 
-    let fullDescription = `Issue Type: ${selectedIssueType || "Not Specified"}\n\n${issueText}`;
+    let fullDescription = issueText;
     let meetingDateIso = undefined;
 
     if (date) {
@@ -954,7 +954,7 @@ const ProjectDashboard = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="default" size="sm" onClick={() => setReportOpen(true)}>
-                      PC
+                     <Headset /> PC
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -1018,7 +1018,6 @@ const ProjectDashboard = () => {
                       key={phase.id}
                       className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0 last:pb-0 p-2 rounded"
                     >
-                      <div className="mt-1">{getPhaseIcon(phase.status)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold text-sm text-foreground">{phase.name}</h3>
@@ -1251,31 +1250,36 @@ const ProjectDashboard = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {project?.manager && (
+              <div className="bg-muted/50 p-3 rounded-md mb-2 border flex items-center gap-3">
+                <Avatar className="h-10 w-10 border bg-background">
+                  <AvatarImage src={project.manager.avatar} alt={project.manager.fullName} />
+                  <AvatarFallback className="bg-primary/10 text-primary">PM</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground mb-1">{project.manager.fullName}</span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Mail className="w-3 h-3" />
+                    <span>{project.manager.email}</span>
+                  </div>
+                  {project.manager.phone && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <Phone className="w-3 h-3" />
+                      <span>{project.manager.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Issue Type</label>
-              <Select value={selectedIssueType} onValueChange={setSelectedIssueType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an issue type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="Payment Issue">Payment Issue</SelectItem>
-                    <SelectItem value="Communication Problem">Communication Problem</SelectItem>
-                    <SelectItem value="Quality of Work">Quality of Work</SelectItem>
-                    <SelectItem value="Missed Deadline">Missed Deadline</SelectItem>
-                    <SelectItem value="Scope Creep">Scope Creep</SelectItem>
-                    <SelectItem value="Technical Issue">Technical Issue</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+               <label className="text-sm font-medium">Add Note</label>
+               <Textarea
+                placeholder="Add a note..."
+                value={issueText}
+                onChange={(e) => setIssueText(e.target.value)}
+                className="min-h-[100px] whitespace-pre-wrap break-all"
+              />
             </div>
-            <Textarea
-              placeholder="Describe the issue..."
-              value={issueText}
-              onChange={(e) => setIssueText(e.target.value)}
-              className="min-h-[100px] whitespace-pre-wrap break-all"
-            />
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">Project Manager Availability</label>
               <div className="flex gap-2">
@@ -1333,12 +1337,8 @@ const ProjectDashboard = () => {
             <Button variant="outline" onClick={() => setReportOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleReport} 
-              disabled={isReporting || !issueText.trim() || !selectedIssueType}
-            >
-              {isReporting ? "Submitting..." : "Submit Report"}
+            <Button variant="default" onClick={handleReport} disabled={isReporting || !issueText.trim()}>
+              {isReporting ? "Submit" : "Submit"}
             </Button>
           </DialogFooter>
         </DialogContent>

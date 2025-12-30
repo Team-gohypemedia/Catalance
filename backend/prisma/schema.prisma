@@ -46,6 +46,7 @@ model User {
   id           String     @id @default(cuid())
   email        String     @unique
   fullName     String
+  phoneNumber  String?
   passwordHash String
   role         UserRole   @default(FREELANCER)
   status       UserStatus @default(ACTIVE)
@@ -59,6 +60,8 @@ model User {
   otpExpires   DateTime?
   isVerified   Boolean    @default(false)
   suspendedAt  DateTime?  // Track when user was suspended for 90-day deletion countdown
+  phone        String?    // Contact number
+  avatar       String?    // Profile image URL
   
   // Social/Portfolio
   portfolio    String?
@@ -67,11 +70,13 @@ model User {
   portfolioProjects Json?    @default("[]")
 
   ownedProjects Project[] @relation("ProjectOwner")
+  managedProjects Project[] @relation("ProjectManager")
   proposals    Proposal[]
   createdChats ChatConversation[] @relation("ChatCreator")
   sentMessages ChatMessage[]      @relation("ChatSender")
   raisedDisputes Dispute[] @relation("DisputeRaiser")
   managedDisputes Dispute[] @relation("DisputeManager")
+
   notifications Notification[]
   availabilitySlots ManagerAvailability[] @relation("ManagerAvailability")
   bookedAppointments Appointment[] @relation("AppointmentBooker")
@@ -93,6 +98,9 @@ model Project {
   notes           String?       @db.Text
   owner           User          @relation("ProjectOwner", fields: [ownerId], references: [id])
   ownerId         String
+  manager         User?         @relation("ProjectManager", fields: [managerId], references: [id])
+  managerId       String?
+
   proposals       Proposal[]
   disputes        Dispute[]
   appointments    Appointment[]
@@ -202,6 +210,8 @@ model ManagerAvailability {
   startHour   Int      // 0-23 (e.g., 10 for 10:00 AM)
   endHour     Int      // 0-23 (e.g., 11 for 11:00 AM)
   isBooked    Boolean  @default(false)
+  isEnabled   Boolean  @default(true)
+  remark      String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   

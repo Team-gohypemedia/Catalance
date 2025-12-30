@@ -72,6 +72,17 @@ export const createProject = asyncHandler(async (req, res) => {
   }
 
   const { title, description, budget, status, proposal } = req.body;
+  /* Automatic Project Manager Assignment */
+  // Find a project manager to assign. We prioritize ACTIVE managers and balance the load.
+  console.log("Looking for an available Project Manager...");
+  const projectManager = await prisma.user.findFirst({
+    where: { 
+      role: "PROJECT_MANAGER",
+      status: "ACTIVE" 
+    },
+    orderBy: { managedProjects: { _count: 'asc' } }
+  });
+  console.log(`Assigning Project Manager: ${projectManager ? projectManager.id : "None found"}`);
 
   const project = await prisma.project.create({
     data: {
@@ -79,8 +90,9 @@ export const createProject = asyncHandler(async (req, res) => {
       description,
       budget: normalizeBudget(budget),
       status: status || "DRAFT",
-      progress: 0, // Initialize progress to 0
-      ownerId: userId
+      progress: 0,
+      ownerId: userId,
+      managerId: projectManager?.id // Assign if available
     }
   });
 
@@ -190,6 +202,9 @@ export const getProject = asyncHandler(async (req, res) => {
           }
         },
         orderBy: { createdAt: "desc" }
+      },
+      manager: {
+        select: { id: true, fullName: true, email: true, phone: true, avatar: true }
       },
       disputes: {
         select: { id: true, status: true }

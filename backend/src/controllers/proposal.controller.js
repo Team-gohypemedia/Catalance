@@ -59,6 +59,15 @@ export const createProposal = asyncHandler(async (req, res) => {
   const isClientSendingToFreelancer = isOwner && freelancerId && String(freelancerId) !== String(userId);
   const isFreelancerSendingToClient = !isOwner && String(actingFreelancerId) === String(userId);
   
+  console.log(`[Proposal] Notification Logic Debug:`);
+  console.log(`- Project Owner: ${project.ownerId}`);
+  console.log(`- Current User: ${userId}`);
+  console.log(`- Target Freelancer: ${freelancerId}`);
+  console.log(`- Acting ID: ${actingFreelancerId}`);
+  console.log(`- isOwner: ${isOwner}`);
+  console.log(`- isClientSendingToFreelancer: ${isClientSendingToFreelancer}`);
+  console.log(`- isFreelancerSendingToClient: ${isFreelancerSendingToClient}`);
+  
   console.log(`[Proposal] Notification check - isOwner: ${isOwner}, userId: ${userId}, freelancerId: ${freelancerId}`);
   console.log(`[Proposal] isClientSendingToFreelancer: ${isClientSendingToFreelancer}, isFreelancerSendingToClient: ${isFreelancerSendingToClient}`);
   
@@ -158,7 +167,8 @@ export const listProposals = asyncHandler(async (req, res) => {
     include: {
       project: {
         include: {
-          owner: true
+          owner: true,
+          manager: { select: { id: true, fullName: true, email: true, phone: true, avatar: true } }
         }
       },
       freelancer: true
@@ -257,7 +267,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
     include: {
-      project: { select: { ownerId: true } }
+      project: { select: { ownerId: true, title: true } }
     }
   });
 
@@ -320,6 +330,49 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
             data: { status: "REJECTED" }
           });
         }
+
+
+        // --- NEW: Clean up Sibling Projects (duplicates from invites) ---
+        // 1. Re-fetch current project details inside transaction to be safe
+        const currentProject = await tx.project.findUnique({
+          where: { id: proposal.projectId },
+          select: { title: true, ownerId: true }
+        });
+
+        if (currentProject) {
+          const searchTitle = currentProject.title.trim();
+          console.log(`[Proposal] Cleanup Check: owner=${currentProject.ownerId}, title="${searchTitle}"`);
+          
+          // 2. Find siblings with case-insensitive title match
+          const siblingProjects = await tx.project.findMany({
+            where: {
+              ownerId: currentProject.ownerId,
+              title: { equals: searchTitle, mode: 'insensitive' },
+              id: { not: proposal.projectId },
+              status: { in: ["OPEN", "DRAFT"] }
+            },
+            select: { id: true }
+          });
+
+          console.log(`[Proposal] Found ${siblingProjects.length} sibling projects to delete.`);
+
+          if (siblingProjects.length > 0) {
+            const siblingIds = siblingProjects.map(p => p.id);
+            
+            // 3. Delete related data
+            await tx.proposal.deleteMany({
+              where: { projectId: { in: siblingIds } }
+            });
+            await tx.project.deleteMany({
+              where: { id: { in: siblingIds } }
+            });
+            console.log(`[Proposal] Successfully deleted siblings: ${siblingIds.join(", ")}`);
+          }
+        }
+
+
+
+        // -------------------------------------------------------------
       }
       
       // Now do the update atomically
@@ -392,7 +445,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       // Notify the client that freelancer accepted their proposal
       try {
         const freelancerName = updated.freelancer?.fullName || updated.freelancer?.name || "A freelancer";
-        sendNotificationToUser(updated.project.ownerId, {
+        await sendNotificationToUser(updated.project.ownerId, {
           type: "proposal",
           title: "Proposal Accepted! 🎉",
           message: `${freelancerName} has accepted your proposal for "${updated.project.title}".`,

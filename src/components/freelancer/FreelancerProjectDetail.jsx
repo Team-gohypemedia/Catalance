@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -21,6 +21,7 @@ import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { useAuth } from "@/context/AuthContext";
 import { SOP_TEMPLATES } from "@/data/sopTemplates";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -36,6 +37,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 import {
   Tooltip,
@@ -167,6 +174,8 @@ const FreelancerProjectDetailContent = () => {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState(null);
+  const [completedTaskIds, setCompletedTaskIds] = useState(new Set());
+  const [verifiedTaskIds, setVerifiedTaskIds] = useState(new Set());
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -174,7 +183,7 @@ const FreelancerProjectDetailContent = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
-  const [selectedIssueType, setSelectedIssueType] = useState("");
+
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
 
@@ -236,12 +245,12 @@ const FreelancerProjectDetailContent = () => {
 
   // Handle reporting a dispute (same logic as client)
   const handleReport = async () => {
-    if (!issueText.trim() || !selectedIssueType) {
-      toast.error("Please select an issue type and describe the issue");
+    if (!issueText.trim()) {
+      toast.error("Please describe the issue");
       return;
     }
 
-    let fullDescription = `Issue Type: ${selectedIssueType || "Not Specified"}\n\n${issueText}`;
+    let fullDescription = issueText;
     let meetingDateIso = undefined;
 
     if (date) {
@@ -277,7 +286,6 @@ const FreelancerProjectDetailContent = () => {
         toast.success("Dispute raised. A Project Manager will review it shortly.");
         setReportOpen(false);
         setIssueText("");
-        setSelectedIssueType("");
         setDate(undefined);
         setTime("");
       } else {
@@ -330,9 +338,18 @@ const FreelancerProjectDetailContent = () => {
             status: match.project.status || match.status || "IN_PROGRESS",
             budget: normalizedBudget,
             currency: match.project.currency || match.currency || "₹",
-            spent: Number(match.project.spent || 0)
+            spent: Number(match.project.spent || 0),
+            manager: match.project.manager // Map manager details
           });
           setIsFallback(false);
+          
+          // Load saved task progress from database
+          if (Array.isArray(match.project.completedTasks)) {
+            setCompletedTaskIds(new Set(match.project.completedTasks));
+          }
+          if (Array.isArray(match.project.verifiedTasks)) {
+            setVerifiedTaskIds(new Set(match.project.verifiedTasks));
+          }
         } else if (active) {
           setProject(null);
           setIsFallback(true);
@@ -716,17 +733,88 @@ const FreelancerProjectDetailContent = () => {
   }, [overallProgress, activeSOP]);
 
   const derivedTasks = useMemo(() => {
-    return activeSOP.tasks.map((task) => {
-      const phaseStatus = derivedPhases.find((p) => p.id === task.phase)?.status || task.status;
+    const tasks = activeSOP.tasks;
+    // Show ALL tasks from all phases
+    return tasks.map((task) => {
+      // Use unique key combining phase and task id
+      const uniqueKey = `${task.phase}-${task.id}`;
+      const isCompleted = completedTaskIds.has(uniqueKey);
+      const isVerified = verifiedTaskIds.has(uniqueKey);
+      const taskPhase = derivedPhases.find((p) => p.id === task.phase);
+      const phaseStatus = taskPhase?.status || task.status;
+
+      // Check if task is manually completed by user
+      if (isCompleted) {
+        return { ...task, uniqueKey, status: "completed", verified: isVerified, phaseName: taskPhase?.name };
+      }
       if (phaseStatus === "completed") {
-        return { ...task, status: "completed" };
+        return { ...task, uniqueKey, status: "completed", verified: isVerified, phaseName: taskPhase?.name };
       }
       if (phaseStatus === "in-progress" && task.status === "completed") {
-        return task;
+        return { ...task, uniqueKey, verified: isVerified, phaseName: taskPhase?.name };
       }
-      return { ...task, status: phaseStatus === "in-progress" ? "in-progress" : "pending" };
+      return {
+        ...task,
+        uniqueKey,
+        status: phaseStatus === "in-progress" ? "in-progress" : "pending",
+        verified: false,
+        phaseName: taskPhase?.name
+      };
     });
-  }, [derivedPhases, activeSOP]);
+  }, [derivedPhases, activeSOP, completedTaskIds, verifiedTaskIds]);
+
+  // Group tasks by phase for display
+  const tasksByPhase = useMemo(() => {
+    const grouped = {};
+    derivedTasks.forEach((task) => {
+      if (!grouped[task.phase]) {
+        const phase = derivedPhases.find((p) => p.id === task.phase);
+        grouped[task.phase] = {
+          phaseId: task.phase,
+          phaseName: phase?.name || `Phase ${task.phase}`,
+          phaseStatus: phase?.status || "pending",
+          tasks: []
+        };
+      }
+      grouped[task.phase].tasks.push(task);
+    });
+    return Object.values(grouped);
+  }, [derivedTasks, derivedPhases]);
+
+  // Handle task click to toggle completion
+  const handleTaskClick = async (e, uniqueKey) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    let newCompleted;
+
+    setCompletedTaskIds((prev) => {
+      const updated = new Set(prev);
+      if (updated.has(uniqueKey)) {
+        updated.delete(uniqueKey);
+      } else {
+        updated.add(uniqueKey);
+      }
+      newCompleted = Array.from(updated);
+      return updated;
+    });
+
+    // Save to database
+    if (project?.id && authFetch) {
+      try {
+        await authFetch(`/projects/${project.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            completedTasks: newCompleted,
+            // verifiedTasks remain unchanged by freelancer
+          })
+        });
+      } catch (error) {
+        console.error("Failed to save task state:", error);
+      }
+    }
+  };
 
   const completedPhases = derivedPhases.filter((p) => p.status === "completed").length;
   const pageTitle = project?.title ? `Project: ${project.title}` : "Project Dashboard";
@@ -793,7 +881,7 @@ const FreelancerProjectDetailContent = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="default" size="sm" onClick={() => setReportOpen(true)}>
-                      PC
+                      <Headset />PC
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -852,7 +940,6 @@ const FreelancerProjectDetailContent = () => {
                       key={phase.id}
                       className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0 last:pb-0"
                     >
-                      <div className="mt-1">{getPhaseIcon(phase.status)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold text-sm text-foreground">{phase.name}</h3>
@@ -875,42 +962,67 @@ const FreelancerProjectDetailContent = () => {
                 </CardContent>
               </Card>
 
+              {/* All Tasks Grouped by Phase - Accordion */}
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-foreground">
-                    Tasks & Checklist {activePhase ? `- ${activePhase.name}` : ""}
-                  </CardTitle>
+                  <CardTitle className="text-lg text-foreground">Project Tasks</CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    {derivedTasks.filter((t) => t.status === "completed").length} of {derivedTasks.length} total tasks
-                    completed
+                    {derivedTasks.filter((t) => t.status === "completed").length} of {derivedTasks.length} tasks completed
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {visibleTasks.length > 0 ? (
-                    visibleTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent transition-colors"
-                      >
-                        {task.status === "completed" ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                        )}
-                        <span
-                          className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
-                            }`}
-                        >
-                          {task.title}
-                        </span>
-                        <Badge variant="outline" className="text-xs border-border/60 text-muted-foreground">
-                          Phase {task.phase}
-                        </Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No tasks available for this phase.</p>
-                  )}
+                <CardContent>
+                  <Accordion type="single" collapsible defaultValue={activePhase?.id} className="w-full">
+                    {tasksByPhase.map((phaseGroup) => (
+                      <AccordionItem key={phaseGroup.phaseId} value={phaseGroup.phaseId} className="border-border/60">
+                        <AccordionTrigger className="hover:no-underline py-3">
+                          <div className="flex items-center gap-3 flex-1">
+                            {getPhaseIcon(phaseGroup.phaseStatus)}
+                            <div className="flex-1 text-left">
+                              <div className="font-semibold text-sm text-foreground">{phaseGroup.phaseName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {phaseGroup.tasks.filter((t) => t.status === "completed").length} of {phaseGroup.tasks.length} completed
+                              </div>
+                            </div>
+                            <Badge
+                              variant={phaseGroup.phaseStatus === "completed" ? "default" : "outline"}
+                              className={phaseGroup.phaseStatus === "completed" ? "bg-emerald-500 text-white" : ""}
+                            >
+                              {phaseGroup.phaseStatus === "completed" ? "Completed" :
+                                phaseGroup.phaseStatus === "in-progress" ? "In Progress" : "Pending"}
+                            </Badge>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-2 pt-2">
+                            {phaseGroup.tasks.map((task) => (
+                              <div
+                                key={task.uniqueKey}
+                                className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent/60 transition-colors cursor-pointer"
+                                onClick={(e) => handleTaskClick(e, task.uniqueKey)}
+                              >
+                                {task.status === "completed" ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                )}
+                                <span
+                                  className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
+                                    }`}
+                                >
+                                  {task.title}
+                                </span>
+                                {task.verified && (
+                                  <Badge className="h-6 px-2 text-[10px] bg-emerald-500 text-white">
+                                    Verified
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
                 </CardContent>
               </Card>
             </div>
@@ -1013,7 +1125,7 @@ const FreelancerProjectDetailContent = () => {
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2 text-foreground">
-                    <DollarSign className="w-4 h-4" />
+                    <IndianRupee className="w-4 h-4" />
                     Budget Summary
                   </CardTitle>
                 </CardHeader>
@@ -1045,29 +1157,36 @@ const FreelancerProjectDetailContent = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {project?.manager && (
+              <div className="bg-muted/50 p-3 rounded-md mb-2 border flex items-center gap-3">
+                <Avatar className="h-10 w-10 border bg-background">
+                  <AvatarImage src={project.manager.avatar} alt={project.manager.fullName} />
+                  <AvatarFallback className="bg-primary/10 text-primary">PM</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground mb-1">{project.manager.fullName}</span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Mail className="w-3 h-3" />
+                    <span>{project.manager.email}</span>
+                  </div>
+                  {project.manager.phone && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <Phone className="w-3 h-3" />
+                      <span>{project.manager.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Issue Type</label>
-              <Select value={selectedIssueType} onValueChange={setSelectedIssueType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an issue type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {COMMON_ISSUES.map((issue) => (
-                      <SelectItem key={issue} value={issue}>
-                        {issue}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+               <label className="text-sm font-medium">Add Note</label>
+               <Textarea
+                placeholder="Add a note..."
+                value={issueText}
+                onChange={(e) => setIssueText(e.target.value)}
+                className="min-h-[100px] whitespace-pre-wrap break-all"
+              />
             </div>
-            <Textarea
-              placeholder="Describe the issue..."
-              value={issueText}
-              onChange={(e) => setIssueText(e.target.value)}
-              className="min-h-[100px] whitespace-pre-wrap break-all"
-            />
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">Project Manager Availability</label>
               <div className="flex gap-2">
@@ -1125,8 +1244,8 @@ const FreelancerProjectDetailContent = () => {
             <Button variant="outline" onClick={() => setReportOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleReport} disabled={isReporting || !issueText.trim() || !selectedIssueType}>
-              {isReporting ? "Submit Report" : "Submit Report"}
+            <Button variant="default" onClick={handleReport} disabled={isReporting || !issueText.trim()}>
+              {isReporting ? "Submit" : "Submit"}
             </Button>
           </DialogFooter>
         </DialogContent>
