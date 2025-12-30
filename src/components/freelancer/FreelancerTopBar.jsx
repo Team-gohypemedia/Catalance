@@ -42,7 +42,7 @@ const formatTimeAgo = (dateString) => {
   const now = new Date();
   const diffMs = now - date;
   const diffMins = Math.floor(diffMs / 60000);
-  
+
   if (diffMins < 1) return "Just now";
   if (diffMins < 60) return `${diffMins}m ago`;
   const diffHours = Math.floor(diffMins / 60);
@@ -94,11 +94,11 @@ export const FreelancerTopBar = ({ label }) => {
       // Service string format: CHAT:projectId:clientId:freelancerId
       const service = notification.data.service || "";
       const parts = service.split(":");
-      let projectId = notification.data.projectId; 
-      
+      let projectId = notification.data.projectId;
+
       // Extract projectId from service string if not explicitly in data
       if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
-         projectId = parts[1];
+        projectId = parts[1];
       }
 
       if (projectId) {
@@ -107,7 +107,20 @@ export const FreelancerTopBar = ({ label }) => {
         navigate("/freelancer/messages");
       }
     } else if (notification.type === "proposal") {
-      navigate("/freelancer/proposals");
+      const { status, projectId } = notification.data || {};
+      if (status === "ACCEPTED" && projectId) {
+        // Navigate to the project detail as it is now an active project
+        navigate(`/freelancer/project/${projectId}`);
+      } else if (status === "ACCEPTED") {
+        navigate("/freelancer/proposals/accepted");
+      } else {
+        navigate("/freelancer/proposals");
+      }
+    } else if (notification.type === "meeting_scheduled") {
+      const { projectId } = notification.data || {};
+      if (projectId) {
+        navigate(`/freelancer/project/${projectId}`);
+      }
     }
   };
 
@@ -165,7 +178,7 @@ export const FreelancerTopBar = ({ label }) => {
               aria-label="Notifications">
               <Bell className="size-4" />
               {unreadCount > 0 && (
-                <Badge 
+                <Badge
                   className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white border-0"
                 >
                   {unreadCount > 99 ? "99+" : unreadCount}
@@ -186,10 +199,10 @@ export const FreelancerTopBar = ({ label }) => {
                 </Button>
               )}
             </div>
-            
+
             {/* Enable Push Notifications Banner - Required for Firebase Messaging */}
             {/* Enable Push Notifications Banner - Removed per user request */}
-            
+
             <ScrollArea className="h-72">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
@@ -202,12 +215,10 @@ export const FreelancerTopBar = ({ label }) => {
                     <button
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-muted/50 ${
-                        !notification.read ? "bg-primary/5" : ""
-                      }`}>
-                      <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
-                        !notification.read ? "bg-primary" : "bg-transparent"
-                      }`} />
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-muted/50 ${!notification.read ? "bg-primary/5" : ""
+                        }`}>
+                      <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${!notification.read ? "bg-primary" : "bg-transparent"
+                        }`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
                           {notification.title}

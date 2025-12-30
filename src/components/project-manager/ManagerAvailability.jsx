@@ -33,12 +33,17 @@ const formatTime = (hour) => {
 const ManagerAvailabilityContent = () => {
     const { authFetch, user } = useAuth();
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [selectedSlots, setSelectedSlots] = useState([]);
+    const [selectedSlots, setSelectedSlots] = useState([]); // Array of startHours
+    const [slotConfig, setSlotConfig] = useState({}); // { [hour]: { isEnabled, remark, isBooked } }
     const [existingSlots, setExistingSlots] = useState([]);
     const [allAvailability, setAllAvailability] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingAll, setLoadingAll] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Dialog state for disabling
+    const [disableDialog, setDisableDialog] = useState({ open: false, hour: null });
+    const [remarkText, setRemarkText] = useState("");
 
     // Fetch availability for the selected date
     const fetchAvailability = async () => {
@@ -49,8 +54,38 @@ const ManagerAvailabilityContent = () => {
             const res = await authFetch(`/appointments/availability?managerId=${user.id}&startDate=${dateStr}&endDate=${dateStr}`);
             const data = await res.json();
             if (res.ok) {
-                setExistingSlots(data.data || []);
-                setSelectedSlots(data.data?.map(s => s.startHour) || []);
+                const slots = data.data || [];
+                setExistingSlots(slots);
+
+                // Merge DB slots with Default slots to ensure all are shown
+                const hours = [];
+                const config = {};
+
+                // 1. Initialize with all standard slots as ENABLED
+                TIME_SLOTS.forEach(slot => {
+                    hours.push(slot.start);
+                    config[slot.start] = { isEnabled: true, remark: "", isBooked: false };
+                });
+
+                // 2. Override with DB data
+                slots.forEach(s => {
+                    // Check if this DB slot corresponds to one of our standard slots (or if we want to show non-std ones too)
+                    if (!hours.includes(s.startHour)) {
+                        hours.push(s.startHour);
+                    }
+
+                    config[s.startHour] = {
+                        isEnabled: s.isEnabled ?? true,
+                        remark: s.remark || "",
+                        isBooked: s.isBooked
+                    };
+                });
+
+                // Sort hours to keep UI tidy
+                hours.sort((a, b) => a - b);
+
+                setSelectedSlots(hours);
+                setSlotConfig(config);
             }
         } catch (e) {
             console.error(e);
@@ -61,24 +96,18 @@ const ManagerAvailabilityContent = () => {
 
     // Fetch ALL availability for the next 30 days
     const fetchAllAvailability = async () => {
-        if (!user?.id) {
-            console.log("No user ID available yet");
-            return;
-        }
+        if (!user?.id) return;
         setLoadingAll(true);
         try {
             const today = format(startOfDay(new Date()), "yyyy-MM-dd");
             const futureDate = format(addDays(new Date(), 30), "yyyy-MM-dd");
-            const url = `/appointments/availability?managerId=${user.id}&startDate=${today}&endDate=${futureDate}`;
-            console.log("Fetching all availability:", url);
-            const res = await authFetch(url);
+            const res = await authFetch(`/appointments/availability?managerId=${user.id}&startDate=${today}&endDate=${futureDate}`);
             const data = await res.json();
-            console.log("All availability response:", res.ok, data);
             if (res.ok) {
                 setAllAvailability(data.data || []);
             }
         } catch (e) {
-            console.error("Error fetching all availability:", e);
+            console.error(e);
         } finally {
             setLoadingAll(false);
         }
@@ -92,19 +121,63 @@ const ManagerAvailabilityContent = () => {
         fetchAllAvailability();
     }, [user?.id]);
 
-    const toggleSlot = (startHour) => {
-        // Check if this slot is already booked
-        const existingSlot = existingSlots.find(s => s.startHour === startHour);
-        if (existingSlot?.isBooked) {
+    const handleSlotClick = (startHour) => {
+        const isSelected = selectedSlots.includes(startHour);
+        const config = slotConfig[startHour] || {};
+
+        // If booked, do nothing or show toast
+        if (config.isBooked) {
             toast.error("This slot is already booked and cannot be modified");
             return;
         }
 
-        setSelectedSlots(prev =>
-            prev.includes(startHour)
-                ? prev.filter(h => h !== startHour)
-                : [...prev, startHour]
-        );
+        // It is always selected now basically.
+        // If Enabled -> Click to Disable
+        if (config.isEnabled !== false) {
+            setRemarkText(config.remark || "");
+            setDisableDialog({ open: true, hour: startHour });
+        } else {
+            // If Disabled -> Click to Enable
+            setSlotConfig(prev => ({
+                ...prev,
+                [startHour]: { ...prev[startHour], isEnabled: true, remark: "" }
+            }));
+        }
+    };
+
+    const confirmDisable = () => {
+        if (disableDialog.hour === null) return;
+
+        setSlotConfig(prev => ({
+            ...prev,
+            [disableDialog.hour]: {
+                ...prev[disableDialog.hour],
+                isEnabled: false,
+                remark: remarkText
+            }
+        }));
+        setDisableDialog({ open: false, hour: null });
+        setRemarkText("");
+        toast.info("Slot marked as unavailable. Don't forget to Save.");
+    };
+
+    const applyStandardSchedule = () => {
+        const standardHours = [9, 10, 11, 12, 13, 14, 15, 16]; // 9 to 5 (17:00 end)
+        const newSlots = [...selectedSlots];
+        const newConfig = { ...slotConfig };
+
+        standardHours.forEach(h => {
+            // Only add if not booked
+            const isBooked = existingSlots.find(s => s.startHour === h)?.isBooked;
+            if (!isBooked) {
+                if (!newSlots.includes(h)) newSlots.push(h);
+                newConfig[h] = { isEnabled: true, remark: "", isBooked: false };
+            }
+        });
+
+        setSelectedSlots(newSlots);
+        setSlotConfig(newConfig);
+        toast.success("Applied 9 AM - 5 PM schedule");
     };
 
     const handleSave = async () => {
@@ -112,10 +185,10 @@ const ManagerAvailabilityContent = () => {
         try {
             const slots = selectedSlots.map(startHour => ({
                 startHour,
-                endHour: startHour + 1
+                endHour: startHour + 1,
+                isEnabled: slotConfig[startHour]?.isEnabled ?? true,
+                remark: slotConfig[startHour]?.remark || ""
             }));
-
-            console.log("Saving availability:", { date: format(selectedDate, "yyyy-MM-dd"), slots });
 
             const res = await authFetch("/appointments/availability", {
                 method: "POST",
@@ -126,13 +199,10 @@ const ManagerAvailabilityContent = () => {
                 })
             });
 
-            const responseData = await res.json();
-            console.log("Save response:", res.ok, responseData);
-
             if (res.ok) {
                 toast.success("Availability saved successfully");
                 fetchAvailability();
-                fetchAllAvailability(); // Refresh the all availability view
+                fetchAllAvailability();
             } else {
                 toast.error("Failed to save availability");
             }
@@ -144,11 +214,7 @@ const ManagerAvailabilityContent = () => {
         }
     };
 
-    const isSlotBooked = (startHour) => {
-        return existingSlots.find(s => s.startHour === startHour)?.isBooked || false;
-    };
-
-    // Group all availability by date
+    // Group all availability by date for summary
     const groupedAvailability = allAvailability.reduce((acc, slot) => {
         const dateKey = format(new Date(slot.date), "yyyy-MM-dd");
         if (!acc[dateKey]) {
@@ -162,10 +228,10 @@ const ManagerAvailabilityContent = () => {
     const sortedAvailability = Object.values(groupedAvailability)
         .sort((a, b) => a.date - b.date);
 
-    // Count stats
-    const totalSlots = allAvailability.length;
-    const bookedSlots = allAvailability.filter(s => s.isBooked).length;
-    const availableSlots = totalSlots - bookedSlots;
+    // Calculate stats based on CURRENT selection/view
+    const currentTotalSlots = selectedSlots.length;
+    const currentBookedSlots = selectedSlots.filter(h => slotConfig[h]?.isBooked).length;
+    const currentAvailableSlots = selectedSlots.filter(h => slotConfig[h]?.isEnabled !== false && !slotConfig[h]?.isBooked).length;
 
     return (
         <div className="flex flex-col min-h-screen w-full">
@@ -173,26 +239,26 @@ const ManagerAvailabilityContent = () => {
             <div className="p-8 space-y-8 max-w-6xl mx-auto w-full">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">My Availability</h1>
-                    <p className="text-muted-foreground mt-1">Set your available time slots for appointments</p>
+                    <p className="text-muted-foreground mt-1">Manage your appointment slots and exceptions.</p>
                 </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-3 gap-4">
                     <Card className="bg-primary/5 border-primary/20">
                         <CardContent className="pt-6">
-                            <div className="text-2xl font-bold text-primary">{totalSlots}</div>
-                            <p className="text-sm text-muted-foreground">Total Slots Set</p>
+                            <div className="text-2xl font-bold text-primary">{currentTotalSlots}</div>
+                            <p className="text-sm text-muted-foreground">Slots for {format(selectedDate, 'MMM d')}</p>
                         </CardContent>
                     </Card>
                     <Card className="bg-green-500/5 border-green-500/20">
                         <CardContent className="pt-6">
-                            <div className="text-2xl font-bold text-green-600">{availableSlots}</div>
-                            <p className="text-sm text-muted-foreground">Available</p>
+                            <div className="text-2xl font-bold text-green-600">{currentAvailableSlots}</div>
+                            <p className="text-sm text-muted-foreground">Active & Available</p>
                         </CardContent>
                     </Card>
                     <Card className="bg-amber-500/5 border-amber-500/20">
                         <CardContent className="pt-6">
-                            <div className="text-2xl font-bold text-amber-600">{bookedSlots}</div>
+                            <div className="text-2xl font-bold text-amber-600">{currentBookedSlots}</div>
                             <p className="text-sm text-muted-foreground">Booked</p>
                         </CardContent>
                     </Card>
@@ -219,15 +285,21 @@ const ManagerAvailabilityContent = () => {
                     </Card>
 
                     {/* Time Slots for Selected Date */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Clock className="h-5 w-5" />
-                                Slots for {format(selectedDate, "MMM d, yyyy")}
-                            </CardTitle>
-                            <CardDescription>
-                                Click on a time slot to toggle availability
-                            </CardDescription>
+                    <Card className="lg:col-span-2">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Clock className="h-5 w-5" />
+                                    Slots for {format(selectedDate, "MMM d, yyyy")}
+                                </CardTitle>
+                                <CardDescription>
+                                    Click a standard slot to add/disable it.
+                                </CardDescription>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={applyStandardSchedule}>
+                                <Check className="w-4 h-4 mr-2" />
+                                Apply 9-5
+                            </Button>
                         </CardHeader>
                         <CardContent>
                             {loading ? (
@@ -235,33 +307,57 @@ const ManagerAvailabilityContent = () => {
                                     <Loader2 className="animate-spin h-8 w-8 text-primary" />
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                         {TIME_SLOTS.map((slot) => {
                                             const isSelected = selectedSlots.includes(slot.start);
-                                            const isBooked = isSlotBooked(slot.start);
+                                            const config = slotConfig[slot.start] || {};
+                                            const isBooked = config.isBooked;
+                                            const isEnabled = config.isEnabled !== false;
+                                            // If not in config (but selected), default enabled.
+
+                                            let variant = "outline";
+                                            if (isSelected) {
+                                                if (isBooked) variant = "secondary"; // booked
+                                                else if (!isEnabled) variant = "destructive"; // disabled
+                                                else variant = "default"; // available
+                                            }
 
                                             return (
-                                                <Button
-                                                    key={slot.start}
-                                                    variant={isSelected ? "default" : "outline"}
-                                                    size="sm"
-                                                    disabled={isBooked}
-                                                    onClick={() => toggleSlot(slot.start)}
-                                                    className={cn(
-                                                        "justify-start gap-2 h-auto py-3",
-                                                        isBooked && "opacity-50 cursor-not-allowed bg-muted",
-                                                        isSelected && !isBooked && "bg-primary text-primary-foreground"
+                                                <div key={slot.start} className="relative group">
+                                                    <Button
+                                                        variant={variant === 'default' ? 'default' : 'outline'}
+                                                        className={cn(
+                                                            "w-full justify-between h-auto py-3 px-3 relative",
+                                                            variant === 'destructive' && "bg-red-50 text-red-600 border-red-200 hover:bg-red-100",
+                                                            variant === 'secondary' && "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100 opacity-80 cursor-not-allowed",
+                                                            // !isSelected && "opacity-70 hover:opacity-100" // No longer needed
+                                                        )}
+                                                        onClick={() => handleSlotClick(slot.start)}
+                                                        disabled={isBooked}
+                                                    >
+                                                        <div className="flex flex-col items-start gap-1">
+                                                            <span className="text-xs font-bold">{slot.label.split(' - ')[0]}</span>
+                                                            <span className="text-[10px] font-normal opacity-90">{slot.label.split(' - ')[1]}</span>
+                                                        </div>
+                                                        {isSelected && !isEnabled && !isBooked && (
+                                                            <Badge variant="outline" className="text-[10px] border-red-300 bg-red-100 text-red-800">
+                                                                Off
+                                                            </Badge>
+                                                        )}
+                                                        {isSelected && isEnabled && !isBooked && (
+                                                            <Check className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+
+                                                    {isSelected && !isEnabled && config.remark && (
+                                                        <div className="absolute top-full left-0 right-0 mt-1 z-10 w-48 z-20">
+                                                            <div className="bg-popover text-popover-foreground text-[10px] p-2 rounded border shadow-lg truncate">
+                                                                Note: {config.remark}
+                                                            </div>
+                                                        </div>
                                                     )}
-                                                >
-                                                    {isSelected && <Check className="h-4 w-4" />}
-                                                    <span className="text-xs">{slot.label}</span>
-                                                    {isBooked && (
-                                                        <Badge variant="secondary" className="ml-auto text-[10px]">
-                                                            Booked
-                                                        </Badge>
-                                                    )}
-                                                </Button>
+                                                </div>
                                             );
                                         })}
                                     </div>
@@ -335,11 +431,14 @@ const ManagerAvailabilityContent = () => {
                                                                 "text-[10px]",
                                                                 slot.isBooked
                                                                     ? "bg-amber-100 text-amber-700 border-amber-200"
-                                                                    : "bg-green-50 text-green-700 border-green-200"
+                                                                    : (slot.isEnabled === false
+                                                                        ? "bg-red-50 text-red-700 border-red-200"
+                                                                        : "bg-green-50 text-green-700 border-green-200")
                                                             )}
                                                         >
                                                             {formatTime(slot.startHour)}
                                                             {slot.isBooked && " (Booked)"}
+                                                            {slot.isEnabled === false && " (Off)"}
                                                         </Badge>
                                                     ))}
                                             </div>
@@ -352,7 +451,7 @@ const ManagerAvailabilityContent = () => {
                 </div>
 
                 {/* Legend */}
-                <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-6 text-sm text-muted-foreground justify-center pt-4 border-t">
                     <div className="flex items-center gap-2">
                         <div className="h-4 w-4 rounded bg-primary" />
                         <span>Selected</span>
@@ -367,11 +466,46 @@ const ManagerAvailabilityContent = () => {
                         </Badge>
                     </div>
                     <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] bg-red-50 text-red-700 border-red-200">
+                            Disabled (Remark)
+                        </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">
                             Booked
                         </Badge>
                     </div>
                 </div>
+
+                {disableDialog.open && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                        <Card className="w-full max-w-md mx-4 shadow-lg">
+                            <CardHeader>
+                                <CardTitle>Disable Time Slot</CardTitle>
+                                <CardDescription>
+                                    Why are you unavailable at {formatTime(disableDialog.hour)}?
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <textarea
+                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    placeholder="e.g. Lunch break, Meeting, Personal time..."
+                                    value={remarkText}
+                                    onChange={(e) => setRemarkText(e.target.value)}
+                                    autoFocus
+                                />
+                            </CardContent>
+                            <div className="flex items-center p-6 pt-0 gap-2 justify-end">
+                                <Button variant="ghost" onClick={() => setDisableDialog({ open: false, hour: null })}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={confirmDisable} disabled={!remarkText.trim()}>
+                                    Confirm Disable
+                                </Button>
+                            </div>
+                        </Card>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -384,4 +518,3 @@ const ManagerAvailability = () => (
 );
 
 export default ManagerAvailability;
-

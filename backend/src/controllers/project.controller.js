@@ -73,14 +73,23 @@ export const createProject = asyncHandler(async (req, res) => {
 
   const { title, description, budget, status, proposal } = req.body;
 
+  /* Automatic Project Manager Assignment */
+  // Find a project manager to assign. Ideally, this would be based on load derived from `managedProjects`.
+  // For now, we pick the first available one or random.
+  const projectManager = await prisma.user.findFirst({
+    where: { role: "PROJECT_MANAGER" }
+    // orderBy: { managedProjects: { _count: 'asc' } } // Improved logic for future
+  });
+
   const project = await prisma.project.create({
     data: {
       title,
       description,
       budget: normalizeBudget(budget),
       status: status || "DRAFT",
-      progress: 0, // Initialize progress to 0
-      ownerId: userId
+      progress: 0,
+      ownerId: userId,
+      managerId: projectManager?.id // Assign if available
     }
   });
 

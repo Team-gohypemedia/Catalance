@@ -90,10 +90,32 @@ export const ManagerTopBar = ({ label, interactive = true }) => {
 
     const handleNotificationClick = (notification) => {
         markAsRead(notification.id)
-        // TODO: Update these routes for Project Manager specific views
-        if (notification.type === "dispute") {
-            // Stay on dashboard but maybe highlight the dispute?
-            // navigate("/project-manager/dashboard"); 
+
+        const { type, data } = notification || {};
+
+        if (type === "dispute" || type === "project_assigned") {
+            if (data?.projectId) {
+                navigate(`/project-manager/projects/${data.projectId}`);
+            } else {
+                navigate("/project-manager?view=active-disputes");
+            }
+        }
+        else if (type === "appointment" || type === "meeting_scheduled") {
+            navigate("/project-manager/appointments");
+        }
+        else if (type === "chat") {
+            // Handle chat navigation - try to get projectId if possible to open specific context
+            if (data?.projectId) {
+                navigate(`/project-manager/messages?projectId=${data.projectId}`);
+            } else {
+                navigate("/project-manager/messages");
+            }
+        }
+        else if (type === "proposal") {
+            // If a PM is notified about a proposal (rare, but possible if they are also owner)
+            if (data?.projectId) {
+                navigate(`/project-manager/projects/${data.projectId}`);
+            }
         }
     }
 
@@ -151,10 +173,10 @@ export const ManagerTopBar = ({ label, interactive = true }) => {
                                 </Button>
                             )}
                         </div>
-                        
+
                         {/* Enable Push Notifications Banner - Required for Firebase Messaging */}
-            {/* Enable Push Notifications Banner - Removed per user request */}
-                        
+                        {/* Enable Push Notifications Banner - Removed per user request */}
+
                         <ScrollArea className="h-72">
                             {notifications.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">

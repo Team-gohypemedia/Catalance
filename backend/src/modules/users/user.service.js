@@ -25,6 +25,24 @@ export const listUsers = async (filters = {}) => {
   return users.map(sanitizeUser);
 };
 
+export const updateUserProfile = async (userId, updates) => {
+  const allowedUpdates = ["fullName", "phoneNumber", "bio", "portfolio", "linkedin", "github"];
+  const cleanUpdates = {};
+
+  Object.keys(updates).forEach(key => {
+    if (allowedUpdates.includes(key)) {
+      cleanUpdates[key] = updates[key];
+    }
+  });
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: cleanUpdates
+  });
+
+  return sanitizeUser(user);
+};
+
 export const createUser = async (payload) => {
   const user = await createUserRecord(payload);
   return sanitizeUser(user);
@@ -52,7 +70,7 @@ export const registerUser = async (payload) => {
       console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
     }
   } else {
-      console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
+    console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
   }
 
   return {
@@ -314,7 +332,7 @@ export const verifyResetToken = async (token) => {
   const now = new Date();
   // Ensure expiry is a Date object (pg driver returns Date usually)
   const expiry = new Date(user.resetPasswordExpires);
-  
+
   if (now > expiry) {
     return { valid: false };
   }
@@ -341,7 +359,7 @@ export const resetPassword = async (token, newPassword) => {
 
   const now = new Date();
   const expiry = new Date(user.resetPasswordExpires);
-  
+
   if (now > expiry) {
     throw new AppError("Reset token has expired", 400);
   }

@@ -161,6 +161,11 @@ const navConfigs = {
       url: "/project-manager?view=resolved-history",
       icon: History,
     },
+    {
+      title: "Profile",
+      url: "/project-manager/profile",
+      icon: User,
+    },
   ],
   ADMIN: [
     {

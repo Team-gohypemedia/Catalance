@@ -6,7 +6,8 @@ import {
   requestPasswordReset,
   verifyResetToken,
   resetPassword,
-  verifyUserOtp
+  verifyUserOtp,
+  updateUserProfile
 } from "../modules/users/user.service.js";
 import { AppError } from "../utils/app-error.js";
 
@@ -35,6 +36,14 @@ export const profileHandler = asyncHandler(async (req, res) => {
 
   const user = await getUserById(userId);
   res.json({ data: user });
+});
+
+export const updateProfileHandler = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  if (!userId) throw new AppError("Authentication required", 401);
+
+  const updatedUser = await updateUserProfile(userId, req.body);
+  res.json({ data: updatedUser });
 });
 
 export const forgotPasswordHandler = asyncHandler(async (req, res) => {

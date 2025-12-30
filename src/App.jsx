@@ -18,6 +18,7 @@ import ManagerAppointments from "@/components/project-manager/ManagerAppointment
 import ManagerProjects from "@/components/project-manager/ManagerProjects";
 import ManagerProjectDetail from "@/components/project-manager/ManagerProjectDetail";
 import ManagerChat from "@/components/project-manager/ManagerChat";
+import ManagerProfile from "@/components/project-manager/ManagerProfile";
 import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/Navbar";
 import Footer from "@/components/Footer";
@@ -219,6 +220,14 @@ const App = () => {
             element={
               <ProtectedRoute loginPath="/project-manager/login">
                 <ManagerChat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/project-manager/profile"
+            element={
+              <ProtectedRoute loginPath="/project-manager/login">
+                <ManagerProfile />
               </ProtectedRoute>
             }
           />

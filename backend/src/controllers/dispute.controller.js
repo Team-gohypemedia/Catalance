@@ -88,10 +88,14 @@ export const listDisputes = asyncHandler(async (req, res) => {
   }
 
   let where = {};
-  if (user.role === "PROJECT_MANAGER" || user.role === "ADMIN") {
-    // PM sees all
+  if (user.role === "PROJECT_MANAGER") {
+    // Project Managers should only see disputes assigned to them
+    where = { managerId: userId };
+  } else if (user.role === "ADMIN") {
+    // Admin sees all disputes
+    // no where clause
   } else {
-    // User sees only their raised disputes
+    // Regular users see only their raised disputes
     where = { raisedById: userId };
   }
 
@@ -164,7 +168,20 @@ export const updateDispute = asyncHandler(async (req, res) => {
 
   // Optionally auto-assign if manager touches it
   // Check if already has manager
-  const currentDispute = await prisma.dispute.findUnique({ where: { id } });
+  const currentDispute = await prisma.dispute.findUnique({ 
+    where: { id },
+    include: {
+      project: {
+        include: {
+          owner: true,
+          proposals: {
+            where: { status: 'ACCEPTED' },
+            include: { freelancer: true }
+          }
+        }
+      }
+    }
+  });
   if (!currentDispute) throw new AppError("Dispute not found", 404);
 
   if (!currentDispute.managerId) {
@@ -190,6 +207,57 @@ export const updateDispute = asyncHandler(async (req, res) => {
       });
     } catch (error) {
       console.error("Failed to send assignment notification:", error);
+    }
+  }
+
+  // Send meeting notification to freelancer and client if meeting is being set/updated
+  if ((meetingDate || meetingLink) && (data.meetingDate !== undefined || data.meetingLink !== undefined)) {
+    try {
+      const project = currentDispute.project;
+      const freelancer = project?.proposals?.[0]?.freelancer;
+      const client = project?.owner;
+      const finalMeetingDate = meetingDate || currentDispute.meetingDate;
+      const finalMeetingLink = meetingLink || currentDispute.meetingLink;
+      const meetingDateStr = finalMeetingDate ? new Date(finalMeetingDate).toLocaleString() : "TBA";
+
+      console.log(`[updateDispute] 📧 Sending meeting notifications for dispute ${id}`);
+      console.log(`[updateDispute] Freelancer: ${freelancer?.id} (${freelancer?.email})`);
+      console.log(`[updateDispute] Client: ${client?.id} (${client?.email})`);
+      console.log(`[updateDispute] Meeting Date: ${meetingDateStr}, Link: ${finalMeetingLink}`);
+
+      // Notify freelancer
+      if (freelancer?.id) {
+        await sendNotificationToUser(freelancer.id, {
+          type: "meeting_scheduled",
+          title: "Meeting Scheduled",
+          message: `A meeting has been scheduled for project "${project.title}" on ${meetingDateStr}. Join: ${finalMeetingLink}`,
+          data: {
+            disputeId: dispute.id,
+            projectId: project.id,
+            meetingLink: finalMeetingLink,
+            meetingDate: meetingDateStr
+          }
+        }, true);
+      }
+
+      // Notify client
+      if (client?.id) {
+        await sendNotificationToUser(client.id, {
+          type: "meeting_scheduled",
+          title: "Meeting Scheduled",
+          message: `A meeting has been scheduled for project "${project.title}" on ${meetingDateStr}. Join: ${finalMeetingLink}`,
+          data: {
+            disputeId: dispute.id,
+            projectId: project.id,
+            meetingLink: finalMeetingLink,
+            meetingDate: meetingDateStr
+          }
+        }, true);
+      }
+
+      console.log(`[updateDispute] ✅ Meeting notifications sent for dispute ${id}`);
+    } catch (error) {
+      console.error("Failed to send meeting notification:", error);
     }
   }
 

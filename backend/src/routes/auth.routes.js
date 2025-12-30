@@ -3,6 +3,7 @@ import {
   signupHandler,
   loginHandler,
   profileHandler,
+  updateProfileHandler,
   forgotPasswordHandler,
   verifyResetTokenHandler,
   resetPasswordHandler,
@@ -25,6 +26,7 @@ authRouter.post("/signup", validateResource(createUserSchema), signupHandler);
 authRouter.post("/verify-otp", verifyOtpHandler);
 authRouter.post("/login", validateResource(loginSchema), loginHandler);
 authRouter.get("/profile", requireAuth, profileHandler);
+authRouter.put("/profile", requireAuth, updateProfileHandler);
 
 // Password reset routes
 authRouter.post("/forgot-password", validateResource(forgotPasswordSchema), forgotPasswordHandler);
