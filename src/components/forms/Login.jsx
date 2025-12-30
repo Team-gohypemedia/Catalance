@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -25,13 +25,17 @@ const initialFormState = {
 };
 
 function Login({ className, ...props }) {
-  const [formData, setFormData] = useState(initialFormState);
+  const location = useLocation();
+  const [formData, setFormData] = useState({
+    email: location.state?.email || "",
+    password: ""
+  });
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
+
   const { login: setAuthSession } = useAuth();
 
   const handleChange = (event) => {
@@ -237,7 +241,7 @@ function Login({ className, ...props }) {
                     </Button>
                   </Field>
                   <FieldDescription className="text-center">
-                    Don&apos;t have an account? <a href="/signup">Sign up</a>
+                    Don&apos;t have an account? <Link to="/signup" className="underline hover:text-primary">Sign up</Link>
                   </FieldDescription>
                 </FieldGroup>
               </form>

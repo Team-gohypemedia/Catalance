@@ -13,6 +13,7 @@ import DisputeDetailsDialog from "./DisputeDetailsDialog";
 const AdminDisputes = () => {
   const { authFetch } = useAuth();
   const [disputes, setDisputes] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [projectManagers, setProjectManagers] = useState([]);
   const [pmCount, setPmCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -23,6 +24,7 @@ const AdminDisputes = () => {
 
   useEffect(() => {
     fetchProjectManagers();
+    fetchProjects();
   }, []);
 
   const fetchProjectManagers = async () => {
@@ -53,6 +55,18 @@ const AdminDisputes = () => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const res = await authFetch("/projects");
+      const data = await res.json();
+      if (data?.data) {
+        setProjects(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
+    }
+  };
+
   const filteredDisputes = disputes.filter(d => {
     // Basic search filtering
     const matchesSearch = 
@@ -69,6 +83,8 @@ const AdminDisputes = () => {
     // Or if we want to show all initially, change this logic.
     // User said "click on it -> show dispute section".
   });
+
+  const assignedProjects = projects.filter(p => selectedManager && p.managerId === selectedManager.id);
   
   const handleManagerClick = (pm) => {
     setSelectedManager(pm);
@@ -160,6 +176,54 @@ const AdminDisputes = () => {
           </div>
 
           </div>
+
+          {/* Assigned Projects List */}
+          {selectedManager && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div>
+                  <h2 className="text-2xl font-bold tracking-tight">
+                    Projects Assigned to {selectedManager.fullName}
+                  </h2>
+                </div>
+              <div className="rounded-md border bg-card">
+                 <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project Title</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Budget</TableHead>
+                      <TableHead>Spent</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assignedProjects.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          No projects assigned to this manager.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      assignedProjects.map((project) => (
+                        <TableRow key={project.id}>
+                          <TableCell className="font-medium">{project.title}</TableCell>
+                          <TableCell>
+                             <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span>{project.owner?.fullName || "Unknown"}</span>
+                              </div>
+                          </TableCell>
+                          <TableCell><Badge variant="outline">{project.status}</Badge></TableCell>
+                          <TableCell>₹{project.budget?.toLocaleString()}</TableCell>
+                          <TableCell>₹{project.spent?.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
 
           {/* Disputes List (restored) */}
           {selectedManager && (

@@ -47,6 +47,10 @@ export const NotificationProvider = ({ children }) => {
     };
 
     setNotifications((prev) => {
+      // Deduplicate: If we already have a notification with this ID, ignore it
+      if (newNotification.id && prev.some(n => n.id === newNotification.id)) {
+        return prev;
+      }
       const updated = [newNotification, ...prev].slice(0, MAX_NOTIFICATIONS);
       return updated;
     });
