@@ -59,6 +59,15 @@ export const createProposal = asyncHandler(async (req, res) => {
   const isClientSendingToFreelancer = isOwner && freelancerId && String(freelancerId) !== String(userId);
   const isFreelancerSendingToClient = !isOwner && String(actingFreelancerId) === String(userId);
   
+  console.log(`[Proposal] Notification Logic Debug:`);
+  console.log(`- Project Owner: ${project.ownerId}`);
+  console.log(`- Current User: ${userId}`);
+  console.log(`- Target Freelancer: ${freelancerId}`);
+  console.log(`- Acting ID: ${actingFreelancerId}`);
+  console.log(`- isOwner: ${isOwner}`);
+  console.log(`- isClientSendingToFreelancer: ${isClientSendingToFreelancer}`);
+  console.log(`- isFreelancerSendingToClient: ${isFreelancerSendingToClient}`);
+  
   console.log(`[Proposal] Notification check - isOwner: ${isOwner}, userId: ${userId}, freelancerId: ${freelancerId}`);
   console.log(`[Proposal] isClientSendingToFreelancer: ${isClientSendingToFreelancer}, isFreelancerSendingToClient: ${isFreelancerSendingToClient}`);
   
