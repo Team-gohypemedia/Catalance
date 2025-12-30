@@ -257,7 +257,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
     include: {
-      project: { select: { ownerId: true } }
+      project: { select: { ownerId: true, title: true } }
     }
   });
 
@@ -321,32 +321,47 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           });
         }
 
+
         // --- NEW: Clean up Sibling Projects (duplicates from invites) ---
-        // Find other projects by same owner with same title that are still OPEN/DRAFT
-        const siblingProjects = await tx.project.findMany({
-          where: {
-            ownerId: proposal.project.ownerId,
-            title: proposal.project.title,
-            id: { not: proposal.projectId },
-            status: { in: ["OPEN", "DRAFT"] }
-          },
-          select: { id: true }
+        // 1. Re-fetch current project details inside transaction to be safe
+        const currentProject = await tx.project.findUnique({
+          where: { id: proposal.projectId },
+          select: { title: true, ownerId: true }
         });
 
-        if (siblingProjects.length > 0) {
-          const siblingIds = siblingProjects.map(p => p.id);
-          console.log(`[Proposal] Cleaning up ${siblingIds.length} sibling projects: ${siblingIds.join(", ")}`);
+        if (currentProject) {
+          const searchTitle = currentProject.title.trim();
+          console.log(`[Proposal] Cleanup Check: owner=${currentProject.ownerId}, title="${searchTitle}"`);
           
-          // 1. Delete proposals associated with these sibling projects
-          await tx.proposal.deleteMany({
-            where: { projectId: { in: siblingIds } }
+          // 2. Find siblings with case-insensitive title match
+          const siblingProjects = await tx.project.findMany({
+            where: {
+              ownerId: currentProject.ownerId,
+              title: { equals: searchTitle, mode: 'insensitive' },
+              id: { not: proposal.projectId },
+              status: { in: ["OPEN", "DRAFT"] }
+            },
+            select: { id: true }
           });
 
-          // 2. Delete the sibling projects themselves
-          await tx.project.deleteMany({
-            where: { id: { in: siblingIds } }
-          });
+          console.log(`[Proposal] Found ${siblingProjects.length} sibling projects to delete.`);
+
+          if (siblingProjects.length > 0) {
+            const siblingIds = siblingProjects.map(p => p.id);
+            
+            // 3. Delete related data
+            await tx.proposal.deleteMany({
+              where: { projectId: { in: siblingIds } }
+            });
+            await tx.project.deleteMany({
+              where: { id: { in: siblingIds } }
+            });
+            console.log(`[Proposal] Successfully deleted siblings: ${siblingIds.join(", ")}`);
+          }
         }
+
+
+
         // -------------------------------------------------------------
       }
       

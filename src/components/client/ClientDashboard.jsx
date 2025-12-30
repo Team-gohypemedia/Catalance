@@ -349,9 +349,46 @@ const ClientDashboardContent = () => {
     loadAllFreelancers();
   }, []);
 
+  // Deduplicate projects: If a project title has an "Active" version (AWAITING_PAYMENT, IN_PROGRESS, COMPLETED),
+  // hide any "Open" or "Draft" versions of the same project context.
+  const uniqueProjects = useMemo(() => {
+    // Group by title
+    const groups = {};
+    projects.forEach(p => {
+      const title = (p.title || "").trim();
+      if (!groups[title]) groups[title] = [];
+      groups[title].push(p);
+    });
+
+    const result = [];
+    Object.values(groups).forEach(group => {
+      // Check if this group has any "definitive" status
+      const activeProject = group.find(p => 
+        ["AWAITING_PAYMENT", "IN_PROGRESS", "COMPLETED"].includes((p.status || "").toUpperCase()) ||
+        (p.proposals || []).some(prop => (prop.status || "").toUpperCase() === "ACCEPTED")
+      );
+
+      if (activeProject) {
+        // If there's an active project, only show that one (or multiple active ones if that somehow happens)
+        // Filter out OPEN/DRAFT duplicates
+        const activeOnes = group.filter(p => 
+          ["AWAITING_PAYMENT", "IN_PROGRESS", "COMPLETED"].includes((p.status || "").toUpperCase()) ||
+          (p.proposals || []).some(prop => (prop.status || "").toUpperCase() === "ACCEPTED")
+        );
+        result.push(...activeOnes);
+      } else {
+        // No active project, show all (these are likely multiple invites sent out)
+        result.push(...group);
+      }
+    });
+    
+    // Sort by date desc
+    return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [projects]);
+
   // Computed metrics
   const metrics = useMemo(() => {
-    const projectsWithAccepted = projects.filter((p) =>
+    const projectsWithAccepted = uniqueProjects.filter((p) =>
       (p.proposals || []).some((pr) => (pr.status || "").toUpperCase() === "ACCEPTED")
     );
     
@@ -362,12 +399,12 @@ const ClientDashboardContent = () => {
       return acc + spent;
     }, 0);
     
-    const activeProjectsCount = projects.filter((p) => {
+    const activeProjectsCount = uniqueProjects.filter((p) => {
       const status = (p.status || "").toUpperCase();
       return status === "IN_PROGRESS" || status === "OPEN" || status === "AWAITING_PAYMENT";
     }).length;
 
-    const totalBudget = projects
+    const totalBudget = uniqueProjects
       .filter(p => {
         const status = (p.status || "").toUpperCase();
         return status !== "DRAFT" && status !== "COMPLETED";
@@ -379,7 +416,7 @@ const ClientDashboardContent = () => {
       activeProjects: activeProjectsCount,
       totalBudget: totalBudget,
     };
-  }, [projects]);
+  }, [uniqueProjects]);
 
   const budgetPercentage = useMemo(() => {
     if (!metrics.totalBudget) return 0;
@@ -1036,7 +1073,7 @@ const ClientDashboardContent = () => {
                           </TableRow>
                         ))
                       ) : (
-                        projects
+                        uniqueProjects
                           .filter(p => p.status !== "DRAFT" && p.status !== "COMPLETED")
                           .slice(0, 5)
                           .map((project) => {
