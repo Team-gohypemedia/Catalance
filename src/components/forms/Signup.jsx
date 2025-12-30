@@ -1,6 +1,5 @@
-// Updated Signup component with confirm password field and logic removed
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -15,10 +14,15 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { signup, login } from "@/lib/api-client";
+import { signup, login, verifyOtp } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { signInWithGoogle } from "@/lib/firebase";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 const initialFormState = {
   fullName: "",
@@ -34,8 +38,21 @@ function Signup({ className, ...props }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Verification State
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otpValue, setOtpValue] = useState("");
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+
   const navigate = useNavigate();
-  const { login: setAuthSession } = useAuth();
+  const { login: setAuthSession, logout, isAuthenticated } = useAuth();
+
+  // Clear existing session on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      logout();
+    }
+  }, [logout, isAuthenticated]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -51,15 +68,51 @@ function Signup({ className, ...props }) {
 
     setIsSubmitting(true);
     try {
-      const authPayload = await signup({
+      await signup({
         fullName: formData.fullName.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
         role: CLIENT_ROLE,
       });
 
+      // Instead of logging in, switch to verification mode
+      toast.success("Verification code sent! Please check your email.");
+      setIsVerifying(true);
+    } catch (error) {
+      const message = error?.message || "Unable to create your account right now.";
+      
+      if (message.toLowerCase().includes("already exists")) {
+        toast.info("Account already exists. Redirecting to login...");
+        setTimeout(() => navigate("/login", { state: { email: formData.email } }), 1000);
+        return;
+      }
+
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (otpValue.length !== 6) {
+      setFormError("Please enter a valid 6-digit code.");
+      return;
+    }
+
+    setFormError("");
+    setIsVerifyingOtp(true);
+
+    try {
+      // Calls backend verifyOtp which validates code and returns token
+      const authPayload = await verifyOtp({
+        email: formData.email.trim().toLowerCase(),
+        otp: otpValue,
+      });
+
       setAuthSession(authPayload?.user, authPayload?.accessToken);
-      toast.success("Account created successfully.");
+      toast.success("Email verified! Welcome to Catalance.");
       setFormData(initialFormState);
 
       const nextRole = authPayload?.user?.role?.toUpperCase() || CLIENT_ROLE;
@@ -67,13 +120,14 @@ function Signup({ className, ...props }) {
         replace: true,
       });
     } catch (error) {
-      const message = error?.message || "Unable to create your account right now.";
+      const message = error?.message || "Invalid verification code. Please try again.";
       setFormError(message);
       toast.error(message);
     } finally {
-      setIsSubmitting(false);
+      setIsVerifyingOtp(false);
     }
   };
+
 
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
@@ -124,117 +178,154 @@ function Signup({ className, ...props }) {
         <div className={cn("flex flex-col gap-6", className)} {...props}>
           <Card className="overflow-hidden p-0">
             <CardContent className="grid p-0 md:grid-cols-2">
-              <form className="p-8 md:p-12" onSubmit={handleSubmit} noValidate>
+              <form className="p-8 md:p-12" onSubmit={isVerifying ? handleVerifyOtp : handleSubmit} noValidate>
                 <FieldGroup>
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <h1 className="text-2xl font-bold">Create your account</h1>
+                    <h1 className="text-2xl font-bold">{isVerifying ? "Verify your email" : "Create your account"}</h1>
                     <p className="text-muted-foreground text-sm text-balance">
-                      Enter your details below to create your account
+                      {isVerifying 
+                        ? `Enter the code sent to ${formData.email}` 
+                        : "Enter your details below to create your account"}
                     </p>
-                    <p className="text-xs uppercase tracking-[0.35em] text-primary">
-                      You&apos;re creating a client account.
-                    </p>
+                    {!isVerifying && (
+                      <p className="text-xs uppercase tracking-[0.35em] text-primary">
+                        You&apos;re creating a client account.
+                      </p>
+                    )}
                   </div>
 
-                  <Field>
-                    <FieldLabel htmlFor="fullName">Full name</FieldLabel>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      type="text"
-                      placeholder="Jane Doe"
-                      autoComplete="name"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      required
-                    />
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="email">Email</FieldLabel>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="m@example.com"
-                      autoComplete="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                    />
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        autoComplete="new-password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="pr-10"
-                        required
-                      />
-                      <div
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute top-0 right-0 h-full px-3 flex items-center cursor-pointer select-none text-zinc-400 hover:text-white"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                  {isVerifying ? (
+                    <div className="flex flex-col items-center gap-4 py-4">
+                       <InputOTP maxLength={6} value={otpValue} onChange={setOtpValue}>
+                        <InputOTPGroup>
+                          <InputOTPSlot index={0} />
+                          <InputOTPSlot index={1} />
+                          <InputOTPSlot index={2} />
+                        </InputOTPGroup>
+                        <InputOTPGroup>
+                          <InputOTPSlot index={3} />
+                          <InputOTPSlot index={4} />
+                          <InputOTPSlot index={5} />
+                        </InputOTPGroup>
+                      </InputOTP>
+                      {formError ? (
+                        <p className="text-destructive text-sm font-medium">{formError}</p>
+                      ) : null}
+                      <Button type="submit" disabled={isVerifyingOtp} className="w-full">
+                        {isVerifyingOtp ? "Verifying..." : "Verify Email"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsVerifying(false)}
+                        className="text-sm text-muted-foreground"
+                      >
+                        Back to Signup
+                      </Button>
                     </div>
-                    </div>
-                    <FieldDescription>
-                      Must be at least 8 characters long.
-                    </FieldDescription>
-                  </Field>
-
-                  <Field>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? "Creating account..." : "Create Account"}
-                    </Button>
-                  </Field>
-
-                  {formError ? (
-                    <FieldDescription className="text-destructive text-sm" aria-live="polite">
-                      {formError}
-                    </FieldDescription>
-                  ) : null}
-
-                  <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                    Or continue with
-                  </FieldSeparator>
-
-                  <Field>
-                    <Button
-                      variant="outline"
-                      type="button"
-                      className="flex items-center justify-center gap-2 w-full"
-                      onClick={handleGoogleSignUp}
-                      disabled={isGoogleLoading || isSubmitting}
-                    >
-                      {isGoogleLoading ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <img
-                          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                          alt="Google logo"
-                          className="h-5 w-5"
+                  ) : (
+                    <>
+                      <Field>
+                        <FieldLabel htmlFor="fullName">Full name</FieldLabel>
+                        <Input
+                          id="fullName"
+                          name="fullName"
+                          type="text"
+                          placeholder="Jane Doe"
+                          autoComplete="name"
+                          value={formData.fullName}
+                          onChange={handleChange}
+                          required
                         />
-                      )}
-                      <span className="font-medium">
-                        {isGoogleLoading ? "Signing up..." : "Continue with Google"}
-                      </span>
-                    </Button>
-                  </Field>
+                      </Field>
 
-                  <FieldDescription className="text-center">
-                    Already have an account? <a href="/login">Sign in</a>
-                  </FieldDescription>
+                      <Field>
+                        <FieldLabel htmlFor="email">Email</FieldLabel>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="m@example.com"
+                          autoComplete="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          required
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="password">Password</FieldLabel>
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="pr-10"
+                            required
+                          />
+                          <div
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute top-0 right-0 h-full px-3 flex items-center cursor-pointer select-none text-zinc-400 hover:text-white"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </div>
+                        </div>
+                        <FieldDescription>
+                          Must be at least 8 characters long.
+                        </FieldDescription>
+                      </Field>
+
+                      <Field>
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? "Sending verification..." : "Create Account"}
+                        </Button>
+                      </Field>
+
+                      {formError ? (
+                        <FieldDescription className="text-destructive text-sm" aria-live="polite">
+                          {formError}
+                        </FieldDescription>
+                      ) : null}
+
+                      <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
+                        Or continue with
+                      </FieldSeparator>
+
+                      <Field>
+                        <Button
+                          variant="outline"
+                          type="button"
+                          className="flex items-center justify-center gap-2 w-full"
+                          onClick={handleGoogleSignUp}
+                          disabled={isGoogleLoading || isSubmitting}
+                        >
+                          {isGoogleLoading ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <img
+                              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                              alt="Google logo"
+                              className="h-5 w-5"
+                            />
+                          )}
+                          <span className="font-medium">
+                            {isGoogleLoading ? "Signing up..." : "Continue with Google"}
+                          </span>
+                        </Button>
+                      </Field>
+
+                      <FieldDescription className="text-center">
+                        Already have an account? <Link to="/login" className="underline hover:text-primary">Sign in</Link>
+                      </FieldDescription>
+                    </>
+                  )}
                 </FieldGroup>
               </form>
 
