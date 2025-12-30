@@ -266,6 +266,55 @@ const withMandatoryBrief = (questions = []) => {
     ];
 };
 
+const resolveIntroServiceLabel = (service = "") => {
+    const label = normalizeText(service);
+    if (!label) return "your project";
+    const lower = label.toLowerCase();
+    if (lower === "default" || lower === "project") return "your project";
+    return label;
+};
+
+const buildGlobalIntroPrompt = (service = "") =>
+    `Hi! I see you're interested in ${resolveIntroServiceLabel(service)}. What's your name, and how can I help bring your idea to life?`;
+
+const withGlobalIntroQuestion = (questions = [], service = "") => {
+    const list = Array.isArray(questions) ? [...questions] : [];
+    const introPrompt = buildGlobalIntroPrompt(service);
+    if (!list.length) {
+        return [
+            {
+                key: "name",
+                patterns: ["name", "call you", "who are you"],
+                templates: [introPrompt],
+                suggestions: null,
+                required: true,
+                start: true,
+            },
+        ];
+    }
+
+    const nameIndex = list.findIndex((q, index) => resolveQuestionKey(q, index) === "name");
+    const existing = nameIndex >= 0 ? list[nameIndex] : null;
+    const introQuestion = {
+        ...(existing || {}),
+        key: "name",
+        templates: [introPrompt],
+        suggestions: null,
+        required: true,
+        start: true,
+        nextId: null,
+        nextQuestionId: null,
+        next: null,
+    };
+
+    const remaining =
+        nameIndex >= 0
+            ? [...list.slice(0, nameIndex), ...list.slice(nameIndex + 1)]
+            : list;
+
+    return [introQuestion, ...remaining];
+};
+
 const isChangeTechnologyMessage = (value = "") => {
     const canon = canonicalize(value);
     if (!canon) return false;
@@ -1083,6 +1132,10 @@ const resolveMinimumWebsiteBudget = (collectedData = {}) => {
     const tech = techSelections.join(" ").toLowerCase();
     const pages = splitSelections(collectedData.pages).join(" ").toLowerCase();
     const description = normalizeText(collectedData.description).toLowerCase();
+    const buildModeRaw = normalizeText(collectedData.build_mode).toLowerCase();
+    const buildModeCanon = canonicalize(buildModeRaw);
+    const isCustomCodeMode =
+        buildModeCanon.includes("customcode") || buildModeCanon.includes("codedwebsite");
 
     const wants3D =
         pages.includes("3d ") ||
@@ -1103,6 +1156,32 @@ const resolveMinimumWebsiteBudget = (collectedData = {}) => {
         tech.includes("react.js + node.js") ||
         tech.includes("mern") ||
         tech.includes("pern");
+    const hasReactStack = tech.includes("react");
+    const hasNode = tech.includes("node.js") || tech.includes("nodejs");
+    const hasLaravel = tech.includes("laravel");
+    const hasDjango = tech.includes("django");
+    const hasVue = tech.includes("vue");
+    const hasPython = tech.includes("python");
+    const hasPhp = tech.includes("php");
+
+    const isCustomCodeTech =
+        hasCustomShopify ||
+        hasNext ||
+        hasCustomReactNode ||
+        hasReactStack ||
+        hasNode ||
+        hasLaravel ||
+        hasDjango ||
+        hasVue ||
+        hasPython ||
+        hasPhp;
+
+    if (isCustomCodeMode || isCustomCodeTech) {
+        if (wants3D) {
+            return { key: "custom_3d", label: "3D Custom Website", min: 30000, wants3D: true, range: null };
+        }
+        return { key: "custom_code", label: "Custom coded website", min: 30000, wants3D: false, range: null };
+    }
 
     const bases = [
         { when: hasWordPress, key: "wordpress", label: "WordPress", min: 30000 },
@@ -1205,18 +1284,45 @@ const buildWebsiteBudgetSuggestions = (requirement) => {
     return ["Change technology"];
 };
 
-const MANAGED_HOSTING_TECH_CANONS = new Set(["shopify"]);
+const NO_CODE_TECH_CANONS = new Set(["shopify", "wix", "godaddy", "webflow", "framer"]);
+const WORDPRESS_TECH_CANON = "wordpress";
+
+const normalizeTechSelectionCanons = (value = "") =>
+    splitSelections(value)
+        .map((part) => normalizeText(part))
+        .filter(Boolean)
+        .filter((part) => {
+            const lower = part.toLowerCase();
+            return lower !== "none" && lower !== "[skipped]";
+        })
+        .map((part) => canonicalize(part.toLowerCase()))
+        .filter(Boolean);
+
+const hasWordPressSelection = (value = "") =>
+    normalizeTechSelectionCanons(value).some((canon) => canon.includes(WORDPRESS_TECH_CANON));
+
+const hasNoCodePlatformSelection = (value = "") =>
+    normalizeTechSelectionCanons(value).some((canon) => NO_CODE_TECH_CANONS.has(canon));
+
+const resolveBuildModeFlags = (value = "") => {
+    const canon = canonicalize(normalizeText(value).toLowerCase());
+    if (!canon) return { isNoCode: false, isCustomCode: false };
+
+    return {
+        isNoCode: canon.includes("nocode"),
+        isCustomCode: canon.includes("customcode") || canon.includes("codedwebsite"),
+    };
+};
 
 const shouldSkipDeploymentQuestion = (collectedData = {}) => {
-    const techSelections = splitSelections(collectedData.tech);
-    if (!techSelections.length) return false;
+    const techValue = normalizeText(collectedData.tech || "");
+    const buildModeValue = normalizeText(collectedData.build_mode || "");
+    const { isNoCode, isCustomCode } = resolveBuildModeFlags(buildModeValue);
 
-    const techCanon = canonicalize(techSelections.join(" ").toLowerCase());
-    if (!techCanon) return false;
-
-    for (const platform of MANAGED_HOSTING_TECH_CANONS) {
-        if (techCanon.includes(platform)) return true;
-    }
+    if (hasWordPressSelection(techValue)) return false;
+    if (isCustomCode) return false;
+    if (isNoCode) return true;
+    if (hasNoCodePlatformSelection(techValue)) return true;
 
     return false;
 };
@@ -2248,6 +2354,86 @@ const resolveSlotDisplayValue = (state, key) => {
     return normalizeText(state?.collectedData?.[key] || "");
 };
 
+const WEBSITE_TECH_SUGGESTIONS = {
+    noCode: [
+        "Shopify",
+        "Wix",
+        "GoDaddy",
+        "Webflow",
+        "Framer",
+        "WordPress",
+        "No preference",
+    ],
+    customCode: [
+        "Next.js",
+        "React.js",
+        "React.js + Node.js",
+        "Shopify + Hydrogen (React)",
+        "Laravel + Vue",
+        "Django + React",
+        "No preference",
+    ],
+};
+
+const WORDPRESS_DEPLOYMENT_SUGGESTIONS = [
+    "Managed WordPress Hosting (WP Engine/Kinsta)",
+    "Shared Hosting (Hostinger/Bluehost/SiteGround)",
+    "Cloud Hosting (Cloudways)",
+    "Self-managed VPS",
+    "WordPress.com",
+    "Not sure yet",
+];
+
+const WEBSITE_TIMELINE_SUGGESTIONS = {
+    noCode: ["1 week", "2 week", "1 month"],
+    customCode: ["1 month", "2-3 months", "3-6 months"],
+};
+
+const resolveWebsiteTechSuggestions = (state, questions, question) => {
+    if (!question || question.key !== "tech") return null;
+    const hasBuildMode = Array.isArray(questions) && questions.some((q) => q?.key === "build_mode");
+    if (!hasBuildMode) return null;
+
+    const buildModeRaw = resolveSlotDisplayValue(state, "build_mode");
+    const buildMode = normalizeText(buildModeRaw).toLowerCase();
+    if (!buildMode) return null;
+
+    const canon = canonicalize(buildMode);
+    if (canon.includes("nocode") || buildMode.includes("no code") || buildMode.includes("no-code")) {
+        return WEBSITE_TECH_SUGGESTIONS.noCode;
+    }
+    if (canon.includes("custom") || canon.includes("coded") || buildMode.includes("custom code")) {
+        return WEBSITE_TECH_SUGGESTIONS.customCode;
+    }
+    return null;
+};
+
+const resolveWebsiteTimelineSuggestions = (state, questions, question) => {
+    if (!question || question.key !== "timeline") return null;
+    const hasBuildMode = Array.isArray(questions) && questions.some((q) => q?.key === "build_mode");
+    if (!hasBuildMode) return null;
+
+    const buildModeRaw = resolveSlotDisplayValue(state, "build_mode");
+    const { isNoCode, isCustomCode } = resolveBuildModeFlags(buildModeRaw);
+
+    if (isNoCode) return WEBSITE_TIMELINE_SUGGESTIONS.noCode;
+    if (isCustomCode) return WEBSITE_TIMELINE_SUGGESTIONS.customCode;
+    return null;
+};
+
+const resolveWebsiteDeploymentSuggestions = (state, question) => {
+    if (!question || question.key !== "deployment") return null;
+
+    const techValue = resolveSlotDisplayValue(state, "tech");
+    if (!techValue) return null;
+
+    if (hasWordPressSelection(techValue)) {
+        return WORDPRESS_DEPLOYMENT_SUGGESTIONS;
+    }
+
+    return null;
+};
+
 const applyTemplatePlaceholders = (text, state) => {
     if (!text) return text;
     let output = text;
@@ -2388,7 +2574,11 @@ const ensureSlot = (slots, key) => {
 const recomputeProgress = (state) => {
     const questions = Array.isArray(state?.questions) ? state.questions : [];
     const slots = state?.slots || {};
-    const { missingRequired, missingOptional } = buildMissingLists(questions, slots);
+    const { missingRequired, missingOptional } = buildMissingLists(
+        questions,
+        slots,
+        state?.collectedData || {}
+    );
     const nextKey = findNextQuestionKey(questions, missingRequired, missingOptional);
     const currentStep = nextKey ? questions.findIndex((q) => q.key === nextKey) : questions.length;
     const asked = Object.keys(slots).filter((key) => (slots[key]?.askedCount || 0) > 0);
@@ -2523,12 +2713,14 @@ const evaluateAnswerForQuestion = (question, message, options = {}) => {
     return normalizeTextValue(text);
 };
 
-const buildMissingLists = (questions, slots) => {
+const buildMissingLists = (questions, slots, collectedData = {}) => {
     const missingRequired = [];
     const missingOptional = [];
+    const skipDeployment = shouldSkipDeploymentQuestion(collectedData);
     for (const question of questions) {
         const key = question.key;
         if (!key) continue;
+        if (key === "deployment" && skipDeployment) continue;
         const slot = slots[key];
         const required = isRequiredQuestion(question);
         const answered = slot?.status === "answered";
@@ -2596,7 +2788,8 @@ const shouldCaptureOutOfOrder = (question, message) => {
     }
 
     if (tags.includes("location")) return hasLocationSignal(text);
-    if (tags.includes("name") || tags.includes("company")) return hasKeywords;
+    if (tags.includes("name")) return hasKeywords;
+    if (tags.includes("company")) return hasKeywords || Boolean(extractOrganizationName(text));
     if (tags.includes("goal") || tags.includes("audience")) return hasKeywords;
     if (tags.includes("description") && looksLikeProjectBrief(text)) return true;
     if (tags.includes("notes") && hasKeywords) return true;
@@ -2667,7 +2860,7 @@ const applyMessageToState = (state, message, activeKey = null) => {
         }
     }
 
-    const { missingRequired, missingOptional } = buildMissingLists(questions, slots);
+    const { missingRequired, missingOptional } = buildMissingLists(questions, slots, collectedData);
     const nextKey = findNextQuestionKey(questions, missingRequired, missingOptional);
     const currentStep = nextKey ? questions.findIndex((q) => q.key === nextKey) : questions.length;
 
@@ -2701,9 +2894,8 @@ export function buildConversationState(history, service) {
     const { questions: rawQuestions, source, definition } = resolveServiceQuestions(service);
     const safeHistory = Array.isArray(history) ? history : [];
     const needsBrief = source !== "catalog";
-    const normalizedQuestions = normalizeQuestions(
-        needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions
-    );
+    const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
+    const normalizedQuestions = normalizeQuestions(withGlobalIntroQuestion(baseQuestions, service));
     const questions = orderQuestionsByFlow(normalizedQuestions);
 
     const slots = {};
@@ -2743,7 +2935,11 @@ export function buildConversationState(history, service) {
     }
 
     if (!state.missingRequired?.length && !state.missingOptional?.length) {
-        const { missingRequired, missingOptional } = buildMissingLists(questions, state.slots);
+        const { missingRequired, missingOptional } = buildMissingLists(
+            questions,
+            state.slots,
+            state.collectedData
+        );
         const nextKey = findNextQuestionKey(questions, missingRequired, missingOptional);
         state.missingRequired = missingRequired;
         state.missingOptional = missingOptional;
@@ -2767,11 +2963,17 @@ export function buildConversationState(history, service) {
 export function processUserAnswer(state, message) {
     const { questions: rawQuestions, source, definition } = resolveServiceQuestions(state?.service || "");
     const needsBrief = source !== "catalog";
-    const normalizedQuestions = normalizeQuestions(
-        needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions
-    );
+    const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
+    const normalizedQuestions = normalizeQuestions(withGlobalIntroQuestion(baseQuestions, state?.service || ""));
+    const stateQuestions = Array.isArray(state?.questions) ? state.questions : [];
+    const normalizedKeys = new Set(normalizedQuestions.map((q) => q.key));
+    const stateKeys = new Set(stateQuestions.map((q) => q.key));
+    const shouldRefreshQuestions =
+        normalizedQuestions.length !== stateQuestions.length ||
+        normalizedQuestions.some((q) => !stateKeys.has(q.key)) ||
+        stateQuestions.some((q) => !normalizedKeys.has(q.key));
     const questions = orderQuestionsByFlow(
-        Array.isArray(state?.questions) && state.questions.length ? state.questions : normalizedQuestions
+        stateQuestions.length && !shouldRefreshQuestions ? stateQuestions : normalizedQuestions
     );
 
     const normalizedMessage = normalizeText(message);
@@ -2938,6 +3140,25 @@ export function getNextHumanizedQuestion(state) {
 
     text = applyTemplatePlaceholders(text, state);
 
+    if (!suggestionsOverride && question?.key === "tech") {
+        const techSuggestions = resolveWebsiteTechSuggestions(state, questions, question);
+        if (Array.isArray(techSuggestions) && techSuggestions.length) {
+            suggestionsOverride = techSuggestions;
+        }
+    }
+    if (!suggestionsOverride && question?.key === "deployment") {
+        const deploymentSuggestions = resolveWebsiteDeploymentSuggestions(state, question);
+        if (Array.isArray(deploymentSuggestions) && deploymentSuggestions.length) {
+            suggestionsOverride = deploymentSuggestions;
+        }
+    }
+    if (!suggestionsOverride && question?.key === "timeline") {
+        const timelineSuggestions = resolveWebsiteTimelineSuggestions(state, questions, question);
+        if (Array.isArray(timelineSuggestions) && timelineSuggestions.length) {
+            suggestionsOverride = timelineSuggestions;
+        }
+    }
+
     const suggestionsToUse =
         Array.isArray(suggestionsOverride) && suggestionsOverride.length
             ? suggestionsOverride
@@ -2967,7 +3188,11 @@ export function getNextHumanizedQuestion(state) {
 export function shouldGenerateProposal(state) {
     const questions = Array.isArray(state?.questions) ? state.questions : [];
     const slots = state?.slots || {};
-    const { missingRequired, missingOptional } = buildMissingLists(questions, slots);
+    const { missingRequired, missingOptional } = buildMissingLists(
+        questions,
+        slots,
+        state?.collectedData || {}
+    );
     return missingRequired.length === 0 && missingOptional.length === 0;
 }
 
@@ -3478,9 +3703,7 @@ export function generateProposalFromState(state) {
         }
 
         sections.push("Next Steps");
-        sections.push("- Confirm pages and integrations");
-        sections.push("- Share design files, content, and brand assets");
-        sections.push("- Approve proposal to start your project");
+        sections.push("- Approve proposal to kick start the project");
         sections.push("[/PROPOSAL_DATA]");
 
         return sections.join("\n").trim();
