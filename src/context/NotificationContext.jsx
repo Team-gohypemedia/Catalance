@@ -67,9 +67,24 @@ export const NotificationProvider = ({ children }) => {
 
   // Remove a notification when clicked/read
   const markAsRead = useCallback(async (notificationId) => {
-    // Optimistically remove from UI
-    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+    // Optimistically remove from UI and update counters
+    setNotifications((prev) => {
+      const target = prev.find((n) => n.id === notificationId);
+      
+      if (target) {
+        setUnreadCount((prevCount) => Math.max(0, prevCount - 1));
+        
+        if (target.type === "chat") {
+          setChatUnreadCount((prevCount) => Math.max(0, prevCount - 1));
+        }
+        if (target.type === "proposal") {
+          setProposalUnreadCount((prevCount) => Math.max(0, prevCount - 1));
+        }
+        
+        return prev.filter((n) => n.id !== notificationId);
+      }
+      return prev;
+    });
 
     try {
       await apiClient(`/notifications/${notificationId}/read`, { method: "PATCH" });
