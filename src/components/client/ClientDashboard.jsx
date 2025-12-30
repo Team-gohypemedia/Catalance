@@ -407,7 +407,11 @@ const ClientDashboardContent = () => {
     const totalBudget = uniqueProjects
       .filter(p => {
         const status = (p.status || "").toUpperCase();
-        return status !== "DRAFT" && status !== "COMPLETED";
+        const hasAcceptedProposal = (p.proposals || []).some(pr => (pr.status || "").toUpperCase() === "ACCEPTED");
+        
+        // Only count budget for projects that are actually active/committed
+        // Exclude purely "OPEN" projects (invites) that haven't been accepted yet
+        return status === "IN_PROGRESS" || status === "AWAITING_PAYMENT" || hasAcceptedProposal;
       })
       .reduce((acc, p) => acc + (parseInt(p.budget) || 0), 0);
 

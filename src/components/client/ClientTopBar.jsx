@@ -178,7 +178,7 @@ export const ClientTopBar = ({ label, interactive = true }) => {
             {/* Enable Push Notifications Banner - Removed per user request */}
             
             <ScrollArea className="h-72">
-              {notifications.filter(n => !(sessionUser?.role === "CLIENT" && n.type === "proposal" && n.message?.toLowerCase().includes("from a client"))).length === 0 ? (
+              {notifications.filter(n => !(sessionUser?.role === "CLIENT" && n.type === "proposal" && (n.title?.includes("Invite Received") || n.message?.includes("by the client") || n.message?.includes("from a client")))).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
                   <Bell className="mb-2 h-8 w-8 opacity-40" />
                   <p className="text-sm">No notifications yet</p>
@@ -186,7 +186,7 @@ export const ClientTopBar = ({ label, interactive = true }) => {
               ) : (
                 <div className="divide-y">
                   {notifications
-                    .filter(n => !(sessionUser?.role === "CLIENT" && n.type === "proposal" && n.message?.toLowerCase().includes("from a client")))
+                    .filter(n => !(sessionUser?.role === "CLIENT" && n.type === "proposal" && (n.title?.includes("Invite Received") || n.message?.includes("by the client") || n.message?.includes("from a client"))))
                     .slice(0, 20)
                     .map((notification) => (
                     <button
