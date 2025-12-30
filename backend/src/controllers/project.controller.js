@@ -204,7 +204,7 @@ export const getProject = asyncHandler(async (req, res) => {
         orderBy: { createdAt: "desc" }
       },
       manager: {
-        select: { id: true, fullName: true, email: true, phone: true }
+        select: { id: true, fullName: true, email: true, phone: true, avatar: true }
       },
       disputes: {
         select: { id: true, status: true }

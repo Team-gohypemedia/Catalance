@@ -168,7 +168,7 @@ export const listProposals = asyncHandler(async (req, res) => {
       project: {
         include: {
           owner: true,
-          manager: { select: { id: true, fullName: true, email: true, phone: true } }
+          manager: { select: { id: true, fullName: true, email: true, phone: true, avatar: true } }
         }
       },
       freelancer: true

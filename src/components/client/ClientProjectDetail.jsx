@@ -27,6 +27,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -1250,8 +1251,11 @@ const ProjectDashboard = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {project?.manager && (
-              <div className="bg-muted/50 p-3 rounded-md mb-2 border">
-                <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Project Manager</p>
+              <div className="bg-muted/50 p-3 rounded-md mb-2 border flex items-center gap-3">
+                <Avatar className="h-10 w-10 border bg-background">
+                  <AvatarImage src={project.manager.avatar} alt={project.manager.fullName} />
+                  <AvatarFallback className="bg-primary/10 text-primary">PM</AvatarFallback>
+                </Avatar>
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-foreground mb-1">{project.manager.fullName}</span>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
