@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -881,7 +881,7 @@ const FreelancerProjectDetailContent = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="default" size="sm" onClick={() => setReportOpen(true)}>
-                      PC
+                      <Headset />PC
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>

@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -954,7 +954,7 @@ const ProjectDashboard = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="default" size="sm" onClick={() => setReportOpen(true)}>
-                      PC
+                     <Headset /> PC
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
