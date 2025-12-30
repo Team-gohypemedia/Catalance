@@ -80,7 +80,7 @@ const StatsCard = ({ title, value, trend, trendType = "up", icon: Icon, accentCo
       <div className={`absolute top-0 right-0 w-16 h-16 ${colors[accentColor]} rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110`} />
       <CardContent className="p-6 relative z-10">
         <p className="text-muted-foreground text-sm font-medium mb-1">{title}</p>
-        <h3 className="text-3xl font-bold tracking-tight">{value}</h3>
+        <h3 className="text-3xl tracking-tight">{value}</h3>
         {trend && (
           <p className={`text-xs mt-2 flex items-center font-bold ${
             trendType === "up" ? "text-green-600" : 
@@ -566,7 +566,7 @@ const ClientDashboardContent = () => {
               {/* Welcome Section */}
               <div className="flex justify-between items-end">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-black tracking-tighter mb-2">
+                  <h1 className="text-3xl md:text-4xl font-semibold mb-2">
                     {greeting}, {firstName}
                   </h1>
                   <p className="text-muted-foreground font-medium">
