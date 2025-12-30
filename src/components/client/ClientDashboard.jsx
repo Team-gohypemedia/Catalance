@@ -1008,7 +1008,7 @@ const ClientDashboardContent = () => {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold">Active Projects</h3>
-                  <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/projects")}>
+                  <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/project")}>
                     View All <ArrowRight className="w-4 h-4 ml-1" />
                   </Button>
                 </div>

@@ -320,6 +320,34 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
             data: { status: "REJECTED" }
           });
         }
+
+        // --- NEW: Clean up Sibling Projects (duplicates from invites) ---
+        // Find other projects by same owner with same title that are still OPEN/DRAFT
+        const siblingProjects = await tx.project.findMany({
+          where: {
+            ownerId: proposal.project.ownerId,
+            title: proposal.project.title,
+            id: { not: proposal.projectId },
+            status: { in: ["OPEN", "DRAFT"] }
+          },
+          select: { id: true }
+        });
+
+        if (siblingProjects.length > 0) {
+          const siblingIds = siblingProjects.map(p => p.id);
+          console.log(`[Proposal] Cleaning up ${siblingIds.length} sibling projects: ${siblingIds.join(", ")}`);
+          
+          // 1. Delete proposals associated with these sibling projects
+          await tx.proposal.deleteMany({
+            where: { projectId: { in: siblingIds } }
+          });
+
+          // 2. Delete the sibling projects themselves
+          await tx.project.deleteMany({
+            where: { id: { in: siblingIds } }
+          });
+        }
+        // -------------------------------------------------------------
       }
       
       // Now do the update atomically
