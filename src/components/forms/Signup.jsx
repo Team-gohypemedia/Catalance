@@ -33,14 +33,21 @@ const initialFormState = {
 const CLIENT_ROLE = "CLIENT";
 
 function Signup({ className, ...props }) {
-  const [formData, setFormData] = useState(initialFormState);
+  const location = useLocation();
+  const [formData, setFormData] = useState(() => {
+    // Pre-fill email if redirected from login for verification
+    if (location.state?.verifyEmail) {
+      return { ...initialFormState, email: location.state.verifyEmail };
+    }
+    return initialFormState;
+  });
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // Verification State
-  const [isVerifying, setIsVerifying] = useState(false);
+  // Verification State - auto-enter verification mode if redirected from login
+  const [isVerifying, setIsVerifying] = useState(!!location.state?.showVerification);
   const [otpValue, setOtpValue] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isResendingOtp, setIsResendingOtp] = useState(false);

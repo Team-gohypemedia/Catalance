@@ -56,6 +56,20 @@ function Login({ className, ...props }) {
         email: formData.email.trim().toLowerCase(),
         password: formData.password
       });
+      
+      // Handle unverified user - redirect to verification
+      if (authPayload?.requiresVerification) {
+        toast.info(authPayload.message || "Please verify your email.");
+        navigate("/signup", { 
+          state: { 
+            verifyEmail: authPayload.email,
+            showVerification: true 
+          },
+          replace: true 
+        });
+        return;
+      }
+      
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success("Logged in successfully.");
       setFormData(initialFormState);
