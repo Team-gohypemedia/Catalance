@@ -1,5 +1,5 @@
 export const service = "Website Development";
-export const openingMessage = "Hi there! Ready to build something awesome? Let's talk about your website project!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const questions = [
   {
     "key": "name",

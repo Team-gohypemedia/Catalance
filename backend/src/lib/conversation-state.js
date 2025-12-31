@@ -275,7 +275,7 @@ const resolveIntroServiceLabel = (service = "") => {
 };
 
 const buildGlobalIntroPrompt = (service = "") =>
-    `Hi! I see you're interested in ${resolveIntroServiceLabel(service)}. What's your name, and how can I help bring your idea to life?`;
+    `Hi! I see you're interested in ${resolveIntroServiceLabel(service)}. What's your name? Let's get started.`;
 
 const withGlobalIntroQuestion = (questions = [], service = "") => {
     const list = Array.isArray(questions) ? [...questions] : [];

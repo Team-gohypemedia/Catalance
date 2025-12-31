@@ -46,7 +46,7 @@ const buildIntroMessage = (serviceName = "") => {
   const lower = label.toLowerCase();
   const serviceLabel =
     label && lower !== "default" && lower !== "project" ? label : DEFAULT_INTRO_SERVICE;
-  return `Hi! I see you're interested in ${serviceLabel}. What's your name, and how can I help bring your idea to life?\n[QUESTION_KEY: name]`;
+  return `Hi! I see you're interested in ${serviceLabel}. What's your name? Let's get started.\n[QUESTION_KEY: name]`;
 };
 
 const ChatDialog = ({ isOpen, onClose, service, services }) => {

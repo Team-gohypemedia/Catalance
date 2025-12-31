@@ -1,5 +1,5 @@
 ﻿export const service = "Performance Marketing";
-export const openingMessage = "Hi! Ready to run some high-converting ads? Let's get started!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: Meta Ads, Google Ads, LinkedIn Ads, Retargeting
 Deliverables: Campaign strategy, ad creatives & copies, optimization & reports
 Pricing: Setup â‚¹20,000â€“â‚¹40,000 | Management 10â€“20% of ad spend
