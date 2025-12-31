@@ -14,9 +14,9 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { signup, login, verifyOtp } from "@/lib/api-client";
+import { signup, login, verifyOtp, resendOtp } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { signInWithGoogle } from "@/lib/firebase";
 import {
   InputOTP,
@@ -43,6 +43,8 @@ function Signup({ className, ...props }) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [otpValue, setOtpValue] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isResendingOtp, setIsResendingOtp] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const navigate = useNavigate();
   const { login: setAuthSession, logout, isAuthenticated } = useAuth();
@@ -127,6 +129,35 @@ function Signup({ className, ...props }) {
       setIsVerifyingOtp(false);
     }
   };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    
+    setFormError("");
+    setIsResendingOtp(true);
+    
+    try {
+      await resendOtp(formData.email.trim().toLowerCase());
+      toast.success("New verification code sent! Check your email.");
+      setOtpValue("");
+      // Start 60 second cooldown
+      setResendCooldown(60);
+    } catch (error) {
+      const message = error?.message || "Failed to resend code. Please try again.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsResendingOtp(false);
+    }
+  };
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
 
   const handleGoogleSignUp = async () => {
@@ -213,6 +244,24 @@ function Signup({ className, ...props }) {
                       ) : null}
                       <Button type="submit" disabled={isVerifyingOtp} className="w-full">
                         {isVerifyingOtp ? "Verifying..." : "Verify Email"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleResendOtp}
+                        disabled={isResendingOtp || resendCooldown > 0}
+                        className="w-full gap-2"
+                      >
+                        {isResendingOtp ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                        {resendCooldown > 0 
+                          ? `Resend in ${resendCooldown}s` 
+                          : isResendingOtp 
+                            ? "Sending..." 
+                            : "Resend Code"}
                       </Button>
                       <Button
                         type="button"

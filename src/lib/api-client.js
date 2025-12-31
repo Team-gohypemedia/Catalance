@@ -183,6 +183,13 @@ export const verifyOtp = ({ email, otp }) => {
   });
 };
 
+export const resendOtp = (email) => {
+  return request("/auth/resend-otp", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+};
+
 export const chat = ({ message, service, history = [] }) => {
   return request("/chat", {
     method: "POST",

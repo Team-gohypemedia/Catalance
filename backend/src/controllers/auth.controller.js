@@ -7,6 +7,7 @@ import {
   verifyResetToken,
   resetPassword,
   verifyUserOtp,
+  resendOtp,
   updateUserProfile
 } from "../modules/users/user.service.js";
 import { AppError } from "../utils/app-error.js";
@@ -20,6 +21,12 @@ export const verifyOtpHandler = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
   const authPayload = await verifyUserOtp({ email, otp });
   res.json({ data: authPayload });
+});
+
+export const resendOtpHandler = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const result = await resendOtp(email);
+  res.json({ data: result });
 });
 
 export const loginHandler = asyncHandler(async (req, res) => {
