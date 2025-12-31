@@ -1,5 +1,5 @@
 export const service = "Website Development";
-export const openingMessage = "Hi there! Ready to build something awesome? Let's talk about your website project!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const questions = [
   {
     "key": "name",
@@ -35,7 +35,7 @@ export const questions = [
       "idea"
     ],
     "templates": [
-      "In 1 simple sentence, describe your project in easy words. Example: An e-commerce website for my clothing brand.",
+      "In 1 simple sentence, describe your project in easy words. (An e-commerce website for my clothing brand.)",
       "Briefly describe what you want to build (1 sentence)."
     ],
     "suggestions": null,
@@ -155,6 +155,25 @@ export const questions = [
     ]
   },
   {
+    "key": "build_mode",
+    "patterns": [
+      "no code",
+      "no-code",
+      "custom code",
+      "custom build",
+      "coding",
+      "build mode"
+    ],
+    "templates": [
+      "What type of technology stack do you want?"
+    ],
+    "suggestions": [
+      "No-code website",
+      "Custom code (coded website)"
+    ],
+    "required": false
+  },
+  {
     "key": "tech",
     "patterns": [
       "tech",
@@ -166,11 +185,15 @@ export const questions = [
       "What technology stack would you prefer? (Select one)"
     ],
     "suggestions": [
+      "Shopify",
+      "Wix",
+      "GoDaddy",
+      "Webflow",
+      "Framer",
       "WordPress",
       "Next.js",
       "React.js",
       "React.js + Node.js",
-      "Shopify",
       "Shopify + Hydrogen (React)",
       "Laravel + Vue",
       "Django + React",

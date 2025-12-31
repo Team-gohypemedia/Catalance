@@ -1,6 +1,5 @@
 ﻿export const service = "WhatsApp Chat Bot";
-export const openingMessage =
-  "Hi! Let's build a WhatsApp bot for your business. Tell me what you need.";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 
 export const serviceDetails = `Sub-types: Lead Capture Bot, Sales Bot, Support Bot
 Deliverables: Bot flow design, API integration, dashboard access

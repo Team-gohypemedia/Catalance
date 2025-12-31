@@ -1,6 +1,5 @@
 ﻿export const service = "CRM & ERP Solutions";
-export const openingMessage =
-  "Hi! Let's streamline your operations with the right CRM/ERP setup. Tell me what you need.";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 
 export const serviceDetails = `Sub-types: CRM Setup, ERP Customization, Workflow Automation
 Deliverables: System configuration, training & documentation, integrations

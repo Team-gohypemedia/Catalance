@@ -1,5 +1,5 @@
 ﻿export const service = "Writing & Content";
-export const openingMessage = "Hey! âœï¸ Ready to create amazing content? Let's talk about what you need!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: Website Content, Blogs & Articles, Ad Copy, Scripts
 Deliverables: SEO-optimized content, proofreading, plagiarism-free writing
 Pricing: Blogs â‚¹1â€“â‚¹5/word | Website content â‚¹10,000â€“â‚¹50,000

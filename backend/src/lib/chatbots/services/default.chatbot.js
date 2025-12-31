@@ -1,5 +1,5 @@
 export const service = "default";
-export const openingMessage = "Hey there! 👋 I'm excited to help you with your project. Let's get started!";
+export const openingMessage = "Hi! I see you're interested in your project. What's your name? Let's get started.";
 export const questions = [
   {
     "key": "name",
