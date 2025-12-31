@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, User, Bot, RotateCcw } from "lucide-react";
 import AITextLoading from "@/components/kokonutui/ai-text-loading";
@@ -280,7 +280,13 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
       setMessages((prev) => {
         const incomingContent = (message?.content || "").trim();
         const incomingRole = (message?.role || "").toLowerCase();
-        const isAssistantMessage = incomingRole === "assistant";
+        const incomingSenderRole = (message?.senderRole || "").toLowerCase();
+        const incomingSenderName = (message?.senderName || "").toLowerCase();
+        const isAssistantMessage =
+          incomingRole === "assistant" ||
+          incomingSenderRole === "assistant" ||
+          incomingSenderName === "assistant" ||
+          incomingSenderName === "cata";
         const incomingMessage = message?.serviceKey
           ? message
           : { ...message, serviceKey };
@@ -324,7 +330,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
 
           return next;
         };
-        if (message?.role === "assistant") {
+        if (isAssistantMessage) {
           const minDelay = 700;
           const elapsed = loadingSinceRef.current
             ? Date.now() - loadingSinceRef.current
@@ -762,6 +768,13 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
     }
   }, [messages, isLoading, hasProposals]);
 
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input, isOpen]);
+
   const handleResetChat = () => {
     if (isMultiService) {
       clearResponseTimeout();
@@ -802,7 +815,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`h-[85vh] flex flex-col overflow-hidden transition-all duration-300 ${hasProposals ? "max-w-[90vw] lg:max-w-6xl" : "max-w-2xl"}`}>
+      <DialogContent className={`h-[85vh] flex flex-col overflow-hidden transition-all duration-300 ${hasProposals ? "max-w-[95vw] lg:max-w-7xl" : "max-w-4xl"}`}>
         <DialogHeader className="flex flex-row items-center justify-between border-b pb-4 pr-5">
           <div className="space-y-1">
             <DialogTitle>
@@ -890,7 +903,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                           {serviceLabel}
                         </span>
                       )}
-                      <div className={`flex items-start gap-3 max-w-[85%] ${alignment}`}>
+                      <div className={`flex items-start gap-3 max-w-[92%] ${alignment}`}>
                         <div
                           className={`p-2 rounded-full flex-shrink-0 ${isUserMessage ? "bg-primary text-primary-foreground" : "bg-muted"
                             }`}
@@ -1056,14 +1069,22 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                   e.preventDefault();
                   handleSend();
                 }}
-                className="flex w-full items-center space-x-2"
+                className="flex w-full items-end gap-2"
               >
-                <Input
+                <Textarea
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
                   placeholder="Type your message..."
                   disabled={!conversationId}
+                  rows={1}
+                  className="flex-1 min-h-[44px] max-h-32 resize-none overflow-y-auto scrollbar-thin"
                 />
                 <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
                   <Send className="w-4 h-4" />
