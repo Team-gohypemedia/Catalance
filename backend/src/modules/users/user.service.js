@@ -128,6 +128,55 @@ export const verifyUserOtp = async ({ email, otp }) => {
   };
 };
 
+export const resendOtp = async (email) => {
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase().trim() }
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.isVerified) {
+    throw new AppError("Email is already verified", 400);
+  }
+
+  // Generate new OTP
+  const otpCode = crypto.randomInt(100000, 999999).toString();
+  const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  // Update user with new OTP
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      otpCode,
+      otpExpires
+    }
+  });
+
+  // Send OTP Email
+  if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
+    try {
+      const resend = ensureResendClient();
+      await resend.emails.send({
+        from: env.RESEND_FROM_EMAIL,
+        to: user.email,
+        subject: "Your New Verification Code - Catalance",
+        html: `<p>Your new verification code is: <strong>${otpCode}</strong></p><p>This code expires in 15 minutes.</p>`
+      });
+    } catch (error) {
+      console.error("Failed to send OTP email:", error);
+      console.log(`[DEV] New OTP for ${user.email}: ${otpCode}`);
+    }
+  } else {
+    console.log(`[DEV] New OTP for ${user.email}: ${otpCode}`);
+  }
+
+  return {
+    message: "New verification code sent to your email"
+  };
+};
+
 export const authenticateUser = async ({ email, password }) => {
   const user = await prisma.user.findUnique({
     where: { email }
@@ -156,8 +205,42 @@ export const authenticateUser = async ({ email, password }) => {
   }
 
   if (!user.isVerified) {
-    // Optionally resend OTP here if needed, or just tell them to verify
-    throw new AppError("Please verify your email address before logging in.", 403);
+    // Resend OTP for unverified users
+    const otpCode = crypto.randomInt(100000, 999999).toString();
+    const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode,
+        otpExpires
+      }
+    });
+
+    // Send OTP Email
+    if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
+      try {
+        const resend = ensureResendClient();
+        await resend.emails.send({
+          from: env.RESEND_FROM_EMAIL,
+          to: user.email,
+          subject: "Verify Your Email - Catalance",
+          html: `<p>Your verification code is: <strong>${otpCode}</strong></p><p>This code expires in 15 minutes.</p>`
+        });
+      } catch (error) {
+        console.error("Failed to send OTP email:", error);
+        console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
+      }
+    } else {
+      console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
+    }
+
+    // Return special response indicating verification is needed
+    return {
+      requiresVerification: true,
+      email: user.email,
+      message: "Please verify your email. A new verification code has been sent."
+    };
   }
 
   return {

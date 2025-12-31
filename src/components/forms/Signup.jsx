@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -14,9 +14,9 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { signup, login, verifyOtp } from "@/lib/api-client";
+import { signup, login, verifyOtp, resendOtp } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { signInWithGoogle } from "@/lib/firebase";
 import {
   InputOTP,
@@ -33,16 +33,25 @@ const initialFormState = {
 const CLIENT_ROLE = "CLIENT";
 
 function Signup({ className, ...props }) {
-  const [formData, setFormData] = useState(initialFormState);
+  const location = useLocation();
+  const [formData, setFormData] = useState(() => {
+    // Pre-fill email if redirected from login for verification
+    if (location.state?.verifyEmail) {
+      return { ...initialFormState, email: location.state.verifyEmail };
+    }
+    return initialFormState;
+  });
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // Verification State
-  const [isVerifying, setIsVerifying] = useState(false);
+  // Verification State - auto-enter verification mode if redirected from login
+  const [isVerifying, setIsVerifying] = useState(!!location.state?.showVerification);
   const [otpValue, setOtpValue] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isResendingOtp, setIsResendingOtp] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const navigate = useNavigate();
   const { login: setAuthSession, logout, isAuthenticated } = useAuth();
@@ -127,6 +136,35 @@ function Signup({ className, ...props }) {
       setIsVerifyingOtp(false);
     }
   };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    
+    setFormError("");
+    setIsResendingOtp(true);
+    
+    try {
+      await resendOtp(formData.email.trim().toLowerCase());
+      toast.success("New verification code sent! Check your email.");
+      setOtpValue("");
+      // Start 60 second cooldown
+      setResendCooldown(60);
+    } catch (error) {
+      const message = error?.message || "Failed to resend code. Please try again.";
+      setFormError(message);
+      toast.error(message);
+    } finally {
+      setIsResendingOtp(false);
+    }
+  };
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
 
   const handleGoogleSignUp = async () => {
@@ -213,6 +251,24 @@ function Signup({ className, ...props }) {
                       ) : null}
                       <Button type="submit" disabled={isVerifyingOtp} className="w-full">
                         {isVerifyingOtp ? "Verifying..." : "Verify Email"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleResendOtp}
+                        disabled={isResendingOtp || resendCooldown > 0}
+                        className="w-full gap-2"
+                      >
+                        {isResendingOtp ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                        {resendCooldown > 0 
+                          ? `Resend in ${resendCooldown}s` 
+                          : isResendingOtp 
+                            ? "Sending..." 
+                            : "Resend Code"}
                       </Button>
                       <Button
                         type="button"
