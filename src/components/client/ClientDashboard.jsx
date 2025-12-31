@@ -206,6 +206,12 @@ const ClientDashboardContent = () => {
   const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
   const [projectToPay, setProjectToPay] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  
+  // Increase Budget Dialog State
+  const [showIncreaseBudget, setShowIncreaseBudget] = useState(false);
+  const [budgetProject, setBudgetProject] = useState(null);
+  const [newBudget, setNewBudget] = useState("");
+  const [isUpdatingBudget, setIsUpdatingBudget] = useState(false);
 
   // Load projects
   // Load session
@@ -349,41 +355,9 @@ const ClientDashboardContent = () => {
     loadAllFreelancers();
   }, []);
 
-  // Deduplicate projects: If a project title has an "Active" version (AWAITING_PAYMENT, IN_PROGRESS, COMPLETED),
-  // hide any "Open" or "Draft" versions of the same project context.
+  // Sort projects by date (most recent first)
   const uniqueProjects = useMemo(() => {
-    // Group by title
-    const groups = {};
-    projects.forEach(p => {
-      const title = (p.title || "").trim();
-      if (!groups[title]) groups[title] = [];
-      groups[title].push(p);
-    });
-
-    const result = [];
-    Object.values(groups).forEach(group => {
-      // Check if this group has any "definitive" status
-      const activeProject = group.find(p => 
-        ["AWAITING_PAYMENT", "IN_PROGRESS", "COMPLETED"].includes((p.status || "").toUpperCase()) ||
-        (p.proposals || []).some(prop => (prop.status || "").toUpperCase() === "ACCEPTED")
-      );
-
-      if (activeProject) {
-        // If there's an active project, only show that one (or multiple active ones if that somehow happens)
-        // Filter out OPEN/DRAFT duplicates
-        const activeOnes = group.filter(p => 
-          ["AWAITING_PAYMENT", "IN_PROGRESS", "COMPLETED"].includes((p.status || "").toUpperCase()) ||
-          (p.proposals || []).some(prop => (prop.status || "").toUpperCase() === "ACCEPTED")
-        );
-        result.push(...activeOnes);
-      } else {
-        // No active project, show all (these are likely multiple invites sent out)
-        result.push(...group);
-      }
-    });
-    
-    // Sort by date desc
-    return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return [...projects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [projects]);
 
   // Computed metrics
@@ -490,7 +464,6 @@ const ClientDashboardContent = () => {
       setShowSendConfirm(false);
       setSelectedFreelancer(null);
       
-      toast.success(`Proposal sent to ${freelancer.fullName || freelancer.name}!`);
       // navigate(`/client/project/${project.id}`);
       
     } catch (error) {
@@ -539,6 +512,47 @@ const ClientDashboardContent = () => {
        toast.error(error.message || "Failed to process payment");
     } finally {
        setIsProcessingPayment(false);
+    }
+  };
+
+  const handleIncreaseBudgetClick = (project) => {
+    setBudgetProject(project);
+    setNewBudget(String(project.budget || ""));
+    setShowIncreaseBudget(true);
+  };
+
+  const updateBudget = async () => {
+    if (!budgetProject || !newBudget) return;
+    
+    const budgetValue = parseInt(newBudget.replace(/[^0-9]/g, ""));
+    if (!budgetValue || budgetValue <= (budgetProject.budget || 0)) {
+      toast.error("New budget must be higher than current budget");
+      return;
+    }
+    
+    setIsUpdatingBudget(true);
+    try {
+      const res = await authFetch(`/projects/${budgetProject.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ budget: budgetValue })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update budget");
+      }
+      
+      toast.success("Budget updated successfully!");
+      setShowIncreaseBudget(false);
+      setBudgetProject(null);
+      setNewBudget("");
+      loadProjects();
+    } catch (error) {
+      console.error("Budget update error:", error);
+      toast.error(error.message || "Failed to update budget");
+    } finally {
+      setIsUpdatingBudget(false);
     }
   };
 
@@ -675,8 +689,38 @@ const ClientDashboardContent = () => {
                   <div className="space-y-4">
                     <h3 className="text-lg font-bold">Choose a Freelancer to Send Your Proposal</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {suggestedFreelancers.length > 0 ? (
-                        suggestedFreelancers.map((freelancer) => (
+                      {(() => {
+                        // Filter out freelancers who already have pending proposals for this project title
+                        const projectTitle = savedProposal?.projectTitle?.trim();
+                        const alreadyInvitedIds = new Set();
+                        
+                        if (projectTitle) {
+                          // Check all projects with same title for invited freelancers
+                          projects.forEach(p => {
+                            if ((p.title || "").trim() === projectTitle) {
+                              (p.proposals || []).forEach(prop => {
+                                if (prop.freelancerId) {
+                                  alreadyInvitedIds.add(prop.freelancerId);
+                                }
+                              });
+                            }
+                          });
+                        }
+                        
+                        const availableFreelancers = suggestedFreelancers.filter(
+                          f => !alreadyInvitedIds.has(f.id)
+                        );
+                        
+                        if (availableFreelancers.length === 0 && suggestedFreelancers.length > 0) {
+                          return (
+                            <div className="col-span-full text-center py-8 text-muted-foreground">
+                              <p>All suggested freelancers have already been invited for this project.</p>
+                            </div>
+                          );
+                        }
+                        
+                        return availableFreelancers.length > 0 ? (
+                          availableFreelancers.map((freelancer) => (
                           <Card 
                             key={freelancer.id} 
                             className="group hover:shadow-lg hover:border-primary/20 transition-all cursor-pointer relative"
@@ -726,7 +770,8 @@ const ClientDashboardContent = () => {
                             No freelancers available. Check back later!
                           </CardContent>
                         </Card>
-                      )}
+                      );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -812,6 +857,52 @@ const ClientDashboardContent = () => {
                 </DialogContent>
               </Dialog>
 
+              {/* Increase Budget Dialog */}
+              <Dialog open={showIncreaseBudget} onOpenChange={setShowIncreaseBudget}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                      Increase Project Budget
+                    </DialogTitle>
+                    <DialogDescription>
+                      Increase your budget to attract freelancers faster. Higher budgets often get accepted sooner.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Project:</span>
+                        <span className="font-medium">{budgetProject?.title}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Current Budget:</span>
+                        <span className="font-medium">₹{(budgetProject?.budget || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">New Budget (₹)</label>
+                      <Input
+                        type="text"
+                        value={newBudget}
+                        onChange={(e) => setNewBudget(e.target.value.replace(/[^0-9]/g, ""))}
+                        placeholder="Enter new budget amount"
+                        className="text-lg"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Must be higher than current budget
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowIncreaseBudget(false)}>Cancel</Button>
+                    <Button onClick={updateBudget} disabled={isUpdatingBudget} className="gap-2">
+                      {isUpdatingBudget ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
+                      Update Budget
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               {/* View Proposal Dialog */}
               <Dialog open={showViewProposal} onOpenChange={setShowViewProposal}>
                 <DialogContent className="max-w-4xl">
@@ -1119,10 +1210,29 @@ const ClientDashboardContent = () => {
                                   </div>
                                 ) : (
                                   (() => {
-                                    const pendingProposal = (project.proposals || [])
-                                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                                      .find(p => (p.status || "").toUpperCase() === "PENDING");
-                                      
+                                    const pendingProposals = (project.proposals || [])
+                                      .filter(p => (p.status || "").toUpperCase() === "PENDING")
+                                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                                    
+                                    // If multiple freelancers invited, show count
+                                    if (pendingProposals.length > 1) {
+                                      return (
+                                        <div className="flex items-center gap-2 opacity-75">
+                                          <div className="flex -space-x-2">
+                                            {pendingProposals.slice(0, 3).map((p, idx) => (
+                                              <Avatar key={idx} className="w-6 h-6 border-2 border-background">
+                                                <AvatarFallback className="text-xs">
+                                                  {p.freelancer?.fullName?.charAt(0) || "F"}
+                                                </AvatarFallback>
+                                              </Avatar>
+                                            ))}
+                                          </div>
+                                          <span className="text-sm italic">{pendingProposals.length} invited</span>
+                                        </div>
+                                      );
+                                    }
+                                    
+                                    const pendingProposal = pendingProposals[0];
                                     if (pendingProposal?.freelancer) {
                                       return (
                                         <div className="flex items-center gap-2 opacity-75">
@@ -1161,6 +1271,36 @@ const ClientDashboardContent = () => {
                                       return "Pay 50%";
                                     })()}
                                   </Button>
+                                ) : project.status === "OPEN" ? (
+                                  (() => {
+                                    // Check if any pending proposal is older than 24 hours
+                                    const pendingProposals = (project.proposals || []).filter(
+                                      p => (p.status || "").toUpperCase() === "PENDING"
+                                    );
+                                    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+                                    const hasOldPendingProposal = pendingProposals.some(
+                                      p => new Date(p.createdAt).getTime() < twentyFourHoursAgo
+                                    );
+                                    
+                                    // Only show Budget button if proposal is pending >24hrs, otherwise show nothing
+                                    if (hasOldPendingProposal) {
+                                      return (
+                                        <Button 
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8 text-xs border-primary text-primary hover:bg-primary/10"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleIncreaseBudgetClick(project);
+                                          }}
+                                        >
+                                          <TrendingUp className="w-3 h-3 mr-1" />
+                                          Budget
+                                        </Button>
+                                      );
+                                    }
+                                    return <span className="text-xs text-muted-foreground">Waiting...</span>;
+                                  })()
                                 ) : (
                                   <Button 
                                     variant="ghost" 

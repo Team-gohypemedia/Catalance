@@ -115,4 +115,105 @@ export const startCronJobs = () => {
             console.error('Error in meeting reminder cron:', error);
         }
     });
+
+    // ============================================================
+    // Budget Increase Reminder: Run every hour to check for proposals
+    // that have been pending for more than 24 hours without acceptance
+    // ============================================================
+    cron.schedule('0 * * * *', async () => {
+        try {
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+            // Find proposals that are PENDING, older than 24hrs, and haven't had a reminder sent
+            const pendingProposals = await prisma.proposal.findMany({
+                where: {
+                    status: 'PENDING',
+                    budgetReminderSent: false,
+                    createdAt: {
+                        lt: twentyFourHoursAgo
+                    }
+                },
+                include: {
+                    project: {
+                        include: {
+                            owner: true
+                        }
+                    },
+                    freelancer: {
+                        select: { fullName: true, email: true }
+                    }
+                }
+            });
+
+            if (pendingProposals.length > 0) {
+                console.log(`[Cron] Found ${pendingProposals.length} proposals pending >24hrs for budget reminder.`);
+            }
+
+            for (const proposal of pendingProposals) {
+                const owner = proposal.project?.owner;
+                if (!owner?.email) {
+                    console.log(`[Cron] No owner email found for proposal ${proposal.id}`);
+                    continue;
+                }
+
+                const freelancerName = proposal.freelancer?.fullName || 'The freelancer';
+                const projectTitle = proposal.project?.title || 'your project';
+
+                // Send email notification
+                if (resend) {
+                    await resend.emails.send({
+                        from: env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+                        to: owner.email,
+                        subject: `Consider Increasing Budget for "${projectTitle}"`,
+                        html: `
+                            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                                <h2>Your Proposal is Still Pending</h2>
+                                <p>Hi ${owner.fullName || 'there'},</p>
+                                <p>Your proposal for <strong>"${projectTitle}"</strong> has been pending for over 24 hours without acceptance from ${freelancerName}.</p>
+                                
+                                <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                                    <p style="margin: 0; font-weight: bold;">💡 Tip: Consider increasing your budget</p>
+                                    <p style="margin: 10px 0 0 0; font-size: 14px;">
+                                        Competitive pricing can help attract freelancers faster. You can increase your budget from the dashboard.
+                                    </p>
+                                </div>
+                                
+                                <p>Current Budget: <strong>₹${(proposal.project?.budget || 0).toLocaleString()}</strong></p>
+                                
+                                <p>Visit your dashboard to update the budget or explore other freelancers.</p>
+                            </div>
+                        `
+                    });
+                    console.log(`[Cron] Sent budget reminder email to: ${owner.email}`);
+                } else {
+                    console.log(`[Cron] [Mock Email] Budget reminder to: ${owner.email}`);
+                }
+
+                // Send in-app notification
+                try {
+                    const { sendNotificationToUser } = await import('../lib/notification-util.js');
+                    await sendNotificationToUser(owner.id, {
+                        type: 'budget_suggestion',
+                        title: 'Consider Increasing Budget',
+                        message: `Your proposal for "${projectTitle}" has been pending for over 24 hours. Consider increasing your budget to attract freelancers.`,
+                        data: {
+                            projectId: proposal.projectId,
+                            proposalId: proposal.id,
+                            currentBudget: proposal.project?.budget || 0
+                        }
+                    }, false); // Don't send another email
+                } catch (notifyErr) {
+                    console.error(`[Cron] Failed to send in-app notification:`, notifyErr);
+                }
+
+                // Mark as sent to prevent duplicate reminders
+                await prisma.proposal.update({
+                    where: { id: proposal.id },
+                    data: { budgetReminderSent: true }
+                });
+            }
+        } catch (error) {
+            console.error('[Cron] Error in budget reminder cron:', error);
+        }
+    });
 };
