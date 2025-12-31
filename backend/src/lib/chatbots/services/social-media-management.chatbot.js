@@ -1,5 +1,5 @@
 ﻿export const service = "Social Media Management";
-export const openingMessage = "Hey! Let's grow your social presence. Tell me about your goals.";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: Instagram, LinkedIn, Facebook, YouTube
 Deliverables: Content calendar, creatives & captions, posting & engagement, monthly analytics
 Pricing: Basic â‚¹15,000/month | Standard â‚¹25,000â€“â‚¹40,000/month | Premium â‚¹50,000+/month

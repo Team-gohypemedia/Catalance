@@ -1,5 +1,5 @@
 ﻿export const service = "Software Development";
-export const openingMessage = "Hi! ðŸ’» Let's build some amazing software together. Tell me about your project!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: Custom Web Software, SaaS Platforms, Internal Tools, CRM/ERP Systems
 Deliverables: Requirement documentation, custom modules, admin panel, deployment & handover
 Pricing: Small software â‚¹1,50,000â€“â‚¹3,00,000 | SaaS/Enterprise â‚¹5,00,000â€“â‚¹20,00,000+

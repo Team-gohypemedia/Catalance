@@ -1,6 +1,5 @@
 ﻿export const service = "AI Automation";
-export const openingMessage =
-  "Hi! Let's automate your workflows with AI. Tell me what you want to automate.";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 
 export const serviceDetails = `Sub-types: AI Chatbots, Workflow Automation, Lead Scoring
 Deliverables: Automation logic, tool integrations, testing & deployment

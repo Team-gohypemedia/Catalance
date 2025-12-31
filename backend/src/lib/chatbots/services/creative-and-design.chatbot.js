@@ -1,5 +1,5 @@
 ﻿export const service = "Creative & Design";
-export const openingMessage = "Hey! Let's create something beautiful together. Tell me about your design needs!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: Logo Design, Branding Kit, UI/UX Design, Marketing Creatives
 Deliverables: Design concepts, revisions, final source files
 Pricing: Logo â‚¹8,000â€“â‚¹30,000 | Branding kit â‚¹40,000â€“â‚¹1,50,000 | UI/UX â‚¹1,500â€“â‚¹3,000/screen
