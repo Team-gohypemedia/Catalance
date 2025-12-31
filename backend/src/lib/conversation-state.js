@@ -2682,8 +2682,11 @@ const evaluateAnswerForQuestion = (question, message, options = {}) => {
     }
     if (tags.includes("name")) {
         const name = extractExplicitName(text) || extractName(text);
-        if (!name && !force) return null;
-        return name ? { status: "ok", normalized: name, confidence: 0.8 } : normalizeTextValue(text);
+        if (!name) {
+            if (!force) return null;
+            return { status: "invalid", error: "name_missing" };
+        }
+        return { status: "ok", normalized: name, confidence: 0.8 };
     }
     if (tags.includes("company")) {
         const org = extractOrganizationName(text);
@@ -3098,21 +3101,35 @@ export function getNextHumanizedQuestion(state) {
         const slot = question ? slots[question.key] : null;
         if (question && slot) {
             isClarification = true;
-            const templates = resolveTemplatesForLocale(question, locale);
-            const basePrompt = templates.length ? templates[0] : question.prompt || "";
-            text = `${basePrompt}\n${buildClarificationText(question)}`.trim();
+            const isNameQuestion = question.key === "name";
 
-            if (!slot.clarifiedOnce) {
-                slot.clarifiedOnce = true;
-            } else {
-                suggestionsOverride = buildForcedChoices(question);
-                if (suggestionsOverride) {
-                    text = `${basePrompt}\nPlease choose one option below.`.trim();
+            if (isNameQuestion) {
+                const validationErrors = Array.isArray(slot.validationErrors)
+                    ? slot.validationErrors
+                    : [];
+                const hasGreetingError = validationErrors.includes("greeting_only");
+                text = hasGreetingError ? "Hi! What's your name?" : "Thanks! What should I call you?";
+
+                if (!slot.clarifiedOnce) {
+                    slot.clarifiedOnce = true;
                 }
-            }
+            } else {
+                const templates = resolveTemplatesForLocale(question, locale);
+                const basePrompt = templates.length ? templates[0] : question.prompt || "";
+                text = `${basePrompt}\n${buildClarificationText(question)}`.trim();
 
-            if (slot.options && slot.options.length) {
-                suggestionsOverride = slot.options;
+                if (!slot.clarifiedOnce) {
+                    slot.clarifiedOnce = true;
+                } else {
+                    suggestionsOverride = buildForcedChoices(question);
+                    if (suggestionsOverride) {
+                        text = `${basePrompt}\nPlease choose one option below.`.trim();
+                    }
+                }
+
+                if (slot.options && slot.options.length) {
+                    suggestionsOverride = slot.options;
+                }
             }
         }
     }
