@@ -1,6 +1,5 @@
 ﻿export const service = "App Development";
-export const openingMessage =
-  "Hey! ðŸ“± Ready to build your app? Tell me what you have in mind!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 
 export const serviceDetails = `Sub-types: Android App, iOS App, Cross-platform (Flutter / React Native), App Maintenance
 Deliverables: UI screens & user flow, frontend + backend development, API integration, testing & deployment, App Store / Play Store submission

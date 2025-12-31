@@ -1,5 +1,5 @@
 ﻿export const service = "Lead Generation";
-export const openingMessage = "Hello! ðŸ“ˆ Looking to grow your leads? I'll help you put together the perfect campaign!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: B2B Lead Generation, B2C Lead Generation, Real Estate Leads, Appointment Booking
 Deliverables: Ad account setup, targeting & creatives, lead tracking sheet/CRM, weekly performance reports
 Pricing: Setup â‚¹15,000â€“â‚¹30,000 | Monthly â‚¹20,000â€“â‚¹60,000

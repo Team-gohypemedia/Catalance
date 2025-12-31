@@ -1,5 +1,5 @@
 ﻿export const service = "Customer Support";
-export const openingMessage = "Hi! ðŸŽ§ Let's set up great customer support. Tell me about your needs!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: Email Support, Chat Support, Voice Support
 Deliverables: Trained agents, SLA handling, daily/weekly reports
 Pricing: Email/Chat â‚¹25,000â€“â‚¹60,000 per agent | Voice â‚¹40,000â€“â‚¹80,000 per agent

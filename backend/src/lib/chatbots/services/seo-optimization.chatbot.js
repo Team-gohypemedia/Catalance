@@ -1,5 +1,5 @@
 ﻿export const service = "SEO Optimization";
-export const openingMessage = "Hi! Ready to rank higher on Google? Let's boost your visibility.";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: On-page SEO, Off-page SEO, Technical SEO, Local SEO (GMB)
 Deliverables: Keyword research, on-page optimization, backlink building, monthly SEO report
 Pricing: Starter â‚¹15,000/month | Growth â‚¹25,000â€“â‚¹60,000/month

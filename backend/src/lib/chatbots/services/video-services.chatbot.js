@@ -1,5 +1,5 @@
 ﻿export const service = "Video Services";
-export const openingMessage = "Hey! I'm here to help you create an amazing video. Let's figure out exactly what you need!";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 export const serviceDetails = `Sub-types: Reels/Shorts, Explainer Videos, Ad Films, Corporate Videos
 Deliverables: Script & storyboard, editing & motion graphics, multiple export formats
 Pricing: Reels â‚¹1,500â€“â‚¹5,000/video | Explainer â‚¹10,000â€“â‚¹40,000 | Ad video â‚¹5,000â€“â‚¹25,000

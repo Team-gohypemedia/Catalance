@@ -1,6 +1,5 @@
 ﻿export const service = "Influencer/UGC Marketing";
-export const openingMessage =
-  "Hi! Let's plan an influencer or UGC campaign that fits your brand and budget.";
+export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
 
 export const serviceDetails = `Sub-types: Micro Influencers, Macro Influencers, UGC Creators
 Deliverables: Influencer sourcing, content coordination, performance tracking
