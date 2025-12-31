@@ -1060,7 +1060,7 @@ const ClientDashboardContent = () => {
                       <TableRow className="bg-muted/50">
                         <TableHead className="text-xs font-semibold uppercase tracking-wider">Project Name</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wider">Status</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wider">Lead</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wider">Freelancer</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wider">Budget</TableHead>
                         <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">Action</TableHead>
                       </TableRow>
