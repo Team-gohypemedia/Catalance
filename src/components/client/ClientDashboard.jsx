@@ -102,7 +102,7 @@ const StatsCard = ({ title, value, trend, trendType = "up", icon: Icon, accentCo
 };
 
 // ==================== Budget Chart Component ====================
-const BudgetChart = ({ percentage, remaining, total }) => {
+const BudgetChart = ({ percentage, remaining, spent }) => {
   return (
     <Card className="border-border/60">
       <CardHeader className="pb-2">
@@ -138,8 +138,8 @@ const BudgetChart = ({ percentage, remaining, total }) => {
               <p className="text-sm font-bold">₹{remaining?.toLocaleString() || 0}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Budget</p>
-              <p className="text-sm font-bold">₹{total?.toLocaleString() || 0}</p>
+              <p className="text-xs text-muted-foreground">Spent</p>
+              <p className="text-sm font-bold">₹{spent?.toLocaleString() || 0}</p>
             </div>
           </div>
         </div>
@@ -212,6 +212,10 @@ const ClientDashboardContent = () => {
   const [budgetProject, setBudgetProject] = useState(null);
   const [newBudget, setNewBudget] = useState("");
   const [isUpdatingBudget, setIsUpdatingBudget] = useState(false);
+  
+  // Budget Reminder Popup State (for login)
+  const [showBudgetReminder, setShowBudgetReminder] = useState(false);
+  const [oldPendingProjects, setOldPendingProjects] = useState([]);
 
   // Load projects
   // Load session
@@ -288,6 +292,29 @@ const ClientDashboardContent = () => {
           }
         } catch (e) {
           console.error("Error checking saved proposal status", e);
+        }
+      }
+      
+      // Check for projects with pending proposals > 24 hours (for budget reminder popup)
+      const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const projectsWithOldPending = fetchedProjects.filter(p => {
+        if (p.status !== "OPEN") return false;
+        const pendingProposals = (p.proposals || []).filter(
+          prop => (prop.status || "").toUpperCase() === "PENDING"
+        );
+        return pendingProposals.some(
+          prop => new Date(prop.createdAt).getTime() < twentyFourHoursAgo
+        );
+      });
+      
+      // Show budget reminder popup if there are old pending proposals
+      if (projectsWithOldPending.length > 0) {
+        setOldPendingProjects(projectsWithOldPending);
+        // Only show on initial load (not on refresh after sending proposal)
+        const hasShownToday = sessionStorage.getItem("budgetReminderShown");
+        if (!hasShownToday) {
+          setShowBudgetReminder(true);
+          sessionStorage.setItem("budgetReminderShown", "true");
         }
       }
     } catch (error) {
@@ -457,6 +484,11 @@ const ClientDashboardContent = () => {
       
       if (!proposalRes.ok) throw new Error("Failed to send proposal");
       
+      toast.success(`Proposal sent to ${freelancer.fullName || "freelancer"}!`);
+      
+      // Refresh projects so the freelancer is immediately hidden from the list
+      await loadProjects();
+      
       // DO NOT clear saved proposal immediately - wait for freelancer acceptance
       // localStorage.removeItem("markify:savedProposal");
       // setSavedProposal(null);
@@ -532,6 +564,7 @@ const ClientDashboardContent = () => {
     
     setIsUpdatingBudget(true);
     try {
+      // Update the project budget
       const res = await authFetch(`/projects/${budgetProject.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -543,7 +576,81 @@ const ClientDashboardContent = () => {
         throw new Error(errorData.message || "Failed to update budget");
       }
       
-      toast.success("Budget updated successfully!");
+      // Check if any pending proposals are older than 48 hours
+      const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
+      const pendingProposals = (budgetProject.proposals || []).filter(
+        p => (p.status || "").toUpperCase() === "PENDING"
+      );
+      
+      // Separate old (>48hrs) and recent (<48hrs) proposals
+      const oldProposals = pendingProposals.filter(
+        p => new Date(p.createdAt).getTime() < fortyEightHoursAgo
+      );
+      const recentProposals = pendingProposals.filter(
+        p => new Date(p.createdAt).getTime() >= fortyEightHoursAgo
+      );
+      
+      let rejectedCount = 0;
+      // Reject proposals older than 48 hours
+      for (const proposal of oldProposals) {
+        try {
+          await authFetch(`/proposals/${proposal.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "REJECTED" })
+          });
+          rejectedCount++;
+        } catch (e) {
+          console.error("Failed to reject old proposal:", e);
+        }
+      }
+      
+      // Update amount on recent pending proposals (under 48hrs) to reflect new budget
+      for (const proposal of recentProposals) {
+        try {
+          await authFetch(`/proposals/${proposal.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: budgetValue })
+          });
+        } catch (e) {
+          console.error("Failed to update proposal amount:", e);
+        }
+      }
+      
+      // Always update saved proposal with new budget if it matches this project
+      const saved = localStorage.getItem("markify:savedProposal");
+      if (saved) {
+        try {
+          const parsedSaved = JSON.parse(saved);
+          if (parsedSaved.projectTitle === budgetProject.title) {
+            parsedSaved.budget = `₹${budgetValue.toLocaleString()}`;
+            // Also update the budget in the summary/content if it contains a budget line
+            // Handle various formats: "Budget: INR 50,000", "Budget\n- INR 50,000", "Budget - Rs 50000", etc.
+            const budgetRegex = /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹)?\s*[\d,]+/gi;
+            const newBudgetText = `Budget\n- ₹${budgetValue.toLocaleString()}`;
+            if (parsedSaved.summary) {
+              parsedSaved.summary = parsedSaved.summary.replace(budgetRegex, newBudgetText);
+            }
+            if (parsedSaved.content) {
+              parsedSaved.content = parsedSaved.content.replace(budgetRegex, newBudgetText);
+            }
+            localStorage.setItem("markify:savedProposal", JSON.stringify(parsedSaved));
+            setSavedProposal(parsedSaved);
+          }
+        } catch (e) {
+          console.error("Failed to update saved proposal:", e);
+        }
+      }
+      
+      // Show appropriate message based on whether proposals were rejected
+      if (rejectedCount > 0) {
+        toast.success(`Budget updated to ₹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`);
+      } else {
+        // Just updated budget (proposals are still pending, under 48hrs)
+        toast.success(`Budget updated to ₹${budgetValue.toLocaleString()}! Freelancers will see the new amount.`);
+      }
+      
       setShowIncreaseBudget(false);
       setBudgetProject(null);
       setNewBudget("");
@@ -690,16 +797,19 @@ const ClientDashboardContent = () => {
                     <h3 className="text-lg font-bold">Choose a Freelancer to Send Your Proposal</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {(() => {
-                        // Filter out freelancers who already have pending proposals for this project title
+                        // Filter out freelancers who already have PENDING proposals for this project title
+                        // REJECTED proposals should NOT block resending to same freelancer
                         const projectTitle = savedProposal?.projectTitle?.trim();
                         const alreadyInvitedIds = new Set();
                         
                         if (projectTitle) {
-                          // Check all projects with same title for invited freelancers
+                          // Check all projects with same title for freelancers with PENDING proposals
                           projects.forEach(p => {
                             if ((p.title || "").trim() === projectTitle) {
                               (p.proposals || []).forEach(prop => {
-                                if (prop.freelancerId) {
+                                // Only count PENDING proposals - REJECTED means we can resend
+                                const status = (prop.status || "").toUpperCase();
+                                if (prop.freelancerId && status === "PENDING") {
                                   alreadyInvitedIds.add(prop.freelancerId);
                                 }
                               });
@@ -776,6 +886,78 @@ const ClientDashboardContent = () => {
                   </div>
                 </div>
               )}
+
+              {/* Projects Needing Resend - Show OPEN projects where all proposals were rejected */}
+              {(() => {
+                const projectsNeedingResend = uniqueProjects.filter(p => {
+                  if (p.status !== "OPEN") return false;
+                  const proposals = p.proposals || [];
+                  if (proposals.length === 0) return false;
+                  // All proposals are rejected (none pending or accepted)
+                  return !proposals.some(prop => 
+                    ["PENDING", "ACCEPTED"].includes((prop.status || "").toUpperCase())
+                  );
+                });
+
+                if (projectsNeedingResend.length === 0 || savedProposal) return null;
+
+                return (
+                  <div className="space-y-6">
+                    {projectsNeedingResend.map(project => (
+                      <div key={project.id} className="space-y-6">
+                        {/* Proposal Preview Card - Similar to Your Saved Proposal */}
+                        <Card className="border-orange-500/20 bg-orange-500/5">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-orange-500" />
+                                Proposal Expired - Resend Required
+                              </CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              <h4 className="text-xl font-bold">{project.title}</h4>
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {project.description || "No description available."}
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <Badge variant="secondary">Budget: ₹{(project.budget || 0).toLocaleString()}</Badge>
+                                <Badge variant="secondary">Timeline: {project.timeline || "Not set"}</Badge>
+                              </div>
+                              <div className="pt-4 border-t mt-4">
+                                <p className="text-sm text-orange-500 mb-3">
+                                  Previous proposals expired after 48 hours. Increase your budget and send to new freelancers.
+                                </p>
+                                <Button 
+                                  className="w-full gap-2"
+                                  onClick={() => {
+                                    // Create saved proposal from this project
+                                    const newSavedProposal = {
+                                      projectTitle: project.title,
+                                      summary: project.description || "",
+                                      budget: `₹${(project.budget || 0).toLocaleString()}`,
+                                      timeline: project.timeline || "1 month",
+                                      projectId: project.id
+                                    };
+                                    localStorage.setItem("markify:savedProposal", JSON.stringify(newSavedProposal));
+                                    setSavedProposal(newSavedProposal);
+                                    // Open increase budget dialog
+                                    handleIncreaseBudgetClick(project);
+                                  }}
+                                >
+                                  <TrendingUp className="w-4 h-4" />
+                                  Increase Budget & Resend
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Confirm Send Dialog */}
               <Dialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
@@ -903,6 +1085,54 @@ const ClientDashboardContent = () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+
+              {/* Budget Reminder Popup (shown on login) */}
+              <Dialog open={showBudgetReminder} onOpenChange={setShowBudgetReminder}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-orange-500">
+                      <AlertTriangle className="w-5 h-5" />
+                      Budget Increase Recommended
+                    </DialogTitle>
+                    <DialogDescription>
+                      Some of your proposals have been pending for over 24 hours. Consider increasing your budget to attract freelancers faster.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3 py-4 max-h-60 overflow-y-auto">
+                    {oldPendingProjects.map(project => (
+                      <div 
+                        key={project.id} 
+                        className="p-3 bg-muted/50 rounded-lg flex items-center justify-between gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{project.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Budget: ₹{(project.budget || 0).toLocaleString()}
+                          </p>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="border-primary text-primary hover:bg-primary/10 shrink-0"
+                          onClick={() => {
+                            setShowBudgetReminder(false);
+                            handleIncreaseBudgetClick(project);
+                          }}
+                        >
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                          Increase
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowBudgetReminder(false)}>
+                      Remind Me Later
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
               {/* View Proposal Dialog */}
               <Dialog open={showViewProposal} onOpenChange={setShowViewProposal}>
                 <DialogContent className="max-w-4xl">
@@ -920,7 +1150,17 @@ const ClientDashboardContent = () => {
                     <div className="p-4 bg-muted rounded-lg max-h-[50vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                       <h4 className="font-semibold mb-2 sticky top-0 bg-muted pb-2">Project Summary</h4>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {savedProposal?.summary || savedProposal?.content || "No description available"}
+                        {(() => {
+                          // Get the content and replace any budget mentions with the current budget
+                          let content = savedProposal?.summary || savedProposal?.content || "No description available";
+                          const currentBudget = savedProposal?.budget || "";
+                          // Replace various budget formats with the current budget
+                          content = content.replace(
+                            /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹)?\s*[\d,]+/gi,
+                            `Budget\n- ${currentBudget}`
+                          );
+                          return content;
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -1169,7 +1409,20 @@ const ClientDashboardContent = () => {
                         ))
                       ) : (
                         uniqueProjects
-                          .filter(p => p.status !== "DRAFT" && p.status !== "COMPLETED")
+                          .filter(p => {
+                            // Hide DRAFT and COMPLETED
+                            if (p.status === "DRAFT" || p.status === "COMPLETED") return false;
+                            
+                            // For OPEN projects, only show if there's at least one pending or accepted proposal
+                            if (p.status === "OPEN") {
+                              const hasActiveProposal = (p.proposals || []).some(
+                                prop => ["PENDING", "ACCEPTED"].includes((prop.status || "").toUpperCase())
+                              );
+                              return hasActiveProposal;
+                            }
+                            
+                            return true;
+                          })
                           .slice(0, 5)
                           .map((project) => {
                           const statusInfo = getStatusBadge(project.status);
@@ -1295,7 +1548,7 @@ const ClientDashboardContent = () => {
                                           }}
                                         >
                                           <TrendingUp className="w-3 h-3 mr-1" />
-                                          Budget
+                                          Increase Budget
                                         </Button>
                                       );
                                     }
@@ -1420,7 +1673,7 @@ const ClientDashboardContent = () => {
               <BudgetChart
                 percentage={budgetPercentage}
                 remaining={metrics.totalBudget - metrics.totalSpent}
-                total={metrics.totalBudget}
+                spent={metrics.totalSpent}
               />
             </div>
           </div>
