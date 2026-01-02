@@ -11,6 +11,8 @@ import { appointmentRouter } from "./appointment.routes.js";
 import adminRouter from "./admin.routes.js";
 import notificationRouter from "./notification.routes.js";
 import utilsRoutes from "./utils.routes.js";
+import { uploadRouter } from "./upload.routes.js";
+import { imageRouter } from "./image.routes.js";
 
 export const apiRouter = Router();
 
@@ -26,3 +28,5 @@ apiRouter.use("/appointments", appointmentRouter);
 apiRouter.use("/admin", adminRouter);
 apiRouter.use("/notifications", notificationRouter);
 apiRouter.use("/utils", utilsRoutes);
+apiRouter.use("/upload", uploadRouter);
+apiRouter.use("/images", imageRouter);
