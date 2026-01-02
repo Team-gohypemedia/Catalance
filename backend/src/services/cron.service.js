@@ -1,9 +1,8 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma.js';
-import { Resend } from 'resend';
 import { env } from '../config/env.js';
-
-const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
+import { sendEmail } from '../lib/email-service.js';
+import { resend } from '../lib/resend.js';
 
 export const startCronJobs = () => {
     console.log('Starting cron jobs...');
@@ -159,40 +158,38 @@ export const startCronJobs = () => {
                 const freelancerName = proposal.freelancer?.fullName || 'The freelancer';
                 const projectTitle = proposal.project?.title || 'your project';
 
-                // Send email notification
-                if (resend) {
-                    await resend.emails.send({
-                        from: env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-                        to: owner.email,
-                        subject: `Consider Increasing Budget for "${projectTitle}"`,
-                        html: `
-                            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                                <h2>Your Proposal is Still Pending</h2>
-                                <p>Hi ${owner.fullName || 'there'},</p>
-                                <p>Your proposal for <strong>"${projectTitle}"</strong> has been pending for over 24 hours without acceptance from ${freelancerName}.</p>
-                                
-                                <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-                                    <p style="margin: 0; font-weight: bold;">💡 Tip: Consider increasing your budget</p>
-                                    <p style="margin: 10px 0 0 0; font-size: 14px;">
-                                        Competitive pricing can help attract freelancers faster. You can increase your budget from the dashboard.
-                                    </p>
-                                </div>
-                                
-                                <p>Current Budget: <strong>₹${(proposal.project?.budget || 0).toLocaleString()}</strong></p>
-                                
-                                <p>Visit your dashboard to update the budget or explore other freelancers.</p>
-                            </div>
-                        `
-                    });
-                    console.log(`[Cron] Sent budget reminder email to: ${owner.email}`);
+                // Send email notification using centralized email service
+                console.log(`[Cron] Sending budget reminder email to: ${owner.email}`);
+                const emailResult = await sendEmail({
+                    to: owner.email,
+                    subject: `Consider Increasing Budget for "${projectTitle}"`,
+                    title: 'Your Proposal is Still Pending',
+                    html: `
+                        <p>Hi ${owner.fullName || 'there'},</p>
+                        <p>Your proposal for <strong>"${projectTitle}"</strong> has been pending for over 24 hours without acceptance from ${freelancerName}.</p>
+                        
+                        <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                            <p style="margin: 0; font-weight: bold;">💡 Tip: Consider increasing your budget</p>
+                            <p style="margin: 10px 0 0 0; font-size: 14px;">
+                                Competitive pricing can help attract freelancers faster. You can increase your budget from the dashboard.
+                            </p>
+                        </div>
+                        
+                        <p>Current Budget: <strong>₹${(proposal.project?.budget || 0).toLocaleString()}</strong></p>
+                        
+                        <p>Visit your dashboard to update the budget or explore other freelancers.</p>
+                    `
+                });
+                if (emailResult) {
+                    console.log(`[Cron] ✅ Budget reminder email sent successfully to: ${owner.email}`);
                 } else {
-                    console.log(`[Cron] [Mock Email] Budget reminder to: ${owner.email}`);
+                    console.log(`[Cron] ⚠️ Budget reminder email failed for: ${owner.email}`);
                 }
 
-                // Send in-app notification
+                // Send in-app notification (persisted to DB + socket + push)
                 try {
                     const { sendNotificationToUser } = await import('../lib/notification-util.js');
-                    await sendNotificationToUser(owner.id, {
+                    const notifResult = await sendNotificationToUser(owner.id, {
                         type: 'budget_suggestion',
                         title: 'Consider Increasing Budget',
                         message: `Your proposal for "${projectTitle}" has been pending for over 24 hours. Consider increasing your budget to attract freelancers.`,
@@ -201,9 +198,10 @@ export const startCronJobs = () => {
                             proposalId: proposal.id,
                             currentBudget: proposal.project?.budget || 0
                         }
-                    }, false); // Don't send another email
+                    }, false); // Don't send another email (already sent above)
+                    console.log(`[Cron] ✅ In-app notification sent for proposal ${proposal.id}, result:`, notifResult);
                 } catch (notifyErr) {
-                    console.error(`[Cron] Failed to send in-app notification:`, notifyErr);
+                    console.error(`[Cron] ❌ Failed to send in-app notification for proposal ${proposal.id}:`, notifyErr);
                 }
 
                 // Mark as sent to prevent duplicate reminders
@@ -214,6 +212,96 @@ export const startCronJobs = () => {
             }
         } catch (error) {
             console.error('[Cron] Error in budget reminder cron:', error);
+        }
+    });
+
+    // ============================================================
+    // Auto-Reject Proposals: Run every hour to auto-reject proposals
+    // that have been pending for more than 48 hours without acceptance
+    // ============================================================
+    cron.schedule('0 * * * *', async () => {
+        try {
+            const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+            // Find proposals that are PENDING and older than 48 hours
+            const expiredProposals = await prisma.proposal.findMany({
+                where: {
+                    status: 'PENDING',
+                    createdAt: {
+                        lt: fortyEightHoursAgo
+                    }
+                },
+                include: {
+                    project: {
+                        include: {
+                            owner: true
+                        }
+                    },
+                    freelancer: {
+                        select: { fullName: true, email: true }
+                    }
+                }
+            });
+
+            if (expiredProposals.length > 0) {
+                console.log(`[Cron] Found ${expiredProposals.length} proposals to auto-reject (>48hrs).`);
+            }
+
+            for (const proposal of expiredProposals) {
+                const owner = proposal.project?.owner;
+                const freelancerName = proposal.freelancer?.fullName || 'The freelancer';
+                const projectTitle = proposal.project?.title || 'your project';
+
+                // Update proposal status to REJECTED
+                await prisma.proposal.update({
+                    where: { id: proposal.id },
+                    data: { status: 'REJECTED' }
+                });
+                console.log(`[Cron] ✅ Auto-rejected proposal ${proposal.id} for project "${projectTitle}"`);
+
+                // Send email notification to client
+                if (owner?.email) {
+                    await sendEmail({
+                        to: owner.email,
+                        subject: `Proposal Expired for "${projectTitle}"`,
+                        title: 'Proposal Auto-Expired',
+                        html: `
+                            <p>Hi ${owner.fullName || 'there'},</p>
+                            <p>Your proposal to <strong>${freelancerName}</strong> for <strong>"${projectTitle}"</strong> has expired after 48 hours without acceptance.</p>
+                            
+                            <div style="background-color: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                                <p style="margin: 0; font-weight: bold;">💡 Tip: You can send a new proposal</p>
+                                <p style="margin: 10px 0 0 0; font-size: 14px;">
+                                    Visit your dashboard to send a proposal to another freelancer or consider increasing your budget.
+                                </p>
+                            </div>
+                            
+                            <p>Project Budget: <strong>₹${(proposal.project?.budget || 0).toLocaleString()}</strong></p>
+                        `
+                    });
+                    console.log(`[Cron] ✅ Sent expiry notification email to: ${owner.email}`);
+                }
+
+                // Send in-app notification
+                if (owner?.id) {
+                    try {
+                        const { sendNotificationToUser } = await import('../lib/notification-util.js');
+                        await sendNotificationToUser(owner.id, {
+                            type: 'proposal_expired',
+                            title: 'Proposal Expired',
+                            message: `Your proposal to ${freelancerName} for "${projectTitle}" has expired. You can now send to another freelancer.`,
+                            data: {
+                                projectId: proposal.projectId,
+                                proposalId: proposal.id
+                            }
+                        }, false);
+                    } catch (notifyErr) {
+                        console.error(`[Cron] ❌ Failed to send in-app notification:`, notifyErr);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[Cron] Error in auto-reject proposals cron:', error);
         }
     });
 };

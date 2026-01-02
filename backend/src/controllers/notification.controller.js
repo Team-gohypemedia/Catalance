@@ -3,7 +3,7 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 
 export const getNotifications = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user.sub;
 
   const notifications = await prisma.notification.findMany({
     where: { userId },
@@ -29,7 +29,7 @@ export const getNotifications = asyncHandler(async (req, res) => {
 
 export const markAsRead = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const userId = req.user.id;
+  const userId = req.user.sub;
 
   const notification = await prisma.notification.findUnique({
     where: { id }
@@ -48,7 +48,7 @@ export const markAsRead = asyncHandler(async (req, res) => {
 });
 
 export const markAllAsRead = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user.sub;
 
   await prisma.notification.updateMany({
     where: { userId, read: false },
