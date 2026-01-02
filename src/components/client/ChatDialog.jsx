@@ -1084,10 +1084,15 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                   placeholder="Type your message..."
                   disabled={!conversationId}
                   rows={1}
-                  className="flex-1 min-h-[44px] max-h-32 resize-none overflow-y-auto scrollbar-thin"
+                  className="flex-1 min-h-[44px] max-h-32 resize-none overflow-y-auto scrollbar-thin py-3 leading-5 text-sm"
                 />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-                  <Send className="w-4 h-4" />
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="h-11 w-11"
+                  disabled={isLoading || !input.trim()}
+                >
+                  <Send className="w-5 h-5" />
                 </Button>
               </form>
             </div>
