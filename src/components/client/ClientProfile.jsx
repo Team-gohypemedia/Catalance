@@ -16,6 +16,9 @@ import { Loader2, User, Building2, MapPin, Globe, Mail, Phone, Camera } from "lu
 const ClientProfileContent = () => {
     const { user, authFetch, refreshUser } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const fileInputRef = React.useRef(null);
     const [formData, setFormData] = useState({
         fullName: "",
         email: "",
@@ -70,12 +73,51 @@ const ClientProfileContent = () => {
         setFormData(prev => ({ ...prev, [id]: value }));
     };
 
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Reset input so same file can be selected again if needed
+        e.target.value = '';
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("File size must be less than 5MB");
+            return;
+        }
+
+        // Store file for later upload
+        setSelectedFile(file);
+        
+        // Show local preview immediately
+        const objectUrl = URL.createObjectURL(file);
+        setFormData(prev => ({ ...prev, avatar: objectUrl }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            // Pack extra fields into bio to support legacy/backend limitation
-            // preserving the "Store extra details in bio" pattern
+            let currentAvatarUrl = formData.avatar;
+
+            // Check if we need to upload an image first
+            if (selectedFile) {
+                const uploadData = new FormData();
+                uploadData.append("file", selectedFile);
+
+                const uploadRes = await authFetch("/upload", {
+                    method: "POST",
+                    body: uploadData,
+                });
+
+                if (!uploadRes.ok) {
+                   const err = await uploadRes.json();
+                   throw new Error(err.message || "Image upload failed");
+                }
+
+                const data = await uploadRes.json();
+                currentAvatarUrl = data.data.url;
+            }
+
             const extraDetails = {
                 bio: formData.bio,
                 location: formData.location,
@@ -88,6 +130,7 @@ const ClientProfileContent = () => {
 
             const payload = {
                 ...formData,
+                avatar: currentAvatarUrl, // Use the real URL (or existing one)
                 bio: JSON.stringify(extraDetails)
             };
 
@@ -136,16 +179,26 @@ const ClientProfileContent = () => {
                         <Card className="border-border/60 bg-card/60 backdrop-blur-xl overflow-hidden relative group">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                             <CardContent className="pt-8 pb-8 flex flex-col items-center text-center relative z-10">
-                                <div className="relative mb-4 group/avatar cursor-pointer">
+                                <div 
+                                    className="relative mb-4 group/avatar cursor-pointer"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
                                     <Avatar className="h-32 w-32 ring-4 ring-background shadow-xl transition-transform duration-300 group-hover/avatar:scale-105">
-                                        <AvatarImage src={user?.avatar} alt={formData.fullName} className="object-cover" />
+                                        <AvatarImage src={formData.avatar || user?.avatar} alt={formData.fullName} className="object-cover" />
                                         <AvatarFallback className="text-4xl bg-primary text-primary-foreground font-bold">
                                             {formData.fullName?.[0] || "C"}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-2 rounded-full shadow-lg ring-2 ring-background opacity-0 translate-y-2 group-hover/avatar:opacity-100 group-hover/avatar:translate-y-0 transition-all duration-300">
-                                        <Camera className="h-4 w-4" />
+                                        {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                                     </div>
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        className="hidden" 
+                                        accept="image/*"
+                                        onChange={handleImageUpload}
+                                    />
                                 </div>
                                 <h3 className="text-2xl font-bold text-foreground mb-1">{formData.fullName || "User"}</h3>
                                 <p className="text-sm text-muted-foreground mb-4">{formData.email}</p>

@@ -1,5 +1,5 @@
-import { Plus, Trash2, Edit2, ExternalLink, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus, Trash2, Edit2, ExternalLink, X, Camera, Loader2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { getSession } from "@/lib/auth-storage";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,9 @@ const FreelancerProfile = () => {
   const [newProjectLoading, setNewProjectLoading] = useState(false);
   const [session, setSession] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Derive initials for avatar
   const initials =
@@ -219,6 +222,45 @@ const FreelancerProfile = () => {
       .map((s) => s?.trim())
       .filter(Boolean);
 
+    // Verify token exists (if using session-based auth that requires it)
+    if (session?.accessToken && !session.accessToken) {
+        // Handle no token case if critical
+    }
+
+    // Check if we need to upload an image first
+    let currentAvatarUrl = personal.avatar;
+
+    if (selectedFile) {
+        try {
+            const uploadData = new FormData();
+            uploadData.append("file", selectedFile);
+            
+            const uploadRes = await fetch(buildUrl("/upload"), {
+                method: "POST",
+                 headers: {
+                    ...(session?.accessToken
+                        ? { Authorization: `Bearer ${session.accessToken}` }
+                        : {}),
+                },
+                body: uploadData,
+            });
+
+            if (!uploadRes.ok) {
+               const err = await uploadRes.json();
+               throw new Error(err.message || "Image upload failed");
+            }
+
+            const data = await uploadRes.json();
+            currentAvatarUrl = data.data.url;
+            console.log("New Avatar URL from upload:", currentAvatarUrl);
+
+        } catch (uploadErr) {
+            console.error("Image upload failed inside save:", uploadErr);
+            toast.error("Failed to upload image. Profile not saved.");
+            return;
+        }
+    }
+
     const payload = {
       personal: {
         name: personal.name,
@@ -227,6 +269,7 @@ const FreelancerProfile = () => {
         location: personal.location,
         headline: personal.headline,
         available: personal.available,
+        avatar: currentAvatarUrl, // Use the new real URL or existing
       },
       skills: skillsForApi,
       workExperience,
@@ -281,6 +324,27 @@ const FreelancerProfile = () => {
         ...prev, 
         [name]: type === "checkbox" ? checked : value 
     }));
+  };
+
+  // ----- Image Upload Logic -----
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Reset input so same file can be selected again if needed
+    e.target.value = '';
+
+    if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size must be less than 5MB");
+        return;
+    }
+
+    // Store file for later upload
+    setSelectedFile(file);
+    
+    // Show local preview immediately
+    const objectUrl = URL.createObjectURL(file);
+    setPersonal(prev => ({ ...prev, avatar: objectUrl }));
   };
 
   // ----- Add Custom Service -----
@@ -363,8 +427,8 @@ const FreelancerProfile = () => {
         <section className="mb-20">
           <div className="flex flex-col md:flex-row items-start md:items-end gap-8 mb-8">
             {/* Profile Image / Initials */}
-            <div className="relative group">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-card border border-border p-1 overflow-hidden shadow">
+            <div className="relative group/avatar cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-card border border-border p-1 overflow-hidden shadow transition-transform duration-300 group-hover/avatar:scale-105">
                  {personal.avatar ? (
                     <img 
                         src={personal.avatar} 
@@ -377,11 +441,24 @@ const FreelancerProfile = () => {
                     </div>
                  )}
               </div>
+              
+              {/* Upload Overlay */}
+              <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  {uploadingImage ? <Loader2 className="h-8 w-8 animate-spin" /> : <Camera className="h-8 w-8" />}
+              </div>
+
               {personal.available && (
-                <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-primary rounded-full text-xs font-semibold text-primary-foreground shadow-sm animate-in fade-in zoom-in duration-300">
+                <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-primary rounded-full text-xs font-semibold text-primary-foreground shadow-sm animate-in fade-in zoom-in duration-300 z-10">
                   Available
                 </div>
               )}
+              <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={handleImageUpload}
+              />
             </div>
 
             {/* Profile Info */}
