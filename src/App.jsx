@@ -46,6 +46,10 @@ import AdminApprovals from "@/components/admin/AdminApprovals";
 import AdminUserDetails from "@/components/admin/AdminUserDetails";
 import AdminRoute from "@/components/auth/AdminRoute";
 
+import CataButton from "./components/common/CataButton";
+
+
+
 const App = () => {
   return (
     <main>
@@ -391,6 +395,7 @@ const App = () => {
             }
           />
         </Routes>
+        <CataButton />
       </ThemeProvider>
     </main>
   );

@@ -32,6 +32,7 @@ import {
   Sun,
   Moon,
   CreditCard,
+  Bot,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -197,6 +198,12 @@ const ClientDashboardContent = () => {
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [savedProposal, setSavedProposal] = useState(null);
   const [isSendingProposal, setIsSendingProposal] = useState(false);
+  const [dismissedProjectIds, setDismissedProjectIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem("markify:dismissedExpiredProposals");
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) { return []; }
+  });
   const [selectedFreelancer, setSelectedFreelancer] = useState(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showViewProposal, setShowViewProposal] = useState(false);
@@ -322,6 +329,13 @@ const ClientDashboardContent = () => {
           setShowBudgetReminder(true);
           sessionStorage.setItem("budgetReminderShown", "true");
         }
+      }
+
+      // Check for projects awaiting payment (Auto-show popup)
+      const pendingPaymentProject = fetchedProjects.find(p => p.status === "AWAITING_PAYMENT");
+      if (pendingPaymentProject) {
+         setProjectToPay(pendingPaymentProject);
+         setShowPaymentConfirm(true);
       }
     } catch (error) {
       console.error("Failed to load projects", error);
@@ -774,7 +788,9 @@ const ClientDashboardContent = () => {
                             variant="ghost" 
                             size="sm" 
                             className="text-muted-foreground hover:text-destructive"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
                               localStorage.removeItem("markify:savedProposal");
                               setSavedProposal(null);
                               toast.success("Proposal deleted");
@@ -822,13 +838,25 @@ const ClientDashboardContent = () => {
                   return !proposals.some(prop => 
                     ["PENDING", "ACCEPTED"].includes((prop.status || "").toUpperCase())
                   );
-                });
+                }).filter(p => !dismissedProjectIds.includes(p.id));
 
-                if (projectsNeedingResend.length === 0 || savedProposal) return null;
+                // Deduplicate by title - keep only the latest project for each title
+                const latestProjectsNeedingResend = Object.values(
+                  projectsNeedingResend.reduce((acc, project) => {
+                    const currentStored = acc[project.title];
+                    // If no project stored for this title, OR current project is newer than stored one
+                    if (!currentStored || new Date(project.createdAt) > new Date(currentStored.createdAt)) {
+                      acc[project.title] = project;
+                    }
+                    return acc;
+                  }, {})
+                ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by newest first
+
+                if (latestProjectsNeedingResend.length === 0 || savedProposal) return null;
 
                 return (
                   <div className="space-y-6">
-                    {projectsNeedingResend.map(project => (
+                    {latestProjectsNeedingResend.map(project => (
                       <div key={project.id} className="space-y-6">
                         {/* Proposal Preview Card - Similar to Your Saved Proposal */}
                         <Card className="border-orange-500/20 bg-orange-500/5">
@@ -838,6 +866,19 @@ const ClientDashboardContent = () => {
                                 <AlertTriangle className="w-5 h-5 text-orange-500" />
                                 Proposal Expired - Resend Required
                               </CardTitle>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  const newDismissed = [...dismissedProjectIds, project.id];
+                                  setDismissedProjectIds(newDismissed);
+                                  localStorage.setItem("markify:dismissedExpiredProposals", JSON.stringify(newDismissed));
+                                  toast.success("Reminder dismissed");
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </CardHeader>
                           <CardContent>
@@ -852,7 +893,7 @@ const ClientDashboardContent = () => {
                               </div>
                               <div className="pt-4 border-t mt-4">
                                 <p className="text-sm text-orange-500 mb-3">
-                                  Previous proposals expired after 48 hours. Increase your budget and send to new freelancers.
+                                  Your budget is low, please increase the budget.
                                 </p>
                                 <Button 
                                   className="w-full gap-2"
@@ -985,6 +1026,28 @@ const ClientDashboardContent = () => {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Current Budget:</span>
                         <span className="font-medium">₹{(budgetProject?.budget || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Quick Increase Options */}
+                    <div>
+                      <label className="text-xs font-medium mb-2 block text-muted-foreground">Quick Increase</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[10000, 20000, 30000, 50000, 80000].map((amount) => (
+                          <Button
+                            key={amount}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="bg-background hover:bg-primary/10 hover:text-primary hover:border-primary/50 text-xs h-7"
+                            onClick={() => {
+                              const current = parseInt(budgetProject?.budget) || 0;
+                              setNewBudget(String(current + amount));
+                            }}
+                          >
+                            +{amount >= 1000 ? `${amount/1000}k` : amount}
+                          </Button>
+                        ))}
                       </div>
                     </div>
                     <div>
@@ -1899,12 +1962,7 @@ const ClientDashboardContent = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
-                  <Button 
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
-                    onClick={() => navigate("/service")}
-                  >
-                    <Plus className="w-4 h-4 mr-2" /> Make New Proposal
-                  </Button>
+
                   <Button 
                     variant="outline" 
                     className="w-full bg-background hover:bg-background/80 text-foreground border-border/10 shadow-sm"
@@ -1964,6 +2022,8 @@ const ClientDashboardContent = () => {
           </div>
         </div>
       </main>
+
+
 
       {/* Suspension Alert */}
       <SuspensionAlert
