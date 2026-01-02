@@ -12,6 +12,7 @@ import {
   Zap,
   X,
   Trash2,
+  MapPin,
   Loader2,
   User,
   Wallet,
@@ -216,6 +217,11 @@ const ClientDashboardContent = () => {
   // Budget Reminder Popup State (for login)
   const [showBudgetReminder, setShowBudgetReminder] = useState(false);
   const [oldPendingProjects, setOldPendingProjects] = useState([]);
+  
+  // Freelancer Selection Popup State
+  const [showFreelancerSelect, setShowFreelancerSelect] = useState(false);
+  const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
+  const [viewingFreelancer, setViewingFreelancer] = useState(null);
 
   // Load projects
   // Load session
@@ -785,105 +791,24 @@ const ClientDashboardContent = () => {
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {savedProposal.summary || savedProposal.content || "No description"}
                         </p>
-                        <div className="flex flex-wrap gap-2 text-sm">
-                          <Badge variant="secondary">Budget: {savedProposal.budget || "Not set"}</Badge>
-                          <Badge variant="secondary">Timeline: {savedProposal.timeline || "Not set"}</Badge>
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-wrap gap-2 text-sm">
+                            <Badge variant="secondary">Budget: {savedProposal.budget || "Not set"}</Badge>
+                            <Badge variant="secondary">Timeline: {savedProposal.timeline || "Not set"}</Badge>
+                          </div>
+                          <Button 
+                            className="gap-2"
+                            onClick={() => setShowFreelancerSelect(true)}
+                          >
+                            <Send className="w-4 h-4" />
+                            Send
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-bold">Choose a Freelancer to Send Your Proposal</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {(() => {
-                        // Filter out freelancers who already have PENDING proposals for this project title
-                        // REJECTED proposals should NOT block resending to same freelancer
-                        const projectTitle = savedProposal?.projectTitle?.trim();
-                        const alreadyInvitedIds = new Set();
-                        
-                        if (projectTitle) {
-                          // Check all projects with same title for freelancers with PENDING proposals
-                          projects.forEach(p => {
-                            if ((p.title || "").trim() === projectTitle) {
-                              (p.proposals || []).forEach(prop => {
-                                // Only count PENDING proposals - REJECTED means we can resend
-                                const status = (prop.status || "").toUpperCase();
-                                if (prop.freelancerId && status === "PENDING") {
-                                  alreadyInvitedIds.add(prop.freelancerId);
-                                }
-                              });
-                            }
-                          });
-                        }
-                        
-                        const availableFreelancers = suggestedFreelancers.filter(
-                          f => !alreadyInvitedIds.has(f.id)
-                        );
-                        
-                        if (availableFreelancers.length === 0 && suggestedFreelancers.length > 0) {
-                          return (
-                            <div className="col-span-full text-center py-8 text-muted-foreground">
-                              <p>All suggested freelancers have already been invited for this project.</p>
-                            </div>
-                          );
-                        }
-                        
-                        return availableFreelancers.length > 0 ? (
-                          availableFreelancers.map((freelancer) => (
-                          <Card 
-                            key={freelancer.id} 
-                            className="group hover:shadow-lg hover:border-primary/20 transition-all cursor-pointer relative"
-                            onClick={() => {
-                              setViewFreelancer(freelancer);
-                              setShowFreelancerDetails(true);
-                            }}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-3 mb-3">
-                                <Avatar className="w-12 h-12">
-                                  <AvatarImage src={freelancer.avatar} alt={freelancer.fullName || freelancer.name} />
-                                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                                    {(freelancer.fullName || freelancer.name)?.charAt(0) || "F"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold truncate">{freelancer.fullName || freelancer.name}</h4>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {Array.isArray(freelancer.skills) && freelancer.skills.length > 0 
-                                      ? freelancer.skills.slice(0, 2).join(", ") 
-                                      : "Freelancer"}
-                                  </p>
-                                </div>
-                              </div>
-                              <Button 
-                                className="w-full gap-2 relative z-10" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSendClick(freelancer);
-                                }}
-                                disabled={isSendingProposal}
-                              >
-                                {isSendingProposal && selectedFreelancer?.id === freelancer.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Send className="w-4 h-4" />
-                                )}
-                                Send Proposal
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        ))
-                      ) : (
-                        <Card className="col-span-full">
-                          <CardContent className="p-8 text-center text-muted-foreground">
-                            No freelancers available. Check back later!
-                          </CardContent>
-                        </Card>
-                      );
-                      })()}
-                    </div>
-                  </div>
+
                 </div>
               )}
 
@@ -1130,6 +1055,366 @@ const ClientDashboardContent = () => {
                       Remind Me Later
                     </Button>
                   </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Freelancer Selection Dialog */}
+              <Dialog open={showFreelancerSelect} onOpenChange={setShowFreelancerSelect}>
+                <DialogContent className="max-w-[95vw] w-[95vw] sm:max-w-[85vw] md:max-w-[80vw] lg:max-w-[75vw] lg:left-[calc(50%+140px)] h-[85vh] flex flex-col p-6">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-xl">
+                      <Send className="w-5 h-5 text-primary" />
+                      Choose a Freelancer
+                    </DialogTitle>
+                    <DialogDescription>
+                      Select a freelancer to send your proposal: <span className="font-medium text-foreground">{savedProposal?.projectTitle}</span>
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex-1 overflow-y-auto py-6 px-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {(() => {
+                        const projectTitle = savedProposal?.projectTitle?.trim();
+                        const alreadyInvitedIds = new Set();
+                        
+                        if (projectTitle) {
+                          // Check all projects with same title for freelancers with PENDING proposals
+                          projects.forEach(p => {
+                            if ((p.title || "").trim() === projectTitle) {
+                              (p.proposals || []).forEach(prop => {
+                                // Only count PENDING proposals - REJECTED means we can resend
+                                const status = (prop.status || "").toUpperCase();
+                                if (prop.freelancerId && status === "PENDING") {
+                                  alreadyInvitedIds.add(prop.freelancerId);
+                                }
+                              });
+                            }
+                          });
+                        }
+                        
+                        const availableFreelancers = suggestedFreelancers.filter(
+                          f => !alreadyInvitedIds.has(f.id)
+                        );
+                        
+                        if (availableFreelancers.length === 0 && suggestedFreelancers.length > 0) {
+                          return (
+                            <div className="col-span-full text-center py-8 text-muted-foreground">
+                              <p>All suggested freelancers have already been invited for this project.</p>
+                            </div>
+                          );
+                        }
+                        
+                        return availableFreelancers.length > 0 ? (
+                          availableFreelancers.map((f) => {
+                            // Pre-process freelancer data to handle JSON bio/about
+                            const freelancer = { ...f };
+                            const rawBio = freelancer.bio || freelancer.about;
+                            
+                            if (typeof rawBio === 'string' && rawBio.trim().startsWith('{')) {
+                              try {
+                                const parsed = JSON.parse(rawBio);
+                                // Merge parsed fields if top-level fields are missing
+                                if (!freelancer.location && parsed.location) freelancer.location = parsed.location;
+                                if (!freelancer.role && parsed.role) freelancer.role = parsed.role;
+                                if (!freelancer.title && parsed.title) freelancer.role = parsed.title; // Fallback for title
+                                if (!freelancer.rating && parsed.rating) freelancer.rating = parsed.rating;
+                                if ((!freelancer.skills || freelancer.skills.length === 0) && parsed.skills) freelancer.skills = parsed.skills;
+                                if (!freelancer.hourlyRate && parsed.hourlyRate) freelancer.hourlyRate = parsed.hourlyRate;
+                                
+                                // Set a clean bio description
+                                freelancer.cleanBio = parsed.bio || 
+                                                      parsed.about || 
+                                                      parsed.description || 
+                                                      parsed.summary || 
+                                                      parsed.overview || 
+                                                      parsed.introduction ||
+                                                      parsed.profileSummary ||
+                                                      parsed.shortDescription ||
+                                                      (Array.isArray(parsed.services) && parsed.services.length > 0 ? `Experienced in ${parsed.services.join(", ")}` : null) ||
+                                                      "No bio available.";
+                              } catch (e) {
+                                freelancer.cleanBio = "Overview available in profile.";
+                              }
+                            } else {
+                              freelancer.cleanBio = rawBio || "No bio available for this freelancer.";
+                            }
+
+                            return (
+                          <Card 
+                            key={freelancer.id} 
+                            className="group hover:shadow-lg hover:border-primary/20 transition-all flex flex-col h-full min-h-[280px] cursor-pointer"
+                            onClick={() => {
+                              setViewingFreelancer(freelancer);
+                              setShowFreelancerProfile(true);
+                            }}
+                          >
+                            <CardContent className="p-4 flex flex-col h-full gap-4">
+                              {/* Header */}
+                              <div className="flex items-start gap-3">
+                                <Avatar className="w-12 h-12 shrink-0 border border-border">
+                                  <AvatarImage src={freelancer.avatar} alt={freelancer.fullName || freelancer.name} />
+                                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                    {(freelancer.fullName || freelancer.name)?.charAt(0) || "F"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-bold truncate text-base">{freelancer.fullName || freelancer.name}</h4>
+                                    {freelancer.rating && (
+                                      <div className="flex items-center text-xs font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                                        <Star className="w-3 h-3 mr-1 fill-current" />
+                                        {freelancer.rating}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground truncate font-medium">
+                                    {freelancer.role || "Freelancer"}
+                                  </p>
+                                  {(freelancer.location || freelancer.hourlyRate) && (
+                                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                      {freelancer.location && (
+                                        <span className="flex items-center truncate">
+                                          <MapPin className="w-3 h-3 mr-0.5" />
+                                          {freelancer.location}
+                                        </span>
+                                      )}
+                                      {freelancer.hourlyRate && (
+                                        <>
+                                          <span>•</span>
+                                          <span className="font-medium text-foreground">{freelancer.hourlyRate}/hr</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Skills */}
+                              <div className="flex flex-wrap gap-1.5">
+                                {Array.isArray(freelancer.skills) && freelancer.skills.length > 0 ? (
+                                  <>
+                                    {freelancer.skills.slice(0, 3).map((skill, i) => (
+                                      <Badge key={i} variant="secondary" className="px-1.5 py-0 text-[10px] font-normal border-transparent bg-secondary/50">
+                                        {skill}
+                                      </Badge>
+                                    ))}
+                                    {freelancer.skills.length > 3 && (
+                                      <span className="text-[10px] text-muted-foreground self-center ml-1">
+                                        +{freelancer.skills.length - 3} more
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground italic">No skills listed</span>
+                                )}
+                              </div>
+
+                              {/* Bio Snippet */}
+                              <div className="flex-1">
+                                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                                  {freelancer.cleanBio}
+                                </p>
+                              </div>
+
+                              {/* Footer Action */}
+                              <Button 
+                                className="w-full gap-2 mt-auto" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowFreelancerSelect(false);
+                                  handleSendClick(freelancer);
+                                }}
+                                disabled={isSendingProposal}
+                              >
+                                {isSendingProposal && selectedFreelancer?.id === freelancer.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                                Send Proposal
+                              </Button>
+                            </CardContent>
+                          </Card>
+                            );
+                          })
+                        ) : (
+                        <Card className="col-span-full">
+                          <CardContent className="p-8 text-center text-muted-foreground">
+                            No freelancers available. Check back later!
+                          </CardContent>
+                        </Card>
+                      );
+                      })()}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowFreelancerSelect(false)}>
+                      Cancel
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+
+
+              {/* Freelancer Profile Dialog */}
+              <Dialog open={showFreelancerProfile} onOpenChange={setShowFreelancerProfile}>
+                <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-6">
+                  {viewingFreelancer && (
+                    <>
+                      <DialogHeader>
+                        <div className="flex items-start gap-4">
+                          <Avatar className="w-16 h-16 border-2 border-primary/10">
+                            <AvatarImage src={viewingFreelancer.avatar} alt={viewingFreelancer.fullName} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+                              {(viewingFreelancer.fullName || viewingFreelancer.name)?.charAt(0) || "F"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                              {viewingFreelancer.fullName || viewingFreelancer.name}
+                              {viewingFreelancer.rating && (
+                                <div className="flex items-center text-sm font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                                  <Star className="w-3.5 h-3.5 mr-1 fill-current" />
+                                  {viewingFreelancer.rating}
+                                </div>
+                              )}
+                            </DialogTitle>
+                            <DialogDescription className="text-base font-medium text-foreground/80 mt-1">
+                              {viewingFreelancer.role || "Freelancer"}
+                            </DialogDescription>
+                            
+                            <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
+                              {viewingFreelancer.location && (
+                                <span className="flex items-center">
+                                  <MapPin className="w-3.5 h-3.5 mr-1" />
+                                  {viewingFreelancer.location}
+                                </span>
+                              )}
+                              {viewingFreelancer.hourlyRate && (
+                                <span className="flex items-center">
+                                  <Wallet className="w-3.5 h-3.5 mr-1" />
+                                  {viewingFreelancer.hourlyRate}/hr
+                                </span>
+                              )}
+                              {viewingFreelancer.experience && (
+                                <span className="flex items-center">
+                                  <Briefcase className="w-3.5 h-3.5 mr-1" />
+                                  {viewingFreelancer.experience} Exp.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {/* Send Proposal Button Removed as per request */}
+                        </div>
+                      </DialogHeader>
+
+                      <div className="flex-1 overflow-y-auto py-6 space-y-8 pr-2">
+                        {/* Bio */}
+                        <div>
+                          <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                            <User className="w-5 h-5 text-primary" /> About
+                          </h4>
+                          <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                            {viewingFreelancer.cleanBio || "No bio available."}
+                          </p>
+                        </div>
+
+                        {/* Skills */}
+                        {Array.isArray(viewingFreelancer.skills) && viewingFreelancer.skills.length > 0 && (
+                          <div>
+                            <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                              <Zap className="w-5 h-5 text-primary" /> Skills
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {viewingFreelancer.skills.map((skill, i) => (
+                                <Badge key={i} variant="secondary" className="px-3 py-1">
+                                  {skill}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Languages */}
+                        {Array.isArray(viewingFreelancer.languages) && viewingFreelancer.languages.length > 0 && (
+                          <div>
+                            <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                              <MessageCircle className="w-5 h-5 text-primary" /> Languages
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {viewingFreelancer.languages.map((lang, i) => (
+                                <Badge key={i} variant="outline" className="px-3 py-1">
+                                  {lang}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Portfolio Projects */}
+                        {(() => {
+                           // Try to get projects from portfolioProjects array or parse portfolio string
+                           let projects = [];
+                           if (Array.isArray(viewingFreelancer.portfolioProjects) && viewingFreelancer.portfolioProjects.length > 0) {
+                             projects = viewingFreelancer.portfolioProjects;
+                           } else if (typeof viewingFreelancer.portfolio === 'string' && viewingFreelancer.portfolio.startsWith('[')) {
+                             try { projects = JSON.parse(viewingFreelancer.portfolio); } catch(e) {}
+                           } else if (Array.isArray(viewingFreelancer.portfolio)) {
+                             projects = viewingFreelancer.portfolio;
+                           }
+
+                           if (projects.length > 0) {
+                             return (
+                               <div>
+                                 <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                   <Briefcase className="w-5 h-5 text-primary" /> Portfolio Projects
+                                 </h4>
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                   {projects.map((project, i) => (
+                                     <Card key={i} className="overflow-hidden border-border/50 hover:border-primary/20 transition-all flex flex-col h-full group/card">
+                                       {(project.image || project.imageUrl || project.thumbnail) && (
+                                         <div className="w-full h-28 bg-muted relative overflow-hidden">
+                                            <img 
+                                              src={project.image || project.imageUrl || project.thumbnail} 
+                                              alt={project.title} 
+                                              className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                                            />
+                                         </div>
+                                       )}
+                                       <CardContent className="p-3 flex flex-col flex-1">
+                                         <h5 className="font-bold text-sm mb-1 line-clamp-1">{project.title || `Project ${i+1}`}</h5>
+                                         {(project.description || project.desc) && (
+                                           <p className="text-xs text-muted-foreground line-clamp-2 mb-2 flex-1">
+                                             {project.description || project.desc}
+                                           </p>
+                                         )}
+                                         <div className="flex justify-between items-center mt-auto pt-1">
+                                            <div className="flex gap-1.5">
+                                              {project.techStack && (
+                                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{project.techStack}</Badge>
+                                              )}
+                                            </div>
+                                            {(project.link || project.url) && (
+                                              <a href={project.link || project.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary flex items-center hover:underline font-medium">
+                                                View <ExternalLink className="w-2.5 h-2.5 ml-1" />
+                                              </a>
+                                            )}
+                                         </div>
+                                       </CardContent>
+                                     </Card>
+                                   ))}
+                                 </div>
+                               </div>
+                             );
+                           }
+                           return null;
+                        })()}
+                      </div>
+                      <DialogFooter>
+                         <Button variant="outline" onClick={() => setShowFreelancerProfile(false)}>Close</Button>
+                      </DialogFooter>
+                    </>
+                  )}
                 </DialogContent>
               </Dialog>
 
