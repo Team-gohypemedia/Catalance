@@ -13,6 +13,7 @@ import notificationRouter from "./notification.routes.js";
 import utilsRoutes from "./utils.routes.js";
 import { uploadRouter } from "./upload.routes.js";
 import { imageRouter } from "./image.routes.js";
+import { paymentRouter } from "./payment.routes.js";
 
 export const apiRouter = Router();
 
@@ -30,3 +31,4 @@ apiRouter.use("/notifications", notificationRouter);
 apiRouter.use("/utils", utilsRoutes);
 apiRouter.use("/upload", uploadRouter);
 apiRouter.use("/images", imageRouter);
+apiRouter.use("/payments", paymentRouter);

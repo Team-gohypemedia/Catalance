@@ -177,6 +177,7 @@ const FreelancerProjectDetailContent = () => {
   const [completedTaskIds, setCompletedTaskIds] = useState(new Set());
   const [verifiedTaskIds, setVerifiedTaskIds] = useState(new Set());
   const [isSending, setIsSending] = useState(false);
+  const [paymentData, setPaymentData] = useState({ totalPaid: 0, totalPending: 0 });
   const fileInputRef = useRef(null);
 
   // Dispute Report State
@@ -372,6 +373,30 @@ const FreelancerProjectDetailContent = () => {
       active = false;
     };
   }, [authFetch, isAuthenticated, projectId]);
+
+  // Fetch actual payment data from API
+  useEffect(() => {
+    if (!project?.id || !authFetch) return;
+
+    const fetchPayments = async () => {
+      try {
+        const res = await authFetch(`/payments/project/${project.id}/summary`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.data) {
+            setPaymentData({
+              totalPaid: data.data.totalPaid || 0,
+              totalPending: data.data.totalPending || 0
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch payment data:", error);
+      }
+    };
+
+    fetchPayments();
+  }, [project?.id, authFetch]);
 
   // Create or reuse a chat conversation for this project
   useEffect(() => {
@@ -829,10 +854,9 @@ const FreelancerProjectDetailContent = () => {
   }, [project]);
 
   const spentBudget = useMemo(() => {
-    // If database has spent value, use it. Otherwise derive from progress.
-    if (project?.spent && project.spent > 0) return Number(project.spent);
-    return Math.round((totalBudget * overallProgress) / 100);
-  }, [project, totalBudget, overallProgress]);
+    // Use actual payment data from API (already 70% after platform fee)
+    return paymentData.totalPaid || 0;
+  }, [paymentData]);
 
   const remainingBudget = useMemo(() => Math.max(0, totalBudget - spentBudget), [spentBudget, totalBudget]);
 
@@ -1135,7 +1159,7 @@ const FreelancerProjectDetailContent = () => {
                     <span className="font-semibold text-foreground">{project?.currency || "₹"}{totalBudget.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-border/60">
-                    <span>Spent</span>
+                    <span>Paid</span>
                     <span className="font-semibold text-emerald-600">{project?.currency || "₹"}{spentBudget.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">

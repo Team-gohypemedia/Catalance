@@ -81,6 +81,7 @@ model User {
   availabilitySlots ManagerAvailability[] @relation("ManagerAvailability")
   bookedAppointments Appointment[] @relation("AppointmentBooker")
   managedAppointments Appointment[] @relation("AppointmentManager")
+  payments Payment[] @relation("FreelancerPayments")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
@@ -104,6 +105,7 @@ model Project {
   proposals       Proposal[]
   disputes        Dispute[]
   appointments    Appointment[]
+  payments        Payment[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -247,4 +249,37 @@ model Appointment {
   
   @@index([managerId, date])
   @@index([bookedById])
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  amount           Int           // Total amount from client
+  platformFee      Int           @default(0) // 30% platform fee
+  freelancerAmount Int           // Amount after fee (70%)
+  currency         String        @default("INR")
+  status           PaymentStatus @default(PENDING)
+  description      String?       @db.Text
+  
+  // Relations
+  projectId        String
+  project          Project       @relation(fields: [projectId], references: [id])
+  
+  freelancerId     String
+  freelancer       User          @relation("FreelancerPayments", fields: [freelancerId], references: [id])
+  
+  // Timestamps
+  paidAt           DateTime?     // When payment was released to freelancer
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  
+  @@index([freelancerId])
+  @@index([projectId])
 }
