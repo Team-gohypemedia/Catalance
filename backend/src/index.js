@@ -134,6 +134,12 @@ if (!runningInVercel) {
 
   const server = httpServer.listen(env.PORT, () => {
     console.log(`API server ready on http://localhost:${env.PORT}`);
+    
+    // Check DB connection
+    prisma.$connect()
+      .then(() => console.log('✓ Database connected successfully'))
+      .catch((e) => console.error('✗ Database connection failed:', e.message));
+
     startCronJobs();
   });
 
