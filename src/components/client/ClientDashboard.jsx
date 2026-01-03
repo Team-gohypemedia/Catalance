@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -66,6 +66,115 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
+const SAVED_PROPOSALS_KEY = "markify:savedProposals";
+const SAVED_PROPOSAL_KEY = "markify:savedProposal";
+
+const buildLocalProposalId = () =>
+  `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+const getProposalSignature = (proposal = {}) => {
+  const title = (proposal.projectTitle || proposal.title || "").trim().toLowerCase();
+  const service = (proposal.serviceKey || proposal.service || "").trim().toLowerCase();
+  const summary = (proposal.summary || proposal.content || "").trim().toLowerCase();
+  if (!title && !service) {
+    return `${title}::${service}::${summary.slice(0, 120)}`;
+  }
+  return `${title}::${service}`;
+};
+
+const normalizeSavedProposal = (proposal = {}) => {
+  const next = { ...proposal };
+  if (!next.id) {
+    next.id = next.localId || buildLocalProposalId();
+  }
+
+  const text = next.content || next.summary || "";
+  if (!next.timeline && text) {
+    const timelineMatch = text.match(/Timeline[:\s\-\n\u2022]*([^\n]+)/i);
+    if (timelineMatch) {
+      next.timeline = timelineMatch[1].trim().replace(/\(with buffer\)/gi, "").trim();
+    }
+  }
+  if ((!next.budget || next.budget === "Not set") && text) {
+    const budgetMatch = text.match(/Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹|ƒ,1)?\s*([ƒ,1\d,]+)/i);
+    if (budgetMatch) {
+      next.budget = budgetMatch[1].trim();
+    }
+  }
+  return next;
+};
+
+const resolveActiveProposalId = (proposals, preferredId, fallbackId) => {
+  if (!Array.isArray(proposals) || proposals.length === 0) return null;
+  if (preferredId && proposals.some((proposal) => proposal.id === preferredId)) {
+    return preferredId;
+  }
+  if (fallbackId && proposals.some((proposal) => proposal.id === fallbackId)) {
+    return fallbackId;
+  }
+  return proposals[0].id;
+};
+
+const loadSavedProposalsFromStorage = () => {
+  if (typeof window === "undefined") return { proposals: [], activeId: null };
+  let proposals = [];
+  const listRaw = window.localStorage.getItem(SAVED_PROPOSALS_KEY);
+  const singleRaw = window.localStorage.getItem(SAVED_PROPOSAL_KEY);
+
+  if (listRaw) {
+    try {
+      const parsed = JSON.parse(listRaw);
+      if (Array.isArray(parsed)) proposals = parsed;
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  if (singleRaw) {
+    try {
+      const parsed = JSON.parse(singleRaw);
+      if (parsed && (parsed.content || parsed.summary || parsed.projectTitle)) {
+        const signature = getProposalSignature(parsed);
+        const exists = proposals.some((item) => getProposalSignature(item) === signature);
+        if (!exists) proposals = [...proposals, parsed];
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  const normalized = proposals.map(normalizeSavedProposal);
+  let activeId = null;
+  if (singleRaw) {
+    try {
+      const parsed = JSON.parse(singleRaw);
+      const signature = getProposalSignature(parsed);
+      const match =
+        normalized.find((item) => item.id === parsed?.id) ||
+        normalized.find((item) => getProposalSignature(item) === signature);
+      activeId = match?.id || null;
+    } catch {
+      activeId = null;
+    }
+  }
+  activeId = resolveActiveProposalId(normalized, activeId, null);
+
+  return { proposals: normalized, activeId };
+};
+
+const persistSavedProposalsToStorage = (proposals, activeId) => {
+  if (typeof window === "undefined") return;
+  if (!Array.isArray(proposals) || proposals.length === 0) {
+    window.localStorage.removeItem(SAVED_PROPOSALS_KEY);
+    window.localStorage.removeItem(SAVED_PROPOSAL_KEY);
+    return;
+  }
+  window.localStorage.setItem(SAVED_PROPOSALS_KEY, JSON.stringify(proposals));
+  const active = proposals.find((proposal) => proposal.id === activeId) || proposals[0];
+  if (active) {
+    window.localStorage.setItem(SAVED_PROPOSAL_KEY, JSON.stringify(active));
+  }
+};
 
 // ==================== Stats Card Component ====================
 const StatsCard = ({ title, value, trend, trendType = "up", icon: Icon, accentColor = "primary" }) => {
@@ -195,7 +304,8 @@ const ClientDashboardContent = () => {
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]); // All freelancers for suggestions
   const [isLoading, setIsLoading] = useState(true);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
-  const [savedProposal, setSavedProposal] = useState(null);
+  const [savedProposals, setSavedProposals] = useState([]);
+  const [activeProposalId, setActiveProposalId] = useState(null);
   const [isSendingProposal, setIsSendingProposal] = useState(false);
   const [selectedFreelancer, setSelectedFreelancer] = useState(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
@@ -223,6 +333,11 @@ const ClientDashboardContent = () => {
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
 
+  const savedProposal = useMemo(() => {
+    if (!savedProposals.length) return null;
+    return savedProposals.find((proposal) => proposal.id === activeProposalId) || savedProposals[0];
+  }, [savedProposals, activeProposalId]);
+
   // Load projects
   // Load session
   useEffect(() => {
@@ -235,35 +350,26 @@ const ClientDashboardContent = () => {
 
   // Load saved proposal from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("markify:savedProposal");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && (parsed.content || parsed.summary || parsed.projectTitle)) {
-          // Try to extract timeline from content if not set
-          if (!parsed.timeline && (parsed.content || parsed.summary)) {
-            const text = parsed.content || parsed.summary || "";
-            // Look for timeline patterns in content (handles: Timeline: ..., Timeline - ..., Timeline\n- ...)
-            const timelineMatch = text.match(/Timeline[:\s\-\n\u2022]*([^\n]+)/i);
-            if (timelineMatch) {
-              // Clean up the timeline value
-              parsed.timeline = timelineMatch[1].trim().replace(/\(with buffer\)/gi, "").trim();
-            }
-          }
-          // Try to extract budget from content if not set properly
-          if ((!parsed.budget || parsed.budget === "Not set") && (parsed.content || parsed.summary)) {
-            const text = parsed.content || parsed.summary || "";
-            // Look for budget patterns (handles: Budget: ..., Budget - INR ..., Budget\n- ₹...)
-            const budgetMatch = text.match(/Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹)?\s*([₹\d,]+)/i);
-            if (budgetMatch) {
-              parsed.budget = budgetMatch[1].trim();
-            }
-          }
-          setSavedProposal(parsed);
-        }
-      } catch { /* ignore parse errors */ }
-    }
+    const { proposals, activeId } = loadSavedProposalsFromStorage();
+    setSavedProposals(proposals);
+    setActiveProposalId(activeId);
+    persistSavedProposalsToStorage(proposals, activeId);
   }, []);
+
+  const persistSavedProposalState = (nextProposals, preferredActiveId = null) => {
+    const normalized = Array.isArray(nextProposals)
+      ? nextProposals.map(normalizeSavedProposal)
+      : [];
+    const resolvedActiveId = resolveActiveProposalId(
+      normalized,
+      preferredActiveId,
+      activeProposalId
+    );
+    setSavedProposals(normalized);
+    setActiveProposalId(resolvedActiveId);
+    persistSavedProposalsToStorage(normalized, resolvedActiveId);
+    return resolvedActiveId;
+  };
 
   // Load projects
   // Load projects function
@@ -276,28 +382,29 @@ const ClientDashboardContent = () => {
       const fetchedProjects = Array.isArray(payload?.data) ? payload.data : [];
       setProjects(fetchedProjects);
 
-      // Check if any project matching the saved proposal has been accepted
-      const saved = localStorage.getItem("markify:savedProposal");
-      if (saved) {
-        try {
-          const parsedSaved = JSON.parse(saved);
-          const savedTitle = parsedSaved.projectTitle || parsedSaved.title;
-          
-          // Find if there is a matching project that is active/accepted
-          const matchingProject = fetchedProjects.find(p => 
-            p.title === savedTitle && 
-            (p.status === "IN_PROGRESS" || p.status === "AWAITING_PAYMENT" || 
-             (p.proposals && p.proposals.some(prop => prop.status === "ACCEPTED")))
-          );
+      // Check if any saved proposals have been accepted and clear them
+      const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage();
+      if (storedProposals.length) {
+        const isAccepted = (proposal) => {
+          const savedTitle = proposal.projectTitle || proposal.title;
+          return fetchedProjects.some((project) => {
+            const matchesId = proposal.projectId && project.id === proposal.projectId;
+            const matchesTitle = savedTitle && project.title === savedTitle;
+            if (!matchesId && !matchesTitle) return false;
+            const hasAccepted =
+              project.status === "IN_PROGRESS" ||
+              project.status === "AWAITING_PAYMENT" ||
+              (project.proposals || []).some(
+                (prop) => (prop.status || "").toUpperCase() === "ACCEPTED"
+              );
+            return hasAccepted;
+          });
+        };
 
-          if (matchingProject) {
-            // Proposal accepted! Clear the draft.
-            localStorage.removeItem("markify:savedProposal");
-            setSavedProposal(null);
-            toast.success("Proposal accepted! Draft cleared.");
-          }
-        } catch (e) {
-          console.error("Error checking saved proposal status", e);
+        const remaining = storedProposals.filter((proposal) => !isAccepted(proposal));
+        if (remaining.length !== storedProposals.length) {
+          persistSavedProposalState(remaining, activeId);
+          toast.success("Proposal accepted! Draft cleared.");
         }
       }
       
@@ -624,31 +731,35 @@ const ClientDashboardContent = () => {
         }
       }
       
-      // Always update saved proposal with new budget if it matches this project
-      const saved = localStorage.getItem("markify:savedProposal");
-      if (saved) {
-        try {
-          const parsedSaved = JSON.parse(saved);
-          if (parsedSaved.projectTitle === budgetProject.title) {
-            parsedSaved.budget = `₹${budgetValue.toLocaleString()}`;
-            // Also update the budget in the summary/content if it contains a budget line
-            // Handle various formats: "Budget: INR 50,000", "Budget\n- INR 50,000", "Budget - Rs 50000", etc.
-            const budgetRegex = /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹)?\s*[\d,]+/gi;
-            const newBudgetText = `Budget\n- ₹${budgetValue.toLocaleString()}`;
-            if (parsedSaved.summary) {
-              parsedSaved.summary = parsedSaved.summary.replace(budgetRegex, newBudgetText);
-            }
-            if (parsedSaved.content) {
-              parsedSaved.content = parsedSaved.content.replace(budgetRegex, newBudgetText);
-            }
-            localStorage.setItem("markify:savedProposal", JSON.stringify(parsedSaved));
-            setSavedProposal(parsedSaved);
+      // Always update saved proposals with new budget if they match this project
+      const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage();
+      if (storedProposals.length) {
+        let updatedAny = false;
+        const budgetRegex = /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹|ƒ,1)?\s*[\d,]+/gi;
+        const newBudgetText = `Budget\n- ƒ,1${budgetValue.toLocaleString()}`;
+        const updatedProposals = storedProposals.map((proposal) => {
+          const matchesId = proposal.projectId && proposal.projectId === budgetProject.id;
+          const matchesTitle = proposal.projectTitle === budgetProject.title;
+          if (!matchesId && !matchesTitle) return proposal;
+          updatedAny = true;
+          const next = {
+            ...proposal,
+            budget: `ƒ,1${budgetValue.toLocaleString()}`,
+            updatedAt: new Date().toISOString()
+          };
+          if (next.summary) {
+            next.summary = next.summary.replace(budgetRegex, newBudgetText);
           }
-        } catch (e) {
-          console.error("Failed to update saved proposal:", e);
+          if (next.content) {
+            next.content = next.content.replace(budgetRegex, newBudgetText);
+          }
+          return next;
+        });
+
+        if (updatedAny) {
+          persistSavedProposalState(updatedProposals, activeId);
         }
       }
-      
       // Show appropriate message based on whether proposals were rejected
       if (rejectedCount > 0) {
         toast.success(`Budget updated to ₹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`);
@@ -737,13 +848,30 @@ const ClientDashboardContent = () => {
               {/* Saved Proposal Section - Show when proposal exists but no projects */}
               {savedProposal && (
                 <div className="space-y-6">
+                  {savedProposals.length > 1 && (
+                    <div className="flex flex-wrap gap-2">
+                      {savedProposals.map((proposal) => (
+                        <Button
+                          key={proposal.id}
+                          size="sm"
+                          variant={proposal.id === savedProposal.id ? "default" : "outline"}
+                          onClick={() => {
+                            setActiveProposalId(proposal.id);
+                            persistSavedProposalsToStorage(savedProposals, proposal.id);
+                          }}
+                        >
+                          {proposal.projectTitle || proposal.service || "Proposal"}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                   {/* Proposal Preview */}
                   <Card className="border-primary/20 bg-primary/5">
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg font-bold flex items-center gap-2">
                           <Send className="w-5 h-5 text-primary" /> 
-                          Your Saved Proposal
+                          {savedProposals.length > 1 ? "Your Saved Proposals" : "Your Saved Proposal"}
                         </CardTitle>
                         <div className="flex items-center gap-1">
                           <Button 
@@ -775,8 +903,11 @@ const ClientDashboardContent = () => {
                             size="sm" 
                             className="text-muted-foreground hover:text-destructive"
                             onClick={() => {
-                              localStorage.removeItem("markify:savedProposal");
-                              setSavedProposal(null);
+                              if (!savedProposal) return;
+                              const remaining = savedProposals.filter(
+                                (proposal) => proposal.id !== savedProposal.id
+                              );
+                              persistSavedProposalState(remaining, null);
                               toast.success("Proposal deleted");
                             }}
                           >
@@ -861,12 +992,31 @@ const ClientDashboardContent = () => {
                                     const newSavedProposal = {
                                       projectTitle: project.title,
                                       summary: project.description || "",
-                                      budget: `₹${(project.budget || 0).toLocaleString()}`,
+                                      budget: `ƒ,1${(project.budget || 0).toLocaleString()}`,
                                       timeline: project.timeline || "1 month",
                                       projectId: project.id
                                     };
-                                    localStorage.setItem("markify:savedProposal", JSON.stringify(newSavedProposal));
-                                    setSavedProposal(newSavedProposal);
+                                    const normalized = normalizeSavedProposal({
+                                      ...newSavedProposal,
+                                      createdAt: new Date().toISOString()
+                                    });
+                                    const signature = getProposalSignature(normalized);
+                                    const existingIndex = savedProposals.findIndex(
+                                      (proposal) => getProposalSignature(proposal) === signature
+                                    );
+                                    let nextProposals = [];
+                                    let nextActiveId = normalized.id;
+                                    if (existingIndex >= 0) {
+                                      nextProposals = savedProposals.map((proposal, idx) =>
+                                        idx === existingIndex
+                                          ? { ...proposal, ...normalized, id: proposal.id }
+                                          : proposal
+                                      );
+                                      nextActiveId = savedProposals[existingIndex]?.id || normalized.id;
+                                    } else {
+                                      nextProposals = [...savedProposals, normalized];
+                                    }
+                                    persistSavedProposalState(nextProposals, nextActiveId);
                                     // Open increase budget dialog
                                     handleIncreaseBudgetClick(project);
                                   }}
@@ -1512,16 +1662,22 @@ const ClientDashboardContent = () => {
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setShowEditProposal(false)}>Cancel</Button>
                     <Button onClick={() => {
+                      if (!savedProposal) return;
                       const updated = {
                         ...savedProposal,
                         projectTitle: editForm.title,
                         summary: editForm.summary,
                         content: editForm.summary,
                         budget: editForm.budget,
-                        timeline: editForm.timeline
+                        timeline: editForm.timeline,
+                        updatedAt: new Date().toISOString()
                       };
-                      localStorage.setItem("markify:savedProposal", JSON.stringify(updated));
-                      setSavedProposal(updated);
+                      const nextProposals = savedProposals.map((proposal) =>
+                        proposal.id === savedProposal.id
+                          ? normalizeSavedProposal({ ...proposal, ...updated })
+                          : proposal
+                      );
+                      persistSavedProposalState(nextProposals, savedProposal.id);
                       setShowEditProposal(false);
                       toast.success("Proposal updated!");
                     }}>
@@ -1985,3 +2141,9 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
+
+
+
+
+
+

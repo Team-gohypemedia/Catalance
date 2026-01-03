@@ -7,7 +7,10 @@ import {
   createConversation as createInMemoryConversation,
   addMessage,
   listMessages,
-  getConversation
+  getConversation,
+  getSharedContext,
+  setSharedContext,
+  getSharedContextKey
 } from "./chat-store.js";
 import { sendNotificationToUser } from "./notification-util.js";
 import { setIo } from "./socket-manager.js";
@@ -73,14 +76,14 @@ export const initSocket = (server) => {
   io.on("connection", (socket) => {
     const handshakeUserId = socket.handshake?.query?.userId;
     console.log(`[Socket] 🔌 New connection: ${socket.id}, userId from query: ${handshakeUserId || 'none'}`);
-    
+
     // Join user's personal notification room automatically based on handshake
     if (handshakeUserId) {
       const roomName = `user:${handshakeUserId}`;
       socket.join(roomName);
       console.log(`[Socket] User ${handshakeUserId} joined personal room: ${roomName}`);
     }
-    
+
     const joinedConversations = new Set();
     const presenceKeys = new Map(); // conversationId -> userKey
 
@@ -163,10 +166,10 @@ export const initSocket = (server) => {
         const history = useMemory
           ? listMessages(conversation.id, 100)
           : await prisma.chatMessage.findMany({
-              where: { conversationId: conversation.id },
-              orderBy: { createdAt: "asc" },
-              take: 100
-            });
+            where: { conversationId: conversation.id },
+            orderBy: { createdAt: "asc" },
+            take: 100
+          });
 
         if (history.length) {
           socket.emit(
@@ -176,6 +179,13 @@ export const initSocket = (server) => {
         }
       } catch (error) {
         console.error("chat:join failed", error);
+        try {
+          const fs = await import('fs');
+          const path = await import('path');
+          const logPath = path.resolve(process.cwd(), 'socket-errors.log');
+          const logEntry = `[${new Date().toISOString()}] chat:join error: ${error.message}\n${error.stack}\n---\n`;
+          fs.appendFileSync(logPath, logEntry);
+        } catch (e) { /* ignore */ }
         socket.emit("chat:error", {
           message: "Unable to join chat. Please try again."
         });
@@ -219,7 +229,8 @@ export const initSocket = (server) => {
         senderRole,
         senderName,
         skipAssistant = false,
-        history: clientHistory
+        history: clientHistory,
+        sharedContextId
       }) => {
         if (!content) {
           socket.emit("chat:error", {
@@ -278,16 +289,35 @@ export const initSocket = (server) => {
 
             let assistantReply = null;
             try {
+              const sharedContextKey = getSharedContextKey({
+                sharedContextId,
+                senderId: senderId || null,
+                conversationId: conversation.id
+              });
+              const sharedContext = sharedContextKey ? getSharedContext(sharedContextKey) : null;
+
               const { reply, state: nextState } = await generateChatReplyWithState({
                 message: content,
                 service: service || conversation.service || "",
                 history: dbHistory,
-                state: conversation.assistantState
+                state: conversation.assistantState,
+                sharedContext
               });
               assistantReply = reply;
               conversation.assistantState = nextState;
+              if (sharedContextKey && nextState?.sharedContext) {
+                setSharedContext(sharedContextKey, nextState.sharedContext);
+              }
             } catch (error) {
               console.error("Assistant generation failed", error);
+              try {
+                const fs = await import('fs');
+                const path = await import('path');
+                const logPath = path.resolve(process.cwd(), 'socket-errors.log');
+                const logEntry = `[${new Date().toISOString()}] Assistant generation error: ${error.message}\n${error.stack}\n---\n`;
+                fs.appendFileSync(logPath, logEntry);
+              } catch (e) { /* ignore */ }
+
               socket.emit("chat:error", {
                 message:
                   "Cata is temporarily unavailable. Please continue the chat."
@@ -364,52 +394,59 @@ export const initSocket = (server) => {
             data: { updatedAt: new Date() }
           });
 
-            io.to(conversation.id).emit(
-              "chat:message",
-              serializeMessage(userMessage)
-            );
+          io.to(conversation.id).emit(
+            "chat:message",
+            serializeMessage(userMessage)
+          );
 
-            // Send notification to the other participant
-            const convService = serviceKey || conversation.service || "";
-            console.log(`[Socket] Checking notification for service: ${convService}, senderId: ${senderId}`);
-            
-            if (convService.startsWith("CHAT:")) {
-              const parts = convService.split(":");
-              let recipientId = null;
-              
-              // Support both formats:
-              // Old: CHAT:clientId:freelancerId (3 parts)
-              // New: CHAT:projectId:clientId:freelancerId (4 parts)
-              if (parts.length === 4) {
-                // New format: CHAT:projectId:clientId:freelancerId
-                const [, , clientId, freelancerId] = parts;
-                recipientId = String(senderId) === String(clientId) ? freelancerId : clientId;
-              } else if (parts.length >= 3) {
-                // Old format: CHAT:id1:id2
-                const [, id1, id2] = parts;
-                recipientId = String(senderId) === String(id1) ? id2 : id1;
-              }
-                
-              console.log(`[Socket] Notification recipient: ${recipientId}, sender: ${senderId}`);
-              
-              if (recipientId && String(recipientId) !== String(senderId)) {
-                sendNotificationToUser(recipientId, {
-                  type: "chat",
-                  title: "New Message",
-                  message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
-                  data: { 
-                    conversationId: conversation.id, 
-                    messageId: userMessage.id,
-                    service: convService,
-                    senderId
-                  }
-                }, false); // No email for chat messages
-              }
-            } else {
-              console.log(`[Socket] Skipping notification - service doesn't start with CHAT: ${convService}`);
+          // Send notification to the other participant
+          const convService = serviceKey || conversation.service || "";
+          console.log(`[Socket] Checking notification for service: ${convService}, senderId: ${senderId}`);
+
+          if (convService.startsWith("CHAT:")) {
+            const parts = convService.split(":");
+            let recipientId = null;
+
+            // Support both formats:
+            // Old: CHAT:clientId:freelancerId (3 parts)
+            // New: CHAT:projectId:clientId:freelancerId (4 parts)
+            if (parts.length === 4) {
+              // New format: CHAT:projectId:clientId:freelancerId
+              const [, , clientId, freelancerId] = parts;
+              recipientId = String(senderId) === String(clientId) ? freelancerId : clientId;
+            } else if (parts.length >= 3) {
+              // Old format: CHAT:id1:id2
+              const [, id1, id2] = parts;
+              recipientId = String(senderId) === String(id1) ? id2 : id1;
             }
+
+            console.log(`[Socket] Notification recipient: ${recipientId}, sender: ${senderId}`);
+
+            if (recipientId && String(recipientId) !== String(senderId)) {
+              sendNotificationToUser(recipientId, {
+                type: "chat",
+                title: "New Message",
+                message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
+                data: {
+                  conversationId: conversation.id,
+                  messageId: userMessage.id,
+                  service: convService,
+                  senderId
+                }
+              }, false); // No email for chat messages
+            }
+          } else {
+            console.log(`[Socket] Skipping notification - service doesn't start with CHAT: ${convService}`);
+          }
         } catch (error) {
           console.error("chat:message failed", error);
+          try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const logPath = path.resolve(process.cwd(), 'socket-errors.log');
+            const logEntry = `[${new Date().toISOString()}] chat:message error: ${error.message}\n${error.stack}\n---\n`;
+            fs.appendFileSync(logPath, logEntry);
+          } catch (e) { /* ignore */ }
           socket.emit("chat:error", {
             message: "Unable to send message right now."
           });

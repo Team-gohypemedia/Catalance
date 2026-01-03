@@ -15,6 +15,9 @@ import {
   getConversation,
   listMessages,
   addMessage,
+  getSharedContext,
+  setSharedContext,
+  getSharedContextKey,
 } from "../lib/chat-store.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import {
@@ -990,6 +993,7 @@ export const generateChatReplyWithState = async ({
   history,
   contextHint = "",
   state: existingState = null,
+  sharedContext = null,
 }) => {
   const apiKey = env.OPENROUTER_API_KEY?.trim();
 
@@ -1024,8 +1028,8 @@ export const generateChatReplyWithState = async ({
 
   const baseState =
     existingState && typeof existingState === "object"
-      ? existingState
-      : buildConversationState(historyForStateMachine, service);
+      ? { ...existingState, sharedContext: sharedContext || existingState?.sharedContext }
+      : buildConversationState(historyForStateMachine, service, sharedContext);
   const updatedState = processUserAnswer(baseState, normalizedMessage);
 
   const stateWithLocale = {
@@ -1558,6 +1562,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     senderName,
     skipAssistant = false,
     history: clientHistory,
+    sharedContextId,
   } = req.body || {};
 
   if (!content) {
@@ -1606,6 +1611,12 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
           ? fallbackHistory
           : serverHistory;
       const contextHint = summarizeContext(dbHistory);
+      const sharedContextKey = getSharedContextKey({
+        sharedContextId,
+        senderId: senderId || null,
+        conversationId: conversation.id,
+      });
+      const sharedContext = sharedContextKey ? getSharedContext(sharedContextKey) : null;
 
       try {
         const { reply: assistantReply, state: nextState } = await generateChatReplyWithState({
@@ -1614,9 +1625,13 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
           history: dbHistory,
           contextHint,
           state: conversation.assistantState,
+          sharedContext,
         });
 
         conversation.assistantState = nextState;
+        if (sharedContextKey && nextState?.sharedContext) {
+          setSharedContext(sharedContextKey, nextState.sharedContext);
+        }
 
         assistantMessage = addMessage({
           conversationId: conversation.id,
