@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
   Card,
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Image } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -27,7 +27,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import { Check, CheckCheck, Trash2, Clock4 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -442,60 +443,59 @@ const FreelancerProjectDetailContent = () => {
   }, [authFetch, project, user]);
 
   // Load chat history
-  useEffect(() => {
+  const fetchMessages = useCallback(async () => {
     if (!conversationId || !authFetch) return;
-    let cancelled = false;
-    const loadMessages = async () => {
-      try {
-        const response = await authFetch(`/chat/conversations/${conversationId}/messages`);
-        const payload = await response.json().catch(() => null);
-        const list = Array.isArray(payload?.data?.messages)
-          ? payload.data.messages
-          : payload?.messages || [];
+    try {
+      const response = await authFetch(`/chat/conversations/${conversationId}/messages`);
+      const payload = await response.json().catch(() => null);
+      const list = Array.isArray(payload?.data?.messages)
+        ? payload.data.messages
+        : payload?.messages || [];
 
-        if (!cancelled) {
-          const normalized = list.map((msg) => {
-            // Logic: I am the freelancer.
-            // If senderId == my id, it's me.
-            // If senderRole == 'FREELANCER', it's me.
-            // Everything else (Client/Assistant) is 'other'.
-            const isMe = (user?.id && String(msg.senderId) === String(user.id)) ||
-              msg.senderRole === "FREELANCER"; // Check for explicit role
+      const normalized = list.map((msg) => {
+        // Logic: I am the freelancer.
+        // If senderId == my id, it's me.
+        // If senderRole == 'FREELANCER', it's me.
+        // Everything else (Client/Assistant) is 'other'.
+        const isMe = (user?.id && String(msg.senderId) === String(user.id)) ||
+          msg.senderRole === "FREELANCER"; // Check for explicit role
 
-            return {
-              id: msg.id,
-              sender: msg.role === "assistant" ? "assistant" : (isMe ? "user" : "other"),
-              text: msg.content,
-              timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
-              attachment: msg.attachment,
-              senderName: msg.senderName
-            };
-          });
+        return {
+          id: msg.id,
+          sender: msg.role === "assistant" ? "assistant" : (isMe ? "user" : "other"),
+          text: msg.content,
+          timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
+          createdAt: msg.createdAt,
+          readAt: msg.readAt,
+          attachment: msg.attachment,
+          senderName: msg.senderName
+        };
+      });
 
-          // Merge logic to keep pending messages
-          setMessages(prev => {
-            const pending = prev.filter(m => m.pending);
-            // Dedupe based on signature (sender + text) as ID might change from temp to DB
-            const backendSignatures = new Set(normalized.map(m => `${m.sender}:${m.text}`));
+      // Merge logic to keep pending messages
+      setMessages(prev => {
+        const pending = prev.filter(m => m.pending);
+        // Dedupe based on signature (sender + text + attachment name)
+        const backendSignatures = new Set(normalized.map(m => 
+          `${m.sender}:${m.text}:${m.attachment?.name || ''}`
+        ));
 
-            const stillPending = pending.filter(p => {
-              const signature = `${p.sender}:${p.text}`;
-              return !backendSignatures.has(signature);
-            });
-            return [...normalized, ...stillPending];
-          });
-        }
-      } catch (error) {
-        console.error("Failed to load project chat messages", error);
-      }
-    };
-    loadMessages();
-    const interval = setInterval(loadMessages, 5000);
-    return () => {
-      clearInterval(interval);
-      cancelled = true;
-    };
+        const stillPending = pending.filter(p => {
+          const signature = `${p.sender}:${p.text}:${p.attachment?.name || ''}`;
+          return !backendSignatures.has(signature);
+        });
+        return [...normalized, ...stillPending];
+      });
+    } catch (error) {
+      console.error("Failed to load project chat messages", error);
+    }
   }, [authFetch, conversationId, user]);
+
+  useEffect(() => {
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 5000);
+    return () => clearInterval(interval);
+  }, [fetchMessages]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !conversationId || !authFetch) return;
@@ -542,24 +542,49 @@ const FreelancerProjectDetailContent = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file && conversationId) {
-      const attachment = {
-        name: file.name,
-        size: `${(file.size / 1024).toFixed(2)} KB`,
-        type: file.type
-      };
+      // Capture current input text to send with file
+      const textContent = input;
 
-      const userMessage = {
-        id: Date.now().toString(),
-        sender: "user",
-        text: `Uploaded document: ${file.name}`,
-        timestamp: new Date(),
-        attachment,
-        pending: true
-      };
-
-      setMessages((prev) => [...prev, userMessage]);
+      // First upload the file to R2
+      const formData = new FormData();
+      formData.append("file", file);
 
       try {
+        const uploadResponse = await authFetch("/upload/chat", {
+          method: "POST",
+          body: formData,
+          skipLogoutOn401: true
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Upload failed");
+        }
+
+        const uploadResult = await uploadResponse.json();
+        const fileUrl = uploadResult.data?.url || uploadResult.url;
+
+        const attachment = {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          url: fileUrl
+        };
+
+        const tempId = Date.now().toString();
+        const userMessage = {
+          id: tempId,
+          sender: "user",
+          text: textContent,
+          timestamp: new Date(),
+          attachment,
+          pending: true
+        };
+        
+        setMessages((prev) => [...prev, userMessage]);
+        
+        // Clear input immediately
+        setInput("");
+
         // Build the correct service key for notifications
         const serviceKey = (project?.ownerId && user?.id)
           ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
@@ -569,7 +594,7 @@ const FreelancerProjectDetailContent = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: `Uploaded document: ${file.name}`,
+            content: textContent,
             service: serviceKey,
             senderRole: "FREELANCER",
             senderName: user?.fullName || user?.name || user?.email || "Freelancer",
@@ -577,10 +602,14 @@ const FreelancerProjectDetailContent = () => {
             skipAssistant: true
           })
         });
+
+        toast.success("File sent successfully");
+        fetchMessages(); // Sync with backend
       } catch (e) {
         console.error("Upload failed", e);
+        toast.error("Failed to send file");
       }
-
+      
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -588,7 +617,10 @@ const FreelancerProjectDetailContent = () => {
   };
 
   const docs = useMemo(() => {
-    return messages.filter(m => m.attachment).map(m => m.attachment);
+    return messages.filter(m => m.attachment).map(m => ({
+      ...m.attachment,
+      createdAt: m.createdAt || m.timestamp
+    }));
   }, [messages]);
 
   const activeSOP = useMemo(() => {
@@ -1059,34 +1091,92 @@ const FreelancerProjectDetailContent = () => {
                   <CardDescription className="text-muted-foreground">Ask questions and share documents</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto space-y-3 py-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-2 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div className="space-y-1">
-                        <div
-                          className={`max-w-xs px-3 py-2 rounded-lg text-sm ${message.sender === "user"
-                            ? "bg-primary text-primary-foreground rounded-br-none"
-                            : "bg-muted text-foreground rounded-bl-none border border-border/60"
-                            }`}
-                        >
-                          {message.text}
-                        </div>
-                        {message.attachment && (
-                          <div
-                            className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${message.sender === "user"
-                              ? "bg-primary/20 text-foreground"
-                              : "bg-accent text-accent-foreground border border-border/60"
-                              }`}
-                          >
-                            <FileText className="w-3 h-3" />
-                            {message.attachment.name} ({message.attachment.size})
+                  {messages.map((message, index) => {
+                    const isSelf = message.sender === "user";
+                    const isAssistant = message.sender === "assistant";
+                    const align = isAssistant || !isSelf ? "justify-start" : "justify-end";
+                    
+                    const prevMessage = messages[index - 1];
+                    const currentDate = message.createdAt ? new Date(message.createdAt) : new Date();
+                    const prevDate = prevMessage?.createdAt ? new Date(prevMessage.createdAt) : null;
+                    const showDateDivider = !prevDate || !isSameDay(currentDate, prevDate);
+
+                    return (
+                      <React.Fragment key={message.id || index}>
+                         {showDateDivider && (
+                          <div className="flex justify-center my-4">
+                            <span className="bg-muted/40 px-3 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide text-muted-foreground/70">
+                              {isToday(currentDate)
+                                ? "Today"
+                                : isYesterday(currentDate)
+                                ? "Yesterday"
+                                : format(currentDate, "MMMM d, yyyy")}
+                            </span>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  ))}
+                        <div className={`flex ${align}`}>
+                          <div
+                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${
+                              isSelf 
+                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm" 
+                                : "bg-muted text-foreground rounded-tl-sm border border-border/60"
+                            }`}
+                          >
+                           {message.sender === "other" && message.senderName && (
+                              <span className="text-[10px] opacity-70 mb-1 block">{message.senderName}</span>
+                            )}
+                            
+                            {message.text && (
+                              <p className="leading-relaxed whitespace-pre-wrap break-words">
+                                {message.text}
+                              </p>
+                            )}
+                            
+                            {message.attachment && (
+                              <div className="mt-2">
+                                {message.attachment.type?.startsWith("image/") || message.attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                   <a href={message.attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+                                    <img 
+                                      src={message.attachment.url} 
+                                      alt={message.attachment.name || "Attachment"} 
+                                      className="max-w-[180px] max-h-[180px] rounded-lg object-cover"
+                                    />
+                                  </a>
+                                ) : (
+                                  <a 
+                                    href={message.attachment.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${!isSelf ? "border border-border/50 bg-background/50" : ""}`}
+                                  >
+                                    <FileText className="h-4 w-4 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium truncate max-w-[140px]">{message.attachment.name || "File"}</p>
+                                    </div>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-1 self-end mt-1 justify-end">
+                              <span className="text-[10px] opacity-70 whitespace-nowrap">
+                                {format(currentDate, "h:mm a")}
+                              </span>
+                              {isSelf && (
+                                <span className="ml-1 opacity-90">
+                                  {message.readAt ? (
+                                    <CheckCheck className="h-3 w-3" />
+                                  ) : (
+                                    <Check className="h-3 w-3" />
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
                 </CardContent>
                 <div className="border-t border-border/60 p-3 flex gap-2">
                   <Input
@@ -1110,7 +1200,7 @@ const FreelancerProjectDetailContent = () => {
                     type="file"
                     onChange={handleFileUpload}
                     className="hidden"
-                    accept=".pdf,.doc,.docx,.txt,.xls,.xlsx"
+                    accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
                   />
                   <Button onClick={handleSendMessage} size="sm" variant="default" className="h-9 w-9 p-0">
                     <Send className="w-4 h-4" />
@@ -1129,13 +1219,28 @@ const FreelancerProjectDetailContent = () => {
                 <CardContent>
                   {docs.length > 0 ? (
                     <div className="space-y-2">
-                      {docs.map((doc, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20">
-                          <FileText className="w-4 h-4 text-primary" />
-                          <span className="truncate flex-1">{doc.name}</span>
-                          <span className="text-xs text-muted-foreground">{doc.size}</span>
-                        </div>
-                      ))}
+                      {docs.map((doc, idx) => {
+                        const isImage = doc.type?.startsWith("image/") || doc.url?.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+                        return (
+                          <a 
+                            key={idx} 
+                            href={doc.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20 hover:bg-muted/40 transition-colors"
+                          >
+                            {isImage ? (
+                               <Image className="w-4 h-4 text-blue-500 shrink-0" />
+                            ) : (
+                               <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+                            )}
+                            <span className="truncate flex-1">{doc.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {doc.createdAt ? format(new Date(doc.createdAt), "MMM d, yyyy") : ""}
+                            </span>
+                          </a>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">

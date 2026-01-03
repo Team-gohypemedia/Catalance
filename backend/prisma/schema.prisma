@@ -177,8 +177,9 @@ model ChatMessage {
   senderName      String?
   senderRole      String?
   role            String           @default("user")
-  content         String           @db.Text
+  content         String?          @db.Text
   attachment      Json?            // store { name, size, type, url? }
+  deleted         Boolean          @default(false)
   readAt          DateTime?
   createdAt       DateTime         @default(now())
   @@index([conversationId, createdAt])

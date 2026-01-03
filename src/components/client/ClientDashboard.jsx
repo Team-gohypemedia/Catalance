@@ -283,30 +283,7 @@ const ClientDashboardContent = () => {
       const fetchedProjects = Array.isArray(payload?.data) ? payload.data : [];
       setProjects(fetchedProjects);
 
-      // Check if any project matching the saved proposal has been accepted
-      const saved = localStorage.getItem("markify:savedProposal");
-      if (saved) {
-        try {
-          const parsedSaved = JSON.parse(saved);
-          const savedTitle = parsedSaved.projectTitle || parsedSaved.title;
-          
-          // Find if there is a matching project that is active/accepted
-          const matchingProject = fetchedProjects.find(p => 
-            p.title === savedTitle && 
-            (p.status === "IN_PROGRESS" || p.status === "AWAITING_PAYMENT" || 
-             (p.proposals && p.proposals.some(prop => prop.status === "ACCEPTED")))
-          );
 
-          if (matchingProject) {
-            // Proposal accepted! Clear the draft.
-            localStorage.removeItem("markify:savedProposal");
-            setSavedProposal(null);
-            toast.success("Proposal accepted! Draft cleared.");
-          }
-        } catch (e) {
-          console.error("Error checking saved proposal status", e);
-        }
-      }
       
       // Check for projects with pending proposals > 24 hours (for budget reminder popup)
       const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -509,9 +486,9 @@ const ClientDashboardContent = () => {
       // Refresh projects so the freelancer is immediately hidden from the list
       await loadProjects();
       
-      // DO NOT clear saved proposal immediately - wait for freelancer acceptance
-      // localStorage.removeItem("markify:savedProposal");
-      // setSavedProposal(null);
+      // Clear saved proposal immediately after sending
+      localStorage.removeItem("markify:savedProposal");
+      setSavedProposal(null);
       
       setShowSendConfirm(false);
       setSelectedFreelancer(null);
