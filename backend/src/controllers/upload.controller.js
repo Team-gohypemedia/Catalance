@@ -106,3 +106,126 @@ export const uploadImage = asyncHandler(async (req, res) => {
     throw new AppError("Failed to upload image", 500);
   }
 });
+
+// Upload chat file to R2 (any file type)
+export const uploadChatFile = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new AppError("No file uploaded", 400);
+  }
+
+  const file = req.file;
+  const fileExt = path.extname(file.originalname);
+  const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const uniqueId = uuidv4();
+  const fileName = `chat/${uniqueId}${fileExt}`;
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      // Set content disposition for downloadable files
+      ContentDisposition: file.mimetype.startsWith("image/") 
+        ? "inline" 
+        : `attachment; filename="${safeFileName}"`,
+    });
+
+    await s3Client.send(command);
+
+    // For chat files, use the chat images endpoint
+    const publicUrl = `${process.env.API_URL || "http://localhost:5000"}/api/images/chat/${uniqueId}${fileExt}`;
+
+    console.log(`Chat file uploaded: ${fileName}`);
+
+    res.json({
+      data: {
+        url: publicUrl,
+        key: fileName,
+        name: file.originalname,
+        size: file.size,
+        type: file.mimetype
+      }
+    });
+  } catch (error) {
+    console.error("R2 Chat Upload Error:", error);
+    throw new AppError("Failed to upload file", 500);
+  }
+});
+
+// Delete chat attachment from R2 and database
+export const deleteChatAttachment = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+  const userId = req.user?.sub;
+
+  if (!messageId) {
+    throw new AppError("Message ID is required", 400);
+  }
+
+  // Find the message
+  const message = await prisma.chatMessage.findUnique({
+    where: { id: messageId },
+    include: { conversation: true }
+  });
+
+  if (!message) {
+    throw new AppError("Message not found", 404);
+  }
+
+  // Check if user is the sender of the message
+  if (message.senderId && message.senderId !== userId) {
+    throw new AppError("You can only delete your own attachments", 403);
+  }
+
+  if (!message.attachment) {
+    throw new AppError("Message has no attachment", 400);
+  }
+
+  const attachment = message.attachment;
+
+  // Delete from R2 if we have the key
+  if (attachment.url) {
+    try {
+      // Extract key from URL: /api/images/chat/uuid.ext -> chat/uuid.ext
+      const urlParts = attachment.url.split("/api/images/");
+      if (urlParts.length > 1) {
+        const key = urlParts[1]; // chat/uuid.ext
+        
+        await s3Client.send(new DeleteObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: key
+        }));
+        console.log(`Deleted chat attachment from R2: ${key}`);
+      }
+    } catch (delErr) {
+      console.error("Failed to delete from R2:", delErr);
+      // Continue to clear from DB even if R2 delete fails
+    }
+  }
+  // Check if message has text content
+  const hasTextContent = message.content && message.content.trim().length > 0;
+
+  // If there's no text content, mark message as deleted entirely
+  if (!hasTextContent) {
+    await prisma.chatMessage.update({
+      where: { id: messageId },
+      data: { 
+        attachment: null,
+        deleted: true,
+        content: null
+      }
+    });
+  } else {
+    // Just clear the attachment, keep the text content
+    await prisma.chatMessage.update({
+      where: { id: messageId },
+      data: { attachment: null }
+    });
+  }
+
+  res.json({
+    success: true,
+    message: "Attachment deleted successfully",
+    deleted: !hasTextContent
+  });
+});
