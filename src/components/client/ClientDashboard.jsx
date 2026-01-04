@@ -33,6 +33,11 @@ import {
   Moon,
   CreditCard,
   Bot,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  Heart,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -1179,101 +1184,82 @@ const ClientDashboardContent = () => {
                             }
 
                             return (
-                          <Card 
+                          <div 
                             key={freelancer.id} 
-                            className="group hover:shadow-lg hover:border-primary/20 transition-all flex flex-col h-full min-h-[280px] cursor-pointer"
+                            className="relative flex flex-col items-center bg-card rounded-[2rem] shadow-sm border border-border/40 overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer h-full min-h-[400px]"
                             onClick={() => {
                               setViewingFreelancer(freelancer);
                               setShowFreelancerProfile(true);
                             }}
                           >
-                            <CardContent className="p-4 flex flex-col h-full gap-4">
-                              {/* Header */}
-                              <div className="flex items-start gap-3">
-                                <Avatar className="w-12 h-12 shrink-0 border border-border">
-                                  <AvatarImage src={freelancer.avatar} alt={freelancer.fullName || freelancer.name} />
-                                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                                    {(freelancer.fullName || freelancer.name)?.charAt(0) || "F"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className="font-bold truncate text-base">{freelancer.fullName || freelancer.name}</h4>
-                                    {freelancer.rating && (
-                                      <div className="flex items-center text-xs font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                                        <Star className="w-3 h-3 mr-1 fill-current" />
-                                        {freelancer.rating}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground truncate font-medium">
-                                    {freelancer.role || "Freelancer"}
-                                  </p>
-                                  {(freelancer.location || freelancer.hourlyRate) && (
-                                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                      {freelancer.location && (
-                                        <span className="flex items-center truncate">
-                                          <MapPin className="w-3 h-3 mr-0.5" />
-                                          {freelancer.location}
-                                        </span>
-                                      )}
-                                      {freelancer.hourlyRate && (
-                                        <>
-                                          <span>•</span>
-                                          <span className="font-medium text-foreground">{freelancer.hourlyRate}/hr</span>
-                                        </>
-                                      )}
-                                    </div>
-                                  )}
+                             {/* Yellow Header */}
+                             <div className="w-full h-32 bg-[#FFD700] flex items-center justify-center"></div>
+
+                             {/* Avatar */}
+                             <div className="absolute top-16">
+                               <div className="rounded-full p-1.5 bg-background shadow-sm">
+                                 <Avatar className="w-28 h-28 border-2 border-background">
+                                   <AvatarImage src={freelancer.avatar} className="object-cover" />
+                                   <AvatarFallback className="bg-primary/20 text-primary text-3xl font-bold">
+                                      {(freelancer.fullName || freelancer.name || "F").charAt(0)}
+                                   </AvatarFallback>
+                                 </Avatar>
+                               </div>
+                             </div>
+
+                             {/* Body */}
+                             <div className="mt-14 px-4 pb-6 w-full flex flex-col items-center text-center flex-1">
+                                <h3 className="text-2xl font-bold mt-2 text-foreground">{freelancer.fullName || freelancer.name}</h3>
+                                <p className="text-sm text-muted-foreground font-medium mb-5">{freelancer.role || "Freelancer"}</p>
+
+                                {/* Social Icons Row */}
+                                <div className="flex gap-4 mb-8">
+                                  {[Facebook, Twitter, Instagram, Youtube].map((Icon, idx) => (
+                                     <div key={idx} className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform" 
+                                       style={{ backgroundColor: idx===0 ? '#3b5998' : idx===1 ? '#1da1f2' : idx===2 ? '#e1306c' : '#ff0000' }}>
+                                       <Icon className="w-4 h-4 fill-current" />
+                                     </div>
+                                  ))}
                                 </div>
-                              </div>
 
-                              {/* Skills */}
-                              <div className="flex flex-wrap gap-1.5">
-                                {Array.isArray(freelancer.skills) && freelancer.skills.length > 0 ? (
-                                  <>
-                                    {freelancer.skills.slice(0, 3).map((skill, i) => (
-                                      <Badge key={i} variant="secondary" className="px-1.5 py-0 text-[10px] font-normal border-transparent bg-secondary/50">
-                                        {skill}
-                                      </Badge>
-                                    ))}
-                                    {freelancer.skills.length > 3 && (
-                                      <span className="text-[10px] text-muted-foreground self-center ml-1">
-                                        +{freelancer.skills.length - 3} more
-                                      </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground italic">No skills listed</span>
-                                )}
-                              </div>
+                                {/* Action Buttons */}
+                                <div className="flex gap-4 w-full px-4 mt-auto mb-6">
+                                   <Button 
+                                      className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all"
+                                      onClick={(e) => {
+                                         e.stopPropagation();
+                                         setShowFreelancerSelect(false);
+                                         handleSendClick(freelancer);
+                                      }}
+                                   >
+                                      Select
+                                   </Button>
+                                   <Button 
+                                      className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all"
+                                      onClick={(e) => {
+                                         e.stopPropagation();
+                                         setViewingFreelancer(freelancer);
+                                         setShowFreelancerProfile(true);
+                                      }}
+                                   >
+                                      Profile
+                                   </Button>
+                                </div>
 
-                              {/* Bio Snippet */}
-                              <div className="flex-1">
-                                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                                  {freelancer.cleanBio}
-                                </p>
-                              </div>
-
-                              {/* Footer Action */}
-                              <Button 
-                                className="w-full gap-2 mt-auto" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowFreelancerSelect(false);
-                                  handleSendClick(freelancer);
-                                }}
-                                disabled={isSendingProposal}
-                              >
-                                {isSendingProposal && selectedFreelancer?.id === freelancer.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Send className="w-4 h-4" />
-                                )}
-                                Send Proposal
-                              </Button>
-                            </CardContent>
-                          </Card>
+                                {/* Footer Stats Row */}
+                                <div className="w-full pt-5 border-t border-dashed border-border/50 flex justify-center gap-8 text-muted-foreground text-sm font-semibold">
+                                   <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors">
+                                      <Heart className="w-4 h-4" /> {freelancer.rating || "5.0"}
+                                   </div>
+                                   <div className="flex items-center gap-1.5 hover:text-blue-500 transition-colors">
+                                      <MessageCircle className="w-4 h-4" /> 20K
+                                   </div>
+                                   <div className="flex items-center gap-1.5 hover:text-green-500 transition-colors">
+                                       <Send className="w-4 h-4" /> 12K
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
                             );
                           })
                         ) : (
