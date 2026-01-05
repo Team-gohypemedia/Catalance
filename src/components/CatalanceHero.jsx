@@ -123,46 +123,62 @@ const CatalanceHero = () => {
 
                     {/* Cards Container */}
                     <div
-                        className={`relative max-w-6xl mx-auto mb-16 px-4 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
+                        className={`relative max-w-3xl mx-auto mb-16 px-4 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
                         style={{ animationDelay: '300ms' }}
                     >
-                        <div className="grid md:grid-cols-2 gap-6 relative">
+                        <div className="grid md:grid-cols-2 gap-12 relative">
                             {/* OR Circle */}
                             <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-                                <div className={`relative w-20 h-20 rounded-full ${isDark ? 'bg-black border-white/20' : 'bg-white border-gray-200'} border-2 flex items-center justify-center shadow-2xl backdrop-blur-sm pointer-events-auto`}>
-                                    <span className="text-foreground font-bold text-lg tracking-wider">OR</span>
+                                <div className={`relative w-22 h-22 rounded-full ${isDark ? 'bg-black border-white/20' : 'bg-white border-gray-200'} border-2 flex items-center justify-center shadow-2xl backdrop-blur-sm pointer-events-auto`}>
+                                    <span className="text-foreground font-medium text-2xl tracking-wider">OR</span>
                                     <div className={`absolute inset-0 rounded-full ${isDark ? 'bg-gradient-to-r from-white/10 via-white/20 to-white/10' : 'bg-gradient-to-r from-black/5 via-black/10 to-black/5'} blur-xl animate-pulse -z-10`} />
                                 </div>
                             </div>
 
                             {/* Business Card */}
-                            <div className="group relative p-8 rounded-3xl flex flex-col bg-card text-card-foreground border border-border/50 shadow-card backdrop-blur-xl transition-all duration-500 hover:border-orange-500/30 hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-1 text-left">
-                                <div className="mb-6">
-                                    <Badge className="bg-orange-500/15 text-orange-600 dark:text-orange-300 border-orange-400/30 hover:bg-orange-500/20 border backdrop-blur-md px-4 py-1.5 text-xs font-semibold uppercase tracking-wide">
-                                        <Briefcase className="w-3.5 h-3.5 mr-1.5" />
+                            <div className="group relative p-6 rounded-3xl flex flex-col bg-linear-to-bl from-orange-500/15 via-background to-background text-card-foreground border border-border/50 shadow-card backdrop-blur-xl text-left min-h-[450px]">
+                                <div className="mb-6 flex flex-col items-start">
+                                    <div className="px-0 py-2">
+                                        <Briefcase className="w-5 h-5 text-orange-500" />
+                                    </div>
+                                    <span className="text-sm font-medium uppercase tracking-wide text-orange-500">
                                         For Businesses
-                                    </Badge>
+                                    </span>
                                 </div>
-                                <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
+                                <h3 className="text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
                                     Hire Elite Talent
                                 </h3>
-                                <p className="text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
+                                <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[40px]">
                                     Access our curated network of{" "}
                                     <span className="text-orange-600 dark:text-orange-400 font-semibold">world-class professionals</span>{" "}
                                     ready to transform your vision into reality.
                                 </p>
-                                <div className="space-y-3 mb-8 grow">
-                                    <div className="flex items-center gap-3 text-muted-foreground">
-                                        <div className="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center shrink-0">
-                                            <ShieldCheck className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+
+                                {/* Features */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 mb-8">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1.5 text-orange-600">
+                                            <Target className="w-4 h-4" />
                                         </div>
-                                        <span className="font-medium">Verified expertise</span>
+                                        <span className="text-sm font-medium text-foreground/90">Verified expertise</span>
                                     </div>
-                                    <div className="flex items-center gap-3 text-muted-foreground">
-                                        <div className="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center shrink-0">
-                                            <Users className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1.5 text-orange-600">
+                                            <Users className="w-4 h-4" />
                                         </div>
-                                        <span className="font-medium">50K+ professionals</span>
+                                        <span className="text-sm font-medium text-foreground/90">50K+ professionals</span>
+                                    </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1.5 text-orange-600">
+                                            <ShieldCheck className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-sm font-medium text-foreground/90">Secure payments</span>
+                                    </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1.5 text-orange-600">
+                                            <Sparkles className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-sm font-medium text-foreground/90">Dedicated support</span>
                                     </div>
                                 </div>
                                 <Link to="/service" className="w-full mt-auto">
@@ -174,37 +190,53 @@ const CatalanceHero = () => {
                                         <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
                                     </Button>
                                 </Link>
-                                <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-orange-500/0 to-amber-500/0 group-hover:from-orange-500/5 group-hover:to-amber-500/5 transition-all duration-500 -z-10 blur-xl" />
+                                <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-orange-500/0 to-amber-500/0 -z-10 blur-xl" />
                             </div>
 
                             {/* Freelancer Card */}
-                            <div className="group relative p-8 rounded-3xl flex flex-col bg-card text-card-foreground border border-border/50 shadow-card backdrop-blur-xl transition-all duration-500 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1 text-left">
-                                <div className="mb-6">
-                                    <Badge className="bg-primary/15 text-primary-strong dark:text-primary border-primary/30 hover:bg-primary/20 border backdrop-blur-md px-4 py-1.5 text-xs font-semibold uppercase tracking-wide">
-                                        <Zap className="w-3.5 h-3.5 mr-1.5" />
+                            <div className="group relative p-6 rounded-3xl flex flex-col bg-linear-to-bl from-primary/15 via-background to-background text-card-foreground border border-border/50 shadow-card backdrop-blur-xl text-left min-h-[450px]">
+                                <div className="mb-6 flex flex-col items-start">
+                                    <div className="px-0 py-2">
+                                        <Zap className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <span className="text-sm font-medium uppercase tracking-wide text-primary">
                                         For Freelancers
-                                    </Badge>
+                                    </span>
                                 </div>
-                                <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
+                                <h3 className="text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight whitespace-nowrap">
                                     Launch Your Career
                                 </h3>
-                                <p className="text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
+                                <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
                                     Join an exclusive community and connect with{" "}
                                     <span className="text-primary-strong dark:text-primary font-semibold">premium opportunities</span>{" "}
                                     that match your ambitions.
                                 </p>
-                                <div className="space-y-3 mb-8 grow">
-                                    <div className="flex items-center gap-3 text-muted-foreground">
-                                        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                                            <TrendingUp className="w-5 h-5 text-primary-strong dark:text-primary" />
+
+                                {/* Features */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 mb-8">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1.5 text-primary-strong">
+                                            <Target className="w-4 h-4" />
                                         </div>
-                                        <span className="font-medium">Career acceleration</span>
+                                        <span className="text-sm font-medium text-foreground/90">Zero commission</span>
                                     </div>
-                                    <div className="flex items-center gap-3 text-muted-foreground">
-                                        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                                            <Target className="w-5 h-5 text-primary-strong dark:text-primary" />
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1.5 text-primary-strong">
+                                            <Users className="w-4 h-4" />
                                         </div>
-                                        <span className="font-medium">Premium clients</span>
+                                        <span className="text-sm font-medium text-foreground/90">Global network</span>
+                                    </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1.5 text-primary-strong">
+                                            <ShieldCheck className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-sm font-medium text-foreground/90">Secure payments</span>
+                                    </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1.5 text-primary-strong">
+                                            <TrendingUp className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-sm font-medium text-foreground/90">Fast hiring</span>
                                     </div>
                                 </div>
                                 <Link to="/freelancer/onboarding" className="w-full mt-auto">
@@ -216,16 +248,12 @@ const CatalanceHero = () => {
                                         <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
                                     </Button>
                                 </Link>
-                                <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-primary/0 to-primary/0 group-hover:from-primary/5 group-hover:to-primary/5 transition-all duration-500 -z-10 blur-xl" />
+                                <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-primary/0 to-primary/0 -z-10 blur-xl" />
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* ================== FOREGROUND EFFECTS ================== */}
-                <div
-                    className="pointer-events-none absolute bottom-[128px] left-1/2 z-0 h-36 w-28 -translate-x-1/2 rounded-md bg-gradient-to-b from-white/75 via-rose-100/60 to-transparent"
-                    style={{ animation: 'subtlePulse 6s ease-in-out infinite' }} />
+                </div>
 
                 {/* Pillars */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[100vh]">
@@ -241,6 +269,7 @@ const CatalanceHero = () => {
                                 }} />
                         ))}
                     </div>
+
                 </div>
             </section>
         </>
