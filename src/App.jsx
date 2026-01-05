@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Home from "@/components/home/Home.jsx";
+import Home from "@/components/pages/Home";
 import About from "@/components/home/About.jsx";
 import Services from "@/components/home/Services.jsx";
 import Contact from "@/components/home/Contact.jsx";

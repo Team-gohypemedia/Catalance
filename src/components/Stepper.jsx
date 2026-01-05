@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function Stepper({
   children,
   initialStep = 1,
-  onStepChange = () => {},
-  onFinalStepCompleted = () => {},
+  onStepChange = () => { },
+  onFinalStepCompleted = () => { },
   stepCircleContainerClassName = '',
   stepContainerClassName = '',
   contentClassName = '',
@@ -52,7 +52,7 @@ export default function Stepper({
 
   return (
     <div
-      className="flex min-h-full flex-1 flex-col items-center justify-center p-4 sm:aspect-[4/3] md:aspect-[2/1]"
+      className="flex min-h-full flex-1 flex-col items-center justify-center p-4 sm:aspect-4/3 md:aspect-2/1"
       {...rest}>
       <div
         className={`mx-auto w-full max-w-md rounded-4xl shadow-xl ${stepCircleContainerClassName}`}
@@ -101,11 +101,10 @@ export default function Stepper({
               {currentStep !== 1 && (
                 <button
                   onClick={handleBack}
-                  className={`duration-350 rounded px-2 py-1 transition ${
-                    currentStep === 1
+                  className={`duration-350 rounded px-2 py-1 transition ${currentStep === 1
                       ? 'pointer-events-none opacity-50 text-neutral-400'
                       : 'text-neutral-400 hover:text-neutral-700'
-                  }`}
+                    }`}
                   {...backButtonProps}>
                   {backButtonText}
                 </button>

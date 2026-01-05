@@ -5,7 +5,11 @@ import {
   BadgeCheck,
   Bell,
   ChevronsUpDown,
-  LogOut
+  LogOut,
+  Sun,
+  Moon,
+  Monitor,
+  Check
 } from "lucide-react";
 
 import {
@@ -20,7 +24,10 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
@@ -29,6 +36,7 @@ import {
   useSidebar
 } from "@/components/ui/sidebar";
 import { getSession, clearSession } from "@/lib/auth-storage";
+import { useTheme } from "./theme-provider";
 
 const getInitials = (value) => {
   if (!value) {
@@ -50,6 +58,7 @@ const getInitials = (value) => {
 
 export function NavUser({ user = null }) {
   const { isMobile } = useSidebar();
+  const { theme, setTheme } = useTheme();
   const [sessionUser, setSessionUser] = useState(null);
   const navigate = useNavigate();
 
@@ -81,7 +90,7 @@ export function NavUser({ user = null }) {
           <DropdownMenuTrigger className="w-full group-data-[collapsible=icon]:w-auto">
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground w-full overflow-hidden group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:w-[3rem] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground w-full overflow-hidden group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={avatarSrc} alt={displayName} />
                 <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
@@ -124,6 +133,30 @@ export function NavUser({ user = null }) {
                 <Bell />
                 Notifications
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Sun className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <span className="ml-2">Theme</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => setTheme("light")}>
+                    <Sun className="mr-2 h-4 w-4" />
+                    <span>Light</span>
+                    {theme === "light" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    <Moon className="mr-2 h-4 w-4" />
+                    <span>Dark</span>
+                    {theme === "dark" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("system")}>
+                    <Monitor className="mr-2 h-4 w-4" />
+                    <span>System</span>
+                    {theme === "system" && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handleLogout}>

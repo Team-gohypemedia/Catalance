@@ -27,6 +27,7 @@ import {
   shouldGenerateProposal,
   generateProposalFromState,
   generateRoadmapFromState,
+  isCataService,
 } from "../lib/conversation-state.js";
 import { getChatbot } from "../lib/chatbots/index.js";
 import { translateAssistantReply } from "../lib/i18n.js";
@@ -1147,8 +1148,10 @@ export const generateChatReplyWithState = async ({
   let nextQuestion = "";
   if (shouldGenerateProposal(stateWithLocale)) {
     const rawProposal = generateProposalFromState(stateWithLocale);
-    const rewritten = await rewriteProposalWithAI(rawProposal, apiKey);
-    baseReply = aiAnswer ? `${aiAnswer}\n\n${rewritten}` : rewritten;
+    const proposalText = isCataService(stateWithLocale?.service)
+      ? rawProposal
+      : await rewriteProposalWithAI(rawProposal, apiKey);
+    baseReply = aiAnswer ? `${aiAnswer}\n\n${proposalText}` : proposalText;
   } else {
     nextQuestion = getNextHumanizedQuestion(stateWithLocale);
     baseReply = nextQuestion
@@ -1164,7 +1167,7 @@ export const generateChatReplyWithState = async ({
     stateWithLocale?.i18n?.preferredLocale ||
     stateWithLocale?.i18n?.locale ||
     "en";
-  if (locale && locale !== "en") {
+  if (locale && locale !== "en" && !isCataService(stateWithLocale?.service)) {
     try {
       const translated = await translateAssistantReply(openai, baseReply, {
         targetLocale: locale,

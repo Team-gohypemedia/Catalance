@@ -18,7 +18,7 @@ export function TeamSwitcher({ brand = BRAND_INFO }) {
       <SidebarMenuItem>
         <SidebarMenuButton
           size="lg"
-          className="w-full rounded-2xl bg-sidebar-accent/40 text-left data-[state=open]:bg-primary data-[state=open]:text-primary-foreground hover:bg-sidebar-accent/60 transition-colors overflow-hidden group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:w-[3rem] group-data-[collapsible=icon]:px-0"
+          className="w-full rounded-2xl bg-sidebar-accent/40 text-left data-[state=open]:bg-primary data-[state=open]:text-primary-foreground hover:bg-sidebar-accent/60 transition-colors overflow-hidden group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:px-0"
         >
           <div className="flex items-center gap-3 w-full group-data-[collapsible=icon]:justify-center">
             <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-xl shadow-inner text-base font-semibold uppercase">
