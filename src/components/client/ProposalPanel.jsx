@@ -82,19 +82,174 @@ const normalizeBudgetText = (text = "") => {
             }
         }
 
-        return `Budget: ${cleanValue}`;
-    });
+    return `Budget: ${cleanValue}`;
+  });
 };
 
-const ProposalPanel = ({ content }) => {
+const SAVED_PROPOSALS_KEY = "markify:savedProposals";
+const SAVED_PROPOSAL_KEY = "markify:savedProposal";
+
+const buildLocalProposalId = () =>
+    `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+const formatProposalContent = (text = "") =>
+    normalizeBudgetText(stripUnavailableSections(text));
+
+const parseProposalContent = (text = "", fallbackService = "") => {
+    const content = (text || "").trim();
+    const getValue = (label) => {
+        const match = content.match(new RegExp(`${label}:\\s*(.*)`, "i"));
+        return match?.[1]?.trim() || "";
+    };
+
+    const serviceName =
+        getValue("Service") ||
+        getValue("Service Type") ||
+        getValue("Category") ||
+        "";
+
+    const projectName =
+        getValue("Project Category") ||
+        getValue("Project Name") ||
+        getValue("Project Title") ||
+        getValue("Project") ||
+        "";
+
+    const projectTitle =
+        serviceName && projectName
+            ? `${serviceName}/${projectName}`
+            : projectName || serviceName || "Project Proposal";
+    const preparedFor = getValue("Prepared for") || getValue("For") || "Client";
+
+    let rawBudget = getValue("Budget") || "";
+    let budget = rawBudget;
+
+    try {
+        const lower = rawBudget.toLowerCase().replace(/,/g, "");
+        if (lower.includes("k")) {
+            const num = parseFloat(lower.replace(/[^0-9.]/g, ""));
+            if (!isNaN(num)) {
+                budget = Math.round(num * 1000).toString();
+            }
+        } else if (lower.includes("l") || lower.includes("lakh")) {
+            const num = parseFloat(lower.replace(/[^0-9.]/g, ""));
+            if (!isNaN(num)) {
+                budget = Math.round(num * 100000).toString();
+            }
+        } else {
+            const num = parseFloat(lower.replace(/[^0-9.]/g, ""));
+            if (!isNaN(num)) {
+                budget = num.toString();
+            }
+        }
+    } catch {
+        // fallback to raw string
+    }
+
+    const service = serviceName || fallbackService || "General services";
+
+    return {
+        service,
+        projectTitle,
+        preparedFor,
+        budget,
+        summary: content,
+        content,
+        raw: { content }
+    };
+};
+
+const getProposalSignature = (proposal = {}) => {
+    const title = (proposal.projectTitle || proposal.title || "").trim().toLowerCase();
+    const service = (proposal.serviceKey || proposal.service || "").trim().toLowerCase();
+    const summary = (proposal.summary || proposal.content || "").trim().toLowerCase();
+    if (!title && !service) {
+        return `${title}::${service}::${summary.slice(0, 120)}`;
+    }
+    return `${title}::${service}`;
+};
+
+const loadSavedProposals = () => {
+    if (typeof window === "undefined") return [];
+    const listRaw = window.localStorage.getItem(SAVED_PROPOSALS_KEY);
+    const singleRaw = window.localStorage.getItem(SAVED_PROPOSAL_KEY);
+    let proposals = [];
+
+    if (listRaw) {
+        try {
+            const parsed = JSON.parse(listRaw);
+            if (Array.isArray(parsed)) proposals = parsed;
+        } catch {
+            // ignore parse errors
+        }
+    }
+
+    if (singleRaw) {
+        try {
+            const parsed = JSON.parse(singleRaw);
+            if (parsed && (parsed.summary || parsed.content || parsed.projectTitle)) {
+                const signature = getProposalSignature(parsed);
+                const exists = proposals.some((item) => getProposalSignature(item) === signature);
+                if (!exists) proposals = [...proposals, parsed];
+            }
+        } catch {
+            // ignore parse errors
+        }
+    }
+
+    return proposals.map((proposal) => ({
+        ...proposal,
+        id: proposal.id || proposal.localId || buildLocalProposalId()
+    }));
+};
+
+const upsertSavedProposals = (existing, incoming) => {
+    const next = Array.isArray(existing) ? [...existing] : [];
+    const additions = Array.isArray(incoming) ? incoming : [];
+
+    additions.forEach((proposal) => {
+        if (!proposal) return;
+        const normalized = {
+            ...proposal,
+            id: proposal.id || proposal.localId || buildLocalProposalId()
+        };
+        const signature = getProposalSignature(normalized);
+        const index = next.findIndex((item) => getProposalSignature(item) === signature);
+        if (index >= 0) {
+            const current = next[index];
+            next[index] = { ...current, ...normalized, id: current.id || normalized.id };
+        } else {
+            next.push(normalized);
+        }
+    });
+
+    return next;
+};
+
+const persistSavedProposals = (proposals, activeId) => {
+    if (typeof window === "undefined") return;
+    if (!Array.isArray(proposals) || proposals.length === 0) {
+        window.localStorage.removeItem(SAVED_PROPOSALS_KEY);
+        window.localStorage.removeItem(SAVED_PROPOSAL_KEY);
+        return;
+    }
+
+    window.localStorage.setItem(SAVED_PROPOSALS_KEY, JSON.stringify(proposals));
+    const active =
+        proposals.find((proposal) => proposal.id === activeId) || proposals[0];
+    if (active) {
+        window.localStorage.setItem(SAVED_PROPOSAL_KEY, JSON.stringify(active));
+    }
+};
+
+const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
     if (!content) return null;
 
     const navigate = useNavigate();
     const { user } = useAuth();
 
     const cleanContent = useMemo(() => {
-        const stripped = stripUnavailableSections(content);
-        return normalizeBudgetText(stripped);
+        return formatProposalContent(content);
     }, [content]);
 
     // Local state for editing
@@ -107,87 +262,63 @@ const ProposalPanel = ({ content }) => {
     }, [cleanContent]);
 
     // Parse from editableContent so updates reflect immediately in the title/budget
-    const parsed = useMemo(() => {
-        const getValue = (label) => {
-            const match = editableContent.match(new RegExp(`${label}:\\s*(.*)`, "i"));
-            return match?.[1]?.trim() || "";
-        };
-
-        const serviceName =
-            getValue("Service") ||
-            getValue("Service Type") ||
-            getValue("Category") ||
-            "";
-
-        const projectName =
-            getValue("Project Category") ||
-            getValue("Project Name") ||
-            getValue("Project Title") ||
-            getValue("Project") ||
-            "";
-
-        const projectTitle =
-            serviceName && projectName
-                ? `${serviceName}/${projectName}`
-                : projectName || serviceName || "Project Proposal";
-        const preparedFor = getValue("Prepared for") || getValue("For") || "Client";
-        
-        // Parse budget to clean numbers for dashboard logic
-        let rawBudget = getValue("Budget") || "";
-        let budget = rawBudget;
-
-        // Try to normalize "60k" -> "60000", "1.5L" -> "150000" if it contains text
-        try {
-           const lower = rawBudget.toLowerCase().replace(/,/g, "");
-           if (lower.includes("k")) {
-               const num = parseFloat(lower.replace(/[^0-9.]/g, ""));
-               if (!isNaN(num)) {
-                   budget = Math.round(num * 1000).toString();
-               }
-           } else if (lower.includes("l") || lower.includes("lakh")) {
-               const num = parseFloat(lower.replace(/[^0-9.]/g, ""));
-               if (!isNaN(num)) {
-                   budget = Math.round(num * 100000).toString();
-               }
-           } else {
-               // Just extract the number
-               const num = parseFloat(lower.replace(/[^0-9.]/g, ""));
-               if (!isNaN(num)) {
-                   budget = num.toString();
-               }
-           }
-        } catch (e) {
-           // fallback to raw string
-        }
-
-        const service = serviceName || "General services";
-
-        return {
-            service,
-            projectTitle,
-            preparedFor,
-            budget, // This is now a clean string number "60000" or raw text if fail
-            summary: editableContent,
-            raw: { content: editableContent }
-        };
-    }, [editableContent]);
+    const parsed = useMemo(
+        () => parseProposalContent(editableContent, activeServiceKey),
+        [editableContent, activeServiceKey]
+    );
 
     // Accept and proceed to dashboard - saves to dashboard view only, NOT to drafts
     const handleAccept = () => {
         if (typeof window === "undefined") return;
-        
-        // Save proposal WITHOUT isSavedDraft flag - this means it shows in Dashboard
-        // but NOT in the Proposal Drafts page
-        const payload = {
-            ...parsed,
-            createdAt: new Date().toISOString(),
-            // NOTE: No savedAt or isSavedDraft flag - so it won't appear in drafts
-            // User must click "Save" on Dashboard to save to drafts
-        };
-        window.localStorage.setItem("markify:savedProposal", JSON.stringify(payload));
+
+        const now = new Date().toISOString();
+        const hasMultiProposals = Array.isArray(proposals) && proposals.length > 0;
+        const proposalsToSave = hasMultiProposals
+            ? proposals
+                .map((item) => {
+                    const serviceKey = item?.serviceKey || "";
+                    const rawContent = item?.message?.content || item?.content || "";
+                    if (!rawContent) return null;
+                    const normalizedContent =
+                        serviceKey && serviceKey === activeServiceKey
+                            ? editableContent
+                            : formatProposalContent(rawContent);
+                    const parsedContent = parseProposalContent(normalizedContent, serviceKey);
+                    return {
+                        ...parsedContent,
+                        serviceKey,
+                        createdAt: now,
+                        updatedAt: now
+                    };
+                })
+                .filter(Boolean)
+            : [
+                {
+                    ...parsed,
+                    serviceKey: activeServiceKey,
+                    createdAt: now,
+                    updatedAt: now
+                }
+            ];
+
+        const existing = loadSavedProposals();
+        const merged = upsertSavedProposals(existing, proposalsToSave);
+        const activeTarget =
+            proposalsToSave.find((proposal) => proposal.serviceKey === activeServiceKey) ||
+            proposalsToSave[0];
+        const activeSignature = activeTarget ? getProposalSignature(activeTarget) : null;
+        const activeMatch = activeSignature
+            ? merged.find((proposal) => getProposalSignature(proposal) === activeSignature)
+            : merged[merged.length - 1];
+
+        persistSavedProposals(merged, activeMatch?.id);
         window.localStorage.removeItem("markify:savedProposalSynced");
-        
-        toast.success("Proposal accepted! Redirecting to dashboard...");
+
+        toast.success(
+            proposalsToSave.length > 1
+                ? "Proposals accepted! Redirecting to dashboard..."
+                : "Proposal accepted! Redirecting to dashboard..."
+        );
         
         if (user?.role === "CLIENT") {
             navigate("/client");

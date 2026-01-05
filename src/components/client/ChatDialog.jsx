@@ -48,6 +48,12 @@ const buildIntroMessage = (serviceName = "") => {
     label && lower !== "default" && lower !== "project" ? label : DEFAULT_INTRO_SERVICE;
   return `Hi! I see you're interested in ${serviceLabel}. What's your name? Let's get started.\n[QUESTION_KEY: name]`;
 };
+const createSharedContextId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `sc_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+};
 
 const ChatDialog = ({ isOpen, onClose, service, services }) => {
   const serviceList = useMemo(() => {
@@ -77,6 +83,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
   const responseTimeoutRef = useRef(null);
   const multiServiceSessionsRef = useRef(new Map());
   const completedServiceRef = useRef(new Set());
+  const sharedContextIdRef = useRef(null);
   const activeService = serviceList[activeServiceIndex] || service;
   const serviceKey = activeService?.title || "Project";
   const serviceStateRef = useRef(new Map());
@@ -100,6 +107,13 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
       clearTimeout(responseTimeoutRef.current);
       responseTimeoutRef.current = null;
     }
+  };
+
+  const ensureSharedContextId = () => {
+    if (!sharedContextIdRef.current) {
+      sharedContextIdRef.current = createSharedContextId();
+    }
+    return sharedContextIdRef.current;
   };
 
   const startResponseTimeout = (content) => {
@@ -134,6 +148,12 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
     multiServiceSessionsRef.current = new Map();
     completedServiceRef.current = new Set();
   }, [isMultiService, serviceListSignature]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      sharedContextIdRef.current = null;
+    }
+  }, [isOpen, serviceListSignature]);
 
   useEffect(() => {
     const previousKey = previousServiceKeyRef.current;
@@ -541,7 +561,8 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
       mode: "assistant",
       ephemeral: isLocalhost,
       history: filteredHistory,
-      serviceKey
+      serviceKey,
+      sharedContextId: ensureSharedContextId()
     };
 
     if (useSocket && socketRef.current) {
@@ -1117,7 +1138,11 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                   ))}
                 </div>
               )}
-              <ProposalPanel content={selectedProposalMessage?.content} />
+              <ProposalPanel
+                content={selectedProposalMessage?.content}
+                proposals={isMultiService ? proposalMessages : null}
+                activeServiceKey={activeProposalServiceKey}
+              />
             </div>
           )}
         </div>
