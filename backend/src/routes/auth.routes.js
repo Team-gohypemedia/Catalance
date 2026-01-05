@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   signupHandler,
   loginHandler,
+  googleLoginHandler,
   profileHandler,
   updateProfileHandler,
   forgotPasswordHandler,
@@ -27,6 +28,7 @@ authRouter.post("/signup", validateResource(createUserSchema), signupHandler);
 authRouter.post("/verify-otp", verifyOtpHandler);
 authRouter.post("/resend-otp", resendOtpHandler);
 authRouter.post("/login", validateResource(loginSchema), loginHandler);
+authRouter.post("/google-login", googleLoginHandler);
 authRouter.get("/profile", requireAuth, profileHandler);
 authRouter.put("/profile", requireAuth, updateProfileHandler);
 

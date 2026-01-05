@@ -1,16 +1,16 @@
 export const SOP_TEMPLATES = {
   WEBSITE: {
     phases: [
-      { id: "1", name: "Planning & Design", status: "in-progress", progress: 40 },
+      { id: "1", name: "Planning & Design", status: "in-progress", progress: 0 },
       { id: "2", name: "Development & Integrations", status: "pending", progress: 0 },
       { id: "3", name: "Content Integration & Testing", status: "pending", progress: 0 },
       { id: "4", name: "Launch & Post-Launch", status: "pending", progress: 0 }
     ],
     tasks: [
       // Phase 1
-      { id: "1", title: "Define website goals and target audience", phase: "1", status: "completed" },
-      { id: "2", title: "Create sitemap (main pages and navigation)", phase: "1", status: "completed" },
-      { id: "3", title: "Collect design references and inspirations", phase: "1", status: "in-progress" },
+      { id: "1", title: "Define website goals and target audience", phase: "1", status: "pending" },
+      { id: "2", title: "Create sitemap (main pages and navigation)", phase: "1", status: "pending" },
+      { id: "3", title: "Collect design references and inspirations", phase: "1", status: "pending" },
       { id: "4", title: "Design wireframes and mockups for key pages", phase: "1", status: "pending" },
       { id: "5", title: "Finalize UI/UX, color palette, and typography", phase: "1", status: "pending" },
       // Phase 2

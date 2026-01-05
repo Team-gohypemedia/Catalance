@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Image } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Image, Globe, Linkedin, Github, Link } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -164,6 +164,130 @@ const COMMON_ISSUES = [
   "Harassment/Unprofessional Behavior",
   "Other"
 ];
+
+const ClientInfoCard = ({ client }) => {
+  if (!client) return null;
+
+  return (
+    <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          Client Information
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12 border border-border">
+            <AvatarImage src={client.avatar} alt={client.fullName} />
+            <AvatarFallback>{(client.fullName || "C").charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-foreground">{client.fullName || "Client Name"}</span>
+              {client.isVerified && (
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" fill="currentColor" stroke="white" />
+              )}
+            </div>
+            {(client.jobTitle || client.companyName) && (
+              <span className="text-xs text-muted-foreground">
+                {[client.jobTitle, client.companyName].filter(Boolean).join(" at ")}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-3 pt-2">
+          {/* Location */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="w-5 flex justify-center">
+              <span className="text-lg">📍</span> 
+            </div>
+            <span>{client.location || "Location not specified"}</span>
+          </div>
+
+          {/* Rating */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+             <div className="w-5 flex justify-center">
+              <span className="text-lg">⭐</span> 
+            </div>
+            <span>
+              {Number(client.rating || 0).toFixed(1)}/5 Rating ({client.reviewCount || 0} Reviews)
+            </span>
+          </div>
+
+          {/* Email */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+             <div className="w-5 flex justify-center">
+              <Mail className="w-4 h-4" /> 
+            </div>
+            <span className="truncate">{client.email}</span>
+          </div>
+        </div>
+
+        <div className="pt-2">
+           <Button variant="outline" className="w-full justify-center gap-2 h-9">
+              <CalendarIcon className="w-4 h-4" />
+              Schedule Meeting
+           </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const ClientAboutCard = ({ client }) => {
+  if (!client) return null;
+  const hasLinks = client.portfolio || client.linkedin || client.github;
+  
+  // Show if there is ANY content to show
+  if (!client.bio && !hasLinks) return null;
+
+  return (
+    <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          About & Links
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {client.bio && (
+            <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                {client.bio}
+            </div>
+        )}
+        
+        {hasLinks && (
+            <div className="flex flex-col gap-2 pt-1">
+                {client.portfolio && (
+                    <a href={client.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
+                        <div className="w-8 flex justify-center">
+                           <Globe className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <span className="truncate">Website / Portfolio</span>
+                    </a>
+                )}
+                 {client.linkedin && (
+                    <a href={client.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
+                         <div className="w-8 flex justify-center">
+                            <Linkedin className="w-4 h-4 text-muted-foreground group-hover:text-[#0077b5] transition-colors" />
+                         </div>
+                        <span className="truncate">LinkedIn Profile</span>
+                    </a>
+                )}
+                 {client.github && (
+                    <a href={client.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
+                        <div className="w-8 flex justify-center">
+                           <Github className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </div>
+                        <span className="truncate">GitHub Profile</span>
+                    </a>
+                )}
+            </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const FreelancerProjectDetailContent = () => {
   const { projectId } = useParams();
@@ -341,7 +465,9 @@ const FreelancerProjectDetailContent = () => {
             budget: normalizedBudget,
             currency: match.project.currency || match.currency || "₹",
             spent: Number(match.project.spent || 0),
-            manager: match.project.manager // Map manager details
+            spent: Number(match.project.spent || 0),
+            manager: match.project.manager, // Map manager details
+            owner: match.project.owner // Store full owner object for details card
           });
           setIsFallback(false);
           
@@ -957,34 +1083,20 @@ const FreelancerProjectDetailContent = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-foreground/90">Overall Progress</CardTitle>
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-foreground">{Math.round(overallProgress)}%</div>
-                <Progress value={overallProgress} className="mt-3 h-2" />
-              </CardContent>
-            </Card>
 
-            <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-foreground/90">Completed Phases</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-foreground">
-                  {completedPhases}/{derivedPhases.length}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">phases completed</p>
-              </CardContent>
-            </Card>
-          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-foreground/90">Overall Progress</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-semibold text-foreground">{Math.round(overallProgress)}%</div>
+                  <Progress value={overallProgress} className="mt-3 h-2" />
+                </CardContent>
+              </Card>
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg text-foreground">Project Phases</CardTitle>
@@ -1084,6 +1196,10 @@ const FreelancerProjectDetailContent = () => {
             </div>
 
             <div className="space-y-4">
+              {/* Client Info Card - Top of sidebar */}
+              <ClientInfoCard client={project?.owner} />
+              <ClientAboutCard client={project?.owner} />
+
               {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="border-b border-border/60">

@@ -63,6 +63,13 @@ model User {
   phone        String?    // Contact number
   avatar       String?    // Profile image URL
   
+  // Extended Profile
+  jobTitle     String?
+  companyName  String?
+  location     String?
+  rating       Decimal?   @db.Decimal(3, 1) @default(0)
+  reviewCount  Int        @default(0)
+  
   // Social/Portfolio
   portfolio    String?
   linkedin     String?

@@ -14,7 +14,7 @@ import {
   FieldSeparator
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { login, signup } from "@/lib/api-client";
+import { login, loginWithGoogle } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { signInWithGoogle } from "@/lib/firebase";
@@ -101,27 +101,13 @@ function Login({ className, ...props }) {
     try {
       // Sign in with Firebase Google
       const firebaseUser = await signInWithGoogle();
+      const idToken = await firebaseUser.getIdToken();
       
-      // Try to log in with the Google email
-      let authPayload;
-      try {
-        // First try to log in (existing user)
-        authPayload = await login({
-          email: firebaseUser.email,
-          password: firebaseUser.uid // Use Firebase UID as password for Google users
-        });
-      } catch (loginError) {
-        // If login fails, create a new account
-        authPayload = await signup({
-          fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
-          email: firebaseUser.email,
-          password: firebaseUser.uid, // Use Firebase UID as password
-          role: "CLIENT"
-        });
-      }
+      // Perform backend login with Google token
+      const authPayload = await loginWithGoogle(idToken);
       
       setAuthSession(authPayload?.user, authPayload?.accessToken);
-      toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);
+      toast.success(`Welcome, ${authPayload?.user?.fullName || 'User'}!`);
       
       const nextRole = authPayload?.user?.role?.toUpperCase();
       const redirectTo = location?.state?.redirectTo;

@@ -1,6 +1,8 @@
+
 import { asyncHandler } from "../utils/async-handler.js";
 import {
   authenticateUser,
+  authenticateWithGoogle,
   getUserById,
   registerUser,
   requestPasswordReset,
@@ -31,6 +33,11 @@ export const resendOtpHandler = asyncHandler(async (req, res) => {
 
 export const loginHandler = asyncHandler(async (req, res) => {
   const authPayload = await authenticateUser(req.body);
+  res.json({ data: authPayload });
+});
+
+export const googleLoginHandler = asyncHandler(async (req, res) => {
+  const authPayload = await authenticateWithGoogle(req.body);
   res.json({ data: authPayload });
 });
 

@@ -70,8 +70,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
+
+const generateGradient = (id) => {
+  if (!id) return "bg-[#FFD700]";
+  
+  // Simple hash function to generate a consistent seed
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  // Generate two colors
+  const c1 = Math.abs(hash % 360);
+  const c2 = (c1 + 40) % 360; // Complementary-ish or adjacent
+
+  return `linear-gradient(135deg, hsl(${c1}, 80%, 60%), hsl(${c2}, 80%, 50%))`;
+};
 
 // ==================== Stats Card Component ====================
 const StatsCard = ({ title, value, trend, trendType = "up", icon: Icon, accentColor = "primary" }) => {
@@ -404,7 +425,9 @@ const ClientDashboardContent = () => {
     
     const activeProjectsCount = uniqueProjects.filter((p) => {
       const status = (p.status || "").toUpperCase();
-      return status === "IN_PROGRESS" || status === "OPEN" || status === "AWAITING_PAYMENT";
+      // Only count projects where payment is done (IN_PROGRESS)
+      // Exclude OPEN (proposals) and AWAITING_PAYMENT
+      return status === "IN_PROGRESS";
     }).length;
 
     const totalBudget = uniqueProjects
@@ -1105,7 +1128,7 @@ const ClientDashboardContent = () => {
 
               {/* Freelancer Selection Dialog */}
               <Dialog open={showFreelancerSelect} onOpenChange={setShowFreelancerSelect}>
-                <DialogContent className="max-w-[95vw] w-[95vw] sm:max-w-[85vw] md:max-w-[80vw] lg:max-w-[75vw] lg:left-[calc(50%+140px)] h-[85vh] flex flex-col p-6">
+                <DialogContent className="max-w-[95vw] w-[95vw] sm:max-w-[85vw] md:max-w-[80vw] lg:max-w-[75vw] h-[85vh] flex flex-col p-6">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl">
                       <Send className="w-5 h-5 text-primary" />
@@ -1186,19 +1209,22 @@ const ClientDashboardContent = () => {
                             return (
                           <div 
                             key={freelancer.id} 
-                            className="relative flex flex-col items-center bg-card rounded-[2rem] shadow-sm border border-border/40 overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer h-full min-h-[400px]"
+                            className="relative flex flex-col items-center bg-card rounded-xl shadow-sm border border-border/40 overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer h-full min-h-[320px]"
                             onClick={() => {
                               setViewingFreelancer(freelancer);
                               setShowFreelancerProfile(true);
                             }}
                           >
-                             {/* Yellow Header */}
-                             <div className="w-full h-32 bg-[#FFD700] flex items-center justify-center"></div>
+                             {/* Dynamic Gradient Header */}
+                             <div 
+                               className="w-full h-32 flex items-center justify-center transition-all duration-500"
+                               style={{ background: generateGradient(freelancer.id || freelancer.name) }}
+                             ></div>
 
                              {/* Avatar */}
                              <div className="absolute top-16">
-                               <div className="rounded-full p-1.5 bg-background shadow-sm">
-                                 <Avatar className="w-28 h-28 border-2 border-background">
+                                <div className="rounded-full">
+                                  <Avatar className="w-28 h-28 bg-card">
                                    <AvatarImage src={freelancer.avatar} className="object-cover" />
                                    <AvatarFallback className="bg-primary/20 text-primary text-3xl font-bold">
                                       {(freelancer.fullName || freelancer.name || "F").charAt(0)}
@@ -1212,52 +1238,97 @@ const ClientDashboardContent = () => {
                                 <h3 className="text-2xl font-bold mt-2 text-foreground">{freelancer.fullName || freelancer.name}</h3>
                                 <p className="text-sm text-muted-foreground font-medium mb-5">{freelancer.role || "Freelancer"}</p>
 
-                                {/* Social Icons Row */}
-                                <div className="flex gap-4 mb-8">
-                                  {[Facebook, Twitter, Instagram, Youtube].map((Icon, idx) => (
-                                     <div key={idx} className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform" 
-                                       style={{ backgroundColor: idx===0 ? '#3b5998' : idx===1 ? '#1da1f2' : idx===2 ? '#e1306c' : '#ff0000' }}>
-                                       <Icon className="w-4 h-4 fill-current" />
-                                     </div>
-                                  ))}
+                                {/* Skills Row */}
+                                <div className="flex flex-wrap justify-center gap-2 mb-4 px-2 min-h-[40px]">
+                                  {Array.isArray(freelancer.skills) && freelancer.skills.length > 0 ? (
+                                    freelancer.skills.slice(0, 3).map((skill, idx) => (
+                                      <Badge 
+                                        key={idx} 
+                                        variant="secondary" 
+                                        className="bg-primary/5 hover:bg-primary/10 text-primary border-primary/10 transition-colors"
+                                      >
+                                        {skill}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">No specific skills listed</span>
+                                  )}
+                                  {Array.isArray(freelancer.skills) && freelancer.skills.length > 3 && (
+                                    <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">
+                                      +{freelancer.skills.length - 3} more
+                                    </Badge>
+                                  )}
                                 </div>
-
+                                  
+                                {/* Project Link with Hover Preview */}
+                                {(() => {
+                                  let project = null;
+                                  if (Array.isArray(freelancer.portfolioProjects) && freelancer.portfolioProjects.length > 0) {
+                                    project = freelancer.portfolioProjects.find(p => p.link || p.url);
+                                  } else if (typeof freelancer.portfolio === 'string' && freelancer.portfolio.startsWith('[')) {
+                                    try { 
+                                      const parsed = JSON.parse(freelancer.portfolio);
+                                      if (Array.isArray(parsed)) project = parsed.find(p => p.link || p.url);
+                                    } catch(e) {}
+                                  }
+                                  
+                                  if (project && (project.link || project.url)) {
+                                    return (
+                                      <div className="mb-6 flex flex-col items-center gap-2">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</p>
+                                        <HoverCard>
+                                          <HoverCardTrigger asChild>
+                                            <a 
+                                              href={project.link || project.url} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium max-w-[200px]"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                              <span className="truncate">{project.title || "View Project"}</span>
+                                            </a>
+                                          </HoverCardTrigger>
+                                          <HoverCardContent className="w-64 p-0 overflow-hidden" align="center">
+                                            {(project.image || project.imageUrl || project.thumbnail) ? (
+                                              <div className="w-full aspect-video bg-muted relative">
+                                                <img 
+                                                  src={project.image || project.imageUrl || project.thumbnail} 
+                                                  alt={project.title || "Project preview"} 
+                                                  className="w-full h-full object-cover"
+                                                />
+                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                                  <p className="text-white text-xs font-bold truncate">{project.title || "Project Preview"}</p>
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div className="p-3">
+                                                 <p className="font-semibold text-sm">{project.title || "Project Link"}</p>
+                                                 <p className="text-xs text-muted-foreground break-all mt-1">{project.link || project.url}</p>
+                                              </div>
+                                            )}
+                                          </HoverCardContent>
+                                        </HoverCard>
+                                      </div>
+                                    );
+                                  }
+                                  return <div className="mb-6"></div>; // Spacer if no project
+                                })()}
                                 {/* Action Buttons */}
                                 <div className="flex gap-4 w-full px-4 mt-auto mb-6">
                                    <Button 
-                                      className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all"
+                                      className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
                                       onClick={(e) => {
                                          e.stopPropagation();
-                                         setShowFreelancerSelect(false);
                                          handleSendClick(freelancer);
                                       }}
                                    >
-                                      Select
-                                   </Button>
-                                   <Button 
-                                      className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all"
-                                      onClick={(e) => {
-                                         e.stopPropagation();
-                                         setViewingFreelancer(freelancer);
-                                         setShowFreelancerProfile(true);
-                                      }}
-                                   >
-                                      Profile
+                                      <Send className="w-4 h-4" />
+                                      Send Proposal
                                    </Button>
                                 </div>
 
-                                {/* Footer Stats Row */}
-                                <div className="w-full pt-5 border-t border-dashed border-border/50 flex justify-center gap-8 text-muted-foreground text-sm font-semibold">
-                                   <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors">
-                                      <Heart className="w-4 h-4" /> {freelancer.rating || "5.0"}
-                                   </div>
-                                   <div className="flex items-center gap-1.5 hover:text-blue-500 transition-colors">
-                                      <MessageCircle className="w-4 h-4" /> 20K
-                                   </div>
-                                   <div className="flex items-center gap-1.5 hover:text-green-500 transition-colors">
-                                       <Send className="w-4 h-4" /> 12K
-                                   </div>
-                                </div>
+
                              </div>
                           </div>
                             );
@@ -1687,93 +1758,168 @@ const ClientDashboardContent = () => {
               </Dialog>
 
               {/* Active Projects Table - Only show when projects exist */}
-              {projects.length > 0 && (
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold">Active Projects</h3>
-                  <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/project")}>
-                    View All <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
+              {/* Active Projects Table - IN_PROGRESS & AWAITING_PAYMENT */}
+              {(() => {
+                const activeProjectsList = uniqueProjects.filter(p => 
+                  p.status === "IN_PROGRESS" || p.status === "AWAITING_PAYMENT"
+                );
 
-                <Card className="overflow-hidden border-border/60">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs font-semibold uppercase tracking-wider">Project Name</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wider">Status</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wider">Freelancer</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wider">Budget</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {isLoading ? (
-                        [1, 2, 3].map((i) => (
-                          <TableRow key={i}>
-                            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
+                if (activeProjectsList.length === 0) return null;
+
+                return (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold">Active Projects</h3>
+                      <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/project")}>
+                        View All <ArrowRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+
+                    <Card className="overflow-hidden border-border/60">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Project Name</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Status</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Freelancer</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Budget</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">Action</TableHead>
                           </TableRow>
-                        ))
-                      ) : (
-                        uniqueProjects
-                          .filter(p => {
-                            // Hide DRAFT and COMPLETED
-                            if (p.status === "DRAFT" || p.status === "COMPLETED") return false;
-                            
-                            // For OPEN projects, only show if there's at least one pending or accepted proposal
-                            if (p.status === "OPEN") {
-                              const hasActiveProposal = (p.proposals || []).some(
-                                prop => ["PENDING", "ACCEPTED"].includes((prop.status || "").toUpperCase())
-                              );
-                              return hasActiveProposal;
-                            }
-                            
-                            return true;
-                          })
-                          .slice(0, 5)
-                          .map((project) => {
-                          const statusInfo = getStatusBadge(project.status);
-                          const acceptedProposal = (project.proposals || []).find(
-                            (p) => (p.status || "").toUpperCase() === "ACCEPTED"
-                          );
-                          return (
-                            <TableRow key={project.id} className="group hover:bg-muted/50 transition-colors">
-                              <TableCell>
-                                <div className="font-bold">{project.title}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(project.createdAt).toLocaleDateString()}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant={statusInfo.variant === "success" ? "default" : "secondary"}
-                                  className={
-                                    statusInfo.variant === "success" 
-                                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800" 
-                                      : statusInfo.variant === "warning"
-                                      ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800"
-                                      : ""
-                                  }
-                                >
-                                  {statusInfo.label}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {acceptedProposal?.freelancer ? (
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="w-6 h-6">
-                                      <AvatarFallback className="text-xs">
-                                        {acceptedProposal.freelancer.fullName?.charAt(0) || "F"}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-sm">{acceptedProposal.freelancer.fullName?.split(" ")[0] || "Freelancer"}</span>
+                        </TableHeader>
+                        <TableBody>
+                          {activeProjectsList.slice(0, 5).map((project) => {
+                            const statusInfo = getStatusBadge(project.status);
+                            const acceptedProposal = (project.proposals || []).find(
+                              (p) => (p.status || "").toUpperCase() === "ACCEPTED"
+                            );
+                            return (
+                              <TableRow key={project.id} className="group hover:bg-muted/50 transition-colors">
+                                <TableCell>
+                                  <div className="font-bold">{project.title}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {new Date(project.createdAt).toLocaleDateString()}
                                   </div>
-                                ) : (
-                                  (() => {
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={statusInfo.variant === "success" ? "default" : "secondary"}
+                                    className={
+                                      statusInfo.variant === "success" 
+                                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800" 
+                                        : ""
+                                    }
+                                  >
+                                    {statusInfo.label}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {acceptedProposal?.freelancer && (
+                                    <div className="flex items-center gap-2">
+                                      <Avatar className="w-6 h-6">
+                                        <AvatarFallback className="text-xs">
+                                          {acceptedProposal.freelancer.fullName?.charAt(0) || "F"}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-sm">{acceptedProposal.freelancer.fullName?.split(" ")[0] || "Freelancer"}</span>
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-sm font-medium">
+                                    ₹{(project.budget || 0).toLocaleString()}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {project.status === "AWAITING_PAYMENT" ? (
+                                    <Button 
+                                      size="sm" 
+                                      className="bg-green-600 hover:bg-green-700 text-white h-8 w-full sm:w-auto text-xs sm:text-sm font-medium shadow-sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePaymentClick(project);
+                                      }}
+                                    >
+                                      {(() => {
+                                        const budget = parseInt(project.budget) || 0;
+                                        if (budget > 200000) return "Pay 25%";
+                                        if (budget >= 50000) return "Pay 33%";
+                                        return "Pay 50%";
+                                      })()}
+                                    </Button>
+                                  ) : (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="text-muted-foreground hover:text-primary"
+                                      onClick={() => navigate(`/client/project/${project.id}`)}
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </Card>
+                  </div>
+                );
+              })()}
+
+              {/* Active Proposals Table - OPEN projects */}
+              {(() => {
+                const activeProposalsList = uniqueProjects.filter(p => {
+                  if (p.status !== "OPEN") return false;
+                  // Only show if there's at least one pending or accepted proposal
+                  return (p.proposals || []).some(
+                    prop => ["PENDING", "ACCEPTED"].includes((prop.status || "").toUpperCase())
+                  );
+                });
+
+                if (activeProposalsList.length === 0) return null;
+
+                return (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold">Active Proposals</h3>
+                      <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/proposal")}>
+                        View All <ArrowRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+
+                    <Card className="overflow-hidden border-border/60">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Project Name</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Status</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Freelancer</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Budget</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {activeProposalsList.slice(0, 5).map((project) => {
+                            const statusInfo = getStatusBadge(project.status);
+                            return (
+                              <TableRow key={project.id} className="group hover:bg-muted/50 transition-colors">
+                                <TableCell>
+                                  <div className="font-bold">{project.title}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {new Date(project.createdAt).toLocaleDateString()}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant="secondary"
+                                    className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800"
+                                  >
+                                    {statusInfo.label}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {(() => {
                                     const pendingProposals = (project.proposals || [])
                                       .filter(p => (p.status || "").toUpperCase() === "PENDING")
                                       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -1810,33 +1956,15 @@ const ClientDashboardContent = () => {
                                       );
                                     }
                                     return <span className="text-sm text-muted-foreground">Not assigned</span>;
-                                  })()
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm font-medium">
-                                  ₹{(project.budget || 0).toLocaleString()}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {project.status === "AWAITING_PAYMENT" ? (
-                                  <Button 
-                                    size="sm" 
-                                    className="bg-green-600 hover:bg-green-700 text-white h-8 w-full sm:w-auto text-xs sm:text-sm font-medium shadow-sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePaymentClick(project);
-                                    }}
-                                  >
-                                    {(() => {
-                                      const budget = parseInt(project.budget) || 0;
-                                      if (budget > 200000) return "Pay 25%";
-                                      if (budget >= 50000) return "Pay 33%";
-                                      return "Pay 50%";
-                                    })()}
-                                  </Button>
-                                ) : project.status === "OPEN" ? (
-                                  (() => {
+                                  })()}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-sm font-medium">
+                                    ₹{(project.budget || 0).toLocaleString()}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {(() => {
                                     // Check if any pending proposal is older than 24 hours
                                     const pendingProposals = (project.proposals || []).filter(
                                       p => (p.status || "").toUpperCase() === "PENDING"
@@ -1864,55 +1992,19 @@ const ClientDashboardContent = () => {
                                       );
                                     }
                                     return <span className="text-xs text-muted-foreground">Waiting...</span>;
-                                  })()
-                                ) : (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="text-muted-foreground hover:text-primary"
-                                    onClick={() => navigate(`/client/project/${project.id}`)}
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </Card>
-              </div>
-              )}
-
-              {/* Activity Timeline - Only show when projects exist */}
-              {projects.length > 0 && (
-              <Card className="border-border/60">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold">Activity Timeline</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative pl-4 border-l-2 border-dashed border-border space-y-6">
-                    {projects.slice(0, 2).map((project, idx) => (
-                      <div key={project.id} className="relative">
-                        <div className={`absolute -left-[23px] top-1 h-3.5 w-3.5 rounded-full border-2 border-background ${
-                          idx === 0 ? "bg-primary" : "bg-muted-foreground/50"
-                        }`} />
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                          <span className="text-xs font-bold text-muted-foreground w-16">
-                            {new Date(project.updatedAt || project.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <p className="text-sm">
-                            Project <span className="text-primary font-medium">{project.title}</span> was updated.
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                                  })()}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
-              )}
+                );
+              })()}
+
+
             </div>
 
             {/* Right Sidebar */}
@@ -1925,6 +2017,13 @@ const ClientDashboardContent = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
+                  <Button 
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                    onClick={() => navigate("/service")}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Proposal
+                  </Button>
 
                   <Button 
                     variant="outline" 
@@ -1946,7 +2045,7 @@ const ClientDashboardContent = () => {
               {/* Talent Snapshot */}
               <Card className="border-border/60">
                 <CardHeader className="pb-2 flex-row items-center justify-between">
-                  <CardTitle className="text-lg font-bold">Talent Snapshot</CardTitle>
+                  <CardTitle className="text-lg font-bold">Active Chat</CardTitle>
                   <Button 
                     variant="link" 
                     className="text-primary p-0 h-auto text-sm font-semibold"
@@ -1975,12 +2074,42 @@ const ClientDashboardContent = () => {
                 </CardContent>
               </Card>
 
-              {/* Budget Utilization */}
-              <BudgetChart
-                percentage={budgetPercentage}
-                remaining={metrics.totalBudget - metrics.totalSpent}
-                spent={metrics.totalSpent}
-              />
+              {/* Activity Timeline - Only show when projects exist */}
+              {projects.length > 0 && (
+              <Card className="border-border/60">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold">Activity Timeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative pl-4 border-l-2 border-dashed border-border space-y-6">
+                    {projects
+                      .filter(p => ["IN_PROGRESS", "COMPLETED"].includes((p.status || "").toUpperCase()))
+                      .slice(0, 2)
+                      .map((project, idx) => (
+                      <div 
+                        key={project.id} 
+                        className="relative cursor-pointer hover:bg-muted/50 transition-colors rounded-lg p-2 -ml-2"
+                        onClick={() => navigate(`/client/project/${project.id}`)}
+                      >
+                        <div className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
+                          idx === 0 ? "bg-primary" : "bg-muted-foreground/50"
+                        }`} />
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
+                          <span className="text-xs font-bold text-muted-foreground w-16 flex-shrink-0">
+                            {new Date(project.updatedAt || project.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <p className="text-sm">
+                            Project <span className="text-primary font-medium hover:underline">{project.title}</span> SOP was updated.
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              )}
+
+
             </div>
           </div>
         </div>

@@ -22,7 +22,7 @@ const sameOriginBaseUrl =
 
 const localDevBaseUrl =
   safeWindow && (isLocal5173 || isLocal5174)
-    ? "http://localhost:5000/api"
+    ? "http://localhost:5001/api"
     : null;
 
 export const API_BASE_URL =
@@ -66,14 +66,29 @@ export const request = async (path, options = {}) => {
     ? { Authorization: `Bearer ${session.accessToken}` }
     : {};
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...authHeaders,
-      ...(options.headers || {})
+
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), options.timeout || 15000);
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        ...defaultHeaders,
+        ...authHeaders,
+        ...(options.headers || {})
+      }
+    });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
     }
-  });
+    throw error;
+  } finally {
+    clearTimeout(id);
+  }
 
   const contentType = response.headers.get("content-type") || "";
   const isJsonResponse = contentType.includes("application/json");
@@ -169,10 +184,10 @@ export const resetPassword = ({ token, password }) => {
   });
 };
 
-export const loginWithGoogle = (idToken) => {
-  return request("/auth/google", {
+export const loginWithGoogle = (token) => {
+  return request("/auth/google-login", {
     method: "POST",
-    body: JSON.stringify({ idToken })
+    body: JSON.stringify({ token }) // Backend expects { token }
   });
 };
 

@@ -166,10 +166,8 @@ export const resendOtp = async (email) => {
       });
     } catch (error) {
       console.error("Failed to send OTP email:", error);
-      console.log(`[DEV] New OTP for ${user.email}: ${otpCode}`);
     }
   } else {
-    console.log(`[DEV] New OTP for ${user.email}: ${otpCode}`);
   }
 
   return {
@@ -229,10 +227,8 @@ export const authenticateUser = async ({ email, password }) => {
         });
       } catch (error) {
         console.error("Failed to send OTP email:", error);
-        console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
       }
     } else {
-      console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
     }
 
     // Return special response indicating verification is needed
@@ -241,6 +237,58 @@ export const authenticateUser = async ({ email, password }) => {
       email: user.email,
       message: "Please verify your email. A new verification code has been sent."
     };
+  }
+
+  return {
+    user: sanitizeUser(user),
+    accessToken: issueAccessToken(user)
+  };
+};
+
+export const authenticateWithGoogle = async ({ token, role }) => {
+  const { verifyFirebaseToken } = await import("../../lib/firebase-admin.js");
+  
+  // Verify token with Firebase
+  const decodedToken = await verifyFirebaseToken(token);
+  const { email, name, picture, uid } = decodedToken;
+
+  if (!email) {
+    throw new AppError("Google account does not have an email address", 400);
+  }
+
+  // Check if user exists
+  let user = await prisma.user.findUnique({
+    where: { email }
+  });
+
+  if (!user) {
+    // Create new user
+    // Generate a random password since they use Google auth
+    const randomPassword = crypto.randomBytes(16).toString("hex");
+    
+    user = await prisma.user.create({
+      data: {
+        email,
+        fullName: name || email.split("@")[0],
+        passwordHash: await hashUserPassword(randomPassword), // We still set a password to avoid null constraints if any
+        role: role || "CLIENT", // Default to CLIENT if not specified in request, though usually frontend might send it
+        isVerified: true, // Google users are verified by definition
+        // We can store the profile picture if we had a field for it, maybe update later
+        otpCode: null,
+        otpExpires: null,
+        status: "ACTIVE"
+      }
+    });
+
+    await maybeSendWelcomeEmail(user);
+  } else {
+    // If user exists but is not verified, verify them since they used Google
+    if (!user.isVerified) {
+       user = await prisma.user.update({
+         where: { id: user.id },
+         data: { isVerified: true }
+       });
+    }
   }
 
   return {

@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Globe, Linkedin, Github, Link } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -189,6 +189,130 @@ const mapStatus = (status = "") => {
   if (normalized === "COMPLETED") return "completed";
   if (normalized === "IN_PROGRESS" || normalized === "OPEN") return "in-progress";
   return "pending";
+};
+
+const FreelancerInfoCard = ({ freelancer }) => {
+  if (!freelancer) return null;
+
+  return (
+    <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          Freelancer Information
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12 border border-border">
+            <AvatarImage src={freelancer.avatar} alt={freelancer.fullName} />
+            <AvatarFallback>{(freelancer.fullName || "F").charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-foreground">{freelancer.fullName || "Freelancer Name"}</span>
+              {freelancer.isVerified && (
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" fill="currentColor" stroke="white" />
+              )}
+            </div>
+            {(freelancer.jobTitle || freelancer.companyName) && (
+              <span className="text-xs text-muted-foreground">
+                 {[freelancer.jobTitle, freelancer.companyName].filter(Boolean).join(" at ")}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-3 pt-2">
+          {/* Location */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="w-5 flex justify-center">
+              <span className="text-lg">📍</span> 
+            </div>
+            <span>{freelancer.location || "Location not specified"}</span>
+          </div>
+
+          {/* Rating */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+             <div className="w-5 flex justify-center">
+              <span className="text-lg">⭐</span> 
+            </div>
+            <span>
+              {Number(freelancer.rating || 0).toFixed(1)}/5 Rating ({freelancer.reviewCount || 0} Reviews)
+            </span>
+          </div>
+
+          {/* Email */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+             <div className="w-5 flex justify-center">
+              <Mail className="w-4 h-4" /> 
+            </div>
+            <span className="truncate">{freelancer.email}</span>
+          </div>
+        </div>
+
+        <div className="pt-2">
+           <Button variant="outline" className="w-full justify-center gap-2 h-9">
+              <CalendarIcon className="w-4 h-4" />
+              Schedule Meeting
+           </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const FreelancerAboutCard = ({ freelancer }) => {
+  if (!freelancer) return null;
+  const hasLinks = freelancer.portfolio || freelancer.linkedin || freelancer.github;
+  
+  // Show if there is ANY content to show
+  if (!freelancer.bio && !hasLinks) return null;
+
+  return (
+    <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          About & Links
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {freelancer.bio && (
+            <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                {freelancer.bio}
+            </div>
+        )}
+        
+        {hasLinks && (
+            <div className="flex flex-col gap-2 pt-1">
+                {freelancer.portfolio && (
+                    <a href={freelancer.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
+                        <div className="w-8 flex justify-center">
+                           <Globe className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <span className="truncate">Portfolio Website</span>
+                    </a>
+                )}
+                 {freelancer.linkedin && (
+                    <a href={freelancer.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
+                         <div className="w-8 flex justify-center">
+                            <Linkedin className="w-4 h-4 text-muted-foreground group-hover:text-[#0077b5] transition-colors" />
+                         </div>
+                        <span className="truncate">LinkedIn Profile</span>
+                    </a>
+                )}
+                 {freelancer.github && (
+                    <a href={freelancer.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
+                        <div className="w-8 flex justify-center">
+                           <Github className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </div>
+                        <span className="truncate">GitHub Profile</span>
+                    </a>
+                )}
+            </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 };
 
 const ProjectDashboard = () => {
@@ -615,6 +739,11 @@ const ProjectDashboard = () => {
 
   const remainingBudget = useMemo(() => Math.max(0, totalBudget - spentBudget), [spentBudget, totalBudget]);
 
+  const freelancer = useMemo(() => {
+    return project?.proposals?.find(p => p.status === "ACCEPTED")?.freelancer;
+  }, [project]);
+
+
   // Render ...
   // Update Documents Card to use `docs`
 
@@ -940,6 +1069,7 @@ const ProjectDashboard = () => {
   const handleVerifyTask = async (e, uniqueKey) => {
     e.stopPropagation();
     e.preventDefault();
+    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
 
     let newVerified;
 
@@ -1022,34 +1152,22 @@ const ProjectDashboard = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-foreground/90">Overall Progress</CardTitle>
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-foreground">{Math.round(overallProgress)}%</div>
-                <Progress value={overallProgress} className="mt-3 h-2" />
-              </CardContent>
-            </Card>
 
-            <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-foreground/90">Completed Phases</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-foreground">
-                  {completedPhases}/{activeSOP.phases.length}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">phases completed</p>
-              </CardContent>
-            </Card>
-          </div>
+
+
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
+                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-foreground/90">Overall Progress</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-semibold text-foreground">{Math.round(overallProgress)}%</div>
+                    <Progress value={overallProgress} className="mt-3 h-2" />
+                  </CardContent>
+                </Card>
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg text-foreground">Project Phases</CardTitle>
@@ -1160,6 +1278,10 @@ const ProjectDashboard = () => {
             </div>
 
             <div className="space-y-4">
+              {/* Freelancer Info Card */}
+              <FreelancerInfoCard freelancer={freelancer} />
+              <FreelancerAboutCard freelancer={freelancer} />
+
               {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="border-b border-border/60">
