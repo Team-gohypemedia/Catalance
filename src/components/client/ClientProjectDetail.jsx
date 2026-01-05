@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Globe, Linkedin, Github, Link, Link2, MapPin, Star, Info } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, Calendar as CalendarIcon, Link2, Info } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";

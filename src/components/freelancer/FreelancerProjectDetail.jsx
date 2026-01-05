@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Image, Globe, Linkedin, Github, Link2, BookOpen, Star, MapPin, Activity, Pencil, Check, X } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Image, Globe, Linkedin, Github, Link2, BookOpen, Star, MapPin, Activity, Pencil, Check, X, Info } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -341,6 +341,7 @@ const FreelancerProjectDetailContent = () => {
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
 
+  const [detailOpen, setDetailOpen] = useState(false);
   const [serverAvailableSlots, setServerAvailableSlots] = useState([]);
 
   useEffect(() => {
@@ -396,6 +397,223 @@ const FreelancerProjectDetailContent = () => {
   }, [date, serverAvailableSlots]);
 
 
+
+  // Handle reporting a dispute (same logic as client)
+  const renderProjectDescription = (options = {}) => {
+    const { showExtended = false } = options;
+    if (!project?.description) {
+      return <p className="text-sm text-muted-foreground">No project description available.</p>;
+    }
+
+    const desc = project.description;
+    const fieldNames = [
+      "Service",
+      "Project",
+      "Client",
+      "Website type",
+      "Tech stack",
+      "Pages",
+      "Timeline",
+      "Budget",
+      "Next Steps",
+      "Summary",
+      "Deliverables",
+      "Pages & Features",
+      "Core pages",
+      "Additional pages",
+      "Integrations",
+      "Payment Gateway",
+      "Designs",
+      "Hosting",
+      "Domain",
+      "Deployment"
+    ];
+    const fieldPattern = fieldNames.join("|");
+    const extractField = (fieldName) => {
+      const regex = new RegExp(
+        `${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`,
+        "is"
+      );
+      const match = desc.match(regex);
+      if (match) {
+        return match[1].replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim();
+      }
+      return null;
+    };
+
+    const service = extractField("Service");
+    const projectName = extractField("Project");
+    const client = extractField("Client");
+    const websiteType = extractField("Website type");
+    const techStack = extractField("Tech stack");
+    const timeline = extractField("Timeline");
+    const rawBudget = extractField("Budget");
+    let budget = rawBudget;
+    if (rawBudget) {
+      // Parse numeric value, reduce by 30%, and reformat
+      const numericBudget = parseFloat(rawBudget.replace(/[^0-9.]/g, ""));
+      if (!isNaN(numericBudget)) {
+        const reducedBudget = Math.round(numericBudget * 0.7);
+        const currency = rawBudget.match(/[A-Z$€£¥₹]+/i)?.[0] || "INR";
+        budget = `${currency} ${reducedBudget.toLocaleString()}`;
+      }
+    }
+    const hosting = extractField("Hosting");
+    const domain = extractField("Domain");
+    const integrations = extractField("Integrations");
+    const deployment = extractField("Deployment");
+
+    const summaryMatch = desc.match(
+      /Summary[:\s]+(.+?)(?=(?:\r?\n\s*(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps|Integrations|Designs|Hosting|Domain|Timeline)[:\s])|$)/is
+    );
+    const summary = summaryMatch
+      ? summaryMatch[1].replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim()
+      : null;
+
+    const deliverables = [];
+    const delivMatch = desc.match(/Deliverables[:\s-]+([^-]+)/i);
+    if (delivMatch) {
+      const items = delivMatch[1].split(/[,•]/);
+      items.forEach((item) => {
+        const trimmed = item.trim();
+        if (trimmed && trimmed.length > 3) {
+          deliverables.push(trimmed);
+        }
+      });
+    }
+
+    const fields = [
+      { label: "Service", value: service },
+      { label: "Project", value: projectName },
+      { label: "Client", value: client },
+      { label: "Website Type", value: websiteType },
+      { label: "Tech Stack", value: techStack },
+      { label: "Timeline", value: timeline },
+      ...(showExtended
+        ? [
+            { label: "Budget", value: budget },
+            { label: "Hosting", value: hosting },
+            { label: "Domain", value: domain },
+            { label: "Integrations", value: integrations },
+            { label: "Deployment", value: deployment },
+          ]
+        : []),
+    ].filter((f) => f.value);
+
+    const corePages = extractField("Core pages included") || extractField("Core pages");
+    const additionalPages =
+      extractField("Additional pages\\/features") || extractField("Additional pages");
+
+    const parsePagesString = (str) => {
+      if (!str) return [];
+      return str
+        .split(/[,]/)
+        .map((p) => p.replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim())
+        .filter(
+          (p) =>
+            p.length > 2 &&
+            !p.includes(":") &&
+            !p.toLowerCase().includes("additional") &&
+            !p.toLowerCase().includes("pages")
+        );
+    };
+
+    const corePagesArr = parsePagesString(corePages);
+    const additionalPagesArr = parsePagesString(additionalPages);
+
+    return (
+      <>
+        <div className="space-y-4">
+          {fields.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {fields.map((field, index) => (
+                <div key={index} className="text-sm">
+                  <span className="text-muted-foreground">{field.label}: </span>
+                  <span className="text-foreground font-medium">{field.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary && (
+            <div className="pt-2">
+              <p className="text-sm text-muted-foreground font-medium mb-1">Summary</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{summary}</p>
+            </div>
+          )}
+
+          {(corePagesArr.length > 0 || additionalPagesArr.length > 0) && (
+            <div className="pt-2">
+              <p className="text-sm text-muted-foreground font-medium mb-3">Pages & Features</p>
+              <div className="space-y-4">
+                {corePagesArr.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Core Pages:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {corePagesArr.map((page, index) => (
+                        <div
+                          key={index}
+                          className="text-xs bg-muted px-2 py-1.5 rounded-md text-foreground text-center truncate"
+                          title={page}
+                        >
+                          {page}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {additionalPagesArr.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Additional Pages/Features:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {additionalPagesArr.map((page, index) => (
+                        <div
+                          key={index}
+                          className="text-xs bg-primary/10 px-2 py-1.5 rounded-md text-foreground text-center truncate"
+                          title={page}
+                        >
+                          {page}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {deliverables.length > 0 && (
+            <div className="pt-2">
+              <p className="text-sm text-muted-foreground font-medium mb-2">Deliverables</p>
+              <ul className="space-y-1.5">
+                {deliverables.map((item, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-foreground">
+                    <span className="text-primary mt-1">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {fields.length === 0 && !summary && (
+            <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+          )}
+        </div>
+
+        {project?.notes && (
+          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <span className="font-medium">Note:</span> {project.notes}
+              </p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
 
   // Handle reporting a dispute (same logic as client)
   const handleReport = async () => {
@@ -1263,177 +1481,20 @@ const FreelancerProjectDetailContent = () => {
                 </CardContent>
               </Card>
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <CardTitle className="text-lg font-semibold text-foreground">Project Description</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setDetailOpen(true)}
+                    aria-label="View full project details"
+                  >
+                    <Info className="h-4 w-4" />
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Main Description */}
-                  {project?.description ? (
-                    <>
-                      {/* Parse and display all description fields */}
-                      {(() => {
-                        const desc = project.description;
-                        
-                        // Field patterns - extract value until next field name or end
-                        // Include Budget and Next Steps as terminators but we won't display them
-                        const fieldNames = ['Service', 'Project', 'Client', 'Website type', 'Tech stack', 'Pages', 'Timeline', 'Budget', 'Next Steps', 'Summary', 'Deliverables', 'Pages & Features', 'Core pages', 'Additional pages', 'Integrations', 'Payment Gateway', 'Designs', 'Hosting', 'Domain'];
-                        const fieldPattern = fieldNames.join('|');
-                        
-                        // Extract a field value - stops at next field name
-                        const extractField = (fieldName) => {
-                          const regex = new RegExp(`${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`, 'is');
-                          const match = desc.match(regex);
-                          if (match) {
-                            // Clean up - remove leading/trailing dashes and trim
-                            return match[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim();
-                          }
-                          return null;
-                        };
-                        
-                        const service = extractField('Service');
-                        const projectName = extractField('Project');
-                        const client = extractField('Client');
-                        const websiteType = extractField('Website type');
-                        const techStack = extractField('Tech stack');
-                        const pages = extractField('Pages');
-                        const timeline = extractField('Timeline');
-                        
-                        // Extract summary (everything after "Summary:" until next major field or end)
-                        const summaryMatch = desc.match(/Summary[:\s]+(.+?)(?=(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps)[:\s]|$)/is);
-                        const summary = summaryMatch ? summaryMatch[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim() : null;
-                        
-                        // Extract deliverables
-                        const deliverables = [];
-                        const delivMatch = desc.match(/Deliverables[:\s-]+([^-]+)/i);
-                        if (delivMatch) {
-                          const items = delivMatch[1].split(/[,•]/);
-                          items.forEach(item => {
-                            const trimmed = item.trim();
-                            if (trimmed && trimmed.length > 3) {
-                              deliverables.push(trimmed);
-                            }
-                          });
-                        }
-                        
-                        // Field items to display (excluding Budget, Next Steps)
-                        const fields = [
-                          { label: 'Service', value: service },
-                          { label: 'Project', value: projectName },
-                          { label: 'Client', value: client },
-                          { label: 'Website Type', value: websiteType },
-                          { label: 'Tech Stack', value: techStack },
-                          { label: 'Timeline', value: timeline },
-                        ].filter(f => f.value);
-                        
-                        // Extract pages from Core pages and Additional pages sections
-                        const corePages = extractField('Core pages included') || extractField('Core pages');
-                        const additionalPages = extractField('Additional pages\\/features') || extractField('Additional pages');
-                        
-                        // Parse pages into arrays - clean up dashes and section markers
-                        const parsePagesString = (str) => {
-                          if (!str) return [];
-                          // Split by comma and clean each item
-                          return str.split(/[,]/)
-                            .map(p => p.replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim())
-                            .filter(p => p.length > 2 && !p.includes(':') && !p.toLowerCase().includes('additional') && !p.toLowerCase().includes('pages'));
-                        };
-                        
-                        const corePagesArr = parsePagesString(corePages);
-                        const additionalPagesArr = parsePagesString(additionalPages);
-                        
-                        return (
-                          <div className="space-y-4">
-                            {/* Display structured fields */}
-                            {fields.length > 0 && (
-                              <div className="grid grid-cols-2 gap-3">
-                                {fields.map((field, index) => (
-                                  <div key={index} className="text-sm">
-                                    <span className="text-muted-foreground">{field.label}: </span>
-                                    <span className="text-foreground font-medium">{field.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            
-                            {/* Summary */}
-                            {summary && (
-                              <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-1">Summary</p>
-                                <p className="text-sm text-foreground leading-relaxed">{summary}</p>
-                              </div>
-                            )}
-                            
-                            {/* Pages & Features */}
-                            {(corePagesArr.length > 0 || additionalPagesArr.length > 0) && (
-                              <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-3">Pages & Features</p>
-                                <div className="space-y-4">
-                                  {corePagesArr.length > 0 && (
-                                    <div>
-                                      <p className="text-xs text-muted-foreground mb-2">Core Pages:</p>
-                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                        {corePagesArr.map((page, index) => (
-                                          <div key={index} className="text-xs bg-muted px-2 py-1.5 rounded-md text-foreground text-center truncate" title={page}>
-                                            {page}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {additionalPagesArr.length > 0 && (
-                                    <div>
-                                      <p className="text-xs text-muted-foreground mb-2">Additional Pages/Features:</p>
-                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                        {additionalPagesArr.map((page, index) => (
-                                          <div key={index} className="text-xs bg-primary/10 px-2 py-1.5 rounded-md text-foreground text-center truncate" title={page}>
-                                            {page}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Deliverables */}
-                            {deliverables.length > 0 && (
-                              <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-2">Deliverables</p>
-                                <ul className="space-y-1.5">
-                                  {deliverables.map((item, index) => (
-                                    <li key={index} className="flex items-start gap-2 text-sm text-foreground">
-                                      <span className="text-primary mt-1">•</span>
-                                      <span>{item}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            
-                            {/* If no structured fields found, show raw description */}
-                            {fields.length === 0 && !summary && (
-                              <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-                            )}
-                          </div>
-                        );
-                      })()}
-                      
-                      {/* Notes section - from project notes if available */}
-                      {project?.notes && (
-                        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                            <p className="text-sm text-amber-800 dark:text-amber-200">
-                              <span className="font-medium">Note:</span> {project.notes}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No project description available.</p>
-                  )}
+                  {renderProjectDescription({ showExtended: false })}
                 </CardContent>
               </Card>
 
@@ -1818,6 +1879,17 @@ const FreelancerProjectDetailContent = () => {
           </DialogFooter>
         </DialogContent>
 
+      </Dialog>
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Project Details</DialogTitle>
+            <DialogDescription>Full project description and scope.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4">
+            {renderProjectDescription({ showExtended: true })}
+          </div>
+        </DialogContent>
       </Dialog>
     </RoleAwareSidebar>
   );
