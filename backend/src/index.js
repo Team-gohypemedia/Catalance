@@ -74,7 +74,9 @@ export const createApp = () => {
   // 204 with the correct headers instead of a 404.
   app.use(cors(corsOptions));
   app.options("*", cors(corsOptions));
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));

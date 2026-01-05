@@ -61,6 +61,10 @@ export const saveProfile = asyncHandler(async (req, res) => {
   if (payload.fullName) updateData.fullName = payload.fullName;
   else if (payload.personal?.name) updateData.fullName = payload.personal.name;
 
+  // Handle Avatar
+  if (payload.avatar) updateData.avatar = payload.avatar;
+  else if (payload.personal?.avatar) updateData.avatar = payload.personal.avatar;
+
   // Handle Bio
   // If sent from new frontend, payload.bio is already a JSON string containing text+extras
   if (payload.bio !== undefined) {

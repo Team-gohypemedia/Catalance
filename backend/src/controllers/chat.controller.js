@@ -1562,11 +1562,11 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     senderName,
     skipAssistant = false,
     history: clientHistory,
-    sharedContextId,
+    attachment
   } = req.body || {};
 
-  if (!content) {
-    throw new AppError("Message content is required", 400);
+  if (!content && !attachment) {
+    throw new AppError("Message content or attachment is required", 400);
   }
 
   const serviceKey = normalizeService(service);
@@ -1688,8 +1688,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     });
   }
 
-  // Extract attachment from request body
-  const { attachment } = req.body || {};
+
 
   const userMessage = await prisma.chatMessage.create({
     data: {

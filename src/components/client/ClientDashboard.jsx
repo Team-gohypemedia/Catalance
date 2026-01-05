@@ -32,6 +32,12 @@ import {
   Sun,
   Moon,
   CreditCard,
+  Bot,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  Heart,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -307,6 +313,12 @@ const ClientDashboardContent = () => {
   const [savedProposals, setSavedProposals] = useState([]);
   const [activeProposalId, setActiveProposalId] = useState(null);
   const [isSendingProposal, setIsSendingProposal] = useState(false);
+  const [dismissedProjectIds, setDismissedProjectIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem("markify:dismissedExpiredProposals");
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) { return []; }
+  });
   const [selectedFreelancer, setSelectedFreelancer] = useState(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showViewProposal, setShowViewProposal] = useState(false);
@@ -382,31 +394,7 @@ const ClientDashboardContent = () => {
       const fetchedProjects = Array.isArray(payload?.data) ? payload.data : [];
       setProjects(fetchedProjects);
 
-      // Check if any saved proposals have been accepted and clear them
-      const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage();
-      if (storedProposals.length) {
-        const isAccepted = (proposal) => {
-          const savedTitle = proposal.projectTitle || proposal.title;
-          return fetchedProjects.some((project) => {
-            const matchesId = proposal.projectId && project.id === proposal.projectId;
-            const matchesTitle = savedTitle && project.title === savedTitle;
-            if (!matchesId && !matchesTitle) return false;
-            const hasAccepted =
-              project.status === "IN_PROGRESS" ||
-              project.status === "AWAITING_PAYMENT" ||
-              (project.proposals || []).some(
-                (prop) => (prop.status || "").toUpperCase() === "ACCEPTED"
-              );
-            return hasAccepted;
-          });
-        };
 
-        const remaining = storedProposals.filter((proposal) => !isAccepted(proposal));
-        if (remaining.length !== storedProposals.length) {
-          persistSavedProposalState(remaining, activeId);
-          toast.success("Proposal accepted! Draft cleared.");
-        }
-      }
       
       // Check for projects with pending proposals > 24 hours (for budget reminder popup)
       const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -429,6 +417,13 @@ const ClientDashboardContent = () => {
           setShowBudgetReminder(true);
           sessionStorage.setItem("budgetReminderShown", "true");
         }
+      }
+
+      // Check for projects awaiting payment (Auto-show popup)
+      const pendingPaymentProject = fetchedProjects.find(p => p.status === "AWAITING_PAYMENT");
+      if (pendingPaymentProject) {
+         setProjectToPay(pendingPaymentProject);
+         setShowPaymentConfirm(true);
       }
     } catch (error) {
       console.error("Failed to load projects", error);
@@ -602,9 +597,9 @@ const ClientDashboardContent = () => {
       // Refresh projects so the freelancer is immediately hidden from the list
       await loadProjects();
       
-      // DO NOT clear saved proposal immediately - wait for freelancer acceptance
-      // localStorage.removeItem("markify:savedProposal");
-      // setSavedProposal(null);
+      // Clear saved proposal immediately after sending
+      localStorage.removeItem("markify:savedProposal");
+      setSavedProposal(null);
       
       setShowSendConfirm(false);
       setSelectedFreelancer(null);
@@ -902,12 +897,11 @@ const ClientDashboardContent = () => {
                             variant="ghost" 
                             size="sm" 
                             className="text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              if (!savedProposal) return;
-                              const remaining = savedProposals.filter(
-                                (proposal) => proposal.id !== savedProposal.id
-                              );
-                              persistSavedProposalState(remaining, null);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              localStorage.removeItem("markify:savedProposal");
+                              setSavedProposal(null);
                               toast.success("Proposal deleted");
                             }}
                           >
@@ -953,13 +947,25 @@ const ClientDashboardContent = () => {
                   return !proposals.some(prop => 
                     ["PENDING", "ACCEPTED"].includes((prop.status || "").toUpperCase())
                   );
-                });
+                }).filter(p => !dismissedProjectIds.includes(p.id));
 
-                if (projectsNeedingResend.length === 0 || savedProposal) return null;
+                // Deduplicate by title - keep only the latest project for each title
+                const latestProjectsNeedingResend = Object.values(
+                  projectsNeedingResend.reduce((acc, project) => {
+                    const currentStored = acc[project.title];
+                    // If no project stored for this title, OR current project is newer than stored one
+                    if (!currentStored || new Date(project.createdAt) > new Date(currentStored.createdAt)) {
+                      acc[project.title] = project;
+                    }
+                    return acc;
+                  }, {})
+                ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by newest first
+
+                if (latestProjectsNeedingResend.length === 0 || savedProposal) return null;
 
                 return (
                   <div className="space-y-6">
-                    {projectsNeedingResend.map(project => (
+                    {latestProjectsNeedingResend.map(project => (
                       <div key={project.id} className="space-y-6">
                         {/* Proposal Preview Card - Similar to Your Saved Proposal */}
                         <Card className="border-orange-500/20 bg-orange-500/5">
@@ -969,6 +975,19 @@ const ClientDashboardContent = () => {
                                 <AlertTriangle className="w-5 h-5 text-orange-500" />
                                 Proposal Expired - Resend Required
                               </CardTitle>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  const newDismissed = [...dismissedProjectIds, project.id];
+                                  setDismissedProjectIds(newDismissed);
+                                  localStorage.setItem("markify:dismissedExpiredProposals", JSON.stringify(newDismissed));
+                                  toast.success("Reminder dismissed");
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </CardHeader>
                           <CardContent>
@@ -983,7 +1002,7 @@ const ClientDashboardContent = () => {
                               </div>
                               <div className="pt-4 border-t mt-4">
                                 <p className="text-sm text-orange-500 mb-3">
-                                  Previous proposals expired after 48 hours. Increase your budget and send to new freelancers.
+                                  Your budget is low, please increase the budget.
                                 </p>
                                 <Button 
                                   className="w-full gap-2"
@@ -1135,6 +1154,28 @@ const ClientDashboardContent = () => {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Current Budget:</span>
                         <span className="font-medium">₹{(budgetProject?.budget || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Quick Increase Options */}
+                    <div>
+                      <label className="text-xs font-medium mb-2 block text-muted-foreground">Quick Increase</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[10000, 20000, 30000, 50000, 80000].map((amount) => (
+                          <Button
+                            key={amount}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="bg-background hover:bg-primary/10 hover:text-primary hover:border-primary/50 text-xs h-7"
+                            onClick={() => {
+                              const current = parseInt(budgetProject?.budget) || 0;
+                              setNewBudget(String(current + amount));
+                            }}
+                          >
+                            +{amount >= 1000 ? `${amount/1000}k` : amount}
+                          </Button>
+                        ))}
                       </div>
                     </div>
                     <div>
@@ -1289,101 +1330,82 @@ const ClientDashboardContent = () => {
                             }
 
                             return (
-                          <Card 
+                          <div 
                             key={freelancer.id} 
-                            className="group hover:shadow-lg hover:border-primary/20 transition-all flex flex-col h-full min-h-[280px] cursor-pointer"
+                            className="relative flex flex-col items-center bg-card rounded-[2rem] shadow-sm border border-border/40 overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer h-full min-h-[400px]"
                             onClick={() => {
                               setViewingFreelancer(freelancer);
                               setShowFreelancerProfile(true);
                             }}
                           >
-                            <CardContent className="p-4 flex flex-col h-full gap-4">
-                              {/* Header */}
-                              <div className="flex items-start gap-3">
-                                <Avatar className="w-12 h-12 shrink-0 border border-border">
-                                  <AvatarImage src={freelancer.avatar} alt={freelancer.fullName || freelancer.name} />
-                                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                                    {(freelancer.fullName || freelancer.name)?.charAt(0) || "F"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className="font-bold truncate text-base">{freelancer.fullName || freelancer.name}</h4>
-                                    {freelancer.rating && (
-                                      <div className="flex items-center text-xs font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                                        <Star className="w-3 h-3 mr-1 fill-current" />
-                                        {freelancer.rating}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground truncate font-medium">
-                                    {freelancer.role || "Freelancer"}
-                                  </p>
-                                  {(freelancer.location || freelancer.hourlyRate) && (
-                                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                      {freelancer.location && (
-                                        <span className="flex items-center truncate">
-                                          <MapPin className="w-3 h-3 mr-0.5" />
-                                          {freelancer.location}
-                                        </span>
-                                      )}
-                                      {freelancer.hourlyRate && (
-                                        <>
-                                          <span>•</span>
-                                          <span className="font-medium text-foreground">{freelancer.hourlyRate}/hr</span>
-                                        </>
-                                      )}
-                                    </div>
-                                  )}
+                             {/* Yellow Header */}
+                             <div className="w-full h-32 bg-[#FFD700] flex items-center justify-center"></div>
+
+                             {/* Avatar */}
+                             <div className="absolute top-16">
+                               <div className="rounded-full p-1.5 bg-background shadow-sm">
+                                 <Avatar className="w-28 h-28 border-2 border-background">
+                                   <AvatarImage src={freelancer.avatar} className="object-cover" />
+                                   <AvatarFallback className="bg-primary/20 text-primary text-3xl font-bold">
+                                      {(freelancer.fullName || freelancer.name || "F").charAt(0)}
+                                   </AvatarFallback>
+                                 </Avatar>
+                               </div>
+                             </div>
+
+                             {/* Body */}
+                             <div className="mt-14 px-4 pb-6 w-full flex flex-col items-center text-center flex-1">
+                                <h3 className="text-2xl font-bold mt-2 text-foreground">{freelancer.fullName || freelancer.name}</h3>
+                                <p className="text-sm text-muted-foreground font-medium mb-5">{freelancer.role || "Freelancer"}</p>
+
+                                {/* Social Icons Row */}
+                                <div className="flex gap-4 mb-8">
+                                  {[Facebook, Twitter, Instagram, Youtube].map((Icon, idx) => (
+                                     <div key={idx} className="w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm hover:scale-110 transition-transform" 
+                                       style={{ backgroundColor: idx===0 ? '#3b5998' : idx===1 ? '#1da1f2' : idx===2 ? '#e1306c' : '#ff0000' }}>
+                                       <Icon className="w-4 h-4 fill-current" />
+                                     </div>
+                                  ))}
                                 </div>
-                              </div>
 
-                              {/* Skills */}
-                              <div className="flex flex-wrap gap-1.5">
-                                {Array.isArray(freelancer.skills) && freelancer.skills.length > 0 ? (
-                                  <>
-                                    {freelancer.skills.slice(0, 3).map((skill, i) => (
-                                      <Badge key={i} variant="secondary" className="px-1.5 py-0 text-[10px] font-normal border-transparent bg-secondary/50">
-                                        {skill}
-                                      </Badge>
-                                    ))}
-                                    {freelancer.skills.length > 3 && (
-                                      <span className="text-[10px] text-muted-foreground self-center ml-1">
-                                        +{freelancer.skills.length - 3} more
-                                      </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground italic">No skills listed</span>
-                                )}
-                              </div>
+                                {/* Action Buttons */}
+                                <div className="flex gap-4 w-full px-4 mt-auto mb-6">
+                                   <Button 
+                                      className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all"
+                                      onClick={(e) => {
+                                         e.stopPropagation();
+                                         setShowFreelancerSelect(false);
+                                         handleSendClick(freelancer);
+                                      }}
+                                   >
+                                      Select
+                                   </Button>
+                                   <Button 
+                                      className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all"
+                                      onClick={(e) => {
+                                         e.stopPropagation();
+                                         setViewingFreelancer(freelancer);
+                                         setShowFreelancerProfile(true);
+                                      }}
+                                   >
+                                      Profile
+                                   </Button>
+                                </div>
 
-                              {/* Bio Snippet */}
-                              <div className="flex-1">
-                                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                                  {freelancer.cleanBio}
-                                </p>
-                              </div>
-
-                              {/* Footer Action */}
-                              <Button 
-                                className="w-full gap-2 mt-auto" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowFreelancerSelect(false);
-                                  handleSendClick(freelancer);
-                                }}
-                                disabled={isSendingProposal}
-                              >
-                                {isSendingProposal && selectedFreelancer?.id === freelancer.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Send className="w-4 h-4" />
-                                )}
-                                Send Proposal
-                              </Button>
-                            </CardContent>
-                          </Card>
+                                {/* Footer Stats Row */}
+                                <div className="w-full pt-5 border-t border-dashed border-border/50 flex justify-center gap-8 text-muted-foreground text-sm font-semibold">
+                                   <div className="flex items-center gap-1.5 hover:text-red-500 transition-colors">
+                                      <Heart className="w-4 h-4" /> {freelancer.rating || "5.0"}
+                                   </div>
+                                   <div className="flex items-center gap-1.5 hover:text-blue-500 transition-colors">
+                                      <MessageCircle className="w-4 h-4" /> 20K
+                                   </div>
+                                   <div className="flex items-center gap-1.5 hover:text-green-500 transition-colors">
+                                       <Send className="w-4 h-4" /> 12K
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
                             );
                           })
                         ) : (
@@ -2055,12 +2077,7 @@ const ClientDashboardContent = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
-                  <Button 
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
-                    onClick={() => navigate("/service")}
-                  >
-                    <Plus className="w-4 h-4 mr-2" /> Make New Proposal
-                  </Button>
+
                   <Button 
                     variant="outline" 
                     className="w-full bg-background hover:bg-background/80 text-foreground border-border/10 shadow-sm"
@@ -2120,6 +2137,8 @@ const ClientDashboardContent = () => {
           </div>
         </div>
       </main>
+
+
 
       {/* Suspension Alert */}
       <SuspensionAlert
