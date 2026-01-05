@@ -2,6 +2,8 @@ import { randomUUID } from "crypto";
 
 const conversations = new Map(); // id -> { id, service, createdAt, updatedAt, createdById, messages: [] }
 const SERVICE_INDEX = new Map(); // service -> conversationId (latest)
+const SHARED_CONTEXTS = new Map(); // key -> { context, updatedAt }
+const SHARED_CONTEXT_TTL_MS = 1000 * 60 * 60 * 6;
 
 const generateId = () => {
   try {
@@ -101,4 +103,48 @@ export const deleteConversation = (id) => {
     SERVICE_INDEX.delete(conversation.service);
   }
   return conversations.delete(id);
+};
+
+const cloneSharedContext = (context) => {
+  if (!context || typeof context !== "object") return null;
+  try {
+    return JSON.parse(JSON.stringify(context));
+  } catch {
+    return null;
+  }
+};
+
+const isSharedContextExpired = (entry) => {
+  if (!entry?.updatedAt) return false;
+  return Date.now() - entry.updatedAt > SHARED_CONTEXT_TTL_MS;
+};
+
+export const getSharedContextKey = ({
+  sharedContextId = null,
+  senderId = null,
+  conversationId = null
+} = {}) => {
+  const sessionKey = sharedContextId ? String(sharedContextId).trim() : "";
+  if (sessionKey) return `session:${sessionKey}`;
+  const userKey = senderId ? String(senderId).trim() : "";
+  if (userKey) return `user:${userKey}`;
+  const convoKey = conversationId ? String(conversationId).trim() : "";
+  if (convoKey) return `conversation:${convoKey}`;
+  return null;
+};
+
+export const getSharedContext = (key) => {
+  if (!key) return null;
+  const entry = SHARED_CONTEXTS.get(key);
+  if (!entry) return null;
+  if (isSharedContextExpired(entry)) {
+    SHARED_CONTEXTS.delete(key);
+    return null;
+  }
+  return cloneSharedContext(entry.context);
+};
+
+export const setSharedContext = (key, context) => {
+  if (!key || !context) return;
+  SHARED_CONTEXTS.set(key, { context: cloneSharedContext(context), updatedAt: Date.now() });
 };

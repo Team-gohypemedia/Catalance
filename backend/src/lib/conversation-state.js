@@ -2345,6 +2345,108 @@ const formatSlotValue = (slot) => {
     return "";
 };
 
+const buildCollectedData = (questions = [], slots = {}) => {
+    const collectedData = {};
+    for (const question of questions) {
+        const key = question?.key;
+        if (!key) continue;
+        const slot = slots[key];
+        if (slot?.status === "answered") {
+            const formatted = formatSlotValue(slot);
+            if (formatted) collectedData[key] = formatted;
+        } else if (slot?.status === "declined") {
+            collectedData[key] = "[skipped]";
+        }
+    }
+    return collectedData;
+};
+
+const applySharedContextUpdate = (sharedContext, question, slot, options = {}) => {
+    if (!sharedContext || !question || !slot) return { updated: false };
+    if (slot.status !== "answered") return { updated: false };
+    const value = formatSlotValue(slot);
+    if (!value || shouldSkipSharedValue(value)) return { updated: false };
+
+    const target = resolveSharedContextTarget(question);
+    if (!target) return { updated: false };
+
+    const existingValue = resolveSharedContextValue(sharedContext, question, options.service);
+    const existingCompare = normalizeSharedComparison(existingValue, target.field);
+    const nextCompare = normalizeSharedComparison(value, target.field);
+
+    if (!existingCompare) {
+        setSharedContextValue(sharedContext, target, value, options.service);
+        return { updated: true };
+    }
+
+    if (existingCompare === nextCompare) {
+        return { updated: false };
+    }
+
+    const priorConflict = options.existingConflict;
+    if (priorConflict) {
+        const previousCompare = normalizeSharedComparison(
+            priorConflict.previousValue,
+            target.field
+        );
+        const proposedCompare = normalizeSharedComparison(
+            priorConflict.proposedValue,
+            target.field
+        );
+        if (previousCompare && previousCompare === nextCompare) {
+            return { updated: false };
+        }
+        if (proposedCompare && proposedCompare === nextCompare) {
+            setSharedContextValue(sharedContext, target, value, options.service);
+            return { updated: true };
+        }
+    }
+
+    if (options.allowConflicts === false) {
+        return { updated: false };
+    }
+
+    return {
+        updated: false,
+        conflict: {
+            field: target.field,
+            subfield: target.subfield,
+            previousValue: existingValue,
+            proposedValue: value,
+            questionKey: question.key,
+        },
+    };
+};
+
+const mergeSharedContextFromState = (state) => {
+    if (!state) return state;
+    const sharedContext = normalizeSharedContext(state.sharedContext);
+    const questions = Array.isArray(state.questions) ? state.questions : [];
+    const slots = state.slots || {};
+    let updated = false;
+
+    for (const question of questions) {
+        if (!question?.key) continue;
+        const slot = slots[question.key];
+        if (!slot || slot.status !== "answered") continue;
+        const target = resolveSharedContextTarget(question);
+        if (!target) continue;
+        const existingValue = resolveSharedContextValue(sharedContext, question, state.service);
+        if (normalizeSharedComparison(existingValue, target.field)) continue;
+
+        const value = formatSlotValue(slot);
+        if (!value || shouldSkipSharedValue(value)) continue;
+        setSharedContextValue(sharedContext, target, value, state.service);
+        updated = true;
+    }
+
+    if (!updated) return state;
+    return {
+        ...state,
+        sharedContext,
+    };
+};
+
 const resolveSlotDisplayValue = (state, key) => {
     if (!state || !key) return "";
     const slot = state?.slots?.[key];
@@ -2496,6 +2598,331 @@ const getQuestionTags = (question = {}) => {
     if (key.includes("service_type") || key.endsWith("type")) tags.push("service_type");
     if (key.includes("notes") || key.includes("request")) tags.push("notes");
     return tags;
+};
+
+const SHARED_CONTEXT_DEFAULTS = Object.freeze({
+    full_name: "",
+    preferred_name: "",
+    business_type: "",
+    project_name: "",
+    project_one_liner: "",
+    website_live: "",
+    target_location: "",
+    target_audience: "",
+    general_budget: "",
+    tech_preferences: {
+        stack: "",
+        hosting: "",
+        domain: "",
+    },
+    integrations: "",
+    timeline: "",
+    service_budgets: {},
+});
+
+const normalizeSharedContext = (shared = {}) => {
+    const safeShared =
+        shared && typeof shared === "object" ? shared : {};
+    const tech = safeShared.tech_preferences || {};
+    const serviceBudgets =
+        safeShared.service_budgets && typeof safeShared.service_budgets === "object"
+            ? { ...safeShared.service_budgets }
+            : {};
+
+    return {
+        ...SHARED_CONTEXT_DEFAULTS,
+        full_name: normalizeText(safeShared.full_name || ""),
+        preferred_name: normalizeText(safeShared.preferred_name || ""),
+        business_type: normalizeText(safeShared.business_type || ""),
+        project_name: normalizeText(safeShared.project_name || ""),
+        project_one_liner: normalizeText(safeShared.project_one_liner || ""),
+        website_live: normalizeText(safeShared.website_live || ""),
+        target_location: normalizeText(safeShared.target_location || ""),
+        target_audience: normalizeText(safeShared.target_audience || ""),
+        general_budget: normalizeText(safeShared.general_budget || ""),
+        tech_preferences: {
+            stack: normalizeText(tech.stack || tech.tech_stack || ""),
+            hosting: normalizeText(tech.hosting || ""),
+            domain: normalizeText(tech.domain || ""),
+        },
+        integrations: Array.isArray(safeShared.integrations)
+            ? safeShared.integrations.join(", ")
+            : normalizeText(safeShared.integrations || ""),
+        timeline: normalizeText(safeShared.timeline || ""),
+        service_budgets: serviceBudgets,
+    };
+};
+
+const hasSharedContextValue = (sharedContext) => {
+    if (!sharedContext) return false;
+    const values = [
+        sharedContext.full_name,
+        sharedContext.preferred_name,
+        sharedContext.business_type,
+        sharedContext.project_name,
+        sharedContext.project_one_liner,
+        sharedContext.website_live,
+        sharedContext.target_location,
+        sharedContext.target_audience,
+        sharedContext.general_budget,
+        sharedContext.integrations,
+        sharedContext.timeline,
+    ];
+    if (values.some((value) => normalizeText(value))) return true;
+
+    const tech = sharedContext.tech_preferences || {};
+    if (
+        normalizeText(tech.stack) ||
+            normalizeText(tech.hosting) ||
+            normalizeText(tech.domain)
+    ) {
+        return true;
+    }
+
+    const budgets = sharedContext.service_budgets || {};
+    return Object.values(budgets).some((value) => normalizeText(value));
+};
+
+const shouldSkipSharedValue = (value = "") => {
+    const text = normalizeText(value).toLowerCase();
+    if (!text) return true;
+    const canon = canonicalize(text);
+    return (
+        canon === "notsure" ||
+        canon === "notsureyet" ||
+        canon === "notyet" ||
+        canon === "nopreference" ||
+        canon === "none" ||
+        canon === "na" ||
+        canon === "unknown"
+    );
+};
+
+const normalizeSharedComparison = (value = "", field = "") => {
+    const text = normalizeText(value);
+    if (!text) return "";
+    if (field === "general_budget") {
+        const range = parseInrBudgetRange(text);
+        if (range) {
+            const min = Number.isFinite(range.min) ? range.min : "";
+            const max = Number.isFinite(range.max) ? range.max : "";
+            return `${min}-${max}`;
+        }
+        const cleaned = text.replace(/\b(inr|rs|rupees?)\b/gi, "");
+        return canonicalize(cleaned);
+    }
+    if (field === "timeline") {
+        const weeks = parseTimelineWeeks(text);
+        if (Number.isFinite(weeks)) return `weeks:${weeks}`;
+        return canonicalize(text);
+    }
+    return canonicalize(text);
+};
+
+const resolveSharedContextTarget = (question = {}) => {
+    const key = normalizeText(question.key || "").toLowerCase();
+    if (!key) return null;
+    const tags = new Set([...(question.tags || []), ...getQuestionTags(question)]);
+    const isBusinessNameKey = key.includes("business") && key.includes("name");
+    const isCompanyNameKey = key.includes("company") && key.includes("name");
+    const isProjectNameKey = key.includes("project") && key.includes("name");
+    const isBusinessTypeKey =
+        key.includes("business_type") ||
+        (key.includes("business") && key.includes("type")) ||
+        key.includes("industry") ||
+        key.includes("niche");
+    const isBusinessOnlyKey = key.includes("business") && !key.includes("name") && !isBusinessTypeKey;
+    const isProjectNameCandidate =
+        isBusinessNameKey ||
+        isCompanyNameKey ||
+        isProjectNameKey ||
+        key === "company" ||
+        key === "brand" ||
+        key === "project" ||
+        key.includes("company") ||
+        key.includes("brand") ||
+        key.includes("project_name");
+
+    if (isBusinessTypeKey) {
+        return { field: "business_type" };
+    }
+    if ((tags.has("company") || isProjectNameCandidate) && !isBusinessOnlyKey) {
+        return { field: "project_name" };
+    }
+
+    if (tags.has("name") || key.includes("name")) {
+        return { field: "full_name" };
+    }
+    if (
+        tags.has("description") ||
+        key.includes("summary") ||
+        key.includes("brief") ||
+        key.includes("description") ||
+        key.includes("vision") ||
+        key.includes("business_info")
+    ) {
+        return { field: "project_one_liner" };
+    }
+    if (
+        tags.has("location") ||
+        key.includes("location") ||
+        key.includes("geo") ||
+        key.includes("city") ||
+        key.includes("country")
+    ) {
+        return { field: "target_location" };
+    }
+    if (tags.has("audience") || key.includes("audience")) {
+        return { field: "target_audience" };
+    }
+    if (tags.has("budget") || key.includes("budget")) {
+        return { field: "general_budget" };
+    }
+    if (tags.has("timeline") || key.includes("timeline") || key.includes("delivery")) {
+        return { field: "timeline" };
+    }
+    if (
+        tags.has("online_presence") ||
+        key === "website" ||
+        key === "website_url" ||
+        key.endsWith("_website") ||
+        key.endsWith("_website_url")
+    ) {
+        return { field: "website_live" };
+    }
+    if (
+        key.includes("tech") ||
+        key.includes("stack") ||
+        key.includes("hosting") ||
+        key.includes("domain") ||
+        key.includes("deployment")
+    ) {
+        let subfield = "stack";
+        if (key.includes("hosting") || key.includes("deployment")) subfield = "hosting";
+        if (key.includes("domain")) subfield = "domain";
+        return { field: "tech_preferences", subfield };
+    }
+    if (key.includes("integration")) return { field: "integrations" };
+
+    return null;
+};
+
+const resolveSharedNameValue = (sharedContext, key = "") => {
+    const normalizedKey = normalizeText(key).toLowerCase();
+    if (normalizedKey.includes("full")) {
+        return sharedContext.full_name || sharedContext.preferred_name || "";
+    }
+    if (normalizedKey.includes("first")) {
+        return sharedContext.preferred_name || sharedContext.full_name || "";
+    }
+    return sharedContext.preferred_name || sharedContext.full_name || "";
+};
+
+const resolveSharedContextValue = (sharedContext, question, service) => {
+    if (!sharedContext || !question) return "";
+    const target = resolveSharedContextTarget(question);
+    if (!target) return "";
+    const key = normalizeText(question.key || "").toLowerCase();
+
+    if (target.field === "full_name") {
+        return resolveSharedNameValue(sharedContext, key);
+    }
+    if (target.field === "general_budget") {
+        const serviceKey = normalizeText(service || "");
+        const serviceBudget =
+            serviceKey && sharedContext.service_budgets
+                ? sharedContext.service_budgets[serviceKey]
+                : "";
+        return normalizeText(serviceBudget || sharedContext.general_budget || "");
+    }
+    if (target.field === "tech_preferences") {
+        const prefs = sharedContext.tech_preferences || {};
+        return normalizeText(prefs[target.subfield] || "");
+    }
+    return normalizeText(sharedContext[target.field] || "");
+};
+
+const setSharedContextValue = (sharedContext, target, value, service) => {
+    if (!sharedContext || !target) return;
+    const cleaned = normalizeText(value);
+    if (!cleaned) return;
+
+    if (target.field === "full_name") {
+        sharedContext.full_name = cleaned;
+        const first = cleaned.split(" ")[0];
+        if (first) sharedContext.preferred_name = first;
+        return;
+    }
+
+    if (target.field === "general_budget") {
+        sharedContext.general_budget = cleaned;
+        const serviceKey = normalizeText(service || "");
+        if (serviceKey) {
+            sharedContext.service_budgets = {
+                ...(sharedContext.service_budgets || {}),
+                [serviceKey]: cleaned,
+            };
+        }
+        return;
+    }
+
+    if (target.field === "tech_preferences") {
+        const next = {
+            ...(sharedContext.tech_preferences || SHARED_CONTEXT_DEFAULTS.tech_preferences),
+        };
+        next[target.subfield || "stack"] = cleaned;
+        sharedContext.tech_preferences = next;
+        return;
+    }
+
+    sharedContext[target.field] = cleaned;
+};
+
+const SHARED_FIELD_LABELS = Object.freeze({
+    full_name: "your name",
+    preferred_name: "your name",
+    business_type: "your business type",
+    project_name: "your company or project name",
+    project_one_liner: "your project summary",
+    website_live: "your website status",
+    target_location: "your target location",
+    target_audience: "your target audience",
+    general_budget: "your budget",
+    tech_preferences: "your tech preference",
+    integrations: "your integrations",
+    timeline: "your timeline",
+});
+
+const resolveSharedFieldLabel = (conflict = {}) => {
+    if (!conflict?.field) return "that detail";
+    if (conflict.field === "tech_preferences") {
+        if (conflict.subfield === "hosting") return "your hosting preference";
+        if (conflict.subfield === "domain") return "your domain preference";
+        return "your tech stack preference";
+    }
+    return SHARED_FIELD_LABELS[conflict.field] || "that detail";
+};
+
+const truncateSharedValue = (value = "", maxLen = 80) => {
+    const text = normalizeText(value);
+    if (!text) return "";
+    if (text.length <= maxLen) return text;
+    return `${text.slice(0, maxLen - 3).trim()}...`;
+};
+
+const buildSharedConflictPrompt = (question, conflict) => {
+    if (!question?.key || !conflict) return "";
+    const label = resolveSharedFieldLabel(conflict);
+    const previous = truncateSharedValue(conflict.previousValue);
+    const proposed = truncateSharedValue(conflict.proposedValue);
+    if (!previous || !proposed) return "";
+
+    const base = `Earlier you said ${label} was \"${previous}\". Should I update it to \"${proposed}\" or keep \"${previous}\"?`;
+    const suggestions = [proposed, previous].filter(Boolean);
+    const text = suggestions.length
+        ? `${base}\n[SUGGESTIONS: ${suggestions.join(" | ")}]`
+        : base;
+    return withQuestionKeyTag(text.trim(), question.key);
 };
 
 const isRequiredQuestion = (question = {}) => {
@@ -2800,16 +3227,31 @@ const shouldCaptureOutOfOrder = (question, message) => {
     return false;
 };
 
-const applyMessageToState = (state, message, activeKey = null) => {
+const applyMessageToState = (state, message, activeKey = null, options = {}) => {
     const rawMessage = normalizeText(message);
     if (!rawMessage) return state;
     const questions = Array.isArray(state?.questions) ? state.questions : [];
     const slots = { ...(state?.slots || {}) };
     const wasQuestion = isUserQuestion(rawMessage);
     const stripped = stripMarkdownFormatting(rawMessage);
+    const sharedContext = normalizeSharedContext(state?.sharedContext);
+    const allowSharedContextUpdates = options.allowSharedContextUpdates !== false;
+    const allowSharedContextConflicts = options.allowSharedContextConflicts !== false;
 
     const questionByKey = new Map(questions.map((q) => [q.key, q]));
     const activeQuestion = activeKey ? questionByKey.get(activeKey) : null;
+    let sharedContextUpdated = false;
+
+    const handleSharedContextUpdate = (question, slot, existingConflict) => {
+        if (!allowSharedContextUpdates) return { updated: false };
+        const result = applySharedContextUpdate(sharedContext, question, slot, {
+            service: state?.service,
+            existingConflict,
+            allowConflicts: allowSharedContextConflicts,
+        });
+        if (result?.updated) sharedContextUpdated = true;
+        return result;
+    };
 
     if (activeQuestion?.key) {
         const slot = ensureSlot(slots, activeQuestion.key);
@@ -2829,7 +3271,30 @@ const applyMessageToState = (state, message, activeKey = null) => {
             const result = force
                 ? evaluateAnswerForQuestion(activeQuestion, stripped, { force: true, wasQuestion })
                 : null;
-            if (result) applySlotResult(slot, result, stripped);
+            if (result) {
+                const existingConflict = slot.sharedConflict || null;
+                applySlotResult(slot, result, stripped);
+                if (slot.status === "answered") {
+                    const sharedResult = handleSharedContextUpdate(
+                        activeQuestion,
+                        slot,
+                        existingConflict
+                    );
+                    if (sharedResult?.conflict) {
+                        slot.status = "ambiguous";
+                        slot.normalized = null;
+                        slot.confidence = 0;
+                        slot.validationErrors = ["shared_conflict"];
+                        slot.options = [
+                            sharedResult.conflict.proposedValue,
+                            sharedResult.conflict.previousValue,
+                        ].filter(Boolean);
+                        slot.sharedConflict = sharedResult.conflict;
+                    } else if (existingConflict) {
+                        delete slot.sharedConflict;
+                    }
+                }
+            }
         }
     }
 
@@ -2846,22 +3311,28 @@ const applyMessageToState = (state, message, activeKey = null) => {
 
         const result = evaluateAnswerForQuestion(question, stripped, { force: false, wasQuestion });
         if (result) {
+            const existingConflict = slot.sharedConflict || null;
             applySlotResult(slot, result, stripped);
+            if (slot.status === "answered") {
+                const sharedResult = handleSharedContextUpdate(question, slot, existingConflict);
+                if (sharedResult?.conflict) {
+                    slot.status = "ambiguous";
+                    slot.normalized = null;
+                    slot.confidence = 0;
+                    slot.validationErrors = ["shared_conflict"];
+                    slot.options = [
+                        sharedResult.conflict.proposedValue,
+                        sharedResult.conflict.previousValue,
+                    ].filter(Boolean);
+                    slot.sharedConflict = sharedResult.conflict;
+                } else if (existingConflict) {
+                    delete slot.sharedConflict;
+                }
+            }
         }
     }
 
-    const collectedData = {};
-    for (const question of questions) {
-        const key = question?.key;
-        if (!key) continue;
-        const slot = slots[key];
-        if (slot?.status === "answered") {
-            const formatted = formatSlotValue(slot);
-            if (formatted) collectedData[key] = formatted;
-        } else if (slot?.status === "declined") {
-            collectedData[key] = "[skipped]";
-        }
-    }
+    const collectedData = buildCollectedData(questions, slots);
 
     const { missingRequired, missingOptional } = buildMissingLists(questions, slots, collectedData);
     const nextKey = findNextQuestionKey(questions, missingRequired, missingOptional);
@@ -2880,11 +3351,50 @@ const applyMessageToState = (state, message, activeKey = null) => {
         answered,
         currentStep,
         isComplete: missingRequired.length === 0 && missingOptional.length === 0,
+        sharedContext: sharedContextUpdated ? sharedContext : state?.sharedContext,
         meta: {
             ...(state?.meta || {}),
             wasQuestion,
         },
     };
+};
+
+const applySharedContextToState = (state) => {
+    if (!state) return state;
+    const questions = Array.isArray(state?.questions) ? state.questions : [];
+    if (!questions.length) return state;
+    const slots = { ...(state?.slots || {}) };
+    const sharedContext = normalizeSharedContext(state?.sharedContext);
+    let updated = false;
+
+    for (const question of questions) {
+        if (!question?.key) continue;
+        const slot = ensureSlot(slots, question.key);
+        if (slot.status !== "empty" && slot.status !== "declined") continue;
+        const sharedValue = resolveSharedContextValue(sharedContext, question, state?.service);
+        if (!sharedValue || shouldSkipSharedValue(sharedValue)) continue;
+        applySlotResult(
+            slot,
+            { status: "ok", normalized: sharedValue, confidence: 0.9 },
+            sharedValue
+        );
+        updated = true;
+    }
+
+    if (!updated) {
+        return {
+            ...state,
+            sharedContext,
+        };
+    }
+
+    const collectedData = buildCollectedData(questions, slots);
+    return recomputeProgress({
+        ...state,
+        slots,
+        collectedData,
+        sharedContext,
+    });
 };
 
 /**
@@ -2893,7 +3403,7 @@ const applyMessageToState = (state, message, activeKey = null) => {
  * @param {string} service - Service name
  * @returns {Object} State with collectedData and currentStep
  */
-export function buildConversationState(history, service) {
+export function buildConversationState(history, service, sharedContext) {
     const { questions: rawQuestions, source, definition } = resolveServiceQuestions(service);
     const safeHistory = Array.isArray(history) ? history : [];
     const needsBrief = source !== "catalog";
@@ -2915,6 +3425,7 @@ export function buildConversationState(history, service) {
         questions,
         slots,
         collectedData: {},
+        sharedContext: normalizeSharedContext(sharedContext),
         asked: [],
         answered: [],
         missingRequired: [],
@@ -2933,9 +3444,15 @@ export function buildConversationState(history, service) {
             continue;
         }
         if (msg?.role === "user") {
-            state = applyMessageToState(state, msg.content, lastQuestionKey);
+            state = applyMessageToState(state, msg.content, lastQuestionKey, {
+                allowSharedContextUpdates: false,
+                allowSharedContextConflicts: false,
+            });
         }
     }
+
+    state = applySharedContextToState(state);
+    state = mergeSharedContextFromState(state);
 
     if (!state.missingRequired?.length && !state.missingOptional?.length) {
         const { missingRequired, missingOptional } = buildMissingLists(
@@ -2980,7 +3497,10 @@ export function processUserAnswer(state, message) {
     );
 
     const normalizedMessage = normalizeText(message);
-    let workingState = state;
+    let workingState = {
+        ...state,
+        sharedContext: normalizeSharedContext(state?.sharedContext),
+    };
     const hasLowBudgetPending = Boolean(workingState?.meta?.lowBudgetPending);
     const budgetDecisionIncrease = hasLowBudgetPending && isIncreaseBudgetDecision(normalizedMessage);
     const budgetDecisionProceed = hasLowBudgetPending && isProceedWithLowBudgetDecision(normalizedMessage);
@@ -3069,6 +3589,34 @@ export function getNextHumanizedQuestion(state) {
 
     if (!questions.length) return null;
 
+    const findSharedConflict = (requiredOnly) => {
+        for (const question of questions) {
+            if (!question?.key) continue;
+            if (requiredOnly && !isRequiredQuestion(question)) continue;
+            const slot = slots[question.key];
+            if (slot?.sharedConflict || slot?.validationErrors?.includes("shared_conflict")) {
+                return question.key;
+            }
+        }
+        return null;
+    };
+
+    const sharedConflictKey = missingRequired.length
+        ? findSharedConflict(true)
+        : findSharedConflict(false);
+
+    if (sharedConflictKey) {
+        const question = questions.find((q) => q.key === sharedConflictKey) || null;
+        const slot = question ? slots[question.key] : null;
+        if (question && slot?.sharedConflict) {
+            const prompt = buildSharedConflictPrompt(question, slot.sharedConflict);
+            if (prompt) {
+                state.pendingQuestionKey = question.key;
+                return prompt;
+            }
+        }
+    }
+
     const lowBudgetWarning = buildLowBudgetWarning(state);
     if (lowBudgetWarning) {
         state.meta = { ...(state?.meta || {}), lowBudgetPending: true };
@@ -3156,6 +3704,16 @@ export function getNextHumanizedQuestion(state) {
     }
 
     text = applyTemplatePlaceholders(text, state);
+
+    if (!isClarification && !state?.meta?.sharedContextIntroShown && hasSharedContextValue(state?.sharedContext)) {
+        const asked = Array.isArray(state?.asked) ? state.asked : [];
+        if (asked.length === 0) {
+            const serviceLabel = resolveIntroServiceLabel(state?.service || "");
+            const intro = `I'll reuse what you already shared and only ask what's missing for ${serviceLabel}.`;
+            text = `${intro}\n${text}`.trim();
+            state.meta = { ...(state?.meta || {}), sharedContextIntroShown: true };
+        }
+    }
 
     if (!suggestionsOverride && question?.key === "tech") {
         const techSuggestions = resolveWebsiteTechSuggestions(state, questions, question);
@@ -3524,10 +4082,12 @@ export function generateRoadmapFromState(state) {
  * @param {Object} state - Completed conversation state
  * @returns {string} Proposal in [PROPOSAL_DATA] format
  */
+﻿
 export function generateProposalFromState(state) {
     const collectedData = state?.collectedData || {};
     const questions = Array.isArray(state?.questions) ? state.questions : [];
     const slots = state?.slots || {};
+    const sharedContext = normalizeSharedContext(state?.sharedContext || {});
     const rawService = normalizeText(state?.service || "");
     const serviceName =
         rawService && rawService.toLowerCase() !== "default"
@@ -3538,6 +4098,21 @@ export function generateProposalFromState(state) {
         const text = normalizeText(value);
         if (!text || text === "[skipped]") return "";
         return text;
+    };
+
+    const firstNonEmpty = (...values) => {
+        for (const value of values) {
+            if (Array.isArray(value)) {
+                for (const item of value) {
+                    const text = normalizeValue(item);
+                    if (text) return text;
+                }
+                continue;
+            }
+            const text = normalizeValue(value);
+            if (text) return text;
+        }
+        return "";
     };
 
     const getSlotValue = (key = "") => {
@@ -3568,6 +4143,46 @@ export function generateProposalFromState(state) {
         return values;
     };
 
+    const addUnique = (list, value) => {
+        if (!list) return;
+        if (Array.isArray(value)) {
+            value.forEach((item) => addUnique(list, item));
+            return;
+        }
+        const text = normalizeValue(value);
+        if (!text) return;
+        const canon = canonicalize(text.toLowerCase());
+        if (!canon) return;
+        if (list.some((item) => canonicalize(normalizeText(item).toLowerCase()) === canon)) return;
+        list.push(text);
+    };
+
+    const cleanList = (items = []) => {
+        const cleaned = [];
+        const seen = new Set();
+        for (const item of items) {
+            const text = normalizeValue(item);
+            if (!text) continue;
+            const canon = canonicalize(text.toLowerCase());
+            if (!canon || canon === "none" || canon === "na" || canon === "nopreference") continue;
+            if (seen.has(canon)) continue;
+            seen.add(canon);
+            cleaned.push(text);
+        }
+        return cleaned;
+    };
+
+    const listFromValue = (value) => cleanList(splitSelections(normalizeValue(value)));
+
+    const summarizeLine = (value, suffix = ".") => {
+        const text = normalizeValue(value);
+        if (!text) return "";
+        const cleaned = text.replace(/\s+/g, " ").trim();
+        if (!cleaned) return "";
+        if (/[.!?]$/.test(cleaned)) return cleaned;
+        return `${cleaned}${suffix}`;
+    };
+
     const formatCurrency = (amount, currency = DEFAULT_CURRENCY) => {
         if (!Number.isFinite(amount)) return "";
         const locale = currency === "INR" ? "en-IN" : "en-US";
@@ -3576,198 +4191,735 @@ export function generateProposalFromState(state) {
         return `${currency} ${formatted}`;
     };
 
-    const formatBudget = () => {
-        const budgetKey = questions.find((q) =>
-            (q?.tags || []).includes("budget") || getQuestionTags(q).includes("budget")
-        )?.key;
-        if (!budgetKey) return normalizeValue(collectedData.budget);
-        const slot = slots[budgetKey];
-        if (!slot || slot.status !== "answered") return normalizeValue(collectedData[budgetKey]);
-        const normalized = slot.normalized;
-        if (!normalized) return normalizeValue(collectedData[budgetKey]);
+    const formatBudgetNormalized = (normalized) => {
+        if (!normalized) return "";
         if (normalized.flexible) return "Flexible";
         const currency = normalized.currency || DEFAULT_CURRENCY;
         const min = Number.isFinite(normalized.min) ? normalized.min : null;
         const max = Number.isFinite(normalized.max) ? normalized.max : null;
+        const periodLabel = normalized.period === "month" ? " per month" : "";
         if (min !== null && max !== null && min === max) {
-            return formatCurrency(min, currency);
+            return `${formatCurrency(min, currency)}${periodLabel}`;
         }
         if (min !== null && max !== null) {
-            return `${formatCurrency(min, currency)} - ${formatCurrency(max, currency)}`;
+            return `${formatCurrency(min, currency)} - ${formatCurrency(max, currency)}${periodLabel}`;
         }
-        if (max !== null) return `Under ${formatCurrency(max, currency)}`;
-        if (min !== null) return `${formatCurrency(min, currency)}+`;
-        return normalizeValue(collectedData[budgetKey]);
+        if (max !== null) return `Under ${formatCurrency(max, currency)}${periodLabel}`;
+        if (min !== null) return `${formatCurrency(min, currency)}+${periodLabel}`;
+        return "";
     };
 
-    const goals = getValuesByTag("goal").join(", ");
-    const audience = getValuesByTag("audience").join(", ");
-    const summary = getValuesByTag("description").join(" ");
-    const platforms = getValuesByTag("platforms").join(", ");
-    const deliverables = getValuesByTag("deliverables").join(", ");
-    const style = getValuesByTag("style").join(", ");
+    const formatBudgetValue = (value) => {
+        const text = normalizeValue(value);
+        if (!text) return "";
+        if (/flexible/i.test(text)) return "Flexible";
+        const parsed = normalizeMoneyValue(text);
+        if (parsed?.status === "ok" && parsed.normalized) {
+            const formatted = formatBudgetNormalized(parsed.normalized);
+            if (formatted) return formatted;
+            if (parsed.normalized.flexible) return "Flexible";
+        }
+        return text;
+    };
 
-    const requirementValues = [];
-    for (const value of [deliverables, platforms, style]) {
-        if (value) requirementValues.push(value);
-    }
-    const requirements = requirementValues.join("; ");
-
-    const timeline = getValuesByTag("timeline").join(", ");
-    const budget = formatBudget();
-
-    const assumptions = [];
-    if (budget && /flexible|not sure/i.test(budget)) {
-        assumptions.push("Budget will be finalized after scope confirmation.");
-    }
-    if (timeline && /flexible|not sure/i.test(timeline)) {
-        assumptions.push("Timeline will be finalized after scope confirmation.");
-    }
-
-    const isWebsiteFlow =
-        questions.some((q) => q?.key === "pages") && questions.some((q) => q?.key === "tech");
-
-    if (isWebsiteFlow) {
-        const primaryName =
-            resolveSlotDisplayValue(state, "name") ||
-            resolveSlotDisplayValue(state, "first_name") ||
-            resolveSlotDisplayValue(state, "full_name");
-        const projectName =
-            getSlotValue("company") ||
-            getSlotValue("project") ||
-            getSlotValue("brand") ||
-            "Website Project";
-        const websiteType = getSlotValue("website_type") || "Website";
-        const techStack = getSlotValue("tech") || "To be confirmed";
-        const design = getSlotValue("design");
-        const deployment = getSlotValue("deployment");
-        const domain = getSlotValue("domain");
-
-        const cleanList = (items = []) => {
-            const seen = new Set();
-            const result = [];
-            for (const item of items) {
-                const text = normalizeText(item);
-                if (!text || text === "[skipped]") continue;
-                const canon = canonicalize(text.toLowerCase());
-                if (!canon || canon === "none") continue;
-                if (seen.has(canon)) continue;
-                seen.add(canon);
-                result.push(text);
+    const resolveBudget = () => {
+        const budgetQuestion = questions.find((question) =>
+            (question?.tags || []).includes("budget") || getQuestionTags(question).includes("budget")
+        );
+        const budgetKey = budgetQuestion?.key || "";
+        let value = "";
+        if (budgetKey) {
+            const slot = slots[budgetKey];
+            if (slot?.status === "answered") {
+                if (slot.normalized) {
+                    value = formatBudgetNormalized(slot.normalized) || formatSlotValue(slot);
+                } else {
+                    value = formatSlotValue(slot);
+                }
+            } else {
+                value = normalizeValue(collectedData[budgetKey]);
             }
-            return result;
-        };
+        }
+        if (!value) value = normalizeValue(collectedData.budget);
+        const serviceKey = normalizeText(serviceName);
+        if (!value && serviceKey && sharedContext.service_budgets) {
+            value = normalizeValue(sharedContext.service_budgets[serviceKey]);
+        }
+        if (!value) value = normalizeValue(sharedContext.general_budget);
+        return formatBudgetValue(value);
+    };
 
-        const listFromValue = (value) => cleanList(splitSelections(normalizeValue(value)));
+    const resolveTimeline = () =>
+        normalizeValue(
+            firstNonEmpty(
+                getValuesByTag("timeline"),
+                getSlotValue("delivery_timeline"),
+                collectedData.timeline,
+                sharedContext.timeline
+            )
+        );
 
-        const pagesRaw = getSlotValue("pages") || normalizeValue(collectedData.pages_inferred);
+    const resolveServiceCategory = (service) => {
+        const canon = canonicalize(normalizeText(service).toLowerCase());
+        if (!canon) return "general";
+        if (canon.includes("seo")) return "seo";
+        if (canon.includes("lead")) return "lead";
+        if (canon.includes("website") || canon.includes("webdevelopment") || canon.includes("webdesign")) {
+            return "website";
+        }
+        if (canon.includes("landingpage") || canon.includes("ecommerce")) return "website";
+        return "general";
+    };
+
+    const clientName = firstNonEmpty(
+        resolveSlotDisplayValue(state, "name"),
+        resolveSlotDisplayValue(state, "first_name"),
+        resolveSlotDisplayValue(state, "full_name"),
+        sharedContext.preferred_name,
+        sharedContext.full_name
+    );
+
+    const projectNameRaw = firstNonEmpty(
+        getSlotValue("company"),
+        getSlotValue("project"),
+        getSlotValue("brand"),
+        sharedContext.project_name
+    );
+
+    const businessType = firstNonEmpty(getSlotValue("business"), sharedContext.business_type);
+    const projectSummary = firstNonEmpty(
+        getSlotValue("description"),
+        getSlotValue("brief"),
+        getValuesByTag("description").join(" "),
+        sharedContext.project_one_liner
+    );
+    const goalValue = firstNonEmpty(
+        getSlotValue("goal"),
+        getSlotValue("goals"),
+        getSlotValue("objective"),
+        getValuesByTag("goal").join(", ")
+    );
+    const audienceValue = firstNonEmpty(getSlotValue("audience"), sharedContext.target_audience);
+    const locationValue = firstNonEmpty(
+        getSlotValue("geo"),
+        getSlotValue("target_location"),
+        getValuesByTag("location").join(", "),
+        sharedContext.target_location
+    );
+    const websiteLive = firstNonEmpty(getSlotValue("website_live"), sharedContext.website_live);
+    const designStatus = firstNonEmpty(getSlotValue("design"), getSlotValue("design_assets"));
+    const techStack = firstNonEmpty(
+        getSlotValue("tech"),
+        getSlotValue("tech_stack"),
+        sharedContext.tech_preferences?.stack
+    );
+    const hostingPref = firstNonEmpty(
+        getSlotValue("deployment"),
+        sharedContext.tech_preferences?.hosting
+    );
+    const domainStatus = firstNonEmpty(
+        getSlotValue("domain"),
+        sharedContext.tech_preferences?.domain
+    );
+    const integrationsList = listFromValue(
+        firstNonEmpty(getSlotValue("integrations"), sharedContext.integrations)
+    );
+    const platformsValue = firstNonEmpty(
+        getSlotValue("platforms"),
+        getSlotValue("channels"),
+        getValuesByTag("platforms").join(", ")
+    );
+    const deliverablesValue = getValuesByTag("deliverables").join(", ");
+    const styleValue = getValuesByTag("style").join(", ");
+    const notesValue = firstNonEmpty(getSlotValue("assets"), getSlotValue("references"));
+    const budgetValue = resolveBudget();
+    const timelineValueRaw = resolveTimeline();
+
+    const serviceCategory = resolveServiceCategory(serviceName);
+    const phases = [];
+    const deliverables = [];
+    const tools = [];
+    const metrics = [];
+    const templateContext = [];
+    const templateInputs = [];
+    const templateAssumptions = [];
+    const templateOutOfScope = [];
+    let defaultTimeline = "4-6 weeks";
+
+    const addPhase = (title, tasks, milestone) => phases.push({ title, tasks, milestone });
+
+    if (serviceCategory === "website") {
+        const corePages = ["Home", "About", "Services/Products", "Contact", "Privacy Policy", "Terms"];
+        const pagesRaw = firstNonEmpty(getSlotValue("pages"), collectedData.pages_inferred);
         const pages = listFromValue(pagesRaw);
-        const integrations = listFromValue(getSlotValue("integrations"));
-        const deployments = listFromValue(deployment);
+        const coreCanons = new Set(corePages.map((item) => canonicalize(item.toLowerCase())));
+        const additionalPages = pages.filter((page) => !coreCanons.has(canonicalize(page.toLowerCase())));
+        const additionalLabel = additionalPages.length ? additionalPages.join(", ") : "To be confirmed";
 
-        const corePages = ["Home", "About", "Contact", "Privacy Policy", "Terms"];
-
-        const sections = ["[PROPOSAL_DATA]", "PROJECT PROPOSAL", ""];
-
-        sections.push("Project Overview");
-        sections.push(`- Service: ${serviceName}`);
-        sections.push(`- Project: ${projectName}`);
-        if (primaryName) sections.push(`- Client: ${primaryName}`);
-        sections.push(`- Website type: ${websiteType}`);
-        if (techStack) sections.push(`- Tech stack: ${techStack}`);
-        sections.push("");
-
-        if (summary) {
-            sections.push("Summary");
-            sections.push(`- ${summary}`);
-            sections.push("");
+        if (!additionalPages.length) {
+            addUnique(templateInputs, "List of additional pages/features beyond the core pages.");
+            addUnique(templateAssumptions, "Additional pages beyond the core set will be finalized during kickoff.");
         }
 
-        sections.push("Pages & Features");
-        sections.push(`- Core pages included: ${corePages.join(", ")}`);
-        sections.push(`- Additional pages/features: ${pages.length ? pages.join(", ") : "None specified"}`);
-        sections.push("");
-
-        sections.push("Integrations");
-        sections.push(`- ${integrations.length ? integrations.join(", ") : "None specified"}`);
-        sections.push("");
-
-        const infraLines = [];
-        if (design) infraLines.push(`- Designs: ${design}`);
-        if (deployments.length) infraLines.push(`- Hosting/deployment: ${deployments.join(", ")}`);
-        if (domain) infraLines.push(`- Domain: ${domain}`);
-        if (infraLines.length) {
-            sections.push(...infraLines);
-            sections.push("");
+        const buildMode = normalizeValue(getSlotValue("build_mode"));
+        let stackLabel = techStack;
+        if (!stackLabel) {
+            stackLabel = /no\s*-?code/i.test(buildMode)
+                ? "Webflow or WordPress (no-code)"
+                : "React/Next.js + Node.js";
+            addUnique(templateAssumptions, `Tech stack assumed as ${stackLabel}.`);
         }
 
-        if (assumptions.length) {
-            sections.push("Assumptions");
-            assumptions.forEach((item) => sections.push(`- ${item}`));
-            sections.push("");
+        const hostingList = listFromValue(hostingPref);
+        let hostingLabel = hostingList.length ? hostingList.join(", ") : "";
+        if (!hostingLabel) {
+            hostingLabel = /no\s*-?code/i.test(buildMode)
+                ? "Managed hosting on chosen platform"
+                : "Vercel/Netlify";
+            addUnique(templateAssumptions, `Hosting assumed as ${hostingLabel}.`);
         }
 
-        if (timeline) {
-            sections.push("Timeline");
-            sections.push(`- ${timeline}`);
-            sections.push("");
+        const websiteIntegrations = listFromValue(firstNonEmpty(getSlotValue("integrations"), sharedContext.integrations));
+        const integrationLabel = websiteIntegrations.length ? websiteIntegrations.join(", ") : "Analytics + Email (assumed)";
+        if (!websiteIntegrations.length) {
+            addUnique(templateAssumptions, "Assuming standard analytics and email integrations unless otherwise specified.");
+            addUnique(templateInputs, "Required integrations (payments, CRM, email, analytics).");
         }
 
-        if (budget) {
-            sections.push("Budget");
-            sections.push(`- ${budget}`);
-            sections.push("");
+        if (!designStatus) addUnique(templateInputs, "Design files, references, or brand guidelines.");
+        if (!domainStatus) addUnique(templateInputs, "Domain status and DNS access.");
+
+        const pageCanon = new Set(pages.map((item) => canonicalize(String(item).toLowerCase())));
+        const hasEcommerce = ["shopstore", "cartcheckout", "wishlist", "ordertracking"].some((item) =>
+            pageCanon.has(canonicalize(item))
+        );
+        const featureList = [];
+        if (hasEcommerce) addUnique(featureList, "Product catalog, cart, and checkout");
+        if (!featureList.length) addUnique(featureList, "Lead capture forms and content management");
+
+        addUnique(templateContext, `Website type: ${summarizeLine(getSlotValue("website_type") || "Website")}`);
+        if (pages.length) addUnique(templateContext, `Additional pages requested: ${summarizeLine(pages.join(", "))}`);
+        if (designStatus) addUnique(templateContext, `Design status: ${summarizeLine(designStatus)}`);
+
+        addPhase(
+            "Discovery & Architecture",
+            [
+                "Requirements workshop and sitemap",
+                "Define page list and feature scope",
+                "User roles and permissions matrix",
+                "Content plan and SEO baseline",
+            ],
+            "Sitemap, feature list, and user flows approved"
+        );
+        addPhase(
+            "UI/UX & Content Prep",
+            [
+                "Wireframes and visual design or design adaptation",
+                "Responsive layout system and components",
+                "Copy guidance and content structure",
+            ],
+            "Designs or wireframes approved"
+        );
+        addPhase(
+            "Development",
+            [
+                "Responsive front-end build for all pages",
+                "Auth flows (signup/login/reset) and profile management",
+                "Admin dashboard modules (users/content/plans)",
+            ],
+            "Feature-complete build ready for QA"
+        );
+        addPhase(
+            "Integrations & QA",
+            [
+                `Integrations setup (${integrationLabel})`,
+                "Cross-browser and device testing",
+                "Performance, accessibility, and SEO checks",
+            ],
+            "QA sign-off and launch checklist complete"
+        );
+        addPhase(
+            "Launch & Handover",
+            [
+                "Deploy to hosting and configure domain/SSL",
+                "Handover documentation and training",
+                "Post-launch support window",
+            ],
+            "Site live and handover delivered"
+        );
+
+        deliverables.push(
+            `Sitemap and page list (core: ${corePages.join(", ")}; additional: ${additionalLabel}).`,
+            `Core feature list: ${featureList.join(", ")}.`,
+            "User roles and permissions matrix (guest/user/admin).",
+            "Auth flows: signup/login/reset with email verification.",
+            "Admin dashboard modules: user, content, and plan management.",
+            `Integrations setup: ${integrationLabel}.`,
+            "Hosting/deployment setup and launch checklist.",
+            "Handover documentation and post-launch support."
+        );
+
+        tools.push(
+            `Tech stack: ${stackLabel}`,
+            `Hosting/deployment: ${hostingLabel}`,
+            "Design handoff (Figma or equivalent)",
+            "Analytics (GA4) and event tracking",
+            "Email service (SendGrid/Resend) if needed"
+        );
+
+        metrics.push(
+            "Page load time under 3 seconds (target).",
+            "Core Web Vitals passing (to finalize after baseline).",
+            "Primary CTA conversion rate (to finalize after baseline).",
+            "Form submission or signup volume (to finalize after baseline).",
+            "Uptime 99.5%+ after launch."
+        );
+
+        addUnique(templateInputs, "Brand assets (logo, colors, fonts) and approved copy.");
+        addUnique(templateInputs, "Access to hosting and domain provider.");
+        addUnique(templateInputs, "Integration credentials and API keys.");
+        addUnique(templateInputs, "Legal pages content (privacy policy, terms).");
+
+        addUnique(templateOutOfScope, "Ongoing content updates beyond the agreed scope.");
+        addUnique(templateOutOfScope, "Paid advertising management or media spend.");
+        addUnique(templateOutOfScope, "Third-party subscription fees (hosting, domain, plugins).");
+
+        defaultTimeline = "6-8 weeks";
+    } else if (serviceCategory === "lead") {
+        const leadVolume = normalizeValue(getSlotValue("volume"));
+        const offer = normalizeValue(getSlotValue("offer"));
+        const geoTarget = firstNonEmpty(getSlotValue("geo"), locationValue);
+        const channelPref = firstNonEmpty(getSlotValue("channels"), platformsValue);
+        const leadAssets = normalizeValue(getSlotValue("assets"));
+        const isB2b = /\bb2b\b|saas|enterprise|agency|consulting/.test(
+            (businessType || "").toLowerCase()
+        );
+
+        let channelList = listFromValue(channelPref);
+        if (!channelList.length) {
+            channelList = isB2b
+                ? ["LinkedIn Ads", "Cold email", "Google Search"]
+                : ["Meta Ads", "Google Search"];
+            addUnique(templateAssumptions, "Channel mix assumed based on best-practice fit for the niche.");
         }
+        const channelLabel = channelList.join(", ");
+        const crmLabel =
+            integrationsList.find((item) => /hubspot|salesforce|zoho|crm/i.test(item.toLowerCase())) ||
+            "CRM or Google Sheets";
 
-        sections.push("Next Steps");
-        sections.push("- Approve proposal to kick start the project");
-        sections.push("[/PROPOSAL_DATA]");
+        if (leadVolume) addUnique(templateContext, `Target lead volume: ${summarizeLine(leadVolume)}`);
+        if (offer) addUnique(templateContext, `Primary offer/CTA: ${summarizeLine(offer)}`);
+        if (geoTarget) addUnique(templateContext, `Target geography: ${summarizeLine(geoTarget)}`);
+        if (leadAssets) addUnique(templateContext, `Existing assets: ${summarizeLine(leadAssets)}`);
 
-        return sections.join("\n").trim();
+        addPhase(
+            "Strategy & Lead Definition",
+            [
+                "Define ICP and lead qualification (MQL/SQL)",
+                "Clarify offer, CTA, and funnel stages",
+                "Set KPIs and measurement plan",
+            ],
+            "Lead definition and KPI targets approved"
+        );
+        addPhase(
+            "Funnel & Asset Build",
+            [
+                "Landing page or lead form setup",
+                "Lead magnet and booking flow",
+                "Email/SMS follow-up sequences",
+            ],
+            "Funnel assets ready for launch"
+        );
+        addPhase(
+            "Channel Setup & Tracking",
+            [
+                `Channel setup for ${channelLabel}`,
+                "Pixel and conversion event setup",
+                "UTM structure and CRM/lead delivery integration",
+            ],
+            "Tracking and lead delivery ready"
+        );
+        addPhase(
+            "Creative & Launch",
+            [
+                "Creative production and ad copy",
+                "A/B testing plan and initial launch",
+                "Budget allocation by channel",
+            ],
+            "Campaigns live with first tests running"
+        );
+        addPhase(
+            "Optimization & Reporting",
+            [
+                "Weekly optimization and bidding adjustments",
+                "Lead quality feedback loop",
+                "Weekly reports and monthly insights",
+            ],
+            "Stable CPL and lead flow established"
+        );
+
+        deliverables.push(
+            "ICP and lead definition document (MQL/SQL criteria).",
+            `Channel plan and targeting matrix (${channelLabel}).`,
+            "Offer and funnel blueprint (landing page, lead magnet, booking).",
+            "Creative plan with ad formats and copy angles.",
+            "Tracking setup (pixels, conversion events, UTMs).",
+            `Lead delivery workflow (${crmLabel} + instant alerts) and response SLA guidance.`,
+            "Reporting cadence with weekly KPI summary and monthly insights."
+        );
+
+        tools.push(
+            `Channels: ${channelLabel}`,
+            "Analytics: GA4 + Tag Manager",
+            "Tracking: conversion pixels and UTMs",
+            `Lead delivery: ${crmLabel}`,
+            "Reporting dashboard (Looker Studio or equivalent)"
+        );
+
+        metrics.push(
+            "Qualified leads per week/month (to finalize after baseline).",
+            "Cost per lead (CPL) target (to finalize after baseline).",
+            "Landing page conversion rate (to finalize after baseline).",
+            "MQL to SQL conversion rate (to finalize after baseline).",
+            "Lead response time SLA (recommended under 15 minutes)."
+        );
+
+        addUnique(templateInputs, "Access to ad accounts or permission to create new accounts.");
+        addUnique(templateInputs, "Offer details, pricing, and qualification criteria.");
+        addUnique(templateInputs, "Brand assets and creative guidelines.");
+        addUnique(templateInputs, "CRM access or lead delivery preference.");
+        addUnique(templateInputs, "Historical campaign data (if available).");
+
+        addUnique(templateAssumptions, "Lead quality depends on response time and follow-up.");
+        addUnique(templateOutOfScope, "Ad spend or media budget (billed separately).");
+        addUnique(templateOutOfScope, "Sales closing or pipeline management by our team.");
+        addUnique(templateOutOfScope, "Platform policy approvals and compliance delays.");
+
+        defaultTimeline = "4-6 weeks for initial ramp + ongoing optimization";
+    } else if (serviceCategory === "seo") {
+        const seoScope = normalizeValue(getSlotValue("seo_scope") || getSlotValue("seo"));
+        const keywords = normalizeValue(getSlotValue("keywords"));
+        const niche = firstNonEmpty(getSlotValue("business_niche"), businessType);
+
+        if (niche) addUnique(templateContext, `Business niche: ${summarizeLine(niche)}`);
+        if (seoScope) addUnique(templateContext, `SEO scope: ${summarizeLine(seoScope)}`);
+        if (keywords) addUnique(templateContext, `Target keywords: ${summarizeLine(keywords)}`);
+        if (websiteLive) addUnique(templateContext, `Website status: ${summarizeLine(websiteLive)}`);
+
+        if (!seoScope) addUnique(templateAssumptions, "Assuming full SEO scope unless specified.");
+        if (!keywords) addUnique(templateInputs, "Priority keywords or core service pages.");
+
+        addPhase(
+            "Audit & Baseline",
+            [
+                "Technical SEO audit (indexing, crawl, CWV basics)",
+                "On-page and content audit",
+                "Backlink profile review",
+            ],
+            "Baseline audit report and priority issues delivered"
+        );
+        addPhase(
+            "Keyword Research & Mapping",
+            [
+                "Keyword research and intent mapping",
+                "Map keywords to existing/new pages",
+                "Define content gaps and opportunities",
+            ],
+            "Keyword map and content gaps approved"
+        );
+        addPhase(
+            "Technical SEO Fixes",
+            [
+                "Indexation, sitemap, and robots updates",
+                "Schema markup and structured data",
+                "Performance and CWV improvements",
+            ],
+            "Technical fixes backlog completed or handed off"
+        );
+        addPhase(
+            "On-Page Optimization",
+            [
+                "Title/meta updates and heading structure",
+                "Internal linking improvements",
+                "Content refresh for priority pages",
+            ],
+            "Priority pages optimized and published"
+        );
+        addPhase(
+            "Content & Link Building",
+            [
+                "Pillar page + cluster content plan",
+                "Monthly blog topics and briefs",
+                "White-hat outreach and citation building",
+            ],
+            "Content plan live and link-building started"
+        );
+        addPhase(
+            "Reporting & Iteration",
+            [
+                "Rank tracking and KPI reporting",
+                "Monthly insights and next-step roadmap",
+                "Iterative improvements based on data",
+            ],
+            "Monthly SEO report delivered"
+        );
+
+        deliverables.push(
+            "SEO audit report (technical, on-page, content, backlinks).",
+            "Keyword research and mapping to pages.",
+            "Technical SEO fixes list (indexation, sitemap/robots, CWV, schema).",
+            "On-page optimization updates for priority pages.",
+            "Content plan (pillar pages + clusters + monthly blog topics).",
+            "White-hat link-building plan and outreach cadence.",
+            "Reporting dashboard and monthly SEO report."
+        );
+
+        tools.push(
+            "Google Search Console (GSC)",
+            "Google Analytics 4 (GA4)",
+            "Screaming Frog or equivalent crawler",
+            "Ahrefs/SEMrush for research",
+            "Rank tracking tool (to be confirmed)"
+        );
+
+        metrics.push(
+            "Organic sessions growth (to finalize after baseline).",
+            "Keyword ranking improvements (top 3/top 10).",
+            "Search impressions and CTR (to finalize after baseline).",
+            "Indexed pages and crawl health metrics.",
+            "Conversions from organic traffic (to finalize after baseline)."
+        );
+
+        addUnique(templateInputs, "Access to CMS, GSC, and GA4.");
+        addUnique(templateInputs, "Competitor list and priority services/products.");
+        addUnique(templateInputs, "Content approval and brand guidelines.");
+        addUnique(templateInputs, "Developer access for technical fixes (if needed).");
+
+        addUnique(templateAssumptions, "SEO results typically take 60-90 days depending on competition.");
+        addUnique(templateOutOfScope, "Guaranteed rankings or instant results.");
+        addUnique(templateOutOfScope, "Paid advertising or PPC management.");
+        addUnique(templateOutOfScope, "Content production beyond agreed volume.");
+
+        defaultTimeline = "3-6 months (ongoing)";
+    } else {
+        addPhase(
+            "Discovery",
+            ["Requirements gathering", "Scope confirmation", "Success criteria alignment"],
+            "Scope and goals approved"
+        );
+        addPhase(
+            "Planning",
+            ["Execution plan and timeline", "Resource allocation", "Risk assessment"],
+            "Project plan approved"
+        );
+        addPhase(
+            "Execution",
+            ["Produce core deliverables", "Internal reviews", "Client feedback loops"],
+            "Core deliverables completed"
+        );
+        addPhase(
+            "QA & Handover",
+            ["Quality checks", "Final revisions", "Documentation and handover"],
+            "Final delivery completed"
+        );
+
+        deliverables.push(
+            "Detailed scope and requirements document.",
+            "Execution plan with milestones.",
+            "Core deliverables aligned to scope.",
+            "Quality assurance checklist and revisions.",
+            "Final handover documentation."
+        );
+
+        tools.push(
+            "Project management workspace",
+            "Communication and review workflow",
+            "Reporting and documentation tools"
+        );
+
+        metrics.push(
+            "On-time delivery of milestones.",
+            "Quality benchmarks met (to finalize after baseline).",
+            "Stakeholder approval within agreed cycles.",
+            "Client satisfaction rating (to finalize after delivery)."
+        );
+
+        addUnique(templateInputs, "Access to required assets and references.");
+        addUnique(templateInputs, "Approval contacts and feedback cadence.");
+        addUnique(templateInputs, "Goals and success criteria.");
+        addUnique(templateInputs, "Budget and timeline confirmation.");
+
+        addUnique(templateOutOfScope, "Work outside the defined scope.");
+        addUnique(templateOutOfScope, "Third-party costs or licenses.");
+        addUnique(templateOutOfScope, "Ongoing support unless specified.");
+    }
+
+    const generalInputs = [];
+    const generalAssumptions = [];
+    const generalOutOfScope = [];
+
+    let projectName = projectNameRaw || "New Project";
+    if (!projectNameRaw) {
+        addUnique(generalInputs, "Project or business name.");
+        addUnique(generalAssumptions, "Project name to be confirmed.");
+    }
+
+    let goalLine = "";
+    if (goalValue && projectSummary) {
+        goalLine = `${goalValue}. ${summarizeLine(projectSummary)}`;
+    } else {
+        goalLine = goalValue || projectSummary || "";
+    }
+    if (!goalLine) {
+        goalLine = "Goals to be confirmed during kickoff.";
+        addUnique(generalInputs, "Primary goal and success criteria.");
+        addUnique(generalAssumptions, "Goals will be finalized after kickoff.");
+    }
+
+    let targetLine = "";
+    if (audienceValue && locationValue) {
+        targetLine = `${audienceValue} (Location: ${locationValue})`;
+    } else {
+        targetLine = audienceValue || locationValue || "";
+    }
+    if (!targetLine) {
+        targetLine = "To be confirmed.";
+        addUnique(generalInputs, "Target audience and location.");
+    }
+
+    let budgetDisplay = budgetValue || "To be confirmed.";
+    if (!budgetValue) {
+        addUnique(generalInputs, "Budget range or monthly spend.");
+        addUnique(generalAssumptions, "Budget to be finalized after scope confirmation.");
+    }
+
+    let timelineDisplay = timelineValueRaw || defaultTimeline || "To be confirmed.";
+    if (!timelineValueRaw) {
+        addUnique(generalAssumptions, `Timeline assumed at ${defaultTimeline}.`);
+        addUnique(generalInputs, "Preferred timeline or launch date.");
+    }
+
+    if (!clientName) addUnique(generalInputs, "Primary contact name.");
+
+    const baseContext = [];
+    if (businessType) addUnique(baseContext, `Business type: ${summarizeLine(businessType)}`);
+    if (projectSummary) addUnique(baseContext, `Project summary: ${summarizeLine(projectSummary)}`);
+    if (goalValue) addUnique(baseContext, `Primary goals: ${summarizeLine(goalValue)}`);
+    if (audienceValue) addUnique(baseContext, `Target audience: ${summarizeLine(audienceValue)}`);
+    if (locationValue) addUnique(baseContext, `Target location: ${summarizeLine(locationValue)}`);
+    if (websiteLive) addUnique(baseContext, `Website status: ${summarizeLine(websiteLive)}`);
+    if (designStatus) addUnique(baseContext, `Design assets: ${summarizeLine(designStatus)}`);
+    if (domainStatus) addUnique(baseContext, `Domain status: ${summarizeLine(domainStatus)}`);
+    if (techStack) addUnique(baseContext, `Tech preference: ${summarizeLine(techStack)}`);
+    if (integrationsList.length) {
+        addUnique(baseContext, `Integrations mentioned: ${summarizeLine(integrationsList.join(", "))}`);
+    }
+    if (platformsValue) addUnique(baseContext, `Platforms/channels: ${summarizeLine(platformsValue)}`);
+    if (deliverablesValue) addUnique(baseContext, `Requested deliverables: ${summarizeLine(deliverablesValue)}`);
+    if (styleValue) addUnique(baseContext, `Style/tone: ${summarizeLine(styleValue)}`);
+    if (notesValue) addUnique(baseContext, `Existing assets/links: ${summarizeLine(notesValue)}`);
+
+    const contextBullets = cleanList([...baseContext, ...templateContext]);
+    if (contextBullets.length < 2) {
+        addUnique(contextBullets, `Service: ${serviceName}.`);
+        addUnique(contextBullets, `Project: ${projectName}.`);
+    }
+
+    const extraTools = [];
+    if (techStack) addUnique(extraTools, `Tech stack: ${techStack}`);
+    if (hostingPref) addUnique(extraTools, `Hosting/deployment: ${hostingPref}`);
+    if (domainStatus) addUnique(extraTools, `Domain/DNS: ${domainStatus}`);
+    if (integrationsList.length) addUnique(extraTools, `Integrations: ${integrationsList.join(", ")}`);
+    if (platformsValue) addUnique(extraTools, `Platforms: ${platformsValue}`);
+
+    if (deliverables.length < 6) {
+        addUnique(deliverables, "Detailed scope and requirements document.");
+        addUnique(deliverables, "Implementation plan with milestones.");
+        addUnique(deliverables, "Quality assurance checklist and revisions.");
+    }
+    if (metrics.length < 4) {
+        addUnique(metrics, "Primary KPI achievement (to finalize after baseline).");
+        addUnique(metrics, "Time-to-complete milestone adherence.");
+        addUnique(metrics, "Stakeholder approval within agreed cycles.");
+    }
+    if (tools.length < 4) {
+        addUnique(tools, "Analytics & reporting setup");
+        addUnique(tools, "Project management (Notion/Trello)");
+        addUnique(tools, "Communication (Slack/Email)");
+    }
+
+    const clientInputs = cleanList([...generalInputs, ...templateInputs]);
+    if (clientInputs.length < 4) {
+        addUnique(clientInputs, "Timely approvals and feedback.");
+        addUnique(clientInputs, "Access to required accounts/tools.");
+    }
+
+    const assumptions = cleanList([...generalAssumptions, ...templateAssumptions]);
+    const outOfScope = cleanList([...generalOutOfScope, ...templateOutOfScope]);
+    if (!outOfScope.length) {
+        addUnique(outOfScope, "Third-party fees and subscriptions.");
+        addUnique(outOfScope, "Ongoing work beyond the agreed scope.");
     }
 
     const sections = ["[PROPOSAL_DATA]"];
 
-    sections.push("Confirmed Brief");
-    sections.push(`- Service: ${serviceName}`);
-    if (goals) sections.push(`- Goals: ${goals}`);
-    if (audience) sections.push(`- Target audience: ${audience}`);
-    if (summary) sections.push(`- Brief: ${summary}`);
-    if (requirements) sections.push(`- Key requirements: ${requirements}`);
+    sections.push("## Proposal Title");
+    sections.push(`- ${serviceName} Proposal — ${projectName}`);
     sections.push("");
 
-    if (assumptions.length) {
-        sections.push("Assumptions");
-        assumptions.forEach((item) => sections.push(`- ${item}`));
-        sections.push("");
-    }
+    sections.push("## 1. Project Overview");
+    sections.push(`- Service: ${serviceName}`);
+    sections.push(`- Project: ${projectName}`);
+    sections.push(`- Client: ${clientName || "To be confirmed."}`);
+    sections.push(`- Goal (1–2 lines): ${goalLine}`);
+    sections.push(`- Target audience / location (if relevant): ${targetLine}`);
+    sections.push(`- Budget: ${budgetDisplay}`);
+    sections.push(`- Timeline: ${timelineDisplay}`);
+    sections.push("");
 
-    const scopeLines = [];
-    if (deliverables) scopeLines.push(`- Deliverables: ${deliverables}`);
-    if (platforms) scopeLines.push(`- Platforms/channels: ${platforms}`);
-    if (style) scopeLines.push(`- Style/tone: ${style}`);
-    if (scopeLines.length) {
-        sections.push("Scope & Deliverables");
-        sections.push(...scopeLines);
-        sections.push("");
-    }
+    sections.push("## 2. Current Context (What we know)");
+    contextBullets.slice(0, 6).forEach((item) => sections.push(`- ${item}`));
+    sections.push("");
 
-    if (timeline) {
-        sections.push("Timeline");
-        sections.push(`- ${timeline}`);
-        sections.push("");
-    }
+    sections.push("## 3. Scope of Work (What we will do)");
+    phases.slice(0, 6).forEach((phase, index) => {
+        const tasks = cleanList(phase.tasks || []);
+        const taskLine = tasks.length ? tasks.join("; ") : "Detailed tasks to be confirmed.";
+        sections.push(`- Phase ${index + 1}: ${phase.title} - ${taskLine}`);
+    });
+    sections.push("");
 
-    if (budget) {
-        sections.push("Budget Alignment / Packages");
-        sections.push(`- Budget: ${budget}`);
-        sections.push("");
-    }
+    sections.push("## 4. Deliverables (What you get)");
+    deliverables.forEach((item) => sections.push(`- ${item}`));
+    sections.push("");
 
+    sections.push("## 5. Timeline & Milestones");
+    phases.slice(0, 6).forEach((phase, index) => {
+        const milestone = phase.milestone || (phase.tasks || [])[0] || "Milestone delivery";
+        sections.push(`- Phase ${index + 1}: ${phase.title} - ${milestone}`);
+    });
+    sections.push("");
+
+    sections.push("## 6. Tools / Tech / Integrations");
+    cleanList([...tools, ...extraTools]).forEach((item) => sections.push(`- ${item}`));
+    sections.push("");
+
+    sections.push("## 7. Success Metrics (How we measure results)");
+    metrics.slice(0, 10).forEach((item) => sections.push(`- ${item}`));
+    sections.push("");
+
+    sections.push("## 8. Client Inputs Required");
+    clientInputs.forEach((item) => sections.push(`- ${item}`));
+    sections.push("");
+
+    sections.push("## 9. Assumptions & Out of Scope");
+    assumptions.forEach((item) => sections.push(`- Assumption: ${item}`));
+    outOfScope.forEach((item) => sections.push(`- Out of scope: ${item}`));
+    sections.push("");
+
+    sections.push("## 10. Next Steps (MANDATORY ENDING — VERBATIM)");
     sections.push("Next Steps");
-    sections.push("- Confirm the brief");
-    sections.push("- Share any missing assets or links");
-    sections.push("- Approve proposal to begin");
+    sections.push("- Approve proposal to kick start the project");
     sections.push("[/PROPOSAL_DATA]");
 
     return sections.join("\n").trim();
@@ -3781,5 +4933,4 @@ export function generateProposalFromState(state) {
 export function getOpeningMessage(service) {
     return getChatbot(service).openingMessage;
 }
-
 

@@ -249,10 +249,10 @@ const CatalanceHero = () => {
                             </div>
                         </div>
                         {/* Business Card */}
-                        <div className={`group relative p-8 rounded-3xl flex flex-col ${isDark ? 'bg-linear-to-br from-blue-500/10 via-white/5 to-white/5 border-white/10' : 'bg-white/50 border-gray-200'} backdrop-blur-xl border hover:border-blue-400/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1`}>
+                        <div className={`group relative p-8 rounded-3xl flex flex-col ${isDark ? 'bg-linear-to-br from-orange-500/10 via-white/5 to-white/5 border-white/10' : 'bg-white/50 border-gray-200'} backdrop-blur-xl border hover:border-orange-400/30 transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:-translate-y-1`}>
                             {/* Badge */}
                             <div className="mb-6">
-                                <Badge className={`${isDark ? 'bg-blue-500/15 text-blue-300 border-blue-400/30' : 'bg-blue-50 text-blue-600 border-blue-300'} hover:bg-blue-500/20 border backdrop-blur-md px-4 py-1.5 text-xs font-semibold uppercase tracking-wide`}>
+                                <Badge className={`${isDark ? 'bg-orange-500/15 text-orange-300 border-orange-400/30' : 'bg-orange-50 text-orange-600 border-orange-300'} hover:bg-orange-500/20 border backdrop-blur-md px-4 py-1.5 text-xs font-semibold uppercase tracking-wide`}>
                                     <Briefcase className="w-3.5 h-3.5 mr-1.5" />
                                     For Businesses
                                 </Badge>
@@ -266,21 +266,21 @@ const CatalanceHero = () => {
                             {/* Description */}
                             <p className={`${subTextColor} mb-6 leading-relaxed min-h-[72px]`}>
                                 Access our curated network of{" "}
-                                <span className={`${isDark ? 'text-blue-400' : 'text-blue-600'} font-semibold`}>world-class professionals</span>{" "}
+                                <span className={`${isDark ? 'text-orange-400' : 'text-orange-600'} font-semibold`}>world-class professionals</span>{" "}
                                 ready to transform your vision into reality.
                             </p>
 
                             {/* Features */}
                             <div className="space-y-3 mb-8 grow">
                                 <div className={`flex items-center gap-3 ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
-                                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-blue-500/15' : 'bg-blue-100'} flex items-center justify-center shrink-0`}>
-                                        <ShieldCheck className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-orange-500/15' : 'bg-orange-100'} flex items-center justify-center shrink-0`}>
+                                        <ShieldCheck className={`w-5 h-5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
                                     </div>
                                     <span className="font-medium">Verified expertise</span>
                                 </div>
                                 <div className={`flex items-center gap-3 ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
-                                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-blue-500/15' : 'bg-blue-100'} flex items-center justify-center shrink-0`}>
-                                        <Users className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-orange-500/15' : 'bg-orange-100'} flex items-center justify-center shrink-0`}>
+                                        <Users className={`w-5 h-5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
                                     </div>
                                     <span className="font-medium">50K+ professionals</span>
                                 </div>
@@ -290,7 +290,7 @@ const CatalanceHero = () => {
                             <Link to="/service" className="w-full mt-auto">
                                 <Button
                                     size="lg"
-                                    className="w-full group/btn bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-6 text-base rounded-2xl shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-blue-500/40 hover:scale-[1.02]"
+                                    className="w-full group/btn bg-orange-600 hover:bg-orange-500 text-white font-semibold px-6 py-6 text-base rounded-2xl shadow-lg shadow-orange-500/20 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-[1.02]"
                                 >
                                     Explore Talent
                                     <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
@@ -298,16 +298,16 @@ const CatalanceHero = () => {
                             </Link>
 
                             {/* Glow Effect */}
-                            <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/5 group-hover:to-cyan-500/5 transition-all duration-500 -z-10 blur-xl" />
+                            <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-orange-500/0 to-amber-500/0 group-hover:from-orange-500/5 group-hover:to-amber-500/5 transition-all duration-500 -z-10 blur-xl" />
                         </div>
 
                         {/* Professional Card */}
-                        <div className={`group relative p-8 rounded-3xl flex flex-col ${isDark ? 'bg-linear-to-br from-emerald-500/10 via-white/5 to-white/5 border-white/10' : 'bg-white/50 border-gray-200'} backdrop-blur-xl border hover:border-emerald-400/30 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1`}>
+                        <div className={`group relative p-8 rounded-3xl flex flex-col ${isDark ? 'bg-linear-to-br from-primary/10 via-white/5 to-white/5 border-white/10' : 'bg-white/50 border-gray-200'} backdrop-blur-xl border hover:border-primary/30 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1`}>
                             {/* Badge */}
                             <div className="mb-6">
-                                <Badge className={`${isDark ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30' : 'bg-emerald-50 text-emerald-600 border-emerald-300'} hover:bg-emerald-500/20 border backdrop-blur-md px-4 py-1.5 text-xs font-semibold uppercase tracking-wide`}>
+                                <Badge className={`${isDark ? 'bg-primary/15 text-primary border-primary/30' : 'bg-primary/10 text-primary border-primary/30'} hover:bg-primary/20 border backdrop-blur-md px-4 py-1.5 text-xs font-semibold uppercase tracking-wide`}>
                                     <Zap className="w-3.5 h-3.5 mr-1.5" />
-                                    For Professionals
+                                    For Freelancers
                                 </Badge>
                             </div>
 
@@ -319,21 +319,21 @@ const CatalanceHero = () => {
                             {/* Description */}
                             <p className={`${subTextColor} mb-6 leading-relaxed min-h-[72px]`}>
                                 Join an exclusive community and connect with{" "}
-                                <span className={`${isDark ? 'text-emerald-400' : 'text-emerald-600'} font-semibold`}>premium opportunities</span>{" "}
+                                <span className={`${isDark ? 'text-primary' : 'text-primary'} font-semibold`}>premium opportunities</span>{" "}
                                 that match your ambitions.
                             </p>
 
                             {/* Features */}
                             <div className="space-y-3 mb-8 grow">
                                 <div className={`flex items-center gap-3 ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
-                                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-emerald-500/15' : 'bg-emerald-100'} flex items-center justify-center shrink-0`}>
-                                        <TrendingUp className={`w-5 h-5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/10'} flex items-center justify-center shrink-0`}>
+                                        <TrendingUp className={`w-5 h-5 ${isDark ? 'text-primary' : 'text-primary'}`} />
                                     </div>
                                     <span className="font-medium">Career acceleration</span>
                                 </div>
                                 <div className={`flex items-center gap-3 ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
-                                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-emerald-500/15' : 'bg-emerald-100'} flex items-center justify-center shrink-0`}>
-                                        <Target className={`w-5 h-5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/10'} flex items-center justify-center shrink-0`}>
+                                        <Target className={`w-5 h-5 ${isDark ? 'text-primary' : 'text-primary'}`} />
                                     </div>
                                     <span className="font-medium">Premium clients</span>
                                 </div>
@@ -343,15 +343,15 @@ const CatalanceHero = () => {
                             <Link to="/freelancer/onboarding" className="w-full mt-auto">
                                 <Button
                                     size="lg"
-                                    className="w-full group/btn bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-6 text-base rounded-2xl shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:shadow-emerald-500/40 hover:scale-[1.02]"
+                                    className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-6 text-base rounded-2xl shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/40 hover:scale-[1.02]"
                                 >
-                                    Start Journey
+                                    Talk With Professionals
                                     <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
                                 </Button>
                             </Link>
 
                             {/* Glow Effect */}
-                            <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-emerald-500/0 to-teal-500/0 group-hover:from-emerald-500/5 group-hover:to-teal-500/5 transition-all duration-500 -z-10 blur-xl" />
+                            <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-primary/0 to-primary/0 group-hover:from-primary/5 group-hover:to-primary/5 transition-all duration-500 -z-10 blur-xl" />
                         </div>
                     </div>
                 </div>
