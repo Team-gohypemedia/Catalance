@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, IndianRupee, Send, Upload, FileText, Calendar as CalendarIcon, Headset, Mail, Phone, Image, Globe, Linkedin, Github, Link2, Info, Check, CheckCheck } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, IndianRupee, Send, Upload, FileText, Calendar as CalendarIcon, Headset, Mail, Phone, Image, Globe, Linkedin, Github, Link2, Info, Check, CheckCheck, Pencil, X, ChevronUp, ChevronDown, ExternalLink } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";

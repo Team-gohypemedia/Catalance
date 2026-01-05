@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, Calendar as CalendarIcon, Link2, Info, Headset, Mail, Phone, DollarSign, Send, Upload, FileText, Check, CheckCheck } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, Calendar as CalendarIcon, Link2, Info, Headset, Mail, Phone, DollarSign, Send, Upload, FileText, Check, CheckCheck, ExternalLink } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -1205,21 +1205,16 @@ const ProjectDashboard = () => {
       return updated;
     });
 
+    // Calculate new progress based on VERIFIED tasks
+    const allTasks = activeSOP.tasks;
+    const totalTasks = allTasks.length;
+    const verifiedCount = allTasks.filter((t) =>
+      newVerified.includes(`${t.phase}-${t.id}`)
+    ).length;
+    const newProgress = Math.round((verifiedCount / totalTasks) * 100);
+
     // Save to database
-    if (project?.id && authFetch) {
-      try {
-        await authFetch(`/projects/${project.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            completedTasks: newCompleted,
-            verifiedTasks: newVerified
-          })
-        });
-      } catch (error) {
-        console.error("Failed to save task state:", error);
-      }
-    }
+    updateProjectProgress(newProgress, newCompleted, newVerified);
   };
 
   // Handle verify button click - this updates progress
@@ -1232,7 +1227,11 @@ const ProjectDashboard = () => {
 
     setVerifiedTaskIds((prev) => {
       const updated = new Set(prev);
-      updated.add(uniqueKey);
+      if (updated.has(uniqueKey)) {
+        updated.delete(uniqueKey);
+      } else {
+        updated.add(uniqueKey);
+      }
       newVerified = Array.from(updated);
       return updated;
     });
@@ -1451,20 +1450,18 @@ const ProjectDashboard = () => {
                                   {task.title}
                                 </span>
                                 {task.status === "completed" && (
-                                  task.verified ? (
-                                    <Badge className="h-7 px-3 text-xs bg-emerald-500 text-white">
-                                      Verified
-                                    </Badge>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 px-3 text-xs border-primary text-primary hover:bg-primary/10"
-                                      onClick={(e) => handleVerifyTask(e, task.uniqueKey)}
-                                    >
-                                      Verify
-                                    </Button>
-                                  )
+                                  <Button
+                                    size="sm"
+                                    variant={task.verified ? "default" : "outline"}
+                                    className={`h-7 px-3 text-xs transition-all ${
+                                      task.verified 
+                                        ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent" 
+                                        : "border-primary text-primary hover:bg-primary/10"
+                                    }`}
+                                    onClick={(e) => handleVerifyTask(e, task.uniqueKey)}
+                                  >
+                                    {task.verified ? "Verified" : "Verify"}
+                                  </Button>
                                 )}
                               </div>
                             ))}
