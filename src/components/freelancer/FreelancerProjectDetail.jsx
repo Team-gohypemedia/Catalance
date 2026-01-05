@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Image, Globe, Linkedin, Github, Link } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Image, Globe, Linkedin, Github, Link2, BookOpen, Star, MapPin, Activity, Pencil, Check, X } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
-import { Check, CheckCheck, Trash2, Clock4 } from "lucide-react";
+import { CheckCheck, Trash2, Clock4 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -196,96 +196,104 @@ const ClientInfoCard = ({ client }) => {
           </div>
         </div>
 
-        <div className="space-y-3 pt-2">
-          {/* Location */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <div className="w-5 flex justify-center">
-              <span className="text-lg">📍</span> 
-            </div>
-            <span>{client.location || "Location not specified"}</span>
-          </div>
-
-          {/* Rating */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-             <div className="w-5 flex justify-center">
-              <span className="text-lg">⭐</span> 
-            </div>
-            <span>
-              {Number(client.rating || 0).toFixed(1)}/5 Rating ({client.reviewCount || 0} Reviews)
-            </span>
-          </div>
-
-          {/* Email */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-             <div className="w-5 flex justify-center">
-              <Mail className="w-4 h-4" /> 
-            </div>
-            <span className="truncate">{client.email}</span>
-          </div>
-        </div>
-
-        <div className="pt-2">
-           <Button variant="outline" className="w-full justify-center gap-2 h-9">
-              <CalendarIcon className="w-4 h-4" />
-              Schedule Meeting
-           </Button>
-        </div>
       </CardContent>
     </Card>
   );
 };
 
-const ClientAboutCard = ({ client }) => {
+const ClientAboutCard = ({ client, project, onUpdateLink }) => {
   if (!client) return null;
-  const hasLinks = client.portfolio || client.linkedin || client.github;
   
-  // Show if there is ANY content to show
-  if (!client.bio && !hasLinks) return null;
+  const [isEditing, setIsEditing] = useState(false);
+  const [linkValue, setLinkValue] = useState(project?.externalLink || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Update local state if prop changes
+  useEffect(() => {
+    setLinkValue(project?.externalLink || "");
+  }, [project?.externalLink]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+        await onUpdateLink(linkValue);
+        setIsEditing(false);
+    } catch (error) {
+        console.error("Failed to update link", error);
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setLinkValue(project?.externalLink || "");
+    setIsEditing(false);
+  };
+
+  const displayLink = project?.externalLink || client.portfolio;
 
   return (
-    <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-          About & Links
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {client.bio && (
-            <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                {client.bio}
-            </div>
-        )}
-        
-        {hasLinks && (
-            <div className="flex flex-col gap-2 pt-1">
-                {client.portfolio && (
-                    <a href={client.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
-                        <div className="w-8 flex justify-center">
-                           <Globe className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+    <div className="space-y-4">
+      <h3 className="font-semibold text-base text-foreground">About</h3>
+      
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2 pt-1">
+            {/* Project Link with Edit Mode */}
+            {isEditing ? (
+                 <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                        <Link2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            value={linkValue}
+                            onChange={(e) => setLinkValue(e.target.value)}
+                            className="pl-9 h-9 text-sm"
+                            placeholder="https://project-link.com"
+                            autoFocus
+                        />
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50" onClick={handleSave} disabled={isSaving}>
+                        <Check className="h-4 w-4" />
+                    </Button>
+                     <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={handleCancel} disabled={isSaving}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                 </div>
+            ) : (
+                // Display Mode
+                <div className="group relative min-h-[24px] flex items-center">
+                    {displayLink ? (
+                        <a 
+                            href={displayLink} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex items-start gap-2 text-sm text-blue-400 hover:underline font-medium break-all pr-8"
+                        >
+                            <Link2 className="w-4 h-4 mt-0.5 shrink-0" />
+                            <span>{displayLink.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                        </a>
+                    ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                             <Link2 className="w-4 h-4 shrink-0" />
+                             <span>No project link</span>
                         </div>
-                        <span className="truncate">Website / Portfolio</span>
-                    </a>
-                )}
-                 {client.linkedin && (
-                    <a href={client.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
-                         <div className="w-8 flex justify-center">
-                            <Linkedin className="w-4 h-4 text-muted-foreground group-hover:text-[#0077b5] transition-colors" />
-                         </div>
-                        <span className="truncate">LinkedIn Profile</span>
-                    </a>
-                )}
-                 {client.github && (
-                    <a href={client.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
-                        <div className="w-8 flex justify-center">
-                           <Github className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                        </div>
-                        <span className="truncate">GitHub Profile</span>
-                    </a>
-                )}
-            </div>
-        )}
-      </CardContent>
-    </Card>
+                    )}
+                    
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setIsEditing(true);
+                        }}
+                    >
+                        <Pencil className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                </div>
+            )}
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -1198,7 +1206,23 @@ const FreelancerProjectDetailContent = () => {
             <div className="space-y-4">
               {/* Client Info Card - Top of sidebar */}
               <ClientInfoCard client={project?.owner} />
-              <ClientAboutCard client={project?.owner} />
+              <ClientAboutCard 
+                client={project?.owner} 
+                project={project}
+                onUpdateLink={async (newLink) => {
+                    const response = await authFetch(`/projects/${projectId}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ externalLink: newLink })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        setProject(prev => ({ ...prev, externalLink: data.data.externalLink }));
+                        toast.success("Project link updated");
+                    } else {
+                        toast.error("Failed to update link");
+                    }
+                }}
+              />
 
               {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">

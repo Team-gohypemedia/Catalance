@@ -113,6 +113,7 @@ model Project {
   disputes        Dispute[]
   appointments    Appointment[]
   payments        Payment[]
+  externalLink    String?       // Project link (e.g. markify.io)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }

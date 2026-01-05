@@ -258,14 +258,18 @@ export const updateProject = asyncHandler(async (req, res) => {
   }
 
   try {
+    console.log("DEBUG: Attempting to update project", id, "with data:", JSON.stringify(updates));
     const project = await prisma.project.update({
       where: { id },
       data: updates
     });
+    console.log("DEBUG: Update successful");
 
     res.json({ data: project });
   } catch (error) {
     console.error("Update project error:", error);
+    console.error("Error code:", error.code);
+    console.error("Error meta:", error.meta);
     throw new AppError(`Failed to update project: ${error.message}`, 500);
   }
 });
