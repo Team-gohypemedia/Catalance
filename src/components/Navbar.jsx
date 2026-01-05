@@ -26,13 +26,12 @@ const navItems = [
 
 const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
   const forceWhite = isHome && !visible;
-  
+
   return (
     <div
       onClick={onClick}
-      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${
-        isDark ? "rotate-180" : "rotate-0"
-      }`}>
+      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${isDark ? "rotate-180" : "rotate-0"
+        }`}>
       {isDark ? (
         <Sun className="h-6 w-6 text-yellow-500" />
       ) : (
@@ -81,7 +80,6 @@ const Navbar = () => {
       <NavBody>
         <NavbarLogo isHome={isHome} />
         <NavItems items={navItems} onItemClick={closeMobileMenu} isHome={isHome} />
-        <ThemeButton isDark={isDark} onClick={handleThemeToggle} isHome={isHome} />
         <AuthButtons isHome={isHome} />
       </NavBody>
 
@@ -89,19 +87,6 @@ const Navbar = () => {
       <MobileNav>
         <MobileNavHeader>
           <NavbarLogo />
-
-          <div
-            onClick={handleThemeToggle}
-            className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${
-              isDark ? "rotate-180" : "rotate-0"
-            }`}>
-            {isDark ? (
-              <Sun className="h-6 w-6 text-yellow-500" />
-            ) : (
-              <Moon className="h-6 w-6 text-gray-500" />
-            )}
-          </div>
-
           <MobileNavToggle isOpen={mobileOpen} onClick={toggleMobileMenu} />
         </MobileNavHeader>
 
