@@ -1003,7 +1003,11 @@ const ClientDashboardContent = () => {
                                 size="sm"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                 onClick={() => {
-                                  const newDismissed = [...dismissedProjectIds, project.id];
+                                  // Gather all relevant project IDs with the same title to dismiss them together
+                                   const relatedProjectIds = uniqueProjects
+                                     .filter(p => p.title === project.title)
+                                     .map(p => p.id);
+                                  const newDismissed = Array.from(new Set([...dismissedProjectIds, ...relatedProjectIds]));
                                   setDismissedProjectIds(newDismissed);
                                   localStorage.setItem("markify:dismissedExpiredProposals", JSON.stringify(newDismissed));
                                   toast.success("Reminder dismissed");
