@@ -59,10 +59,10 @@ const CatalanceHero = () => {
                     className="absolute inset-0 -z-30 transition-opacity duration-500"
                     style={{
                         backgroundImage: [
-                            "radial-gradient(80% 55% at 50% 52%, rgba(255, 204, 0, 0.65) 0%, rgba(255, 100, 0, 0.60) 25%, rgba(140, 40, 0, 0.55) 45%, rgba(60, 20, 0, 0.70) 65%, rgba(10, 4, 0, 0.98) 85%, rgba(0,0,0,1) 100%)", /* Gold core -> Orange -> Deep Warm Dark */
-                            "radial-gradient(85% 60% at 14% 0%, rgba(255, 160, 0, 0.80) 0%, rgba(255, 80, 0, 0.70) 30%, rgba(40, 10, 0, 0.0) 64%)", /* Intense hot top-left */
-                            "radial-gradient(70% 50% at 86% 22%, rgba(255, 215, 0, 0.60) 0%, rgba(40, 20, 0, 0.0) 55%)", /* Gold right accent with warm fade */
-                            "linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0) 40%)",
+                            "radial-gradient(circle at 50% -20%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 215, 0, 0.7) 20%, rgba(218, 165, 32, 0.5) 50%, rgba(0, 0, 0, 0) 80%)", /* Top Center Spotlight (Intense Core) */
+                            "radial-gradient(circle at 0% 0%, rgba(255, 140, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%)", /* Top Left Amber (Vibrant) */
+                            "radial-gradient(circle at 100% 0%, rgba(255, 215, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%)", /* Top Right Gold (Vibrant) */
+                            "linear-gradient(to bottom, transparent 0%, transparent 15%, #000000 95%)", /* Depth Fade */
                         ].join(","),
                         backgroundColor: "#000",
                     }} />
@@ -88,7 +88,7 @@ const CatalanceHero = () => {
 
                     {/* Badge */}
                     <div className={`flex justify-center mb-8 mt-16 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}>
-                        <Badge className={`group ${isDark ? 'bg-white/10 hover:bg-white/15 text-white border-white/20' : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200 shadow-sm'} border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-default`}>
+                        <Badge className={`group ${isDark ? 'bg-transparent hover:bg-white/5 text-white border-white/20' : 'bg-transparent hover:bg-black/5 text-gray-900 border-gray-200 shadow-sm'} border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-default`}>
                             <Sparkles className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-300" />
                             Trusted by 10,000+ Freelancers & Clients
                         </Badge>
@@ -96,18 +96,10 @@ const CatalanceHero = () => {
 
                     {/* Headlines */}
                     <div className={`mb-6 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`} style={{ animationDelay: '100ms' }}>
-                        <h1 className="text-6xl md:text-7xl lg:text-8xl font-semibold text-foreground tracking-tight leading-tight">
+                        <h1 className="text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight text-white">
                             Find clever minds
                         </h1>
-                        <h1
-                            className="text-6xl md:text-7xl lg:text-8xl font-semibold tracking-tight leading-tight text-primary-strong"
-                            style={isDark ? {
-                                background: "linear-gradient(to right, #facc15, #ea580c, #facc15)", /* Yellow -> Orange -> Yellow for fire effect */
-                                WebkitBackgroundClip: "text",
-                                WebkitTextFillColor: "transparent",
-                                backgroundClip: "text",
-                            } : {}}
-                        >
+                        <h1 className="text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight text-white">
                             Upgrade your craft
                         </h1>
                     </div>
@@ -117,8 +109,7 @@ const CatalanceHero = () => {
                         className={`text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto mb-12 font-light leading-relaxed ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
                         style={{ animationDelay: '200ms' }}
                     >
-                        Connect with world-class freelancers or discover your next big project.
-                        Built for creators, dreamers, and doers.
+                        Connect with world-class freelancers and find your next big project—built for creators, dreamers, and doers.
                     </p>
 
                     {/* Cards Container */}
@@ -126,17 +117,17 @@ const CatalanceHero = () => {
                         className={`relative max-w-3xl mx-auto mb-16 px-4 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
                         style={{ animationDelay: '300ms' }}
                     >
-                        <div className="grid md:grid-cols-2 gap-12 relative">
+                        <div className="grid md:grid-cols-2 gap-15 relative">
                             {/* OR Circle */}
                             <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-                                <div className={`relative w-22 h-22 rounded-full ${isDark ? 'bg-black border-white/20' : 'bg-white border-gray-200'} border-2 flex items-center justify-center shadow-2xl backdrop-blur-sm pointer-events-auto`}>
+                                <div className={`relative w-22 h-22 rounded-full ${isDark ? 'bg-black border-primary/50' : 'bg-white border-primary/50'} border-2 flex items-center justify-center shadow-[0_0_20px_var(--color-primary)] backdrop-blur-sm pointer-events-auto`}>
                                     <span className="text-foreground font-medium text-2xl tracking-wider">OR</span>
-                                    <div className={`absolute inset-0 rounded-full ${isDark ? 'bg-gradient-to-r from-white/10 via-white/20 to-white/10' : 'bg-gradient-to-r from-black/5 via-black/10 to-black/5'} blur-xl animate-pulse -z-10`} />
+                                    <div className={`absolute inset-0 rounded-full ${isDark ? 'bg-linear-to-r from-primary/20 via-primary/40 to-primary/20' : 'bg-linear-to-r from-primary/10 via-primary/20 to-primary/10'} blur-xl animate-pulse -z-10`} />
                                 </div>
                             </div>
 
                             {/* Business Card */}
-                            <div className="group relative p-6 rounded-3xl flex flex-col bg-linear-to-bl from-orange-500/15 via-background to-background text-card-foreground border border-border/50 shadow-card backdrop-blur-xl text-left min-h-[450px]">
+                            <div className="group relative p-6 rounded-3xl flex flex-col bg-linear-to-bl from-orange-500/40 via-background to-background text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[450px]">
                                 <div className="mb-6 flex flex-col items-start">
                                     <div className="px-0 py-2">
                                         <Briefcase className="w-5 h-5 text-orange-500" />
@@ -194,7 +185,7 @@ const CatalanceHero = () => {
                             </div>
 
                             {/* Freelancer Card */}
-                            <div className="group relative p-6 rounded-3xl flex flex-col bg-linear-to-bl from-primary/15 via-background to-background text-card-foreground border border-border/50 shadow-card backdrop-blur-xl text-left min-h-[450px]">
+                            <div className="group relative p-6 rounded-3xl flex flex-col bg-background bg-linear-to-bl from-primary/40 via-background to-background text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[450px]">
                                 <div className="mb-6 flex flex-col items-start">
                                     <div className="px-0 py-2">
                                         <Zap className="w-5 h-5 text-primary" />
@@ -204,7 +195,7 @@ const CatalanceHero = () => {
                                     </span>
                                 </div>
                                 <h3 className="text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight whitespace-nowrap">
-                                    Launch Your Career
+                                    Launch Careers
                                 </h3>
                                 <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
                                     Join an exclusive community and connect with{" "}
@@ -244,7 +235,7 @@ const CatalanceHero = () => {
                                         size="lg"
                                         className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-6 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/40 hover:scale-[1.02]"
                                     >
-                                        Talk With Professionals
+                                        Start Your Career
                                         <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
                                     </Button>
                                 </Link>
@@ -256,9 +247,9 @@ const CatalanceHero = () => {
                 </div>
 
                 {/* Pillars */}
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[100vh]">
-                    <div className={`absolute inset-0 bg-gradient-to-t ${isDark ? 'from-black via-black/90' : 'from-[var(--background)] via-[var(--background)]/80'} to-transparent`} />
-                    <div className="absolute inset-x-0 bottom-0 flex h-full items-end gap-px px-[2px]">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-screen">
+                    <div className={`absolute inset-0 bg-linear-to-t ${isDark ? 'from-black via-black/90' : 'from-background via-(--background)/80'} to-transparent`} />
+                    <div className="absolute inset-x-0 bottom-0 flex h-full items-end gap-px px-0">
                         {pillars.map((h, i) => (
                             <div
                                 key={i}

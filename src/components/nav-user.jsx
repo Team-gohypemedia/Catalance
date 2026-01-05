@@ -90,7 +90,7 @@ export function NavUser({ user = null }) {
           <DropdownMenuTrigger className="w-full group-data-[collapsible=icon]:w-auto">
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground w-full overflow-hidden group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:w-[3rem] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground w-full overflow-hidden group-data-[collapsible=icon]:min-w-0 group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={avatarSrc} alt={displayName} />
                 <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>

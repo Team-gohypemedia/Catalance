@@ -68,10 +68,10 @@ const Navbar = () => {
   const closeMobileMenu = () => setMobileOpen(false);
 
   const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = true; // Always dark
   const handleThemeToggle = () => {
-    const nextTheme = isDark ? "light" : "dark";
-    setTheme(nextTheme);
+    // Optional: Keep toggle logic if needed globally, but UI reflects dark
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -96,7 +96,7 @@ const Navbar = () => {
               key={`mobile-link-${idx}`}
               to={item.link}
               onClick={closeMobileMenu}
-              className="w-full px-4 py-2 text-lg text-black dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 rounded">
+              className="w-full px-4 py-2 text-lg text-white hover:bg-neutral-800 rounded">
               {item.name}
             </Link>
           ))}
