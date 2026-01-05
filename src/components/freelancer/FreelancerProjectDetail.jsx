@@ -188,11 +188,6 @@ const ClientInfoCard = ({ client }) => {
                 <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" fill="currentColor" stroke="white" />
               )}
             </div>
-            {(client.jobTitle || client.companyName) && (
-              <span className="text-xs text-muted-foreground">
-                {[client.jobTitle, client.companyName].filter(Boolean).join(" at ")}
-              </span>
-            )}
           </div>
         </div>
 
@@ -237,8 +232,8 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
       <h3 className="font-semibold text-base text-foreground">About</h3>
       
       <div className="space-y-3">
-        <div className="flex flex-col gap-2 pt-1">
-            {/* Project Link with Edit Mode */}
+        {/* Project Link with Edit Mode */}
+        <div className="flex flex-col gap-2">
             {isEditing ? (
                  <div className="flex items-center gap-2">
                     <div className="relative flex-1">
@@ -292,6 +287,31 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
                 </div>
             )}
         </div>
+        
+        {/* Tech Stack - parsed from description */}
+        {(() => {
+          const desc = project?.description || "";
+          const techMatch = desc.match(/Tech stack:\s*([^-\n]+)/i);
+          const techStack = techMatch ? techMatch[1].trim() : null;
+          return techStack ? (
+            <div className="flex items-start gap-2 text-sm">
+              <span className="text-muted-foreground">Tech Stack:</span>
+              <span className="text-foreground font-medium">{techStack}</span>
+            </div>
+          ) : null;
+        })()}
+        
+        {/* Summary - parsed from description */}
+        {(() => {
+          const desc = project?.description || "";
+          const summaryMatch = desc.match(/Summary[:\s-]+(.+)/i);
+          const summary = summaryMatch ? summaryMatch[1].trim() : null;
+          return summary ? (
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {summary}
+            </p>
+          ) : null;
+        })()}
       </div>
     </div>
   );
@@ -475,7 +495,9 @@ const FreelancerProjectDetailContent = () => {
             spent: Number(match.project.spent || 0),
             spent: Number(match.project.spent || 0),
             manager: match.project.manager, // Map manager details
-            owner: match.project.owner // Store full owner object for details card
+            owner: match.project.owner, // Store full owner object for details card
+            externalLink: match.project.externalLink || null, // Project link
+            description: match.project.description || null // Project description
           });
           setIsFallback(false);
           
@@ -1096,45 +1118,322 @@ const FreelancerProjectDetailContent = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground/90">Overall Progress</CardTitle>
-                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                  <CardTitle className="text-lg font-semibold text-foreground">Project Progress</CardTitle>
+                  <span className="text-lg font-semibold text-amber-500">{Math.round(overallProgress)}% Complete</span>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-semibold text-foreground">{Math.round(overallProgress)}%</div>
-                  <Progress value={overallProgress} className="mt-3 h-2" />
+                <CardContent className="space-y-6">
+                  {/* Dark Progress Bar with Handle */}
+                  <div className="relative">
+                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-400"
+                        style={{ width: `${overallProgress}%` }}
+                      />
+                    </div>
+                    {/* Circular Handle */}
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-md transition-all duration-300"
+                      style={{ left: `calc(${overallProgress}% - 8px)` }}
+                    />
+                  </div>
+                  
+                  {/* Phase Cards */}
+                  <div className="grid grid-cols-4 gap-3">
+                    {/* Phase 1 */}
+                    <div className={`p-4 rounded-lg border-l-4 ${
+                      derivedPhases[0]?.status === 'completed' 
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
+                        : derivedPhases[0]?.status === 'in-progress'
+                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
+                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
+                    }`}>
+                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                        derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
+                        : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500'
+                      }`}>
+                        Phase 1
+                      </div>
+                      <div className="font-semibold text-foreground mb-1 text-sm">
+                        {derivedPhases[0]?.name || 'Discovery'}
+                      </div>
+                      <div className={`text-xs flex items-center gap-1.5 ${
+                        derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
+                        : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500'
+                      }`}>
+                        {derivedPhases[0]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {derivedPhases[0]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
+                        {derivedPhases[0]?.status === 'completed' ? 'Completed' 
+                          : derivedPhases[0]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      </div>
+                    </div>
+                    
+                    {/* Phase 2 */}
+                    <div className={`p-4 rounded-lg border-l-4 ${
+                      derivedPhases[1]?.status === 'completed' 
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
+                        : derivedPhases[1]?.status === 'in-progress'
+                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
+                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
+                    }`}>
+                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                        derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
+                        : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500'
+                      }`}>
+                        Phase 2
+                      </div>
+                      <div className="font-semibold text-foreground mb-1 text-sm">
+                        {derivedPhases[1]?.name || 'Development'}
+                      </div>
+                      <div className={`text-xs flex items-center gap-1.5 ${
+                        derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
+                        : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500'
+                      }`}>
+                        {derivedPhases[1]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {derivedPhases[1]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
+                        {derivedPhases[1]?.status === 'completed' ? 'Completed' 
+                          : derivedPhases[1]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      </div>
+                    </div>
+                    
+                    {/* Phase 3 */}
+                    <div className={`p-4 rounded-lg border-l-4 ${
+                      derivedPhases[2]?.status === 'completed' 
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
+                        : derivedPhases[2]?.status === 'in-progress'
+                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
+                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
+                    }`}>
+                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                        derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
+                        : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500'
+                      }`}>
+                        Phase 3
+                      </div>
+                      <div className="font-semibold text-foreground mb-1 text-sm">
+                        {derivedPhases[2]?.name || 'Testing'}
+                      </div>
+                      <div className={`text-xs flex items-center gap-1.5 ${
+                        derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
+                        : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500'
+                      }`}>
+                        {derivedPhases[2]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {derivedPhases[2]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
+                        {derivedPhases[2]?.status === 'completed' ? 'Completed' 
+                          : derivedPhases[2]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      </div>
+                    </div>
+                    
+                    {/* Phase 4 */}
+                    <div className={`p-4 rounded-lg border-l-4 ${
+                      derivedPhases[3]?.status === 'completed' 
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
+                        : derivedPhases[3]?.status === 'in-progress'
+                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
+                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
+                    }`}>
+                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                        derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
+                        : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500'
+                      }`}>
+                        Phase 4
+                      </div>
+                      <div className="font-semibold text-foreground mb-1 text-sm">
+                        {derivedPhases[3]?.name || 'Deployment'}
+                      </div>
+                      <div className={`text-xs flex items-center gap-1.5 ${
+                        derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
+                        : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500'
+                      }`}>
+                        {derivedPhases[3]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {derivedPhases[3]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
+                        {derivedPhases[3]?.status === 'completed' ? 'Completed' 
+                          : derivedPhases[3]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-foreground">Project Phases</CardTitle>
-                  <CardDescription className="text-muted-foreground">Monitor each phase of your project</CardDescription>
+                  <CardTitle className="text-lg font-semibold text-foreground">Project Description</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {derivedPhases.map((phase) => (
-                    <div
-                      key={phase.id}
-                      className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0 last:pb-0"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-sm text-foreground">{phase.name}</h3>
-                          <Badge
-                            variant={getStatusBadge(phase.status)}
-                            className="rounded-full bg-primary text-primary-foreground text-[11px] font-medium px-2 py-0.5"
-                          >
-                            {phase.status === "in-progress"
-                              ? "In Progress"
-                              : phase.status === "completed"
-                                ? "Completed"
-                                : "Pending"}
-                          </Badge>
+                  {/* Main Description */}
+                  {project?.description ? (
+                    <>
+                      {/* Parse and display all description fields */}
+                      {(() => {
+                        const desc = project.description;
+                        
+                        // Field patterns - extract value until next field name or end
+                        // Include Budget and Next Steps as terminators but we won't display them
+                        const fieldNames = ['Service', 'Project', 'Client', 'Website type', 'Tech stack', 'Pages', 'Timeline', 'Budget', 'Next Steps', 'Summary', 'Deliverables', 'Pages & Features', 'Core pages', 'Additional pages', 'Integrations', 'Payment Gateway', 'Designs', 'Hosting', 'Domain'];
+                        const fieldPattern = fieldNames.join('|');
+                        
+                        // Extract a field value - stops at next field name
+                        const extractField = (fieldName) => {
+                          const regex = new RegExp(`${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`, 'is');
+                          const match = desc.match(regex);
+                          if (match) {
+                            // Clean up - remove leading/trailing dashes and trim
+                            return match[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim();
+                          }
+                          return null;
+                        };
+                        
+                        const service = extractField('Service');
+                        const projectName = extractField('Project');
+                        const client = extractField('Client');
+                        const websiteType = extractField('Website type');
+                        const techStack = extractField('Tech stack');
+                        const pages = extractField('Pages');
+                        const timeline = extractField('Timeline');
+                        
+                        // Extract summary (everything after "Summary:" until next major field or end)
+                        const summaryMatch = desc.match(/Summary[:\s]+(.+?)(?=(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps)[:\s]|$)/is);
+                        const summary = summaryMatch ? summaryMatch[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim() : null;
+                        
+                        // Extract deliverables
+                        const deliverables = [];
+                        const delivMatch = desc.match(/Deliverables[:\s-]+([^-]+)/i);
+                        if (delivMatch) {
+                          const items = delivMatch[1].split(/[,•]/);
+                          items.forEach(item => {
+                            const trimmed = item.trim();
+                            if (trimmed && trimmed.length > 3) {
+                              deliverables.push(trimmed);
+                            }
+                          });
+                        }
+                        
+                        // Field items to display (excluding Budget, Next Steps)
+                        const fields = [
+                          { label: 'Service', value: service },
+                          { label: 'Project', value: projectName },
+                          { label: 'Client', value: client },
+                          { label: 'Website Type', value: websiteType },
+                          { label: 'Tech Stack', value: techStack },
+                          { label: 'Timeline', value: timeline },
+                        ].filter(f => f.value);
+                        
+                        // Extract pages from Core pages and Additional pages sections
+                        const corePages = extractField('Core pages included') || extractField('Core pages');
+                        const additionalPages = extractField('Additional pages\\/features') || extractField('Additional pages');
+                        
+                        // Parse pages into arrays - clean up dashes and section markers
+                        const parsePagesString = (str) => {
+                          if (!str) return [];
+                          // Split by comma and clean each item
+                          return str.split(/[,]/)
+                            .map(p => p.replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim())
+                            .filter(p => p.length > 2 && !p.includes(':') && !p.toLowerCase().includes('additional') && !p.toLowerCase().includes('pages'));
+                        };
+                        
+                        const corePagesArr = parsePagesString(corePages);
+                        const additionalPagesArr = parsePagesString(additionalPages);
+                        
+                        return (
+                          <div className="space-y-4">
+                            {/* Display structured fields */}
+                            {fields.length > 0 && (
+                              <div className="grid grid-cols-2 gap-3">
+                                {fields.map((field, index) => (
+                                  <div key={index} className="text-sm">
+                                    <span className="text-muted-foreground">{field.label}: </span>
+                                    <span className="text-foreground font-medium">{field.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Summary */}
+                            {summary && (
+                              <div className="pt-2">
+                                <p className="text-sm text-muted-foreground font-medium mb-1">Summary</p>
+                                <p className="text-sm text-foreground leading-relaxed">{summary}</p>
+                              </div>
+                            )}
+                            
+                            {/* Pages & Features */}
+                            {(corePagesArr.length > 0 || additionalPagesArr.length > 0) && (
+                              <div className="pt-2">
+                                <p className="text-sm text-muted-foreground font-medium mb-3">Pages & Features</p>
+                                <div className="space-y-4">
+                                  {corePagesArr.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-2">Core Pages:</p>
+                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                                        {corePagesArr.map((page, index) => (
+                                          <div key={index} className="text-xs bg-muted px-2 py-1.5 rounded-md text-foreground text-center truncate" title={page}>
+                                            {page}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {additionalPagesArr.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-2">Additional Pages/Features:</p>
+                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                                        {additionalPagesArr.map((page, index) => (
+                                          <div key={index} className="text-xs bg-primary/10 px-2 py-1.5 rounded-md text-foreground text-center truncate" title={page}>
+                                            {page}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Deliverables */}
+                            {deliverables.length > 0 && (
+                              <div className="pt-2">
+                                <p className="text-sm text-muted-foreground font-medium mb-2">Deliverables</p>
+                                <ul className="space-y-1.5">
+                                  {deliverables.map((item, index) => (
+                                    <li key={index} className="flex items-start gap-2 text-sm text-foreground">
+                                      <span className="text-primary mt-1">•</span>
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* If no structured fields found, show raw description */}
+                            {fields.length === 0 && !summary && (
+                              <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      
+                      {/* Notes section - from project notes if available */}
+                      {project?.notes && (
+                        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                            <p className="text-sm text-amber-800 dark:text-amber-200">
+                              <span className="font-medium">Note:</span> {project.notes}
+                            </p>
+                          </div>
                         </div>
-                        <Progress value={phase.progress} className="h-2" />
-                        <p className="text-xs text-muted-foreground mt-1">{phase.progress}% complete</p>
-                      </div>
-                    </div>
-                  ))}
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No project description available.</p>
+                  )}
                 </CardContent>
               </Card>
 
