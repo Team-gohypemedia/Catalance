@@ -160,7 +160,7 @@ export const listProjects = asyncHandler(async (req, res) => {
         proposals: {
           include: {
             freelancer: {
-              select: { id: true, fullName: true, email: true }
+              select: { id: true, fullName: true, email: true, avatar: true, jobTitle: true, skills: true, bio: true, portfolio: true, linkedin: true, github: true }
             }
           },
           orderBy: { createdAt: "desc" }
@@ -197,9 +197,9 @@ export const getProject = asyncHandler(async (req, res) => {
       },
       proposals: {
         include: {
-          freelancer: {
-            select: { id: true, fullName: true, email: true }
-          }
+            freelancer: {
+              select: { id: true, fullName: true, email: true, avatar: true, jobTitle: true, skills: true, bio: true, portfolio: true, linkedin: true, github: true }
+            }
         },
         orderBy: { createdAt: "desc" }
       },

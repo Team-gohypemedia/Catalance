@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Globe, Linkedin, Github, Link } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Globe, Linkedin, Github, Link, Link2, MapPin, Star } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -201,119 +201,110 @@ const FreelancerInfoCard = ({ freelancer }) => {
           Freelancer Information
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
         <div className="flex items-center gap-3">
-          <Avatar className="h-12 w-12 border border-border">
+          <Avatar className="h-10 w-10 border border-border">
             <AvatarImage src={freelancer.avatar} alt={freelancer.fullName} />
             <AvatarFallback>{(freelancer.fullName || "F").charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-foreground">{freelancer.fullName || "Freelancer Name"}</span>
+              <span className="font-bold text-base text-foreground">{freelancer.fullName || "Freelancer Name"}</span>
               {freelancer.isVerified && (
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" fill="currentColor" stroke="white" />
+                <CheckCircle2 className="w-4 h-4 text-blue-500" fill="currentColor" stroke="white" />
               )}
             </div>
-            {(freelancer.jobTitle || freelancer.companyName) && (
-              <span className="text-xs text-muted-foreground">
-                 {[freelancer.jobTitle, freelancer.companyName].filter(Boolean).join(" at ")}
-              </span>
+            {freelancer.jobTitle && (
+               <span className="text-sm text-muted-foreground">
+                  {freelancer.jobTitle}
+               </span>
             )}
           </div>
-        </div>
-
-        <div className="space-y-3 pt-2">
-          {/* Location */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <div className="w-5 flex justify-center">
-              <span className="text-lg">📍</span> 
-            </div>
-            <span>{freelancer.location || "Location not specified"}</span>
-          </div>
-
-          {/* Rating */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-             <div className="w-5 flex justify-center">
-              <span className="text-lg">⭐</span> 
-            </div>
-            <span>
-              {Number(freelancer.rating || 0).toFixed(1)}/5 Rating ({freelancer.reviewCount || 0} Reviews)
-            </span>
-          </div>
-
-          {/* Email */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-             <div className="w-5 flex justify-center">
-              <Mail className="w-4 h-4" /> 
-            </div>
-            <span className="truncate">{freelancer.email}</span>
-          </div>
-        </div>
-
-        <div className="pt-2">
-           <Button variant="outline" className="w-full justify-center gap-2 h-9">
-              <CalendarIcon className="w-4 h-4" />
-              Schedule Meeting
-           </Button>
         </div>
       </CardContent>
     </Card>
   );
 };
 
-const FreelancerAboutCard = ({ freelancer }) => {
+const FreelancerAboutCard = ({ freelancer, project }) => {
   if (!freelancer) return null;
-  const hasLinks = freelancer.portfolio || freelancer.linkedin || freelancer.github;
+  const hasLinks = freelancer.portfolio || freelancer.linkedin || freelancer.github || project?.externalLink;
   
-  // Show if there is ANY content to show
-  if (!freelancer.bio && !hasLinks) return null;
-
   return (
-    <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-          About & Links
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {freelancer.bio && (
+    <div className="space-y-4 pt-2">
+      <h3 className="font-bold text-base text-foreground">About</h3>
+      
+      <div className="space-y-4">
+        {freelancer.bio ? (
             <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
                 {freelancer.bio}
             </div>
+        ) : (
+             <div className="text-sm text-muted-foreground italic">
+                No bio available.
+            </div>
         )}
         
-        {hasLinks && (
+        {hasLinks ? (
             <div className="flex flex-col gap-2 pt-1">
+                {project?.externalLink && (
+                    <a href={project.externalLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
+                        <div className="w-5 flex justify-center">
+                           <Link2 className="w-4 h-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
+                        </div>
+                        <span className="truncate">Project Link</span>
+                    </a>
+                )}
                 {freelancer.portfolio && (
-                    <a href={freelancer.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
-                        <div className="w-8 flex justify-center">
-                           <Globe className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <a href={freelancer.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
+                        <div className="w-5 flex justify-center">
+                           <Globe className="w-4 h-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
                         </div>
                         <span className="truncate">Portfolio Website</span>
                     </a>
                 )}
                  {freelancer.linkedin && (
-                    <a href={freelancer.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
-                         <div className="w-8 flex justify-center">
+                    <a href={freelancer.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
+                         <div className="w-5 flex justify-center">
                             <Linkedin className="w-4 h-4 text-muted-foreground group-hover:text-[#0077b5] transition-colors" />
                          </div>
                         <span className="truncate">LinkedIn Profile</span>
                     </a>
                 )}
                  {freelancer.github && (
-                    <a href={freelancer.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline group">
-                        <div className="w-8 flex justify-center">
-                           <Github className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                        </div>
+                    <a href={freelancer.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
+                         <div className="w-5 flex justify-center">
+                            <Github className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                         </div>
                         <span className="truncate">GitHub Profile</span>
                     </a>
                 )}
             </div>
+        ) : (
+            <div className="text-sm text-muted-foreground italic">
+                No social links provided.
+            </div>
         )}
-      </CardContent>
-    </Card>
+
+        {/* Project Summary - parsed from description */}
+        {(() => {
+          const desc = project?.description || "";
+          const summaryMatch = desc.match(/Summary[:\s]+(.+?)(?=(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps)[:\s]|$)/is);
+          const summary = summaryMatch ? summaryMatch[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim() : null;
+          return summary ? (
+            <div className="pt-2 border-t border-border/40">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">Project Summary</span>
+                <p className="text-sm text-foreground/90 leading-relaxed">
+                  {summary}
+                </p>
+            </div>
+          ) : null;
+        })()}
+      </div>
+    </div>
   );
 };
+
 
 const ProjectDashboard = () => {
   const { projectId } = useParams();
@@ -1280,7 +1271,7 @@ const ProjectDashboard = () => {
             <div className="space-y-4">
               {/* Freelancer Info Card */}
               <FreelancerInfoCard freelancer={freelancer} />
-              <FreelancerAboutCard freelancer={freelancer} />
+              <FreelancerAboutCard freelancer={freelancer} project={project} />
 
               {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
