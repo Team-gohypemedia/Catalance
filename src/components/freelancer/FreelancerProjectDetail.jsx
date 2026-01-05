@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, FileText, IndianRupee, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Image, Globe, Linkedin, Github, Link2, BookOpen, Star, MapPin, Activity, Pencil, Check, X, Info } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, IndianRupee, Send, Upload, FileText, Calendar as CalendarIcon, Headset, Mail, Phone, Image, Globe, Linkedin, Github, Link2, Info, Check, CheckCheck } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -28,7 +28,6 @@ import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
-import { CheckCheck, Trash2, Clock4 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,

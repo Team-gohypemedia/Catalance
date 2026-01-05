@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, Calendar as CalendarIcon, Link2, Info } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, Calendar as CalendarIcon, Link2, Info, Headset, Mail, Phone, DollarSign, Send, Upload, FileText, Check, CheckCheck } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,6 @@ import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
-import { Check, CheckCheck, Trash2, Clock4 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
