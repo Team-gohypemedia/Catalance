@@ -4,7 +4,7 @@ export default function LogoCloud() {
     return (
         <section className="bg-black py-16">
             <div className="mx-auto max-w-5xl px-6">
-                <h2 className="text-center text-lg font-medium text-white/50 mb-12">Trusted by innovative teams worldwide</h2>
+                <h2 className="text-center text-lg font-medium text-white mb-12">Trusted by innovative teams worldwide</h2>
                 <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-lg bg-black py-4 md:shadow-xl">
                     <Marquee pauseOnHover className="[--duration:20s]">
                         <img
