@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Globe, Linkedin, Github, Link, Link2, MapPin, Star } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, FileText, DollarSign, Send, Upload, StickyNote, Calendar as CalendarIcon, Clock, Mail, Phone, Headset, Globe, Linkedin, Github, Link, Link2, MapPin, Star, Info } from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -228,75 +228,35 @@ const FreelancerInfoCard = ({ freelancer }) => {
 
 const FreelancerAboutCard = ({ freelancer, project }) => {
   if (!freelancer) return null;
-  const hasLinks = freelancer.portfolio || freelancer.linkedin || freelancer.github || project?.externalLink;
+  const projectLink = project?.externalLink || "";
   
   return (
     <div className="space-y-4 pt-2">
       <h3 className="font-bold text-base text-foreground">About</h3>
       
       <div className="space-y-4">
-        {freelancer.bio ? (
-            <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                {freelancer.bio}
+        {projectLink ? (
+          <a href={projectLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
+            <div className="w-5 flex justify-center">
+              <Link2 className="w-4 h-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
             </div>
+            <span className="truncate">Project Link</span>
+          </a>
         ) : (
-             <div className="text-sm text-muted-foreground italic">
-                No bio available.
-            </div>
-        )}
-        
-        {hasLinks ? (
-            <div className="flex flex-col gap-2 pt-1">
-                {project?.externalLink && (
-                    <a href={project.externalLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
-                        <div className="w-5 flex justify-center">
-                           <Link2 className="w-4 h-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
-                        </div>
-                        <span className="truncate">Project Link</span>
-                    </a>
-                )}
-                {freelancer.portfolio && (
-                    <a href={freelancer.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
-                        <div className="w-5 flex justify-center">
-                           <Globe className="w-4 h-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
-                        </div>
-                        <span className="truncate">Portfolio Website</span>
-                    </a>
-                )}
-                 {freelancer.linkedin && (
-                    <a href={freelancer.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
-                         <div className="w-5 flex justify-center">
-                            <Linkedin className="w-4 h-4 text-muted-foreground group-hover:text-[#0077b5] transition-colors" />
-                         </div>
-                        <span className="truncate">LinkedIn Profile</span>
-                    </a>
-                )}
-                 {freelancer.github && (
-                    <a href={freelancer.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-500 hover:underline group">
-                         <div className="w-5 flex justify-center">
-                            <Github className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                         </div>
-                        <span className="truncate">GitHub Profile</span>
-                    </a>
-                )}
-            </div>
-        ) : (
-            <div className="text-sm text-muted-foreground italic">
-                No social links provided.
-            </div>
+          <div className="text-sm text-muted-foreground italic">No project link</div>
         )}
 
         {/* Project Summary - parsed from description */}
         {(() => {
-          const desc = project?.description || "";
-          const summaryMatch = desc.match(/Summary[:\s]+(.+?)(?=(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps)[:\s]|$)/is);
-          const summary = summaryMatch ? summaryMatch[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim() : null;
+          const desc = (project?.description || "").trim();
+          const summaryMatch = desc.match(/Summary[:\s]+(.+?)(?=(?:\r?\n\s*(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps|Integrations|Designs|Hosting|Domain|Timeline)[:\s])|$)/is);
+          const summary = summaryMatch ? summaryMatch[1].replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim() : null;
           return summary ? (
             <div className="pt-2 border-t border-border/40">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">Project Summary</span>
-                <p className="text-sm text-foreground/90 leading-relaxed">
-                  {summary}
-                </p>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">Project Summary</span>
+              <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                {summary}
+              </p>
             </div>
           ) : null;
         })()}
@@ -321,6 +281,7 @@ const ProjectDashboard = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
 
@@ -370,6 +331,212 @@ const ProjectDashboard = () => {
 
   // Book Appointment State
   const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
+
+  const renderProjectDescription = (options = {}) => {
+    const { showExtended = false } = options;
+    if (!project?.description) {
+      return <p className="text-sm text-muted-foreground">No project description available.</p>;
+    }
+
+    const desc = project.description;
+    const fieldNames = [
+      "Service",
+      "Project",
+      "Client",
+      "Website type",
+      "Tech stack",
+      "Pages",
+      "Timeline",
+      "Budget",
+      "Next Steps",
+      "Summary",
+      "Deliverables",
+      "Pages & Features",
+      "Core pages",
+      "Additional pages",
+      "Integrations",
+      "Payment Gateway",
+      "Designs",
+      "Hosting",
+      "Domain",
+      "Deployment"
+    ];
+    const fieldPattern = fieldNames.join("|");
+    const extractField = (fieldName) => {
+      const regex = new RegExp(
+        `${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`,
+        "is"
+      );
+      const match = desc.match(regex);
+      if (match) {
+        return match[1].replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim();
+      }
+      return null;
+    };
+
+    const service = extractField("Service");
+    const projectName = extractField("Project");
+    const client = extractField("Client");
+    const websiteType = extractField("Website type");
+    const techStack = extractField("Tech stack");
+    const timeline = extractField("Timeline");
+    const budget = extractField("Budget");
+    const hosting = extractField("Hosting");
+    const domain = extractField("Domain");
+    const integrations = extractField("Integrations");
+    const deployment = extractField("Deployment");
+
+    const summaryMatch = desc.match(
+      /Summary[:\s]+(.+?)(?=(?:\r?\n\s*(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps|Integrations|Designs|Hosting|Domain|Timeline)[:\s])|$)/is
+    );
+    const summary = summaryMatch
+      ? summaryMatch[1].replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim()
+      : null;
+
+    const deliverables = [];
+    const delivMatch = desc.match(/Deliverables[:\s-]+([^-]+)/i);
+    if (delivMatch) {
+      const items = delivMatch[1].split(/[,•]/);
+      items.forEach((item) => {
+        const trimmed = item.trim();
+        if (trimmed && trimmed.length > 3) {
+          deliverables.push(trimmed);
+        }
+      });
+    }
+
+    const fields = [
+      { label: "Service", value: service },
+      { label: "Project", value: projectName },
+      { label: "Client", value: client },
+      { label: "Website Type", value: websiteType },
+      { label: "Tech Stack", value: techStack },
+      { label: "Timeline", value: timeline },
+      ...(showExtended
+        ? [
+            { label: "Budget", value: budget },
+            { label: "Hosting", value: hosting },
+            { label: "Domain", value: domain },
+            { label: "Integrations", value: integrations },
+            { label: "Deployment", value: deployment },
+          ]
+        : []),
+    ].filter((f) => f.value);
+
+    const corePages = extractField("Core pages included") || extractField("Core pages");
+    const additionalPages =
+      extractField("Additional pages\\/features") || extractField("Additional pages");
+
+    const parsePagesString = (str) => {
+      if (!str) return [];
+      return str
+        .split(/[,]/)
+        .map((p) => p.replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim())
+        .filter(
+          (p) =>
+            p.length > 2 &&
+            !p.includes(":") &&
+            !p.toLowerCase().includes("additional") &&
+            !p.toLowerCase().includes("pages")
+        );
+    };
+
+    const corePagesArr = parsePagesString(corePages);
+    const additionalPagesArr = parsePagesString(additionalPages);
+
+    return (
+      <>
+        <div className="space-y-4">
+          {fields.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {fields.map((field, index) => (
+                <div key={index} className="text-sm">
+                  <span className="text-muted-foreground">{field.label}: </span>
+                  <span className="text-foreground font-medium">{field.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary && (
+            <div className="pt-2">
+              <p className="text-sm text-muted-foreground font-medium mb-1">Summary</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{summary}</p>
+            </div>
+          )}
+
+          {(corePagesArr.length > 0 || additionalPagesArr.length > 0) && (
+            <div className="pt-2">
+              <p className="text-sm text-muted-foreground font-medium mb-3">Pages & Features</p>
+              <div className="space-y-4">
+                {corePagesArr.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Core Pages:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {corePagesArr.map((page, index) => (
+                        <div
+                          key={index}
+                          className="text-xs bg-muted px-2 py-1.5 rounded-md text-foreground text-center truncate"
+                          title={page}
+                        >
+                          {page}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {additionalPagesArr.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Additional Pages/Features:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {additionalPagesArr.map((page, index) => (
+                        <div
+                          key={index}
+                          className="text-xs bg-primary/10 px-2 py-1.5 rounded-md text-foreground text-center truncate"
+                          title={page}
+                        >
+                          {page}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {deliverables.length > 0 && (
+            <div className="pt-2">
+              <p className="text-sm text-muted-foreground font-medium mb-2">Deliverables</p>
+              <ul className="space-y-1.5">
+                {deliverables.map((item, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-foreground">
+                    <span className="text-primary mt-1">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {fields.length === 0 && !summary && (
+            <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+          )}
+        </div>
+
+        {project?.notes && (
+          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <span className="font-medium">Note:</span> {project.notes}
+              </p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
 
   const handleReport = async () => {
     if (!issueText.trim()) {
@@ -1150,45 +1317,88 @@ const ProjectDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
                 <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground/90">Overall Progress</CardTitle>
-                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                    <CardTitle className="text-lg font-semibold text-foreground">Project Progress</CardTitle>
+                    <span className="text-lg font-semibold text-amber-500">{Math.round(overallProgress)}% Complete</span>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold text-foreground">{Math.round(overallProgress)}%</div>
-                    <Progress value={overallProgress} className="mt-3 h-2" />
+                  <CardContent className="space-y-6">
+                    <div className="relative">
+                      <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-400"
+                          style={{ width: `${overallProgress}%` }}
+                        />
+                      </div>
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-md transition-all duration-300"
+                        style={{ left: `calc(${overallProgress}% - 8px)` }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-3">
+                      {Array.from({ length: 4 }).map((_, index) => {
+                        const phase = derivedPhases[index];
+                        const isCompleted = phase?.status === "completed";
+                        const isActive = phase?.status === "in-progress";
+                        return (
+                          <div
+                            key={phase?.id || `phase-${index}`}
+                            className={`p-4 rounded-lg border-l-4 ${
+                              isCompleted
+                                ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                                : isActive
+                                  ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                                  : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                            }`}
+                          >
+                            <div
+                              className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                                isCompleted
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : isActive
+                                    ? "text-blue-600 dark:text-blue-400"
+                                    : "text-gray-500"
+                              }`}
+                            >
+                              Phase {index + 1}
+                            </div>
+                            <div className="font-semibold text-foreground mb-1 text-sm">
+                              {phase?.name || "Phase"}
+                            </div>
+                            <div
+                              className={`text-xs flex items-center gap-1.5 ${
+                                isCompleted
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : isActive
+                                    ? "text-blue-600 dark:text-blue-400"
+                                    : "text-gray-500"
+                              }`}
+                            >
+                              {isCompleted && <CheckCircle2 className="w-3.5 h-3.5" />}
+                              {isActive && <Circle className="w-3.5 h-3.5 fill-current" />}
+                              {isCompleted ? "Completed" : isActive ? "Active" : "Pending"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </CardContent>
                 </Card>
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-foreground">Project Phases</CardTitle>
-                  <CardDescription className="text-muted-foreground">Monitor each phase of your project</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                  <CardTitle className="text-lg font-semibold text-foreground">Project Description</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setDetailOpen(true)}
+                    aria-label="View full project details"
+                  >
+                    <Info className="h-4 w-4" />
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {derivedPhases.map((phase, index) => (
-                    <div
-                      key={phase.id}
-                      className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0 last:pb-0 p-2 rounded"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-sm text-foreground">{phase.name}</h3>
-                          <Badge
-                            variant={getStatusBadge(phase.status)}
-                            className="rounded-full bg-primary text-primary-foreground text-[11px] font-medium px-2 py-0.5"
-                          >
-                            {phase.status === "in-progress"
-                              ? "In Progress"
-                              : phase.status === "completed"
-                                ? "Completed"
-                                : "Pending"}
-                          </Badge>
-                        </div>
-                        <Progress value={phase.progress} className="h-2" />
-                        <p className="text-xs text-muted-foreground mt-1">{phase.progress}% complete</p>
-                      </div>
-                    </div>
-                  ))}
+                  {renderProjectDescription({ showExtended: false })}
                 </CardContent>
               </Card>
 
@@ -1552,6 +1762,17 @@ const ProjectDashboard = () => {
               {isReporting ? "Submit" : "Submit"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Project Details</DialogTitle>
+            <DialogDescription>Full project description and scope.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4">
+            {renderProjectDescription({ showExtended: true })}
+          </div>
         </DialogContent>
       </Dialog>
     </RoleAwareSidebar >
