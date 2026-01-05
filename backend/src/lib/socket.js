@@ -39,6 +39,7 @@ const serializeMessage = (message) => ({
   senderRole: message.senderRole,
   senderName: message.senderName,
   readAt: message.readAt,
+  attachment: message.attachment, // Include attachment data
   createdAt:
     message.createdAt instanceof Date
       ? message.createdAt.toISOString()
@@ -229,10 +230,10 @@ export const initSocket = (server) => {
         senderRole,
         senderName,
         skipAssistant = false,
-        history: clientHistory,
-        sharedContextId
+        attachment,
+        history: clientHistory
       }) => {
-        if (!content) {
+        if (!content && !attachment) {
           socket.emit("chat:error", {
             message: "Message content is required"
           });
@@ -264,7 +265,8 @@ export const initSocket = (server) => {
               senderName: senderName || null,
               senderRole: senderRole || null,
               role: "user",
-              content
+              content,
+              attachment: attachment || null
             });
 
             io.to(conversation.id).emit(
@@ -384,7 +386,8 @@ export const initSocket = (server) => {
               senderName: senderName || null,
               senderRole: senderRole || null,
               role: "user",
-              content
+              content,
+              attachment: attachment || undefined
             }
           });
 

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
-import { SendHorizontal, Paperclip, Loader2, Clock4, Check, CheckCheck } from "lucide-react";
+import { SendHorizontal, Paperclip, Loader2, Clock4, Check, CheckCheck, Trash2, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -36,9 +36,15 @@ const ChatArea = ({
   sending,
   currentUser,
   typingUsers,
-  online
+  online,
+  onFileUpload,
+  onDeleteAttachment
 }) => {
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -47,8 +53,134 @@ const ChatArea = ({
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      onSendMessage();
+      handleSend();
     }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size must be less than 10MB");
+      return;
+    }
+    
+    setSelectedFile(file);
+    
+    // Create preview for images
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => setFilePreview(e.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSend = async () => {
+    if ((!messageInput.trim() && !selectedFile) || uploading) return;
+    
+    let attachment = null;
+    
+    if (selectedFile && onFileUpload) {
+      setUploading(true);
+      try {
+        attachment = await onFileUpload(selectedFile);
+      } catch (error) {
+        console.error("Failed to upload file:", error);
+        alert("Failed to upload file. Please try again.");
+        setUploading(false);
+        return;
+      }
+      setUploading(false);
+      clearFile();
+    }
+    
+    onSendMessage(attachment);
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  const renderAttachment = (attachment, messageId, isOwnMessage) => {
+    if (!attachment || !attachment.url) return null;
+    
+    const isImage = attachment.type?.startsWith("image/") || 
+                    attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+
+    const handleDelete = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (window.confirm("Are you sure you want to delete this attachment?")) {
+        if (onDeleteAttachment) {
+          onDeleteAttachment(messageId);
+        }
+      }
+    };
+    
+    if (isImage) {
+      return (
+        <div className="relative group mt-2 inline-block">
+          <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+            <img 
+              src={attachment.url} 
+              alt={attachment.name || "Attachment"} 
+              className={`max-w-[200px] max-h-[200px] rounded-lg object-cover ${isOwnMessage ? "" : "border border-border/50"}`}
+            />
+          </a>
+          {isOwnMessage && onDeleteAttachment && (
+            <button
+              onClick={handleDelete}
+              className="absolute top-1 right-1 p-1.5 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive shadow-md"
+              title="Delete attachment"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      );
+    }
+    
+    return (
+      <div className="relative group mt-2">
+        <a 
+          href={attachment.url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className={`flex items-center gap-2 p-2 rounded-lg hover:opacity-80 transition-opacity ${isOwnMessage ? "" : "bg-muted/50 hover:bg-muted"}`}
+        >
+          <Paperclip className="h-4 w-4 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium truncate">{attachment.name || "File"}</p>
+            {attachment.size && (
+              <p className="text-[10px] text-muted-foreground">{formatFileSize(attachment.size)}</p>
+            )}
+          </div>
+        </a>
+        {isOwnMessage && onDeleteAttachment && (
+          <button
+            onClick={handleDelete}
+            className="absolute top-1 right-1 p-1 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive shadow-sm"
+            title="Delete attachment"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -123,28 +255,33 @@ const ChatArea = ({
               )}
               <div className={`flex ${align}`}>
                 <div
-                  className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-2.5 text-sm flex items-baseline gap-2 overflow-hidden ${
+                  className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-2.5 text-sm flex flex-col overflow-hidden ${
                     isSelf ? "rounded-tr-sm" : "rounded-tl-sm"
                   } ${bubbleClass}`}
                   role="group"
                 >
                   {isDeleted ? (
-                    <>
+                    <div className="flex items-baseline gap-2">
                       <Clock4 className="h-4 w-4 flex-shrink-0 opacity-70" />
                       <span className="italic text-foreground/90 flex-1">
                         {isSelf ? "You deleted this message." : "This message was deleted."}
                       </span>
-                    </>
+                    </div>
                   ) : (
-                    <p
-                      className="leading-relaxed whitespace-pre-wrap flex-1"
-                      style={{
-                        overflowWrap: "break-word",
-                        wordBreak: "break-all"
-                      }}
-                    >
-                      {message.content}
-                    </p>
+                    <>
+                      {message.content && (
+                        <p
+                          className="leading-relaxed whitespace-pre-wrap"
+                          style={{
+                            overflowWrap: "break-word",
+                            wordBreak: "break-all"
+                          }}
+                        >
+                          {message.content}
+                        </p>
+                      )}
+                      {message.attachment && renderAttachment(message.attachment, message.id, isSelf)}
+                    </>
                   )}
                   <div className="flex items-center gap-1 self-end mt-1">
                     {message.createdAt ? (
@@ -181,14 +318,48 @@ const ChatArea = ({
       </div>
 
       <div className="border-t border-border/40 px-6 py-5">
+        {/* File Preview */}
+        {selectedFile && (
+          <div className="mb-3 flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border/50">
+            {filePreview ? (
+              <img src={filePreview} alt="Preview" className="h-12 w-12 rounded-lg object-cover" />
+            ) : (
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Paperclip className="h-5 w-5 text-primary" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+              <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 rounded-full" 
+              onClick={clearFile}
+            >
+              <span className="sr-only">Remove file</span>
+              ×
+            </Button>
+          </div>
+        )}
+        
         <div className="flex items-center gap-3 rounded-full bg-card/60 px-4 py-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept="image/*,.pdf,.doc,.docx,.txt,.zip"
+          />
           <Button
             variant="ghost"
             size="icon"
             className="rounded-full hover:bg-muted"
             type="button"
-            disabled
-            title="Attachments coming soon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sending || uploading}
+            title="Attach file"
           >
             <Paperclip className="h-5 w-5 text-muted-foreground" />
           </Button>
@@ -198,15 +369,19 @@ const ChatArea = ({
             onChange={(event) => onMessageInputChange(event.target.value)}
             onKeyDown={handleKeyPress}
             className="border-none bg-transparent focus-visible:ring-0"
-            disabled={sending}
+            disabled={sending || uploading}
           />
           <Button
-            onClick={onSendMessage}
+            onClick={handleSend}
             size="icon"
             className="rounded-full bg-primary"
-            disabled={sending || !messageInput.trim()}
+            disabled={(sending || uploading) || (!messageInput.trim() && !selectedFile)}
           >
-            <SendHorizontal className="h-5 w-5 text-primary-foreground" />
+            {uploading ? (
+              <Loader2 className="h-5 w-5 text-primary-foreground animate-spin" />
+            ) : (
+              <SendHorizontal className="h-5 w-5 text-primary-foreground" />
+            )}
           </Button>
         </div>
       </div>
@@ -577,8 +752,61 @@ const FreelancerChatContent = () => {
     };
   }, [notificationSocket, selectedConversation]);
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) return;
+  // Upload file to server and return attachment metadata
+  const uploadChatFile = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const response = await authFetch("/upload/chat", {
+      method: "POST",
+      body: formData,
+      skipLogoutOn401: true
+    });
+    
+    if (!response.ok) {
+      throw new Error("Upload failed");
+    }
+    
+    const result = await response.json();
+    return {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      url: result.data?.url || result.url
+    };
+  };
+
+  // Delete attachment from server and update local state
+  const deleteAttachment = async (messageId) => {
+    try {
+      const response = await authFetch(`/upload/chat/${messageId}`, {
+        method: "DELETE",
+        skipLogoutOn401: true
+      });
+      
+      if (!response.ok) {
+        throw new Error("Delete failed");
+      }
+      
+      const result = await response.json();
+      
+      // Update local messages state - mark as deleted if no content, or just remove attachment
+      setMessages((prev) => prev.map((msg) => {
+        if (msg.id === messageId) {
+          return result.deleted 
+            ? { ...msg, attachment: null, deleted: true, content: null }
+            : { ...msg, attachment: null };
+        }
+        return msg;
+      }));
+    } catch (error) {
+      console.error("Failed to delete attachment:", error);
+      alert("Failed to delete attachment. Please try again.");
+    }
+  };
+
+  const handleSendMessage = (attachment = null) => {
+    if (!messageInput.trim() && !attachment) return;
 
     const payload = {
       content: messageInput,
@@ -586,7 +814,8 @@ const FreelancerChatContent = () => {
       senderId: user?.id || null,
       senderRole: user?.role || "GUEST",
       senderName: user?.fullName || user?.name || user?.email || "Freelancer",
-      skipAssistant: true
+      skipAssistant: true,
+      attachment: attachment || undefined
     };
 
     setMessages((prev) => [
@@ -757,6 +986,8 @@ const FreelancerChatContent = () => {
             messageInput={messageInput}
             onMessageInputChange={handleInputChange}
             onSendMessage={handleSendMessage}
+            onFileUpload={uploadChatFile}
+            onDeleteAttachment={deleteAttachment}
             sending={sending}
             currentUser={user}
             typingUsers={typingUsers.map((u) => u.name)}
