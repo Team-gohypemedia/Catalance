@@ -622,7 +622,7 @@ const ClientDashboardContent = () => {
       
       // Clear saved proposal immediately after sending
       localStorage.removeItem("markify:savedProposal");
-      setSavedProposal(null);
+      persistSavedProposalState([]);
       
       setShowSendConfirm(false);
       setSelectedFreelancer(null);
@@ -924,7 +924,7 @@ const ClientDashboardContent = () => {
                               e.stopPropagation();
                               e.preventDefault();
                               localStorage.removeItem("markify:savedProposal");
-                              setSavedProposal(null);
+                              persistSavedProposalState([]);
                               toast.success("Proposal deleted");
                             }}
                           >
