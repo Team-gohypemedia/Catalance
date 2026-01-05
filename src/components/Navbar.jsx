@@ -26,13 +26,12 @@ const navItems = [
 
 const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
   const forceWhite = isHome && !visible;
-  
+
   return (
     <div
       onClick={onClick}
-      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${
-        isDark ? "rotate-180" : "rotate-0"
-      }`}>
+      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${isDark ? "rotate-180" : "rotate-0"
+        }`}>
       {isDark ? (
         <Sun className="h-6 w-6 text-yellow-500" />
       ) : (
@@ -69,10 +68,10 @@ const Navbar = () => {
   const closeMobileMenu = () => setMobileOpen(false);
 
   const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = true; // Always dark
   const handleThemeToggle = () => {
-    const nextTheme = isDark ? "light" : "dark";
-    setTheme(nextTheme);
+    // Optional: Keep toggle logic if needed globally, but UI reflects dark
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -81,7 +80,6 @@ const Navbar = () => {
       <NavBody>
         <NavbarLogo isHome={isHome} />
         <NavItems items={navItems} onItemClick={closeMobileMenu} isHome={isHome} />
-        <ThemeButton isDark={isDark} onClick={handleThemeToggle} isHome={isHome} />
         <AuthButtons isHome={isHome} />
       </NavBody>
 
@@ -89,19 +87,6 @@ const Navbar = () => {
       <MobileNav>
         <MobileNavHeader>
           <NavbarLogo />
-
-          <div
-            onClick={handleThemeToggle}
-            className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${
-              isDark ? "rotate-180" : "rotate-0"
-            }`}>
-            {isDark ? (
-              <Sun className="h-6 w-6 text-yellow-500" />
-            ) : (
-              <Moon className="h-6 w-6 text-gray-500" />
-            )}
-          </div>
-
           <MobileNavToggle isOpen={mobileOpen} onClick={toggleMobileMenu} />
         </MobileNavHeader>
 
@@ -111,7 +96,7 @@ const Navbar = () => {
               key={`mobile-link-${idx}`}
               to={item.link}
               onClick={closeMobileMenu}
-              className="w-full px-4 py-2 text-lg text-black dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 rounded">
+              className="w-full px-4 py-2 text-lg text-white hover:bg-neutral-800 rounded">
               {item.name}
             </Link>
           ))}

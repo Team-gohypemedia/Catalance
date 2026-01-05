@@ -22,7 +22,7 @@ export const questions = [
     key: "target_location",
     patterns: ["target location", "global", "local"],
     templates: ["What is your target location?"],
-    suggestions: ["Global", "Local", "Both"],
+    suggestions: ["Global", "Local", "Both", "Specific location (please specify)"],
   },
   {
     key: "seo_scope",

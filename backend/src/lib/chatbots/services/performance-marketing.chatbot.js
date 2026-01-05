@@ -9,8 +9,9 @@ export const questions = [
   {
     key: "platforms",
     patterns: ["platforms", "meta", "google", "linkedin"],
-    templates: ["Which platforms do you want to advertise on?"],
+    templates: ["Which platform do you want to run ads?"],
     suggestions: ["Meta", "Google", "LinkedIn", "Multiple"],
+    multiSelect: true,
   },
   {
     key: "objective",

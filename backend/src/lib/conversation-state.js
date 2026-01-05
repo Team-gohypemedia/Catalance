@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Conversation State Machine for Chatbot
  * 
  * Deterministic state tracking to prevent:
@@ -20,6 +20,14 @@ export const SERVICE_QUESTIONS_MAP = Object.freeze(
 );
 
 const resolveServiceQuestions = (service = "") => {
+    const cataConfig = getCataConfig(service);
+    if (cataConfig && Array.isArray(cataConfig.questions)) {
+        return {
+            questions: cataConfig.questions,
+            source: "cata",
+            definition: { cata: true, requiredKeys: cataConfig.requiredKeys },
+        };
+    }
     const definition = getServiceDefinition(service);
     if (definition && Array.isArray(definition.fields) && definition.fields.length) {
         return { questions: definition.fields, source: "catalog", definition };
@@ -192,6 +200,312 @@ const canonicalizeForI18n = (value = "") =>
         .normalize("NFKC")
         .toLowerCase()
         .replace(/[^\p{L}\p{N}]+/gu, "");
+
+const CATA_SERVICE_MAP = new Map([
+    ["websitedevelopment", "Website Development"],
+    ["leadgeneration", "Lead Generation"],
+    ["seooptimization", "SEO Optimization"],
+    ["seo", "SEO Optimization"],
+]);
+
+const resolveCataService = (service = "") => {
+    const key = canonicalize(normalizeText(service));
+    if (!key) return null;
+    return CATA_SERVICE_MAP.get(key) || null;
+};
+
+const CATA_WEBSITE_PAGES = [
+    "Services",
+    "Products",
+    "Portfolio/Gallery",
+    "Testimonials",
+    "Blog",
+    "FAQ",
+    "Pricing",
+    "Shop/Store",
+    "Cart/Checkout",
+    "Wishlist",
+    "Order Tracking",
+    "Reviews/Ratings",
+    "Search",
+    "Book Now",
+    "Account/Login",
+    "Admin Dashboard",
+    "User Dashboard",
+    "Analytics Dashboard",
+    "Notifications",
+    "Chat/Support Widget",
+    "Help/Support",
+    "Resources",
+    "Events",
+    "3D Animations",
+    "3D Model Viewer",
+    "None",
+];
+
+const CATA_WEBSITE_TECH = [
+    "Next.js",
+    "React.js",
+    "React.js + Node.js",
+    "Shopify + Hydrogen (React)",
+    "Laravel + Vue",
+    "Django + React",
+    "No preference",
+];
+
+const CATA_HOSTING = [
+    "Vercel",
+    "Netlify",
+    "AWS",
+    "DigitalOcean",
+    "Railway",
+    "Render",
+    "VPS/Custom Server",
+    "Not sure yet",
+];
+
+const CATA_INTEGRATIONS = [
+    "Payment Gateway (Razorpay/Stripe)",
+    "Email Service (Nodemailer/Resend)",
+    "Delivery/Shipping Tracking",
+    "None",
+];
+
+const CATA_DESIGN_STATUSES = [
+    "I have designs",
+    "Need design help",
+    "Have some references",
+    "Not sure yet",
+];
+
+const CATA_BUILD_TYPES = ["No-code website", "Custom code (coded website)"];
+
+const CATA_WEBSITE_TIMELINES = ["1 month", "2-3 months", "3-6 months"];
+
+const CATA_SERVICE_CONFIGS = new Map([
+    [
+        "Website Development",
+        {
+            requiredKeys: [
+                "name",
+                "project_name",
+                "project_description_1_sentence",
+                "additional_pages",
+                "budget_inr",
+                "integrations",
+                "design_status",
+                "build_type",
+                "tech_stack",
+                "hosting",
+                "domain_status",
+                "timeline",
+            ],
+            listFields: new Set(["additional_pages", "integrations", "hosting"]),
+            questions: [
+                {
+                    key: "name",
+                    templates: [
+                        "Hey! Let's build something amazing. What's your name?",
+                        "Hi there! Ready to create your website? What should I call you?",
+                    ],
+                    suggestions: null,
+                    required: true,
+                    tags: ["name"],
+                },
+                {
+                    key: "project_name",
+                    templates: ["Nice to meet you, {name}! What's the project name?"],
+                    suggestions: null,
+                    required: true,
+                },
+                {
+                    key: "project_description_1_sentence",
+                    templates: [
+                        "In 1 simple sentence, describe your project in easy words. (An e-commerce website for my clothing brand.)",
+                        "Briefly describe what you want to build (1 sentence).",
+                    ],
+                    suggestions: null,
+                    required: true,
+                },
+                {
+                    key: "additional_pages",
+                    templates: [
+                        "Every website includes: Home, About, Contact, Privacy Policy & Terms. What additional pages do you need? (Select all that apply)",
+                    ],
+                    suggestions: CATA_WEBSITE_PAGES,
+                    multiSelect: true,
+                    expectedType: "list",
+                    required: true,
+                },
+                {
+                    key: "budget_inr",
+                    templates: ["What's your budget in INR for this project?"],
+                    suggestions: null,
+                    expectedType: "budget_text",
+                    required: true,
+                    tags: ["budget"],
+                },
+                {
+                    key: "integrations",
+                    templates: ["What integrations do you need? (Select all that apply)"],
+                    suggestions: CATA_INTEGRATIONS,
+                    multiSelect: true,
+                    expectedType: "list",
+                    required: true,
+                },
+                {
+                    key: "design_status",
+                    templates: ["Do you have any designs or inspirations in mind?"],
+                    suggestions: CATA_DESIGN_STATUSES,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "build_type",
+                    templates: ["What type of technology stack do you want?"],
+                    suggestions: CATA_BUILD_TYPES,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "tech_stack",
+                    templates: ["What technology stack would you prefer? (Select one)"],
+                    suggestions: CATA_WEBSITE_TECH,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "hosting",
+                    templates: [
+                        "Where would you like the website deployed/hosted? (Select up to 2)",
+                    ],
+                    suggestions: CATA_HOSTING,
+                    multiSelect: true,
+                    maxSelect: 2,
+                    expectedType: "list",
+                    required: true,
+                },
+                {
+                    key: "domain_status",
+                    templates: ["Do you have a domain name?"],
+                    suggestions: ["I already have domain", "I don't have domain"],
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "timeline",
+                    templates: ["When do you need the website ready?"],
+                    suggestions: CATA_WEBSITE_TIMELINES,
+                    expectedType: "timeline_text",
+                    required: true,
+                    tags: ["timeline"],
+                },
+            ],
+        },
+    ],
+    [
+        "Lead Generation",
+        {
+            requiredKeys: ["name", "business_type", "target_audience", "budget_inr"],
+            listFields: new Set([]),
+            questions: [
+                {
+                    key: "name",
+                    templates: ["Please provide your full name."],
+                    suggestions: null,
+                    required: true,
+                    tags: ["name"],
+                },
+                {
+                    key: "business_type",
+                    templates: ["What type of business do you operate?"],
+                    suggestions: null,
+                    required: true,
+                },
+                {
+                    key: "target_audience",
+                    templates: ["Who is your target audience?"],
+                    suggestions: null,
+                    required: true,
+                    tags: ["audience"],
+                },
+                {
+                    key: "budget_inr",
+                    templates: ["What is your estimated budget range? (Please provide amount in INR)"],
+                    suggestions: null,
+                    expectedType: "budget_text",
+                    required: true,
+                    tags: ["budget"],
+                },
+                {
+                    key: "examples_links",
+                    templates: [
+                        "Please share any examples, case studies, or links to past campaigns (optional).",
+                    ],
+                    suggestions: null,
+                    required: false,
+                },
+            ],
+        },
+    ],
+    [
+        "SEO Optimization",
+        {
+            requiredKeys: [
+                "name",
+                "website_live_status",
+                "target_location",
+                "seo_scope",
+                "keywords",
+            ],
+            listFields: new Set([]),
+            questions: [
+                {
+                    key: "name",
+                    templates: ["Please provide your full name."],
+                    suggestions: null,
+                    required: true,
+                    tags: ["name"],
+                },
+                {
+                    key: "website_live_status",
+                    templates: ["Is your website live?"],
+                    suggestions: ["Yes", "No", "In progress"],
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "target_location",
+                    templates: ["What is your target location?"],
+                    suggestions: ["Global", "Local", "Both", "Specific location (please specify)"],
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "seo_scope",
+                    templates: ["Do you want full SEO or specific services only?"],
+                    suggestions: ["Full SEO", "Specific services"],
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "keywords",
+                    templates: ["Any keywords you want to rank for?"],
+                    suggestions: null,
+                    required: true,
+                },
+            ],
+        },
+    ],
+]);
+
+const getCataConfig = (service = "") => {
+    const resolved = resolveCataService(service);
+    if (!resolved) return null;
+    return CATA_SERVICE_CONFIGS.get(resolved) || null;
+};
+
+export const isCataService = (service = "") => Boolean(getCataConfig(service));
 
 const normalizeForSuggestionMatching = (value = "") => {
     const text = normalizeText(value).toLowerCase();
@@ -1761,6 +2075,7 @@ const getCurrentStepFromCollected = (questions = [], collectedData = {}) => {
 
 const buildLowBudgetWarning = (state) => {
     const questions = Array.isArray(state?.questions) ? state.questions : [];
+    if (getCataConfig(state?.service)) return null;
     if (!shouldApplyWebsiteBudgetRules(questions)) return null;
     if (state?.meta?.allowLowBudget) return null;
 
@@ -2361,8 +2676,64 @@ const buildCollectedData = (questions = [], slots = {}) => {
     return collectedData;
 };
 
+const applyCataSharedContextUpdate = (sharedContext, question, slot, options = {}) => {
+    if (!sharedContext || !question || !slot) return { updated: false };
+    if (slot.status !== "answered") return { updated: false };
+    const resolvedService = resolveCataService(options.service);
+    if (!resolvedService) return { updated: false };
+    const config = getCataConfig(resolvedService);
+    if (!config) return { updated: false };
+
+    const value = question.multiSelect ? slot.normalized : formatSlotValue(slot);
+    const valueLabel = formatCataSharedValue(value);
+    if (!valueLabel) return { updated: false };
+
+    const existingValue = resolveCataSharedValue(sharedContext, question, resolvedService);
+    const existingCompare = normalizeCataCompareValue(existingValue);
+    const nextCompare = normalizeCataCompareValue(value);
+
+    if (!existingCompare) {
+        setCataSharedValue(sharedContext, question, value, resolvedService);
+        return { updated: true };
+    }
+
+    if (existingCompare === nextCompare) {
+        return { updated: false };
+    }
+
+    const priorConflict = options.existingConflict;
+    if (priorConflict) {
+        const previousCompare = normalizeCataCompareValue(priorConflict.previousValue);
+        const proposedCompare = normalizeCataCompareValue(priorConflict.proposedValue);
+        if (previousCompare && previousCompare === nextCompare) {
+            return { updated: false };
+        }
+        if (proposedCompare && proposedCompare === nextCompare) {
+            setCataSharedValue(sharedContext, question, value, resolvedService);
+            return { updated: true };
+        }
+    }
+
+    if (options.allowConflicts === false) {
+        return { updated: false };
+    }
+
+    return {
+        updated: false,
+        conflict: {
+            source: "cata",
+            previousValue: formatCataSharedValue(existingValue),
+            proposedValue: valueLabel,
+            questionKey: question.key,
+        },
+    };
+};
+
 const applySharedContextUpdate = (sharedContext, question, slot, options = {}) => {
     if (!sharedContext || !question || !slot) return { updated: false };
+    if (resolveCataService(options.service)) {
+        return applyCataSharedContextUpdate(sharedContext, question, slot, options);
+    }
     if (slot.status !== "answered") return { updated: false };
     const value = formatSlotValue(slot);
     if (!value || shouldSkipSharedValue(value)) return { updated: false };
@@ -2420,6 +2791,34 @@ const applySharedContextUpdate = (sharedContext, question, slot, options = {}) =
 
 const mergeSharedContextFromState = (state) => {
     if (!state) return state;
+    const resolvedService = resolveCataService(state.service);
+    if (resolvedService) {
+        const sharedContext = normalizeSharedContext(state.sharedContext);
+        const questions = Array.isArray(state.questions) ? state.questions : [];
+        const slots = state.slots || {};
+        let updated = false;
+
+        for (const question of questions) {
+            if (!question?.key) continue;
+            const slot = slots[question.key];
+            if (!slot || slot.status !== "answered") continue;
+            const value = question.multiSelect ? slot.normalized : formatSlotValue(slot);
+            const valueLabel = formatCataSharedValue(value);
+            if (!valueLabel) continue;
+
+            const existingValue = resolveCataSharedValue(sharedContext, question, resolvedService);
+            if (normalizeCataCompareValue(existingValue)) continue;
+
+            setCataSharedValue(sharedContext, question, value, resolvedService);
+            updated = true;
+        }
+
+        if (!updated) return state;
+        return {
+            ...state,
+            sharedContext,
+        };
+    }
     const sharedContext = normalizeSharedContext(state.sharedContext);
     const questions = Array.isArray(state.questions) ? state.questions : [];
     const slots = state.slots || {};
@@ -2618,7 +3017,78 @@ const SHARED_CONTEXT_DEFAULTS = Object.freeze({
     integrations: "",
     timeline: "",
     service_budgets: {},
+    global: { client_name: "" },
+    service_data: {},
+    active_service: "",
+    asked_questions_log: {},
 });
+
+const normalizeCataListValue = (value) => {
+    if (Array.isArray(value)) {
+        return value.map((item) => normalizeText(item)).filter(Boolean);
+    }
+    const text = normalizeText(value);
+    if (!text) return [];
+    return splitSelections(text).map((part) => normalizeText(part)).filter(Boolean);
+};
+
+const normalizeCataBrief = (service, brief = {}) => {
+    const config = CATA_SERVICE_CONFIGS.get(service);
+    if (!config) return {};
+    const normalized = {};
+    const questions = Array.isArray(config.questions) ? config.questions : [];
+
+    for (const question of questions) {
+        const key = question?.key;
+        if (!key || key === "name") continue;
+        if (config.listFields?.has(key)) {
+            normalized[key] = normalizeCataListValue(brief?.[key]);
+        } else {
+            normalized[key] = normalizeText(brief?.[key] || "");
+        }
+    }
+
+    return normalized;
+};
+
+const normalizeCataSharedContext = (shared = {}) => {
+    const safeShared = shared && typeof shared === "object" ? shared : {};
+    const legacyGlobal =
+        safeShared.global_profile && typeof safeShared.global_profile === "object"
+            ? safeShared.global_profile
+            : {};
+    const legacyService =
+        safeShared.service_briefs && typeof safeShared.service_briefs === "object"
+            ? safeShared.service_briefs
+            : {};
+    const globalRaw =
+        safeShared.global && typeof safeShared.global === "object"
+            ? safeShared.global
+            : legacyGlobal;
+    const serviceRaw =
+        safeShared.service_data && typeof safeShared.service_data === "object"
+            ? safeShared.service_data
+            : legacyService;
+    const askedLog =
+        safeShared.asked_questions_log && typeof safeShared.asked_questions_log === "object"
+            ? safeShared.asked_questions_log
+            : {};
+    const normalizedServiceData = {};
+
+    for (const [service] of CATA_SERVICE_CONFIGS.entries()) {
+        normalizedServiceData[service] = normalizeCataBrief(service, serviceRaw[service] || {});
+    }
+
+    const rawActive = normalizeText(safeShared.active_service || "");
+    const resolvedActive = resolveCataService(rawActive) || rawActive;
+
+    return {
+        global: { client_name: normalizeText(globalRaw.client_name || "") },
+        service_data: normalizedServiceData,
+        active_service: resolvedActive,
+        asked_questions_log: { ...askedLog },
+    };
+};
 
 const normalizeSharedContext = (shared = {}) => {
     const safeShared =
@@ -2628,6 +3098,7 @@ const normalizeSharedContext = (shared = {}) => {
         safeShared.service_budgets && typeof safeShared.service_budgets === "object"
             ? { ...safeShared.service_budgets }
             : {};
+    const cataContext = normalizeCataSharedContext(safeShared);
 
     return {
         ...SHARED_CONTEXT_DEFAULTS,
@@ -2650,7 +3121,69 @@ const normalizeSharedContext = (shared = {}) => {
             : normalizeText(safeShared.integrations || ""),
         timeline: normalizeText(safeShared.timeline || ""),
         service_budgets: serviceBudgets,
+        global: cataContext.global,
+        service_data: cataContext.service_data,
+        active_service: cataContext.active_service,
+        asked_questions_log: cataContext.asked_questions_log,
     };
+};
+
+const formatCataSharedValue = (value) => {
+    if (Array.isArray(value)) return value.join(", ");
+    return normalizeText(value);
+};
+
+const normalizeCataCompareValue = (value) => {
+    if (Array.isArray(value)) {
+        const items = value
+            .map((item) => canonicalize(normalizeText(item)))
+            .filter(Boolean)
+            .sort();
+        return items.join("|");
+    }
+    return canonicalize(normalizeText(value));
+};
+
+const resolveCataSharedValue = (sharedContext, question, service) => {
+    const resolvedService = resolveCataService(service);
+    if (!resolvedService || !question?.key) return "";
+    if (question.key === "name") {
+        return normalizeText(sharedContext?.global?.client_name || "");
+    }
+    const brief = sharedContext?.service_data?.[resolvedService] || {};
+    const raw = brief[question.key];
+    if (Array.isArray(raw)) {
+        return raw.length ? raw : "";
+    }
+    return raw || "";
+};
+
+const setCataSharedValue = (sharedContext, question, value, service) => {
+    if (!sharedContext || !question?.key) return;
+    const resolvedService = resolveCataService(service);
+    if (!resolvedService) return;
+    const config = getCataConfig(resolvedService);
+    if (!config) return;
+    sharedContext.active_service = resolvedService;
+
+    if (question.key === "name") {
+        const cleaned = normalizeText(value);
+        if (!cleaned) return;
+        sharedContext.global = sharedContext.global || { client_name: "" };
+        sharedContext.global.client_name = cleaned;
+        return;
+    }
+
+    const isListField = Boolean(config.listFields?.has(question.key));
+    const cleaned = isListField ? normalizeCataListValue(value) : normalizeText(value);
+    if (isListField && (!cleaned || cleaned.length === 0)) return;
+    if (!isListField && !cleaned) return;
+
+    sharedContext.service_data = sharedContext.service_data || {};
+    if (!sharedContext.service_data[resolvedService]) {
+        sharedContext.service_data[resolvedService] = normalizeCataBrief(resolvedService, {});
+    }
+    sharedContext.service_data[resolvedService][question.key] = cleaned;
 };
 
 const hasSharedContextValue = (sharedContext) => {
@@ -2677,6 +3210,21 @@ const hasSharedContextValue = (sharedContext) => {
             normalizeText(tech.domain)
     ) {
         return true;
+    }
+
+    const cataName = normalizeText(sharedContext.global?.client_name || "");
+    if (cataName) return true;
+
+    const serviceData = sharedContext.service_data || {};
+    for (const brief of Object.values(serviceData)) {
+        if (!brief || typeof brief !== "object") continue;
+        for (const value of Object.values(brief)) {
+            if (Array.isArray(value)) {
+                if (value.some((item) => normalizeText(item))) return true;
+            } else if (normalizeText(value)) {
+                return true;
+            }
+        }
     }
 
     const budgets = sharedContext.service_budgets || {};
@@ -2820,6 +3368,9 @@ const resolveSharedNameValue = (sharedContext, key = "") => {
 
 const resolveSharedContextValue = (sharedContext, question, service) => {
     if (!sharedContext || !question) return "";
+    if (resolveCataService(service)) {
+        return resolveCataSharedValue(sharedContext, question, service);
+    }
     const target = resolveSharedContextTarget(question);
     if (!target) return "";
     const key = normalizeText(question.key || "").toLowerCase();
@@ -2912,6 +3463,17 @@ const truncateSharedValue = (value = "", maxLen = 80) => {
 
 const buildSharedConflictPrompt = (question, conflict) => {
     if (!question?.key || !conflict) return "";
+    if (conflict.source === "cata") {
+        const previous = truncateSharedValue(conflict.previousValue);
+        const proposed = truncateSharedValue(conflict.proposedValue);
+        if (!previous || !proposed) return "";
+        const base = `Earlier you said "${previous}", now "${proposed}". Which should I keep?`;
+        const suggestions = [proposed, previous].filter(Boolean);
+        const text = suggestions.length
+            ? `${base}\n[SUGGESTIONS: ${suggestions.join(" | ")}]`
+            : base;
+        return withQuestionKeyTag(text.trim(), question.key);
+    }
     const label = resolveSharedFieldLabel(conflict);
     const previous = truncateSharedValue(conflict.previousValue);
     const proposed = truncateSharedValue(conflict.proposedValue);
@@ -3004,7 +3566,8 @@ const recomputeProgress = (state) => {
     const { missingRequired, missingOptional } = buildMissingLists(
         questions,
         slots,
-        state?.collectedData || {}
+        state?.collectedData || {},
+        { service: state?.service }
     );
     const nextKey = findNextQuestionKey(questions, missingRequired, missingOptional);
     const currentStep = nextKey ? questions.findIndex((q) => q.key === nextKey) : questions.length;
@@ -3081,9 +3644,21 @@ const evaluateAnswerForQuestion = (question, message, options = {}) => {
         return normalizeMoneyValue(text);
     }
 
+    if (expectedType === "budget_text") {
+        const looksLikeBudget = hasBudgetSignal(text) || isBareBudgetAnswer(text);
+        if (!force && !looksLikeBudget) return null;
+        return { status: "ok", normalized: text, confidence: 0.75 };
+    }
+
     if (expectedType === "duration") {
         if (!force && !hasTimelineSignal(text) && !/\b(day|week|month|year)\b/i.test(text)) return null;
         return normalizeDurationValue(text, allowedUnits);
+    }
+
+    if (expectedType === "timeline_text") {
+        const looksLikeTimeline = hasTimelineSignal(text) || isBareTimelineAnswer(text);
+        if (!force && !looksLikeTimeline) return null;
+        return { status: "ok", normalized: text, confidence: 0.75 };
     }
 
     if (expectedType === "number_range") {
@@ -3143,20 +3718,24 @@ const evaluateAnswerForQuestion = (question, message, options = {}) => {
     return normalizeTextValue(text);
 };
 
-const buildMissingLists = (questions, slots, collectedData = {}) => {
+const buildMissingLists = (questions, slots, collectedData = {}, options = {}) => {
     const missingRequired = [];
     const missingOptional = [];
-    const skipDeployment = shouldSkipDeploymentQuestion(collectedData);
+    const cataConfig = getCataConfig(options.service);
+    const skipDeployment = cataConfig ? false : shouldSkipDeploymentQuestion(collectedData);
+    const isCataFlow = Boolean(cataConfig);
     for (const question of questions) {
         const key = question.key;
         if (!key) continue;
         if (key === "deployment" && skipDeployment) continue;
         const slot = slots[key];
-        const required = isRequiredQuestion(question);
+        const required = cataConfig
+            ? cataConfig.requiredKeys.includes(key)
+            : isRequiredQuestion(question);
         const answered = slot?.status === "answered";
         const declined = slot?.status === "declined";
         if (required && !answered) missingRequired.push(key);
-        if (!required && !answered && !declined) missingOptional.push(key);
+        if (!isCataFlow && !required && !answered && !declined) missingOptional.push(key);
     }
     return { missingRequired, missingOptional };
 };
@@ -3203,8 +3782,12 @@ const shouldCaptureOutOfOrder = (question, message) => {
     const hasKeywords = hasKeywordSignal(text, tags);
 
     if (expectedType === "money") return hasBudgetSignal(text);
+    if (expectedType === "budget_text") return hasBudgetSignal(text) || isBareBudgetAnswer(text);
     if (expectedType === "duration") {
         return hasTimelineSignal(text) || /\b(day|week|month|year)\b/i.test(text);
+    }
+    if (expectedType === "timeline_text") {
+        return hasTimelineSignal(text) || isBareTimelineAnswer(text);
     }
     if (expectedType === "number_range") {
         return /\d/.test(text) && (hasKeywords || /\bhow many\b|\bnumber of\b/i.test(text));
@@ -3334,7 +3917,12 @@ const applyMessageToState = (state, message, activeKey = null, options = {}) => 
 
     const collectedData = buildCollectedData(questions, slots);
 
-    const { missingRequired, missingOptional } = buildMissingLists(questions, slots, collectedData);
+    const { missingRequired, missingOptional } = buildMissingLists(
+        questions,
+        slots,
+        collectedData,
+        { service: state?.service }
+    );
     const nextKey = findNextQuestionKey(questions, missingRequired, missingOptional);
     const currentStep = nextKey ? questions.findIndex((q) => q.key === nextKey) : questions.length;
 
@@ -3365,6 +3953,7 @@ const applySharedContextToState = (state) => {
     if (!questions.length) return state;
     const slots = { ...(state?.slots || {}) };
     const sharedContext = normalizeSharedContext(state?.sharedContext);
+    const isCataService = Boolean(resolveCataService(state?.service));
     let updated = false;
 
     for (const question of questions) {
@@ -3372,7 +3961,8 @@ const applySharedContextToState = (state) => {
         const slot = ensureSlot(slots, question.key);
         if (slot.status !== "empty" && slot.status !== "declined") continue;
         const sharedValue = resolveSharedContextValue(sharedContext, question, state?.service);
-        if (!sharedValue || shouldSkipSharedValue(sharedValue)) continue;
+        if (!sharedValue) continue;
+        if (!isCataService && shouldSkipSharedValue(sharedValue)) continue;
         applySlotResult(
             slot,
             { status: "ok", normalized: sharedValue, confidence: 0.9 },
@@ -3405,10 +3995,15 @@ const applySharedContextToState = (state) => {
  */
 export function buildConversationState(history, service, sharedContext) {
     const { questions: rawQuestions, source, definition } = resolveServiceQuestions(service);
+    const resolvedService = resolveCataService(service) || service;
+    const isCataService = source === "cata";
     const safeHistory = Array.isArray(history) ? history : [];
-    const needsBrief = source !== "catalog";
+    const needsBrief = !isCataService && source !== "catalog";
     const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
-    const normalizedQuestions = normalizeQuestions(withGlobalIntroQuestion(baseQuestions, service));
+    const questionSeed = isCataService
+        ? baseQuestions
+        : withGlobalIntroQuestion(baseQuestions, resolvedService);
+    const normalizedQuestions = normalizeQuestions(questionSeed);
     const questions = orderQuestionsByFlow(normalizedQuestions);
 
     const slots = {};
@@ -3419,7 +4014,7 @@ export function buildConversationState(history, service, sharedContext) {
     }
 
     let state = {
-        service,
+        service: resolvedService,
         serviceSource: source,
         serviceDefinition: definition,
         questions,
@@ -3453,12 +4048,19 @@ export function buildConversationState(history, service, sharedContext) {
 
     state = applySharedContextToState(state);
     state = mergeSharedContextFromState(state);
+    if (isCataService && state.sharedContext) {
+        state.sharedContext = {
+            ...state.sharedContext,
+            active_service: resolvedService,
+        };
+    }
 
     if (!state.missingRequired?.length && !state.missingOptional?.length) {
         const { missingRequired, missingOptional } = buildMissingLists(
             questions,
             state.slots,
-            state.collectedData
+            state.collectedData,
+            { service: state?.service }
         );
         const nextKey = findNextQuestionKey(questions, missingRequired, missingOptional);
         state.missingRequired = missingRequired;
@@ -3481,10 +4083,16 @@ export function buildConversationState(history, service, sharedContext) {
  * @returns {Object} Updated state
  */
 export function processUserAnswer(state, message) {
-    const { questions: rawQuestions, source, definition } = resolveServiceQuestions(state?.service || "");
-    const needsBrief = source !== "catalog";
+    const rawService = state?.service || "";
+    const { questions: rawQuestions, source, definition } = resolveServiceQuestions(rawService);
+    const resolvedService = resolveCataService(rawService) || rawService;
+    const isCataService = source === "cata";
+    const needsBrief = !isCataService && source !== "catalog";
     const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
-    const normalizedQuestions = normalizeQuestions(withGlobalIntroQuestion(baseQuestions, state?.service || ""));
+    const questionSeed = isCataService
+        ? baseQuestions
+        : withGlobalIntroQuestion(baseQuestions, resolvedService);
+    const normalizedQuestions = normalizeQuestions(questionSeed);
     const stateQuestions = Array.isArray(state?.questions) ? state.questions : [];
     const normalizedKeys = new Set(normalizedQuestions.map((q) => q.key));
     const stateKeys = new Set(stateQuestions.map((q) => q.key));
@@ -3499,6 +4107,7 @@ export function processUserAnswer(state, message) {
     const normalizedMessage = normalizeText(message);
     let workingState = {
         ...state,
+        service: resolvedService,
         sharedContext: normalizeSharedContext(state?.sharedContext),
     };
     const hasLowBudgetPending = Boolean(workingState?.meta?.lowBudgetPending);
@@ -3569,6 +4178,14 @@ export function processUserAnswer(state, message) {
         }
     }
 
+    const resolvedAfter = resolveCataService(nextState?.service);
+    if (resolvedAfter && nextState?.sharedContext) {
+        nextState.sharedContext = {
+            ...nextState.sharedContext,
+            active_service: resolvedAfter,
+        };
+    }
+
     return {
         ...nextState,
         pendingQuestionKey: null,
@@ -3586,6 +4203,7 @@ export function getNextHumanizedQuestion(state) {
     const locale = state?.i18n?.locale || "en";
     const missingRequired = Array.isArray(state?.missingRequired) ? state.missingRequired : [];
     const missingOptional = Array.isArray(state?.missingOptional) ? state.missingOptional : [];
+    const isCataFlow = isCataService(state?.service);
 
     if (!questions.length) return null;
 
@@ -3649,34 +4267,41 @@ export function getNextHumanizedQuestion(state) {
         const slot = question ? slots[question.key] : null;
         if (question && slot) {
             isClarification = true;
-            const isNameQuestion = question.key === "name";
-
-            if (isNameQuestion) {
-                const validationErrors = Array.isArray(slot.validationErrors)
-                    ? slot.validationErrors
-                    : [];
-                const hasGreetingError = validationErrors.includes("greeting_only");
-                text = hasGreetingError ? "Hi! What's your name?" : "Thanks! What should I call you?";
-
+            const templates = resolveTemplatesForLocale(question, locale);
+            const basePrompt = templates.length ? templates[0] : question.prompt || "";
+            if (isCataFlow) {
+                text = basePrompt;
                 if (!slot.clarifiedOnce) {
                     slot.clarifiedOnce = true;
                 }
             } else {
-                const templates = resolveTemplatesForLocale(question, locale);
-                const basePrompt = templates.length ? templates[0] : question.prompt || "";
-                text = `${basePrompt}\n${buildClarificationText(question)}`.trim();
+                const isNameQuestion = question.key === "name";
 
-                if (!slot.clarifiedOnce) {
-                    slot.clarifiedOnce = true;
-                } else {
-                    suggestionsOverride = buildForcedChoices(question);
-                    if (suggestionsOverride) {
-                        text = `${basePrompt}\nPlease choose one option below.`.trim();
+                if (isNameQuestion) {
+                    const validationErrors = Array.isArray(slot.validationErrors)
+                        ? slot.validationErrors
+                        : [];
+                    const hasGreetingError = validationErrors.includes("greeting_only");
+                    text = hasGreetingError ? "Hi! What's your name?" : "Thanks! What should I call you?";
+
+                    if (!slot.clarifiedOnce) {
+                        slot.clarifiedOnce = true;
                     }
-                }
+                } else {
+                    text = `${basePrompt}\n${buildClarificationText(question)}`.trim();
 
-                if (slot.options && slot.options.length) {
-                    suggestionsOverride = slot.options;
+                    if (!slot.clarifiedOnce) {
+                        slot.clarifiedOnce = true;
+                    } else {
+                        suggestionsOverride = buildForcedChoices(question);
+                        if (suggestionsOverride) {
+                            text = `${basePrompt}\nPlease choose one option below.`.trim();
+                        }
+                    }
+
+                    if (slot.options && slot.options.length) {
+                        suggestionsOverride = slot.options;
+                    }
                 }
             }
         }
@@ -3692,7 +4317,7 @@ export function getNextHumanizedQuestion(state) {
         const templates = resolveTemplatesForLocale(question, locale);
         const basePrompt = templates.length ? templates[0] : question.prompt || "";
         const askedCount = slot?.askedCount || 0;
-        if (askedCount > 0) {
+        if (askedCount > 0 && !isCataFlow) {
             text = `Quick check: ${basePrompt}`;
         } else {
             text = basePrompt;
@@ -3705,7 +4330,7 @@ export function getNextHumanizedQuestion(state) {
 
     text = applyTemplatePlaceholders(text, state);
 
-    if (!isClarification && !state?.meta?.sharedContextIntroShown && hasSharedContextValue(state?.sharedContext)) {
+    if (!isClarification && !isCataFlow && !state?.meta?.sharedContextIntroShown && hasSharedContextValue(state?.sharedContext)) {
         const asked = Array.isArray(state?.asked) ? state.asked : [];
         if (asked.length === 0) {
             const serviceLabel = resolveIntroServiceLabel(state?.service || "");
@@ -3715,22 +4340,24 @@ export function getNextHumanizedQuestion(state) {
         }
     }
 
-    if (!suggestionsOverride && question?.key === "tech") {
-        const techSuggestions = resolveWebsiteTechSuggestions(state, questions, question);
-        if (Array.isArray(techSuggestions) && techSuggestions.length) {
-            suggestionsOverride = techSuggestions;
+    if (!isCataFlow) {
+        if (!suggestionsOverride && question?.key === "tech") {
+            const techSuggestions = resolveWebsiteTechSuggestions(state, questions, question);
+            if (Array.isArray(techSuggestions) && techSuggestions.length) {
+                suggestionsOverride = techSuggestions;
+            }
         }
-    }
-    if (!suggestionsOverride && question?.key === "deployment") {
-        const deploymentSuggestions = resolveWebsiteDeploymentSuggestions(state, question);
-        if (Array.isArray(deploymentSuggestions) && deploymentSuggestions.length) {
-            suggestionsOverride = deploymentSuggestions;
+        if (!suggestionsOverride && question?.key === "deployment") {
+            const deploymentSuggestions = resolveWebsiteDeploymentSuggestions(state, question);
+            if (Array.isArray(deploymentSuggestions) && deploymentSuggestions.length) {
+                suggestionsOverride = deploymentSuggestions;
+            }
         }
-    }
-    if (!suggestionsOverride && question?.key === "timeline") {
-        const timelineSuggestions = resolveWebsiteTimelineSuggestions(state, questions, question);
-        if (Array.isArray(timelineSuggestions) && timelineSuggestions.length) {
-            suggestionsOverride = timelineSuggestions;
+        if (!suggestionsOverride && question?.key === "timeline") {
+            const timelineSuggestions = resolveWebsiteTimelineSuggestions(state, questions, question);
+            if (Array.isArray(timelineSuggestions) && timelineSuggestions.length) {
+                suggestionsOverride = timelineSuggestions;
+            }
         }
     }
 
@@ -3766,7 +4393,8 @@ export function shouldGenerateProposal(state) {
     const { missingRequired, missingOptional } = buildMissingLists(
         questions,
         slots,
-        state?.collectedData || {}
+        state?.collectedData || {},
+        { service: state?.service }
     );
     return missingRequired.length === 0 && missingOptional.length === 0;
 }
@@ -4077,13 +4705,155 @@ export function generateRoadmapFromState(state) {
     ).trim();
 }
 
+const formatCataListValue = (value) => {
+    if (Array.isArray(value)) return value.join(", ");
+    return normalizeText(value);
+};
+
+const resolveCataFieldValue = (state, key) => {
+    const slot = state?.slots?.[key];
+    if (slot?.status === "answered") {
+        return slot.normalized ?? formatSlotValue(slot);
+    }
+    const collected = state?.collectedData?.[key];
+    if (normalizeText(collected)) return collected;
+    const sharedContext = normalizeSharedContext(state?.sharedContext || {});
+    return resolveCataSharedValue(sharedContext, { key }, state?.service);
+};
+
+const generateCataProposalFromState = (state) => {
+    const resolvedService = resolveCataService(state?.service);
+    if (!resolvedService) return "";
+
+    const clientName = normalizeText(
+        resolveCataFieldValue(state, "name") ||
+        normalizeSharedContext(state?.sharedContext || {}).global?.client_name ||
+        ""
+    );
+
+    if (resolvedService === "Website Development") {
+        const projectName = normalizeText(resolveCataFieldValue(state, "project_name"));
+        const summary = normalizeText(resolveCataFieldValue(state, "project_description_1_sentence"));
+        const additionalPages = formatCataListValue(resolveCataFieldValue(state, "additional_pages"));
+        const integrations = formatCataListValue(resolveCataFieldValue(state, "integrations"));
+        const designStatus = normalizeText(resolveCataFieldValue(state, "design_status"));
+        const techStack = normalizeText(resolveCataFieldValue(state, "tech_stack"));
+        const hosting = formatCataListValue(resolveCataFieldValue(state, "hosting"));
+        const domainStatus = normalizeText(resolveCataFieldValue(state, "domain_status"));
+        const timeline = normalizeText(resolveCataFieldValue(state, "timeline"));
+        const budget = normalizeText(resolveCataFieldValue(state, "budget_inr"));
+
+        const sections = ["[PROPOSAL_DATA]"];
+        sections.push("## Proposal Title");
+        sections.push(`- Website Development Proposal — ${projectName}`);
+        sections.push("");
+
+        sections.push("Project Overview");
+        sections.push("- Service: Website Development");
+        sections.push(`- Project: ${projectName}`);
+        sections.push(`- Client: ${clientName}`);
+        sections.push("- Website type: Web App");
+        sections.push(`- Tech stack: ${techStack}`);
+        sections.push("");
+
+        sections.push("Summary");
+        sections.push(`- ${summary}`);
+        sections.push("");
+
+        sections.push("Pages & Features");
+        sections.push(
+            "- Core pages included: Home, About, Contact, Privacy Policy, Terms"
+        );
+        sections.push(`- Additional pages/features: ${additionalPages}`);
+        sections.push("");
+
+        sections.push("Integrations");
+        sections.push(`- ${integrations}`);
+        sections.push(`- Designs: ${designStatus}`);
+        sections.push(`- Hosting/deployment: ${hosting}`);
+        sections.push(`- Domain: ${domainStatus}`);
+        sections.push("");
+
+        sections.push("Timeline");
+        sections.push(`- ${timeline}`);
+        sections.push("");
+
+        sections.push("Budget");
+        sections.push(`- INR ${budget}`);
+        sections.push("");
+
+        sections.push("Next Steps");
+        sections.push("- Approve proposal to kick start the project");
+        sections.push("[/PROPOSAL_DATA]");
+
+        return sections.join("\n").trim();
+    }
+
+    if (resolvedService === "Lead Generation") {
+        const businessType = normalizeText(resolveCataFieldValue(state, "business_type"));
+        const targetAudience = normalizeText(resolveCataFieldValue(state, "target_audience"));
+        const examples = normalizeText(resolveCataFieldValue(state, "examples_links"));
+
+        const sections = ["[PROPOSAL_DATA]"];
+        sections.push("## Proposal Title");
+        sections.push(`- Lead Generation Proposal — ${clientName}`);
+        sections.push("");
+
+        sections.push("Confirmed Brief");
+        sections.push("- Service: Lead Generation");
+        sections.push(`- Business type: ${businessType}`);
+        sections.push(`- Target audience: ${targetAudience}`);
+        sections.push(`- Examples/case studies: ${examples}`);
+        sections.push("");
+
+        sections.push("Next Steps");
+        sections.push("- Confirm the brief");
+        sections.push("- Share any missing assets or links");
+        sections.push("- Approve proposal to begin");
+        sections.push("[/PROPOSAL_DATA]");
+
+        return sections.join("\n").trim();
+    }
+
+    if (resolvedService === "SEO Optimization") {
+        const websiteStatus = normalizeText(resolveCataFieldValue(state, "website_live_status"));
+        const targetLocation = normalizeText(resolveCataFieldValue(state, "target_location"));
+        const scope = normalizeText(resolveCataFieldValue(state, "seo_scope"));
+        const keywords = normalizeText(resolveCataFieldValue(state, "keywords"));
+
+        const sections = ["[PROPOSAL_DATA]"];
+        sections.push("## Proposal Title");
+        sections.push(`- SEO Optimization Proposal — ${clientName}`);
+        sections.push("");
+
+        sections.push("Confirmed Brief");
+        sections.push("- Service: SEO Optimization");
+        sections.push(`- Website status: ${websiteStatus}`);
+        sections.push(`- Target location: ${targetLocation}`);
+        sections.push(`- Scope: ${scope}`);
+        sections.push(`- Keywords: ${keywords}`);
+        sections.push("");
+
+        sections.push("Next Steps");
+        sections.push("- Confirm the brief");
+        sections.push("- Share access/website details if needed");
+        sections.push("- Approve proposal to begin");
+        sections.push("[/PROPOSAL_DATA]");
+
+        return sections.join("\n").trim();
+    }
+
+    return "";
+};
+
 /**
  * Generate proposal from collected state
  * @param {Object} state - Completed conversation state
  * @returns {string} Proposal in [PROPOSAL_DATA] format
  */
-﻿
 export function generateProposalFromState(state) {
+    const cataProposal = generateCataProposalFromState(state);
+    if (cataProposal) return cataProposal;
     const collectedData = state?.collectedData || {};
     const questions = Array.isArray(state?.questions) ? state.questions : [];
     const slots = state?.slots || {};
@@ -4933,4 +5703,5 @@ export function generateProposalFromState(state) {
 export function getOpeningMessage(service) {
     return getChatbot(service).openingMessage;
 }
+
 
