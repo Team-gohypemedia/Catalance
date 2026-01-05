@@ -1,4 +1,4 @@
-import CatalanceHero from "@/components/catalance-hero";
+import CatalanceHero from "@/components/CatalanceHero";
 
 const Home = () => {
   return (
