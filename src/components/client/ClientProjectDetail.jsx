@@ -1403,20 +1403,23 @@ const ProjectDashboard = () => {
     setVerifyConfirmOpen(false);
     setPendingVerifyTask(null);
 
+    // Compute new verified list synchronously BEFORE updating state
+    const currentVerified = Array.from(verifiedTaskIds);
     let newVerified;
     let isMarkingVerified = false;
 
-    setVerifiedTaskIds((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(uniqueKey)) {
-        updated.delete(uniqueKey);
-      } else {
-        updated.add(uniqueKey);
-        isMarkingVerified = true;
-      }
-      newVerified = Array.from(updated);
-      return updated;
-    });
+    if (currentVerified.includes(uniqueKey)) {
+      // Removing verification
+      newVerified = currentVerified.filter((id) => id !== uniqueKey);
+      isMarkingVerified = false;
+    } else {
+      // Adding verification
+      newVerified = [...currentVerified, uniqueKey];
+      isMarkingVerified = true;
+    }
+
+    // Update local state
+    setVerifiedTaskIds(new Set(newVerified));
 
     // Calculate new progress
     const allTasks = activeSOP.tasks;
@@ -1438,7 +1441,7 @@ const ProjectDashboard = () => {
 
     // Save to database
     const currentCompleted = Array.from(completedTaskIds);
-    updateProjectProgress(
+    await updateProjectProgress(
       newProgress,
       currentCompleted,
       newVerified,
