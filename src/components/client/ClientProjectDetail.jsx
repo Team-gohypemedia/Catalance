@@ -391,6 +391,10 @@ const ProjectDashboard = () => {
   // Book Appointment State
   const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
 
+  // Verify Confirmation State
+  const [verifyConfirmOpen, setVerifyConfirmOpen] = useState(false);
+  const [pendingVerifyTask, setPendingVerifyTask] = useState(null); // { uniqueKey, title, isVerified }
+
   const renderProjectDescription = (options = {}) => {
     const { showExtended = false } = options;
     if (!project?.description) {
@@ -1376,10 +1380,28 @@ const ProjectDashboard = () => {
   };
 
   // Handle verify button click - this updates progress
-  const handleVerifyTask = async (e, uniqueKey, taskTitle) => {
+  // First show confirmation dialog
+  const promptVerifyTask = (e, uniqueKey, taskTitle, isCurrentlyVerified) => {
     e.stopPropagation();
     e.preventDefault();
     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+
+    setPendingVerifyTask({
+      uniqueKey,
+      title: taskTitle,
+      isVerified: isCurrentlyVerified,
+    });
+    setVerifyConfirmOpen(true);
+  };
+
+  // Actually perform the verification
+  const handleVerifyTask = async (
+    uniqueKey,
+    taskTitle,
+    isCurrentlyVerified
+  ) => {
+    setVerifyConfirmOpen(false);
+    setPendingVerifyTask(null);
 
     let newVerified;
     let isMarkingVerified = false;
@@ -1692,10 +1714,11 @@ const ProjectDashboard = () => {
                                         : "border-primary text-primary hover:bg-primary/10"
                                     }`}
                                     onClick={(e) =>
-                                      handleVerifyTask(
+                                      promptVerifyTask(
                                         e,
                                         task.uniqueKey,
-                                        task.title
+                                        task.title,
+                                        task.verified
                                       )
                                     }
                                   >
@@ -1944,6 +1967,53 @@ const ProjectDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Verification Confirmation Dialog */}
+      <Dialog open={verifyConfirmOpen} onOpenChange={setVerifyConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingVerifyTask?.isVerified
+                ? "Remove Verification?"
+                : "Verify Task?"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingVerifyTask?.isVerified
+                ? `Are you sure you want to remove verification from "${pendingVerifyTask?.title}"? The freelancer will be notified.`
+                : `Are you sure you want to verify "${pendingVerifyTask?.title}"? This confirms the task has been completed to your satisfaction.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setVerifyConfirmOpen(false);
+                setPendingVerifyTask(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={
+                pendingVerifyTask?.isVerified ? "destructive" : "default"
+              }
+              onClick={() => {
+                if (pendingVerifyTask) {
+                  handleVerifyTask(
+                    pendingVerifyTask.uniqueKey,
+                    pendingVerifyTask.title,
+                    pendingVerifyTask.isVerified
+                  );
+                }
+              }}
+            >
+              {pendingVerifyTask?.isVerified
+                ? "Remove Verification"
+                : "Verify Task"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="sm:max-w-md">

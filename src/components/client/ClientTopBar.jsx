@@ -116,13 +116,8 @@ export const ClientTopBar = ({ label, interactive = true }) => {
         // Fallback or just go to messages
         navigate("/client/messages");
       }
-    } else if (
-      notification.type === "proposal" &&
-      notification.data?.projectId
-    ) {
-      // Navigate to Project Detail (owner view)
-      navigate(`/client/project/${notification.data.projectId}`);
     } else if (notification.type === "proposal") {
+      // For proposal acceptance/updates, go to the proposal page
       navigate("/client/proposal");
     } else if (
       (notification.type === "task_completed" ||
@@ -240,7 +235,7 @@ export const ClientTopBar = ({ label, interactive = true }) => {
                           <p className="text-sm font-medium truncate">
                             {notification.title}
                           </p>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
+                          <p className="text-xs text-muted-foreground">
                             {notification.message}
                           </p>
                           <p className="mt-1 text-xs text-muted-foreground/70">
