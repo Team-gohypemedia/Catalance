@@ -2490,7 +2490,10 @@ const ClientDashboardContent = () => {
                 const activeProjectsList = uniqueProjects.filter(
                   (p) =>
                     p.status === "IN_PROGRESS" ||
-                    p.status === "AWAITING_PAYMENT"
+                    (p.status === "AWAITING_PAYMENT" &&
+                      (p.proposals || []).some(
+                        (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+                      ))
                 );
 
                 if (activeProjectsList.length === 0) return null;
@@ -2640,10 +2643,11 @@ const ClientDashboardContent = () => {
                 const activeProposalsList = uniqueProjects.filter((p) => {
                   if (p.status !== "OPEN") return false;
                   // Only show if there's at least one pending or accepted proposal
-                  return (p.proposals || []).some((prop) =>
-                    ["PENDING", "ACCEPTED"].includes(
-                      (prop.status || "").toUpperCase()
-                    )
+                  return (p.proposals || []).some(
+                    (prop) =>
+                      ["PENDING", "ACCEPTED"].includes(
+                        (prop.status || "").toUpperCase()
+                      ) && !prop.deletedAt
                   );
                 });
 

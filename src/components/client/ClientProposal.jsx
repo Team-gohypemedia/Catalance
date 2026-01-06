@@ -32,6 +32,37 @@ const formatBudget = (val) => {
   }).format(num);
 };
 
+// Helper to render markdown-like content
+const ProposalContentRenderer = ({ content }) => {
+  if (!content)
+    return <p className="text-muted-foreground">No content available.</p>;
+
+  return (
+    <div className="space-y-1 text-sm leading-6 text-foreground">
+      {content.split("\n").map((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("##")) {
+          return (
+            <h3 key={i} className="text-base font-bold mt-4 mb-2 text-primary">
+              {trimmed.replace(/^#+\s*/, "")}
+            </h3>
+          );
+        }
+        if (trimmed.startsWith("-")) {
+          return (
+            <div key={i} className="flex gap-2 ml-1">
+              <span className="text-muted-foreground">•</span>
+              <span>{trimmed.replace(/^-\s*/, "")}</span>
+            </div>
+          );
+        }
+        if (!trimmed) return <div key={i} className="h-2" />;
+        return <p key={i}>{trimmed}</p>;
+      })}
+    </div>
+  );
+};
+
 // Helper to extract details from proposal
 const extractProposalDetails = (proposal) => {
   // Budget
@@ -379,22 +410,22 @@ const ClientProposalContent = () => {
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <TabsList className="bg-transparent p-0 h-auto border-b border-border/40 w-full justify-start rounded-none space-x-6">
+          <TabsList className="bg-transparent p-0 h-auto w-full justify-start gap-4 mb-6">
             <TabsTrigger
               value="active"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-400 data-[state=active]:shadow-none px-0 py-3 bg-transparent font-medium text-muted-foreground data-[state=active]:text-foreground hover:text-foreground transition-all"
+              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-green-500 data-[state=active]:text-white data-[state=active]:shadow-md"
             >
-              Active Contracts
+              Active Proposals
             </TabsTrigger>
             <TabsTrigger
               value="pending"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-400 data-[state=active]:shadow-none px-0 py-3 bg-transparent font-medium text-muted-foreground data-[state=active]:text-foreground hover:text-foreground transition-all"
+              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-500 data-[state=active]:text-white data-[state=active]:shadow-md"
             >
               Pending Approval
             </TabsTrigger>
             <TabsTrigger
               value="rejected"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-400 data-[state=active]:shadow-none px-0 py-3 bg-transparent font-medium text-muted-foreground data-[state=active]:text-foreground hover:text-foreground transition-all"
+              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-rose-500 data-[state=active]:text-white data-[state=active]:shadow-md"
             >
               Rejected
             </TabsTrigger>
@@ -517,16 +548,13 @@ const ClientProposalContent = () => {
             </div>
 
             <h4 className="font-semibold mb-2">Proposal Details</h4>
-            <div className="max-h-[50vh] overflow-auto pr-2">
+            <div className="max-h-[50vh] overflow-y-auto pr-2 bg-muted/50 p-4 rounded-lg [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {isLoadingProposal ? (
                 <p className="text-sm text-muted-foreground">
                   Loading details...
                 </p>
               ) : (
-                <div className="text-sm leading-6 text-foreground whitespace-pre-wrap">
-                  {activeProposal?.content?.trim() ||
-                    "No content available for this proposal."}
-                </div>
+                <ProposalContentRenderer content={activeProposal?.content} />
               )}
             </div>
           </div>
