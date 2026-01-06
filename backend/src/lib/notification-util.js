@@ -49,13 +49,24 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
 
   // 2. Send via Email (if user found and enabled)
   if (shouldEmail && user?.email) {
-      // Don't await email to prevent blocking response
-      sendEmail({
-          to: user.email,
-          subject: notification.title || "New Notification - Catalance",
-          title: notification.title,
-          text: notification.message || notification.body || "You have a new notification."
+    console.log(`[NotificationUtil] 📧 Attempting to send email to: ${user.email}`);
+    try {
+      const emailSent = await sendEmail({
+        to: user.email,
+        subject: notification.title || "New Notification - Catalance",
+        title: notification.title,
+        text: notification.message || notification.body || "You have a new notification."
       });
+      if (emailSent) {
+        console.log(`[NotificationUtil] ✅ Email sent successfully to: ${user.email}`);
+      } else {
+        console.log(`[NotificationUtil] ⚠️ Email not sent to: ${user.email} (check Resend config)`);
+      }
+    } catch (emailError) {
+      console.error(`[NotificationUtil] ❌ Email failed:`, emailError);
+    }
+  } else {
+    console.log(`[NotificationUtil] ℹ️ Email skipped - shouldEmail: ${shouldEmail}, email: ${user?.email || 'none'}`);
   }
 
   // 3. Send via Socket.io
