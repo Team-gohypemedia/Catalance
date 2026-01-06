@@ -279,24 +279,37 @@ const ClientOnboading = () => {
             onClick={() => handleCardClick(feature)}
             className="cursor-pointer relative"
           >
-            <EvervaultCard
-              text={feature.title}
-              className={`h-72 ${selectedServices.some((item) => item.title === feature.title) && multiSelectEnabled ? "ring-2 ring-primary/60" : ""}`}
-              disableEffect={true}
+            <div
+              className={`
+                h-[340px] p-6 rounded-3xl border bg-black transition-all duration-300 flex flex-col items-center text-center group relative overflow-hidden
+                ${selectedServices.some((item) => item.title === feature.title) && multiSelectEnabled
+                  ? "border-yellow-500 shadow-[0_0_30px_-5px_rgba(255,200,0,0.3)] bg-zinc-900"
+                  : "border-yellow-600/30 hover:border-yellow-500 hover:shadow-[0_0_20px_-5px_rgba(255,200,0,0.15)] bg-black"}
+              `}
             >
-              <div className="text-center space-y-3 flex flex-col items-center">
-                <div className="p-2 rounded-full bg-primary/10 text-primary">
-                  <feature.icon className="w-6 h-6" />
+              <div className="flex-1 flex flex-col items-center pt-4">
+                <div className="mb-5 text-yellow-500 p-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 group-hover:scale-110 transition-transform duration-300">
+                  <feature.icon className="w-7 h-7" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-xl font-semibold">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+
+                <h3 className="text-xl font-bold text-white mb-3 tracking-wide group-hover:text-yellow-400 transition-colors">
+                  {feature.title}
+                </h3>
+
+                <p className="text-sm text-zinc-400 font-medium leading-relaxed px-1">
                   {feature.description}
                 </p>
-                <p className="text-sm font-medium text-primary pt-2">
+              </div>
+
+              <div className="w-full pt-4 mt-2">
+                <p className="text-sm font-bold text-yellow-500 items-baseline justify-center tracking-wide">
                   {feature.price}
                 </p>
               </div>
-            </EvervaultCard>
+
+              {/* Optional: Subtle glow effect on hover */}
+              <div className="absolute inset-0 bg-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            </div>
             {multiSelectEnabled && (
               <div className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border text-xs ${selectedServices.some((item) => item.title === feature.title) ? "bg-primary text-primary-foreground border-primary" : "bg-background/80 text-muted-foreground border-border"}`}>
                 {selectedServices.some((item) => item.title === feature.title) ? (

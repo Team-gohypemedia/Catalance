@@ -231,7 +231,8 @@ export const initSocket = (server) => {
         senderName,
         skipAssistant = false,
         attachment,
-        history: clientHistory
+        history: clientHistory,
+        sharedContextId
       }) => {
         if (!content && !attachment) {
           socket.emit("chat:error", {

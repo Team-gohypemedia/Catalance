@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, User, Bot, RotateCcw } from "lucide-react";
 import AITextLoading from "@/components/kokonutui/ai-text-loading";
-import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
+import { apiClient, API_BASE_URL, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { io } from "socket.io-client";
 import ProposalPanel from "./ProposalPanel";
@@ -73,6 +73,9 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
   const [activeProposalServiceKey, setActiveProposalServiceKey] = useState(null);
   const safeWindow = typeof window === "undefined" ? null : window;
   const isLocalhost = safeWindow?.location?.hostname === "localhost";
+  const isLocalApi =
+    typeof API_BASE_URL === "string" &&
+    (API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1"));
   const [useSocket] = useState(SOCKET_ENABLED && isLocalhost);
   const [answeredOptions, setAnsweredOptions] = useState({});
   const { user } = useAuth();
@@ -417,7 +420,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
 
   // Fallback: fetch messages when sockets are disabled/unavailable.
   useEffect(() => {
-    if (isMultiService || !isOpen || !conversationId || useSocket) return;
+    if (isMultiService || !isOpen || !conversationId || useSocket || !isLocalApi) return;
 
     const storageKey = `markify:chatConversationId:${serviceKey}`;
 
@@ -461,7 +464,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
     };
 
     load();
-  }, [conversationId, isOpen, useSocket, messageStorageKey, serviceKey, isLocalhost, isMultiService]);
+  }, [conversationId, isOpen, useSocket, messageStorageKey, serviceKey, isLocalhost, isMultiService, isLocalApi]);
 
   // Seed an opening prompt if there is no history.
   useEffect(() => {

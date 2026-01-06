@@ -20,7 +20,7 @@ import { API_BASE_URL } from "@/lib/api-client";
 const AuthContext = createContext(null);
 AuthContext.displayName = "AuthContext";
 
-const VERIFY_TIMEOUT_MS = 4000;
+const VERIFY_TIMEOUT_MS = 10000;
 const PROTECTED_PATH_PREFIXES = ["/client", "/freelancer", "/dashboard", "/admin"];
 const SAVED_PROPOSAL_KEY = "markify:savedProposal";
 const SAVED_PROPOSAL_SYNCED_KEY = "markify:savedProposalSynced";
@@ -103,37 +103,45 @@ export const AuthProvider = ({ children }) => {
       }
 
       const url = resolveRequestUrl(target);
+      const {
+        skipLogoutOn401 = false,
+        suppressAbortLog = false,
+        suppressToast = false,
+        ...fetchOptions
+      } = options;
 
       try {
         const defaultHeaders =
-          options.body instanceof FormData
+          fetchOptions.body instanceof FormData
             ? {}
             : { "Content-Type": "application/json" };
 
         const response = await fetch(url, {
-          ...options,
+          ...fetchOptions,
           headers: {
             ...defaultHeaders,
             Authorization: `Bearer ${token}`,
-            ...(options.headers || {})
+            ...(fetchOptions.headers || {})
           }
         });
 
         if (response.status === 401) {
-          if (!options.skipLogoutOn401) {
+          if (!skipLogoutOn401) {
             toast.error("Session expired. Please log in again.");
             logout();
           }
           const unauthorizedError = new Error("Unauthorized");
           unauthorizedError.code = 401;
-          unauthorizedError.skipLogout = Boolean(options.skipLogoutOn401);
+          unauthorizedError.skipLogout = Boolean(skipLogoutOn401);
           throw unauthorizedError;
         }
 
         return response;
       } catch (error) {
         if (error.name === "AbortError") {
-          console.warn("Auth fetch aborted:", error.message || "timeout");
+          if (!suppressAbortLog) {
+            console.warn("Auth fetch aborted:", error.message || "timeout");
+          }
           throw error;
         }
 
@@ -142,7 +150,9 @@ export const AuthProvider = ({ children }) => {
           throw error;
         }
         console.error("Auth fetch failed:", error);
-        toast.error("Network error. Please try again.");
+        if (!suppressToast) {
+          toast.error("Network error. Please try again.");
+        }
         throw error;
       }
     },
@@ -165,7 +175,9 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await authFetch(PROFILE_ENDPOINT, {
-        signal: controller.signal
+        signal: controller.signal,
+        suppressAbortLog: true,
+        suppressToast: true
       });
 
       if (response.status === 404) {
@@ -194,7 +206,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       if (error.name === "AbortError") {
-        console.warn("User verification timed out.");
+        // Timeout is non-fatal; just skip refresh.
       } else if (error.message !== "Unauthorized") {
         console.error("User verification failed:", error);
       }
