@@ -56,7 +56,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { getSession } from "@/lib/auth-storage";
-import { listFreelancers, fetchChatConversations, API_BASE_URL } from "@/lib/api-client";
+import {
+  listFreelancers,
+  fetchChatConversations,
+  API_BASE_URL,
+} from "@/lib/api-client";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
@@ -84,9 +88,15 @@ const buildLocalProposalId = () =>
   `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 const getProposalSignature = (proposal = {}) => {
-  const title = (proposal.projectTitle || proposal.title || "").trim().toLowerCase();
-  const service = (proposal.serviceKey || proposal.service || "").trim().toLowerCase();
-  const summary = (proposal.summary || proposal.content || "").trim().toLowerCase();
+  const title = (proposal.projectTitle || proposal.title || "")
+    .trim()
+    .toLowerCase();
+  const service = (proposal.serviceKey || proposal.service || "")
+    .trim()
+    .toLowerCase();
+  const summary = (proposal.summary || proposal.content || "")
+    .trim()
+    .toLowerCase();
   if (!title && !service) {
     return `${title}::${service}::${summary.slice(0, 120)}`;
   }
@@ -103,11 +113,16 @@ const normalizeSavedProposal = (proposal = {}) => {
   if (!next.timeline && text) {
     const timelineMatch = text.match(/Timeline[:\s\-\n\u2022]*([^\n]+)/i);
     if (timelineMatch) {
-      next.timeline = timelineMatch[1].trim().replace(/\(with buffer\)/gi, "").trim();
+      next.timeline = timelineMatch[1]
+        .trim()
+        .replace(/\(with buffer\)/gi, "")
+        .trim();
     }
   }
   if ((!next.budget || next.budget === "Not set") && text) {
-    const budgetMatch = text.match(/Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹|ƒ,1)?\s*([ƒ,1\d,]+)/i);
+    const budgetMatch = text.match(
+      /Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹|ƒ,1)?\s*([ƒ,1\d,]+)/i
+    );
     if (budgetMatch) {
       next.budget = budgetMatch[1].trim();
     }
@@ -117,13 +132,31 @@ const normalizeSavedProposal = (proposal = {}) => {
 
 const resolveActiveProposalId = (proposals, preferredId, fallbackId) => {
   if (!Array.isArray(proposals) || proposals.length === 0) return null;
-  if (preferredId && proposals.some((proposal) => proposal.id === preferredId)) {
+  if (
+    preferredId &&
+    proposals.some((proposal) => proposal.id === preferredId)
+  ) {
     return preferredId;
   }
   if (fallbackId && proposals.some((proposal) => proposal.id === fallbackId)) {
     return fallbackId;
   }
   return proposals[0].id;
+};
+
+// Helper function to format budget as ₹X,XXX
+const formatBudget = (budget) => {
+  if (!budget || budget === "Not set") return "Not set";
+  // Extract digits from the budget string (remove currency symbols, 'k' suffix, etc.)
+  const cleaned = String(budget).replace(/[^\d.]/g, "");
+  const numValue = parseFloat(cleaned);
+  if (isNaN(numValue)) return budget; // Return original if can't parse
+
+  // Check if original had 'k' or 'K' suffix for thousands
+  const hasKSuffix = /\d+k$/i.test(String(budget).trim());
+  const finalValue = hasKSuffix ? numValue * 1000 : numValue;
+
+  return `₹${finalValue.toLocaleString("en-IN")}`;
 };
 
 const loadSavedProposalsFromStorage = () => {
@@ -146,7 +179,9 @@ const loadSavedProposalsFromStorage = () => {
       const parsed = JSON.parse(singleRaw);
       if (parsed && (parsed.content || parsed.summary || parsed.projectTitle)) {
         const signature = getProposalSignature(parsed);
-        const exists = proposals.some((item) => getProposalSignature(item) === signature);
+        const exists = proposals.some(
+          (item) => getProposalSignature(item) === signature
+        );
         if (!exists) proposals = [...proposals, parsed];
       }
     } catch {
@@ -181,7 +216,8 @@ const persistSavedProposalsToStorage = (proposals, activeId) => {
     return;
   }
   window.localStorage.setItem(SAVED_PROPOSALS_KEY, JSON.stringify(proposals));
-  const active = proposals.find((proposal) => proposal.id === activeId) || proposals[0];
+  const active =
+    proposals.find((proposal) => proposal.id === activeId) || proposals[0];
   if (active) {
     window.localStorage.setItem(SAVED_PROPOSAL_KEY, JSON.stringify(active));
   }
@@ -189,7 +225,7 @@ const persistSavedProposalsToStorage = (proposals, activeId) => {
 
 const generateGradient = (id) => {
   if (!id) return "bg-[#FFD700]";
-  
+
   // Simple hash function to generate a consistent seed
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
@@ -204,7 +240,14 @@ const generateGradient = (id) => {
 };
 
 // ==================== Stats Card Component ====================
-const StatsCard = ({ title, value, trend, trendType = "up", icon: Icon, accentColor = "primary" }) => {
+const StatsCard = ({
+  title,
+  value,
+  trend,
+  trendType = "up",
+  icon: Icon,
+  accentColor = "primary",
+}) => {
   const colors = {
     primary: "bg-primary/10",
     blue: "bg-blue-500/10",
@@ -214,17 +257,28 @@ const StatsCard = ({ title, value, trend, trendType = "up", icon: Icon, accentCo
 
   return (
     <Card className="relative overflow-hidden group hover:shadow-md transition-shadow border-border/60">
-      <div className={`absolute top-0 right-0 w-16 h-16 ${colors[accentColor]} rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110`} />
+      <div
+        className={`absolute top-0 right-0 w-16 h-16 ${colors[accentColor]} rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110`}
+      />
       <CardContent className="p-6 relative z-10">
-        <p className="text-muted-foreground text-sm font-medium mb-1">{title}</p>
+        <p className="text-muted-foreground text-sm font-medium mb-1">
+          {title}
+        </p>
         <h3 className="text-3xl tracking-tight">{value}</h3>
         {trend && (
-          <p className={`text-xs mt-2 flex items-center font-bold ${
-            trendType === "up" ? "text-green-600" : 
-            trendType === "warning" ? "text-orange-600" : "text-muted-foreground"
-          }`}>
+          <p
+            className={`text-xs mt-2 flex items-center font-bold ${
+              trendType === "up"
+                ? "text-green-600"
+                : trendType === "warning"
+                ? "text-orange-600"
+                : "text-muted-foreground"
+            }`}
+          >
             {trendType === "up" && <TrendingUp className="w-3.5 h-3.5 mr-1" />}
-            {trendType === "warning" && <AlertTriangle className="w-3.5 h-3.5 mr-1" />}
+            {trendType === "warning" && (
+              <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+            )}
             {trend}
           </p>
         )}
@@ -248,7 +302,10 @@ const BudgetChart = ({ percentage, remaining, spent }) => {
       <CardContent>
         <div className="flex items-center justify-between gap-4">
           <div className="relative w-24 h-24 flex-shrink-0">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+            <svg
+              className="w-full h-full transform -rotate-90"
+              viewBox="0 0 36 36"
+            >
               <path
                 className="text-muted/20"
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -272,11 +329,15 @@ const BudgetChart = ({ percentage, remaining, spent }) => {
           <div className="flex-1 flex flex-col gap-2">
             <div>
               <p className="text-xs text-muted-foreground">Remaining</p>
-              <p className="text-sm font-bold">₹{remaining?.toLocaleString() || 0}</p>
+              <p className="text-sm font-bold">
+                ₹{remaining?.toLocaleString() || 0}
+              </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Spent</p>
-              <p className="text-sm font-bold">₹{spent?.toLocaleString() || 0}</p>
+              <p className="text-sm font-bold">
+                ₹{spent?.toLocaleString() || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -294,21 +355,26 @@ const TalentItem = ({ name, role, avatar, status = "online", onClick }) => {
   };
 
   return (
-    <li className="flex items-center gap-3 group cursor-pointer" onClick={onClick}>
+    <li
+      className="flex items-center gap-3 group cursor-pointer"
+      onClick={onClick}
+    >
       <div className="relative">
         <Avatar className="w-10 h-10">
           <AvatarImage src={avatar} alt={name} />
           <AvatarFallback>{name?.charAt(0) || "?"}</AvatarFallback>
         </Avatar>
-        <span className={`absolute bottom-0 right-0 w-3 h-3 ${statusColors[status]} border-2 border-background rounded-full`} />
+        <span
+          className={`absolute bottom-0 right-0 w-3 h-3 ${statusColors[status]} border-2 border-background rounded-full`}
+        />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold truncate">{name}</p>
         <p className="text-xs text-muted-foreground truncate">{role}</p>
       </div>
-      <Button 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        variant="ghost"
+        size="icon"
         className="text-muted-foreground hover:text-primary group-hover:text-primary transition-colors"
         onClick={(e) => {
           e.stopPropagation();
@@ -338,29 +404,36 @@ const ClientDashboardContent = () => {
     try {
       const stored = localStorage.getItem("markify:dismissedExpiredProposals");
       return stored ? JSON.parse(stored) : [];
-    } catch (e) { return []; }
+    } catch (e) {
+      return [];
+    }
   });
   const [selectedFreelancer, setSelectedFreelancer] = useState(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showViewProposal, setShowViewProposal] = useState(false);
   const [showEditProposal, setShowEditProposal] = useState(false);
-  const [editForm, setEditForm] = useState({ title: "", summary: "", budget: "", timeline: "" });
+  const [editForm, setEditForm] = useState({
+    title: "",
+    summary: "",
+    budget: "",
+    timeline: "",
+  });
   const [viewFreelancer, setViewFreelancer] = useState(null);
   const [showFreelancerDetails, setShowFreelancerDetails] = useState(false);
   const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
   const [projectToPay, setProjectToPay] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  
+
   // Increase Budget Dialog State
   const [showIncreaseBudget, setShowIncreaseBudget] = useState(false);
   const [budgetProject, setBudgetProject] = useState(null);
   const [newBudget, setNewBudget] = useState("");
   const [isUpdatingBudget, setIsUpdatingBudget] = useState(false);
-  
+
   // Budget Reminder Popup State (for login)
   const [showBudgetReminder, setShowBudgetReminder] = useState(false);
   const [oldPendingProjects, setOldPendingProjects] = useState([]);
-  
+
   // Freelancer Selection Popup State
   const [showFreelancerSelect, setShowFreelancerSelect] = useState(false);
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
@@ -368,7 +441,10 @@ const ClientDashboardContent = () => {
 
   const savedProposal = useMemo(() => {
     if (!savedProposals.length) return null;
-    return savedProposals.find((proposal) => proposal.id === activeProposalId) || savedProposals[0];
+    return (
+      savedProposals.find((proposal) => proposal.id === activeProposalId) ||
+      savedProposals[0]
+    );
   }, [savedProposals, activeProposalId]);
 
   // Load projects
@@ -389,7 +465,10 @@ const ClientDashboardContent = () => {
     persistSavedProposalsToStorage(proposals, activeId);
   }, []);
 
-  const persistSavedProposalState = (nextProposals, preferredActiveId = null) => {
+  const persistSavedProposalState = (
+    nextProposals,
+    preferredActiveId = null
+  ) => {
     const normalized = Array.isArray(nextProposals)
       ? nextProposals.map(normalizeSavedProposal)
       : [];
@@ -415,20 +494,18 @@ const ClientDashboardContent = () => {
       const fetchedProjects = Array.isArray(payload?.data) ? payload.data : [];
       setProjects(fetchedProjects);
 
-
-      
       // Check for projects with pending proposals > 24 hours (for budget reminder popup)
       const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-      const projectsWithOldPending = fetchedProjects.filter(p => {
+      const projectsWithOldPending = fetchedProjects.filter((p) => {
         if (p.status !== "OPEN") return false;
         const pendingProposals = (p.proposals || []).filter(
-          prop => (prop.status || "").toUpperCase() === "PENDING"
+          (prop) => (prop.status || "").toUpperCase() === "PENDING"
         );
         return pendingProposals.some(
-          prop => new Date(prop.createdAt).getTime() < twentyFourHoursAgo
+          (prop) => new Date(prop.createdAt).getTime() < twentyFourHoursAgo
         );
       });
-      
+
       // Show budget reminder popup if there are old pending proposals
       if (projectsWithOldPending.length > 0) {
         setOldPendingProjects(projectsWithOldPending);
@@ -441,10 +518,12 @@ const ClientDashboardContent = () => {
       }
 
       // Check for projects awaiting payment (Auto-show popup)
-      const pendingPaymentProject = fetchedProjects.find(p => p.status === "AWAITING_PAYMENT");
+      const pendingPaymentProject = fetchedProjects.find(
+        (p) => p.status === "AWAITING_PAYMENT"
+      );
       if (pendingPaymentProject) {
-         setProjectToPay(pendingPaymentProject);
-         setShowPaymentConfirm(true);
+        setProjectToPay(pendingPaymentProject);
+        setShowPaymentConfirm(true);
       }
     } catch (error) {
       console.error("Failed to load projects", error);
@@ -464,21 +543,22 @@ const ClientDashboardContent = () => {
       try {
         const data = await fetchChatConversations();
         const chatFreelancers = (Array.isArray(data) ? data : [])
-          .filter(c => c.freelancer) // only show if freelancer details exist
-          .map(c => {
-             const parts = (c.service || "").split(":");
-             // Format: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
-             // If service key format matches, parts[1] is projectId.
-             // Fallback to c.id if we can't parse (though ClientChat expects projectId)
-             const projectId = (parts.length >= 2 && parts[0] === "CHAT") ? parts[1] : null;
-             
-             return {
+          .filter((c) => c.freelancer) // only show if freelancer details exist
+          .map((c) => {
+            const parts = (c.service || "").split(":");
+            // Format: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
+            // If service key format matches, parts[1] is projectId.
+            // Fallback to c.id if we can't parse (though ClientChat expects projectId)
+            const projectId =
+              parts.length >= 2 && parts[0] === "CHAT" ? parts[1] : null;
+
+            return {
               ...c.freelancer,
               chatId: c.id,
               projectId: projectId, // Add projectId for navigation
               lastMessage: c.lastMessage,
-              projectTitle: c.projectTitle
-             };
+              projectTitle: c.projectTitle,
+            };
           })
           .slice(0, 3); // show top 3 recent chats
 
@@ -513,22 +593,29 @@ const ClientDashboardContent = () => {
 
   // Sort projects by date (most recent first)
   const uniqueProjects = useMemo(() => {
-    return [...projects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return [...projects].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
   }, [projects]);
 
   // Computed metrics
   const metrics = useMemo(() => {
     const projectsWithAccepted = uniqueProjects.filter((p) =>
-      (p.proposals || []).some((pr) => (pr.status || "").toUpperCase() === "ACCEPTED")
+      (p.proposals || []).some(
+        (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+      )
     );
-    
+
     // Use actual spent amount from projects, not full budget
     const actualSpent = projectsWithAccepted.reduce((acc, p) => {
       // If project has a 'spent' field, use it; otherwise use 50% of budget (upfront payment)
-      const spent = p.spent !== undefined ? (parseInt(p.spent) || 0) : Math.round((parseInt(p.budget) || 0) * 0.5);
+      const spent =
+        p.spent !== undefined
+          ? parseInt(p.spent) || 0
+          : Math.round((parseInt(p.budget) || 0) * 0.5);
       return acc + spent;
     }, 0);
-    
+
     const activeProjectsCount = uniqueProjects.filter((p) => {
       const status = (p.status || "").toUpperCase();
       // Only count projects where payment is done (IN_PROGRESS)
@@ -537,13 +624,19 @@ const ClientDashboardContent = () => {
     }).length;
 
     const totalBudget = uniqueProjects
-      .filter(p => {
+      .filter((p) => {
         const status = (p.status || "").toUpperCase();
-        const hasAcceptedProposal = (p.proposals || []).some(pr => (pr.status || "").toUpperCase() === "ACCEPTED");
-        
+        const hasAcceptedProposal = (p.proposals || []).some(
+          (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+        );
+
         // Only count budget for projects that are actually active/committed
         // Exclude purely "OPEN" projects (invites) that haven't been accepted yet
-        return status === "IN_PROGRESS" || status === "AWAITING_PAYMENT" || hasAcceptedProposal;
+        return (
+          status === "IN_PROGRESS" ||
+          status === "AWAITING_PAYMENT" ||
+          hasAcceptedProposal
+        );
       })
       .reduce((acc, p) => acc + (parseInt(p.budget) || 0), 0);
 
@@ -580,10 +673,10 @@ const ClientDashboardContent = () => {
   // Send proposal to freelancer
   const sendProposalToFreelancer = async (freelancer) => {
     if (!savedProposal || !freelancer) return;
-    
+
     try {
       setIsSendingProposal(true);
-      
+
       // Create project from proposal
       const projectRes = await authFetch("/projects", {
         method: "POST",
@@ -591,16 +684,19 @@ const ClientDashboardContent = () => {
         body: JSON.stringify({
           title: savedProposal.projectTitle || "New Project",
           description: savedProposal.summary || savedProposal.content || "",
-          budget: parseInt(String(savedProposal.budget || "0").replace(/[^0-9]/g, "")) || 0,
+          budget:
+            parseInt(
+              String(savedProposal.budget || "0").replace(/[^0-9]/g, "")
+            ) || 0,
           timeline: savedProposal.timeline || "1 month",
-          status: "OPEN"
+          status: "OPEN",
         }),
       });
-      
+
       if (!projectRes.ok) throw new Error("Failed to create project");
       const projectData = await projectRes.json();
       const project = projectData.data.project;
-      
+
       // Send proposal to freelancer
       const proposalRes = await authFetch("/proposals", {
         method: "POST",
@@ -608,27 +704,29 @@ const ClientDashboardContent = () => {
         body: JSON.stringify({
           projectId: project.id,
           freelancerId: freelancer.id,
-          amount: parseInt(String(savedProposal.budget || "0").replace(/[^0-9]/g, "")) || 0,
+          amount:
+            parseInt(
+              String(savedProposal.budget || "0").replace(/[^0-9]/g, "")
+            ) || 0,
           coverLetter: savedProposal.summary || savedProposal.content || "",
         }),
       });
-      
+
       if (!proposalRes.ok) throw new Error("Failed to send proposal");
-      
+
       toast.success(`Proposal sent to ${freelancer.fullName || "freelancer"}!`);
-      
+
       // Refresh projects so the freelancer is immediately hidden from the list
       await loadProjects();
-      
+
       // Clear saved proposal immediately after sending
       localStorage.removeItem("markify:savedProposal");
       persistSavedProposalState([]);
-      
+
       setShowSendConfirm(false);
       setSelectedFreelancer(null);
-      
+
       // navigate(`/client/project/${project.id}`);
-      
     } catch (error) {
       console.error("Failed to send proposal:", error);
       toast.error("Failed to send proposal. Please try again.");
@@ -657,24 +755,24 @@ const ClientDashboardContent = () => {
     if (!projectToPay) return;
     setIsProcessingPayment(true);
     try {
-       const res = await authFetch(`/projects/${projectToPay.id}/pay-upfront`, {
-          method: "POST"
-       });
-       if (!res.ok) {
-         const errorData = await res.json();
-         throw new Error(errorData.message || "Payment failed");
-       }
-       
-       toast.success("Payment processed successfully! Project is now active.");
-       setShowPaymentConfirm(false);
-       setProjectToPay(null);
-       // Refresh projects to update status
-       loadProjects(); 
+      const res = await authFetch(`/projects/${projectToPay.id}/pay-upfront`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Payment failed");
+      }
+
+      toast.success("Payment processed successfully! Project is now active.");
+      setShowPaymentConfirm(false);
+      setProjectToPay(null);
+      // Refresh projects to update status
+      loadProjects();
     } catch (error) {
-       console.error("Payment error:", error);
-       toast.error(error.message || "Failed to process payment");
+      console.error("Payment error:", error);
+      toast.error(error.message || "Failed to process payment");
     } finally {
-       setIsProcessingPayment(false);
+      setIsProcessingPayment(false);
     }
   };
 
@@ -686,41 +784,41 @@ const ClientDashboardContent = () => {
 
   const updateBudget = async () => {
     if (!budgetProject || !newBudget) return;
-    
+
     const budgetValue = parseInt(newBudget.replace(/[^0-9]/g, ""));
     if (!budgetValue || budgetValue <= (budgetProject.budget || 0)) {
       toast.error("New budget must be higher than current budget");
       return;
     }
-    
+
     setIsUpdatingBudget(true);
     try {
       // Update the project budget
       const res = await authFetch(`/projects/${budgetProject.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ budget: budgetValue })
+        body: JSON.stringify({ budget: budgetValue }),
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to update budget");
       }
-      
+
       // Check if any pending proposals are older than 48 hours
       const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
       const pendingProposals = (budgetProject.proposals || []).filter(
-        p => (p.status || "").toUpperCase() === "PENDING"
+        (p) => (p.status || "").toUpperCase() === "PENDING"
       );
-      
+
       // Separate old (>48hrs) and recent (<48hrs) proposals
       const oldProposals = pendingProposals.filter(
-        p => new Date(p.createdAt).getTime() < fortyEightHoursAgo
+        (p) => new Date(p.createdAt).getTime() < fortyEightHoursAgo
       );
       const recentProposals = pendingProposals.filter(
-        p => new Date(p.createdAt).getTime() >= fortyEightHoursAgo
+        (p) => new Date(p.createdAt).getTime() >= fortyEightHoursAgo
       );
-      
+
       let rejectedCount = 0;
       // Reject proposals older than 48 hours
       for (const proposal of oldProposals) {
@@ -728,42 +826,45 @@ const ClientDashboardContent = () => {
           await authFetch(`/proposals/${proposal.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "REJECTED" })
+            body: JSON.stringify({ status: "REJECTED" }),
           });
           rejectedCount++;
         } catch (e) {
           console.error("Failed to reject old proposal:", e);
         }
       }
-      
+
       // Update amount on recent pending proposals (under 48hrs) to reflect new budget
       for (const proposal of recentProposals) {
         try {
           await authFetch(`/proposals/${proposal.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ amount: budgetValue })
+            body: JSON.stringify({ amount: budgetValue }),
           });
         } catch (e) {
           console.error("Failed to update proposal amount:", e);
         }
       }
-      
+
       // Always update saved proposals with new budget if they match this project
-      const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage();
+      const { proposals: storedProposals, activeId } =
+        loadSavedProposalsFromStorage();
       if (storedProposals.length) {
         let updatedAny = false;
-        const budgetRegex = /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹|ƒ,1)?\s*[\d,]+/gi;
+        const budgetRegex =
+          /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹|ƒ,1)?\s*[\d,]+/gi;
         const newBudgetText = `Budget\n- ƒ,1${budgetValue.toLocaleString()}`;
         const updatedProposals = storedProposals.map((proposal) => {
-          const matchesId = proposal.projectId && proposal.projectId === budgetProject.id;
+          const matchesId =
+            proposal.projectId && proposal.projectId === budgetProject.id;
           const matchesTitle = proposal.projectTitle === budgetProject.title;
           if (!matchesId && !matchesTitle) return proposal;
           updatedAny = true;
           const next = {
             ...proposal,
             budget: `ƒ,1${budgetValue.toLocaleString()}`,
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
           };
           if (next.summary) {
             next.summary = next.summary.replace(budgetRegex, newBudgetText);
@@ -780,12 +881,16 @@ const ClientDashboardContent = () => {
       }
       // Show appropriate message based on whether proposals were rejected
       if (rejectedCount > 0) {
-        toast.success(`Budget updated to ₹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`);
+        toast.success(
+          `Budget updated to ₹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`
+        );
       } else {
         // Just updated budget (proposals are still pending, under 48hrs)
-        toast.success(`Budget updated to ₹${budgetValue.toLocaleString()}! Freelancers will see the new amount.`);
+        toast.success(
+          `Budget updated to ₹${budgetValue.toLocaleString()}! Freelancers will see the new amount.`
+        );
       }
-      
+
       setShowIncreaseBudget(false);
       setBudgetProject(null);
       setNewBudget("");
@@ -801,11 +906,13 @@ const ClientDashboardContent = () => {
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background">
       {/* Grid pattern background */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-30 dark:opacity-10" 
+      <div
+        className="absolute inset-0 z-0 pointer-events-none opacity-30 dark:opacity-10"
         style={{
-          backgroundImage: "radial-gradient(hsl(var(--border)) 1px, transparent 1px)",
-          backgroundSize: "24px 24px"
-        }} 
+          backgroundImage:
+            "radial-gradient(hsl(var(--border)) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
       />
 
       {/* Top Bar */}
@@ -826,11 +933,15 @@ const ClientDashboardContent = () => {
                     {greeting}, {firstName}
                   </h1>
                   <p className="text-muted-foreground font-medium">
-                    Here's what's happening in your Executive Control Room today.
+                    Here's what's happening in your Executive Control Room
+                    today.
                   </p>
                 </div>
                 <div className="hidden sm:flex gap-2">
-                  <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
+                  <Badge
+                    variant="outline"
+                    className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
+                  >
                     <span className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5" />
                     System Operational
                   </Badge>
@@ -872,13 +983,22 @@ const ClientDashboardContent = () => {
                         <Button
                           key={proposal.id}
                           size="sm"
-                          variant={proposal.id === savedProposal.id ? "default" : "outline"}
+                          variant={
+                            proposal.id === savedProposal.id
+                              ? "default"
+                              : "outline"
+                          }
                           onClick={() => {
                             setActiveProposalId(proposal.id);
-                            persistSavedProposalsToStorage(savedProposals, proposal.id);
+                            persistSavedProposalsToStorage(
+                              savedProposals,
+                              proposal.id
+                            );
                           }}
                         >
-                          {proposal.projectTitle || proposal.service || "Proposal"}
+                          {proposal.projectTitle ||
+                            proposal.service ||
+                            "Proposal"}
                         </Button>
                       ))}
                     </div>
@@ -888,37 +1008,42 @@ const ClientDashboardContent = () => {
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg font-bold flex items-center gap-2">
-                          <Send className="w-5 h-5 text-primary" /> 
-                          {savedProposals.length > 1 ? "Your Saved Proposals" : "Your Saved Proposal"}
+                          <Send className="w-5 h-5 text-primary" />
+                          {savedProposals.length > 1
+                            ? "Your Saved Proposals"
+                            : "Your Saved Proposal"}
                         </CardTitle>
                         <div className="flex items-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="text-muted-foreground hover:text-primary"
                             onClick={() => setShowViewProposal(true)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="text-muted-foreground hover:text-primary"
                             onClick={() => {
                               setEditForm({
                                 title: savedProposal.projectTitle || "",
-                                summary: savedProposal.summary || savedProposal.content || "",
+                                summary:
+                                  savedProposal.summary ||
+                                  savedProposal.content ||
+                                  "",
                                 budget: savedProposal.budget || "",
-                                timeline: savedProposal.timeline || ""
+                                timeline: savedProposal.timeline || "",
                               });
                               setShowEditProposal(true);
                             }}
                           >
                             <Edit2 className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="text-muted-foreground hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -935,16 +1060,24 @@ const ClientDashboardContent = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        <h4 className="font-semibold">{savedProposal.projectTitle || "New Project"}</h4>
+                        <h4 className="font-semibold">
+                          {savedProposal.projectTitle || "New Project"}
+                        </h4>
                         <p className="text-sm text-muted-foreground line-clamp-2">
-                          {savedProposal.summary || savedProposal.content || "No description"}
+                          {savedProposal.summary ||
+                            savedProposal.content ||
+                            "No description"}
                         </p>
                         <div className="flex items-center justify-between">
                           <div className="flex flex-wrap gap-2 text-sm">
-                            <Badge variant="secondary">Budget: {savedProposal.budget || "Not set"}</Badge>
-                            <Badge variant="secondary">Timeline: {savedProposal.timeline || "Not set"}</Badge>
+                            <Badge variant="secondary">
+                              Budget: {formatBudget(savedProposal.budget)}
+                            </Badge>
+                            <Badge variant="secondary">
+                              Timeline: {savedProposal.timeline || "Not set"}
+                            </Badge>
                           </div>
-                          <Button 
+                          <Button
                             className="gap-2"
                             onClick={() => setShowFreelancerSelect(true)}
                           >
@@ -955,40 +1088,47 @@ const ClientDashboardContent = () => {
                       </div>
                     </CardContent>
                   </Card>
-
-
                 </div>
               )}
 
               {/* Projects Needing Resend - Show OPEN projects where all proposals were rejected */}
               {(() => {
-                const projectsNeedingResend = uniqueProjects.filter(p => {
-                  if (p.status !== "OPEN") return false;
-                  const proposals = p.proposals || [];
-                  if (proposals.length === 0) return false;
-                  // All proposals are rejected (none pending or accepted)
-                  return !proposals.some(prop => 
-                    ["PENDING", "ACCEPTED"].includes((prop.status || "").toUpperCase())
-                  );
-                }).filter(p => !dismissedProjectIds.includes(p.id));
+                const projectsNeedingResend = uniqueProjects
+                  .filter((p) => {
+                    if (p.status !== "OPEN") return false;
+                    const proposals = p.proposals || [];
+                    if (proposals.length === 0) return false;
+                    // All proposals are rejected (none pending or accepted)
+                    return !proposals.some((prop) =>
+                      ["PENDING", "ACCEPTED"].includes(
+                        (prop.status || "").toUpperCase()
+                      )
+                    );
+                  })
+                  .filter((p) => !dismissedProjectIds.includes(p.id));
 
                 // Deduplicate by title - keep only the latest project for each title
                 const latestProjectsNeedingResend = Object.values(
                   projectsNeedingResend.reduce((acc, project) => {
                     const currentStored = acc[project.title];
                     // If no project stored for this title, OR current project is newer than stored one
-                    if (!currentStored || new Date(project.createdAt) > new Date(currentStored.createdAt)) {
+                    if (
+                      !currentStored ||
+                      new Date(project.createdAt) >
+                        new Date(currentStored.createdAt)
+                    ) {
                       acc[project.title] = project;
                     }
                     return acc;
                   }, {})
                 ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by newest first
 
-                if (latestProjectsNeedingResend.length === 0 || savedProposal) return null;
+                if (latestProjectsNeedingResend.length === 0 || savedProposal)
+                  return null;
 
                 return (
                   <div className="space-y-6">
-                    {latestProjectsNeedingResend.map(project => (
+                    {latestProjectsNeedingResend.map((project) => (
                       <div key={project.id} className="space-y-6">
                         {/* Proposal Preview Card - Similar to Your Saved Proposal */}
                         <Card className="border-orange-500/20 bg-orange-500/5">
@@ -1004,12 +1144,20 @@ const ClientDashboardContent = () => {
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                 onClick={() => {
                                   // Gather all relevant project IDs with the same title to dismiss them together
-                                   const relatedProjectIds = uniqueProjects
-                                     .filter(p => p.title === project.title)
-                                     .map(p => p.id);
-                                  const newDismissed = Array.from(new Set([...dismissedProjectIds, ...relatedProjectIds]));
+                                  const relatedProjectIds = uniqueProjects
+                                    .filter((p) => p.title === project.title)
+                                    .map((p) => p.id);
+                                  const newDismissed = Array.from(
+                                    new Set([
+                                      ...dismissedProjectIds,
+                                      ...relatedProjectIds,
+                                    ])
+                                  );
                                   setDismissedProjectIds(newDismissed);
-                                  localStorage.setItem("markify:dismissedExpiredProposals", JSON.stringify(newDismissed));
+                                  localStorage.setItem(
+                                    "markify:dismissedExpiredProposals",
+                                    JSON.stringify(newDismissed)
+                                  );
                                   toast.success("Reminder dismissed");
                                 }}
                               >
@@ -1019,50 +1167,78 @@ const ClientDashboardContent = () => {
                           </CardHeader>
                           <CardContent>
                             <div className="space-y-3">
-                              <h4 className="text-xl font-bold">{project.title}</h4>
+                              <h4 className="text-xl font-bold">
+                                {project.title}
+                              </h4>
                               <p className="text-sm text-muted-foreground line-clamp-2">
-                                {project.description || "No description available."}
+                                {project.description ||
+                                  "No description available."}
                               </p>
                               <div className="flex flex-wrap gap-2">
-                                <Badge variant="secondary">Budget: ₹{(project.budget || 0).toLocaleString()}</Badge>
-                                <Badge variant="secondary">Timeline: {project.timeline || "Not set"}</Badge>
+                                <Badge variant="secondary">
+                                  Budget: ₹
+                                  {(project.budget || 0).toLocaleString()}
+                                </Badge>
+                                <Badge variant="secondary">
+                                  Timeline: {project.timeline || "Not set"}
+                                </Badge>
                               </div>
                               <div className="pt-4 border-t mt-4">
                                 <p className="text-sm text-orange-500 mb-3">
-                                  Your budget is low, please increase the budget.
+                                  Your budget is low, please increase the
+                                  budget.
                                 </p>
-                                <Button 
+                                <Button
                                   className="w-full gap-2"
                                   onClick={() => {
                                     // Create saved proposal from this project
                                     const newSavedProposal = {
                                       projectTitle: project.title,
                                       summary: project.description || "",
-                                      budget: `ƒ,1${(project.budget || 0).toLocaleString()}`,
+                                      budget: `ƒ,1${(
+                                        project.budget || 0
+                                      ).toLocaleString()}`,
                                       timeline: project.timeline || "1 month",
-                                      projectId: project.id
+                                      projectId: project.id,
                                     };
                                     const normalized = normalizeSavedProposal({
                                       ...newSavedProposal,
-                                      createdAt: new Date().toISOString()
+                                      createdAt: new Date().toISOString(),
                                     });
-                                    const signature = getProposalSignature(normalized);
-                                    const existingIndex = savedProposals.findIndex(
-                                      (proposal) => getProposalSignature(proposal) === signature
-                                    );
+                                    const signature =
+                                      getProposalSignature(normalized);
+                                    const existingIndex =
+                                      savedProposals.findIndex(
+                                        (proposal) =>
+                                          getProposalSignature(proposal) ===
+                                          signature
+                                      );
                                     let nextProposals = [];
                                     let nextActiveId = normalized.id;
                                     if (existingIndex >= 0) {
-                                      nextProposals = savedProposals.map((proposal, idx) =>
-                                        idx === existingIndex
-                                          ? { ...proposal, ...normalized, id: proposal.id }
-                                          : proposal
+                                      nextProposals = savedProposals.map(
+                                        (proposal, idx) =>
+                                          idx === existingIndex
+                                            ? {
+                                                ...proposal,
+                                                ...normalized,
+                                                id: proposal.id,
+                                              }
+                                            : proposal
                                       );
-                                      nextActiveId = savedProposals[existingIndex]?.id || normalized.id;
+                                      nextActiveId =
+                                        savedProposals[existingIndex]?.id ||
+                                        normalized.id;
                                     } else {
-                                      nextProposals = [...savedProposals, normalized];
+                                      nextProposals = [
+                                        ...savedProposals,
+                                        normalized,
+                                      ];
                                     }
-                                    persistSavedProposalState(nextProposals, nextActiveId);
+                                    persistSavedProposalState(
+                                      nextProposals,
+                                      nextActiveId
+                                    );
                                     // Open increase budget dialog
                                     handleIncreaseBudgetClick(project);
                                   }}
@@ -1086,17 +1262,32 @@ const ClientDashboardContent = () => {
                   <DialogHeader>
                     <DialogTitle>Confirm Send Proposal</DialogTitle>
                     <DialogDescription>
-                      Are you sure you want to send your proposal to {selectedFreelancer?.fullName || selectedFreelancer?.name}?
+                      Are you sure you want to send your proposal to{" "}
+                      {selectedFreelancer?.fullName || selectedFreelancer?.name}
+                      ?
                     </DialogDescription>
                   </DialogHeader>
                   <div className="p-4 bg-muted rounded-lg">
-                    <p className="font-semibold">{savedProposal?.projectTitle || "New Project"}</p>
-                    <p className="text-sm text-muted-foreground">Budget: {savedProposal?.budget || "Not set"}</p>
+                    <p className="font-semibold">
+                      {savedProposal?.projectTitle || "New Project"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Budget: {formatBudget(savedProposal?.budget)}
+                    </p>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowSendConfirm(false)}>Cancel</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowSendConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
                     <Button onClick={confirmSend} disabled={isSendingProposal}>
-                      {isSendingProposal ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                      {isSendingProposal ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
                       Send Proposal
                     </Button>
                   </DialogFooter>
@@ -1104,7 +1295,10 @@ const ClientDashboardContent = () => {
               </Dialog>
 
               {/* Payment Confirmation Dialog */}
-              <Dialog open={showPaymentConfirm} onOpenChange={setShowPaymentConfirm}>
+              <Dialog
+                open={showPaymentConfirm}
+                onOpenChange={setShowPaymentConfirm}
+              >
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Confirm Upfront Payment</DialogTitle>
@@ -1124,15 +1318,19 @@ const ClientDashboardContent = () => {
                       <span className="font-medium">{projectToPay?.title}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Budget:</span>
-                      <span>₹{(projectToPay?.budget || 0).toLocaleString()}</span>
+                      <span className="text-muted-foreground">
+                        Total Budget:
+                      </span>
+                      <span>
+                        ₹{(projectToPay?.budget || 0).toLocaleString()}
+                      </span>
                     </div>
                     <div className="border-t pt-2 flex justify-between font-bold text-lg">
                       {(() => {
                         const budget = parseInt(projectToPay?.budget) || 0;
                         let label = "Pay Now (50%)";
                         let divisor = 2;
-                        
+
                         if (budget > 200000) {
                           label = "Pay Now (25%)";
                           divisor = 4;
@@ -1144,24 +1342,42 @@ const ClientDashboardContent = () => {
                         return (
                           <>
                             <span>{label}:</span>
-                            <span className="text-primary">₹{Math.round(budget / divisor).toLocaleString()}</span>
+                            <span className="text-primary">
+                              ₹{Math.round(budget / divisor).toLocaleString()}
+                            </span>
                           </>
                         );
                       })()}
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowPaymentConfirm(false)}>Cancel</Button>
-                    <Button onClick={processPayment} disabled={isProcessingPayment} className="gap-2">
-                       {isProcessingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                       Confirm Payment
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowPaymentConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={processPayment}
+                      disabled={isProcessingPayment}
+                      className="gap-2"
+                    >
+                      {isProcessingPayment ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <CreditCard className="w-4 h-4" />
+                      )}
+                      Confirm Payment
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
 
               {/* Increase Budget Dialog */}
-              <Dialog open={showIncreaseBudget} onOpenChange={setShowIncreaseBudget}>
+              <Dialog
+                open={showIncreaseBudget}
+                onOpenChange={setShowIncreaseBudget}
+              >
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
@@ -1169,24 +1385,33 @@ const ClientDashboardContent = () => {
                       Increase Project Budget
                     </DialogTitle>
                     <DialogDescription>
-                      Increase your budget to attract freelancers faster. Higher budgets often get accepted sooner.
+                      Increase your budget to attract freelancers faster. Higher
+                      budgets often get accepted sooner.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="p-4 bg-muted/50 rounded-lg space-y-2">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Project:</span>
-                        <span className="font-medium">{budgetProject?.title}</span>
+                        <span className="font-medium">
+                          {budgetProject?.title}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Current Budget:</span>
-                        <span className="font-medium">₹{(budgetProject?.budget || 0).toLocaleString()}</span>
+                        <span className="text-muted-foreground">
+                          Current Budget:
+                        </span>
+                        <span className="font-medium">
+                          ₹{(budgetProject?.budget || 0).toLocaleString()}
+                        </span>
                       </div>
                     </div>
-                    
+
                     {/* Quick Increase Options */}
                     <div>
-                      <label className="text-xs font-medium mb-2 block text-muted-foreground">Quick Increase</label>
+                      <label className="text-xs font-medium mb-2 block text-muted-foreground">
+                        Quick Increase
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {[10000, 20000, 30000, 50000, 80000].map((amount) => (
                           <Button
@@ -1196,21 +1421,26 @@ const ClientDashboardContent = () => {
                             size="sm"
                             className="bg-background hover:bg-primary/10 hover:text-primary hover:border-primary/50 text-xs h-7"
                             onClick={() => {
-                              const current = parseInt(budgetProject?.budget) || 0;
+                              const current =
+                                parseInt(budgetProject?.budget) || 0;
                               setNewBudget(String(current + amount));
                             }}
                           >
-                            +{amount >= 1000 ? `${amount/1000}k` : amount}
+                            +{amount >= 1000 ? `${amount / 1000}k` : amount}
                           </Button>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-2 block">New Budget (₹)</label>
+                      <label className="text-sm font-medium mb-2 block">
+                        New Budget (₹)
+                      </label>
                       <Input
                         type="text"
                         value={newBudget}
-                        onChange={(e) => setNewBudget(e.target.value.replace(/[^0-9]/g, ""))}
+                        onChange={(e) =>
+                          setNewBudget(e.target.value.replace(/[^0-9]/g, ""))
+                        }
                         placeholder="Enter new budget amount"
                         className="text-lg"
                       />
@@ -1220,9 +1450,22 @@ const ClientDashboardContent = () => {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowIncreaseBudget(false)}>Cancel</Button>
-                    <Button onClick={updateBudget} disabled={isUpdatingBudget} className="gap-2">
-                      {isUpdatingBudget ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowIncreaseBudget(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={updateBudget}
+                      disabled={isUpdatingBudget}
+                      className="gap-2"
+                    >
+                      {isUpdatingBudget ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <TrendingUp className="w-4 h-4" />
+                      )}
                       Update Budget
                     </Button>
                   </DialogFooter>
@@ -1230,7 +1473,10 @@ const ClientDashboardContent = () => {
               </Dialog>
 
               {/* Budget Reminder Popup (shown on login) */}
-              <Dialog open={showBudgetReminder} onOpenChange={setShowBudgetReminder}>
+              <Dialog
+                open={showBudgetReminder}
+                onOpenChange={setShowBudgetReminder}
+              >
                 <DialogContent className="max-w-md">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-orange-500">
@@ -1238,23 +1484,27 @@ const ClientDashboardContent = () => {
                       Budget Increase Recommended
                     </DialogTitle>
                     <DialogDescription>
-                      Some of your proposals have been pending for over 24 hours. Consider increasing your budget to attract freelancers faster.
+                      Some of your proposals have been pending for over 24
+                      hours. Consider increasing your budget to attract
+                      freelancers faster.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3 py-4 max-h-60 overflow-y-auto">
-                    {oldPendingProjects.map(project => (
-                      <div 
-                        key={project.id} 
+                    {oldPendingProjects.map((project) => (
+                      <div
+                        key={project.id}
                         className="p-3 bg-muted/50 rounded-lg flex items-center justify-between gap-3"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{project.title}</p>
+                          <p className="font-medium text-sm truncate">
+                            {project.title}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             Budget: ₹{(project.budget || 0).toLocaleString()}
                           </p>
                         </div>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           className="border-primary text-primary hover:bg-primary/10 shrink-0"
                           onClick={() => {
@@ -1269,7 +1519,10 @@ const ClientDashboardContent = () => {
                     ))}
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowBudgetReminder(false)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowBudgetReminder(false)}
+                    >
                       Remind Me Later
                     </Button>
                   </DialogFooter>
@@ -1277,7 +1530,10 @@ const ClientDashboardContent = () => {
               </Dialog>
 
               {/* Freelancer Selection Dialog */}
-              <Dialog open={showFreelancerSelect} onOpenChange={setShowFreelancerSelect}>
+              <Dialog
+                open={showFreelancerSelect}
+                onOpenChange={setShowFreelancerSelect}
+              >
                 <DialogContent className="max-w-[95vw] w-[95vw] sm:max-w-[85vw] md:max-w-[80vw] lg:max-w-[75vw] h-[85vh] flex flex-col p-6">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl">
@@ -1285,22 +1541,28 @@ const ClientDashboardContent = () => {
                       Choose a Freelancer
                     </DialogTitle>
                     <DialogDescription>
-                      Select a freelancer to send your proposal: <span className="font-medium text-foreground">{savedProposal?.projectTitle}</span>
+                      Select a freelancer to send your proposal:{" "}
+                      <span className="font-medium text-foreground">
+                        {savedProposal?.projectTitle}
+                      </span>
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex-1 overflow-y-auto py-6 px-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                       {(() => {
-                        const projectTitle = savedProposal?.projectTitle?.trim();
+                        const projectTitle =
+                          savedProposal?.projectTitle?.trim();
                         const alreadyInvitedIds = new Set();
-                        
+
                         if (projectTitle) {
                           // Check all projects with same title for freelancers with PENDING proposals
-                          projects.forEach(p => {
+                          projects.forEach((p) => {
                             if ((p.title || "").trim() === projectTitle) {
-                              (p.proposals || []).forEach(prop => {
+                              (p.proposals || []).forEach((prop) => {
                                 // Only count PENDING proposals - REJECTED means we can resend
-                                const status = (prop.status || "").toUpperCase();
+                                const status = (
+                                  prop.status || ""
+                                ).toUpperCase();
                                 if (prop.freelancerId && status === "PENDING") {
                                   alreadyInvitedIds.add(prop.freelancerId);
                                 }
@@ -1308,217 +1570,329 @@ const ClientDashboardContent = () => {
                             }
                           });
                         }
-                        
-                        const availableFreelancers = suggestedFreelancers.filter(
-                          f => !alreadyInvitedIds.has(f.id)
-                        );
-                        
-                        if (availableFreelancers.length === 0 && suggestedFreelancers.length > 0) {
+
+                        const availableFreelancers =
+                          suggestedFreelancers.filter(
+                            (f) => !alreadyInvitedIds.has(f.id)
+                          );
+
+                        if (
+                          availableFreelancers.length === 0 &&
+                          suggestedFreelancers.length > 0
+                        ) {
                           return (
                             <div className="col-span-full text-center py-8 text-muted-foreground">
-                              <p>All suggested freelancers have already been invited for this project.</p>
+                              <p>
+                                All suggested freelancers have already been
+                                invited for this project.
+                              </p>
                             </div>
                           );
                         }
-                        
+
                         return availableFreelancers.length > 0 ? (
                           availableFreelancers.map((f) => {
                             // Pre-process freelancer data to handle JSON bio/about
                             const freelancer = { ...f };
                             const rawBio = freelancer.bio || freelancer.about;
-                            
-                            if (typeof rawBio === 'string' && rawBio.trim().startsWith('{')) {
+
+                            if (
+                              typeof rawBio === "string" &&
+                              rawBio.trim().startsWith("{")
+                            ) {
                               try {
                                 const parsed = JSON.parse(rawBio);
                                 // Merge parsed fields if top-level fields are missing
-                                if (!freelancer.location && parsed.location) freelancer.location = parsed.location;
-                                if (!freelancer.role && parsed.role) freelancer.role = parsed.role;
-                                if (!freelancer.title && parsed.title) freelancer.role = parsed.title; // Fallback for title
-                                if (!freelancer.rating && parsed.rating) freelancer.rating = parsed.rating;
-                                if ((!freelancer.skills || freelancer.skills.length === 0) && parsed.skills) freelancer.skills = parsed.skills;
-                                if (!freelancer.hourlyRate && parsed.hourlyRate) freelancer.hourlyRate = parsed.hourlyRate;
-                                
+                                if (!freelancer.location && parsed.location)
+                                  freelancer.location = parsed.location;
+                                if (!freelancer.role && parsed.role)
+                                  freelancer.role = parsed.role;
+                                if (!freelancer.title && parsed.title)
+                                  freelancer.role = parsed.title; // Fallback for title
+                                if (!freelancer.rating && parsed.rating)
+                                  freelancer.rating = parsed.rating;
+                                if (
+                                  (!freelancer.skills ||
+                                    freelancer.skills.length === 0) &&
+                                  parsed.skills
+                                )
+                                  freelancer.skills = parsed.skills;
+                                if (!freelancer.hourlyRate && parsed.hourlyRate)
+                                  freelancer.hourlyRate = parsed.hourlyRate;
+
                                 // Set a clean bio description
-                                freelancer.cleanBio = parsed.bio || 
-                                                      parsed.about || 
-                                                      parsed.description || 
-                                                      parsed.summary || 
-                                                      parsed.overview || 
-                                                      parsed.introduction ||
-                                                      parsed.profileSummary ||
-                                                      parsed.shortDescription ||
-                                                      (Array.isArray(parsed.services) && parsed.services.length > 0 ? `Experienced in ${parsed.services.join(", ")}` : null) ||
-                                                      "No bio available.";
+                                freelancer.cleanBio =
+                                  parsed.bio ||
+                                  parsed.about ||
+                                  parsed.description ||
+                                  parsed.summary ||
+                                  parsed.overview ||
+                                  parsed.introduction ||
+                                  parsed.profileSummary ||
+                                  parsed.shortDescription ||
+                                  (Array.isArray(parsed.services) &&
+                                  parsed.services.length > 0
+                                    ? `Experienced in ${parsed.services.join(
+                                        ", "
+                                      )}`
+                                    : null) ||
+                                  "No bio available.";
                               } catch (e) {
-                                freelancer.cleanBio = "Overview available in profile.";
+                                freelancer.cleanBio =
+                                  "Overview available in profile.";
                               }
                             } else {
-                              freelancer.cleanBio = rawBio || "No bio available for this freelancer.";
+                              freelancer.cleanBio =
+                                rawBio ||
+                                "No bio available for this freelancer.";
                             }
 
                             return (
-                          <div 
-                            key={freelancer.id} 
-                            className="relative flex flex-col items-center bg-card rounded-xl shadow-sm border border-border/40 overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer h-full min-h-[320px]"
-                            onClick={() => {
-                              setViewingFreelancer(freelancer);
-                              setShowFreelancerProfile(true);
-                            }}
-                          >
-                             {/* Dynamic Gradient Header */}
-                             <div 
-                               className="w-full h-32 flex items-center justify-center transition-all duration-500"
-                               style={{ background: generateGradient(freelancer.id || freelancer.name) }}
-                             ></div>
+                              <div
+                                key={freelancer.id}
+                                className="relative flex flex-col items-center bg-card rounded-xl shadow-sm border border-border/40 overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer h-full min-h-[320px]"
+                                onClick={() => {
+                                  setViewingFreelancer(freelancer);
+                                  setShowFreelancerProfile(true);
+                                }}
+                              >
+                                {/* Dynamic Gradient Header */}
+                                <div
+                                  className="w-full h-32 flex items-center justify-center transition-all duration-500"
+                                  style={{
+                                    background: generateGradient(
+                                      freelancer.id || freelancer.name
+                                    ),
+                                  }}
+                                ></div>
 
-                             {/* Avatar */}
-                             <div className="absolute top-16">
-                                <div className="rounded-full">
-                                  <Avatar className="w-28 h-28 bg-card">
-                                   <AvatarImage src={freelancer.avatar} className="object-cover" />
-                                   <AvatarFallback className="bg-primary/20 text-primary text-3xl font-bold">
-                                      {(freelancer.fullName || freelancer.name || "F").charAt(0)}
-                                   </AvatarFallback>
-                                 </Avatar>
-                               </div>
-                             </div>
-
-                             {/* Body */}
-                             <div className="mt-14 px-4 pb-6 w-full flex flex-col items-center text-center flex-1">
-                                <h3 className="text-2xl font-bold mt-2 text-foreground">{freelancer.fullName || freelancer.name}</h3>
-                                <p className="text-sm text-muted-foreground font-medium mb-5">{freelancer.role || "Freelancer"}</p>
-
-                                {/* Skills Row */}
-                                <div className="flex flex-wrap justify-center gap-2 mb-4 px-2 min-h-[40px]">
-                                  {Array.isArray(freelancer.skills) && freelancer.skills.length > 0 ? (
-                                    freelancer.skills.slice(0, 3).map((skill, idx) => (
-                                      <Badge 
-                                        key={idx} 
-                                        variant="secondary" 
-                                        className="bg-primary/5 hover:bg-primary/10 text-primary border-primary/10 transition-colors"
-                                      >
-                                        {skill}
-                                      </Badge>
-                                    ))
-                                  ) : (
-                                    <span className="text-sm text-muted-foreground">No specific skills listed</span>
-                                  )}
-                                  {Array.isArray(freelancer.skills) && freelancer.skills.length > 3 && (
-                                    <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">
-                                      +{freelancer.skills.length - 3} more
-                                    </Badge>
-                                  )}
+                                {/* Avatar */}
+                                <div className="absolute top-16">
+                                  <div className="rounded-full">
+                                    <Avatar className="w-28 h-28 bg-card">
+                                      <AvatarImage
+                                        src={freelancer.avatar}
+                                        className="object-cover"
+                                      />
+                                      <AvatarFallback className="bg-primary/20 text-primary text-3xl font-bold">
+                                        {(
+                                          freelancer.fullName ||
+                                          freelancer.name ||
+                                          "F"
+                                        ).charAt(0)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </div>
                                 </div>
-                                  
-                                {/* Project Link with Hover Preview */}
-                                {(() => {
-                                  let project = null;
-                                  if (Array.isArray(freelancer.portfolioProjects) && freelancer.portfolioProjects.length > 0) {
-                                    project = freelancer.portfolioProjects.find(p => p.link || p.url);
-                                  } else if (typeof freelancer.portfolio === 'string' && freelancer.portfolio.startsWith('[')) {
-                                    try { 
-                                      const parsed = JSON.parse(freelancer.portfolio);
-                                      if (Array.isArray(parsed)) project = parsed.find(p => p.link || p.url);
-                                    } catch(e) {}
-                                  }
-                                  
-                                  if (project && (project.link || project.url)) {
-                                    return (
-                                      <div className="mb-6 flex flex-col items-center gap-2">
-                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projects</p>
-                                        <HoverCard>
-                                          <HoverCardTrigger asChild>
-                                            <a 
-                                              href={project.link || project.url} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium max-w-[200px]"
-                                              onClick={(e) => e.stopPropagation()}
+
+                                {/* Body */}
+                                <div className="mt-14 px-4 pb-6 w-full flex flex-col items-center text-center flex-1">
+                                  <h3 className="text-2xl font-bold mt-2 text-foreground">
+                                    {freelancer.fullName || freelancer.name}
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground font-medium mb-5">
+                                    {freelancer.role || "Freelancer"}
+                                  </p>
+
+                                  {/* Skills Row */}
+                                  <div className="flex flex-wrap justify-center gap-2 mb-4 px-2 min-h-[40px]">
+                                    {Array.isArray(freelancer.skills) &&
+                                    freelancer.skills.length > 0 ? (
+                                      freelancer.skills
+                                        .slice(0, 3)
+                                        .map((skill, idx) => (
+                                          <Badge
+                                            key={idx}
+                                            variant="secondary"
+                                            className="bg-primary/5 hover:bg-primary/10 text-primary border-primary/10 transition-colors"
+                                          >
+                                            {skill}
+                                          </Badge>
+                                        ))
+                                    ) : (
+                                      <span className="text-sm text-muted-foreground">
+                                        No specific skills listed
+                                      </span>
+                                    )}
+                                    {Array.isArray(freelancer.skills) &&
+                                      freelancer.skills.length > 3 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs text-muted-foreground border-dashed"
+                                        >
+                                          +{freelancer.skills.length - 3} more
+                                        </Badge>
+                                      )}
+                                  </div>
+
+                                  {/* Project Link with Hover Preview */}
+                                  {(() => {
+                                    let project = null;
+                                    if (
+                                      Array.isArray(
+                                        freelancer.portfolioProjects
+                                      ) &&
+                                      freelancer.portfolioProjects.length > 0
+                                    ) {
+                                      project =
+                                        freelancer.portfolioProjects.find(
+                                          (p) => p.link || p.url
+                                        );
+                                    } else if (
+                                      typeof freelancer.portfolio ===
+                                        "string" &&
+                                      freelancer.portfolio.startsWith("[")
+                                    ) {
+                                      try {
+                                        const parsed = JSON.parse(
+                                          freelancer.portfolio
+                                        );
+                                        if (Array.isArray(parsed))
+                                          project = parsed.find(
+                                            (p) => p.link || p.url
+                                          );
+                                      } catch (e) {}
+                                    }
+
+                                    if (
+                                      project &&
+                                      (project.link || project.url)
+                                    ) {
+                                      return (
+                                        <div className="mb-6 flex flex-col items-center gap-2">
+                                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            Projects
+                                          </p>
+                                          <HoverCard>
+                                            <HoverCardTrigger asChild>
+                                              <a
+                                                href={
+                                                  project.link || project.url
+                                                }
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium max-w-[200px]"
+                                                onClick={(e) =>
+                                                  e.stopPropagation()
+                                                }
+                                              >
+                                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                                <span className="truncate">
+                                                  {project.title ||
+                                                    "View Project"}
+                                                </span>
+                                              </a>
+                                            </HoverCardTrigger>
+                                            <HoverCardContent
+                                              className="w-64 p-0 overflow-hidden"
+                                              align="center"
                                             >
-                                              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                                              <span className="truncate">{project.title || "View Project"}</span>
-                                            </a>
-                                          </HoverCardTrigger>
-                                          <HoverCardContent className="w-64 p-0 overflow-hidden" align="center">
-                                            {(project.image || project.imageUrl || project.thumbnail) ? (
-                                              <div className="w-full aspect-video bg-muted relative">
-                                                <img 
-                                                  src={project.image || project.imageUrl || project.thumbnail} 
-                                                  alt={project.title || "Project preview"} 
-                                                  className="w-full h-full object-cover"
-                                                />
-                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                                                  <p className="text-white text-xs font-bold truncate">{project.title || "Project Preview"}</p>
+                                              {project.image ||
+                                              project.imageUrl ||
+                                              project.thumbnail ? (
+                                                <div className="w-full aspect-video bg-muted relative">
+                                                  <img
+                                                    src={
+                                                      project.image ||
+                                                      project.imageUrl ||
+                                                      project.thumbnail
+                                                    }
+                                                    alt={
+                                                      project.title ||
+                                                      "Project preview"
+                                                    }
+                                                    className="w-full h-full object-cover"
+                                                  />
+                                                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                                    <p className="text-white text-xs font-bold truncate">
+                                                      {project.title ||
+                                                        "Project Preview"}
+                                                    </p>
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            ) : (
-                                              <div className="p-3">
-                                                 <p className="font-semibold text-sm">{project.title || "Project Link"}</p>
-                                                 <p className="text-xs text-muted-foreground break-all mt-1">{project.link || project.url}</p>
-                                              </div>
-                                            )}
-                                          </HoverCardContent>
-                                        </HoverCard>
-                                      </div>
-                                    );
-                                  }
-                                  return <div className="mb-6"></div>; // Spacer if no project
-                                })()}
-                                {/* Action Buttons */}
-                                <div className="flex gap-4 w-full px-4 mt-auto mb-6">
-                                   <Button 
+                                              ) : (
+                                                <div className="p-3">
+                                                  <p className="font-semibold text-sm">
+                                                    {project.title ||
+                                                      "Project Link"}
+                                                  </p>
+                                                  <p className="text-xs text-muted-foreground break-all mt-1">
+                                                    {project.link ||
+                                                      project.url}
+                                                  </p>
+                                                </div>
+                                              )}
+                                            </HoverCardContent>
+                                          </HoverCard>
+                                        </div>
+                                      );
+                                    }
+                                    return <div className="mb-6"></div>; // Spacer if no project
+                                  })()}
+                                  {/* Action Buttons */}
+                                  <div className="flex gap-4 w-full px-4 mt-auto mb-6">
+                                    <Button
                                       className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         handleSendClick(freelancer);
+                                        e.stopPropagation();
+                                        handleSendClick(freelancer);
                                       }}
-                                   >
+                                    >
                                       <Send className="w-4 h-4" />
                                       Send Proposal
-                                   </Button>
+                                    </Button>
+                                  </div>
                                 </div>
-
-
-                             </div>
-                          </div>
+                              </div>
                             );
                           })
                         ) : (
-                        <Card className="col-span-full">
-                          <CardContent className="p-8 text-center text-muted-foreground">
-                            No freelancers available. Check back later!
-                          </CardContent>
-                        </Card>
-                      );
+                          <Card className="col-span-full">
+                            <CardContent className="p-8 text-center text-muted-foreground">
+                              No freelancers available. Check back later!
+                            </CardContent>
+                          </Card>
+                        );
                       })()}
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowFreelancerSelect(false)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowFreelancerSelect(false)}
+                    >
                       Cancel
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
 
-
-
               {/* Freelancer Profile Dialog */}
-              <Dialog open={showFreelancerProfile} onOpenChange={setShowFreelancerProfile}>
+              <Dialog
+                open={showFreelancerProfile}
+                onOpenChange={setShowFreelancerProfile}
+              >
                 <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-6">
                   {viewingFreelancer && (
                     <>
                       <DialogHeader>
                         <div className="flex items-start gap-4">
                           <Avatar className="w-16 h-16 border-2 border-primary/10">
-                            <AvatarImage src={viewingFreelancer.avatar} alt={viewingFreelancer.fullName} />
+                            <AvatarImage
+                              src={viewingFreelancer.avatar}
+                              alt={viewingFreelancer.fullName}
+                            />
                             <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                              {(viewingFreelancer.fullName || viewingFreelancer.name)?.charAt(0) || "F"}
+                              {(
+                                viewingFreelancer.fullName ||
+                                viewingFreelancer.name
+                              )?.charAt(0) || "F"}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
                             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                              {viewingFreelancer.fullName || viewingFreelancer.name}
+                              {viewingFreelancer.fullName ||
+                                viewingFreelancer.name}
                               {viewingFreelancer.rating && (
                                 <div className="flex items-center text-sm font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
                                   <Star className="w-3.5 h-3.5 mr-1 fill-current" />
@@ -1529,7 +1903,7 @@ const ClientDashboardContent = () => {
                             <DialogDescription className="text-base font-medium text-foreground/80 mt-1">
                               {viewingFreelancer.role || "Freelancer"}
                             </DialogDescription>
-                            
+
                             <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
                               {viewingFreelancer.location && (
                                 <span className="flex items-center">
@@ -1567,98 +1941,153 @@ const ClientDashboardContent = () => {
                         </div>
 
                         {/* Skills */}
-                        {Array.isArray(viewingFreelancer.skills) && viewingFreelancer.skills.length > 0 && (
-                          <div>
-                            <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                              <Zap className="w-5 h-5 text-primary" /> Skills
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {viewingFreelancer.skills.map((skill, i) => (
-                                <Badge key={i} variant="secondary" className="px-3 py-1">
-                                  {skill}
-                                </Badge>
-                              ))}
+                        {Array.isArray(viewingFreelancer.skills) &&
+                          viewingFreelancer.skills.length > 0 && (
+                            <div>
+                              <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-primary" /> Skills
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {viewingFreelancer.skills.map((skill, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant="secondary"
+                                    className="px-3 py-1"
+                                  >
+                                    {skill}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
                         {/* Languages */}
-                        {Array.isArray(viewingFreelancer.languages) && viewingFreelancer.languages.length > 0 && (
-                          <div>
-                            <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                              <MessageCircle className="w-5 h-5 text-primary" /> Languages
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {viewingFreelancer.languages.map((lang, i) => (
-                                <Badge key={i} variant="outline" className="px-3 py-1">
-                                  {lang}
-                                </Badge>
-                              ))}
+                        {Array.isArray(viewingFreelancer.languages) &&
+                          viewingFreelancer.languages.length > 0 && (
+                            <div>
+                              <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                <MessageCircle className="w-5 h-5 text-primary" />{" "}
+                                Languages
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {viewingFreelancer.languages.map((lang, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant="outline"
+                                    className="px-3 py-1"
+                                  >
+                                    {lang}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
                         {/* Portfolio Projects */}
                         {(() => {
-                           // Try to get projects from portfolioProjects array or parse portfolio string
-                           let projects = [];
-                           if (Array.isArray(viewingFreelancer.portfolioProjects) && viewingFreelancer.portfolioProjects.length > 0) {
-                             projects = viewingFreelancer.portfolioProjects;
-                           } else if (typeof viewingFreelancer.portfolio === 'string' && viewingFreelancer.portfolio.startsWith('[')) {
-                             try { projects = JSON.parse(viewingFreelancer.portfolio); } catch(e) {}
-                           } else if (Array.isArray(viewingFreelancer.portfolio)) {
-                             projects = viewingFreelancer.portfolio;
-                           }
+                          // Try to get projects from portfolioProjects array or parse portfolio string
+                          let projects = [];
+                          if (
+                            Array.isArray(
+                              viewingFreelancer.portfolioProjects
+                            ) &&
+                            viewingFreelancer.portfolioProjects.length > 0
+                          ) {
+                            projects = viewingFreelancer.portfolioProjects;
+                          } else if (
+                            typeof viewingFreelancer.portfolio === "string" &&
+                            viewingFreelancer.portfolio.startsWith("[")
+                          ) {
+                            try {
+                              projects = JSON.parse(
+                                viewingFreelancer.portfolio
+                              );
+                            } catch (e) {}
+                          } else if (
+                            Array.isArray(viewingFreelancer.portfolio)
+                          ) {
+                            projects = viewingFreelancer.portfolio;
+                          }
 
-                           if (projects.length > 0) {
-                             return (
-                               <div>
-                                 <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                   <Briefcase className="w-5 h-5 text-primary" /> Portfolio Projects
-                                 </h4>
-                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                   {projects.map((project, i) => (
-                                     <Card key={i} className="overflow-hidden border-border/50 hover:border-primary/20 transition-all flex flex-col h-full group/card">
-                                       {(project.image || project.imageUrl || project.thumbnail) && (
-                                         <div className="w-full h-28 bg-muted relative overflow-hidden">
-                                            <img 
-                                              src={project.image || project.imageUrl || project.thumbnail} 
-                                              alt={project.title} 
-                                              className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
-                                            />
-                                         </div>
-                                       )}
-                                       <CardContent className="p-3 flex flex-col flex-1">
-                                         <h5 className="font-bold text-sm mb-1 line-clamp-1">{project.title || `Project ${i+1}`}</h5>
-                                         {(project.description || project.desc) && (
-                                           <p className="text-xs text-muted-foreground line-clamp-2 mb-2 flex-1">
-                                             {project.description || project.desc}
-                                           </p>
-                                         )}
-                                         <div className="flex justify-between items-center mt-auto pt-1">
-                                            <div className="flex gap-1.5">
-                                              {project.techStack && (
-                                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{project.techStack}</Badge>
-                                              )}
-                                            </div>
-                                            {(project.link || project.url) && (
-                                              <a href={project.link || project.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary flex items-center hover:underline font-medium">
-                                                View <ExternalLink className="w-2.5 h-2.5 ml-1" />
-                                              </a>
+                          if (projects.length > 0) {
+                            return (
+                              <div>
+                                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                  <Briefcase className="w-5 h-5 text-primary" />{" "}
+                                  Portfolio Projects
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {projects.map((project, i) => (
+                                    <Card
+                                      key={i}
+                                      className="overflow-hidden border-border/50 hover:border-primary/20 transition-all flex flex-col h-full group/card"
+                                    >
+                                      {(project.image ||
+                                        project.imageUrl ||
+                                        project.thumbnail) && (
+                                        <div className="w-full h-28 bg-muted relative overflow-hidden">
+                                          <img
+                                            src={
+                                              project.image ||
+                                              project.imageUrl ||
+                                              project.thumbnail
+                                            }
+                                            alt={project.title}
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                                          />
+                                        </div>
+                                      )}
+                                      <CardContent className="p-3 flex flex-col flex-1">
+                                        <h5 className="font-bold text-sm mb-1 line-clamp-1">
+                                          {project.title || `Project ${i + 1}`}
+                                        </h5>
+                                        {(project.description ||
+                                          project.desc) && (
+                                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2 flex-1">
+                                            {project.description ||
+                                              project.desc}
+                                          </p>
+                                        )}
+                                        <div className="flex justify-between items-center mt-auto pt-1">
+                                          <div className="flex gap-1.5">
+                                            {project.techStack && (
+                                              <Badge
+                                                variant="secondary"
+                                                className="text-[10px] h-4 px-1.5"
+                                              >
+                                                {project.techStack}
+                                              </Badge>
                                             )}
-                                         </div>
-                                       </CardContent>
-                                     </Card>
-                                   ))}
-                                 </div>
-                               </div>
-                             );
-                           }
-                           return null;
+                                          </div>
+                                          {(project.link || project.url) && (
+                                            <a
+                                              href={project.link || project.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-[10px] text-primary flex items-center hover:underline font-medium"
+                                            >
+                                              View{" "}
+                                              <ExternalLink className="w-2.5 h-2.5 ml-1" />
+                                            </a>
+                                          )}
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
                         })()}
                       </div>
                       <DialogFooter>
-                         <Button variant="outline" onClick={() => setShowFreelancerProfile(false)}>Close</Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowFreelancerProfile(false)}
+                        >
+                          Close
+                        </Button>
                       </DialogFooter>
                     </>
                   )}
@@ -1666,7 +2095,10 @@ const ClientDashboardContent = () => {
               </Dialog>
 
               {/* View Proposal Dialog */}
-              <Dialog open={showViewProposal} onOpenChange={setShowViewProposal}>
+              <Dialog
+                open={showViewProposal}
+                onOpenChange={setShowViewProposal}
+              >
                 <DialogContent className="max-w-4xl">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
@@ -1676,15 +2108,24 @@ const ClientDashboardContent = () => {
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="flex flex-wrap gap-3">
-                      <Badge variant="outline">Budget: {savedProposal?.budget || "Not set"}</Badge>
-                      <Badge variant="outline">Timeline: {savedProposal?.timeline || "Not set"}</Badge>
+                      <Badge variant="outline">
+                        Budget: {formatBudget(savedProposal?.budget)}
+                      </Badge>
+                      <Badge variant="outline">
+                        Timeline: {savedProposal?.timeline || "Not set"}
+                      </Badge>
                     </div>
                     <div className="p-4 bg-muted rounded-lg max-h-[50vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                      <h4 className="font-semibold mb-2 sticky top-0 bg-muted pb-2">Project Summary</h4>
+                      <h4 className="font-semibold mb-2 sticky top-0 bg-muted pb-2">
+                        Project Summary
+                      </h4>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                         {(() => {
                           // Get the content and replace any budget mentions with the current budget
-                          let content = savedProposal?.summary || savedProposal?.content || "No description available";
+                          let content =
+                            savedProposal?.summary ||
+                            savedProposal?.content ||
+                            "No description available";
                           const currentBudget = savedProposal?.budget || "";
                           // Replace various budget formats with the current budget
                           content = content.replace(
@@ -1697,13 +2138,27 @@ const ClientDashboardContent = () => {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowViewProposal(false)}>Close</Button>
-                    <Button onClick={() => { setShowViewProposal(false); setEditForm({
-                      title: savedProposal?.projectTitle || "",
-                      summary: savedProposal?.summary || savedProposal?.content || "",
-                      budget: savedProposal?.budget || "",
-                      timeline: savedProposal?.timeline || ""
-                    }); setShowEditProposal(true); }}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowViewProposal(false)}
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowViewProposal(false);
+                        setEditForm({
+                          title: savedProposal?.projectTitle || "",
+                          summary:
+                            savedProposal?.summary ||
+                            savedProposal?.content ||
+                            "",
+                          budget: savedProposal?.budget || "",
+                          timeline: savedProposal?.timeline || "",
+                        });
+                        setShowEditProposal(true);
+                      }}
+                    >
                       <Edit2 className="w-4 h-4 mr-2" /> Edit
                     </Button>
                   </DialogFooter>
@@ -1711,7 +2166,10 @@ const ClientDashboardContent = () => {
               </Dialog>
 
               {/* Edit Proposal Dialog */}
-              <Dialog open={showEditProposal} onOpenChange={setShowEditProposal}>
+              <Dialog
+                open={showEditProposal}
+                onOpenChange={setShowEditProposal}
+              >
                 <DialogContent className="max-w-3xl">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
@@ -1721,63 +2179,104 @@ const ClientDashboardContent = () => {
                   </DialogHeader>
                   <div className="space-y-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-1">
                     <div>
-                      <label className="text-sm font-medium mb-1 block">Project Title</label>
-                      <Input 
+                      <label className="text-sm font-medium mb-1 block">
+                        Project Title
+                      </label>
+                      <Input
                         value={editForm.title}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            title: e.target.value,
+                          }))
+                        }
                         placeholder="Project title"
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-1 block">Summary / Description</label>
-                      <Textarea 
+                      <label className="text-sm font-medium mb-1 block">
+                        Summary / Description
+                      </label>
+                      <Textarea
                         value={editForm.summary}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, summary: e.target.value }))}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            summary: e.target.value,
+                          }))
+                        }
                         placeholder="Project description"
                         rows={6}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium mb-1 block">Budget</label>
-                        <Input 
+                        <label className="text-sm font-medium mb-1 block">
+                          Budget
+                        </label>
+                        <Input
                           value={editForm.budget}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, budget: e.target.value }))}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              budget: e.target.value,
+                            }))
+                          }
                           placeholder="e.g. ₹30,000"
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium mb-1 block">Timeline</label>
-                        <Input 
+                        <label className="text-sm font-medium mb-1 block">
+                          Timeline
+                        </label>
+                        <Input
                           value={editForm.timeline}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, timeline: e.target.value }))}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              timeline: e.target.value,
+                            }))
+                          }
                           placeholder="e.g. 2 weeks"
                         />
                       </div>
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowEditProposal(false)}>Cancel</Button>
-                    <Button onClick={() => {
-                      if (!savedProposal) return;
-                      const updated = {
-                        ...savedProposal,
-                        projectTitle: editForm.title,
-                        summary: editForm.summary,
-                        content: editForm.summary,
-                        budget: editForm.budget,
-                        timeline: editForm.timeline,
-                        updatedAt: new Date().toISOString()
-                      };
-                      const nextProposals = savedProposals.map((proposal) =>
-                        proposal.id === savedProposal.id
-                          ? normalizeSavedProposal({ ...proposal, ...updated })
-                          : proposal
-                      );
-                      persistSavedProposalState(nextProposals, savedProposal.id);
-                      setShowEditProposal(false);
-                      toast.success("Proposal updated!");
-                    }}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowEditProposal(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (!savedProposal) return;
+                        const updated = {
+                          ...savedProposal,
+                          projectTitle: editForm.title,
+                          summary: editForm.summary,
+                          content: editForm.summary,
+                          budget: editForm.budget,
+                          timeline: editForm.timeline,
+                          updatedAt: new Date().toISOString(),
+                        };
+                        const nextProposals = savedProposals.map((proposal) =>
+                          proposal.id === savedProposal.id
+                            ? normalizeSavedProposal({
+                                ...proposal,
+                                ...updated,
+                              })
+                            : proposal
+                        );
+                        persistSavedProposalState(
+                          nextProposals,
+                          savedProposal.id
+                        );
+                        setShowEditProposal(false);
+                        toast.success("Proposal updated!");
+                      }}
+                    >
                       <CheckCircle className="w-4 h-4 mr-2" /> Save Changes
                     </Button>
                   </DialogFooter>
@@ -1785,25 +2284,35 @@ const ClientDashboardContent = () => {
               </Dialog>
 
               {/* Freelancer Details Dialog */}
-              <Dialog open={showFreelancerDetails} onOpenChange={setShowFreelancerDetails}>
+              <Dialog
+                open={showFreelancerDetails}
+                onOpenChange={setShowFreelancerDetails}
+              >
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <DialogHeader>
                     <div className="flex items-center gap-4">
                       <Avatar className="w-16 h-16 border-2 border-primary/20">
-                        <AvatarImage src={viewFreelancer?.avatar} alt={viewFreelancer?.fullName || viewFreelancer?.name} />
+                        <AvatarImage
+                          src={viewFreelancer?.avatar}
+                          alt={viewFreelancer?.fullName || viewFreelancer?.name}
+                        />
                         <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                          {(viewFreelancer?.fullName || viewFreelancer?.name)?.charAt(0) || "F"}
+                          {(
+                            viewFreelancer?.fullName || viewFreelancer?.name
+                          )?.charAt(0) || "F"}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <DialogTitle className="text-2xl font-bold">
                           {viewFreelancer?.fullName || viewFreelancer?.name}
                         </DialogTitle>
-                        <p className="text-muted-foreground">{viewFreelancer?.headline || "Freelancer"}</p>
+                        <p className="text-muted-foreground">
+                          {viewFreelancer?.headline || "Freelancer"}
+                        </p>
                       </div>
                     </div>
                   </DialogHeader>
-                  
+
                   <div className="space-y-6 py-4">
                     {/* Location Info */}
                     {viewFreelancer?.location && (
@@ -1818,7 +2327,9 @@ const ClientDashboardContent = () => {
                         <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
                           <User className="w-4 h-4 text-primary" /> About
                         </h4>
-                        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{viewFreelancer.about}</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                          {viewFreelancer.about}
+                        </p>
                       </div>
                     )}
 
@@ -1828,87 +2339,119 @@ const ClientDashboardContent = () => {
                         <Zap className="w-4 h-4 text-primary" /> Skills
                       </h4>
                       <div className="flex flex-wrap gap-2">
-                        {Array.isArray(viewFreelancer?.skills) && viewFreelancer.skills.length > 0 ? (
+                        {Array.isArray(viewFreelancer?.skills) &&
+                        viewFreelancer.skills.length > 0 ? (
                           viewFreelancer.skills.map((skill, idx) => (
-                            <Badge key={idx} variant="secondary" className="px-3 py-1">
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className="px-3 py-1"
+                            >
                               {skill}
                             </Badge>
                           ))
                         ) : (
-                          <p className="text-sm text-muted-foreground">No skills listed</p>
+                          <p className="text-sm text-muted-foreground">
+                            No skills listed
+                          </p>
                         )}
                       </div>
                     </div>
 
                     {/* Services */}
-                    {Array.isArray(viewFreelancer?.services) && viewFreelancer.services.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-primary" /> Services
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {viewFreelancer.services.map((service, idx) => (
-                            <Badge key={idx} variant="outline" className="px-3 py-1">
-                              {service}
-                            </Badge>
-                          ))}
+                    {Array.isArray(viewFreelancer?.services) &&
+                      viewFreelancer.services.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-primary" />{" "}
+                            Services
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {viewFreelancer.services.map((service, idx) => (
+                              <Badge
+                                key={idx}
+                                variant="outline"
+                                className="px-3 py-1"
+                              >
+                                {service}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Work Experience */}
-                    {Array.isArray(viewFreelancer?.workExperience) && viewFreelancer.workExperience.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-primary" /> Work Experience
-                        </h4>
-                        <div className="space-y-4">
-                          {viewFreelancer.workExperience.map((exp, idx) => (
-                            <div key={idx} className="border-l-2 border-primary/20 pl-4 py-1">
-                              <h5 className="font-semibold">{exp.title}</h5>
-                              <p className="text-xs text-muted-foreground mb-1">{exp.period}</p>
-                              <p className="text-sm text-muted-foreground">{exp.description}</p>
-                            </div>
-                          ))}
+                    {Array.isArray(viewFreelancer?.workExperience) &&
+                      viewFreelancer.workExperience.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-primary" /> Work
+                            Experience
+                          </h4>
+                          <div className="space-y-4">
+                            {viewFreelancer.workExperience.map((exp, idx) => (
+                              <div
+                                key={idx}
+                                className="border-l-2 border-primary/20 pl-4 py-1"
+                              >
+                                <h5 className="font-semibold">{exp.title}</h5>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  {exp.period}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {exp.description}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Portfolio Projects */}
-                    {Array.isArray(viewFreelancer?.portfolioProjects) && viewFreelancer.portfolioProjects.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                          <ExternalLink className="w-4 h-4 text-primary" /> Portfolio Projects
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {viewFreelancer.portfolioProjects.map((project, idx) => (
-                            <a 
-                              key={idx} 
-                              href={project.link} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="group block border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-all"
-                            >
-                              <div className="aspect-video bg-muted relative">
-                                {project.image ? (
-                                  <img src={project.image} alt={project.title} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                                    <ExternalLink className="w-8 h-8" />
+                    {Array.isArray(viewFreelancer?.portfolioProjects) &&
+                      viewFreelancer.portfolioProjects.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                            <ExternalLink className="w-4 h-4 text-primary" />{" "}
+                            Portfolio Projects
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {viewFreelancer.portfolioProjects.map(
+                              (project, idx) => (
+                                <a
+                                  key={idx}
+                                  href={project.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group block border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-all"
+                                >
+                                  <div className="aspect-video bg-muted relative">
+                                    {project.image ? (
+                                      <img
+                                        src={project.image}
+                                        alt={project.title}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                                        <ExternalLink className="w-8 h-8" />
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                              <div className="p-3">
-                                <h5 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                                  {project.title || project.link}
-                                </h5>
-                                <p className="text-xs text-muted-foreground truncate">{project.link}</p>
-                              </div>
-                            </a>
-                          ))}
+                                  <div className="p-3">
+                                    <h5 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                                      {project.title || project.link}
+                                    </h5>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {project.link}
+                                    </p>
+                                  </div>
+                                </a>
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 </DialogContent>
               </Dialog>
@@ -1916,8 +2459,10 @@ const ClientDashboardContent = () => {
               {/* Active Projects Table - Only show when projects exist */}
               {/* Active Projects Table - IN_PROGRESS & AWAITING_PAYMENT */}
               {(() => {
-                const activeProjectsList = uniqueProjects.filter(p => 
-                  p.status === "IN_PROGRESS" || p.status === "AWAITING_PAYMENT"
+                const activeProjectsList = uniqueProjects.filter(
+                  (p) =>
+                    p.status === "IN_PROGRESS" ||
+                    p.status === "AWAITING_PAYMENT"
                 );
 
                 if (activeProjectsList.length === 0) return null;
@@ -1926,7 +2471,11 @@ const ClientDashboardContent = () => {
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-bold">Active Projects</h3>
-                      <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/project")}>
+                      <Button
+                        variant="link"
+                        className="text-primary p-0 h-auto font-semibold"
+                        onClick={() => navigate("/client/project")}
+                      >
                         View All <ArrowRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>
@@ -1935,33 +2484,57 @@ const ClientDashboardContent = () => {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Project Name</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Status</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Freelancer</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Budget</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">Action</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                              Project Name
+                            </TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                              Status
+                            </TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                              Freelancer
+                            </TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                              Budget
+                            </TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">
+                              Action
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {activeProjectsList.slice(0, 5).map((project) => {
                             const statusInfo = getStatusBadge(project.status);
-                            const acceptedProposal = (project.proposals || []).find(
-                              (p) => (p.status || "").toUpperCase() === "ACCEPTED"
+                            const acceptedProposal = (
+                              project.proposals || []
+                            ).find(
+                              (p) =>
+                                (p.status || "").toUpperCase() === "ACCEPTED"
                             );
                             return (
-                              <TableRow key={project.id} className="group hover:bg-muted/50 transition-colors">
+                              <TableRow
+                                key={project.id}
+                                className="group hover:bg-muted/50 transition-colors"
+                              >
                                 <TableCell>
-                                  <div className="font-bold">{project.title}</div>
+                                  <div className="font-bold">
+                                    {project.title}
+                                  </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {new Date(project.createdAt).toLocaleDateString()}
+                                    {new Date(
+                                      project.createdAt
+                                    ).toLocaleDateString()}
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge 
-                                    variant={statusInfo.variant === "success" ? "default" : "secondary"}
+                                  <Badge
+                                    variant={
+                                      statusInfo.variant === "success"
+                                        ? "default"
+                                        : "secondary"
+                                    }
                                     className={
-                                      statusInfo.variant === "success" 
-                                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800" 
+                                      statusInfo.variant === "success"
+                                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800"
                                         : ""
                                     }
                                   >
@@ -1973,10 +2546,16 @@ const ClientDashboardContent = () => {
                                     <div className="flex items-center gap-2">
                                       <Avatar className="w-6 h-6">
                                         <AvatarFallback className="text-xs">
-                                          {acceptedProposal.freelancer.fullName?.charAt(0) || "F"}
+                                          {acceptedProposal.freelancer.fullName?.charAt(
+                                            0
+                                          ) || "F"}
                                         </AvatarFallback>
                                       </Avatar>
-                                      <span className="text-sm">{acceptedProposal.freelancer.fullName?.split(" ")[0] || "Freelancer"}</span>
+                                      <span className="text-sm">
+                                        {acceptedProposal.freelancer.fullName?.split(
+                                          " "
+                                        )[0] || "Freelancer"}
+                                      </span>
                                     </div>
                                   )}
                                 </TableCell>
@@ -1987,8 +2566,8 @@ const ClientDashboardContent = () => {
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {project.status === "AWAITING_PAYMENT" ? (
-                                    <Button 
-                                      size="sm" 
+                                    <Button
+                                      size="sm"
                                       className="bg-green-600 hover:bg-green-700 text-white h-8 w-full sm:w-auto text-xs sm:text-sm font-medium shadow-sm"
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -1996,18 +2575,23 @@ const ClientDashboardContent = () => {
                                       }}
                                     >
                                       {(() => {
-                                        const budget = parseInt(project.budget) || 0;
+                                        const budget =
+                                          parseInt(project.budget) || 0;
                                         if (budget > 200000) return "Pay 25%";
                                         if (budget >= 50000) return "Pay 33%";
                                         return "Pay 50%";
                                       })()}
                                     </Button>
                                   ) : (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
                                       className="text-muted-foreground hover:text-primary"
-                                      onClick={() => navigate(`/client/project/${project.id}`)}
+                                      onClick={() =>
+                                        navigate(
+                                          `/client/project/${project.id}`
+                                        )
+                                      }
                                     >
                                       <Eye className="w-4 h-4" />
                                     </Button>
@@ -2025,11 +2609,13 @@ const ClientDashboardContent = () => {
 
               {/* Active Proposals Table - OPEN projects */}
               {(() => {
-                const activeProposalsList = uniqueProjects.filter(p => {
+                const activeProposalsList = uniqueProjects.filter((p) => {
                   if (p.status !== "OPEN") return false;
                   // Only show if there's at least one pending or accepted proposal
-                  return (p.proposals || []).some(
-                    prop => ["PENDING", "ACCEPTED"].includes((prop.status || "").toUpperCase())
+                  return (p.proposals || []).some((prop) =>
+                    ["PENDING", "ACCEPTED"].includes(
+                      (prop.status || "").toUpperCase()
+                    )
                   );
                 });
 
@@ -2039,7 +2625,11 @@ const ClientDashboardContent = () => {
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-bold">Active Proposals</h3>
-                      <Button variant="link" className="text-primary p-0 h-auto font-semibold" onClick={() => navigate("/client/proposal")}>
+                      <Button
+                        variant="link"
+                        className="text-primary p-0 h-auto font-semibold"
+                        onClick={() => navigate("/client/proposal")}
+                      >
                         View All <ArrowRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>
@@ -2048,26 +2638,43 @@ const ClientDashboardContent = () => {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Project Name</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Status</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Freelancer</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider">Budget</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">Action</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                              Project Name
+                            </TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                              Status
+                            </TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                              Freelancer
+                            </TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                              Budget
+                            </TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wider text-right">
+                              Action
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {activeProposalsList.slice(0, 5).map((project) => {
                             const statusInfo = getStatusBadge(project.status);
                             return (
-                              <TableRow key={project.id} className="group hover:bg-muted/50 transition-colors">
+                              <TableRow
+                                key={project.id}
+                                className="group hover:bg-muted/50 transition-colors"
+                              >
                                 <TableCell>
-                                  <div className="font-bold">{project.title}</div>
+                                  <div className="font-bold">
+                                    {project.title}
+                                  </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {new Date(project.createdAt).toLocaleDateString()}
+                                    {new Date(
+                                      project.createdAt
+                                    ).toLocaleDateString()}
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge 
+                                  <Badge
                                     variant="secondary"
                                     className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800"
                                   >
@@ -2076,42 +2683,74 @@ const ClientDashboardContent = () => {
                                 </TableCell>
                                 <TableCell>
                                   {(() => {
-                                    const pendingProposals = (project.proposals || [])
-                                      .filter(p => (p.status || "").toUpperCase() === "PENDING")
-                                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                                    
+                                    const pendingProposals = (
+                                      project.proposals || []
+                                    )
+                                      .filter(
+                                        (p) =>
+                                          (p.status || "").toUpperCase() ===
+                                          "PENDING"
+                                      )
+                                      .sort(
+                                        (a, b) =>
+                                          new Date(b.createdAt) -
+                                          new Date(a.createdAt)
+                                      );
+
                                     // If multiple freelancers invited, show count
                                     if (pendingProposals.length > 1) {
                                       return (
                                         <div className="flex items-center gap-2 opacity-75">
                                           <div className="flex -space-x-2">
-                                            {pendingProposals.slice(0, 3).map((p, idx) => (
-                                              <Avatar key={idx} className="w-6 h-6 border-2 border-background">
-                                                <AvatarFallback className="text-xs">
-                                                  {p.freelancer?.fullName?.charAt(0) || "F"}
-                                                </AvatarFallback>
-                                              </Avatar>
-                                            ))}
+                                            {pendingProposals
+                                              .slice(0, 3)
+                                              .map((p, idx) => (
+                                                <Avatar
+                                                  key={idx}
+                                                  className="w-6 h-6 border-2 border-background"
+                                                >
+                                                  <AvatarFallback className="text-xs">
+                                                    {p.freelancer?.fullName?.charAt(
+                                                      0
+                                                    ) || "F"}
+                                                  </AvatarFallback>
+                                                </Avatar>
+                                              ))}
                                           </div>
-                                          <span className="text-sm italic">{pendingProposals.length} invited</span>
+                                          <span className="text-sm italic">
+                                            {pendingProposals.length} invited
+                                          </span>
                                         </div>
                                       );
                                     }
-                                    
+
                                     const pendingProposal = pendingProposals[0];
                                     if (pendingProposal?.freelancer) {
                                       return (
                                         <div className="flex items-center gap-2 opacity-75">
                                           <Avatar className="w-6 h-6 grayscale">
                                             <AvatarFallback className="text-xs">
-                                              {pendingProposal.freelancer.fullName?.charAt(0) || "F"}
+                                              {pendingProposal.freelancer.fullName?.charAt(
+                                                0
+                                              ) || "F"}
                                             </AvatarFallback>
                                           </Avatar>
-                                          <span className="text-sm italic">Invited: {pendingProposal.freelancer.fullName?.split(" ")[0]}</span>
+                                          <span className="text-sm italic">
+                                            Invited:{" "}
+                                            {
+                                              pendingProposal.freelancer.fullName?.split(
+                                                " "
+                                              )[0]
+                                            }
+                                          </span>
                                         </div>
                                       );
                                     }
-                                    return <span className="text-sm text-muted-foreground">Not assigned</span>;
+                                    return (
+                                      <span className="text-sm text-muted-foreground">
+                                        Not assigned
+                                      </span>
+                                    );
                                   })()}
                                 </TableCell>
                                 <TableCell>
@@ -2122,18 +2761,26 @@ const ClientDashboardContent = () => {
                                 <TableCell className="text-right">
                                   {(() => {
                                     // Check if any pending proposal is older than 24 hours
-                                    const pendingProposals = (project.proposals || []).filter(
-                                      p => (p.status || "").toUpperCase() === "PENDING"
+                                    const pendingProposals = (
+                                      project.proposals || []
+                                    ).filter(
+                                      (p) =>
+                                        (p.status || "").toUpperCase() ===
+                                        "PENDING"
                                     );
-                                    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-                                    const hasOldPendingProposal = pendingProposals.some(
-                                      p => new Date(p.createdAt).getTime() < twentyFourHoursAgo
-                                    );
-                                    
+                                    const twentyFourHoursAgo =
+                                      Date.now() - 24 * 60 * 60 * 1000;
+                                    const hasOldPendingProposal =
+                                      pendingProposals.some(
+                                        (p) =>
+                                          new Date(p.createdAt).getTime() <
+                                          twentyFourHoursAgo
+                                      );
+
                                     // Only show Budget button if proposal is pending >24hrs, otherwise show nothing
                                     if (hasOldPendingProposal) {
                                       return (
-                                        <Button 
+                                        <Button
                                           size="sm"
                                           variant="outline"
                                           className="h-8 text-xs border-primary text-primary hover:bg-primary/10"
@@ -2147,7 +2794,11 @@ const ClientDashboardContent = () => {
                                         </Button>
                                       );
                                     }
-                                    return <span className="text-xs text-muted-foreground">Waiting...</span>;
+                                    return (
+                                      <span className="text-xs text-muted-foreground">
+                                        Waiting...
+                                      </span>
+                                    );
                                   })()}
                                 </TableCell>
                               </TableRow>
@@ -2159,8 +2810,6 @@ const ClientDashboardContent = () => {
                   </div>
                 );
               })()}
-
-
             </div>
 
             {/* Right Sidebar */}
@@ -2173,7 +2822,7 @@ const ClientDashboardContent = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
-                  <Button 
+                  <Button
                     className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                     onClick={() => navigate("/service")}
                   >
@@ -2181,15 +2830,15 @@ const ClientDashboardContent = () => {
                     New Proposal
                   </Button>
 
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full bg-background hover:bg-background/80 text-foreground border-border/10 shadow-sm"
                     onClick={() => navigate("/client/proposal")}
                   >
                     View Proposal
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full bg-background hover:bg-background/80 text-foreground border-border/10 shadow-sm"
                     onClick={() => navigate("/client/project")}
                   >
@@ -2201,9 +2850,11 @@ const ClientDashboardContent = () => {
               {/* Talent Snapshot */}
               <Card className="border-border/60">
                 <CardHeader className="pb-2 flex-row items-center justify-between">
-                  <CardTitle className="text-lg font-bold">Active Chat</CardTitle>
-                  <Button 
-                    variant="link" 
+                  <CardTitle className="text-lg font-bold">
+                    Active Chat
+                  </CardTitle>
+                  <Button
+                    variant="link"
                     className="text-primary p-0 h-auto text-sm font-semibold"
                     onClick={() => navigate("/client/messages")}
                   >
@@ -2217,14 +2868,31 @@ const ClientDashboardContent = () => {
                         <TalentItem
                           key={f.id || idx}
                           name={f.fullName || f.name || "Freelancer"}
-                          role={f.projectTitle || (Array.isArray(f.skills) && f.skills.length > 0 ? f.skills[0] : "Freelancer")}
+                          role={
+                            f.projectTitle ||
+                            (Array.isArray(f.skills) && f.skills.length > 0
+                              ? f.skills[0]
+                              : "Freelancer")
+                          }
                           avatar={f.avatar}
-                          status={idx === 0 ? "online" : idx === 1 ? "away" : "offline"}
-                          onClick={() => navigate(`/client/messages?projectId=${f.projectId}`)}
+                          status={
+                            idx === 0
+                              ? "online"
+                              : idx === 1
+                              ? "away"
+                              : "offline"
+                          }
+                          onClick={() =>
+                            navigate(
+                              `/client/messages?projectId=${f.projectId}`
+                            )
+                          }
                         />
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground italic py-4 text-center">No active chats yet</p>
+                      <p className="text-sm text-muted-foreground italic py-4 text-center">
+                        No active chats yet
+                      </p>
                     )}
                   </ul>
                 </CardContent>
@@ -2232,46 +2900,63 @@ const ClientDashboardContent = () => {
 
               {/* Activity Timeline - Only show when projects exist */}
               {projects.length > 0 && (
-              <Card className="border-border/60">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold">Activity Timeline</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="relative pl-4 border-l-2 border-dashed border-border space-y-6">
-                    {projects
-                      .filter(p => ["IN_PROGRESS", "COMPLETED"].includes((p.status || "").toUpperCase()))
-                      .slice(0, 2)
-                      .map((project, idx) => (
-                      <div 
-                        key={project.id} 
-                        className="relative cursor-pointer hover:bg-muted/50 transition-colors rounded-lg p-2 -ml-2"
-                        onClick={() => navigate(`/client/project/${project.id}`)}
-                      >
-                        <div className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
-                          idx === 0 ? "bg-primary" : "bg-muted-foreground/50"
-                        }`} />
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
-                          <span className="text-xs font-bold text-muted-foreground w-16 flex-shrink-0">
-                            {new Date(project.updatedAt || project.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <p className="text-sm">
-                            Project <span className="text-primary font-medium hover:underline">{project.title}</span> SOP was updated.
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                <Card className="border-border/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg font-bold">
+                      Activity Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative pl-4 border-l-2 border-dashed border-border space-y-6">
+                      {projects
+                        .filter((p) =>
+                          ["IN_PROGRESS", "COMPLETED"].includes(
+                            (p.status || "").toUpperCase()
+                          )
+                        )
+                        .slice(0, 2)
+                        .map((project, idx) => (
+                          <div
+                            key={project.id}
+                            className="relative cursor-pointer hover:bg-muted/50 transition-colors rounded-lg p-2 -ml-2"
+                            onClick={() =>
+                              navigate(`/client/project/${project.id}`)
+                            }
+                          >
+                            <div
+                              className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
+                                idx === 0
+                                  ? "bg-primary"
+                                  : "bg-muted-foreground/50"
+                              }`}
+                            />
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
+                              <span className="text-xs font-bold text-muted-foreground w-16 flex-shrink-0">
+                                {new Date(
+                                  project.updatedAt || project.createdAt
+                                ).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                              <p className="text-sm">
+                                Project{" "}
+                                <span className="text-primary font-medium hover:underline">
+                                  {project.title}
+                                </span>{" "}
+                                SOP was updated.
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-
-
             </div>
           </div>
         </div>
       </main>
-
-
 
       {/* Suspension Alert */}
       <SuspensionAlert
@@ -2293,9 +2978,3 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
-
-
-
-
-
-
