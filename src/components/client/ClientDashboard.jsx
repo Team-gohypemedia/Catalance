@@ -730,14 +730,11 @@ const ClientDashboardContent = () => {
       // Refresh projects so the freelancer is immediately hidden from the list
       await loadProjects();
 
-      // Clear saved proposal immediately after sending
-      localStorage.removeItem("markify:savedProposal");
-      persistSavedProposalState([]);
+      // Keep the proposal so user can send to more freelancers
+      // The freelancer just sent to will be filtered out from the list
 
       setShowSendConfirm(false);
       setSelectedFreelancer(null);
-
-      // navigate(`/client/project/${project.id}`);
     } catch (error) {
       console.error("Failed to send proposal:", error);
       toast.error("Failed to send proposal. Please try again.");
