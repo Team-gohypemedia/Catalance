@@ -119,12 +119,19 @@ const normalizeSavedProposal = (proposal = {}) => {
         .trim();
     }
   }
-  if ((!next.budget || next.budget === "Not set") && text) {
+  // Always re-parse budget from text to handle 'k' suffix correctly
+  if (text) {
+    // Match budget with optional 'k' suffix for thousands
     const budgetMatch = text.match(
-      /Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹|ƒ,1)?\s*([ƒ,1\d,]+)/i
+      /Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹|ƒ,1)?\s*([\d,]+)\s*(k)?/i
     );
     if (budgetMatch) {
-      next.budget = budgetMatch[1].trim();
+      let budgetValue = parseFloat(budgetMatch[1].replace(/,/g, ""));
+      // If 'k' suffix found, multiply by 1000
+      if (budgetMatch[2] && /k/i.test(budgetMatch[2])) {
+        budgetValue = budgetValue * 1000;
+      }
+      next.budget = String(budgetValue);
     }
   }
   return next;
