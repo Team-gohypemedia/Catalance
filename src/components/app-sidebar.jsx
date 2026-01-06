@@ -111,10 +111,7 @@ const navConfigs = {
       title: "Proposal",
       url: "/client/proposal",
       icon: FileText,
-      items: [
-        { title: "Drafts", url: "/client/proposal/drafts" },
-        { title: "Sent", url: "/client/proposal" },
-      ],
+      isActive: true,
     },
     {
       title: "Project",
@@ -151,7 +148,10 @@ const navConfigs = {
       url: "/project-manager/appointments",
       icon: ClipboardList,
       items: [
-        { title: "Pending Requests", url: "/project-manager/appointments?status=pending" },
+        {
+          title: "Pending Requests",
+          url: "/project-manager/appointments?status=pending",
+        },
         { title: "My Availability", url: "/project-manager/availability" },
       ],
     },
@@ -233,7 +233,7 @@ export function AppSidebar({ ...props }) {
       <SidebarHeader>
         <TeamSwitcher brand={brand} />
       </SidebarHeader>
-      <SidebarContent className="!overflow-hidden">
+      <SidebarContent className="overflow-hidden!">
         <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
