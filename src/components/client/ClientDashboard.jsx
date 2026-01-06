@@ -1150,23 +1150,41 @@ const ClientDashboardContent = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => {
-                                  // Gather all relevant project IDs with the same title to dismiss them together
+                                onClick={async () => {
+                                  // Delete all related projects with the same title from the database
                                   const relatedProjectIds = uniqueProjects
                                     .filter((p) => p.title === project.title)
                                     .map((p) => p.id);
-                                  const newDismissed = Array.from(
-                                    new Set([
-                                      ...dismissedProjectIds,
-                                      ...relatedProjectIds,
-                                    ])
+
+                                  // Delete from database
+                                  for (const projectId of relatedProjectIds) {
+                                    try {
+                                      await authFetch(
+                                        `/projects/${projectId}`,
+                                        {
+                                          method: "DELETE",
+                                        }
+                                      );
+                                    } catch (err) {
+                                      console.error(
+                                        `Failed to delete project ${projectId}:`,
+                                        err
+                                      );
+                                    }
+                                  }
+
+                                  // Update local state immediately
+                                  setDismissedProjectIds((prev) => [
+                                    ...prev,
+                                    ...relatedProjectIds,
+                                  ]);
+
+                                  // Refresh projects list
+                                  loadProjects();
+
+                                  toast.success(
+                                    "Expired proposal removed permanently"
                                   );
-                                  setDismissedProjectIds(newDismissed);
-                                  localStorage.setItem(
-                                    "markify:dismissedExpiredProposals",
-                                    JSON.stringify(newDismissed)
-                                  );
-                                  toast.success("Reminder dismissed");
                                 }}
                               >
                                 <Trash2 className="w-4 h-4" />
