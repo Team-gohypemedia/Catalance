@@ -292,6 +292,17 @@ export const updateProject = asyncHandler(async (req, res) => {
           });
           console.log(`[Notification] Task verification notification sent to freelancer ${acceptedProposal.freelancerId}`);
         }
+      } else if (notificationMeta.type === "TASK_UNVERIFIED" && isOwner) {
+        // Client un-verified a task -> notify freelancer
+        if (acceptedProposal?.freelancerId) {
+          await sendNotificationToUser(acceptedProposal.freelancerId, {
+            type: "task_unverified",
+            title: "Task Un-verified",
+            message: `Client removed verification for "${taskName}". Please review.`,
+            data: { projectId: id, taskName }
+          });
+          console.log(`[Notification] Task un-verification notification sent to freelancer ${acceptedProposal.freelancerId}`);
+        }
       }
     }
 

@@ -134,7 +134,8 @@ export const FreelancerTopBar = ({ label }) => {
       }
     } else if (
       (notification.type === "task_completed" ||
-        notification.type === "task_verified") &&
+        notification.type === "task_verified" ||
+        notification.type === "task_unverified") &&
       notification.data?.projectId
     ) {
       // Task notifications - navigate to project detail

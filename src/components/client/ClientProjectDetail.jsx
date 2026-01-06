@@ -1404,11 +1404,15 @@ const ProjectDashboard = () => {
     ).length;
     const newProgress = Math.round((verifiedCount / totalTasks) * 100);
 
-    // Build notification metadata if verifying (not unverifying)
-    const notificationMeta =
-      isMarkingVerified && taskTitle
-        ? { type: "TASK_VERIFIED", taskName: taskTitle }
-        : null;
+    // Build notification metadata for both verifying and un-verifying
+    let notificationMeta = null;
+    if (taskTitle) {
+      if (isMarkingVerified) {
+        notificationMeta = { type: "TASK_VERIFIED", taskName: taskTitle };
+      } else {
+        notificationMeta = { type: "TASK_UNVERIFIED", taskName: taskTitle };
+      }
+    }
 
     // Save to database
     const currentCompleted = Array.from(completedTaskIds);
@@ -1465,7 +1469,7 @@ const ProjectDashboard = () => {
                       size="sm"
                       onClick={() => setReportOpen(true)}
                     >
-                      <Headset /> Help
+                      <Headset /> Catalyst
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
