@@ -1490,8 +1490,7 @@ const FreelancerProjectDetailContent = () => {
                       size="sm"
                       onClick={() => setReportOpen(true)}
                     >
-                      <Headset />
-                      PC
+                      <Headset /> Help
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>

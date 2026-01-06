@@ -15,7 +15,7 @@ export const CataButton = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  
+
   // Vertical position state (distance from bottom in pixels)
   const [bottomPosition, setBottomPosition] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_BOTTOM;
@@ -32,20 +32,29 @@ export const CataButton = () => {
   }, [bottomPosition]);
 
   // Handle drag start
-  const handleDragStart = useCallback((clientY) => {
-    setIsDragging(true);
-    dragStartY.current = clientY;
-    dragStartBottom.current = bottomPosition;
-  }, [bottomPosition]);
+  const handleDragStart = useCallback(
+    (clientY) => {
+      setIsDragging(true);
+      dragStartY.current = clientY;
+      dragStartBottom.current = bottomPosition;
+    },
+    [bottomPosition]
+  );
 
   // Handle drag move
-  const handleDragMove = useCallback((clientY) => {
-    if (!isDragging) return;
-    const deltaY = dragStartY.current - clientY; // Positive = moving up
-    const maxBottom = window.innerHeight - 150; // Leave space at top
-    const newBottom = Math.max(MIN_BOTTOM, Math.min(maxBottom, dragStartBottom.current + deltaY));
-    setBottomPosition(newBottom);
-  }, [isDragging]);
+  const handleDragMove = useCallback(
+    (clientY) => {
+      if (!isDragging) return;
+      const deltaY = dragStartY.current - clientY; // Positive = moving up
+      const maxBottom = window.innerHeight - 150; // Leave space at top
+      const newBottom = Math.max(
+        MIN_BOTTOM,
+        Math.min(maxBottom, dragStartBottom.current + deltaY)
+      );
+      setBottomPosition(newBottom);
+    },
+    [isDragging]
+  );
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
@@ -107,13 +116,23 @@ export const CataButton = () => {
     }
   };
 
-  // Don't show on login/signup pages
-  if (["/login", "/signup", "/forgot-password", "/reset-password"].includes(location.pathname)) {
+  // Only show on dashboard routes
+  const dashboardPrefixes = [
+    "/client",
+    "/freelancer",
+    "/project-manager",
+    "/admin",
+  ];
+  const isOnDashboard = dashboardPrefixes.some((prefix) =>
+    location.pathname.startsWith(prefix)
+  );
+
+  if (!isOnDashboard) {
     return null;
   }
 
   return (
-    <div 
+    <div
       className="fixed right-8 z-50 group"
       style={{ bottom: `${bottomPosition}px` }}
     >
@@ -130,14 +149,17 @@ export const CataButton = () => {
         )}
         title="Drag to move up/down"
       >
-        <GripVertical className={cn("w-4 h-4", isDragging ? "text-primary" : "text-neutral-400")} />
+        <GripVertical
+          className={cn(
+            "w-4 h-4",
+            isDragging ? "text-primary" : "text-neutral-400"
+          )}
+        />
       </div>
       <FamilyButton>
         <div className="flex flex-col gap-3 p-4 pb-14 w-full">
-          <h4 className="text-sm font-semibold text-neutral-300 mb-1">
-            Cata
-          </h4>
-          
+          <h4 className="text-sm font-semibold text-neutral-300 mb-1">Help</h4>
+
           <button
             onClick={handleMessagesClick}
             className={cn(
