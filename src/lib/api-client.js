@@ -22,7 +22,7 @@ const sameOriginBaseUrl =
 
 const localDevBaseUrl =
   safeWindow && (isLocal5173 || isLocal5174)
-    ? "http://localhost:5001/api"
+    ? "http://localhost:5000/api"
     : null;
 
 export const API_BASE_URL =

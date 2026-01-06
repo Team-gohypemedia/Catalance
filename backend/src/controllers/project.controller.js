@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { sendNotificationToUser } from "../lib/notification-util.js";
 
 const MAX_INT = 2147483647; // PostgreSQL INT4 upper bound
 
@@ -229,17 +230,18 @@ export const getProject = asyncHandler(async (req, res) => {
 export const updateProject = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   const { id } = req.params;
-  const updates = req.body;
+  const { notificationMeta, ...updates } = req.body;
 
   if (!userId) {
     throw new AppError("Authentication required", 401);
   }
 
-  // Check existence
+  // Check existence and get current state
   const existing = await prisma.project.findUnique({
     where: { id },
     include: {
-      proposals: true
+      proposals: true,
+      owner: { select: { id: true, fullName: true } }
     }
   });
 
@@ -249,9 +251,10 @@ export const updateProject = asyncHandler(async (req, res) => {
 
   // Allow owner OR accepted freelancer to update progress/tasks
   const isOwner = existing.ownerId === userId;
-  const isAcceptedFreelancer = existing.proposals?.some(
-    p => p.freelancerId === userId && p.status === "ACCEPTED"
+  const acceptedProposal = existing.proposals?.find(
+    p => p.status === "ACCEPTED"
   );
+  const isAcceptedFreelancer = acceptedProposal?.freelancerId === userId;
 
   if (!isOwner && !isAcceptedFreelancer) {
     throw new AppError("Permission denied", 403);
@@ -264,6 +267,33 @@ export const updateProject = asyncHandler(async (req, res) => {
       data: updates
     });
     console.log("DEBUG: Update successful");
+
+    // Send notification based on notificationMeta
+    if (notificationMeta?.type && notificationMeta?.taskName) {
+      const taskName = notificationMeta.taskName;
+
+      if (notificationMeta.type === "TASK_COMPLETED" && isAcceptedFreelancer) {
+        // Freelancer completed a task -> notify client
+        await sendNotificationToUser(existing.ownerId, {
+          type: "task_completed",
+          title: "Task Completed",
+          message: `Freelancer marked "${taskName}" as completed. Please verify.`,
+          data: { projectId: id, taskName }
+        });
+        console.log(`[Notification] Task completion notification sent to client ${existing.ownerId}`);
+      } else if (notificationMeta.type === "TASK_VERIFIED" && isOwner) {
+        // Client verified a task -> notify freelancer
+        if (acceptedProposal?.freelancerId) {
+          await sendNotificationToUser(acceptedProposal.freelancerId, {
+            type: "task_verified",
+            title: "Task Verified",
+            message: `Client verified "${taskName}".`,
+            data: { projectId: id, taskName }
+          });
+          console.log(`[Notification] Task verification notification sent to freelancer ${acceptedProposal.freelancerId}`);
+        }
+      }
+    }
 
     res.json({ data: project });
   } catch (error) {

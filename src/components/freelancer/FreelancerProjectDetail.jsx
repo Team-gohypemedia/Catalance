@@ -1,19 +1,50 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { useParams } from "react-router-dom";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, AlertCircle, IndianRupee, Send, Upload, FileText, Calendar as CalendarIcon, Headset, Mail, Phone, Image, Globe, Linkedin, Github, Link2, Info, Check, CheckCheck, Pencil, X, ChevronUp, ChevronDown, ExternalLink } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  AlertCircle,
+  IndianRupee,
+  Send,
+  Upload,
+  FileText,
+  Calendar as CalendarIcon,
+  Headset,
+  Mail,
+  Phone,
+  Image,
+  Globe,
+  Linkedin,
+  Github,
+  Link2,
+  Info,
+  Check,
+  CheckCheck,
+  Pencil,
+  X,
+  ChevronUp,
+  ChevronDown,
+  ExternalLink,
+} from "lucide-react";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -22,11 +53,22 @@ import { useAuth } from "@/context/AuthContext";
 import { SOP_TEMPLATES } from "@/data/sopTemplates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -59,14 +101,18 @@ const ProjectDetailSkeleton = () => (
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border border-border/60 bg-card/80">
-          <CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-24" />
+          </CardHeader>
           <CardContent>
             <Skeleton className="h-8 w-16 mb-3" />
             <Skeleton className="h-2 w-full" />
           </CardContent>
         </Card>
         <Card className="border border-border/60 bg-card/80">
-          <CardHeader className="pb-2"><Skeleton className="h-4 w-32" /></CardHeader>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
           <CardContent>
             <Skeleton className="h-8 w-12 mb-2" />
             <Skeleton className="h-3 w-24" />
@@ -82,7 +128,10 @@ const ProjectDetailSkeleton = () => (
             </CardHeader>
             <CardContent className="space-y-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0">
+                <div
+                  key={i}
+                  className="flex items-start gap-3 pb-3 border-b border-border/60 last:border-0"
+                >
                   <Skeleton className="h-5 w-5 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-40" />
@@ -98,7 +147,10 @@ const ProjectDetailSkeleton = () => (
             </CardHeader>
             <CardContent className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border/60">
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-border/60"
+                >
                   <Skeleton className="h-5 w-5 rounded-full" />
                   <Skeleton className="h-4 flex-1" />
                 </div>
@@ -108,11 +160,18 @@ const ProjectDetailSkeleton = () => (
         </div>
         <div className="space-y-4">
           <Card className="border border-border/60 bg-card/80">
-            <CardHeader className="pb-3"><Skeleton className="h-4 w-24" /></CardHeader>
-            <CardContent><Skeleton className="h-4 w-full mb-2" /><Skeleton className="h-4 w-3/4" /></CardContent>
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-24" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-3/4" />
+            </CardContent>
           </Card>
           <Card className="border border-border/60 bg-card/80 h-96">
-            <CardHeader><Skeleton className="h-4 w-24" /></CardHeader>
+            <CardHeader>
+              <Skeleton className="h-4 w-24" />
+            </CardHeader>
             <CardContent className="space-y-3">
               <Skeleton className="h-10 w-3/4" />
               <Skeleton className="h-10 w-2/3 ml-auto" />
@@ -123,8 +182,6 @@ const ProjectDetailSkeleton = () => (
     </div>
   </div>
 );
-
-
 
 const initialMessages = [];
 
@@ -143,7 +200,7 @@ const getStatusBadge = (status) => {
   const variants = {
     completed: "default",
     "in-progress": "secondary",
-    pending: "outline"
+    pending: "outline",
   };
   return variants[status] || "outline";
 };
@@ -151,7 +208,8 @@ const getStatusBadge = (status) => {
 const mapStatus = (status = "") => {
   const normalized = status.toString().toUpperCase();
   if (normalized === "COMPLETED") return "completed";
-  if (normalized === "IN_PROGRESS" || normalized === "OPEN") return "in-progress";
+  if (normalized === "IN_PROGRESS" || normalized === "OPEN")
+    return "in-progress";
   return "pending";
 };
 
@@ -161,7 +219,7 @@ const COMMON_ISSUES = [
   "Scope Creep",
   "Project Stalled",
   "Harassment/Unprofessional Behavior",
-  "Other"
+  "Other",
 ];
 
 const ClientInfoCard = ({ client }) => {
@@ -178,18 +236,25 @@ const ClientInfoCard = ({ client }) => {
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12 border border-border">
             <AvatarImage src={client.avatar} alt={client.fullName} />
-            <AvatarFallback>{(client.fullName || "C").charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarFallback>
+              {(client.fullName || "C").charAt(0).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-foreground">{client.fullName || "Client Name"}</span>
+              <span className="font-semibold text-foreground">
+                {client.fullName || "Client Name"}
+              </span>
               {client.isVerified && (
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" fill="currentColor" stroke="white" />
+                <CheckCircle2
+                  className="w-3.5 h-3.5 text-blue-500"
+                  fill="currentColor"
+                  stroke="white"
+                />
               )}
             </div>
           </div>
         </div>
-
       </CardContent>
     </Card>
   );
@@ -197,7 +262,7 @@ const ClientInfoCard = ({ client }) => {
 
 const ClientAboutCard = ({ client, project, onUpdateLink }) => {
   if (!client) return null;
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [linkValue, setLinkValue] = useState(project?.externalLink || "");
   const [isSaving, setIsSaving] = useState(false);
@@ -210,12 +275,12 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-        await onUpdateLink(linkValue);
-        setIsEditing(false);
+      await onUpdateLink(linkValue);
+      setIsEditing(false);
     } catch (error) {
-        console.error("Failed to update link", error);
+      console.error("Failed to update link", error);
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
@@ -229,64 +294,78 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-base text-foreground">About</h3>
-      
+
       <div className="space-y-3">
         {/* Project Link with Edit Mode */}
         <div className="flex flex-col gap-2">
-            {isEditing ? (
-                 <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                        <Link2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            value={linkValue}
-                            onChange={(e) => setLinkValue(e.target.value)}
-                            className="pl-9 h-9 text-sm"
-                            placeholder="https://project-link.com"
-                            autoFocus
-                        />
-                    </div>
-                    <Button size="icon" variant="ghost" className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50" onClick={handleSave} disabled={isSaving}>
-                        <Check className="h-4 w-4" />
-                    </Button>
-                     <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={handleCancel} disabled={isSaving}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                 </div>
-            ) : (
-                // Display Mode
-                <div className="group relative min-h-[24px] flex items-center">
-                    {displayLink ? (
-                        <a 
-                            href={displayLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="flex items-start gap-2 text-sm text-blue-400 hover:underline font-medium break-all pr-8"
-                        >
-                            <Link2 className="w-4 h-4 mt-0.5 shrink-0" />
-                            <span>{displayLink.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
-                        </a>
-                    ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                             <Link2 className="w-4 h-4 shrink-0" />
-                             <span>No project link</span>
-                        </div>
-                    )}
-                    
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute -right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setIsEditing(true);
-                        }}
-                    >
-                        <Pencil className="h-3 w-3 text-muted-foreground" />
-                    </Button>
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Link2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={linkValue}
+                  onChange={(e) => setLinkValue(e.target.value)}
+                  className="pl-9 h-9 text-sm"
+                  placeholder="https://project-link.com"
+                  autoFocus
+                />
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            // Display Mode
+            <div className="group relative min-h-[24px] flex items-center">
+              {displayLink ? (
+                <a
+                  href={displayLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-2 text-sm text-blue-400 hover:underline font-medium break-all pr-8"
+                >
+                  <Link2 className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>
+                    {displayLink.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                  </span>
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Link2 className="w-4 h-4 shrink-0" />
+                  <span>No project link</span>
                 </div>
-            )}
+              )}
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsEditing(true);
+                }}
+              >
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+              </Button>
+            </div>
+          )}
         </div>
-        
+
         {/* Tech Stack - parsed from description */}
         {(() => {
           const desc = project?.description || "";
@@ -299,7 +378,7 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
             </div>
           ) : null;
         })()}
-        
+
         {/* Summary - parsed from description */}
         {(() => {
           const desc = project?.description || "";
@@ -329,7 +408,10 @@ const FreelancerProjectDetailContent = () => {
   const [completedTaskIds, setCompletedTaskIds] = useState(new Set());
   const [verifiedTaskIds, setVerifiedTaskIds] = useState(new Set());
   const [isSending, setIsSending] = useState(false);
-  const [paymentData, setPaymentData] = useState({ totalPaid: 0, totalPending: 0 });
+  const [paymentData, setPaymentData] = useState({
+    totalPaid: 0,
+    totalPending: 0,
+  });
   const fileInputRef = useRef(null);
 
   // Dispute Report State
@@ -349,7 +431,9 @@ const FreelancerProjectDetailContent = () => {
     const fetchAvailability = async () => {
       try {
         console.log("Fetching availability for date:", date.toISOString());
-        const res = await authFetch(`/disputes/availability?date=${date.toISOString()}`);
+        const res = await authFetch(
+          `/disputes/availability?date=${date.toISOString()}`
+        );
         console.log("Availability response status:", res.status);
         if (res.ok) {
           const payload = await res.json();
@@ -367,8 +451,6 @@ const FreelancerProjectDetailContent = () => {
     fetchAvailability();
   }, [date, authFetch]);
 
-
-
   // Filter time slots based on selected date
   // Filter time slots based on selected date
   const availableTimeSlots = useMemo(() => {
@@ -383,11 +465,11 @@ const FreelancerProjectDetailContent = () => {
     const currentHour = now.getHours();
 
     if (isToday) {
-      slots = slots.filter(slot => {
-        const [time, period] = slot.split(' ');
-        let [hours, minutes] = time.split(':').map(Number);
-        if (period === 'PM' && hours !== 12) hours += 12;
-        if (period === 'AM' && hours === 12) hours = 0;
+      slots = slots.filter((slot) => {
+        const [time, period] = slot.split(" ");
+        let [hours, minutes] = time.split(":").map(Number);
+        if (period === "PM" && hours !== 12) hours += 12;
+        if (period === "AM" && hours === 12) hours = 0;
         return hours > currentHour;
       });
     }
@@ -395,13 +477,15 @@ const FreelancerProjectDetailContent = () => {
     return slots;
   }, [date, serverAvailableSlots]);
 
-
-
   // Handle reporting a dispute (same logic as client)
   const renderProjectDescription = (options = {}) => {
     const { showExtended = false } = options;
     if (!project?.description) {
-      return <p className="text-sm text-muted-foreground">No project description available.</p>;
+      return (
+        <p className="text-sm text-muted-foreground">
+          No project description available.
+        </p>
+      );
     }
 
     const desc = project.description;
@@ -425,7 +509,7 @@ const FreelancerProjectDetailContent = () => {
       "Designs",
       "Hosting",
       "Domain",
-      "Deployment"
+      "Deployment",
     ];
     const fieldPattern = fieldNames.join("|");
     const extractField = (fieldName) => {
@@ -435,7 +519,10 @@ const FreelancerProjectDetailContent = () => {
       );
       const match = desc.match(regex);
       if (match) {
-        return match[1].replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim();
+        return match[1]
+          .replace(/^[\s-]+/, "")
+          .replace(/[\s-]+$/, "")
+          .trim();
       }
       return null;
     };
@@ -466,7 +553,10 @@ const FreelancerProjectDetailContent = () => {
       /Summary[:\s]+(.+?)(?=(?:\r?\n\s*(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps|Integrations|Designs|Hosting|Domain|Timeline)[:\s])|$)/is
     );
     const summary = summaryMatch
-      ? summaryMatch[1].replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim()
+      ? summaryMatch[1]
+          .replace(/^[\s-]+/, "")
+          .replace(/[\s-]+$/, "")
+          .trim()
       : null;
 
     const deliverables = [];
@@ -499,15 +589,22 @@ const FreelancerProjectDetailContent = () => {
         : []),
     ].filter((f) => f.value);
 
-    const corePages = extractField("Core pages included") || extractField("Core pages");
+    const corePages =
+      extractField("Core pages included") || extractField("Core pages");
     const additionalPages =
-      extractField("Additional pages\\/features") || extractField("Additional pages");
+      extractField("Additional pages\\/features") ||
+      extractField("Additional pages");
 
     const parsePagesString = (str) => {
       if (!str) return [];
       return str
         .split(/[,]/)
-        .map((p) => p.replace(/^[\s-]+/, "").replace(/[\s-]+$/, "").trim())
+        .map((p) =>
+          p
+            .replace(/^[\s-]+/, "")
+            .replace(/[\s-]+$/, "")
+            .trim()
+        )
         .filter(
           (p) =>
             p.length > 2 &&
@@ -528,7 +625,9 @@ const FreelancerProjectDetailContent = () => {
               {fields.map((field, index) => (
                 <div key={index} className="text-sm">
                   <span className="text-muted-foreground">{field.label}: </span>
-                  <span className="text-foreground font-medium">{field.value}</span>
+                  <span className="text-foreground font-medium">
+                    {field.value}
+                  </span>
                 </div>
               ))}
             </div>
@@ -536,18 +635,26 @@ const FreelancerProjectDetailContent = () => {
 
           {summary && (
             <div className="pt-2">
-              <p className="text-sm text-muted-foreground font-medium mb-1">Summary</p>
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{summary}</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">
+                Summary
+              </p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {summary}
+              </p>
             </div>
           )}
 
           {(corePagesArr.length > 0 || additionalPagesArr.length > 0) && (
             <div className="pt-2">
-              <p className="text-sm text-muted-foreground font-medium mb-3">Pages & Features</p>
+              <p className="text-sm text-muted-foreground font-medium mb-3">
+                Pages & Features
+              </p>
               <div className="space-y-4">
                 {corePagesArr.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Core Pages:</p>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Core Pages:
+                    </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                       {corePagesArr.map((page, index) => (
                         <div
@@ -563,7 +670,9 @@ const FreelancerProjectDetailContent = () => {
                 )}
                 {additionalPagesArr.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Additional Pages/Features:</p>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Additional Pages/Features:
+                    </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                       {additionalPagesArr.map((page, index) => (
                         <div
@@ -583,10 +692,15 @@ const FreelancerProjectDetailContent = () => {
 
           {deliverables.length > 0 && (
             <div className="pt-2">
-              <p className="text-sm text-muted-foreground font-medium mb-2">Deliverables</p>
+              <p className="text-sm text-muted-foreground font-medium mb-2">
+                Deliverables
+              </p>
               <ul className="space-y-1.5">
                 {deliverables.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2 text-sm text-foreground">
+                  <li
+                    key={index}
+                    className="flex items-start gap-2 text-sm text-foreground"
+                  >
                     <span className="text-primary mt-1">•</span>
                     <span>{item}</span>
                   </li>
@@ -596,7 +710,9 @@ const FreelancerProjectDetailContent = () => {
           )}
 
           {fields.length === 0 && !summary && (
-            <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {desc}
+            </p>
           )}
         </div>
 
@@ -631,10 +747,10 @@ const FreelancerProjectDetailContent = () => {
       const combined = new Date(date);
       if (time) {
         fullDescription += `\nTime: ${time}`;
-        const [timeStr, period] = time.split(' ');
-        let [hours, minutes] = timeStr.split(':').map(Number);
-        if (period === 'PM' && hours !== 12) hours += 12;
-        if (period === 'AM' && hours === 12) hours = 0;
+        const [timeStr, period] = time.split(" ");
+        let [hours, minutes] = timeStr.split(":").map(Number);
+        if (period === "PM" && hours !== 12) hours += 12;
+        if (period === "AM" && hours === 12) hours = 0;
         combined.setHours(hours, minutes, 0, 0);
       } else {
         combined.setHours(9, 0, 0, 0);
@@ -644,17 +760,19 @@ const FreelancerProjectDetailContent = () => {
 
     setIsReporting(true);
     try {
-      const res = await authFetch('/disputes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await authFetch("/disputes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description: fullDescription,
           projectId: project?.id || projectId,
-          meetingDate: meetingDateIso
-        })
+          meetingDate: meetingDateIso,
+        }),
       });
       if (res.ok) {
-        toast.success("Dispute raised. A Project Manager will review it shortly.");
+        toast.success(
+          "Dispute raised. A Project Manager will review it shortly."
+        );
         setReportOpen(false);
         setIssueText("");
         setDate(undefined);
@@ -683,12 +801,16 @@ const FreelancerProjectDetailContent = () => {
         const response = await authFetch("/proposals");
         const payload = await response.json().catch(() => null);
         const proposals = Array.isArray(payload?.data) ? payload.data : [];
-        const match = proposals.find((p) => String(p?.project?.id) === String(projectId));
+        const match = proposals.find(
+          (p) => String(p?.project?.id) === String(projectId)
+        );
 
         if (match?.project && active) {
           const normalizedProgress = (() => {
             const value = Number(match.project.progress ?? match.progress ?? 0);
-            return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+            return Number.isFinite(value)
+              ? Math.max(0, Math.min(100, value))
+              : 0;
           })();
 
           const normalizedBudget = (() => {
@@ -714,10 +836,10 @@ const FreelancerProjectDetailContent = () => {
             manager: match.project.manager, // Map manager details
             owner: match.project.owner, // Store full owner object for details card
             externalLink: match.project.externalLink || null, // Project link
-            description: match.project.description || null // Project description
+            description: match.project.description || null, // Project description
           });
           setIsFallback(false);
-          
+
           // Load saved task progress from database
           if (Array.isArray(match.project.completedTasks)) {
             setCompletedTaskIds(new Set(match.project.completedTasks));
@@ -760,7 +882,7 @@ const FreelancerProjectDetailContent = () => {
           if (data?.data) {
             setPaymentData({
               totalPaid: data.data.totalPaid || 0,
-              totalPending: data.data.totalPending || 0
+              totalPending: data.data.totalPending || 0,
             });
           }
         }
@@ -795,8 +917,8 @@ const FreelancerProjectDetailContent = () => {
           body: JSON.stringify({
             service: key,
             projectTitle: project?.title || "Project Chat",
-            forceNew: false
-          })
+            forceNew: false,
+          }),
         });
 
         const payload = await response.json().catch(() => null);
@@ -819,7 +941,9 @@ const FreelancerProjectDetailContent = () => {
   const fetchMessages = useCallback(async () => {
     if (!conversationId || !authFetch) return;
     try {
-      const response = await authFetch(`/chat/conversations/${conversationId}/messages`);
+      const response = await authFetch(
+        `/chat/conversations/${conversationId}/messages`
+      );
       const payload = await response.json().catch(() => null);
       const list = Array.isArray(payload?.data?.messages)
         ? payload.data.messages
@@ -830,31 +954,35 @@ const FreelancerProjectDetailContent = () => {
         // If senderId == my id, it's me.
         // If senderRole == 'FREELANCER', it's me.
         // Everything else (Client/Assistant) is 'other'.
-        const isMe = (user?.id && String(msg.senderId) === String(user.id)) ||
+        const isMe =
+          (user?.id && String(msg.senderId) === String(user.id)) ||
           msg.senderRole === "FREELANCER"; // Check for explicit role
 
         return {
           id: msg.id,
-          sender: msg.role === "assistant" ? "assistant" : (isMe ? "user" : "other"),
+          sender:
+            msg.role === "assistant" ? "assistant" : isMe ? "user" : "other",
           text: msg.content,
           timestamp: msg.createdAt ? new Date(msg.createdAt) : new Date(),
           createdAt: msg.createdAt,
           readAt: msg.readAt,
           attachment: msg.attachment,
-          senderName: msg.senderName
+          senderName: msg.senderName,
         };
       });
 
       // Merge logic to keep pending messages
-      setMessages(prev => {
-        const pending = prev.filter(m => m.pending);
+      setMessages((prev) => {
+        const pending = prev.filter((m) => m.pending);
         // Dedupe based on signature (sender + text + attachment name)
-        const backendSignatures = new Set(normalized.map(m => 
-          `${m.sender}:${m.text}:${m.attachment?.name || ''}`
-        ));
+        const backendSignatures = new Set(
+          normalized.map(
+            (m) => `${m.sender}:${m.text}:${m.attachment?.name || ""}`
+          )
+        );
 
-        const stillPending = pending.filter(p => {
-          const signature = `${p.sender}:${p.text}:${p.attachment?.name || ''}`;
+        const stillPending = pending.filter((p) => {
+          const signature = `${p.sender}:${p.text}:${p.attachment?.name || ""}`;
           return !backendSignatures.has(signature);
         });
         return [...normalized, ...stillPending];
@@ -880,7 +1008,7 @@ const FreelancerProjectDetailContent = () => {
       sender: "user",
       text: input,
       timestamp: new Date(),
-      pending: true
+      pending: true,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -889,9 +1017,10 @@ const FreelancerProjectDetailContent = () => {
 
     try {
       // Build the correct service key for notifications
-      const serviceKey = (project?.ownerId && user?.id)
-        ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
-        : `project:${project?.id || projectId}`;
+      const serviceKey =
+        project?.ownerId && user?.id
+          ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
+          : `project:${project?.id || projectId}`;
 
       await authFetch(`/chat/conversations/${conversationId}/messages`, {
         method: "POST",
@@ -900,9 +1029,10 @@ const FreelancerProjectDetailContent = () => {
           content: userMessage.text,
           service: serviceKey,
           senderRole: "FREELANCER",
-          senderName: user?.fullName || user?.name || user?.email || "Freelancer",
-          skipAssistant: true // Persist to DB
-        })
+          senderName:
+            user?.fullName || user?.name || user?.email || "Freelancer",
+          skipAssistant: true, // Persist to DB
+        }),
       });
       // Polling will fetch the real message
     } catch (error) {
@@ -926,7 +1056,7 @@ const FreelancerProjectDetailContent = () => {
         const uploadResponse = await authFetch("/upload/chat", {
           method: "POST",
           body: formData,
-          skipLogoutOn401: true
+          skipLogoutOn401: true,
         });
 
         if (!uploadResponse.ok) {
@@ -940,7 +1070,7 @@ const FreelancerProjectDetailContent = () => {
           name: file.name,
           size: file.size,
           type: file.type,
-          url: fileUrl
+          url: fileUrl,
         };
 
         const tempId = Date.now().toString();
@@ -950,18 +1080,19 @@ const FreelancerProjectDetailContent = () => {
           text: textContent,
           timestamp: new Date(),
           attachment,
-          pending: true
+          pending: true,
         };
-        
+
         setMessages((prev) => [...prev, userMessage]);
-        
+
         // Clear input immediately
         setInput("");
 
         // Build the correct service key for notifications
-        const serviceKey = (project?.ownerId && user?.id)
-          ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
-          : `project:${project?.id || projectId}`;
+        const serviceKey =
+          project?.ownerId && user?.id
+            ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
+            : `project:${project?.id || projectId}`;
 
         await authFetch(`/chat/conversations/${conversationId}/messages`, {
           method: "POST",
@@ -970,10 +1101,11 @@ const FreelancerProjectDetailContent = () => {
             content: textContent,
             service: serviceKey,
             senderRole: "FREELANCER",
-            senderName: user?.fullName || user?.name || user?.email || "Freelancer",
+            senderName:
+              user?.fullName || user?.name || user?.email || "Freelancer",
             attachment,
-            skipAssistant: true
-          })
+            skipAssistant: true,
+          }),
         });
 
         toast.success("File sent successfully");
@@ -982,7 +1114,7 @@ const FreelancerProjectDetailContent = () => {
         console.error("Upload failed", e);
         toast.error("Failed to send file");
       }
-      
+
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -990,10 +1122,12 @@ const FreelancerProjectDetailContent = () => {
   };
 
   const docs = useMemo(() => {
-    return messages.filter(m => m.attachment).map(m => ({
-      ...m.attachment,
-      createdAt: m.createdAt || m.timestamp
-    }));
+    return messages
+      .filter((m) => m.attachment)
+      .map((m) => ({
+        ...m.attachment,
+        createdAt: m.createdAt || m.timestamp,
+      }));
   }, [messages]);
 
   const activeSOP = useMemo(() => {
@@ -1002,7 +1136,7 @@ const FreelancerProjectDetailContent = () => {
     const title = project.title.toLowerCase();
 
     // Helper for word boundary check
-    const has = (word) => new RegExp(`\\b${word}\\b`, 'i').test(title);
+    const has = (word) => new RegExp(`\\b${word}\\b`, "i").test(title);
 
     if (
       has("app") ||
@@ -1115,11 +1249,7 @@ const FreelancerProjectDetailContent = () => {
     if (title.includes("course") || title.includes("curriculum")) {
       return SOP_TEMPLATES.COURSE_DEVELOPMENT;
     }
-    if (
-      title.includes("legal") ||
-      has("law") ||
-      title.includes("contract")
-    ) {
+    if (title.includes("legal") || has("law") || title.includes("contract")) {
       return SOP_TEMPLATES.LEGAL_CONSULTING;
     }
     if (
@@ -1149,7 +1279,10 @@ const FreelancerProjectDetailContent = () => {
     const phases = activeSOP.phases;
     const step = 100 / phases.length;
     return phases.map((phase, index) => {
-      const phaseValue = Math.max(0, Math.min(step, overallProgress - index * step));
+      const phaseValue = Math.max(
+        0,
+        Math.min(step, overallProgress - index * step)
+      );
       const normalized = Math.round((phaseValue / step) * 100);
       let status = "pending";
       if (normalized >= 100) status = "completed";
@@ -1157,7 +1290,7 @@ const FreelancerProjectDetailContent = () => {
       return {
         ...phase,
         status,
-        progress: normalized
+        progress: normalized,
       };
     });
   }, [overallProgress, activeSOP]);
@@ -1175,20 +1308,37 @@ const FreelancerProjectDetailContent = () => {
 
       // Check if task is manually completed by user
       if (isCompleted) {
-        return { ...task, uniqueKey, status: "completed", verified: isVerified, phaseName: taskPhase?.name };
+        return {
+          ...task,
+          uniqueKey,
+          status: "completed",
+          verified: isVerified,
+          phaseName: taskPhase?.name,
+        };
       }
       if (phaseStatus === "completed") {
-        return { ...task, uniqueKey, status: "completed", verified: isVerified, phaseName: taskPhase?.name };
+        return {
+          ...task,
+          uniqueKey,
+          status: "completed",
+          verified: isVerified,
+          phaseName: taskPhase?.name,
+        };
       }
       if (phaseStatus === "in-progress" && task.status === "completed") {
-        return { ...task, uniqueKey, verified: isVerified, phaseName: taskPhase?.name };
+        return {
+          ...task,
+          uniqueKey,
+          verified: isVerified,
+          phaseName: taskPhase?.name,
+        };
       }
       return {
         ...task,
         uniqueKey,
         status: phaseStatus === "in-progress" ? "in-progress" : "pending",
         verified: false,
-        phaseName: taskPhase?.name
+        phaseName: taskPhase?.name,
       };
     });
   }, [derivedPhases, activeSOP, completedTaskIds, verifiedTaskIds]);
@@ -1203,7 +1353,7 @@ const FreelancerProjectDetailContent = () => {
           phaseId: task.phase,
           phaseName: phase?.name || `Phase ${task.phase}`,
           phaseStatus: phase?.status || "pending",
-          tasks: []
+          tasks: [],
         };
       }
       grouped[task.phase].tasks.push(task);
@@ -1212,11 +1362,17 @@ const FreelancerProjectDetailContent = () => {
   }, [derivedTasks, derivedPhases]);
 
   // Handle task click to toggle completion
-  const handleTaskClick = async (e, uniqueKey) => {
+  const handleTaskClick = async (e, uniqueKey, taskTitle) => {
     e.stopPropagation();
     e.preventDefault();
 
+    if (verifiedTaskIds.has(uniqueKey)) {
+      toast.error("Cannot change status of a verified task");
+      return;
+    }
+
     let newCompleted;
+    let isMarkingComplete = false;
 
     setCompletedTaskIds((prev) => {
       const updated = new Set(prev);
@@ -1224,6 +1380,7 @@ const FreelancerProjectDetailContent = () => {
         updated.delete(uniqueKey);
       } else {
         updated.add(uniqueKey);
+        isMarkingComplete = true;
       }
       newCompleted = Array.from(updated);
       return updated;
@@ -1232,13 +1389,22 @@ const FreelancerProjectDetailContent = () => {
     // Save to database
     if (project?.id && authFetch) {
       try {
+        const payload = {
+          completedTasks: newCompleted,
+        };
+
+        // Only send notification when marking as complete (not when unchecking)
+        if (isMarkingComplete && taskTitle) {
+          payload.notificationMeta = {
+            type: "TASK_COMPLETED",
+            taskName: taskTitle,
+          };
+        }
+
         await authFetch(`/projects/${project.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            completedTasks: newCompleted,
-            // verifiedTasks remain unchanged by freelancer
-          })
+          body: JSON.stringify(payload),
         });
       } catch (error) {
         console.error("Failed to save task state:", error);
@@ -1246,8 +1412,12 @@ const FreelancerProjectDetailContent = () => {
     }
   };
 
-  const completedPhases = derivedPhases.filter((p) => p.status === "completed").length;
-  const pageTitle = project?.title ? `Project: ${project.title}` : "Project Dashboard";
+  const completedPhases = derivedPhases.filter(
+    (p) => p.status === "completed"
+  ).length;
+  const pageTitle = project?.title
+    ? `Project: ${project.title}`
+    : "Project Dashboard";
 
   const totalBudget = useMemo(() => {
     if (project?.budget !== undefined && project?.budget !== null) {
@@ -1263,15 +1433,21 @@ const FreelancerProjectDetailContent = () => {
     return paymentData.totalPaid || 0;
   }, [paymentData]);
 
-  const remainingBudget = useMemo(() => Math.max(0, totalBudget - spentBudget), [spentBudget, totalBudget]);
+  const remainingBudget = useMemo(
+    () => Math.max(0, totalBudget - spentBudget),
+    [spentBudget, totalBudget]
+  );
 
   const activePhase = useMemo(() => {
-    return derivedPhases.find(p => p.status !== "completed") || derivedPhases[derivedPhases.length - 1];
+    return (
+      derivedPhases.find((p) => p.status !== "completed") ||
+      derivedPhases[derivedPhases.length - 1]
+    );
   }, [derivedPhases]);
 
   const visibleTasks = useMemo(() => {
     if (!activePhase) return [];
-    return derivedTasks.filter(t => t.phase === activePhase.id);
+    return derivedTasks.filter((t) => t.phase === activePhase.id);
   }, [derivedTasks, activePhase]);
 
   // Show skeleton while loading
@@ -1288,29 +1464,34 @@ const FreelancerProjectDetailContent = () => {
 
   return (
     <RoleAwareSidebar>
-
       <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
         <div className="w-full max-w-full mx-auto space-y-6">
           <FreelancerTopBar label={pageTitle} />
 
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground">{pageTitle}</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+                {pageTitle}
+              </h1>
               <p className="text-sm text-muted-foreground">
                 {isLoading
                   ? "Loading project details..."
                   : isFallback
-                    ? "Previewing layout with sample data."
-                    : "Track project progress and deliverables in one place."}
+                  ? "Previewing layout with sample data."
+                  : "Track project progress and deliverables in one place."}
               </p>
             </div>
             <div className="flex items-center gap-2">
-
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="default" size="sm" onClick={() => setReportOpen(true)}>
-                      <Headset />PC
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setReportOpen(true)}
+                    >
+                      <Headset />
+                      PC
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -1322,158 +1503,227 @@ const FreelancerProjectDetailContent = () => {
             </div>
           </div>
 
-
-
           {!isLoading && isFallback && (
             <div className="rounded-lg border border-border/60 bg-accent/40 px-4 py-3 text-sm text-muted-foreground">
-              Project details for this link are unavailable. Previewing layout with sample data.
+              Project details for this link are unavailable. Previewing layout
+              with sample data.
             </div>
           )}
-
-
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle className="text-lg font-semibold text-foreground">Project Progress</CardTitle>
-                  <span className="text-lg font-semibold text-amber-500">{Math.round(overallProgress)}% Complete</span>
+                  <CardTitle className="text-lg font-semibold text-foreground">
+                    Project Progress
+                  </CardTitle>
+                  <span className="text-lg font-semibold text-amber-500">
+                    {Math.round(overallProgress)}% Complete
+                  </span>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Dark Progress Bar with Handle */}
                   <div className="relative">
                     <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-400"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
                     {/* Circular Handle */}
-                    <div 
+                    <div
                       className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-md transition-all duration-300"
                       style={{ left: `calc(${overallProgress}% - 8px)` }}
                     />
                   </div>
-                  
+
                   {/* Phase Cards */}
                   <div className="grid grid-cols-4 gap-3">
                     {/* Phase 1 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${
-                      derivedPhases[0]?.status === 'completed' 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
-                        : derivedPhases[0]?.status === 'in-progress'
-                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
-                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                    }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                        derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
+                    <div
+                      className={`p-4 rounded-lg border-l-4 ${
+                        derivedPhases[0]?.status === "completed"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                          : derivedPhases[0]?.status === "in-progress"
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                          derivedPhases[0]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[0]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
                         Phase 1
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[0]?.name || 'Discovery'}
+                        {derivedPhases[0]?.name || "Discovery"}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${
-                        derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
-                        {derivedPhases[0]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {derivedPhases[0]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[0]?.status === 'completed' ? 'Completed' 
-                          : derivedPhases[0]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      <div
+                        className={`text-xs flex items-center gap-1.5 ${
+                          derivedPhases[0]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[0]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {derivedPhases[0]?.status === "completed" && (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        {derivedPhases[0]?.status === "in-progress" && (
+                          <Circle className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {derivedPhases[0]?.status === "completed"
+                          ? "Completed"
+                          : derivedPhases[0]?.status === "in-progress"
+                          ? "Active"
+                          : "Pending"}
                       </div>
                     </div>
-                    
+
                     {/* Phase 2 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${
-                      derivedPhases[1]?.status === 'completed' 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
-                        : derivedPhases[1]?.status === 'in-progress'
-                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
-                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                    }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                        derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
+                    <div
+                      className={`p-4 rounded-lg border-l-4 ${
+                        derivedPhases[1]?.status === "completed"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                          : derivedPhases[1]?.status === "in-progress"
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                          derivedPhases[1]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[1]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
                         Phase 2
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[1]?.name || 'Development'}
+                        {derivedPhases[1]?.name || "Development"}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${
-                        derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
-                        {derivedPhases[1]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {derivedPhases[1]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[1]?.status === 'completed' ? 'Completed' 
-                          : derivedPhases[1]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      <div
+                        className={`text-xs flex items-center gap-1.5 ${
+                          derivedPhases[1]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[1]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {derivedPhases[1]?.status === "completed" && (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        {derivedPhases[1]?.status === "in-progress" && (
+                          <Circle className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {derivedPhases[1]?.status === "completed"
+                          ? "Completed"
+                          : derivedPhases[1]?.status === "in-progress"
+                          ? "Active"
+                          : "Pending"}
                       </div>
                     </div>
-                    
+
                     {/* Phase 3 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${
-                      derivedPhases[2]?.status === 'completed' 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
-                        : derivedPhases[2]?.status === 'in-progress'
-                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
-                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                    }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                        derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
+                    <div
+                      className={`p-4 rounded-lg border-l-4 ${
+                        derivedPhases[2]?.status === "completed"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                          : derivedPhases[2]?.status === "in-progress"
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                          derivedPhases[2]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[2]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
                         Phase 3
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[2]?.name || 'Testing'}
+                        {derivedPhases[2]?.name || "Testing"}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${
-                        derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
-                        {derivedPhases[2]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {derivedPhases[2]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[2]?.status === 'completed' ? 'Completed' 
-                          : derivedPhases[2]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      <div
+                        className={`text-xs flex items-center gap-1.5 ${
+                          derivedPhases[2]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[2]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {derivedPhases[2]?.status === "completed" && (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        {derivedPhases[2]?.status === "in-progress" && (
+                          <Circle className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {derivedPhases[2]?.status === "completed"
+                          ? "Completed"
+                          : derivedPhases[2]?.status === "in-progress"
+                          ? "Active"
+                          : "Pending"}
                       </div>
                     </div>
-                    
+
                     {/* Phase 4 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${
-                      derivedPhases[3]?.status === 'completed' 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
-                        : derivedPhases[3]?.status === 'in-progress'
-                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
-                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                    }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                        derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
+                    <div
+                      className={`p-4 rounded-lg border-l-4 ${
+                        derivedPhases[3]?.status === "completed"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                          : derivedPhases[3]?.status === "in-progress"
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                          derivedPhases[3]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[3]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
                         Phase 4
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[3]?.name || 'Deployment'}
+                        {derivedPhases[3]?.name || "Deployment"}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${
-                        derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
-                        {derivedPhases[3]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {derivedPhases[3]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[3]?.status === 'completed' ? 'Completed' 
-                          : derivedPhases[3]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      <div
+                        className={`text-xs flex items-center gap-1.5 ${
+                          derivedPhases[3]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[3]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {derivedPhases[3]?.status === "completed" && (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        {derivedPhases[3]?.status === "in-progress" && (
+                          <Circle className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {derivedPhases[3]?.status === "completed"
+                          ? "Completed"
+                          : derivedPhases[3]?.status === "in-progress"
+                          ? "Active"
+                          : "Pending"}
                       </div>
                     </div>
                   </div>
@@ -1481,7 +1731,9 @@ const FreelancerProjectDetailContent = () => {
               </Card>
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-lg font-semibold text-foreground">Project Description</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-foreground">
+                    Project Description
+                  </CardTitle>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1500,30 +1752,63 @@ const FreelancerProjectDetailContent = () => {
               {/* All Tasks Grouped by Phase - Accordion */}
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-foreground">Project Tasks</CardTitle>
+                  <CardTitle className="text-lg text-foreground">
+                    Project Tasks
+                  </CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    {derivedTasks.filter((t) => t.status === "completed").length} of {derivedTasks.length} tasks completed
+                    {
+                      derivedTasks.filter((t) => t.status === "completed")
+                        .length
+                    }{" "}
+                    of {derivedTasks.length} tasks completed
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Accordion type="single" collapsible defaultValue={activePhase?.id} className="w-full">
+                  <Accordion
+                    type="single"
+                    collapsible
+                    defaultValue={activePhase?.id}
+                    className="w-full"
+                  >
                     {tasksByPhase.map((phaseGroup) => (
-                      <AccordionItem key={phaseGroup.phaseId} value={phaseGroup.phaseId} className="border-border/60">
+                      <AccordionItem
+                        key={phaseGroup.phaseId}
+                        value={phaseGroup.phaseId}
+                        className="border-border/60"
+                      >
                         <AccordionTrigger className="hover:no-underline py-3">
                           <div className="flex items-center gap-3 flex-1">
                             {getPhaseIcon(phaseGroup.phaseStatus)}
                             <div className="flex-1 text-left">
-                              <div className="font-semibold text-sm text-foreground">{phaseGroup.phaseName}</div>
+                              <div className="font-semibold text-sm text-foreground">
+                                {phaseGroup.phaseName}
+                              </div>
                               <div className="text-xs text-muted-foreground">
-                                {phaseGroup.tasks.filter((t) => t.status === "completed").length} of {phaseGroup.tasks.length} completed
+                                {
+                                  phaseGroup.tasks.filter(
+                                    (t) => t.status === "completed"
+                                  ).length
+                                }{" "}
+                                of {phaseGroup.tasks.length} completed
                               </div>
                             </div>
                             <Badge
-                              variant={phaseGroup.phaseStatus === "completed" ? "default" : "outline"}
-                              className={phaseGroup.phaseStatus === "completed" ? "bg-emerald-500 text-white" : ""}
+                              variant={
+                                phaseGroup.phaseStatus === "completed"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              className={
+                                phaseGroup.phaseStatus === "completed"
+                                  ? "bg-emerald-500 text-white"
+                                  : ""
+                              }
                             >
-                              {phaseGroup.phaseStatus === "completed" ? "Completed" :
-                                phaseGroup.phaseStatus === "in-progress" ? "In Progress" : "Pending"}
+                              {phaseGroup.phaseStatus === "completed"
+                                ? "Completed"
+                                : phaseGroup.phaseStatus === "in-progress"
+                                ? "In Progress"
+                                : "Pending"}
                             </Badge>
                           </div>
                         </AccordionTrigger>
@@ -1533,7 +1818,9 @@ const FreelancerProjectDetailContent = () => {
                               <div
                                 key={task.uniqueKey}
                                 className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent/60 transition-colors cursor-pointer"
-                                onClick={(e) => handleTaskClick(e, task.uniqueKey)}
+                                onClick={(e) =>
+                                  handleTaskClick(e, task.uniqueKey, task.title)
+                                }
                               >
                                 {task.status === "completed" ? (
                                   <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
@@ -1541,8 +1828,11 @@ const FreelancerProjectDetailContent = () => {
                                   <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                                 )}
                                 <span
-                                  className={`flex-1 text-sm ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"
-                                    }`}
+                                  className={`flex-1 text-sm ${
+                                    task.status === "completed"
+                                      ? "line-through text-muted-foreground"
+                                      : "text-foreground"
+                                  }`}
                                 >
                                   {task.title}
                                 </span>
@@ -1565,44 +1855,57 @@ const FreelancerProjectDetailContent = () => {
             <div className="space-y-4">
               {/* Client Info Card - Top of sidebar */}
               <ClientInfoCard client={project?.owner} />
-              <ClientAboutCard 
-                client={project?.owner} 
+              <ClientAboutCard
+                client={project?.owner}
                 project={project}
                 onUpdateLink={async (newLink) => {
-                    const response = await authFetch(`/projects/${projectId}`, {
-                        method: "PATCH",
-                        body: JSON.stringify({ externalLink: newLink })
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        setProject(prev => ({ ...prev, externalLink: data.data.externalLink }));
-                        toast.success("Project link updated");
-                    } else {
-                        toast.error("Failed to update link");
-                    }
+                  const response = await authFetch(`/projects/${projectId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ externalLink: newLink }),
+                  });
+                  if (response.ok) {
+                    const data = await response.json();
+                    setProject((prev) => ({
+                      ...prev,
+                      externalLink: data.data.externalLink,
+                    }));
+                    toast.success("Project link updated");
+                  } else {
+                    toast.error("Failed to update link");
+                  }
                 }}
               />
 
               {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="border-b border-border/60">
-                  <CardTitle className="text-base text-foreground">Project Chat</CardTitle>
-                  <CardDescription className="text-muted-foreground">Ask questions and share documents</CardDescription>
+                  <CardTitle className="text-base text-foreground">
+                    Project Chat
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    Ask questions and share documents
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto space-y-3 py-4">
                   {messages.map((message, index) => {
                     const isSelf = message.sender === "user";
                     const isAssistant = message.sender === "assistant";
-                    const align = isAssistant || !isSelf ? "justify-start" : "justify-end";
-                    
+                    const align =
+                      isAssistant || !isSelf ? "justify-start" : "justify-end";
+
                     const prevMessage = messages[index - 1];
-                    const currentDate = message.createdAt ? new Date(message.createdAt) : new Date();
-                    const prevDate = prevMessage?.createdAt ? new Date(prevMessage.createdAt) : null;
-                    const showDateDivider = !prevDate || !isSameDay(currentDate, prevDate);
+                    const currentDate = message.createdAt
+                      ? new Date(message.createdAt)
+                      : new Date();
+                    const prevDate = prevMessage?.createdAt
+                      ? new Date(prevMessage.createdAt)
+                      : null;
+                    const showDateDivider =
+                      !prevDate || !isSameDay(currentDate, prevDate);
 
                     return (
                       <React.Fragment key={message.id || index}>
-                         {showDateDivider && (
+                        {showDateDivider && (
                           <div className="flex justify-center my-4">
                             <span className="bg-muted/40 px-3 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide text-muted-foreground/70">
                               {isToday(currentDate)
@@ -1616,41 +1919,62 @@ const FreelancerProjectDetailContent = () => {
                         <div className={`flex ${align}`}>
                           <div
                             className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${
-                              isSelf 
-                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm" 
+                              isSelf
+                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
                                 : "bg-muted text-foreground rounded-tl-sm border border-border/60"
                             }`}
                           >
-                           {message.sender === "other" && message.senderName && (
-                              <span className="text-[10px] opacity-70 mb-1 block">{message.senderName}</span>
-                            )}
-                            
+                            {message.sender === "other" &&
+                              message.senderName && (
+                                <span className="text-[10px] opacity-70 mb-1 block">
+                                  {message.senderName}
+                                </span>
+                              )}
+
                             {message.text && (
                               <p className="leading-relaxed whitespace-pre-wrap break-words">
                                 {message.text}
                               </p>
                             )}
-                            
+
                             {message.attachment && (
                               <div className="mt-2">
-                                {message.attachment.type?.startsWith("image/") || message.attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                   <a href={message.attachment.url} target="_blank" rel="noopener noreferrer" className="block">
-                                    <img 
-                                      src={message.attachment.url} 
-                                      alt={message.attachment.name || "Attachment"} 
+                                {message.attachment.type?.startsWith(
+                                  "image/"
+                                ) ||
+                                message.attachment.url?.match(
+                                  /\.(jpg|jpeg|png|gif|webp)$/i
+                                ) ? (
+                                  <a
+                                    href={message.attachment.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block"
+                                  >
+                                    <img
+                                      src={message.attachment.url}
+                                      alt={
+                                        message.attachment.name || "Attachment"
+                                      }
                                       className="max-w-[180px] max-h-[180px] rounded-lg object-cover"
                                     />
                                   </a>
                                 ) : (
-                                  <a 
+                                  <a
                                     href={message.attachment.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${!isSelf ? "border border-border/50 bg-background/50" : ""}`}
+                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${
+                                      !isSelf
+                                        ? "border border-border/50 bg-background/50"
+                                        : ""
+                                    }`}
                                   >
                                     <FileText className="h-4 w-4 shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate max-w-[140px]">{message.attachment.name || "File"}</p>
+                                      <p className="text-xs font-medium truncate max-w-[140px]">
+                                        {message.attachment.name || "File"}
+                                      </p>
                                     </div>
                                   </a>
                                 )}
@@ -1701,7 +2025,12 @@ const FreelancerProjectDetailContent = () => {
                     className="hidden"
                     accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
                   />
-                  <Button onClick={handleSendMessage} size="sm" variant="default" className="h-9 w-9 p-0">
+                  <Button
+                    onClick={handleSendMessage}
+                    size="sm"
+                    variant="default"
+                    className="h-9 w-9 p-0"
+                  >
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
@@ -1719,23 +2048,27 @@ const FreelancerProjectDetailContent = () => {
                   {docs.length > 0 ? (
                     <div className="space-y-2">
                       {docs.map((doc, idx) => {
-                        const isImage = doc.type?.startsWith("image/") || doc.url?.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+                        const isImage =
+                          doc.type?.startsWith("image/") ||
+                          doc.url?.match(/\.(jpg|jpeg|png|webp|gif)$/i);
                         return (
-                          <a 
-                            key={idx} 
-                            href={doc.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                          <a
+                            key={idx}
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20 hover:bg-muted/40 transition-colors"
                           >
                             {isImage ? (
-                               <Image className="w-4 h-4 text-blue-500 shrink-0" />
+                              <Image className="w-4 h-4 text-blue-500 shrink-0" />
                             ) : (
-                               <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+                              <FileText className="w-4 h-4 text-amber-500 shrink-0" />
                             )}
                             <span className="truncate flex-1">{doc.name}</span>
                             <span className="text-xs text-muted-foreground">
-                              {doc.createdAt ? format(new Date(doc.createdAt), "MMM d, yyyy") : ""}
+                              {doc.createdAt
+                                ? format(new Date(doc.createdAt), "MMM d, yyyy")
+                                : ""}
                             </span>
                           </a>
                         );
@@ -1743,7 +2076,8 @@ const FreelancerProjectDetailContent = () => {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      No documents attached yet. Upload project documentation here.
+                      No documents attached yet. Upload project documentation
+                      here.
                     </p>
                   )}
                 </CardContent>
@@ -1760,15 +2094,24 @@ const FreelancerProjectDetailContent = () => {
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                   <div className="flex justify-between items-center pb-2 border-b border-border/60">
                     <span>Total Budget</span>
-                    <span className="font-semibold text-foreground">{project?.currency || "₹"}{totalBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-foreground">
+                      {project?.currency || "₹"}
+                      {totalBudget.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-border/60">
                     <span>Paid</span>
-                    <span className="font-semibold text-emerald-600">{project?.currency || "₹"}{spentBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-emerald-600">
+                      {project?.currency || "₹"}
+                      {spentBudget.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Remaining</span>
-                    <span className="font-semibold text-foreground">{project?.currency || "₹"}{remainingBudget.toLocaleString()}</span>
+                    <span className="font-semibold text-foreground">
+                      {project?.currency || "₹"}
+                      {remainingBudget.toLocaleString()}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -1781,18 +2124,26 @@ const FreelancerProjectDetailContent = () => {
           <DialogHeader>
             <DialogTitle>Contact your Project Catalyst</DialogTitle>
             <DialogDescription>
-              Describe the issue or dispute regarding this project. A Project Manager will get involved to resolve it.
+              Describe the issue or dispute regarding this project. A Project
+              Manager will get involved to resolve it.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {project?.manager && (
               <div className="bg-muted/50 p-3 rounded-md mb-2 border flex items-center gap-3">
                 <Avatar className="h-10 w-10 border bg-background">
-                  <AvatarImage src={project.manager.avatar} alt={project.manager.fullName} />
-                  <AvatarFallback className="bg-primary/10 text-primary">PM</AvatarFallback>
+                  <AvatarImage
+                    src={project.manager.avatar}
+                    alt={project.manager.fullName}
+                  />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    PM
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-foreground mb-1">{project.manager.fullName}</span>
+                  <span className="text-sm font-semibold text-foreground mb-1">
+                    {project.manager.fullName}
+                  </span>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Mail className="w-3 h-3" />
                     <span>{project.manager.email}</span>
@@ -1807,8 +2158,8 @@ const FreelancerProjectDetailContent = () => {
               </div>
             )}
             <div className="flex flex-col gap-2">
-               <label className="text-sm font-medium">Add Note</label>
-               <Textarea
+              <label className="text-sm font-medium">Add Note</label>
+              <Textarea
                 placeholder="Add a note..."
                 value={issueText}
                 onChange={(e) => setIssueText(e.target.value)}
@@ -1816,7 +2167,9 @@ const FreelancerProjectDetailContent = () => {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Project Manager Availability</label>
+              <label className="text-sm font-medium">
+                Project Manager Availability
+              </label>
               <div className="flex gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1859,7 +2212,9 @@ const FreelancerProjectDetailContent = () => {
                             </SelectItem>
                           ))
                         ) : (
-                          <div className="p-2 text-xs text-muted-foreground text-center">No slots available</div>
+                          <div className="p-2 text-xs text-muted-foreground text-center">
+                            No slots available
+                          </div>
                         )}
                       </SelectGroup>
                     </SelectContent>
@@ -1872,18 +2227,23 @@ const FreelancerProjectDetailContent = () => {
             <Button variant="outline" onClick={() => setReportOpen(false)}>
               Cancel
             </Button>
-            <Button variant="default" onClick={handleReport} disabled={isReporting || !issueText.trim()}>
+            <Button
+              variant="default"
+              onClick={handleReport}
+              disabled={isReporting || !issueText.trim()}
+            >
               {isReporting ? "Submit" : "Submit"}
             </Button>
           </DialogFooter>
         </DialogContent>
-
       </Dialog>
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Project Details</DialogTitle>
-            <DialogDescription>Full project description and scope.</DialogDescription>
+            <DialogDescription>
+              Full project description and scope.
+            </DialogDescription>
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4">
             {renderProjectDescription({ showExtended: true })}
