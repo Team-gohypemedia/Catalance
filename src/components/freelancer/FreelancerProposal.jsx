@@ -1,7 +1,17 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Clock, FileText, MoreVertical, XCircle, Loader2 } from "lucide-react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  CheckCircle2,
+  Clock,
+  FileText,
+  XCircle,
+  Search,
+  ExternalLink,
+  Trash2,
+  Edit2,
+  MessageSquare,
+} from "lucide-react";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +21,7 @@ import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -19,55 +30,86 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const stripUnavailableSections = (text = "") => {
-  const withoutTags = text.replace(/\[PROPOSAL_DATA\]|\[\/PROPOSAL_DATA\]/g, "");
-  const filtered = [];
+// --- Helper Components & Functions ---
 
-  const shouldDropLine = (line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return false;
-    if (/not provided/i.test(trimmed) || /not specified/i.test(trimmed)) return true;
-    // Drop leftover placeholder tokens like [Portfolio]
-    if (/^\[[^\]]+\]$/.test(trimmed)) return true;
-    return false;
-  };
+/**
+ * Extracts key details (Budget, Timeline) from the proposal text content.
+ * This ensures consistency between the card view and the details dialog.
+ */
+const extractProposalDetails = (content = "", budgetNum = null) => {
+  let budget = "Not specified";
+  let timeline = "Not specified";
 
-  withoutTags.split("\n").forEach((line) => {
-    if (shouldDropLine(line)) return;
-
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      if (filtered[filtered.length - 1] === "") return;
-      filtered.push("");
-      return;
+  // 1. Try to find Budget
+  // If we have a numeric budget from the API, use that formatted
+  if (budgetNum) {
+    budget = `₹${parseInt(budgetNum).toLocaleString()}`;
+  } else {
+    // Otherwise look in text
+    const budgetMatch = content.match(
+      /(?:Budget|Price|Cost)[\s:_\-\n]*((?:₹|INR|Rs\.?)?\s*[\d,]+(?:k)?)/i
+    );
+    if (budgetMatch) {
+      budget = budgetMatch[1];
     }
+  }
 
-    filtered.push(trimmed);
-  });
+  // 2. Try to find Timeline
+  const timelineMatch = content.match(
+    /(?:Timeline|Duration|Time)[\s:_\-\n]*([^\n\.,]+)/i
+  );
+  if (timelineMatch) {
+    timeline = timelineMatch[1].trim();
+  }
 
-  return filtered.join("\n").trim();
-  return filtered.join("\n").trim();
+  return { budget, timeline };
 };
 
-const normalizeBudgetText = (text = "") => {
-  // Look for lines starting with "Budget: INR X" or "Budget: X"
-  // and replace X with 0.7 * X (Platform Fee deduction)
-  return text.replace(/Budget:\s*(?:INR\s*)?([0-9,]+)/i, (match, value) => {
-    let cleanValue = value.replace(/,/g, "");
-    let num = parseFloat(cleanValue);
-    
-    if (!isNaN(num)) {
-       // Apply 0.7 reduction
-       const deducted = Math.round(num * 0.7);
-       return `Budget: INR ${deducted}`;
-    }
-    
-    return match;
-  });
+/**
+ * Renders proposal content with basic markdown-like formatting.
+ * - Lines starting with '## ' become bold headers.
+ * - Lines starting with '- ' become bullet points.
+ */
+const ProposalContentRenderer = ({ content }) => {
+  if (!content)
+    return <p className="text-muted-foreground">No content provided.</p>;
+
+  // Split content by newline to process each line
+  const lines = content.split("\n");
+
+  return (
+    <div className="space-y-1 text-sm text-foreground leading-relaxed">
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("## ")) {
+          return (
+            <h4 key={index} className="font-bold text-base mt-4 mb-2">
+              {trimmed.replace(/^##\s+/, "")}
+            </h4>
+          );
+        }
+        if (trimmed.startsWith("- ")) {
+          return (
+            <div key={index} className="flex gap-2 ml-2">
+              <span className="text-primary mt-1.5">•</span>
+              <span>{trimmed.replace(/^- \s*/, "")}</span>
+            </div>
+          );
+        }
+        // Empty lines
+        if (!trimmed) {
+          return <br key={index} />;
+        }
+        // Regular paragraph text
+        return <p key={index}>{line}</p>;
+      })}
+    </div>
+  );
 };
+
+// Start of Main Component Helpers
 
 const statusConfig = {
   pending: {
@@ -85,11 +127,11 @@ const statusConfig = {
     dotColor: "bg-blue-500",
   },
   accepted: {
-    label: "Accepted",
+    label: "Active",
     icon: CheckCircle2,
     className:
-      "bg-green-500/15 text-green-700 border-green-200 dark:text-green-400 dark:border-green-500/30",
-    dotColor: "bg-green-500",
+      "bg-emerald-500/15 text-emerald-700 border-emerald-200 dark:text-emerald-400 dark:border-emerald-500/30",
+    dotColor: "bg-emerald-500",
   },
   rejected: {
     label: "Rejected",
@@ -117,7 +159,7 @@ const normalizeProposalStatus = (status = "") => {
       return "awarded";
     case "RECEIVED":
     case "PENDING":
-      return "received";
+      return "pending"; // Group received/pending together
     default:
       return "pending";
   }
@@ -126,626 +168,466 @@ const normalizeProposalStatus = (status = "") => {
 const mapApiProposal = (proposal = {}) => {
   const clientName =
     proposal.project?.owner?.fullName ||
-    proposal.project?.owner?.name ||
-    proposal.project?.owner?.email ||
     proposal.client?.fullName ||
-    proposal.client?.name ||
-    proposal.client?.email ||
-    proposal.owner?.fullName ||
-    proposal.owner?.name ||
-    proposal.owner?.email ||
-    proposal.user?.fullName ||
-    proposal.user?.name ||
-    proposal.user?.email ||
     proposal.clientName ||
-    proposal.ownerName ||
     proposal.senderName ||
     "Client";
+
+  const clientAvatar =
+    proposal.project?.owner?.avatar ||
+    proposal.client?.avatar ||
+    proposal.senderAvatar ||
+    null;
+
   return {
     id: proposal.id,
     title: proposal.project?.title || proposal.title || "Proposal",
-    category: proposal.project?.description ? "Project" : proposal.category || "General",
+    category: proposal.project?.description
+      ? "Project"
+      : proposal.category || "General",
     status: normalizeProposalStatus(proposal.status || "PENDING"),
-    recipientName: clientName,
-    recipientId:
-      proposal.project?.owner?.id ||
-      proposal.client?.id ||
-      proposal.owner?.id ||
-      proposal.user?.id ||
-      proposal.ownerId ||
-      "CLIENT",
+    clientName: clientName,
+    clientAvatar: clientAvatar,
+    recipientId: proposal.ownerId || "CLIENT", // Owner is client
     projectId: proposal.project?.id || null,
-    freelancerId: proposal.freelancerId || null,
     submittedDate: proposal.createdAt
       ? new Date(proposal.createdAt).toLocaleDateString()
-      : new Date().toLocaleDateString(),
+      : "", // No static fallback
     proposalId: proposal.id
       ? `PRP-${proposal.id.slice(0, 6).toUpperCase()}`
       : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
-    // Display budget as 30% less (Platform Fee deduction)
+    // Display budget as 30% less (Platform Fee deduction) for freelancer view?
+    // User logic: proposal.amount ? Math.floor(Number(proposal.amount) * 0.7) : null
     budget: proposal.amount ? Math.floor(Number(proposal.amount) * 0.7) : null,
-    content: normalizeBudgetText(stripUnavailableSections(
+    content:
       proposal.content ||
-        proposal.description ||
-        proposal.summary ||
-        proposal.project?.description ||
-        ""
-    )),
+      proposal.description ||
+      proposal.summary ||
+      proposal.project?.description ||
+      "",
   };
 };
 
-const ProposalCard = ({ proposal, onStatusChange, onOpen, isProcessing }) => {
-  const [imgError, setImgError] = useState(false);
-  const config = statusConfig[proposal.status];
-  const StatusIcon = config.icon;
+const ProposalRowCard = ({ proposal, onOpen, onDelete }) => {
+  const config = statusConfig[proposal.status] || statusConfig.pending;
+  const { budget, timeline } = extractProposalDetails(
+    proposal.content,
+    proposal.budget
+  );
 
-  const handleMove = (nextStatus) => onStatusChange(proposal.id, nextStatus);
-  const handleDelete = () => onStatusChange(proposal.id, "delete");
+  // Status Badge Style (Outline to match screenshot)
+  // Screenshot shows "ACCEPTED" in green outline/text on dark bg
+  const badgeStyle = "bg-transparent border bg-opacity-10 dark:bg-opacity-10";
 
   return (
-    <Card className="group overflow-hidden border border-border/50 bg-card/70 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
-      <CardContent className="p-5 lg:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-          <div className="relative h-16 w-16 flex-shrink-0 rounded-2xl border border-border/50 bg-muted/60 shadow-inner overflow-hidden">
-            {!imgError && proposal.avatar ? (
-                <img
-                    src={proposal.avatar}
-                    alt={proposal.recipientName}
-                    className="h-full w-full object-cover"
-                    onError={() => setImgError(true)}
-                />
-            ) : (
-                <div className="flex h-full w-full items-center justify-center bg-primary/10 text-primary font-bold text-xl">
-                    {proposal.recipientName?.charAt(0).toUpperCase()}
-                </div>
-            )}
-            <span
-              className={`absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full ring-2 ring-card ${config.dotColor}`}
-            />
-          </div>
+    <div className="group relative flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-xl border border-border/50 bg-card/40 hover:bg-card hover:border-primary/20 transition-all duration-300 shadow-sm">
+      {/* Left Content Section */}
+      <div className="flex-1 space-y-4 w-full">
+        {/* Top Row: Badge & Date */}
+        <div className="flex items-center gap-3">
+          <Badge
+            variant="outline"
+            className={`uppercase text-[10px] font-bold tracking-wider px-2 py-1 rounded-md ${config.className.replace(
+              "bg-",
+              "bg-opacity-10 "
+            )}`}
+          >
+            {config.label}
+          </Badge>
+          <span className="text-xs text-muted-foreground font-medium">
+            {proposal.submittedDate}
+          </span>
+        </div>
 
-          <div className="flex-1 min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-lg font-semibold text-foreground">
-                {proposal.title}
-              </h3>
-              <Badge
-                variant="outline"
-                className={`flex items-center gap-1 border px-2 py-0.5 text-xs font-medium ${config.className}`}
-              >
-                <StatusIcon className="h-3 w-3" />
-                {config.label}
-              </Badge>
+        {/* Title & Client */}
+        <div className="space-y-1">
+          <h3 className="text-xl font-bold text-foreground tracking-tight">
+            {proposal.title}
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Client:</span>
+            <div className="flex items-center gap-1.5 text-foreground font-medium">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={proposal.clientAvatar} />
+                <AvatarFallback className="text-[10px]">
+                  {proposal.clientName?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              {proposal.clientName}
             </div>
-
-            <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <p className="uppercase tracking-widest text-[10px]">
-                  Client
-                </p>
-                <p className="font-medium text-foreground">
-                  {proposal.recipientName}
-                </p>
-              </div>
-              <div>
-                <p className="uppercase tracking-widest text-[10px]">
-                  Submitted
-                </p>
-                <p className="font-medium text-foreground">
-                  {proposal.submittedDate}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-shrink-0 items-center gap-2 self-start lg:self-auto">
-            <Button
-              size="sm"
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => onOpen?.(proposal)}
-            >
-              Open
-            </Button>
-            {proposal.status === "pending" && (
-              <Button
-                size="sm"
-                variant="secondary"
-                className="border-border"
-                onClick={() => handleMove("received")}
-                disabled={isProcessing}
-              >
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark received"}
-              </Button>
-            )}
-            {proposal.status === "received" && (
-              <>
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => handleMove("accepted")}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Accept"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-border"
-                  onClick={() => handleMove("rejected")}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reject"}
-                </Button>
-              </>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-border"
-              onClick={handleDelete}
-              disabled={isProcessing}
-            >
-               {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
-            </Button>
-            <button className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden">
-              <MoreVertical className="h-4 w-4" />
-            </button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Metrics Row */}
+        <div className="flex flex-wrap items-center gap-x-12 gap-y-4 pt-2">
+          {/* Agreed Amount */}
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+              Agreed Amount
+            </p>
+            <p className="text-base font-bold text-foreground">{budget}</p>
+          </div>
+
+          {/* Project Status (Mapped from proposal status) */}
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+              Project Status
+            </p>
+            <p
+              className={`text-base font-medium ${
+                proposal.status === "accepted"
+                  ? "text-blue-400"
+                  : "text-foreground"
+              }`}
+            >
+              {proposal.status === "accepted" ? "In Progress" : config.label}
+            </p>
+          </div>
+
+          {/* Delivery */}
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+              Delivery
+            </p>
+            <p className="text-base font-bold text-foreground">{timeline}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Action Section */}
+      <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
+        <Button
+          className="w-full md:w-auto bg-amber-400 hover:bg-amber-500 text-black font-semibold rounded-lg px-6"
+          onClick={() => onOpen(proposal)}
+        >
+          <ExternalLink className="w-4 h-4 mr-2" />
+          View Details
+        </Button>
+        {onDelete && proposal.status !== "accepted" && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-destructive transition-colors hidden md:flex"
+            onClick={() => onDelete(proposal.id)}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+    </div>
   );
 };
 
-// Skeleton for proposal cards while loading
-const ProposalCardSkeleton = () => (
-  <Card className="overflow-hidden border border-border/50 bg-card/70 shadow-sm">
-    <CardContent className="p-5 lg:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-        <Skeleton className="h-16 w-16 rounded-2xl" />
-        <div className="flex-1 min-w-0 space-y-3">
-          <div className="flex gap-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-5 w-20 rounded-full" />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-1">
-              <Skeleton className="h-3 w-12" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-            <div className="space-y-1">
-              <Skeleton className="h-3 w-12" />
-              <Skeleton className="h-4 w-20" />
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-8 w-16" />
-          <Skeleton className="h-8 w-24" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const Section = ({ title, items, onStatusChange, onOpenProposal, empty, isLoading, processingId }) => (
-  <div className="space-y-3">
-    <div className="flex items-center justify-between">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <Badge variant="outline">{isLoading ? '-' : items.length}</Badge>
-    </div>
-    {isLoading ? (
-      <div className="space-y-3">
-        {[1, 2].map((i) => <ProposalCardSkeleton key={i} />)}
-      </div>
-    ) : items.length === 0 ? (
-      <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
-        {empty}
-      </div>
-    ) : (
-      <div className="space-y-3">
-        {items.map((proposal) => (
-          <ProposalCard
-            key={proposal.id}
-            proposal={proposal}
-            onStatusChange={onStatusChange}
-            onOpen={onOpenProposal}
-            isProcessing={processingId === proposal.id}
-          />
-        ))}
-      </div>
-    )}
-  </div>
-);
-
-const loadStoredProposals = () => {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem("freelancer:receivedProposals") || "[]");
-  } catch {
-    return [];
-  }
-};
-
-const saveStoredProposals = (proposals) => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("freelancer:receivedProposals", JSON.stringify(proposals));
-};
-
-const mapLocalProposal = (proposal = {}) => ({
-  id: proposal.id,
-  title: proposal.title || "Proposal",
-  category: proposal.category || "General",
-  status: normalizeProposalStatus(proposal.status || "PENDING"),
-  recipientName:
-    proposal.clientName ||
-    proposal.preparedFor ||
-    proposal.senderName ||
-    proposal.ownerName ||
-    proposal.recipientName ||
-    "Client",
-  recipientId: proposal.recipientId || proposal.ownerId || "CLIENT",
-  projectId: proposal.projectId || null,
-  freelancerId: proposal.freelancerId || null,
-  submittedDate: proposal.submittedDate || new Date().toLocaleDateString(),
-  proposalId: proposal.proposalId || `PRP-${(proposal.id || "").slice(0, 6)}`,
-    // Display budget as 30% less (Platform Fee deduction)
-  budget: proposal.budget || (proposal.amount ? Math.floor(Number(proposal.amount) * 0.7) : null),
-  content: normalizeBudgetText(stripUnavailableSections(proposal.content || "")),
-  isLocal: true,
-});
+// Main Component
 
 const FreelancerProposalContent = ({ filter = "all" }) => {
   const { authFetch, isAuthenticated } = useAuth();
   const { notifications } = useNotifications();
   const [proposals, setProposals] = useState([]);
   const [selectedProposal, setSelectedProposal] = useState(null);
-  const [isLoadingProposal, setIsLoadingProposal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
 
-  const syncClientLocalCache = (proposalId, status) => {
-    if (typeof window === "undefined" || !proposalId) return;
-    try {
-      const stored =
-        JSON.parse(window.localStorage.getItem("client:sentProposals") || "[]") ||
-        [];
-      const updated = stored.map((item) => {
-        const matches =
-          item?.id === proposalId ||
-          item?.proposalId === proposalId ||
-          (item?.proposalId && proposalId?.startsWith(item.proposalId.replace(/^PRP-/, "")));
-        return matches ? { ...item, status } : item;
-      });
-      window.localStorage.setItem("client:sentProposals", JSON.stringify(updated));
-    } catch (error) {
-      console.warn("Unable to sync client cache for proposal", proposalId, error);
-    }
-  };
+  // Tab State
+  const [activeTab, setActiveTab] = useState("active");
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (filter === "accepted") setActiveTab("active");
+    else if (filter === "pending" || filter === "received")
+      setActiveTab("pending");
+    else if (filter === "rejected") setActiveTab("rejected");
+  }, [filter]);
+
+  const fetchProposals = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setIsLoading(true);
+    try {
+      const response = await authFetch("/proposals");
+      const payload = await response.json().catch(() => null);
+      const remote = Array.isArray(payload?.data) ? payload.data : [];
+      setProposals(remote.map(mapApiProposal));
+    } catch (error) {
+      console.error("Failed to load freelancer proposals:", error);
+      toast.error("Failed to load proposals.");
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    const fetchProposals = async () => {
-      setIsLoading(true);
-      try {
-        const response = await authFetch("/proposals");
-        const payload = await response.json().catch(() => null);
-        const remote = Array.isArray(payload?.data) ? payload.data : [];
-        setProposals(remote.map(mapApiProposal));
-      } catch (error) {
-        console.error("Failed to load freelancer proposals from API:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProposals();
   }, [authFetch, isAuthenticated]);
 
-  // Listen for "Project Awarded to Another" notifications in real-time
   useEffect(() => {
-    if (!notifications.length) return;
-    
-    // Find any recent "awarded" notifications
-    const awardedNotifs = notifications.filter(
-      n => n.type === "proposal" && 
-           (n.title?.includes("Awarded to Another") || n.data?.status === "REJECTED")
-    );
-    
-    if (awardedNotifs.length === 0) return;
-    
-    // Update proposals that match the projectId in the notification
-    awardedNotifs.forEach(notif => {
-      const projectId = notif.data?.projectId;
-      if (!projectId) return;
-      
-      setProposals(prev => 
-        prev.map(p => 
-          p.project?.id === projectId || p.projectId === projectId 
-            ? { ...p, status: "awarded" } 
-            : p
-        )
+    fetchProposals();
+  }, [fetchProposals]);
+
+  // Real-time updates logic (Optional, kept simpler)
+  useEffect(() => {
+    if (notifications.length) {
+      // Could trigger refetch or optimistic update
+      // For now, simple re-fetch on relevant notification
+      const hasProposalUpdate = notifications.some(
+        (n) => n.type === "proposal"
       );
-    });
-  }, [notifications]);
+      if (hasProposalUpdate) fetchProposals();
+    }
+  }, [notifications, fetchProposals]);
 
-  const grouped = useMemo(() => {
-    return proposals.reduce(
-      (acc, proposal) => {
-        acc[proposal.status] = [...(acc[proposal.status] || []), proposal];
-        return acc;
-      },
-      { pending: [], received: [], accepted: [], rejected: [], awarded: [] }
-    );
-  }, [proposals]);
-
-  const handleStatusChange = async (id, nextStatus) => {
-    setProcessingId(id);
-    if (nextStatus === "delete") {
+  const handleDelete = useCallback(
+    async (id) => {
       try {
         await authFetch(`/proposals/${id}`, { method: "DELETE" });
         setProposals((prev) => prev.filter((p) => p.id !== id));
-        setSelectedProposal((prev) => (prev?.id === id ? null : prev));
+        toast.success("Proposal deleted");
+        if (selectedProposal?.id === id) setSelectedProposal(null);
       } catch (error) {
-        console.error("Failed to delete proposal:", error);
-        toast.error("Unable to delete proposal. Please try again.");
+        console.error("Delete failed:", error);
+        toast.error("Could not delete proposal");
       }
-      return;
-    }
+    },
+    [authFetch, selectedProposal]
+  );
 
-    const apiStatus =
-      nextStatus === "received"
-        ? "PENDING"
-        : nextStatus === "accepted"
-        ? "ACCEPTED"
-        : nextStatus === "rejected"
-        ? "REJECTED"
-        : "PENDING";
+  const handleStatusChange = async (id, nextStatus) => {
+    setProcessingId(id);
+    const apiStatus = nextStatus.toUpperCase();
 
     try {
       const response = await authFetch(`/proposals/${id}/status`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ status: apiStatus })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: apiStatus }),
       });
 
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
-        const message =
-          errorPayload?.message ||
-          errorPayload?.error ||
-          "Unable to update proposal status.";
-        throw new Error(message);
+      if (!response.ok) throw new Error("Status update failed");
+
+      // Update local state
+      setProposals((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, status: normalizeProposalStatus(nextStatus) }
+            : p
+        )
+      );
+
+      // Update selected proposal if open
+      if (selectedProposal?.id === id) {
+        setSelectedProposal((prev) => ({
+          ...prev,
+          status: normalizeProposalStatus(nextStatus),
+        }));
       }
 
-      const payload = await response.json().catch(() => null);
-      const apiProposal = payload?.data ? mapApiProposal(payload.data) : null;
-      if (apiProposal) {
-        setProposals((prev) =>
-          prev.map((proposal) => (proposal.id === id ? apiProposal : proposal))
-        );
-        setSelectedProposal((prev) => (prev?.id === id ? apiProposal : prev));
-      }
+      toast.success(`Proposal marked as ${nextStatus}`);
     } catch (error) {
-      console.error("Failed to persist proposal status:", error);
-      // Check if it's a "already awarded" error (409 conflict)
-      const isAlreadyAwarded = error?.message?.toLowerCase().includes("already") || 
-                               error?.message?.toLowerCase().includes("awarded");
-      if (isAlreadyAwarded) {
-        // Update the local proposal to show "awarded to another"
-        setProposals((prev) =>
-          prev.map((proposal) =>
-            proposal.id === id ? { ...proposal, status: "awarded" } : proposal
-          )
-        );
-        toast.error("This project has already been awarded to another freelancer.");
-      } else {
-        toast.error(error?.message || "Unable to update proposal status.");
-      }
+      console.error("Status update error:", error);
+      toast.error("Could not update status");
     } finally {
       setProcessingId(null);
     }
   };
 
+  // Grouping
+  const grouped = useMemo(() => {
+    const groups = {
+      active: [],
+      pending: [],
+      rejected: [],
+    };
 
-  const handleOpenProposal = async (proposal) => {
-    setSelectedProposal(proposal);
-    if (!proposal?.id || proposal.isLocal) return;
-    setIsLoadingProposal(true);
-    try {
-      const response = await authFetch(`/proposals/${proposal.id}`);
-      const payload = await response.json().catch(() => null);
-      if (payload?.data) {
-        setSelectedProposal(mapApiProposal(payload.data));
-        // hydrate local cache with fresh content for this proposal if it exists locally
-        try {
-          const stored = loadStoredProposals();
-          const idx = stored.findIndex((p) => p.id === proposal.id);
-          if (idx >= 0) {
-            stored[idx] = mapApiProposal(payload.data);
-            saveStoredProposals(stored);
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load proposal details:", error);
-      toast.error("Unable to load full proposal details right now.");
-    } finally {
-      setIsLoadingProposal(false);
-    }
-  };
-  const handleCloseProposal = () => setSelectedProposal(null);
+    proposals.forEach((p) => {
+      if (p.status === "accepted") groups.active.push(p);
+      else if (p.status === "rejected" || p.status === "awarded")
+        groups.rejected.push(p);
+      else groups.pending.push(p); // pending or received
+    });
 
-  const allowedFilters = ["pending", "received", "accepted", "rejected"];
-  const sectionsToRender =
-    filter === "all" || !allowedFilters.includes(filter)
-      ? ["pending", "received", "accepted", "rejected"]
-      : [filter];
+    return groups;
+  }, [proposals]);
 
   return (
     <div className="space-y-6 p-6">
       <FreelancerTopBar />
 
-      <div className="space-y-8">
-        {sectionsToRender.includes("pending") && (
-          <Section
-            title="Pending"
-            items={grouped.pending}
-            onStatusChange={handleStatusChange}
-            onOpenProposal={handleOpenProposal}
-            empty="No pending proposals right now."
-            isLoading={isLoading}
-            processingId={processingId}
-          />
-        )}
-        {sectionsToRender.includes("received") && (
-          <Section
-            title="Received"
-            items={grouped.received}
-            onStatusChange={handleStatusChange}
-            onOpenProposal={handleOpenProposal}
-            empty="Nothing has been marked received yet."
-            isLoading={isLoading}
-            processingId={processingId}
-          />
-        )}
-        {sectionsToRender.includes("accepted") && (
-          <Section
-            title="Accepted"
-            items={grouped.accepted}
-            onStatusChange={handleStatusChange}
-            onOpenProposal={handleOpenProposal}
-            empty="Accepted proposals will appear here."
-            isLoading={isLoading}
-            processingId={processingId}
-          />
-        )}
-        {sectionsToRender.includes("rejected") && (
-          <Section
-            title="Rejected"
-            items={grouped.rejected}
-            onStatusChange={handleStatusChange}
-            onOpenProposal={handleOpenProposal}
-            empty="Rejected items will show here."
-            isLoading={isLoading}
-            processingId={processingId}
-          />
-        )}
-        {/* Show awarded to another section if there are any */}
-        {grouped.awarded.length > 0 && (
-          <Section
-            title="Awarded to Another Freelancer"
-            items={grouped.awarded}
-            onStatusChange={handleStatusChange}
-            onOpenProposal={handleOpenProposal}
-            empty=""
-            isLoading={isLoading}
-            processingId={processingId}
-          />
-        )}
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight mb-2">
+            My Proposals
+          </h2>
+          <p className="text-muted-foreground">
+            Manage your received offers and active contracts.
+          </p>
+        </div>
+
+        <Tabs
+          defaultValue="active"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
+          <TabsList className="bg-transparent p-0 h-auto w-full justify-start gap-4 mb-6">
+            <TabsTrigger
+              value="active"
+              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-green-500 data-[state=active]:text-white data-[state=active]:shadow-md"
+            >
+              Active Proposals
+            </TabsTrigger>
+            <TabsTrigger
+              value="pending"
+              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-500 data-[state=active]:text-white data-[state=active]:shadow-md"
+            >
+              Pending Approval
+            </TabsTrigger>
+            <TabsTrigger
+              value="rejected"
+              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-rose-500 data-[state=active]:text-white data-[state=active]:shadow-md"
+            >
+              Rejected
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="space-y-4 m-0">
+            {isLoading ? (
+              <Skeleton className="h-32 w-full rounded-xl" />
+            ) : grouped.active.length > 0 ? (
+              grouped.active.map((p) => (
+                <ProposalRowCard
+                  key={p.id}
+                  proposal={p}
+                  onOpen={setSelectedProposal}
+                  onDelete={handleDelete}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground bg-card/40">
+                No active contracts yet.
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="pending" className="space-y-4 m-0">
+            {isLoading ? (
+              <Skeleton className="h-32 w-full rounded-xl" />
+            ) : grouped.pending.length > 0 ? (
+              grouped.pending.map((p) => (
+                <ProposalRowCard
+                  key={p.id}
+                  proposal={p}
+                  onOpen={setSelectedProposal}
+                  onDelete={handleDelete}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground bg-card/40">
+                No pending proposals.
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="rejected" className="space-y-4 m-0">
+            {isLoading ? (
+              <Skeleton className="h-32 w-full rounded-xl" />
+            ) : grouped.rejected.length > 0 ? (
+              grouped.rejected.map((p) => (
+                <ProposalRowCard
+                  key={p.id}
+                  proposal={p}
+                  onOpen={setSelectedProposal}
+                  onDelete={handleDelete}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground bg-card/40">
+                No rejected proposals.
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
+      {/* Dialog */}
       <Dialog
-        open={Boolean(selectedProposal)}
-        onOpenChange={(open) => {
-          if (!open) handleCloseProposal();
-        }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedProposal?.title || "Proposal"}</DialogTitle>
-            <DialogDescription>
-              A quick snapshot of this proposal without leaving the page.
+        open={!!selectedProposal}
+        onOpenChange={(open) => !open && setSelectedProposal(null)}
+      >
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="flex items-center gap-3 text-2xl">
+              {selectedProposal?.title}
+              <Badge
+                variant="outline"
+                className={`text-xs px-2 py-0.5 border ${
+                  statusConfig[selectedProposal?.status]?.className
+                }`}
+              >
+                {statusConfig[selectedProposal?.status]?.label}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="text-base text-muted-foreground mt-1">
+              Proposal from {selectedProposal?.clientName}
             </DialogDescription>
           </DialogHeader>
 
-          {selectedProposal && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge
-                  variant="outline"
-                  className={`flex items-center gap-1 border px-2 py-0.5 text-xs font-medium ${statusConfig[selectedProposal.status]?.className || ""}`}>
-                  {statusConfig[selectedProposal.status]?.icon ? (
-                    React.createElement(statusConfig[selectedProposal.status].icon, {
-                      className: "h-3 w-3",
-                    })
-                  ) : null}
-                  {statusConfig[selectedProposal.status]?.label || "Pending"}
-                </Badge>
-                {selectedProposal.proposalId && (
-                  <Badge variant="outline" className="text-xs font-mono">
-                    {selectedProposal.proposalId}
-                  </Badge>
-                )}
-                {isLoadingProposal && (
-                  <Badge variant="secondary" className="text-xs">
-                    Loading details…
-                  </Badge>
-                )}
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 text-sm">
-                <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                    Recipient
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {selectedProposal.recipientName}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                    Submitted
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {selectedProposal.submittedDate}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                    Category
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {selectedProposal.category}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                    Budget
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {selectedProposal.budget ? `₹ ${selectedProposal.budget}` : "Not specified"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border/60 bg-muted/40 p-3">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Proposal Details
-                </p>
-                <ScrollArea className="mt-2 pr-2 h-[50vh] w-full">
-                  <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
-                    {selectedProposal.content?.trim() || "No proposal content provided."}
-                  </p>
-                </ScrollArea>
-              </div>
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+            {/* Header Metrics */}
+            <div className="flex flex-wrap gap-4">
+              <Badge variant="secondary" className="px-3 py-1.5 text-sm gap-2">
+                Budget:{" "}
+                <span className="font-bold">
+                  {
+                    extractProposalDetails(
+                      selectedProposal?.content,
+                      selectedProposal?.budget
+                    ).budget
+                  }
+                </span>
+              </Badge>
+              <Badge variant="secondary" className="px-3 py-1.5 text-sm gap-2">
+                Timeline:{" "}
+                <span className="font-bold">
+                  {extractProposalDetails(selectedProposal?.content).timeline}
+                </span>
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1.5 text-sm gap-2">
+                Date: {selectedProposal?.submittedDate}
+              </Badge>
             </div>
-          )}
 
-          <DialogFooter className="flex items-center justify-end gap-2">
-            {selectedProposal?.status === "received" && (
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => handleStatusChange(selectedProposal.id, "accepted")}>
-                Mark as accepted
-              </Button>
+            {/* Content */}
+            <div className="bg-muted/50 p-4 rounded-lg border border-border/50">
+              <h4 className="text-base font-semibold mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" /> Proposal Details
+              </h4>
+              <ProposalContentRenderer content={selectedProposal?.content} />
+            </div>
+          </div>
+
+          <DialogFooter className="p-6 pt-2 border-t bg-card/50">
+            <Button variant="outline" onClick={() => setSelectedProposal(null)}>
+              Close
+            </Button>
+            {selectedProposal?.status === "pending" && (
+              <>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    handleStatusChange(selectedProposal.id, "rejected");
+                    setSelectedProposal(null);
+                  }}
+                  disabled={processingId === selectedProposal.id}
+                >
+                  Reject
+                </Button>
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    handleStatusChange(selectedProposal.id, "accepted");
+                    setSelectedProposal(null);
+                  }}
+                  disabled={processingId === selectedProposal.id}
+                >
+                  {processingId === selectedProposal.id
+                    ? "Accepting..."
+                    : "Accept Proposal"}
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>

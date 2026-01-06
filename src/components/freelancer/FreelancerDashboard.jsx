@@ -388,7 +388,7 @@ export const DashboardContent = ({ roleOverride }) => {
                   <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
                   <div className="relative z-10">
                     <p className="text-muted-foreground text-sm font-bold mb-1 uppercase tracking-wide">
-                      Total Earnings
+                      Total Amount
                     </p>
                     <h3 className="text-3xl font-black tracking-tight text-foreground">
                       {formatCurrency(metrics.earnings)}
@@ -405,7 +405,7 @@ export const DashboardContent = ({ roleOverride }) => {
                   <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
                   <div className="relative z-10">
                     <p className="text-muted-foreground text-sm font-bold mb-1 uppercase tracking-wide">
-                      Active Jobs
+                      Active Projects
                     </p>
                     <h3 className="text-3xl font-black tracking-tight text-foreground">
                       {metrics.activeProjects}

@@ -70,10 +70,7 @@ const navConfigs = {
       title: "Proposals",
       url: "/freelancer/proposals",
       icon: FileText,
-      items: [
-        { title: "Received", url: "/freelancer/proposals/received" },
-        { title: "Accepted", url: "/freelancer/proposals/accepted" },
-      ],
+      isActive: true,
     },
     {
       title: "Project",
