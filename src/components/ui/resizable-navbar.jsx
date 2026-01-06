@@ -8,7 +8,7 @@ import {
   useMotionValueEvent,
 } from "framer-motion";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import logo from '@/assets/react.svg'
 
 
@@ -16,11 +16,7 @@ export const Navbar = ({
   children,
   className
 }) => {
-  const ref = useRef(null);
-  const { scrollY } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
+  const { scrollY } = useScroll();
   const [visible, setVisible] = useState(false);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
@@ -33,7 +29,6 @@ export const Navbar = ({
 
   return (
     (<motion.div
-      ref={ref}
       // IMPORTANT: Change this to class of fixed if you want the navbar to be fixed
       className={cn("fixed inset-x-0 top-5 z-40 w-full", className)}>
       {React.Children.map(children, (child) =>

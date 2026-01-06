@@ -1567,6 +1567,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     history: clientHistory,
     attachment
   } = req.body || {};
+  const sharedContextId = req.body?.sharedContextId ?? null;
 
   if (!content && !attachment) {
     throw new AppError("Message content or attachment is required", 400);

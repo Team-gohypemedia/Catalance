@@ -19,16 +19,15 @@ export function ThemeProvider({
   );
   const location = useLocation();
 
-  const DASHBOARD_PREFIXES = ["/client", "/project-manager", "/freelancer", "/admin"];
-  const isDashboard = DASHBOARD_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
+  const isHome = location.pathname === "/";
 
   useEffect(() => {
     const root = window.document.documentElement;
 
     root.classList.remove("light", "dark");
 
-    // Force Light Mode on non-dashboard routes
-    if (!isDashboard) {
+    // Force Light Mode on Home page
+    if (isHome) {
       root.classList.add("light");
       return;
     }
@@ -44,10 +43,10 @@ export function ThemeProvider({
     }
 
     root.classList.add(theme);
-  }, [theme, isDashboard]);
+  }, [theme, isHome]);
 
   const value = {
-    theme: isDashboard ? theme : "light",
+    theme: !isHome ? theme : "light",
     setTheme: (newTheme) => {
       // Only allow theme changes if we are in a dashboard context
       // OR if the user is forcing a change (though UI should hide it otherwise)

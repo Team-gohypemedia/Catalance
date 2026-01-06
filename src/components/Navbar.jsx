@@ -68,7 +68,7 @@ const Navbar = () => {
   const closeMobileMenu = () => setMobileOpen(false);
 
   const { theme, setTheme } = useTheme();
-  const isDark = true; // Always dark
+  const isDark = theme === "dark";
   const handleThemeToggle = () => {
     // Optional: Keep toggle logic if needed globally, but UI reflects dark
     setTheme(theme === "dark" ? "light" : "dark");
@@ -80,7 +80,17 @@ const Navbar = () => {
       <NavBody>
         <NavbarLogo isHome={isHome} />
         <NavItems items={navItems} onItemClick={closeMobileMenu} isHome={isHome} />
-        <AuthButtons isHome={isHome} />
+        <div className="flex items-center">
+          {!isHome && (
+            <ThemeButton
+              isDark={isDark}
+              onClick={handleThemeToggle}
+              visible={true} // Always visible if rendered, or pass down navbar visibility if needed
+              isHome={isHome}
+            />
+          )}
+          <AuthButtons isHome={isHome} />
+        </div>
       </NavBody>
 
       {/* Mobile Navbar */}
