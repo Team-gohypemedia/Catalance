@@ -5,8 +5,7 @@ const normalizeBaseUrl = (url) => {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 };
 
-// Prefer local dev when on localhost, then explicit env, then same-origin (for deployed frontends),
-// then local dev fallback.
+// Prefer explicit env, then same-origin (for deployed frontends), then local dev fallback.
 const safeWindow = typeof window === "undefined" ? null : window;
 const envBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
 const envSocketUrl = normalizeBaseUrl(import.meta.env.VITE_SOCKET_URL);
@@ -26,18 +25,16 @@ const localDevBaseUrl =
     : null;
 
 export const API_BASE_URL =
-  (safeWindow && (isLocal5173 || isLocal5174)
-    ? normalizeBaseUrl(localDevBaseUrl)
-    : null) ||
   envBaseUrl ||
   normalizeBaseUrl(sameOriginBaseUrl) ||
   normalizeBaseUrl(localDevBaseUrl) ||
   "http://localhost:5000/api";
 
-// Enable sockets when explicitly configured, otherwise only on localhost.
-const allowSockets =
-  Boolean(envSocketUrl) ||
-  (safeWindow && safeWindow.location && safeWindow.location.hostname === "localhost");
+// Enable sockets when explicitly configured, otherwise only for local APIs.
+const isLocalApi =
+  Boolean(API_BASE_URL) &&
+  (API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1"));
+const allowSockets = Boolean(envSocketUrl) || isLocalApi;
 
 const inferredSocketUrl = allowSockets
   ? envSocketUrl || API_BASE_URL.replace(/\/api$/, "")
