@@ -147,13 +147,17 @@ const resolveActiveProposalId = (proposals, preferredId, fallbackId) => {
 // Helper function to format budget as ₹X,XXX
 const formatBudget = (budget) => {
   if (!budget || budget === "Not set") return "Not set";
+
+  const budgetStr = String(budget).trim();
+
+  // Check if original had 'k' or 'K' suffix for thousands BEFORE cleaning
+  const hasKSuffix = /\d+\s*k$/i.test(budgetStr);
+
   // Extract digits from the budget string (remove currency symbols, 'k' suffix, etc.)
-  const cleaned = String(budget).replace(/[^\d.]/g, "");
+  const cleaned = budgetStr.replace(/[^\d.]/g, "");
   const numValue = parseFloat(cleaned);
   if (isNaN(numValue)) return budget; // Return original if can't parse
 
-  // Check if original had 'k' or 'K' suffix for thousands
-  const hasKSuffix = /\d+k$/i.test(String(budget).trim());
   const finalValue = hasKSuffix ? numValue * 1000 : numValue;
 
   return `₹${finalValue.toLocaleString("en-IN")}`;
@@ -2126,10 +2130,12 @@ const ClientDashboardContent = () => {
                             savedProposal?.summary ||
                             savedProposal?.content ||
                             "No description available";
-                          const currentBudget = savedProposal?.budget || "";
-                          // Replace various budget formats with the current budget
+                          const currentBudget = formatBudget(
+                            savedProposal?.budget
+                          );
+                          // Replace various budget formats with the current formatted budget
                           content = content.replace(
-                            /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹)?\s*[\d,]+/gi,
+                            /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹)?[\s]*[\d,]+k?/gi,
                             `Budget\n- ${currentBudget}`
                           );
                           return content;
