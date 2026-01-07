@@ -13,6 +13,7 @@ import {
   Github,
   Linkedin,
   Globe,
+  MapPin,
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
@@ -586,16 +587,19 @@ const FreelancerProfile = () => {
         {/* Header Card */}
         <div className="relative rounded-3xl overflow-hidden bg-card border border-border/50 shadow-sm group/header">
           {/* Gradient Banner */}
-          <div className="h-28 bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500" />
+          {/* Gradient Banner */}
+          <div className="h-44 bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500 relative">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" />
+          </div>
 
-          <div className="px-8 pb-8 flex flex-col md:flex-row items-center gap-6 -mt-12 relative z-10">
+          <div className="px-8 pb-10 flex flex-col md:flex-row items-end gap-6 -mt-20 relative z-10">
             {/* Avatar */}
             <div
               className="relative group/avatar cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl shadow-xl">
-                <div className="w-full h-full rounded-3xl overflow-hidden bg-muted relative">
+              <div className="w-32 h-32 md:w-36 md:h-36 rounded-3xl shadow-xl">
+                <div className="w-full h-full rounded-[18px] overflow-hidden bg-muted relative">
                   {personal.avatar ? (
                     <img
                       src={personal.avatar}
@@ -637,74 +641,83 @@ const FreelancerProfile = () => {
             </div>
 
             {/* Info */}
-            <div className="flex-1 mb-1 text-center md:text-left">
-              <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                  {personal.name || "Your Name"}
-                </h1>
-                {personal.available && (
-                  <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold tracking-wider uppercase border border-emerald-500/20">
-                    Available for work
-                  </span>
-                )}
-              </div>
-              <p className="text-lg text-white/80 font-medium mb-2">
-                {personal.headline || "Add a headline"}
-              </p>
-
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-3">
-                {personal.experienceYears ? (
-                  <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
-                    {personal.experienceYears} Years Exp.
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-400">
-                {personal.location && <span>{personal.location}</span>}
-                {/* Socials */}
-                <div className="flex items-center gap-2 mt-1 md:mt-0">
-                  {portfolio.githubUrl && (
-                    <a
-                      href={portfolio.githubUrl}
-                      target="_blank"
-                      className="p-1.5 text-gray-400 hover:text-white transition-colors bg-secondary/50 rounded-full"
-                      rel="noreferrer"
-                      title="GitHub"
-                    >
-                      <Github className="w-4 h-4" />
-                    </a>
+            {/* Info */}
+            <div className="flex-1 flex flex-col md:flex-row items-end justify-between gap-4 md:mb-1">
+              <div className="flex flex-col gap-1 text-center md:text-left w-full md:w-auto">
+                {/* Name & Badge */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                  <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                    {personal.name || "Your Name"}
+                  </h1>
+                  {personal.available && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold tracking-wide border border-emerald-500/30">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      AVAILABLE FOR WORK
+                    </span>
                   )}
-                  {portfolio.linkedinUrl && (
-                    <a
-                      href={portfolio.linkedinUrl}
-                      target="_blank"
-                      className="p-1.5 text-gray-400 hover:text-white transition-colors bg-secondary/50 rounded-full"
-                      rel="noreferrer"
-                      title="LinkedIn"
-                    >
-                      <Linkedin className="w-4 h-4" />
-                    </a>
-                  )}
-                  {portfolio.portfolioUrl && (
-                    <a
-                      href={portfolio.portfolioUrl}
-                      target="_blank"
-                      className="p-1.5 text-gray-400 hover:text-white transition-colors bg-secondary/50 rounded-full"
-                      rel="noreferrer"
-                      title="Portfolio"
-                    >
-                      <Globe className="w-4 h-4" />
-                    </a>
-                  )}
-                  <button
-                    onClick={() => setModalType("portfolio")}
-                    className="p-1.5 text-primary hover:bg-primary/10 rounded-full transition-colors"
-                    title="Add/Edit Social Links"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
                 </div>
+
+                <p className="text-lg text-gray-300 font-medium">
+                  {personal.headline || "Senior Full Stack Developer"}
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-400 mt-1">
+                  {personal.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>{personal.location}</span>
+                    </div>
+                  )}
+                  {/* Experience as a dot-separated item or just next to it? Image didn't show exp clearly but keeping it if needed. */}
+                  {personal.experienceYears && (
+                    <>
+                      <span className="hidden md:inline">•</span>
+                      <span>{personal.experienceYears} Years Exp.</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Socials & Actions */}
+              <div className="flex items-center gap-3">
+                {portfolio.githubUrl && (
+                  <a
+                    href={portfolio.githubUrl}
+                    target="_blank"
+                    className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
+                    rel="noreferrer"
+                  >
+                    <Github className="w-5 h-5" />
+                  </a>
+                )}
+                {portfolio.linkedinUrl && (
+                  <a
+                    href={portfolio.linkedinUrl}
+                    target="_blank"
+                    className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
+                    rel="noreferrer"
+                  >
+                    <Linkedin className="w-5 h-5" />
+                  </a>
+                )}
+                {portfolio.website && (
+                  <a
+                    href={portfolio.website}
+                    target="_blank"
+                    className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
+                    rel="noreferrer"
+                  >
+                    <Globe className="w-5 h-5" />
+                  </a>
+                )}
+                {/* Edit Skills/Socials Modal Trigger - keeping functionality */}
+                <button
+                  onClick={() => setModalType("portfolio")}
+                  className="p-2.5 text-primary hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/20"
+                  title="Add/Edit Social Links"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
               </div>
             </div>
 
