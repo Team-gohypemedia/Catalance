@@ -1162,18 +1162,24 @@ const ClientDashboardContent = () => {
                                     .filter((p) => p.title === project.title)
                                     .map((p) => p.id);
 
-                                  // Delete from database
+                                  // Archive (soft delete) in database to persist across devices
                                   for (const projectId of relatedProjectIds) {
                                     try {
                                       await authFetch(
                                         `/projects/${projectId}`,
                                         {
-                                          method: "DELETE",
+                                          method: "PATCH",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                          },
+                                          body: JSON.stringify({
+                                            status: "ARCHIVED",
+                                          }),
                                         }
                                       );
                                     } catch (err) {
                                       console.error(
-                                        `Failed to delete project ${projectId}:`,
+                                        `Failed to archive project ${projectId}:`,
                                         err
                                       );
                                     }

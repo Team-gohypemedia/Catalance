@@ -1570,7 +1570,7 @@ const FreelancerProjectDetailContent = () => {
                   <div className="relative">
                     <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-400"
+                        className="h-full rounded-full transition-all duration-300 bg-linear-to-r from-amber-500 via-yellow-400 to-amber-400"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
@@ -1867,9 +1867,9 @@ const FreelancerProjectDetailContent = () => {
                                 }
                               >
                                 {task.status === "completed" ? (
-                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                                 ) : (
-                                  <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                  <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
                                 )}
                                 <span
                                   className={`flex-1 text-sm ${
@@ -1976,7 +1976,7 @@ const FreelancerProjectDetailContent = () => {
                               )}
 
                             {message.text && (
-                              <p className="leading-relaxed whitespace-pre-wrap break-words">
+                              <p className="leading-relaxed whitespace-pre-wrap wrap-break-word">
                                 {message.text}
                               </p>
                             )}
