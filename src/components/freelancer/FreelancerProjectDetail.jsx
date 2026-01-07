@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   CheckCircle2,
+  MessageCircle,
   Circle,
   AlertCircle,
   IndianRupee,
@@ -1482,22 +1483,66 @@ const FreelancerProjectDetailContent = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-2 shadow-sm"
+                  >
+                    <Headset className="w-4 h-4" /> Catalyst
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-2" align="end">
+                  <div className="grid gap-1">
+                    <h4 className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      Contact Catalyst
+                    </h4>
                     <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => setReportOpen(true)}
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-auto py-3 px-3 rounded-lg hover:bg-muted/80 transition-colors"
+                      asChild
                     >
-                      <Headset /> Help
+                      <a
+                        href="https://wa.me/919999999999"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                          <MessageCircle className="w-5 h-5" />
+                        </div>
+                        <div className="flex flex-col items-start text-sm">
+                          <span className="font-semibold text-foreground">
+                            WhatsApp
+                          </span>
+                          <span className="text-xs text-muted-foreground font-normal">
+                            Chat immediately
+                          </span>
+                        </div>
+                      </a>
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Project Catalyst</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-auto py-3 px-3 rounded-lg hover:bg-muted/80 transition-colors"
+                      asChild
+                    >
+                      <a href="tel:+919999999999">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+                          <Phone className="w-5 h-5" />
+                        </div>
+                        <div className="flex flex-col items-start text-sm">
+                          <span className="font-semibold text-foreground">
+                            Call Support
+                          </span>
+                          <span className="text-xs text-muted-foreground font-normal">
+                            Voice assistance
+                          </span>
+                        </div>
+                      </a>
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <ProjectNotepad projectId={project?.id || projectId} />
             </div>
           </div>
