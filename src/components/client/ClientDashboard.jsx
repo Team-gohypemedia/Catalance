@@ -534,7 +534,13 @@ const ClientDashboardContent = () => {
       );
       if (pendingPaymentProject) {
         setProjectToPay(pendingPaymentProject);
-        setShowPaymentConfirm(true);
+        // Only show if not already dismissed in this session
+        const hasDismissedPayment = sessionStorage.getItem(
+          `dismissedPayment_${pendingPaymentProject.id}`
+        );
+        if (!hasDismissedPayment) {
+          setShowPaymentConfirm(true);
+        }
       }
     } catch (error) {
       console.error("Failed to load projects", error);
@@ -1173,11 +1179,16 @@ const ClientDashboardContent = () => {
                                     }
                                   }
 
-                                  // Update local state immediately
-                                  setDismissedProjectIds((prev) => [
-                                    ...prev,
+                                  // Update local list of dismissed IDs
+                                  const newDismissed = [
+                                    ...dismissedProjectIds,
                                     ...relatedProjectIds,
-                                  ]);
+                                  ];
+                                  setDismissedProjectIds(newDismissed);
+                                  localStorage.setItem(
+                                    "markify:dismissedExpiredProposals",
+                                    JSON.stringify(newDismissed)
+                                  );
 
                                   // Refresh projects list
                                   loadProjects();
@@ -1379,7 +1390,15 @@ const ClientDashboardContent = () => {
                   <DialogFooter>
                     <Button
                       variant="outline"
-                      onClick={() => setShowPaymentConfirm(false)}
+                      onClick={() => {
+                        setShowPaymentConfirm(false);
+                        if (projectToPay) {
+                          sessionStorage.setItem(
+                            `dismissedPayment_${projectToPay.id}`,
+                            "true"
+                          );
+                        }
+                      }}
                     >
                       Cancel
                     </Button>
