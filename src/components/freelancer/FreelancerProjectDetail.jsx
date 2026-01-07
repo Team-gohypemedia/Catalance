@@ -1482,8 +1482,7 @@ const FreelancerProjectDetailContent = () => {
                   <span className="font-semibold text-foreground">
                     {project.title}
                   </span>
-                  . Once approved, you will gain full access to the project
-                  workspace.
+                  . Once approved, the project will start.
                 </p>
                 <div className="pt-4">
                   <Button
