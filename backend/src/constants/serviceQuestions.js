@@ -1,4 +1,4 @@
-// Service-specific question sets for the chatbot.
+﻿// Service-specific question sets for the chatbot.
 // Keep questions concise and ordered by impact: summary -> scope -> constraints -> assets -> extras.
 export const SERVICE_QUESTION_SETS = {
   "Development & Tech": [
@@ -152,94 +152,166 @@ export const SERVICE_QUESTION_SETS = {
       text: "What budget range are you comfortable with for this project?",
       type: "suggestion",
       suggestions: [
-        "Under \\u20B925,000 (Basic website)",
-        "\\u20B925,000 \\u2013 \\u20B950,000 (Standard website)",
-        "\\u20B950,000 \\u2013 \\u20B91,00,000 (Advanced website)",
-        "\\u20B91,00,000 \\u2013 \\u20B92,50,000 (Custom / dynamic website)",
-        "\\u20B92,50,000 and above (High-end, scalable platform)"
+        "Under \u20B92,000 per video",
+        "\u20B92,000 \u2013 \u20B97,000 per video",
+        "\u20B97,000 \u2013 \u20B915,000 per video",
+        "\u20B915,000 and above per video"
       ]
     }
   ],
   "Lead Generation": [
-    { key: "name", text: "Could you please provide your first name?", type: "text" },
-    { key: "business", text: "Please briefly describe your business activities.", type: "text" },
-    { key: "audience", text: "Who is your target audience?", type: "text" },
+    { key: "name", text: "What's your name?", type: "text" },
     {
-      key: "volume",
-      text: "What is your target volume for leads?",
+      key: "lead_type",
+      text: "What type of leads are you primarily looking for?",
       type: "suggestion",
-      suggestions: ["<100", "100-500", "500+"],
-    },
-    { key: "offer", text: "What is your primary offer or Call to Action (CTA)?", type: "text" },
-    {
-      key: "channels",
-      text: "Which marketing channels do you prefer?",
-      type: "suggestion",
-      suggestions: ["Email", "LinkedIn", "Ads", "Mixed", "Not sure"],
-    },
-    { key: "geo", text: "What is your target geographic location?", type: "text" },
-    { key: "budget", text: "What is your estimated budget? Please enter a single amount in INR.", type: "text" },
-    { key: "timeline", text: "When would you like to commence the campaign?", type: "text" },
-    { key: "assets", text: "Please share any relevant case studies or landing page links.", type: "text" },
-  ],
-
-  "Video Services": [
-    { key: "name", text: "Could you please provide your first name?", type: "text" },
-    {
-      key: "video_type",
-      text: "What specific type of video production do you require?",
-      type: "suggestion",
-      suggestions: [
-        "Promo/Marketing",
-        "Social content",
-        "YouTube/Vlog",
-        "Corporate/Event",
-        "Explainer/Animated",
-        "Other",
-      ],
+      suggestions: ["Phone call leads", "Form submissions", "WhatsApp or chat leads"],
     },
     {
-      key: "goal",
-      text: "What is the primary objective of this video?",
+      key: "target_audience",
+      text: "Who is your target audience?",
       type: "suggestion",
-      suggestions: ["Awareness", "Leads", "Engagement", "Launch"],
+      suggestions: ["Businesses (B2B)", "Consumers (B2C)", "A mix of both"],
     },
     {
-      key: "footage",
-      text: "Do you have existing footage, or is production required?",
+      key: "target_location",
+      text: "Which locations do you want to target for lead generation?",
       type: "suggestion",
-      suggestions: ["Yes, have footage", "Need production", "Not sure"],
+      suggestions: ["A specific city", "A state or region", "Pan-India"],
     },
     {
-      key: "length",
-      text: "What is the desired duration of the video?",
-      type: "suggestion",
-      suggestions: ["<30s", "30-60s", "1-3m", "3m+"],
-    },
-    {
-      key: "style",
-      text: "What is the preferred style or tone?",
-      type: "suggestion",
-      suggestions: ["Corporate", "Fun", "Emotional", "Cinematic", "Informative"],
-    },
-    {
-      key: "usage",
-      text: "On which platforms will the video be distributed?",
-      type: "suggestion",
-      suggestions: ["Website", "YouTube", "Instagram", "LinkedIn", "TikTok", "Other"],
-    },
-    {
-      key: "budget",
-      text: "What is your estimated budget? Please enter a single amount in INR.",
+      key: "target_city",
+      text: "If you selected \"A specific city\", which city should we target?",
       type: "text",
     },
     {
-      key: "timeline",
-      text: "What is your desired timeline for delivery?",
-      type: "suggestion",
-      suggestions: ["1 week", "2-4 weeks", "1-2 months", "Flexible"],
+      key: "target_region",
+      text: "If you selected \"A state or region\", which state or region should we target?",
+      type: "text",
     },
-    { key: "references", text: "Please share any reference links or examples.", type: "text" },
+    {
+      key: "lead_volume",
+      text: "How many leads do you expect per month?",
+      type: "suggestion",
+      suggestions: ["Low volume", "Medium volume", "High volume"],
+    },
+    {
+      key: "channels",
+      text: "Which channels should be used for lead generation? (Multiple)",
+      type: "multi_select",
+      suggestions: ["Google", "Meta", "LinkedIn", "Email", "Third party tools"],
+    },
+    {
+      key: "lead_quality",
+      text: "What level of lead quality do you require?",
+      type: "suggestion",
+      suggestions: ["Raw leads", "Pre-qualified leads"],
+    },
+    {
+      key: "crm_usage",
+      text: "Do you currently use a CRM or lead tracking system?",
+      type: "suggestion",
+      suggestions: ["Yes, a CRM is already in place", "No"],
+    },
+    {
+      key: "campaign_duration",
+      text: "How long do you want to run the lead generation campaigns?",
+      type: "suggestion",
+      suggestions: ["Short-term", "Medium-term", "Long-term"],
+    },
+    {
+      key: "monthly_budget",
+      text: "What is your monthly budget for lead generation?",
+      type: "suggestion",
+      suggestions: [
+        "Under â‚¹15,000 / month",
+        "â‚¹15,000 â€“ â‚¹30,000 / month",
+        "â‚¹30,000 â€“ â‚¹60,000 / month",
+        "â‚¹60,000 â€“ â‚¹1,00,000 / month",
+        "â‚¹1,00,000 and above / month",
+      ],
+    },
+  ],
+
+  "Video Services": [
+    { key: "name", text: "What's your name?", type: "text" },
+    {
+      key: "video_type",
+      text: "What type of videos do you require?",
+      type: "suggestion",
+      suggestions: [
+        "Short-form videos (reels/shorts)",
+        "Advertising videos",
+        "Corporate or explainer videos",
+      ],
+    },
+    {
+      key: "video_objective",
+      text: "What is the primary objective of these videos?",
+      type: "suggestion",
+      suggestions: ["Brand awareness", "Sales or conversions", "Education or explanation"],
+    },
+    {
+      key: "video_usage",
+      text: "Where will these videos be used?",
+      type: "suggestion",
+      suggestions: ["Social media platforms", "Website", "Paid advertising"],
+    },
+    {
+      key: "video_duration",
+      text: "What video duration do you prefer?",
+      type: "suggestion",
+      suggestions: [
+        "Short (15\u201330 seconds)",
+        "Medium (30\u201360 seconds)",
+        "Long (1\u20133 minutes)"
+      ],
+    },
+    {
+      key: "production_type",
+      text: "What type of production do you require?",
+      type: "suggestion",
+      suggestions: ["Live shooting", "Animation", "Stock-based visuals"],
+    },
+    {
+      key: "scripting_support",
+      text: "Do you need help with scripting and concepts?",
+      type: "suggestion",
+      suggestions: ["Yes, full support is needed", "No, scripts are ready"],
+    },
+    {
+      key: "video_volume",
+      text: "How many videos do you require per month or project?",
+      type: "suggestion",
+      suggestions: [
+        "Low volume (1-10)",
+        "Medium volume (10-30)",
+        "High volume (above 30)",
+      ],
+    },
+    {
+      key: "revision_rounds",
+      text: "How many revision rounds do you expect?",
+      type: "suggestion",
+      suggestions: ["Standard", "Multiple"],
+    },
+    {
+      key: "delivery_timeline",
+      text: "What is your preferred delivery timeline?",
+      type: "suggestion",
+      suggestions: ["Fast turnaround", "Standard timeline -", "Flexible"],
+    },
+    {
+      key: "budget_range",
+      text: "What budget range best fits your requirement?",
+      type: "suggestion",
+      suggestions: [
+        "Under \u20B92,000 per video",
+        "\u20B92,000 \u2013 \u20B97,000 per video",
+        "\u20B97,000 \u2013 \u20B915,000 per video",
+        "\u20B915,000 and above per video"
+      ],
+    },
   ],
 
   "Travel Services": [
@@ -563,54 +635,82 @@ export const SERVICE_QUESTION_SETS = {
   ],
 
   "Writing & Content": [
-    { key: "name", text: "Could you please provide your first name?", type: "text" },
+    { key: "name", text: "What's your name?", type: "text" },
     {
-      key: "service_type",
-      text: "What specific type of content do you require?",
+      key: "content_type",
+      text: "What type of content do you need?",
       type: "suggestion",
       suggestions: [
-        "Blogs/Articles",
-        "Website copy",
-        "SEO content",
-        "Social posts",
-        "Product descriptions",
-        "Emails/Newsletters",
-        "Scripts",
-        "Technical/Ghostwriting",
+        "Blog articles",
+        "Website content",
+        "Social media content",
+        "Advertising copy",
       ],
     },
-    { key: "goal", text: "What is the primary goal of this content?", type: "text" },
-    { key: "audience", text: "Who is the intended audience?", type: "text" },
+    {
+      key: "content_purpose",
+      text: "What is the main purpose of this content?",
+      type: "suggestion",
+      suggestions: ["SEO and organic growth", "Sales and conversions", "Brand positioning"],
+    },
+    {
+      key: "industry_familiarity",
+      text: "How familiar should the writer be with your industry?",
+      type: "suggestion",
+      suggestions: ["Basic understanding", "Moderate expertise", "Deep subject knowledge"],
+    },
     {
       key: "tone",
-      text: "What is the desired tone or style?",
+      text: "What tone of voice do you prefer for your content?",
       type: "suggestion",
-      suggestions: ["Professional", "Friendly", "Persuasive", "Educational", "Storytelling"],
+      suggestions: ["Professional", "Conversational", "Persuasive"],
+    },
+    {
+      key: "monthly_volume",
+      text: "How much content do you require each month?",
+      type: "suggestion",
+      suggestions: ["Low volume", "Medium volume", "High volume"],
+    },
+    {
+      key: "seo_optimisation",
+      text: "Do you require SEO optimisation for the content?",
+      type: "suggestion",
+      suggestions: ["Yes", "No"],
+    },
+    {
+      key: "research_level",
+      text: "What level of research is required?",
+      type: "suggestion",
+      suggestions: ["Light research", "Moderate research", "In-depth research"],
     },
     {
       key: "word_count",
-      text: "What is the required word count?",
+      text: "What is the preferred word count per content piece?",
       type: "suggestion",
-      suggestions: ["<500", "500-1,000", "1,000-2,000", "2,000+", "Not sure"],
+      suggestions: [
+        "Up to 500 words",
+        "500 \u2013 1,000 words",
+        "1,000 \u2013 2,000 words",
+        "Above 2,000 words",
+      ],
     },
     {
-      key: "seo",
-      text: "Do you require SEO optimization or keyword integration?",
+      key: "delivery_frequency",
+      text: "How often should content be delivered?",
       type: "suggestion",
-      suggestions: ["Yes", "No", "Maybe"],
+      suggestions: ["Weekly", "Bi-weekly", "Monthly"],
     },
     {
-      key: "budget",
-      text: "What is your estimated budget? Please enter a single amount in INR.",
-      type: "text",
-    },
-    {
-      key: "timeline",
-      text: "What is your desired timeline for delivery?",
+      key: "budget_range",
+      text: "What budget level are you comfortable with?",
       type: "suggestion",
-      suggestions: ["1-3 days", "1 week", "2-3 weeks", "Flexible"],
+      suggestions: [
+        "Under \u20B91,000 per piece",
+        "\u20B91,000 \u2013 \u20B92,500 per piece",
+        "\u20B92,500 \u2013 \u20B95,000 per piece",
+        "\u20B95,000 and above per piece",
+      ],
     },
-    { key: "references", text: "Please share any reference links or writing samples.", type: "text" },
   ],
 
   "Digital Marketing": [
@@ -1158,10 +1258,10 @@ export const SERVICE_QUESTION_SETS = {
       text: "Which budget level best represents your expectation for this project?",
       type: "suggestion",
       suggestions: [
-        "Under INR 25,000",
-        "INR 25,000 - 50,000",
-        "INR 50,000 - 1,00,000",
-        "INR 1,00,000 and above",
+        "Under \u20B92,000 per video",
+        "\u20B92,000 \u2013 \u20B97,000 per video",
+        "\u20B97,000 \u2013 \u20B915,000 per video",
+        "\u20B915,000 and above per video"
       ],
     },
   ],
@@ -1175,3 +1275,4 @@ export const DEFAULT_QUESTIONS = [
   { key: "timeline", text: "Timeline?", type: "text" },
   { key: "references", text: "Any links or references?", type: "text" },
 ];
+

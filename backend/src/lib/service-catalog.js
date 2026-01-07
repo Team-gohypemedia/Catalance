@@ -236,8 +236,8 @@ const inferKeyFromPrompt = (prompt = "") => {
 };
 
 const sanitizeOption = (value = "") => {
-  const ascii = value.replace(/[^\x20-\x7E]/g, "");
-  return normalizeWhitespace(ascii);
+  const cleaned = value.replace(/[^\x20-\x7E\u20B9\u2013]/g, "");
+  return normalizeWhitespace(cleaned);
 };
 
 const splitSuggestions = (value = "") =>
@@ -399,13 +399,32 @@ const parseServiceFile = (filePath) => {
     };
   });
 
+  const normalizedServiceName = normalizeLabel(serviceName || "");
+  const isVideoServices =
+    normalizedServiceName === "video services" ||
+    slug === "video-services";
+  const isWritingContent =
+    normalizedServiceName === "writing content" ||
+    normalizedServiceName === "writing and content" ||
+    slug === "writing-content";
+  const shouldDisableSharedContext = isVideoServices || isWritingContent;
+  const skipIntro = false;
+  const finalFields = shouldDisableSharedContext
+    ? fields.map((field) => ({
+        ...field,
+        disableSharedContext: true,
+        forceAsk: true,
+      }))
+    : fields;
+
   return {
     id: slug,
     name: serviceName || slug,
-    fields,
+    fields: finalFields,
     requiredLabels,
     optionalLabels,
     sourcePath: filePath,
+    skipIntro,
   };
 };
 

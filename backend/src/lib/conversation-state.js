@@ -26,14 +26,25 @@ const resolveServiceQuestions = (service = "") => {
             questions: cataConfig.questions,
             source: "cata",
             definition: { cata: true, requiredKeys: cataConfig.requiredKeys },
+            skipIntro: true,
         };
     }
     const definition = getServiceDefinition(service);
     if (definition && Array.isArray(definition.fields) && definition.fields.length) {
-        return { questions: definition.fields, source: "catalog", definition };
+        return {
+            questions: definition.fields,
+            source: "catalog",
+            definition,
+            skipIntro: Boolean(definition?.skipIntro),
+        };
     }
     const chatbot = getChatbot(service);
-    return { questions: chatbot?.questions || [], source: "chatbot", definition: null };
+    return {
+        questions: chatbot?.questions || [],
+        source: "chatbot",
+        definition: null,
+        skipIntro: Boolean(chatbot?.skipIntro),
+    };
 };
 
 const QUESTION_KEY_TAG_REGEX = /\[QUESTION_KEY:\s*([^\]]+)\]/i;
@@ -522,6 +533,20 @@ const shouldAskEcommerceStack = (data = {}) => {
     return false;
 };
 
+const shouldAskLeadCity = (data = {}) => {
+    const target = normalizeText(data.target_location).toLowerCase();
+    return target.includes("specific city");
+};
+
+const shouldAskLeadRegion = (data = {}) => {
+    const target = normalizeText(data.target_location).toLowerCase();
+    return (
+        target.includes("state or region") ||
+        target.includes("state") ||
+        target.includes("region")
+    );
+};
+
 const CATA_SERVICE_CONFIGS = new Map([
     [
         "Website Development",
@@ -684,44 +709,177 @@ const CATA_SERVICE_CONFIGS = new Map([
     [
         "Lead Generation",
         {
-            requiredKeys: ["name", "business_type", "target_audience", "budget_inr"],
-            listFields: new Set([]),
+            requiredKeys: [
+                "name",
+                "lead_type",
+                "target_audience",
+                "target_location",
+                "target_city",
+                "target_region",
+                "lead_volume",
+                "channels",
+                "lead_quality",
+                "crm_usage",
+                "campaign_duration",
+                "monthly_budget",
+            ],
+            listFields: new Set(["channels"]),
             questions: [
                 {
+                    id: "Q1",
+                    nextId: "Q2",
                     key: "name",
-                    templates: ["Please provide your full name."],
-                    suggestions: null,
+                    answerType: "text",
                     required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["name", "call you", "full name"],
+                    templates: ["What's your name?"],
+                    suggestions: null,
                     tags: ["name"],
                 },
                 {
-                    key: "business_type",
-                    templates: ["What type of business do you operate?"],
-                    suggestions: null,
+                    id: "Q2",
+                    nextId: "Q3",
+                    key: "lead_type",
+                    answerType: "single_select",
                     required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["lead type", "phone call", "form submissions", "whatsapp", "chat"],
+                    templates: ["What type of leads are you primarily looking for?"],
+                    suggestions: ["Phone call leads", "Form submissions", "WhatsApp or chat leads"],
                 },
                 {
+                    id: "Q3",
+                    nextId: "Q4",
                     key: "target_audience",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["target audience", "b2b", "b2c", "businesses", "consumers"],
                     templates: ["Who is your target audience?"],
-                    suggestions: null,
-                    required: true,
-                    tags: ["audience"],
+                    suggestions: ["Businesses (B2B)", "Consumers (B2C)", "A mix of both"],
                 },
                 {
-                    key: "budget_inr",
-                    templates: ["What is your estimated budget range? (Please provide amount in INR)"],
-                    suggestions: null,
-                    expectedType: "budget_text",
+                    id: "Q4",
+                    nextId: "Q5",
+                    key: "target_location",
+                    answerType: "single_select",
                     required: true,
-                    tags: ["budget"],
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["location", "city", "region", "pan-india"],
+                    templates: ["Which locations do you want to target for lead generation?"],
+                    suggestions: ["A specific city", "A state or region", "Pan-India"],
                 },
                 {
-                    key: "examples_links",
-                    templates: [
-                        "Please share any examples, case studies, or links to past campaigns (optional).",
+                    id: "Q5",
+                    nextId: "Q6",
+                    key: "target_city",
+                    answerType: "text",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["specific city", "city name", "which city"],
+                    templates: ["Please share the specific city name."],
+                    suggestions: null,
+                    tags: ["location"],
+                    when: shouldAskLeadCity,
+                },
+                {
+                    id: "Q6",
+                    nextId: "Q7",
+                    key: "target_region",
+                    answerType: "text",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["state", "region", "state or region"],
+                    templates: ["Please share the state or region."],
+                    suggestions: null,
+                    tags: ["location"],
+                    when: shouldAskLeadRegion,
+                },
+                {
+                    id: "Q7",
+                    nextId: "Q8",
+                    key: "lead_volume",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["leads per month", "lead volume", "volume"],
+                    templates: ["How many leads do you expect per month?"],
+                    suggestions: ["Low volume", "Medium volume", "High volume"],
+                },
+                {
+                    id: "Q8",
+                    nextId: "Q9",
+                    key: "channels",
+                    answerType: "multi_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["channels", "google", "meta", "linkedin", "email", "tools"],
+                    templates: ["Which channels should be used for lead generation? (Multiple)"],
+                    suggestions: ["Google", "Meta", "LinkedIn", "Email", "Third party tools"],
+                    multiSelect: true,
+                },
+                {
+                    id: "Q9",
+                    nextId: "Q10",
+                    key: "lead_quality",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["lead quality", "raw leads", "pre-qualified"],
+                    templates: ["What level of lead quality do you require?"],
+                    suggestions: ["Raw leads", "Pre-qualified leads"],
+                },
+                {
+                    id: "Q10",
+                    nextId: "Q11",
+                    key: "crm_usage",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["crm", "lead tracking", "tracking system"],
+                    templates: ["Do you currently use a CRM or lead tracking system?"],
+                    suggestions: ["Yes, a CRM is already in place", "No"],
+                },
+                {
+                    id: "Q11",
+                    nextId: "Q12",
+                    key: "campaign_duration",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["campaign duration", "how long", "short-term", "long-term"],
+                    templates: ["How long do you want to run the lead generation campaigns?"],
+                    suggestions: ["Short-term", "Medium-term", "Long-term"],
+                },
+                {
+                    id: "Q12",
+                    nextId: null,
+                    key: "monthly_budget",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["budget", "monthly budget", "spend"],
+                    templates: ["What is your monthly budget for lead generation?"],
+                    suggestions: [
+                        "Under ₹15,000 / month",
+                        "₹15,000 – ₹30,000 / month",
+                        "₹30,000 – ₹60,000 / month",
+                        "₹60,000 – ₹1,00,000 / month",
+                        "₹1,00,000 and above / month",
                     ],
-                    suggestions: null,
-                    required: false,
                 },
             ],
         },
@@ -1029,6 +1187,11 @@ const withMandatoryBrief = (questions = []) => {
         briefQuestion,
         ...list.slice(insertIndex),
     ];
+};
+
+const shouldSkipMandatoryBrief = (service = "") => {
+    const canon = canonicalize(normalizeText(service));
+    return canon === "writingcontent" || canon === "writingandcontent";
 };
 
 const resolveIntroServiceLabel = (service = "") => {
@@ -3149,8 +3312,11 @@ const buildCollectedData = (questions = [], slots = {}) => {
     return collectedData;
 };
 
+const shouldIgnoreSharedContext = (question = {}) => Boolean(question?.disableSharedContext);
+
 const applyCataSharedContextUpdate = (sharedContext, question, slot, options = {}) => {
     if (!sharedContext || !question || !slot) return { updated: false };
+    if (shouldIgnoreSharedContext(question)) return { updated: false };
     if (slot.status !== "answered") return { updated: false };
     const resolvedService = resolveCataService(options.service);
     if (!resolvedService) return { updated: false };
@@ -3204,6 +3370,7 @@ const applyCataSharedContextUpdate = (sharedContext, question, slot, options = {
 
 const applySharedContextUpdate = (sharedContext, question, slot, options = {}) => {
     if (!sharedContext || !question || !slot) return { updated: false };
+    if (shouldIgnoreSharedContext(question)) return { updated: false };
     if (resolveCataService(options.service)) {
         return applyCataSharedContextUpdate(sharedContext, question, slot, options);
     }
@@ -3215,7 +3382,10 @@ const applySharedContextUpdate = (sharedContext, question, slot, options = {}) =
     if (!target) return { updated: false };
 
     const existingValue = resolveSharedContextValue(sharedContext, question, options.service);
-    const existingCompare = normalizeSharedComparison(existingValue, target.field);
+    let existingCompare = normalizeSharedComparison(existingValue, target.field);
+    if (target.field === "tech_preferences" && isTechPreferencePlaceholder(existingValue)) {
+        existingCompare = "";
+    }
     const nextCompare = normalizeSharedComparison(value, target.field);
 
     if (!existingCompare) {
@@ -3741,6 +3911,17 @@ const normalizeSharedComparison = (value = "", field = "") => {
     return canonicalize(text);
 };
 
+const normalizeTechPreferenceValue = (value = "") =>
+    normalizeText(value).toLowerCase().replace(/\s*-\s*$/, "");
+
+const isTechPreferencePlaceholder = (value = "") => {
+    const normalized = normalizeTechPreferenceValue(value);
+    return (
+        normalized === "yes, specific technologies" ||
+        normalized === "no, open to recommendations"
+    );
+};
+
 const resolveSharedContextTarget = (question = {}) => {
     const key = normalizeText(question.key || "").toLowerCase();
     if (!key) return null;
@@ -3800,6 +3981,12 @@ const resolveSharedContextTarget = (question = {}) => {
     }
     if (tags.has("budget") || key.includes("budget")) {
         return { field: "general_budget" };
+    }
+    if (key.includes("delivery_approach")) {
+        return null;
+    }
+    if (key === "tech_stack_preference") {
+        return null;
     }
     if (tags.has("timeline") || key.includes("timeline") || key.includes("delivery")) {
         return { field: "timeline" };
@@ -4209,9 +4396,12 @@ const buildMissingLists = (questions, slots, collectedData = {}, options = {}) =
             ? cataConfig.requiredKeys.includes(key)
             : isRequiredQuestion(question);
         const answered = slot?.status === "answered";
+        const forceAsk = question?.forceAsk === true;
+        const askedCount = slot?.askedCount || 0;
+        const treatAsAnswered = answered && !(forceAsk && askedCount === 0);
         const declined = slot?.status === "declined";
-        if (required && !answered) missingRequired.push(key);
-        if (!isCataFlow && !required && !answered && !declined) missingOptional.push(key);
+        if (required && !treatAsAnswered) missingRequired.push(key);
+        if (!isCataFlow && !required && !treatAsAnswered && !declined) missingOptional.push(key);
     }
     return { missingRequired, missingOptional };
 };
@@ -4434,6 +4624,7 @@ const applySharedContextToState = (state) => {
 
     for (const question of questions) {
         if (!question?.key) continue;
+        if (shouldIgnoreSharedContext(question)) continue;
         const slot = ensureSlot(slots, question.key);
         if (slot.status !== "empty" && slot.status !== "declined") continue;
         const sharedValue = resolveSharedContextValue(sharedContext, question, state?.service);
@@ -4470,13 +4661,16 @@ const applySharedContextToState = (state) => {
  * @returns {Object} State with collectedData and currentStep
  */
 export function buildConversationState(history, service, sharedContext) {
-    const { questions: rawQuestions, source, definition } = resolveServiceQuestions(service);
+    const { questions: rawQuestions, source, definition, skipIntro } = resolveServiceQuestions(service);
     const resolvedService = resolveCataService(service) || service;
     const isCataService = source === "cata";
     const safeHistory = Array.isArray(history) ? history : [];
-    const needsBrief = !isCataService && source !== "catalog";
+    const needsBrief =
+        !isCataService &&
+        source !== "catalog" &&
+        !shouldSkipMandatoryBrief(resolvedService);
     const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
-    const questionSeed = isCataService
+    const questionSeed = isCataService || skipIntro
         ? baseQuestions
         : withGlobalIntroQuestion(baseQuestions, resolvedService);
     const normalizedQuestions = normalizeQuestions(questionSeed);
@@ -4560,12 +4754,15 @@ export function buildConversationState(history, service, sharedContext) {
  */
 export function processUserAnswer(state, message) {
     const rawService = state?.service || "";
-    const { questions: rawQuestions, source, definition } = resolveServiceQuestions(rawService);
+    const { questions: rawQuestions, source, definition, skipIntro } = resolveServiceQuestions(rawService);
     const resolvedService = resolveCataService(rawService) || rawService;
     const isCataService = source === "cata";
-    const needsBrief = !isCataService && source !== "catalog";
+    const needsBrief =
+        !isCataService &&
+        source !== "catalog" &&
+        !shouldSkipMandatoryBrief(resolvedService);
     const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
-    const questionSeed = isCataService
+    const questionSeed = isCataService || skipIntro
         ? baseQuestions
         : withGlobalIntroQuestion(baseQuestions, resolvedService);
     const normalizedQuestions = normalizeQuestions(questionSeed);
@@ -4680,6 +4877,9 @@ export function getNextHumanizedQuestion(state) {
     const missingRequired = Array.isArray(state?.missingRequired) ? state.missingRequired : [];
     const missingOptional = Array.isArray(state?.missingOptional) ? state.missingOptional : [];
     const isCataFlow = isCataService(state?.service);
+    const suppressSharedIntro = questions.length
+        ? questions.every((question) => Boolean(question?.disableSharedContext))
+        : false;
 
     if (!questions.length) return null;
 
@@ -4806,7 +5006,13 @@ export function getNextHumanizedQuestion(state) {
 
     text = applyTemplatePlaceholders(text, state);
 
-    if (!isClarification && !isCataFlow && !state?.meta?.sharedContextIntroShown && hasSharedContextValue(state?.sharedContext)) {
+    if (
+        !isClarification &&
+        !isCataFlow &&
+        !suppressSharedIntro &&
+        !state?.meta?.sharedContextIntroShown &&
+        hasSharedContextValue(state?.sharedContext)
+    ) {
         const asked = Array.isArray(state?.asked) ? state.asked : [];
         if (asked.length === 0) {
             const serviceLabel = resolveIntroServiceLabel(state?.service || "");

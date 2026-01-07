@@ -41,7 +41,14 @@ const persistMessagesToStorage = (key, messages) => {
 const RESPONSE_TIMEOUT_MS = 25000;
 const normalizeContent = (value) => (value || "").trim();
 const DEFAULT_INTRO_SERVICE = "your project";
-const SERVICE_OPENERS = {};
+const SERVICE_OPENERS = {
+  "lead generation":
+    "Hi! I see you're interested in Lead Generation. What's your name? Let's get started.\n" +
+    "[QUESTION_KEY: name]",
+  "lead generation services":
+    "Hi! I see you're interested in Lead Generation. What's your name? Let's get started.\n" +
+    "[QUESTION_KEY: name]",
+};
 const buildIntroMessage = (serviceName = "") => {
   const label = normalizeContent(serviceName);
   const lower = label.toLowerCase();
