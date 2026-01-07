@@ -87,6 +87,12 @@ const features = [
     icon: Palette,
   },
   {
+    title: "Branding (Naming, Logo & Brand Identity)",
+    description: "Brand naming, logo design, and full brand identity systems.",
+    price: "Starting at INR 25,000",
+    icon: Palette,
+  },
+  {
     title: "Writing & Content",
     description: "Blogs, website copy, ad copy and scripts.",
     price: "Starting at ₹2,000",
@@ -334,3 +340,6 @@ const ClientOnboading = () => {
 };
 
 export default ClientOnboading;
+
+
+

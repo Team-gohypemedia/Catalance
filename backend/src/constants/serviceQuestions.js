@@ -3,86 +3,163 @@
 export const SERVICE_QUESTION_SETS = {
   "Development & Tech": [
     {
-      key: "name",
-      text: "What’s your first name?",
-      type: "text"
-    },
-    {
-      key: "company",
-      text: "What’s your company or project name?",
-      type: "text"
-    },
-    {
-      key: "summary",
-      text: "In one line, what are you building? (e.g., landing page, SaaS dashboard, e-commerce store)",
-      type: "text"
-    },
-    {
-      key: "service_type",
-      text: "Which category fits best for your build?",
+      key: "website_requirement",
+      text: "What best describes your website requirement?",
       type: "suggestion",
-      suggestions: ["Website", "Web Application/SaaS", "Mobile Application", "E-Commerce Platform", "Other"],
+      suggestions: ["New website", "Revamping existing website"]
     },
     {
-      key: "project_stage",
-      text: "Is this a new project or are we updating an existing one?",
+      key: "primary_objective",
+      text: "What is the primary objective of your website?",
       type: "suggestion",
-      suggestions: ["New Project", "Existing Project"],
+      suggestions: [
+        "Generating leads",
+        "Selling products or services online",
+        "Building brand credibility",
+        "Showcasing work or portfolio"
+      ]
     },
     {
-      key: "must_haves",
-      text: "What are the essential features/pages? (Use the chips or type your own) [MULTI_SELECT: ...]",
+      key: "design_experience",
+      text: "What type of design experience are you looking for?",
+      type: "suggestion",
+      suggestions: [
+        "Clean and simple design",
+        "Premium and modern UI",
+        "Interactive or 3D-based design"
+      ]
+    },
+    {
+      key: "website_type",
+      text: "What type of website do you need?",
+      type: "suggestion",
+      suggestions: [
+        "Platform-based website (No-code / CMS)",
+        "Coded website (Custom development)"
+      ]
+    },
+    {
+      key: "platform_preference",
+      text: "If Platform-based website is selected, choose preferred platform(s):",
       type: "multi_select",
       suggestions: [
-        "Home",
-        "About",
-        "Services",
-        "Portfolio/Case Studies",
-        "Contact/Inquiry",
-        "Blog/Resources",
-        "Product Catalog",
-        "Cart/Checkout",
-        "User Accounts/Auth",
-        "Dashboard/Analytics",
-        "Booking/Scheduling",
-        "Payments",
-        "Custom 3D Models/Interactions",
-        "AR/VR Experience",
-        "CMS/Admin",
-        "Other",
-      ],
-    },
-    {
-      key: "design",
-      text: "Do you already have designs or wireframes?",
-      type: "suggestion",
-      suggestions: ["Yes, designs are ready", "No, need design services", "Partial designs available"],
+        "WordPress",
+        "Webflow",
+        "Wix",
+        "Shopify",
+        "Squarespace",
+        "Framer",
+        "Bubble",
+        "Zoho Sites",
+        "Google Sites",
+        "Magento (Adobe Commerce)",
+        "Other: ________"
+      ]
     },
     {
       key: "tech_stack",
-      text: "Preferred tech stack/platform?",
-      type: "suggestion",
-      suggestions: ["React/Next.js", "Node.js", "Laravel", "WordPress", "No preference"],
-    },
-    {
-      key: "integrations",
-      text: "Any specific integrations needed?",
+      text: "If Coded website is selected, choose preferred tech stack/technology:",
       type: "multi_select",
-      suggestions: ["Stripe/PayPal", "Google Auth", "Social Login", "Analytics (GA/Mixpanel)", "CRM (HubSpot/Salesforce)", "Maps", "Email (SendGrid/Mailchimp)", "None"]
+      suggestions: [
+        "HTML, CSS, JavaScript (Static)",
+        "React.js",
+        "Next.js",
+        "Vue.js / Nuxt.js",
+        "Angular"
+      ]
     },
     {
-      key: "budget",
-      text: "What is your estimated budget? One INR amount is enough.",
-      type: "text",
+      key: "backend",
+      text: "Backend (if needed):",
+      type: "multi_select",
+      suggestions: [
+        "Node.js (Express)",
+        "Python (Django / Flask / FastAPI)",
+        "PHP (Laravel)",
+        "Java (Spring Boot)",
+        ".NET"
+      ]
     },
     {
-      key: "timeline",
-      text: "What is your target go-live date or timeframe? (e.g., by May 30 or within 6 weeks)",
-      type: "text",
+      key: "database",
+      text: "Database (if needed):",
+      type: "multi_select",
+      suggestions: ["MySQL", "PostgreSQL", "MongoDB", "Firebase", "Supabase"]
     },
-    { key: "references", text: "Any reference links or repos to share?", type: "text" },
+    {
+      key: "ecommerce",
+      text: "E-commerce (if needed):",
+      type: "multi_select",
+      suggestions: [
+        "Custom eCommerce",
+        "Stripe / Razorpay integration",
+        "WooCommerce (if hybrid)"
+      ]
+    },
+    {
+      key: "additional_pages",
+      text: "Every website includes: Home, About, Contact, Privacy Policy & Terms. What additional pages do you need? (Select all that apply)",
+      type: "multi_select",
+      suggestions: [
+        "Services",
+        "Products",
+        "Portfolio/Gallery",
+        "Testimonials",
+        "Blog",
+        "FAQ",
+        "Pricing",
+        "Shop/Store",
+        "Cart/Checkout",
+        "Wishlist",
+        "Order Tracking",
+        "Reviews/Ratings",
+        "Search",
+        "Book Now",
+        "Account/Login",
+        "Admin Dashboard",
+        "User Dashboard",
+        "Analytics Dashboard",
+        "Notifications",
+        "Chat/Support Widget",
+        "Help/Support",
+        "Resources",
+        "Events",
+        "3D Animations",
+        "3D Model Viewer",
+        "None"
+      ]
+    },
+    {
+      key: "content_status",
+      text: "What is the status of your website content?",
+      type: "suggestion",
+      suggestions: ["All content is ready", "Content needs to be created"]
+    },
+    {
+      key: "references",
+      text: "Do you have any reference websites you like?",
+      type: "suggestion",
+      suggestions: ["Yes \\u2014 ________", "No"]
+    },
+    {
+      key: "launch_timeline",
+      text: "When would you like to launch the website?",
+      type: "suggestion",
+      suggestions: ["Within 2\\u20134 weeks", "Within 1\\u20132 months", "The timeline is flexible"]
+    },
+    {
+      key: "budget_range",
+      text: "What budget range are you comfortable with for this project?",
+      type: "suggestion",
+      suggestions: [
+        "Under \\u20B925,000 (Basic website)",
+        "\\u20B925,000 \\u2013 \\u20B950,000 (Standard website)",
+        "\\u20B950,000 \\u2013 \\u20B91,00,000 (Advanced website)",
+        "\\u20B91,00,000 \\u2013 \\u20B92,50,000 (Custom / dynamic website)",
+        "\\u20B92,50,000 and above (High-end, scalable platform)"
+      ]
+    }
   ],
-
   "Lead Generation": [
     { key: "name", text: "Could you please provide your first name?", type: "text" },
     { key: "business", text: "Please briefly describe your business activities.", type: "text" },
@@ -968,6 +1045,125 @@ export const SERVICE_QUESTION_SETS = {
     },
     { key: "assets", text: "Any existing logo/colors/brand guide?", type: "text" },
     { key: "references", text: "Reference links you like?", type: "text" },
+  ],
+
+  "Branding (Naming, Logo & Brand Identity)": [
+    {
+      key: "name",
+      text: "Hi! I see you're interested in Branding (Naming, Logo & Brand Identity). What's your name? Let's get started.",
+      type: "text",
+    },
+    {
+      key: "brand_stage",
+      text: "At what stage is your brand currently?",
+      type: "suggestion",
+      suggestions: ["New brand", "Existing brand", "Rebranding"],
+    },
+    {
+      key: "naming_support",
+      text: "Do you require assistance with finalising or creating your brand name?",
+      type: "suggestion",
+      suggestions: [
+        "No, the brand name is already finalised",
+        "Yes, Few name suggestions",
+        "Yes, Complete naming strategy",
+      ],
+    },
+    {
+      key: "brand_perception",
+      text: "How would you like your brand to be perceived by your audience?",
+      type: "suggestion",
+      suggestions: [
+        "Professional and trustworthy",
+        "Modern and bold",
+        "Premium and minimal",
+        "Youthful and energetic",
+      ],
+    },
+    {
+      key: "target_audience",
+      text: "Who is your primary target audience?",
+      type: "suggestion",
+      suggestions: [
+        "Businesses (B2B)",
+        "Consumers (B2C)",
+        "Direct-to-consumer (D2C)",
+        "A mix of different audiences",
+      ],
+    },
+    {
+      key: "branding_usage",
+      text: "Where will this branding be used most frequently?",
+      type: "suggestion",
+      suggestions: [
+        "Website and digital platforms",
+        "Social media channels",
+        "Packaging and print materials",
+        "Across all platforms",
+      ],
+    },
+    {
+      key: "reference_brands",
+      text: "Do you have any reference brands whose style you admire?",
+      type: "suggestion",
+      suggestions: ["Yes -", "No"],
+    },
+    {
+      key: "deliverables",
+      text: "Which branding deliverables are you looking for? (multiple options)",
+      type: "multi_select",
+      suggestions: [
+        "Brand strategy & positioning",
+        "Brand vision, mission & values",
+        "Target audience & buyer persona",
+        "Competitor & market analysis",
+        "Brand tone of voice",
+        "Logo design (primary, secondary, icon)",
+        "Color palette",
+        "Typography system",
+        "Visual identity elements & patterns",
+        "Iconography style",
+        "Image / illustration style",
+        "Brand guidelines / brand book",
+        "Business card design",
+        "Letterhead & stationery",
+        "Email signature",
+        "Pitch deck / presentation template",
+        "Brochure / flyer design",
+        "Social media profile & cover designs",
+        "Social media post templates",
+        "Website UI brand direction",
+        "Brand messaging & brand story",
+        "Complete brand identity kit",
+      ],
+    },
+    {
+      key: "timeline",
+      text: "What is your preferred timeline for completing the branding work?",
+      type: "suggestion",
+      suggestions: ["Within 2 weeks", "Within 3-4 weeks", "Within 1-2 months"],
+    },
+    {
+      key: "creative_freedom",
+      text: "How much creative freedom would you like to give the design team?",
+      type: "suggestion",
+      suggestions: [
+        "Full creative freedom",
+        "Some guidelines -",
+        "Strict brand guidelines -",
+      ],
+    },
+    {
+      key: "budget_range",
+      text: "Which budget level best represents your expectation for this project?",
+      type: "suggestion",
+      suggestions: [
+        "Under INR 25,000",
+        "INR 25,000 - 50,000",
+        "INR 50,000 - 1,00,000",
+        "INR 1,00,000 and above",
+      ],
+    },
   ],
 };
 

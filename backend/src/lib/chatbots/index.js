@@ -15,6 +15,7 @@ import influencerUgcMarketingChatbot from "./services/influencer-ugc-marketing.c
 import crmAndErpSolutionsChatbot from "./services/crm-and-erp-solutions.chatbot.js";
 import aiAutomationChatbot from "./services/ai-automation.chatbot.js";
 import whatsappChatBotChatbot from "./services/whatsapp-chat-bot.chatbot.js";
+import brandingChatbot from "./services/branding.chatbot.js";
 
 export const CHATBOTS_BY_SERVICE = Object.freeze({
   [defaultChatbot.service]: defaultChatbot,
@@ -25,6 +26,7 @@ export const CHATBOTS_BY_SERVICE = Object.freeze({
   [leadGenerationChatbot.service]: leadGenerationChatbot,
   [seoOptimizationChatbot.service]: seoOptimizationChatbot,
   [socialMediaManagementChatbot.service]: socialMediaManagementChatbot,
+  "Social Media Marketing (Organic)": socialMediaManagementChatbot,
   [performanceMarketingChatbot.service]: performanceMarketingChatbot,
   [creativeAndDesignChatbot.service]: creativeAndDesignChatbot,
   [writingAndContentChatbot.service]: writingAndContentChatbot,
@@ -34,6 +36,7 @@ export const CHATBOTS_BY_SERVICE = Object.freeze({
   [crmAndErpSolutionsChatbot.service]: crmAndErpSolutionsChatbot,
   [aiAutomationChatbot.service]: aiAutomationChatbot,
   [whatsappChatBotChatbot.service]: whatsappChatBotChatbot,
+  [brandingChatbot.service]: brandingChatbot,
 });
 
 export const getChatbot = (service) => {
