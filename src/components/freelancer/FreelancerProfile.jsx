@@ -281,7 +281,9 @@ const FreelancerProfile = () => {
         );
 
         setWorkExperience(normalized.workExperience ?? []);
-        setServices(Array.isArray(normalized.services) ? normalized.services : []);
+        setServices(
+          Array.isArray(normalized.services) ? normalized.services : []
+        );
       } catch (error) {
         console.error("Unable to load profile", error);
         toast.error("Failed to load profile data");
@@ -584,16 +586,16 @@ const FreelancerProfile = () => {
         {/* Header Card */}
         <div className="relative rounded-3xl overflow-hidden bg-card border border-border/50 shadow-sm group/header">
           {/* Gradient Banner */}
-          <div className="h-40 bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500" />
+          <div className="h-28 bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500" />
 
-          <div className="px-8 pb-8 flex flex-col md:flex-row items-end gap-6 -mt-16 relative z-10">
+          <div className="px-8 pb-8 flex flex-col md:flex-row items-center gap-6 -mt-12 relative z-10">
             {/* Avatar */}
             <div
               className="relative group/avatar cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="w-32 h-32 md:w-36 md:h-36 rounded-3xl bg-card p-1.5 shadow-xl">
-                <div className="w-full h-full rounded-2xl overflow-hidden bg-muted relative">
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl shadow-xl">
+                <div className="w-full h-full rounded-3xl overflow-hidden bg-muted relative">
                   {personal.avatar ? (
                     <img
                       src={personal.avatar}
@@ -601,7 +603,7 @@ const FreelancerProfile = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-secondary text-4xl font-bold text-secondary-foreground">
+                    <div className="w-full h-full flex items-center justify-center bg-secondary text-3xl font-bold text-secondary-foreground">
                       {initials}
                     </div>
                   )}
@@ -629,7 +631,7 @@ const FreelancerProfile = () => {
                   className="absolute bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-full border-4 border-card"
                   title="Available for work"
                 >
-                  <div className="w-3 h-3 bg-white rounded-full" />
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
                 </div>
               )}
             </div>
@@ -637,7 +639,7 @@ const FreelancerProfile = () => {
             {/* Info */}
             <div className="flex-1 mb-1 text-center md:text-left">
               <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
-                <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                   {personal.name || "Your Name"}
                 </h1>
                 {personal.available && (
@@ -646,19 +648,19 @@ const FreelancerProfile = () => {
                   </span>
                 )}
               </div>
-              <p className="text-lg text-muted-foreground font-medium mb-2">
+              <p className="text-lg text-white/80 font-medium mb-2">
                 {personal.headline || "Add a headline"}
               </p>
 
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-3">
-                {personal.experienceYears && (
+                {personal.experienceYears ? (
                   <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
                     {personal.experienceYears} Years Exp.
                   </span>
-                )}
+                ) : null}
               </div>
 
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-400">
                 {personal.location && <span>{personal.location}</span>}
                 {/* Socials */}
                 <div className="flex items-center gap-2 mt-1 md:mt-0">
@@ -666,7 +668,7 @@ const FreelancerProfile = () => {
                     <a
                       href={portfolio.githubUrl}
                       target="_blank"
-                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
+                      className="p-1.5 text-gray-400 hover:text-white transition-colors bg-secondary/50 rounded-full"
                       rel="noreferrer"
                       title="GitHub"
                     >
@@ -677,7 +679,7 @@ const FreelancerProfile = () => {
                     <a
                       href={portfolio.linkedinUrl}
                       target="_blank"
-                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
+                      className="p-1.5 text-gray-400 hover:text-white transition-colors bg-secondary/50 rounded-full"
                       rel="noreferrer"
                       title="LinkedIn"
                     >
@@ -688,7 +690,7 @@ const FreelancerProfile = () => {
                     <a
                       href={portfolio.portfolioUrl}
                       target="_blank"
-                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
+                      className="p-1.5 text-gray-400 hover:text-white transition-colors bg-secondary/50 rounded-full"
                       rel="noreferrer"
                       title="Portfolio"
                     >
