@@ -118,20 +118,10 @@ const ClientProfileContent = () => {
                 currentAvatarUrl = data.data.url;
             }
 
-            const extraDetails = {
-                bio: formData.bio,
-                location: formData.location,
-                website: formData.website,
-                companyName: formData.companyName,
-                phoneNumber: formData.phoneNumber,
-                // We also include phone/company here just in case, 
-                // though we send them separately too if the backend supports them.
-            };
-
             const payload = {
                 ...formData,
                 avatar: currentAvatarUrl, // Use the real URL (or existing one)
-                bio: JSON.stringify(extraDetails)
+                bio: formData.bio
             };
 
             const response = await authFetch("/profile", {

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/app-error.js";
+import { extractBioText } from "../../utils/bio-utils.js";
 import { env } from "../../config/env.js";
 import { ensureResendClient } from "../../lib/resend.js";
 import { hashPassword, verifyPassword, verifyLegacyPassword } from "./password.utils.js";
@@ -31,7 +32,12 @@ export const updateUserProfile = async (userId, updates) => {
 
   Object.keys(updates).forEach(key => {
     if (allowedUpdates.includes(key)) {
-      cleanUpdates[key] = updates[key];
+      // Sanitize bio to plain text even if JSON/object slips in.
+      if (key === "bio") {
+        cleanUpdates[key] = extractBioText(updates[key]);
+      } else {
+        cleanUpdates[key] = updates[key];
+      }
     }
   });
 
@@ -317,7 +323,7 @@ const createUserRecord = async (payload) => {
         fullName: payload.fullName,
         passwordHash: await hashUserPassword(payload.password),
         role: payload.role ?? "FREELANCER",
-        bio: payload.bio,
+        bio: extractBioText(payload.bio),
         skills: payload.skills ?? [],
         hourlyRate: payload.hourlyRate ?? null,
         otpCode: payload.otpCode,

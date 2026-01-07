@@ -1,12 +1,27 @@
-import { Plus, Trash2, Edit2, ExternalLink, X, Camera, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  ExternalLink,
+  X,
+  Camera,
+  Loader2,
+  User,
+  Rocket,
+  Cpu,
+  Briefcase,
+  Github,
+  Linkedin,
+  Globe,
+} from "lucide-react";
 import { useEffect, useState, useRef } from "react";
-import { getSession } from "@/lib/auth-storage";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { API_BASE_URL } from "@/lib/api-client";
+import { useAuth } from "@/context/AuthContext";
 
 const serviceOptions = [
   "Web development",
@@ -18,6 +33,63 @@ const serviceOptions = [
 
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 
+const getBioTextFromObject = (obj) => {
+  if (!obj || typeof obj !== "object") return "";
+  const textKeys = ["bio", "about", "description", "summary", "text"];
+  for (const key of textKeys) {
+    if (typeof obj[key] === "string" && obj[key].trim()) {
+      return obj[key];
+    }
+  }
+  const fallback = Object.values(obj).find(
+    (value) => typeof value === "string" && value.trim()
+  );
+  return fallback || "";
+};
+
+const normalizeBioValue = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (
+      trimmed.startsWith("{") &&
+      trimmed.endsWith("}") &&
+      trimmed.length > 2
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (typeof parsed === "string") {
+          return parsed;
+        }
+        if (typeof parsed === "object" && parsed !== null) {
+          return getBioTextFromObject(parsed);
+        }
+      } catch {
+        // fall through and return the raw string
+      }
+    }
+    if (
+      trimmed.startsWith("[") &&
+      trimmed.endsWith("]") &&
+      trimmed.length > 2
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.join(" ").trim();
+        }
+      } catch {
+        //
+      }
+    }
+    return value;
+  }
+  if (typeof value === "object") {
+    return getBioTextFromObject(value);
+  }
+  return String(value);
+};
+
 const initialWorkForm = {
   company: "",
   position: "",
@@ -27,6 +99,7 @@ const initialWorkForm = {
 };
 
 const FreelancerProfile = () => {
+  const { user, authFetch } = useAuth();
   const [modalType, setModalType] = useState(null);
   const [skills, setSkills] = useState([]); // [{ name }]
   const [workExperience, setWorkExperience] = useState([]); // {title, period, description}
@@ -40,16 +113,17 @@ const FreelancerProfile = () => {
     email: "",
     phone: "",
     location: "",
+    bio: "",
+    experienceYears: "",
   });
   const [portfolio, setPortfolio] = useState({
     portfolioUrl: "",
     linkedinUrl: "",
-    githubUrl: ""
+    githubUrl: "",
   });
   const [portfolioProjects, setPortfolioProjects] = useState([]); // [{ link, image, title }]
   const [newProjectUrl, setNewProjectUrl] = useState("");
   const [newProjectLoading, setNewProjectLoading] = useState(false);
-  const [session, setSession] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -66,74 +140,162 @@ const FreelancerProfile = () => {
       .toUpperCase() || "KS";
 
   useEffect(() => {
-    const authSession = getSession();
-    setSession(authSession);
+    let active = true;
 
-    if (authSession?.user) {
-      setPersonal((prev) => ({
-        ...prev,
-        name: authSession.user.fullName ?? authSession.user.name ?? prev.name,
-        email: authSession.user.email ?? prev.email,
-      }));
-    }
+    const normalizeProfileData = (payload = {}) => {
+      if (payload?.personal) {
+        return payload;
+      }
+
+      return {
+        personal: {
+          name: payload.fullName ?? payload.name ?? "",
+          email: payload.email ?? "",
+          phone: payload.phone ?? payload.phoneNumber ?? "",
+          location: payload.location ?? "",
+          headline: payload.jobTitle ?? payload.headline ?? "",
+          bio: payload.bio ?? "",
+          experienceYears: payload.experienceYears ?? "",
+          avatar: payload.avatar ?? "",
+          available:
+            payload.status !== undefined ? payload.status === "ACTIVE" : true,
+        },
+        skills: Array.isArray(payload.skills) ? payload.skills : [],
+        workExperience: payload.workExperience ?? [],
+        services: Array.isArray(payload.services) ? payload.services : [],
+        portfolio: {
+          portfolioUrl: payload.portfolio ?? "",
+          linkedinUrl: payload.linkedin ?? "",
+          githubUrl: payload.github ?? "",
+        },
+        portfolioProjects: payload.portfolioProjects ?? [],
+      };
+    };
 
     const loadProfile = async () => {
       setProfileLoading(true);
-      if (!authSession?.user?.email) {
-          setProfileLoading(false);
-          return;
-      }
 
       try {
-        const response = await fetch(
-          buildUrl(`/profile?email=${encodeURIComponent(authSession.user.email)}`)
-        );
+        let data = null;
 
-        if (!response.ok) {
-          console.warn("Profile GET not ok:", response.status);
-          return;
+        if (user?.email) {
+          const response = await authFetch(
+            `/profile?email=${encodeURIComponent(user.email)}&_t=${Date.now()}`
+          );
+
+          if (response.ok) {
+            const payload = await response.json();
+            data = payload?.data ?? null;
+          } else {
+            console.warn("Profile GET not ok:", response.status);
+          }
         }
 
-        const { data = {} } = await response.json();
+        if (!data) {
+          const fallbackResponse = await authFetch("/auth/profile");
+          if (fallbackResponse.ok) {
+            const payload = await fallbackResponse.json();
+            data = payload?.data ?? null;
+          }
+        }
 
-        setPersonal((prev) => ({
-          ...prev,
-          name: data.personal?.name ?? prev.name,
-          email: data.personal?.email ?? prev.email,
-          phone: data.personal?.phone ?? "",
-          location: data.personal?.location ?? "",
-          headline: data.personal?.headline ?? "",
-          avatar: data.personal?.avatar ?? "",
-          available: data.personal?.available ?? true,
-        }));
+        if (!data && user?.email) {
+          const baseUrl = API_BASE_URL || "/api";
+          const url = `${baseUrl}/profile?email=${encodeURIComponent(
+            user.email
+          )}&_t=${Date.now()}`;
+          const response = await fetch(url);
+          if (response.ok) {
+            const payload = await response.json();
+            data = payload?.data ?? null;
+          }
+        }
 
-        setPortfolio({
-            portfolioUrl: data.portfolio?.portfolioUrl || "",
-            linkedinUrl: data.portfolio?.linkedinUrl || "",
-            githubUrl: data.portfolio?.githubUrl || ""
-        });
-        setPortfolioProjects(data.portfolioProjects || []);
+        if (!data && user) {
+          data = user;
+        }
 
-        const skillsFromApi = Array.isArray(data.skills) ? data.skills : [];
-        setSkills(
-          skillsFromApi.map((s) =>
-            typeof s === "string" ? { name: s } : { name: String(s?.name ?? "") }
-          )
+        if (!active || !data) return; // Prevent updating state if unmounted or no data
+
+        const normalized = normalizeProfileData(data);
+
+        // Debug logging
+        console.log("[FreelancerProfile] Loaded data from API:", normalized);
+        console.log(
+          "[FreelancerProfile] Headline from API:",
+          normalized.personal?.headline
         );
 
+        // Update state with API data
+        setPersonal((prev) => {
+          const rawBio = normalized.personal?.bio ?? prev.bio ?? "";
+          const safeBio = normalizeBioValue(rawBio);
 
-        setWorkExperience(data.workExperience ?? []);
-        setServices(Array.isArray(data.services) ? data.services : []);
+          return {
+            ...prev,
+            name:
+              normalized.personal?.name ??
+              user?.fullName ??
+              user?.name ??
+              prev.name,
+            email: normalized.personal?.email ?? user?.email ?? prev.email,
+            phone: normalized.personal?.phone ?? prev.phone ?? "",
+            location: normalized.personal?.location ?? prev.location ?? "",
+            headline: normalized.personal?.headline ?? prev.headline ?? "",
+            bio: safeBio,
+            experienceYears:
+              normalized.personal?.experienceYears ??
+              prev.experienceYears ??
+              "",
+            avatar: normalized.personal?.avatar ?? prev.avatar ?? "",
+            available: normalized.personal?.available ?? true,
+          };
+        });
+
+        setPortfolio({
+          portfolioUrl: normalized.portfolio?.portfolioUrl || "",
+          linkedinUrl: normalized.portfolio?.linkedinUrl || "",
+          githubUrl: normalized.portfolio?.githubUrl || "",
+        });
+        setPortfolioProjects(normalized.portfolioProjects || []);
+
+        const skillsFromApi = Array.isArray(normalized.skills)
+          ? normalized.skills
+          : [];
+        setSkills(
+          skillsFromApi.map((s) => {
+            // Self-heal: Check if skill is a JSON string
+            if (
+              typeof s === "string" &&
+              s.trim().startsWith("{") &&
+              s.includes('"name"')
+            ) {
+              try {
+                return { name: JSON.parse(s).name };
+              } catch (e) {}
+            }
+            return typeof s === "string"
+              ? { name: s }
+              : { name: String(s?.name ?? "") };
+          })
+        );
+
+        setWorkExperience(normalized.workExperience ?? []);
+        setServices(Array.isArray(normalized.services) ? normalized.services : []);
       } catch (error) {
         console.error("Unable to load profile", error);
         toast.error("Failed to load profile data");
       } finally {
-        setProfileLoading(false);
+        if (active) setProfileLoading(false);
       }
     };
 
     loadProfile();
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [user?.email, authFetch, user?.fullName, user?.name]);
 
   // ----- Skills -----
   const addSkill = () => {
@@ -173,10 +335,10 @@ const FreelancerProfile = () => {
 
   const saveExperience = () => {
     const { company, position, from, to, description } = workForm;
-    
+
     if (!company.trim() || !position.trim() || !from.trim()) {
-        toast.error("Please fill in Company, Position, and Start Date");
-        return;
+      toast.error("Please fill in Company, Position, and Start Date");
+      return;
     }
 
     const toDate = to.trim() || "Present";
@@ -222,44 +384,35 @@ const FreelancerProfile = () => {
       .map((s) => s?.trim())
       .filter(Boolean);
 
-    // Verify token exists (if using session-based auth that requires it)
-    if (session?.accessToken && !session.accessToken) {
-        // Handle no token case if critical
-    }
-
     // Check if we need to upload an image first
     let currentAvatarUrl = personal.avatar;
 
     if (selectedFile) {
-        try {
-            const uploadData = new FormData();
-            uploadData.append("file", selectedFile);
-            
-            const uploadRes = await fetch(buildUrl("/upload"), {
-                method: "POST",
-                 headers: {
-                    ...(session?.accessToken
-                        ? { Authorization: `Bearer ${session.accessToken}` }
-                        : {}),
-                },
-                body: uploadData,
-            });
+      try {
+        const uploadData = new FormData();
+        uploadData.append("file", selectedFile);
 
-            if (!uploadRes.ok) {
-               const err = await uploadRes.json();
-               throw new Error(err.message || "Image upload failed");
-            }
+        const uploadRes = await authFetch("/upload", {
+          method: "POST",
+          body: uploadData,
+        });
 
-            const data = await uploadRes.json();
-            currentAvatarUrl = data.data.url;
-            console.log("New Avatar URL from upload:", currentAvatarUrl);
-
-        } catch (uploadErr) {
-            console.error("Image upload failed inside save:", uploadErr);
-            toast.error("Failed to upload image. Profile not saved.");
-            return;
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json();
+          throw new Error(err.message || "Image upload failed");
         }
+
+        const data = await uploadRes.json();
+        currentAvatarUrl = data.data.url;
+        console.log("New Avatar URL from upload:", currentAvatarUrl);
+      } catch (uploadErr) {
+        console.error("Image upload failed inside save:", uploadErr);
+        toast.error("Failed to upload image. Profile not saved.");
+        return;
+      }
     }
+
+    const bioText = normalizeBioValue(personal.bio);
 
     const payload = {
       personal: {
@@ -268,32 +421,29 @@ const FreelancerProfile = () => {
         phone: personal.phone,
         location: personal.location,
         headline: personal.headline,
+        bio: bioText,
+        experienceYears: personal.experienceYears,
         available: personal.available,
         avatar: currentAvatarUrl, // Use the new real URL or existing
       },
+      bio: bioText,
       skills: skillsForApi,
       workExperience,
       services,
       portfolio, // Add portfolio to payload
-      portfolioProjects // Add portfolioProjects to payload
+      portfolioProjects, // Add portfolioProjects to payload
     };
 
     console.log("Saving profile payload:", payload);
 
     try {
-      const response = await fetch(buildUrl("/profile"), {
+      const response = await authFetch("/profile", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.accessToken
-            ? { Authorization: `Bearer ${session.accessToken}` }
-            : {}),
-        },
         body: JSON.stringify(payload),
       });
 
-      const text = await response.text();
-      console.log("Save response:", response.status, text);
+      // const text = await response.text(); // authFetch handles response.text() for errors
+      // console.log("Save response:", response.status, text);
 
       if (!response.ok) {
         toast.error("Save failed", {
@@ -305,6 +455,10 @@ const FreelancerProfile = () => {
       toast.success("Profile saved", {
         description: "Your profile has been updated successfully.",
       });
+
+      // Update local state to reflect saved changes (esp if avatar changed)
+      setPersonal((prev) => ({ ...prev, avatar: currentAvatarUrl }));
+      setSelectedFile(null);
     } catch (error) {
       console.error("Save failed", error);
       toast.error("Save failed", {
@@ -320,9 +474,9 @@ const FreelancerProfile = () => {
 
   const handlePersonalChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setPersonal((prev) => ({ 
-        ...prev, 
-        [name]: type === "checkbox" ? checked : value 
+    setPersonal((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -332,19 +486,19 @@ const FreelancerProfile = () => {
     if (!file) return;
 
     // Reset input so same file can be selected again if needed
-    e.target.value = '';
+    e.target.value = "";
 
     if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size must be less than 5MB");
-        return;
+      toast.error("File size must be less than 5MB");
+      return;
     }
 
     // Store file for later upload
     setSelectedFile(file);
-    
+
     // Show local preview immediately
     const objectUrl = URL.createObjectURL(file);
-    setPersonal(prev => ({ ...prev, avatar: objectUrl }));
+    setPersonal((prev) => ({ ...prev, avatar: objectUrl }));
   };
 
   // ----- Add Custom Service -----
@@ -352,7 +506,7 @@ const FreelancerProfile = () => {
   const addService = () => {
     const name = serviceForm.trim();
     if (name && !services.includes(name)) {
-        setServices(prev => [...prev, name]);
+      setServices((prev) => [...prev, name]);
     }
     setServiceForm("");
     setModalType(null);
@@ -361,7 +515,7 @@ const FreelancerProfile = () => {
   // ----- Portfolio Projects Logic -----
   const handleUrlBlur = async () => {
     if (!newProjectUrl) return;
-    if (portfolioProjects.some(p => p.link === newProjectUrl)) {
+    if (portfolioProjects.some((p) => p.link === newProjectUrl)) {
       toast.error("Project already added");
       setNewProjectUrl("");
       return;
@@ -369,41 +523,45 @@ const FreelancerProfile = () => {
 
     setNewProjectLoading(true);
     try {
-      const res = await fetch(buildUrl(`/utils/metadata?url=${encodeURIComponent(newProjectUrl)}`));
+      const res = await fetch(
+        buildUrl(`/utils/metadata?url=${encodeURIComponent(newProjectUrl)}`)
+      );
       const data = await res.json();
-      
+
       if (data.success) {
-        setPortfolioProjects(prev => [
-          ...prev, 
-          { 
-            link: newProjectUrl, 
+        setPortfolioProjects((prev) => [
+          ...prev,
+          {
+            link: newProjectUrl,
             image: data.data.image,
-            title: data.data.title || newProjectUrl.replace(/^https?:\/\//, '').split('/')[0] 
-          }
+            title:
+              data.data.title ||
+              newProjectUrl.replace(/^https?:\/\//, "").split("/")[0],
+          },
         ]);
         setNewProjectUrl("");
         toast.success("Project added!");
       } else {
-        setPortfolioProjects(prev => [
-          ...prev, 
-          { 
-            link: newProjectUrl, 
+        setPortfolioProjects((prev) => [
+          ...prev,
+          {
+            link: newProjectUrl,
             image: null,
-            title: newProjectUrl
-          }
+            title: newProjectUrl,
+          },
         ]);
         setNewProjectUrl("");
       }
     } catch (err) {
       console.error(err);
       toast.error("Could not fetch preview, but link added.");
-      setPortfolioProjects(prev => [
-          ...prev, 
-          { 
-            link: newProjectUrl, 
-            image: null,
-            title: newProjectUrl
-          }
+      setPortfolioProjects((prev) => [
+        ...prev,
+        {
+          link: newProjectUrl,
+          image: null,
+          title: newProjectUrl,
+        },
       ]);
       setNewProjectUrl("");
     } finally {
@@ -412,414 +570,387 @@ const FreelancerProfile = () => {
   };
 
   const removeProject = (index) => {
-    setPortfolioProjects(prev => prev.filter((_, i) => i !== index));
+    setPortfolioProjects((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Merge default options with any custom ones saved in the profile
   const displayServices = Array.from(new Set([...serviceOptions, ...services]));
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
-        <FreelancerTopBar label={`${personal.name || "Freelancer"}'s profile`} />
-        {/* Header Section with Profile Picture */}
-        <section className="mb-20">
-          <div className="flex flex-col md:flex-row items-start md:items-end gap-8 mb-8">
-            {/* Profile Image / Initials */}
-            <div className="relative group/avatar cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-card border border-border p-1 overflow-hidden shadow transition-transform duration-300 group-hover/avatar:scale-105">
-                 {personal.avatar ? (
-                    <img 
-                        src={personal.avatar} 
-                        alt="Profile" 
-                        className="w-full h-full object-cover rounded-xl"
+    <div className="min-h-screen bg-background text-foreground pb-20">
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        <FreelancerTopBar label="Profile" />
+
+        {/* Header Card */}
+        <div className="relative rounded-3xl overflow-hidden bg-card border border-border/50 shadow-sm group/header">
+          {/* Gradient Banner */}
+          <div className="h-40 bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500" />
+
+          <div className="px-8 pb-8 flex flex-col md:flex-row items-end gap-6 -mt-16 relative z-10">
+            {/* Avatar */}
+            <div
+              className="relative group/avatar cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="w-32 h-32 md:w-36 md:h-36 rounded-3xl bg-card p-1.5 shadow-xl">
+                <div className="w-full h-full rounded-2xl overflow-hidden bg-muted relative">
+                  {personal.avatar ? (
+                    <img
+                      src={personal.avatar}
+                      alt={personal.name}
+                      className="w-full h-full object-cover"
                     />
-                 ) : (
-                    <div className="w-full h-full rounded-xl bg-secondary flex items-center justify-center text-3xl md:text-5xl font-bold text-secondary-foreground">
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-secondary text-4xl font-bold text-secondary-foreground">
                       {initials}
                     </div>
-                 )}
+                  )}
+                  {/* Upload Overlay */}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                    {uploadingImage ? (
+                      <Loader2 className="animate-spin text-white" />
+                    ) : (
+                      <Camera className="text-white" />
+                    )}
+                  </div>
+                </div>
               </div>
-              
-              {/* Upload Overlay */}
-              <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white">
-                  {uploadingImage ? <Loader2 className="h-8 w-8 animate-spin" /> : <Camera className="h-8 w-8" />}
-              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleImageUpload}
+              />
 
+              {/* Verified Badge / Available */}
               {personal.available && (
-                <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-primary rounded-full text-xs font-semibold text-primary-foreground shadow-sm animate-in fade-in zoom-in duration-300 z-10">
-                  Available
+                <div
+                  className="absolute bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-full border-4 border-card"
+                  title="Available for work"
+                >
+                  <div className="w-3 h-3 bg-white rounded-full" />
                 </div>
               )}
-              <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept="image/*"
-                  onChange={handleImageUpload}
-              />
             </div>
 
-            {/* Profile Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-4 mb-2">
-                <p className="text-muted-foreground text-xs tracking-widest uppercase">
-                  Profile
-                </p>
-                <button 
+            {/* Info */}
+            <div className="flex-1 mb-1 text-center md:text-left">
+              <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+                  {personal.name || "Your Name"}
+                </h1>
+                {personal.available && (
+                  <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold tracking-wider uppercase border border-emerald-500/20">
+                    Available for work
+                  </span>
+                )}
+              </div>
+              <p className="text-lg text-muted-foreground font-medium mb-2">
+                {personal.headline || "Add a headline"}
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-3">
+                {personal.experienceYears && (
+                  <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                    {personal.experienceYears} Years Exp.
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-muted-foreground">
+                {personal.location && <span>{personal.location}</span>}
+                {/* Socials */}
+                <div className="flex items-center gap-2 mt-1 md:mt-0">
+                  {portfolio.githubUrl && (
+                    <a
+                      href={portfolio.githubUrl}
+                      target="_blank"
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
+                      rel="noreferrer"
+                      title="GitHub"
+                    >
+                      <Github className="w-4 h-4" />
+                    </a>
+                  )}
+                  {portfolio.linkedinUrl && (
+                    <a
+                      href={portfolio.linkedinUrl}
+                      target="_blank"
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
+                      rel="noreferrer"
+                      title="LinkedIn"
+                    >
+                      <Linkedin className="w-4 h-4" />
+                    </a>
+                  )}
+                  {portfolio.portfolioUrl && (
+                    <a
+                      href={portfolio.portfolioUrl}
+                      target="_blank"
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
+                      rel="noreferrer"
+                      title="Portfolio"
+                    >
+                      <Globe className="w-4 h-4" />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setModalType("portfolio")}
+                    className="p-1.5 text-primary hover:bg-primary/10 rounded-full transition-colors"
+                    title="Add/Edit Social Links"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Edit Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/10"
+              onClick={openEditPersonalModal}
+            >
+              <Edit2 className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* 2 Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* About Me */}
+            <Card className="p-6 md:p-8 space-y-4 relative group">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                  <span className="text-primary">
+                    <User className="w-5 h-5" />
+                  </span>{" "}
+                  About Me
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={openEditPersonalModal}
-                  className="text-primary hover:text-primary/80 transition-colors"
-                  title="Edit Profile"
                 >
                   <Edit2 className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
-              
-              <h1 className="text-5xl md:text-6xl font-bold mb-3 text-foreground leading-tight truncate">
-                {personal.name || "Your Name"}
-              </h1>
-              <p className="text-lg text-foreground/80 mb-2 font-medium">
-                {personal.headline || "Add a headline to describe your role"}
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {personal.bio ||
+                  personal.headline ||
+                  "Tell us about yourself..."}
               </p>
-              
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground mt-4">
-                <a
-                  href={personal.email ? `mailto:${personal.email}` : "#"}
-                  className="hover:text-primary transition-colors flex items-center gap-2"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
-                  {personal.email || ""}
-                </a>
-                
-                {personal.phone && (
-                  <span className="flex items-center gap-2">
-                     <span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
-                     {personal.phone}
-                  </span>
-                )}
-                
-                {personal.location && (
-                  <span className="flex items-center gap-2">
-                     <span className="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
-                     {personal.location}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+            </Card>
 
-        {/* Services Section */}
-        <section className="mb-20">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
-                Expertise
-              </p>
-              <h2 className="text-2xl font-bold text-foreground">Services</h2>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-              onClick={() => setModalType("service")}
-            >
-              <Plus className="w-4 h-4 mr-2" /> Add
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {displayServices.map((label) => {
-              const active = services.includes(label);
-              return (
-                <div
-                  key={label}
-                  onClick={() =>
-                    setServices((prev) =>
-                      prev.includes(label)
-                        ? prev.filter((item) => item !== label)
-                        : [...prev, label]
-                    )
-                  }
-                  className={`px-4 py-3 rounded-lg text-sm font-medium text-center transition-all cursor-pointer border
-                    ${
-                      active
-                        ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                        : "bg-secondary border-border text-secondary-foreground hover:border-primary hover:bg-primary/10"
-                    }`}
-                >
-                  {label}
-                </div>
-              );
-            })}
-            {services.length === 0 && (
-              <p className="col-span-full text-sm text-muted-foreground mt-2">
-                No services selected yet. Click a service to add it to your profile.
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* Online Presence Section */}
-        <section className="mb-20">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
-                Online Presence
-              </p>
-              <h2 className="text-2xl font-bold text-foreground">Social Links</h2>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-              onClick={() => setModalType("portfolio")}
-            >
-              <Edit2 className="w-4 h-4 mr-2" /> Edit
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-             {/* Portfolio */}
-             <div className="p-4 rounded-xl bg-card border border-border flex flex-col gap-2">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Portfolio</span>
-                {portfolio.portfolioUrl ? (
-                    <a href={portfolio.portfolioUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
-                        {portfolio.portfolioUrl}
-                    </a>
-                ) : <span className="text-muted-foreground text-sm">Not added</span>}
-             </div>
-             {/* LinkedIn */}
-             <div className="p-4 rounded-xl bg-card border border-border flex flex-col gap-2">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">LinkedIn</span>
-                {portfolio.linkedinUrl ? (
-                    <a href={portfolio.linkedinUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
-                        {portfolio.linkedinUrl}
-                    </a>
-                ) : <span className="text-muted-foreground text-sm">Not added</span>}
-             </div>
-             {/* GitHub */}
-             <div className="p-4 rounded-xl bg-card border border-border flex flex-col gap-2">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">GitHub</span>
-                {portfolio.githubUrl ? (
-                    <a href={portfolio.githubUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
-                        {portfolio.githubUrl}
-                    </a>
-                ) : <span className="text-muted-foreground text-sm">Not added</span>}
-             </div>
-          </div>
-        </section>
-
-        {/* Portfolio Projects Section */}
-        <section className="mb-20">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
-                Showcase
-              </p>
-              <h2 className="text-2xl font-bold text-foreground">Featured Projects</h2>
-            </div>
-          </div>
-          
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {portfolioProjects.map((project, idx) => (
-              <div key={idx} className="group relative rounded-xl border border-border bg-card p-3 shadow-sm transition-all hover:shadow-md hover:border-primary/50">
-                <button
-                  type="button"
-                  onClick={() => removeProject(idx)}
-                  className="absolute -right-2 -top-2 z-10 hidden rounded-full bg-destructive p-1.5 text-destructive-foreground shadow-sm group-hover:flex items-center justify-center transition-all hover:scale-110"
-                  title="Remove Project"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-                <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted/50 object-cover border border-border/50 relative">
-                  {project.image ? (
-                    <img src={project.image} alt="Preview" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-4xl bg-secondary/30">🚀</div>
-                  )}
-                  <a 
-                    href={project.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  >
-                    <ExternalLink className="text-white w-8 h-8 drop-shadow-md" />
-                  </a>
-                </div>
-                <div className="mt-3 px-1">
-                  <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold hover:text-primary transition-colors truncate block" title={project.link}>
-                    {project.title || project.link}
-                  </a>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{project.link}</p>
-                </div>
-              </div>
-            ))}
-            
-            {/* Add New Project Card */}
-            <div className="flex aspect-video w-full flex-col items-center justify-center rounded-xl border border-dashed border-border/70 hover:bg-secondary/20 hover:border-primary/50 transition-all p-6 gap-3 group bg-card/30">
-               {newProjectLoading ? (
-                 <span className="loading loading-spinner text-primary" />
-               ) : (
-                 <>
-                   <div className="p-3 rounded-full bg-secondary text-secondary-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                      <Plus className="w-6 h-6" />
-                   </div>
-                   <div className="w-full text-center space-y-2">
-                       <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Add New Project</p>
-                       <input 
-                          placeholder="Paste URL & Press Enter" 
-                          value={newProjectUrl}
-                          onChange={(e) => setNewProjectUrl(e.target.value)}
-                          onBlur={handleUrlBlur}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleUrlBlur();
-                            }
-                          }}
-                          className="h-9 w-full rounded-lg bg-background border border-input px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-center"
-                       />
-                   </div>
-                 </>
-               )}
-            </div>
-          </div>
-        </section>
-
-        {/* Skills Section */}
-        <section className="mb-20">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
-                Technical Skills
-              </p>
-              <h2 className="text-2xl font-bold text-foreground">Skills</h2>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-              onClick={() => setModalType("skill")}
-            >
-              <Plus className="w-4 h-4 mr-2" /> Add Skill
-            </Button>
-          </div>
-
-          {skills.length ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              {skills.map((skill, idx) => (
-                <div
-                  key={`${skill.name}-${idx}`}
-                  className={`group px-4 py-3 rounded-lg text-sm font-medium text-center transition-all cursor-pointer border flex items-center justify-between
-                    bg-secondary border-border text-secondary-foreground hover:border-primary hover:bg-primary/10`}
-                >
-                  <span className="flex-1 text-left truncate">
-                    {skill.name || "Untitled skill"}
-                  </span>
-                  <Trash2
-                    className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-destructive ml-2"
-                    onClick={() => deleteSkill(idx)}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No skills added yet. Use &quot;Add Skill&quot; to start listing your strengths.
-            </p>
-          )}
-        </section>
-
-        {/* Work Experience Section */}
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-xs tracking-widest uppercase text-muted-foreground mb-1">
-                Professional Journey
-              </p>
-              <h2 className="text-2xl font-bold text-foreground">
-                Work Experience
-              </h2>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-              onClick={openCreateExperienceModal}
-            >
-              <Plus className="w-4 h-4 mr-2" /> Add
-            </Button>
-          </div>
-
-          {workExperience.length ? (
+            {/* Featured Projects */}
             <div className="space-y-4">
-              {workExperience.map((exp, idx) => {
-                const [position, company] = (exp.title ?? "").split(" · ");
-                return (
-                  <Card
-                    key={`${exp.title}-${idx}`}
-                    className="p-5 md:p-6 border-border bg-card hover:border-primary hover:shadow-md transition-all duration-300 group"
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                  <span className="text-primary">
+                    <Rocket className="w-5 h-5" />
+                  </span>{" "}
+                  Featured Projects
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary"
+                  onClick={() => setModalType("portfolio")}
+                >
+                  View All
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Map Projects */}
+                {portfolioProjects.map((project, idx) => (
+                  <div
+                    key={idx}
+                    className="group relative rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all"
                   >
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-all mb-1">
-                          {position || exp.title || "Role"}
-                        </h3>
-                        {company && (
-                          <div className="flex items-center gap-2 mb-2">
-                            <p className="text-primary text-sm font-medium">
-                              {company}
-                            </p>
-                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <Edit2
-                          className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                          onClick={() => openEditExperienceModal(exp, idx)}
+                    <div className="aspect-video bg-muted relative overflow-hidden">
+                      {project.image ? (
+                        <img
+                          src={project.image}
+                          alt={project.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
-                        <Trash2
-                          className="w-4 h-4 text-muted-foreground hover:text-destructive cursor-pointer transition-colors"
-                          onClick={() => deleteExperience(idx)}
-                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-4xl bg-secondary/30">
+                          💻
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <a
+                          href={project.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 bg-white rounded-full text-black hover:scale-110 transition-transform"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                        <button
+                          onClick={() => removeProject(idx)}
+                          className="p-2 bg-destructive text-white rounded-full hover:scale-110 transition-transform"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                    {exp.period && (
-                      <p className="text-muted-foreground text-xs font-medium mb-3 uppercase tracking-wide">
-                        {exp.period}
-                      </p>
-                    )}
-                    {exp.description && (
-                      <p className="text-foreground text-sm leading-relaxed">
-                        {exp.description}
-                      </p>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No work experience added yet. Use &quot;Add&quot; to document your
-              professional journey.
-            </p>
-          )}
-        </section>
+                    <div className="p-3 flex items-center justify-between gap-3">
+                      <h4
+                        className="font-semibold truncate text-sm flex-1"
+                        title={project.title || project.link}
+                      >
+                        {project.title || "Project"}
+                      </h4>
+                      <a
+                        href={project.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center p-2 rounded-lg bg-secondary/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+                        title="Visit Project"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+                ))}
 
-        {/* CTA Section */}
-        <section className="flex flex-col sm:flex-row items-center justify-center gap-4 py-12 border-t border-border mt-8">
-          <Button
-            size="lg"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg shadow-sm w-full sm:w-auto"
-            onClick={handleSave}
-            disabled={profileLoading}
-          >
-            {profileLoading ? "Loading..." : "Save Profile"}
-          </Button>
-        </section>
-      </main>
+                {/* Add New Project Card / Input Area */}
+                <div className="aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center p-4 text-center hover:bg-secondary/10 transition-colors">
+                  {newProjectLoading ? (
+                    <Loader2 className="animate-spin text-primary" />
+                  ) : (
+                    <div className="w-full space-y-2">
+                      <input
+                        className="w-full bg-transparent text-center text-sm outline-none placeholder:text-muted-foreground"
+                        placeholder="+ Add Project URL"
+                        value={newProjectUrl}
+                        onChange={(e) => setNewProjectUrl(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleUrlBlur()}
+                        onBlur={handleUrlBlur}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="space-y-8">
+            {/* Tech Stack */}
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                  <span className="text-primary">
+                    <Cpu className="w-5 h-5" />
+                  </span>{" "}
+                  Tech Stack
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setModalType("skill")}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {skills.length > 0 ? (
+                  skills.map((s, i) => (
+                    <div key={i} className="group relative">
+                      <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50 cursor-default block">
+                        {s.name}
+                      </span>
+                      <Trash2
+                        className="w-3 h-3 absolute -top-1 -right-1 text-destructive opacity-0 group-hover:opacity-100 cursor-pointer bg-card rounded-full"
+                        onClick={() => deleteSkill(i)}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No skills added.
+                  </p>
+                )}
+              </div>
+            </Card>
+
+            {/* Experience */}
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                  <span className="text-primary">
+                    <Briefcase className="w-5 h-5" />
+                  </span>{" "}
+                  Experience
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={openCreateExperienceModal}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="relative border-l border-border ml-3.5 space-y-8 py-2">
+                {workExperience.length > 0 ? (
+                  workExperience.map((exp, i) => {
+                    const [position, company] = (exp.title || "").split(" · ");
+                    return (
+                      <div
+                        key={i}
+                        className="relative pl-8 group cursor-pointer"
+                        onClick={() => openEditExperienceModal(exp, i)}
+                      >
+                        {/* Timeline Dot */}
+                        <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-primary bg-background group-hover:bg-primary transition-colors" />
+
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary mb-0.5 block">
+                          {exp.period || "Date N/A"}
+                        </span>
+                        <h4 className="font-bold text-foreground leading-tight">
+                          {position || "Position"}
+                        </h4>
+                        <p className="text-xs text-muted-foreground font-medium mb-1">
+                          {company || "Company"}
+                        </p>
+                        {exp.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {exp.description}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="pl-6 text-sm text-muted-foreground">
+                    No experience added.
+                  </p>
+                )}
+              </div>
+            </Card>
+
+            <Button
+              className="w-full"
+              variant="outline"
+              size="lg"
+              onClick={handleSave}
+              disabled={profileLoading}
+            >
+              {profileLoading ? "Saving..." : "Save Profile"}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Modal */}
       {modalType && (
@@ -831,7 +962,8 @@ const FreelancerProfile = () => {
                   Add Skill
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Give the skill a name so clients can quickly scan your strengths.
+                  Give the skill a name so clients can quickly scan your
+                  strengths.
                 </p>
                 <input
                   value={skillForm.name}
@@ -893,54 +1025,69 @@ const FreelancerProfile = () => {
                 </div>
               </>
             ) : modalType === "portfolio" ? (
-                <>
-                 <h1 className="text-lg font-semibold text-foreground">
-                   Edit Online Presence
-                 </h1>
-                 <p className="mt-1 text-sm text-muted-foreground">
-                   Update your social and portfolio links.
-                 </p>
-                 <div className="mt-4 space-y-4">
-                    <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                        Portfolio Website
-                        <input
-                            value={portfolio.portfolioUrl}
-                            onChange={(e) => setPortfolio(prev => ({ ...prev, portfolioUrl: e.target.value }))}
-                            placeholder="https://yourportfolio.com"
-                            className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                        />
-                    </label>
-                    <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                        LinkedIn URL
-                        <input
-                            value={portfolio.linkedinUrl}
-                            onChange={(e) => setPortfolio(prev => ({ ...prev, linkedinUrl: e.target.value }))}
-                            placeholder="https://linkedin.com/..."
-                            className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                        />
-                    </label>
-                    <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                        GitHub URL (Optional)
-                        <input
-                            value={portfolio.githubUrl}
-                            onChange={(e) => setPortfolio(prev => ({ ...prev, githubUrl: e.target.value }))}
-                            placeholder="https://github.com/..."
-                            className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                        />
-                    </label>
-                 </div>
-                 <div className="mt-5 flex justify-end gap-3">
-                   <button
-                     type="button"
-                     onClick={() => setModalType(null)}
-                     className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
-                   >
-                     Done
-                   </button>
-                 </div>
-                </>
-             ) : modalType === "personal" ? (
-               <>
+              <>
+                <h1 className="text-lg font-semibold text-foreground">
+                  Edit Online Presence
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Update your social and portfolio links.
+                </p>
+                <div className="mt-4 space-y-4">
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Portfolio Website
+                    <input
+                      value={portfolio.portfolioUrl}
+                      onChange={(e) =>
+                        setPortfolio((prev) => ({
+                          ...prev,
+                          portfolioUrl: e.target.value,
+                        }))
+                      }
+                      placeholder="https://yourportfolio.com"
+                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                    />
+                  </label>
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    LinkedIn URL
+                    <input
+                      value={portfolio.linkedinUrl}
+                      onChange={(e) =>
+                        setPortfolio((prev) => ({
+                          ...prev,
+                          linkedinUrl: e.target.value,
+                        }))
+                      }
+                      placeholder="https://linkedin.com/..."
+                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                    />
+                  </label>
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    GitHub URL (Optional)
+                    <input
+                      value={portfolio.githubUrl}
+                      onChange={(e) =>
+                        setPortfolio((prev) => ({
+                          ...prev,
+                          githubUrl: e.target.value,
+                        }))
+                      }
+                      placeholder="https://github.com/..."
+                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                    />
+                  </label>
+                </div>
+                <div className="mt-5 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModalType(null)}
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
+            ) : modalType === "personal" ? (
+              <>
                 <h1 className="text-lg font-semibold text-foreground">
                   Edit Personal Details
                 </h1>
@@ -950,7 +1097,9 @@ const FreelancerProfile = () => {
 
                 <div className="mt-4 space-y-4">
                   <label className="flex items-center justify-between p-3 rounded-2xl border border-border bg-secondary/50 cursor-pointer hover:bg-secondary/70 transition-colors">
-                    <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Available for work</span>
+                    <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                      Available for work
+                    </span>
                     <input
                       type="checkbox"
                       name="available"
@@ -960,17 +1109,29 @@ const FreelancerProfile = () => {
                     />
                   </label>
 
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                  <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
                     Headline
                     <input
                       name="headline"
                       value={personal.headline || ""}
                       onChange={handlePersonalChange}
-                      placeholder="e.g. Senior React Developer"
+                      placeholder="e.g. Full Stack Developer"
                       className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
                     />
                   </label>
-                  
+
+                  <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Years of Experience
+                    <input
+                      name="experienceYears"
+                      type="number"
+                      value={personal.experienceYears || ""}
+                      onChange={handlePersonalChange}
+                      placeholder="e.g. 5"
+                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                    />
+                  </label>
+
                   <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
                     Display Name
                     <input
@@ -1004,6 +1165,18 @@ const FreelancerProfile = () => {
                       />
                     </label>
                   </div>
+
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground mt-4">
+                    Bio / About Me
+                    <textarea
+                      name="bio"
+                      value={personal.bio || ""}
+                      onChange={handlePersonalChange}
+                      rows={4}
+                      placeholder="Tell us about yourself..."
+                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                    />
+                  </label>
                 </div>
 
                 <div className="mt-6 flex justify-end gap-3">
@@ -1015,7 +1188,7 @@ const FreelancerProfile = () => {
                     Done
                   </button>
                 </div>
-               </>
+              </>
             ) : (
               <>
                 <h1 className="text-lg font-semibold text-foreground">
@@ -1130,13 +1303,12 @@ const FreelancerProfile = () => {
   );
 };
 
-
 const FreelancerProfileWrapper = () => {
-    return (
-        <RoleAwareSidebar>
-            <FreelancerProfile />
-        </RoleAwareSidebar>
-    )
-}
+  return (
+    <RoleAwareSidebar>
+      <FreelancerProfile />
+    </RoleAwareSidebar>
+  );
+};
 
 export default FreelancerProfileWrapper;
