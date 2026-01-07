@@ -497,7 +497,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
               ))
             ) : (
               <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground bg-card/40">
-                No active contracts yet.
+                No active proposals yet.
               </div>
             )}
           </TabsContent>
