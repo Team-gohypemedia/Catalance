@@ -1465,7 +1465,38 @@ const FreelancerProjectDetailContent = () => {
 
   return (
     <RoleAwareSidebar>
-      <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
+      <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full relative">
+        {project?.status === "AWAITING_PAYMENT" && (
+          <div className="absolute inset-0 z-50 backdrop-blur-md bg-background/60">
+            <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-center p-6 text-center">
+              <div className="max-w-lg space-y-6">
+                <div className="p-6 rounded-full bg-yellow-500/10 mb-4 animate-pulse mx-auto w-fit">
+                  <span className="text-4xl">⏳</span>
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  Waiting for Client Approval
+                </h2>
+                <p className="text-muted-foreground leading-relaxed font-medium">
+                  We are waiting for the client to complete the upfront payment
+                  for{" "}
+                  <span className="font-semibold text-foreground">
+                    {project.title}
+                  </span>
+                  . Once approved, you will gain full access to the project
+                  workspace.
+                </p>
+                <div className="pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.history.back()}
+                  >
+                    Go Back
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="w-full max-w-full mx-auto space-y-6">
           <FreelancerTopBar label={pageTitle} />
 
