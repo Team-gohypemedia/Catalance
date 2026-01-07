@@ -1,35 +1,36 @@
 export const SOP_TEMPLATES = {
   WEBSITE: {
     phases: [
-      { id: "1", name: "Planning & Design", status: "in-progress", progress: 0 },
-      { id: "2", name: "Development & Integrations", status: "pending", progress: 0 },
-      { id: "3", name: "Content Integration & Testing", status: "pending", progress: 0 },
-      { id: "4", name: "Launch & Post-Launch", status: "pending", progress: 0 }
+      { id: "1", name: "Website Scope & Reference Lock", status: "in-progress", progress: 0 },
+      { id: "2", name: "Website Design Direction", status: "pending", progress: 0 },
+      { id: "3", name: "Website Build & Completion", status: "pending", progress: 0 },
+      { id: "4", name: "Website Go‑Live & Handover", status: "pending", progress: 0 }
     ],
     tasks: [
       // Phase 1
-      { id: "1", title: "Define website goals and target audience", phase: "1", status: "pending" },
-      { id: "2", title: "Create sitemap (main pages and navigation)", phase: "1", status: "pending" },
-      { id: "3", title: "Collect design references and inspirations", phase: "1", status: "pending" },
-      { id: "4", title: "Design wireframes and mockups for key pages", phase: "1", status: "pending" },
-      { id: "5", title: "Finalize UI/UX, color palette, and typography", phase: "1", status: "pending" },
+      { id: "1", title: "Understand business and website goal", phase: "1", status: "pending" },
+      { id: "2", title: "Decide website type", phase: "1", status: "pending" },
+      { id: "3", title: "Finalise pages and features", phase: "1", status: "pending" },
+      { id: "4", title: "Decide content responsibility", phase: "1", status: "pending" },
+      { id: "5", title: "Lock timeline", phase: "1", status: "pending" },
+      { id: "6", title: "Create and share reference (Google Sheet / wireframe / temp site link)", phase: "1", status: "pending" },
       // Phase 2
-      { id: "6", title: "Set up hosting, domain, and SSL", phase: "2", status: "pending" },
-      { id: "7", title: "Configure CMS/framework (e.g., WordPress or custom)", phase: "2", status: "pending" },
-      { id: "8", title: "Develop responsive frontend (homepage + inner pages)", phase: "2", status: "pending" },
-      { id: "9", title: "Set up backend, database, and required logic", phase: "2", status: "pending" },
-      { id: "10", title: "Integrate forms, payment gateway, blog, chat, and APIs", phase: "2", status: "pending" },
+      { id: "7", title: "Decide visual style", phase: "2", status: "pending" },
+      { id: "8", title: "Design homepage", phase: "2", status: "pending" },
+      { id: "9", title: "Design inner pages", phase: "2", status: "pending" },
+      { id: "10", title: "Ensure mobile layout", phase: "2", status: "pending" },
+      { id: "11", title: "Align design direction", phase: "2", status: "pending" },
       // Phase 3
-      { id: "11", title: "Upload and format text, images, and media", phase: "3", status: "pending" },
-      { id: "12", title: "Apply basic SEO (meta tags, titles, URLs, alt text)", phase: "3", status: "pending" },
-      { id: "13", title: "Test all features: forms, payments, navigation, interactions", phase: "3", status: "pending" },
-      { id: "14", title: "Check speed, mobile responsiveness, and cross-browser support", phase: "3", status: "pending" },
+      { id: "12", title: "Develop frontend", phase: "3", status: "pending" },
+      { id: "13", title: "Setup backend / CMS", phase: "3", status: "pending" },
+      { id: "14", title: "Add content", phase: "3", status: "pending" },
+      { id: "15", title: "Setup forms & integrations", phase: "3", status: "pending" },
+      { id: "16", title: "Fix approved design changes", phase: "3", status: "pending" },
       // Phase 4
-      { id: "15", title: "Share staging link for final client review", phase: "4", status: "pending" },
-      { id: "16", title: "Deploy website to live server with SSL enabled", phase: "4", status: "pending" },
-      { id: "17", title: "Get final approval and confirm go-live", phase: "4", status: "pending" },
-      { id: "18", title: "Provide admin access, credentials, and documentation", phase: "4", status: "pending" },
-      { id: "19", title: "Offer support and updates if included in the plan", phase: "4", status: "pending" }
+      { id: "17", title: "Test on devices & browsers", phase: "4", status: "pending" },
+      { id: "18", title: "Fix bugs", phase: "4", status: "pending" },
+      { id: "19", title: "Make website live", phase: "4", status: "pending" },
+      { id: "20", title: "Share access and close task", phase: "4", status: "pending" },
     ]
   },
   APP: {
