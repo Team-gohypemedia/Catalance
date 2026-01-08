@@ -242,6 +242,49 @@ export const uploadResume = asyncHandler(async (req, res) => {
 
   const userId = req.user?.sub;
   const userEmail = req.user?.email;
+
+  // 1. Delete old resume if it exists (Non-blocking)
+  if (userId) {
+    try {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { resume: true }
+      });
+
+      if (currentUser?.resume) {
+        let oldKey = null;
+        try {
+            // Check for various URL formats
+            if (currentUser.resume.includes("/api/images/resumes/")) {
+                const parts = currentUser.resume.split("/resumes/");
+                if (parts.length > 1) {
+                    oldKey = `resumes/${parts[1]}`;
+                }
+            } else if (currentUser.resume.includes("/resumes/")) {
+                // fallback if just the key or different URL structure
+                const parts = currentUser.resume.split("/resumes/");
+                if (parts.length > 1) {
+                    oldKey = `resumes/${parts[1]}`;
+                }
+            }
+
+            if (oldKey) {
+                console.log(`[uploadResume] Attempting to delete old resume: ${oldKey}`);
+                await s3Client.send(new DeleteObjectCommand({
+                    Bucket: BUCKET_NAME,
+                    Key: oldKey
+                }));
+                console.log(`[uploadResume] Deleted old resume from R2: ${oldKey}`);
+            }
+        } catch (innerErr) {
+             console.warn("[uploadResume] Failed to parse or delete old resume:", innerErr);
+        }
+      }
+    } catch (e) {
+      console.warn("[uploadResume] Error checking old resume:", e);
+    }
+  }
+
   const file = req.file;
   const fileExt = path.extname(file.originalname);
   const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
@@ -328,6 +371,7 @@ export const uploadResume = asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error("R2 Resume Upload Error:", error);
-    throw new AppError("Failed to upload resume", 500);
+    // Return specific error to help debug
+    throw new AppError(`Failed to upload resume: ${error.message}`, 500);
   }
 });
