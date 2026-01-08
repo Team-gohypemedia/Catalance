@@ -211,9 +211,14 @@ export const saveProfile = asyncHandler(async (req, res) => {
   // Personal details - store in dedicated columns
   if (personal.name) updateData.fullName = personal.name;
   if (personal.avatar !== undefined) updateData.avatar = personal.avatar;
-  if (personal.phone !== undefined) updateData.phone = personal.phone;
+  if (personal.phone !== undefined) {
+    updateData.phone = personal.phone;
+    updateData.phoneNumber = personal.phone;
+  }
   if (personal.location !== undefined) updateData.location = personal.location;
   if (personal.headline !== undefined) updateData.jobTitle = personal.headline;
+  if (payload.companyName !== undefined) updateData.companyName = payload.companyName;
+  if (payload.website !== undefined) updateData.portfolio = payload.website;
   
   // Bio should be plain text, NOT JSON
   const bioInput = personal.bio !== undefined ? personal.bio : payload.bio;
