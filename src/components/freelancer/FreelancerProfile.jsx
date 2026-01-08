@@ -1149,7 +1149,14 @@ const FreelancerProfile = () => {
                             body: formData,
                           });
 
-                          if (!res.ok) throw new Error("Upload failed");
+                          if (!res.ok) {
+                            const errorData = await res
+                              .json()
+                              .catch(() => ({}));
+                            throw new Error(
+                              errorData.message || "Upload failed"
+                            );
+                          }
 
                           const data = await res.json();
                           const resumeUrl = data.data.url;
