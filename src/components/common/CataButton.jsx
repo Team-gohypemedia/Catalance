@@ -144,7 +144,9 @@ export const CataButton = () => {
     >
       <FamilyButton>
         <div className="flex flex-col gap-3 p-4 pb-14 w-full">
-          <h4 className="text-sm font-semibold text-neutral-300 mb-1">Help</h4>
+          <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-400 mb-1">
+            Help
+          </h4>
 
           <a
             href="https://wa.me/919999999999"
@@ -152,17 +154,23 @@ export const CataButton = () => {
             rel="noopener noreferrer"
             className={cn(
               "flex items-center gap-3 p-3 rounded-xl w-full",
-              "bg-neutral-800/50 hover:bg-neutral-700/50",
-              "border border-neutral-700/50 hover:border-emerald-500/50",
-              "transition-all duration-200 text-left group"
+              "bg-white/60 dark:bg-neutral-800/50",
+              "hover:bg-white/90 dark:hover:bg-neutral-700/50",
+              "border border-black/5 dark:border-white/5",
+              "hover:border-emerald-500/50 dark:hover:border-emerald-500/30",
+              "transition-all duration-200 text-left group shadow-sm dark:shadow-none"
             )}
           >
-            <div className="p-2 rounded-lg bg-emerald-500/20 group-hover:bg-emerald-500/30 transition-colors">
-              <MessageCircle className="w-5 h-5 text-emerald-400" />
+            <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-500/10 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-500/20 transition-colors">
+              <MessageCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-neutral-200">WhatsApp</p>
-              <p className="text-xs text-neutral-500">Chat immediately</p>
+              <p className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
+                WhatsApp
+              </p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                Chat immediately
+              </p>
             </div>
           </a>
 
@@ -170,19 +178,23 @@ export const CataButton = () => {
             href="tel:+919999999999"
             className={cn(
               "flex items-center gap-3 p-3 rounded-xl w-full",
-              "bg-neutral-800/50 hover:bg-neutral-700/50",
-              "border border-neutral-700/50 hover:border-blue-500/50",
-              "transition-all duration-200 text-left group"
+              "bg-white/60 dark:bg-neutral-800/50",
+              "hover:bg-white/90 dark:hover:bg-neutral-700/50",
+              "border border-black/5 dark:border-white/5",
+              "hover:border-blue-500/50 dark:hover:border-blue-500/30",
+              "transition-all duration-200 text-left group shadow-sm dark:shadow-none"
             )}
           >
-            <div className="p-2 rounded-lg bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
-              <Phone className="w-5 h-5 text-blue-400" />
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-500/10 group-hover:bg-blue-200 dark:group-hover:bg-blue-500/20 transition-colors">
+              <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-neutral-200">
+              <p className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
                 Call Support
               </p>
-              <p className="text-xs text-neutral-500">Voice assistance</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                Voice assistance
+              </p>
             </div>
           </a>
         </div>
