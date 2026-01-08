@@ -460,11 +460,6 @@ const FreelancerProfile = () => {
         body: JSON.stringify(payload),
       });
 
-      const resData = await response.json();
-      if (resData.debug) {
-        console.log("[FreelancerProfile] Save DEBUG info:", resData.debug);
-      }
-
       if (!response.ok) {
         toast.error("Save failed", {
           description: "Check backend logs for more details.",

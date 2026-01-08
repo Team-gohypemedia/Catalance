@@ -243,24 +243,12 @@ export const saveProfile = asyncHandler(async (req, res) => {
     updateData.experienceYears = Number(personal.experienceYears) || 0;
   }
 
-  console.log("[saveProfile] Update data:", JSON.stringify(updateData, null, 2));
-
-  const result = await prisma.user.update({
+  await prisma.user.update({
     where: userId ? { id: userId } : { email },
     data: updateData
   });
 
-  console.log("[saveProfile] Update successful. Resume in DB:", result.resume);
-  res.json({ 
-    data: result,
-    debug: {
-      sentResume: payload.resume,
-      savedResume: result.resume,
-      userId,
-      userEmail: email,
-      updateData
-    }
-  });
+  res.json({ data: { success: true } });
 });
 
 export const saveResume = asyncHandler(async (req, res) => {
