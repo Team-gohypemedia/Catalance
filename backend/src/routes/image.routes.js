@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getImage, getChatFile } from "../controllers/image.controller.js";
+import { getImage, getChatFile, getResumeFile } from "../controllers/image.controller.js";
 
 const router = Router();
 
@@ -8,7 +8,7 @@ const router = Router();
 router.get("/chat/:key", getChatFile);
 
 // Resume files - stored in resumes/ folder
-router.get("/resumes/:key", getChatFile); // Reusing getChatFile as generic file server logic is fine, or we check image controller
+router.get("/resumes/:key", getResumeFile);
 
 // Avatar files - stored in avatars/ folder
 router.get("/:key", getImage);

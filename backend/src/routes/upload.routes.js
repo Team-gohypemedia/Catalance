@@ -5,6 +5,12 @@ import { requireAuth } from "../middlewares/require-auth.js";
 
 const router = Router();
 
+// Log all upload requests
+router.use((req, res, next) => {
+  console.log(`[UploadRoute] ${req.method} /upload${req.path} hit`);
+  next();
+});
+
 // Avatar upload - images only, 5MB limit
 const avatarUpload = multer({
   storage: multer.memoryStorage(),

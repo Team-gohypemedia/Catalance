@@ -74,3 +74,40 @@ export const getChatFile = asyncHandler(async (req, res) => {
     throw new AppError("Failed to fetch file", 500);
   }
 });
+
+// Get resume file from R2
+export const getResumeFile = asyncHandler(async (req, res) => {
+  const { key } = req.params;
+  const fullKey = `resumes/${key}`;
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fullKey,
+    });
+
+    const response = await s3Client.send(command);
+
+    // Set appropriate headers
+    if (response.ContentType) {
+      res.setHeader("Content-Type", response.ContentType);
+    }
+    if (response.ContentLength) {
+      res.setHeader("Content-Length", response.ContentLength);
+    }
+    // Use inline to open in browser tab
+    res.setHeader("Content-Disposition", "inline");
+    
+    // Cache control
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+
+    // Pipe the stream to the response
+    response.Body.pipe(res);
+  } catch (error) {
+    console.error("Error fetching resume from R2:", error);
+    if (error.name === "NoSuchKey") {
+       throw new AppError("File not found", 404);
+    }
+    throw new AppError("Failed to fetch file", 500);
+  }
+});

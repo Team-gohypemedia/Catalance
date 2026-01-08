@@ -117,6 +117,7 @@ export const getProfile = asyncHandler(async (req, res) => {
         portfolioUrl: user.portfolio ?? "",
         linkedinUrl: user.linkedin ?? "",
         githubUrl: user.github ?? "",
+        resume: user.resume ?? "",
       },
       portfolioProjects: user.portfolioProjects ?? []
     }
@@ -128,15 +129,17 @@ export const saveProfile = asyncHandler(async (req, res) => {
   console.log("[saveProfile] Called with payload:", JSON.stringify(payload, null, 2));
   console.log("[saveProfile] *** EXECUTING NATIVE COLUMN UPDATE V2 ***");
   
-  const email = payload.email || payload.personal?.email;
+  const userId = req.user?.sub;
+  const email = payload.email || payload.personal?.email || req.user?.email;
   console.log("[saveProfile] Email:", email);
+  console.log("[saveProfile] UserId:", userId);
 
-  if (!email) {
+  if (!userId && !email) {
     throw new AppError("Email is required to update profile", 400);
   }
 
   const existingUser = await prisma.user.findUnique({
-    where: { email }
+    where: userId ? { id: userId } : { email }
   });
   if (!existingUser) {
     throw new AppError("User not found", 404);
@@ -151,31 +154,59 @@ export const saveProfile = asyncHandler(async (req, res) => {
   const portfolio = payload.portfolio || {};
 
   // 1. Prepare Native Update - store each field in its own column
+  const updateData = {};
+  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
   // Sanitize SKILLS to ensure string[] and not [{name: "..."}] or JSON strings
-  let cleanSkills = [];
-  if (Array.isArray(skills)) {
-    cleanSkills = skills.map(s => {
-      if (typeof s === 'object' && s !== null && s.name) return s.name; // Flatten object
-      if (typeof s === 'string') {
-        if (s.trim().startsWith('{') && s.includes('"name"')) {
-           try { return JSON.parse(s).name; } catch(e) { return s; }
-        }
-        return s;
-      }
-      return String(s);
-    }).filter(Boolean);
+  if (hasOwn(payload, "skills")) {
+    let cleanSkills = [];
+    if (Array.isArray(skills)) {
+      cleanSkills = skills
+        .map((s) => {
+          if (typeof s === "object" && s !== null && s.name) return s.name; // Flatten object
+          if (typeof s === "string") {
+            if (s.trim().startsWith("{") && s.includes('"name"')) {
+              try {
+                return JSON.parse(s).name;
+              } catch (e) {
+                return s;
+              }
+            }
+            return s;
+          }
+          return String(s);
+        })
+        .filter(Boolean);
+    }
+    updateData.skills = cleanSkills;
   }
 
-  const updateData = {
-    skills: cleanSkills,
-    services,
-    portfolioProjects,
-    workExperience,
-    // Social/Portfolio fields
-    portfolio: portfolio.portfolioUrl || null,
-    linkedin: portfolio.linkedinUrl || null,
-    github: portfolio.githubUrl || null,
-  };
+  if (hasOwn(payload, "services")) {
+    updateData.services = services;
+  }
+  if (hasOwn(payload, "portfolioProjects")) {
+    updateData.portfolioProjects = portfolioProjects;
+  }
+  if (hasOwn(payload, "workExperience")) {
+    updateData.workExperience = workExperience;
+  }
+
+  const hasPortfolio = hasOwn(payload, "portfolio");
+  if (hasPortfolio) {
+    updateData.portfolio = portfolio.portfolioUrl || null;
+    updateData.linkedin = portfolio.linkedinUrl || null;
+    updateData.github = portfolio.githubUrl || null;
+  }
+
+  const resumeValue = payload.resume || portfolio.resume || null;
+  if (resumeValue) {
+    updateData.resume = resumeValue;
+  }
+
+  // DEBUG: Log resume specifically
+  console.log("[saveProfile] Resume from portfolio:", portfolio.resume);
+  console.log("[saveProfile] Resume from payload:", payload.resume);
+  console.log("[saveProfile] Final resume value:", updateData.resume);
 
   // Personal details - store in dedicated columns
   if (personal.name) updateData.fullName = personal.name;
@@ -214,13 +245,42 @@ export const saveProfile = asyncHandler(async (req, res) => {
 
   console.log("[saveProfile] Update data:", JSON.stringify(updateData, null, 2));
 
-  await prisma.user.update({
-    where: { email },
+  const result = await prisma.user.update({
+    where: userId ? { id: userId } : { email },
     data: updateData
   });
 
-  console.log("[saveProfile] Update successful for email:", email);
-  res.json({ data: { success: true } });
+  console.log("[saveProfile] Update successful. Resume in DB:", result.resume);
+  res.json({ 
+    data: result,
+    debug: {
+      sentResume: payload.resume,
+      savedResume: result.resume,
+      userId,
+      userEmail: email,
+      updateData
+    }
+  });
+});
+
+export const saveResume = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { resume } = req.body || {};
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  if (!resume || typeof resume !== "string") {
+    throw new AppError("Resume URL is required", 400);
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { resume }
+  });
+
+  res.json({ data: { success: true, resume } });
 });
 
 // Save FCM token for push notifications
@@ -244,4 +304,3 @@ export const saveFcmToken = asyncHandler(async (req, res) => {
   console.log(`[Profile] Saved FCM token for user ${userId}`);
   res.json({ data: { success: true } });
 });
-

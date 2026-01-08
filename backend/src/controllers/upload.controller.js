@@ -232,10 +232,16 @@ export const deleteChatAttachment = asyncHandler(async (req, res) => {
 
 // Resume upload to R2 (PDF, DOC, DOCX)
 export const uploadResume = asyncHandler(async (req, res) => {
+  console.log("[uploadResume] *** FUNCTION CALLED ***");
+  console.log("[uploadResume] req.file exists:", !!req.file);
+  console.log("[uploadResume] req.user:", req.user);
+  
   if (!req.file) {
     throw new AppError("No file uploaded", 400);
   }
 
+  const userId = req.user?.sub;
+  const userEmail = req.user?.email;
   const file = req.file;
   const fileExt = path.extname(file.originalname);
   const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
@@ -275,13 +281,48 @@ export const uploadResume = asyncHandler(async (req, res) => {
     // And I will Update image.routes.js to handle full paths or just `resumes/` prefix.
     const publicUrl = `${process.env.API_URL || "http://localhost:5000"}/api/images/resumes/${uniqueId}${fileExt}`;
 
-    console.log(`Resume uploaded: ${fileName}`);
+    console.log(`[uploadResume] Resume uploaded to R2: ${fileName}`);
+    console.log(`[uploadResume] Public URL: ${publicUrl}`);
+    console.log(`[uploadResume] userId from JWT: ${userId}`);
+    console.log(`[uploadResume] userEmail from JWT: ${userEmail}`);
+    console.log(`[uploadResume] Full req.user object:`, JSON.stringify(req.user, null, 2));
+
+    // Save resume URL to database
+    let savedCount = 0;
+    if (userId) {
+      console.log(`[uploadResume] Attempting to save resume for userId: ${userId}`);
+      const result = await prisma.user.updateMany({
+        where: { id: userId },
+        data: { resume: publicUrl },
+      });
+      console.log(`[uploadResume] Save result for userId:`, result);
+      savedCount += result.count;
+    }
+    if (!savedCount && userEmail) {
+      console.log(`[uploadResume] Attempting to save resume for email: ${userEmail}`);
+      const result = await prisma.user.updateMany({
+        where: { email: userEmail },
+        data: { resume: publicUrl },
+      });
+      console.log(`[uploadResume] Save result for email:`, result);
+      savedCount += result.count;
+    }
+    
+    console.log(`[uploadResume] Total saved count: ${savedCount}`);
+    
+    if (!savedCount) {
+      console.error(`[uploadResume] FAILED: No user found to save resume`);
+      throw new AppError("User not found for resume save", 404);
+    }
+    
+    console.log(`[uploadResume] SUCCESS: Resume saved to database for user`);
 
     res.json({
       data: {
         url: publicUrl,
         key: fileName,
-        name: file.originalname
+        name: file.originalname,
+        saved: true
       }
     });
 

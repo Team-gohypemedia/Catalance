@@ -5,23 +5,24 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState
+  useState,
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
-import {
-  clearSession,
-  getSession,
-  persistSession
-} from "@/lib/auth-storage";
+import { clearSession, getSession, persistSession } from "@/lib/auth-storage";
 import { API_BASE_URL } from "@/lib/api-client";
 
 const AuthContext = createContext(null);
 AuthContext.displayName = "AuthContext";
 
 const VERIFY_TIMEOUT_MS = 10000;
-const PROTECTED_PATH_PREFIXES = ["/client", "/freelancer", "/dashboard", "/admin"];
+const PROTECTED_PATH_PREFIXES = [
+  "/client",
+  "/freelancer",
+  "/dashboard",
+  "/admin",
+];
 const SAVED_PROPOSAL_KEY = "markify:savedProposal";
 const SAVED_PROPOSAL_SYNCED_KEY = "markify:savedProposalSynced";
 
@@ -50,20 +51,15 @@ const resolveRequestUrl = (target) => {
   return `${normalizedBase}${normalizedPath}`;
 };
 
-const profileEndpointConfig = import.meta.env.VITE_AUTH_PROFILE_ENDPOINT;
-const PROFILE_ENDPOINT =
-  typeof profileEndpointConfig === "string" &&
-  ["false", "off", "disabled", "none"].includes(
-    profileEndpointConfig.toLowerCase()
-  )
-    ? null
-    : resolveRequestUrl(profileEndpointConfig || "/auth/profile");
+const PROFILE_ENDPOINT = resolveRequestUrl("/auth/profile");
+// FORCE LOCAL FOR DEBUGGING
+// const PROFILE_ENDPOINT = "http://localhost:5000/api/auth/profile";
 
 const sessionFromStorage = () => {
   const session = getSession();
   return {
     user: session?.user ?? null,
-    token: session?.accessToken ?? null
+    token: session?.accessToken ?? null,
   };
 };
 
@@ -121,8 +117,8 @@ export const AuthProvider = ({ children }) => {
           headers: {
             ...defaultHeaders,
             Authorization: `Bearer ${token}`,
-            ...(fetchOptions.headers || {})
-          }
+            ...(fetchOptions.headers || {}),
+          },
         });
 
         if (response.status === 401) {
@@ -177,7 +173,7 @@ export const AuthProvider = ({ children }) => {
       const response = await authFetch(PROFILE_ENDPOINT, {
         signal: controller.signal,
         suppressAbortLog: true,
-        suppressToast: true
+        suppressToast: true,
       });
 
       if (response.status === 404) {
@@ -188,12 +184,16 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (response.status >= 500) {
-        console.warn("Profile endpoint returned a server error; skipping verification.");
+        console.warn(
+          "Profile endpoint returned a server error; skipping verification."
+        );
         return;
       }
 
       if (!response.ok) {
-        console.warn(`Profile verification failed with status ${response.status}.`);
+        console.warn(
+          `Profile verification failed with status ${response.status}.`
+        );
         return;
       }
 
@@ -224,7 +224,7 @@ export const AuthProvider = ({ children }) => {
   // Proposals are now stored locally in drafts and only sent when user
   // explicitly clicks "Send Proposal" from the dashboard.
   // This prevents proposals from being automatically created/sent.
-  
+
   // The old sync code has been removed to prevent any automatic sending.
   // Users must manually send proposals from the Client Dashboard.
 
@@ -237,7 +237,7 @@ export const AuthProvider = ({ children }) => {
 
       syncSession({
         user: userData,
-        accessToken: authToken
+        accessToken: authToken,
       });
       setIsLoading(false);
     },
@@ -253,16 +253,14 @@ export const AuthProvider = ({ children }) => {
       authFetch,
       refreshUser: verifyUser,
       isAuthenticated: Boolean(user && token),
-      isLoading
+      isLoading,
     }),
     [user, token, login, logout, authFetch, verifyUser, isLoading]
   );
 
   const shouldShowGlobalLoader =
     isLoading &&
-    PROTECTED_PATH_PREFIXES.some((path) =>
-      location.pathname?.startsWith(path)
-    );
+    PROTECTED_PATH_PREFIXES.some((path) => location.pathname?.startsWith(path));
 
   return (
     <AuthContext.Provider value={authValue}>
@@ -278,7 +276,7 @@ export const AuthProvider = ({ children }) => {
 };
 
 AuthProvider.propTypes = {
-  children: PropTypes.node.isRequired
+  children: PropTypes.node.isRequired,
 };
 
 export const useAuth = () => {

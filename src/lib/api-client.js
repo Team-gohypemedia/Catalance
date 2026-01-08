@@ -24,11 +24,11 @@ const localDevBaseUrl =
     ? "http://localhost:5000/api"
     : null;
 
-export const API_BASE_URL =
-  envBaseUrl ||
-  normalizeBaseUrl(sameOriginBaseUrl) ||
-  normalizeBaseUrl(localDevBaseUrl) ||
-  "http://localhost:5000/api";
+export const API_BASE_URL = "http://localhost:5000/api";
+//   envBaseUrl ||
+//   normalizeBaseUrl(sameOriginBaseUrl) ||
+//   normalizeBaseUrl(localDevBaseUrl) ||
+//   "http://localhost:5000/api";
 
 // Enable sockets when explicitly configured, otherwise only for local APIs.
 const isLocalApi =

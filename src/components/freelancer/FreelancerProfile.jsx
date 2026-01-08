@@ -14,6 +14,7 @@ import {
   Linkedin,
   Globe,
   MapPin,
+  FileText,
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
@@ -146,7 +147,17 @@ const FreelancerProfile = () => {
 
     const normalizeProfileData = (payload = {}) => {
       if (payload?.personal) {
-        return payload;
+        // Ensure portfolio object has resume even if API already structured data
+        const existingPortfolio = payload.portfolio || {};
+        return {
+          ...payload,
+          portfolio: {
+            portfolioUrl: existingPortfolio.portfolioUrl || "",
+            linkedinUrl: existingPortfolio.linkedinUrl || "",
+            githubUrl: existingPortfolio.githubUrl || "",
+            resume: existingPortfolio.resume || payload.resume || "",
+          },
+        };
       }
 
       return {
@@ -259,6 +270,7 @@ const FreelancerProfile = () => {
           portfolioUrl: normalized.portfolio?.portfolioUrl || "",
           linkedinUrl: normalized.portfolio?.linkedinUrl || "",
           githubUrl: normalized.portfolio?.githubUrl || "",
+          resume: normalized.portfolio?.resume || normalized.resume || "",
         });
         setPortfolioProjects(normalized.portfolioProjects || []);
 
@@ -436,6 +448,7 @@ const FreelancerProfile = () => {
       workExperience,
       services,
       portfolio, // Add portfolio to payload
+      resume: portfolio.resume, // Make sure resume is saved at top level if needed
       portfolioProjects, // Add portfolioProjects to payload
     };
 
@@ -447,8 +460,10 @@ const FreelancerProfile = () => {
         body: JSON.stringify(payload),
       });
 
-      // const text = await response.text(); // authFetch handles response.text() for errors
-      // console.log("Save response:", response.status, text);
+      const resData = await response.json();
+      if (resData.debug) {
+        console.log("[FreelancerProfile] Save DEBUG info:", resData.debug);
+      }
 
       if (!response.ok) {
         toast.error("Save failed", {
@@ -710,6 +725,17 @@ const FreelancerProfile = () => {
                     rel="noreferrer"
                   >
                     <Globe className="w-5 h-5" />
+                  </a>
+                )}
+                {portfolio.resume && (
+                  <a
+                    href={portfolio.resume}
+                    target="_blank"
+                    className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
+                    rel="noreferrer"
+                    title="View Resume"
+                  >
+                    <FileText className="w-5 h-5" />
                   </a>
                 )}
                 {/* Edit Skills/Socials Modal Trigger - keeping functionality */}
@@ -1132,11 +1158,39 @@ const FreelancerProfile = () => {
 
                           const data = await res.json();
                           const resumeUrl = data.data.url;
-
-                          setPortfolio((prev) => ({
-                            ...prev,
+                          const nextPortfolio = {
+                            ...portfolio,
                             resume: resumeUrl,
-                          }));
+                          };
+
+                          setPortfolio(nextPortfolio);
+
+                          try {
+                            // Save resume URL to profile
+                            const resumeEmail = personal.email || user?.email;
+                            const saveRes = await authFetch("/profile", {
+                              method: "POST",
+                              body: JSON.stringify({
+                                personal: { email: resumeEmail },
+                                resume: resumeUrl,
+                                portfolio: nextPortfolio,
+                              }),
+                            });
+
+                            if (!saveRes.ok) {
+                              throw new Error("Resume save failed");
+                            }
+                            console.log(
+                              "[Resume] Saved to database successfully"
+                            );
+                          } catch (saveErr) {
+                            console.error(saveErr);
+                            toast.error(
+                              "Resume uploaded, but failed to save profile",
+                              { id: toastId }
+                            );
+                            return;
+                          }
 
                           toast.success("Resume uploaded!", { id: toastId });
                         } catch (err) {
