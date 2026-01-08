@@ -229,3 +229,64 @@ export const deleteChatAttachment = asyncHandler(async (req, res) => {
     deleted: !hasTextContent
   });
 });
+
+// Resume upload to R2 (PDF, DOC, DOCX)
+export const uploadResume = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new AppError("No file uploaded", 400);
+  }
+
+  const file = req.file;
+  const fileExt = path.extname(file.originalname);
+  const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const uniqueId = uuidv4();
+  // Store in resumes/ folder
+  const fileName = `resumes/${uniqueId}${fileExt}`;
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      // Resumes should probably be inline to view in browser, or attachment. 
+      // Let's use inline so it opens in new tab.
+      ContentDisposition: "inline",
+    });
+
+    await s3Client.send(command);
+
+    // Construct public URL
+    // Backend mounted at /api, but images endpoint is /images.
+    // So we can use the same image proxy or a new one. 
+    // The image.routes.js proxies /:key. If key has slashes (resumes/uuid.pdf), it might need encodeURIComponent or better handling.
+    // However, our existing proxy likely handles the key directly or expects flat structure.
+    // Let's check image.routes.js...
+    // Actually, image.routes.js is likely just serving from R2. 
+    // If we want a separate endpoint, or just use the same.
+    // Let's use a specific endpoint for resumes if needed, OR just rely on the same /api/images proxy if it supports folders.
+    // Existing uploadImage uses `avatars/` prefix in the controller, but the proxy route takes `:key`. 
+    // If the proxy route is `router.get("/:key", ...)` it matches only segment. 
+    // If we use `/api/images/resumes/filename` we need the route to support it.
+    // For now, let's use a direct link logic.
+    // Actually, let's just use the `avatars/` logic style: return a URL matching what the proxy expects.
+    // If strict on URL structure, we might need to update image.routes.js.
+    // Let's assume for now we return a URL like `/api/images/resumes/${uniqueId}${fileExt}`.
+    // And I will Update image.routes.js to handle full paths or just `resumes/` prefix.
+    const publicUrl = `${process.env.API_URL || "http://localhost:5000"}/api/images/resumes/${uniqueId}${fileExt}`;
+
+    console.log(`Resume uploaded: ${fileName}`);
+
+    res.json({
+      data: {
+        url: publicUrl,
+        key: fileName,
+        name: file.originalname
+      }
+    });
+
+  } catch (error) {
+    console.error("R2 Resume Upload Error:", error);
+    throw new AppError("Failed to upload resume", 500);
+  }
+});

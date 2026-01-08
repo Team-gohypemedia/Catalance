@@ -121,6 +121,7 @@ const FreelancerProfile = () => {
     portfolioUrl: "",
     linkedinUrl: "",
     githubUrl: "",
+    resume: "",
   });
   const [portfolioProjects, setPortfolioProjects] = useState([]); // [{ link, image, title }]
   const [newProjectUrl, setNewProjectUrl] = useState("");
@@ -168,6 +169,7 @@ const FreelancerProfile = () => {
           portfolioUrl: payload.portfolio ?? "",
           linkedinUrl: payload.linkedin ?? "",
           githubUrl: payload.github ?? "",
+          resume: payload.resume ?? "",
         },
         portfolioProjects: payload.portfolioProjects ?? [],
       };
@@ -1091,6 +1093,91 @@ const FreelancerProfile = () => {
                     />
                   </label>
                 </div>
+
+                {/* Resume Upload Section */}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground mb-2">
+                    Resume / CV
+                  </label>
+
+                  <div className="flex items-center gap-3">
+                    {/* Hidden File Input */}
+                    <input
+                      type="file"
+                      id="resume-upload"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        // Check size (5MB)
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error("File is too large (max 5MB)");
+                          return;
+                        }
+
+                        const formData = new FormData();
+                        formData.append("file", file);
+
+                        const toastId = toast.loading("Uploading resume...");
+
+                        try {
+                          const res = await authFetch("/upload/resume", {
+                            method: "POST",
+                            body: formData,
+                          });
+
+                          if (!res.ok) throw new Error("Upload failed");
+
+                          const data = await res.json();
+                          const resumeUrl = data.data.url;
+
+                          setPortfolio((prev) => ({
+                            ...prev,
+                            resume: resumeUrl,
+                          }));
+
+                          toast.success("Resume uploaded!", { id: toastId });
+                        } catch (err) {
+                          console.error(err);
+                          toast.error("Failed to upload resume", {
+                            id: toastId,
+                          });
+                        }
+
+                        // Reset input
+                        e.target.value = "";
+                      }}
+                    />
+
+                    {/* Upload Button */}
+                    <label
+                      htmlFor="resume-upload"
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/70 cursor-pointer transition-colors border border-border text-sm font-medium"
+                    >
+                      <Briefcase className="w-4 h-4" />
+                      {portfolio.resume ? "Update Resume" : "Upload Resume"}
+                    </label>
+
+                    {/* View/Download Link if exists */}
+                    {portfolio.resume && (
+                      <a
+                        href={portfolio.resume}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline truncate max-w-[200px]"
+                        title={portfolio.resume}
+                      >
+                        View Current Resume
+                      </a>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1.5 ml-1">
+                    Accepts PDF, DOC, DOCX (Max 5MB)
+                  </p>
+                </div>
+
                 <div className="mt-5 flex justify-end gap-3">
                   <button
                     type="button"

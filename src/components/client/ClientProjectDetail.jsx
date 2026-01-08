@@ -35,7 +35,7 @@ import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { ClientTopBar } from "@/components/client/ClientTopBar";
-import { SOP_TEMPLATES } from "@/data/sopTemplates";
+import { SOP_TEMPLATES, getSopFromTitle } from "@/data/sopTemplates";
 import { useAuth } from "@/context/AuthContext";
 import {
   Accordion,
@@ -1070,137 +1070,7 @@ const ProjectDashboard = () => {
   */
 
   const activeSOP = useMemo(() => {
-    if (!project?.title) return SOP_TEMPLATES.WEBSITE;
-
-    const title = project.title.toLowerCase();
-
-    // Helper for word boundary check
-    const has = (word) => new RegExp(`\\b${word}\\b`, "i").test(title);
-
-    if (
-      has("app") ||
-      has("apps") ||
-      has("mobile") ||
-      has("ios") ||
-      has("android") ||
-      title.includes("application")
-    ) {
-      return SOP_TEMPLATES.APP;
-    }
-    if (
-      title.includes("software") ||
-      title.includes("platform") ||
-      title.includes("system") ||
-      has("crm") ||
-      has("erp") ||
-      has("saas")
-    ) {
-      return SOP_TEMPLATES.SOFTWARE;
-    }
-    if (
-      title.includes("security") ||
-      title.includes("audit") ||
-      title.includes("penetration") ||
-      title.includes("cyber") ||
-      has("iso") ||
-      has("gdpr")
-    ) {
-      return SOP_TEMPLATES.CYBERSECURITY;
-    }
-    if (
-      has("brand") ||
-      title.includes("strategy") ||
-      title.includes("identity") ||
-      title.includes("positioning")
-    ) {
-      return SOP_TEMPLATES.BRAND_STRATEGY;
-    }
-    if (has("pr") || title.includes("public relations")) {
-      return SOP_TEMPLATES.PUBLIC_RELATIONS;
-    }
-    if (has("seo") || title.includes("search engine")) {
-      return SOP_TEMPLATES.SEO;
-    }
-    if (has("smo") || title.includes("social media")) {
-      return SOP_TEMPLATES.SMO;
-    }
-    if (
-      title.includes("lead generation") ||
-      has("sales") ||
-      title.includes("prospecting")
-    ) {
-      return SOP_TEMPLATES.LEAD_GENERATION;
-    }
-    if (title.includes("qualification") || title.includes("scoring")) {
-      return SOP_TEMPLATES.LEAD_QUALIFICATION;
-    }
-    if (title.includes("business leads") || title.includes("b2b leads")) {
-      return SOP_TEMPLATES.BUSINESS_LEADS;
-    }
-    if (title.includes("content marketing") || title.includes("inbound")) {
-      return SOP_TEMPLATES.CONTENT_MARKETING;
-    }
-    if (
-      title.includes("social lead") ||
-      title.includes("paid social") ||
-      title.includes("social ads")
-    ) {
-      return SOP_TEMPLATES.SOCIAL_MEDIA_LEAD_GEN;
-    }
-    if (title.includes("customer support") || title.includes("helpdesk")) {
-      return SOP_TEMPLATES.CUSTOMER_SUPPORT;
-    }
-    if (title.includes("technical support") || title.includes("it support")) {
-      return SOP_TEMPLATES.TECHNICAL_SUPPORT;
-    }
-    // Strict check for Project Management to avoid "Development" matching "pm"
-    if (
-      title.includes("project management") ||
-      has("pm") ||
-      title.includes("coordination")
-    ) {
-      return SOP_TEMPLATES.PROJECT_MANAGEMENT;
-    }
-    if (
-      title.includes("data entry") ||
-      title.includes("typing") ||
-      title.includes("excel") ||
-      title.includes("spreadsheet")
-    ) {
-      return SOP_TEMPLATES.DATA_ENTRY;
-    }
-    if (title.includes("transcription") || title.includes("transcribe")) {
-      return SOP_TEMPLATES.TRANSCRIPTION;
-    }
-    if (title.includes("translation") || title.includes("translate")) {
-      return SOP_TEMPLATES.TRANSLATION;
-    }
-    if (
-      title.includes("tutoring") ||
-      has("tutor") ||
-      title.includes("teaching")
-    ) {
-      return SOP_TEMPLATES.TUTORING;
-    }
-    if (title.includes("coaching") || has("coach")) {
-      return SOP_TEMPLATES.COACHING;
-    }
-    if (title.includes("course") || title.includes("curriculum")) {
-      return SOP_TEMPLATES.COURSE_DEVELOPMENT;
-    }
-    if (title.includes("legal") || has("law") || title.includes("contract")) {
-      return SOP_TEMPLATES.LEGAL_CONSULTING;
-    }
-    if (
-      title.includes("intellectual property") ||
-      title.includes("trademark") ||
-      title.includes("patent") ||
-      title.includes("copyright") ||
-      has("ip")
-    ) {
-      return SOP_TEMPLATES.IP_SERVICES;
-    }
-    return SOP_TEMPLATES.WEBSITE;
+    return getSopFromTitle(project?.title);
   }, [project]);
 
   const overallProgress = useMemo(() => {

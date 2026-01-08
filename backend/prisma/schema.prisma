@@ -80,6 +80,8 @@ model User {
   linkedin     String?
   github       String?
   portfolioProjects Json?    @default("[]")
+  resume       String?
+
 
   ownedProjects Project[] @relation("ProjectOwner")
   managedProjects Project[] @relation("ProjectManager")
