@@ -394,10 +394,10 @@ const ClientProposalContent = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-              Accepted Proposals
+              Project Proposals
             </h1>
             <p className="text-muted-foreground mt-1">
-              Manage your active contracts and communicate with clients.
+              Manage your active proposals and communicate with freelancers.
             </p>
           </div>
           {/* Filter/Sort removed */}
