@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Bot, MessageCircle, HelpCircle, X, GripVertical } from "lucide-react";
+import { Bot, MessageCircle, X, Phone } from "lucide-react";
 import { FamilyButton } from "@/components/ui/family-button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ export const CataButton = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  
+
   // Vertical position state (distance from bottom in pixels)
   const [bottomPosition, setBottomPosition] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_BOTTOM;
@@ -32,20 +32,29 @@ export const CataButton = () => {
   }, [bottomPosition]);
 
   // Handle drag start
-  const handleDragStart = useCallback((clientY) => {
-    setIsDragging(true);
-    dragStartY.current = clientY;
-    dragStartBottom.current = bottomPosition;
-  }, [bottomPosition]);
+  const handleDragStart = useCallback(
+    (clientY) => {
+      setIsDragging(true);
+      dragStartY.current = clientY;
+      dragStartBottom.current = bottomPosition;
+    },
+    [bottomPosition]
+  );
 
   // Handle drag move
-  const handleDragMove = useCallback((clientY) => {
-    if (!isDragging) return;
-    const deltaY = dragStartY.current - clientY; // Positive = moving up
-    const maxBottom = window.innerHeight - 150; // Leave space at top
-    const newBottom = Math.max(MIN_BOTTOM, Math.min(maxBottom, dragStartBottom.current + deltaY));
-    setBottomPosition(newBottom);
-  }, [isDragging]);
+  const handleDragMove = useCallback(
+    (clientY) => {
+      if (!isDragging) return;
+      const deltaY = dragStartY.current - clientY; // Positive = moving up
+      const maxBottom = window.innerHeight - 150; // Leave space at top
+      const newBottom = Math.max(
+        MIN_BOTTOM,
+        Math.min(maxBottom, dragStartBottom.current + deltaY)
+      );
+      setBottomPosition(newBottom);
+    },
+    [isDragging]
+  );
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
@@ -54,12 +63,24 @@ export const CataButton = () => {
 
   // Mouse event handlers
   const onMouseDown = (e) => {
+    // Prevent drag if clicking on an interactive element inside
+    if (e.target.closest("button") || e.target.closest("a")) {
+      return;
+    }
+    // Prevent default only if we are taking over dragging
     e.preventDefault();
     handleDragStart(e.clientY);
   };
 
   // Touch event handlers
   const onTouchStart = (e) => {
+    if (e.target.closest("button") || e.target.closest("a")) {
+      return;
+    }
+    // Don't prevent default on touch to allow scrolling if not dragging,
+    // but here we want to drag the button container.
+    // However, FamilyButton itself might need touch events.
+    // Let's assume touches on the container (outside of inner buttons) are drags.
     handleDragStart(e.touches[0].clientY);
   };
 
@@ -96,83 +117,86 @@ export const CataButton = () => {
     }
   };
 
-  const handleHelpClick = () => {
-    // Navigate to help/support page or open help dialog
-    if (user?.role === "CLIENT") {
-      navigate("/client/service");
-    } else if (user?.role === "FREELANCER") {
-      navigate("/freelancer/dashboard");
-    } else {
-      navigate("/contact");
-    }
-  };
+  // Only show on dashboard routes
+  const dashboardPrefixes = [
+    "/client",
+    "/freelancer",
+    "/project-manager",
+    "/admin",
+  ];
+  const isOnDashboard = dashboardPrefixes.some((prefix) =>
+    location.pathname.startsWith(prefix)
+  );
 
-  // Don't show on login/signup pages
-  if (["/login", "/signup", "/forgot-password", "/reset-password"].includes(location.pathname)) {
+  if (!isOnDashboard) {
     return null;
   }
 
   return (
-    <div 
-      className="fixed right-8 z-50 group"
+    <div
+      className={cn(
+        "fixed right-8 z-50 group cursor-grab active:cursor-grabbing",
+        isDragging && "cursor-grabbing"
+      )}
       style={{ bottom: `${bottomPosition}px` }}
+      onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
     >
-      {/* Drag Handle */}
-      <div
-        onMouseDown={onMouseDown}
-        onTouchStart={onTouchStart}
-        className={cn(
-          "absolute -left-6 top-1/2 -translate-y-1/2 p-1.5 rounded-lg cursor-grab active:cursor-grabbing",
-          "bg-neutral-800/80 border border-neutral-700/50 backdrop-blur-sm",
-          "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
-          "hover:bg-neutral-700/80 hover:border-primary/40",
-          isDragging && "opacity-100 bg-primary/20 border-primary/50"
-        )}
-        title="Drag to move up/down"
-      >
-        <GripVertical className={cn("w-4 h-4", isDragging ? "text-primary" : "text-neutral-400")} />
-      </div>
       <FamilyButton>
         <div className="flex flex-col gap-3 p-4 pb-14 w-full">
-          <h4 className="text-sm font-semibold text-neutral-300 mb-1">
-            Cata
+          <h4 className="text-sm font-semibold text-neutral-800 dark:text-neutral-400 mb-1">
+            Help
           </h4>
-          
-          <button
-            onClick={handleMessagesClick}
-            className={cn(
-              "flex items-center gap-3 p-3 rounded-xl w-full",
-              "bg-neutral-800/50 hover:bg-neutral-700/50",
-              "border border-neutral-700/50 hover:border-primary/50",
-              "transition-all duration-200 text-left group"
-            )}
-          >
-            <div className="p-2 rounded-lg bg-primary/20 group-hover:bg-primary/30 transition-colors">
-              <MessageCircle className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-neutral-200">Messages</p>
-              <p className="text-xs text-neutral-500">View conversations</p>
-            </div>
-          </button>
 
-          <button
-            onClick={handleHelpClick}
+          <a
+            href="https://wa.me/919999999999"
+            target="_blank"
+            rel="noopener noreferrer"
             className={cn(
               "flex items-center gap-3 p-3 rounded-xl w-full",
-              "bg-neutral-800/50 hover:bg-neutral-700/50",
-              "border border-neutral-700/50 hover:border-cyan-500/50",
-              "transition-all duration-200 text-left group"
+              "bg-white/60 dark:bg-neutral-800/50",
+              "hover:bg-white/90 dark:hover:bg-neutral-700/50",
+              "border border-black/5 dark:border-white/5",
+              "hover:border-emerald-500/50 dark:hover:border-emerald-500/30",
+              "transition-all duration-200 text-left group shadow-sm dark:shadow-none"
             )}
           >
-            <div className="p-2 rounded-lg bg-cyan-500/20 group-hover:bg-cyan-500/30 transition-colors">
-              <HelpCircle className="w-5 h-5 text-cyan-400" />
+            <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-500/10 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-500/20 transition-colors">
+              <MessageCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-neutral-200">Help & AI</p>
-              <p className="text-xs text-neutral-500">Get assistance</p>
+              <p className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
+                WhatsApp
+              </p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                Chat immediately
+              </p>
             </div>
-          </button>
+          </a>
+
+          <a
+            href="tel:+919999999999"
+            className={cn(
+              "flex items-center gap-3 p-3 rounded-xl w-full",
+              "bg-white/60 dark:bg-neutral-800/50",
+              "hover:bg-white/90 dark:hover:bg-neutral-700/50",
+              "border border-black/5 dark:border-white/5",
+              "hover:border-blue-500/50 dark:hover:border-blue-500/30",
+              "transition-all duration-200 text-left group shadow-sm dark:shadow-none"
+            )}
+          >
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-500/10 group-hover:bg-blue-200 dark:group-hover:bg-blue-500/20 transition-colors">
+              <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
+                Call Support
+              </p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-500">
+                Voice assistance
+              </p>
+            </div>
+          </a>
         </div>
       </FamilyButton>
     </div>

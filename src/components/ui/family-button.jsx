@@ -1,29 +1,33 @@
 import { useState } from "react";
-import { PlusIcon, XIcon } from "lucide-react"
-import { motion } from "motion/react"
+import { PlusIcon, XIcon } from "lucide-react";
+import { motion } from "motion/react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
-const CONTAINER_SIZE = 260
+const CONTAINER_SIZE = 260;
 
 const FamilyButton = ({ children }) => {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const toggleExpand = () => setIsExpanded(!isExpanded)
+  const [isExpanded, setIsExpanded] = useState(false);
+  const toggleExpand = () => setIsExpanded(!isExpanded);
 
   return (
     <div
       className={cn(
-        "rounded-[24px] border border-black/10  shadow-sm dark:border-yellow-400/20",
-        "bg-gradient-to-b  from-neutral-900 to-black",
+        "rounded-[24px] border shadow-sm",
+        "border-black/5 dark:border-white/10",
+        "bg-gradient-to-b from-[#FFFBF0] to-[#F2EFE9] dark:from-neutral-900 dark:to-black",
         isExpanded
-          ? "w-[204px] bg-gradient-to-b dark:from-stone-900 dark:to-neutral-900/80"
-          : "dark:from-neutral-900 dark:to-stone-950 bg-gradient-to-b"
-      )}>
-      <div className="rounded-[23px] border   border-black/10 ">
-        <div className="rounded-[22px] border  dark:border-stone-800 border-white/50 ">
-          <div
-            className="rounded-[21px] border    border-neutral-950/20   flex items-center justify-center ">
-            <FamilyButtonContainer isExpanded={isExpanded} toggleExpand={toggleExpand}>
+          ? "w-[204px] bg-gradient-to-b from-[#FFFBF0] to-[#F2EFE9] dark:from-neutral-900 dark:to-stone-950"
+          : "bg-gradient-to-b from-[#FFFBF0] to-[#F2EFE9] dark:from-neutral-900 dark:to-black"
+      )}
+    >
+      <div className="rounded-[23px] border border-white/50 dark:border-white/5">
+        <div className="rounded-[22px] border border-black/5 dark:border-black/20">
+          <div className="rounded-[21px] border border-white/20 dark:border-white/10 flex items-center justify-center">
+            <FamilyButtonContainer
+              isExpanded={isExpanded}
+              toggleExpand={toggleExpand}
+            >
               {isExpanded ? (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -34,7 +38,8 @@ const FamilyButton = ({ children }) => {
                       duration: 0.4,
                       ease: "easeOut",
                     },
-                  }}>
+                  }}
+                >
                   {children}
                 </motion.div>
               ) : null}
@@ -44,19 +49,17 @@ const FamilyButton = ({ children }) => {
       </div>
     </div>
   );
-}
+};
 
-const FamilyButtonContainer = ({
-  isExpanded,
-  toggleExpand,
-  children,
-}) => {
+const FamilyButtonContainer = ({ isExpanded, toggleExpand, children }) => {
   return (
     <motion.div
       className={cn(
-        "relative   border-white/10 border shadow-lg flex flex-col space-y-1  items-center  text-white  cursor-pointer z-10",
+        "relative border shadow-lg flex flex-col space-y-1 items-center cursor-pointer z-10",
+        "border-white/40 dark:border-white/10",
+        "text-black dark:text-white",
         !isExpanded
-          ? "bg-gradient-to-b from-neutral-900 to-stone-900 dark:from-stone-700 dark:to-neutral-800/80"
+          ? "bg-gradient-to-b from-[#FFFBF0] to-[#F2EFE9] dark:from-neutral-900 dark:to-stone-900"
           : ""
       )}
       layoutRoot
@@ -81,7 +84,8 @@ const FamilyButtonContainer = ({
               width: "4rem",
               height: "4rem",
             }
-      }>
+      }
+    >
       {children}
       <motion.div
         className="absolute"
@@ -99,10 +103,17 @@ const FamilyButtonContainer = ({
           left: isExpanded ? "" : "50%",
           top: isExpanded ? "" : "50%",
           bottom: isExpanded ? 6 : "",
-        }}>
+        }}
+      >
         {isExpanded ? (
           <motion.div
-            className="p-[10px] group bg-neutral-800/50 dark:bg-black/50 border border-cyan-100/30 hover:border-neutral-200 text-orange-50 rounded-full shadow-2xl transition-colors duration-300 "
+            className={cn(
+              "p-[10px] group rounded-full shadow-xl transition-colors duration-300 border",
+              "bg-white/80 dark:bg-neutral-800/80",
+              "border-black/5 dark:border-white/10",
+              "hover:border-black/20 dark:hover:border-white/30",
+              "text-neutral-800 dark:text-neutral-200"
+            )}
             onClick={toggleExpand}
             layoutId="expand-toggle"
             initial={false}
@@ -111,17 +122,19 @@ const FamilyButtonContainer = ({
               transition: {
                 duration: 0.4,
               },
-            }}>
+            }}
+          >
             <XIcon
               className={cn(
-                "h-7 w-7 text-cyan-100/30 dark:text-neutral-400/80 group-hover:text-neutral-500 transition-colors duration-200 "
-              )} />
+                "h-7 w-7 transition-colors duration-200",
+                "text-neutral-600 dark:text-neutral-400",
+                "group-hover:text-black dark:group-hover:text-white"
+              )}
+            />
           </motion.div>
         ) : (
           <motion.div
-            className={cn(
-              "px-4 py-2 cursor-pointer"
-            )}
+            className={cn("px-4 py-2 cursor-pointer")}
             onClick={toggleExpand}
             layoutId="expand-toggle"
             initial={{ scale: 1 }}
@@ -132,14 +145,17 @@ const FamilyButtonContainer = ({
               },
             }}
             whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}>
-            <span className="text-base font-bold text-white tracking-wide">Cata</span>
+            whileTap={{ scale: 0.95 }}
+          >
+            <span className="text-base font-bold tracking-wide text-black dark:text-white">
+              Help
+            </span>
           </motion.div>
         )}
       </motion.div>
     </motion.div>
   );
-}
+};
 
-export { FamilyButton }
-export default FamilyButton
+export { FamilyButton };
+export default FamilyButton;

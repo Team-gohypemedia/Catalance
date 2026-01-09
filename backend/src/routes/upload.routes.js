@@ -5,6 +5,12 @@ import { requireAuth } from "../middlewares/require-auth.js";
 
 const router = Router();
 
+// Log all upload requests
+router.use((req, res, next) => {
+  console.log(`[UploadRoute] ${req.method} /upload${req.path} hit`);
+  next();
+});
+
 // Avatar upload - images only, 5MB limit
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
@@ -57,6 +63,28 @@ router.post("/", requireAuth, avatarUpload.single("file"), uploadImage);
 router.post("/chat", requireAuth, chatUpload.single("file"), uploadChatFile);
 
 // Delete chat attachment endpoint
+// Delete chat attachment endpoint
 router.delete("/chat/:messageId", requireAuth, deleteChatAttachment);
+
+// Resume upload configuration (PDF, DOC, DOCX) - 5MB limit
+const resumeUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF and Word documents are allowed"), false);
+    }
+  }
+});
+
+import { uploadResume } from "../controllers/upload.controller.js";
+router.post("/resume", requireAuth, resumeUpload.single("file"), uploadResume);
 
 export const uploadRouter = router;

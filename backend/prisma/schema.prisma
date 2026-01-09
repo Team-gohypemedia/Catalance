@@ -70,11 +70,18 @@ model User {
   rating       Decimal?   @db.Decimal(3, 1) @default(0)
   reviewCount  Int        @default(0)
   
+  // New Profile Fields
+  experienceYears Int?    @default(0)
+  workExperience  Json?   @default("[]")
+  services        String[] @default([])
+  
   // Social/Portfolio
   portfolio    String?
   linkedin     String?
   github       String?
   portfolioProjects Json?    @default("[]")
+  resume       String?
+
 
   ownedProjects Project[] @relation("ProjectOwner")
   managedProjects Project[] @relation("ProjectManager")

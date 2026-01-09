@@ -304,4 +304,30 @@ export const startCronJobs = () => {
             console.error('[Cron] Error in auto-reject proposals cron:', error);
         }
     });
+
+    // ============================================================
+    // Auto-Delete Rejected Proposals: Run every hour to delete proposals
+    // that have been REJECTED for more than 48 hours
+    // ============================================================
+    cron.schedule('0 * * * *', async () => {
+        try {
+            const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+            // Delete proposals that are REJECTED and were last updated >48 hours ago
+            const result = await prisma.proposal.deleteMany({
+                where: {
+                    status: 'REJECTED',
+                    updatedAt: {
+                        lt: fortyEightHoursAgo
+                    }
+                }
+            });
+
+            if (result.count > 0) {
+                 console.log(`[Cron] 🗑️ Permanently deleted ${result.count} rejected proposals older than 48hrs.`);
+            }
+        } catch (error) {
+            console.error('[Cron] Error in auto-delete rejected proposals cron:', error);
+        }
+    });
 };

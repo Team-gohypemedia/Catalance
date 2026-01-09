@@ -80,15 +80,16 @@ export const createProposal = asyncHandler(async (req, res) => {
     // Client is sending a proposal TO a freelancer - notify the freelancer
     console.log(`[Proposal] Client sending to freelancer - notifying freelancer: ${freelancerId}`);
     try {
-      sendNotificationToUser(freelancerId, {
+      await sendNotificationToUser(freelancerId, {
         type: "proposal",
-        title: "Project Invite Received",
-        message: `You have been invited to submit a proposal for project "${project.title}" by the client.`,
+        title: "New Proposal Received",
+        message: `You have received a new proposal for project "${project.title}".`,
         data: { 
           projectId: projectId,
           proposalId: proposal.id 
         }
       });
+      console.log(`[Proposal] Notification sent successfully to freelancer: ${freelancerId}`);
     } catch (error) {
       console.error("Failed to send proposal notification to freelancer:", error);
     }
