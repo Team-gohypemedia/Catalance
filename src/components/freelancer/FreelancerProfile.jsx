@@ -450,6 +450,7 @@ const FreelancerProfile = () => {
     let currentAvatarUrl = personal.avatar;
 
     if (selectedFile) {
+      setUploadingImage(true);
       try {
         const uploadData = new FormData();
         uploadData.append("file", selectedFile);
@@ -469,9 +470,12 @@ const FreelancerProfile = () => {
         console.log("New Avatar URL from upload:", currentAvatarUrl);
       } catch (uploadErr) {
         setIsSaving(false);
+        setUploadingImage(false);
         console.error("Image upload failed inside save:", uploadErr);
         toast.error("Failed to upload image. Profile not saved.");
         return;
+      } finally {
+        setUploadingImage(false);
       }
     }
 
@@ -682,7 +686,13 @@ const FreelancerProfile = () => {
                     </div>
                   )}
                   {/* Upload Overlay */}
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                  <div
+                    className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
+                      uploadingImage
+                        ? "opacity-100"
+                        : "opacity-0 group-hover/avatar:opacity-100"
+                    }`}
+                  >
                     {uploadingImage ? (
                       <Loader2 className="animate-spin text-white" />
                     ) : (
