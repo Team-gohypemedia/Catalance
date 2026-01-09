@@ -7,8 +7,6 @@ import { useTheme } from "./theme-provider";
 import MatrixRain from "@/components/ui/matrix-code";
 
 const CatalanceHero = () => {
-    // Symmetric pillar heights (percent). Tall at edges, low at center.
-    const pillars = [92, 84, 78, 70, 62, 54, 46, 34, 18, 34, 46, 54, 62, 70, 78, 84, 92];
 
     const [isMounted, setIsMounted] = useState(false);
     const { theme } = useTheme();
@@ -59,38 +57,42 @@ const CatalanceHero = () => {
                     aria-hidden
                     className="absolute inset-0 -z-30 transition-opacity duration-500"
                     style={{
-                        backgroundImage: isDark ? [
-                            "radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.5) 0%, rgba(250, 204, 21, 0.95) 10%, rgba(234, 179, 8, 0.8) 25%, transparent 55%)", /* Ultra bright hot core */
-                            "radial-gradient(ellipse 150% 70% at 50% -5%, rgba(251, 191, 36, 0.5) 0%, transparent 70%)", /* Massive ambient glow */
-                            "radial-gradient(ellipse 80% 50% at 10% 0%, rgba(234, 179, 8, 0.5) 0%, transparent 60%)", /* Strong left gold (primary) */
-                            "radial-gradient(ellipse 80% 50% at 90% 0%, rgba(234, 179, 8, 0.5) 0%, transparent 60%)", /* Strong right gold (primary) */
-                            "radial-gradient(ellipse 100% 40% at 50% 15%, rgba(234, 179, 8, 0.25) 0%, transparent 100%)", /* Mid-level warm wash */
-                            "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.7) 75%, #000000 95%)" /* Deep vignette */
-                        ].join(",") : "linear-gradient(to bottom, #EAB308 0%, #FFFFFF 100%)",
                         backgroundColor: isDark ? "#000000" : "#FFFFFF",
                     }} />
 
                 <MatrixRain
-                    color="#FFFFFF"
-                    className="absolute inset-0 z-[-25] opacity-10 mix-blend-screen"
+                    color="#EAB308"
+                    className="absolute inset-0 z-[-25]"
+                    fadeOpacity={0.05}
                     style={{
-                        opacity: isDark ? 0.08 : 0.05 // Very subtle so gradient shows
+                        opacity: isDark ? 0.4 : 0.25
                     }}
                 />
 
+                {/* Grid Background */}
                 <div
                     aria-hidden
-                    className="absolute inset-0 -z-20 bg-transparent" />
-
-                <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 -z-10 opacity-30"
+                    className="absolute inset-0 z-[-28] opacity-30"
                     style={{
-                        backgroundImage: [
-                            `repeating-linear-gradient(90deg, rgba(0,0,0, 0.03) 0 1px, transparent 1px 96px)`,
-                            `repeating-linear-gradient(90deg, rgba(0,0,0, 0.02) 0 1px, transparent 1px 24px)`,
-                        ].join(","),
-                    }} />
+                        backgroundImage: isDark
+                            ? `linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px),
+                               linear-gradient(to bottom, rgba(255,255,255,0.15) 1px, transparent 1px)`
+                            : `linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+                               linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)`,
+                        backgroundSize: "100px 100px",
+                    }}
+                />
+
+                {/* Bottom Fade */}
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-80 -z-10"
+                    style={{
+                        background: isDark
+                            ? "linear-gradient(to top, #000000 0%, transparent 100%)"
+                            : "linear-gradient(to top, #FFFFFF 0%, transparent 100%)",
+                    }}
+                />
 
                 {/* ================== CONTENT ================== */}
                 <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-20 text-center">
@@ -106,10 +108,10 @@ const CatalanceHero = () => {
                     {/* Headlines */}
                     <div className={`mb-6 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`} style={{ animationDelay: '100ms' }}>
                         <h1 className={`text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight ${textColor}`}>
-                            Find clever minds
+                            Connecting <span className="text-primary">Ideas</span> with
                         </h1>
                         <h1 className={`text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight ${textColor}`}>
-                            Upgrade your craft
+                            The Right <span className="text-primary">Experts</span>.
                         </h1>
                     </div>
 
@@ -118,7 +120,7 @@ const CatalanceHero = () => {
                         className={`text-lg md:text-xl lg:text-2xl ${subTextColor} max-w-3xl mx-auto mb-12 font-light leading-relaxed ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
                         style={{ animationDelay: '200ms' }}
                     >
-                        Connect with world-class freelancers and find your next big project—built for creators, dreamers, and doers.
+                        A platform that helps projects move from brief to delivery with clarity and control.
                     </p>
 
                     {/* Cards Container */}
@@ -136,7 +138,7 @@ const CatalanceHero = () => {
                             </div>
 
                             {/* Business Card */}
-                            <div className="group relative p-6 rounded-3xl flex flex-col bg-linear-to-bl from-primary/40 via-background to-background text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[450px]">
+                            <div className="group relative p-6 rounded-3xl flex flex-col bg-background bg-linear-to-bl from-primary/40 via-background to-background text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[450px]">
                                 <div className="mb-6 flex flex-col items-start">
                                     <div className="px-0 py-2">
                                         <Briefcase className="w-5 h-5 text-primary" />
@@ -255,22 +257,7 @@ const CatalanceHero = () => {
 
                 </div>
 
-                {/* Pillars */}
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-screen">
-                    <div className={`absolute inset-0 bg-linear-to-t ${isDark ? 'from-black via-black/90' : 'from-background via-(--background)/80'} to-transparent`} />
-                    <div className="absolute inset-x-0 bottom-0 flex h-full items-end gap-px px-0">
-                        {pillars.map((h, i) => (
-                            <div
-                                key={i}
-                                className={`flex-1 ${isDark ? 'bg-black' : 'bg-gray-100'} transition-height duration-1000 ease-in-out`}
-                                style={{
-                                    height: isMounted ? `${h}%` : '0%',
-                                    transitionDelay: `${Math.abs(i - Math.floor(pillars.length / 2)) * 60}ms`
-                                }} />
-                        ))}
-                    </div>
 
-                </div>
             </section>
         </>
     );
