@@ -20,6 +20,13 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -888,90 +895,100 @@ const FreelancerProfile = () => {
                   </span>{" "}
                   Featured Projects
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-primary"
-                  onClick={() => setModalType("portfolio")}
-                >
-                  View All
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Map Projects */}
-                {portfolioProjects.map((project, idx) => (
-                  <div
-                    key={idx}
-                    className="group relative rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all"
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-primary flex items-center gap-1"
+                    onClick={() => setModalType("addProject")}
                   >
-                    <div className="aspect-video bg-muted relative overflow-hidden">
-                      {project.image ? (
-                        <img
-                          src={project.image}
-                          alt={project.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-4xl bg-secondary/30">
-                          💻
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <a
-                          href={project.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 bg-white rounded-full text-black hover:scale-110 transition-transform"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                        <button
-                          onClick={() => removeProject(idx)}
-                          className="p-2 bg-destructive text-white rounded-full hover:scale-110 transition-transform"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-3 flex items-center justify-between gap-3">
-                      <h4
-                        className="font-semibold truncate text-sm flex-1"
-                        title={project.title || project.link}
-                      >
-                        {project.title || "Project"}
-                      </h4>
-                      <a
-                        href={project.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center p-2 rounded-lg bg-secondary/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300"
-                        title="Visit Project"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add New Project Card / Input Area */}
-                <div className="aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center p-4 text-center hover:bg-secondary/10 transition-colors">
-                  {newProjectLoading ? (
-                    <Loader2 className="animate-spin text-primary" />
-                  ) : (
-                    <div className="w-full space-y-2">
-                      <input
-                        className="w-full bg-transparent text-center text-sm outline-none placeholder:text-muted-foreground"
-                        placeholder="+ Add Project URL"
-                        value={newProjectUrl}
-                        onChange={(e) => setNewProjectUrl(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleUrlBlur()}
-                        onBlur={handleUrlBlur}
-                      />
-                    </div>
-                  )}
+                    <Plus className="w-4 h-4" />
+                    Add Project
+                  </Button>
+                  <button
+                    className="text-primary text-sm font-medium hover:underline"
+                    onClick={() => setModalType("viewAllProjects")}
+                  >
+                    View All
+                  </button>
                 </div>
               </div>
+
+              {/* Carousel for Projects */}
+              {portfolioProjects.length > 0 ? (
+                <div className="relative px-12">
+                  <Carousel
+                    opts={{
+                      align: "start",
+                      loop: true,
+                    }}
+                    className="w-full"
+                  >
+                    <CarouselContent className="-ml-4">
+                      {portfolioProjects.map((project, idx) => (
+                        <CarouselItem key={idx} className="pl-4 md:basis-1/2">
+                          <div className="group relative rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all h-full">
+                            <div className="aspect-video bg-muted relative overflow-hidden">
+                              {project.image ? (
+                                <img
+                                  src={project.image}
+                                  alt={project.title}
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-4xl bg-secondary/30">
+                                  💻
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <a
+                                  href={project.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2 bg-white rounded-full text-black hover:scale-110 transition-transform"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                                <button
+                                  onClick={() => removeProject(idx)}
+                                  className="p-2 bg-destructive text-white rounded-full hover:scale-110 transition-transform"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="p-3 flex items-center justify-between gap-3">
+                              <h4
+                                className="font-semibold truncate text-sm flex-1"
+                                title={project.title || project.link}
+                              >
+                                {project.title || "Project"}
+                              </h4>
+                              <a
+                                href={project.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center p-2 rounded-lg bg-secondary/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+                                title="Visit Project"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </div>
+                          </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="-left-4" />
+                    <CarouselNext className="-right-4" />
+                  </Carousel>
+                </div>
+              ) : (
+                <div className="aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center p-4 text-center hover:bg-secondary/10 transition-colors">
+                  <p className="text-muted-foreground text-sm">
+                    No projects added yet. Click "Add Project" to get started.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1077,7 +1094,13 @@ const FreelancerProfile = () => {
       {/* Modal */}
       {modalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
-          <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200">
+          <div
+            className={`w-full rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${
+              modalType === "viewAllProjects"
+                ? "max-w-[60%] h-[90vh] flex flex-col"
+                : "max-w-md"
+            }`}
+          >
             {modalType === "skill" ? (
               <>
                 <h1 className="text-lg font-semibold text-foreground">
@@ -1143,6 +1166,150 @@ const FreelancerProfile = () => {
                     className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors"
                   >
                     Add
+                  </button>
+                </div>
+              </>
+            ) : modalType === "addProject" ? (
+              <>
+                <h1 className="text-lg font-semibold text-foreground">
+                  Add Project
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Enter a project URL to add it to your portfolio.
+                </p>
+                <input
+                  value={newProjectUrl}
+                  onChange={(e) => setNewProjectUrl(e.target.value)}
+                  placeholder="https://yourproject.com"
+                  className="mt-4 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleUrlBlur();
+                      setModalType(null);
+                    }
+                  }}
+                />
+                <div className="mt-5 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewProjectUrl("");
+                      setModalType(null);
+                    }}
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleUrlBlur();
+                      setModalType(null);
+                    }}
+                    disabled={newProjectLoading || !newProjectUrl.trim()}
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {newProjectLoading && (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    )}
+                    Add
+                  </button>
+                </div>
+              </>
+            ) : modalType === "viewAllProjects" ? (
+              <>
+                <h1 className="text-lg font-semibold text-foreground">
+                  All Projects
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {portfolioProjects.length} project
+                  {portfolioProjects.length !== 1 ? "s" : ""} in your portfolio
+                </p>
+                <div className="mt-4 flex-1 overflow-y-auto">
+                  {portfolioProjects.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {portfolioProjects.map((project, idx) => (
+                        <div
+                          key={idx}
+                          className="group flex flex-col p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                        >
+                          <div className="w-full h-40 rounded-lg overflow-hidden bg-muted mb-2">
+                            {project.image ? (
+                              <img
+                                src={project.image}
+                                alt={project.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-2xl bg-secondary/50">
+                                💻
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4
+                              className="font-medium text-sm truncate"
+                              title={project.title || project.link}
+                            >
+                              {project.title || "Project"}
+                            </h4>
+                            <p
+                              className="text-xs text-muted-foreground truncate"
+                              title={project.link}
+                            >
+                              {project.link}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <a
+                              href={project.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors text-xs"
+                              title="Visit Project"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Visit
+                            </a>
+                            <button
+                              onClick={() => removeProject(idx)}
+                              className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-colors"
+                              title="Remove Project"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">No projects added yet.</p>
+                      <button
+                        className="mt-2 text-primary text-sm hover:underline"
+                        onClick={() => setModalType("addProject")}
+                      >
+                        Add your first project
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-5 flex justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-primary"
+                    onClick={() => setModalType("addProject")}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Project
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setModalType(null)}
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    Close
                   </button>
                 </div>
               </>
