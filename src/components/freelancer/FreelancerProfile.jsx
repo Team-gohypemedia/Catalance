@@ -20,6 +20,16 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format, parse, isValid } from "date-fns";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { API_BASE_URL } from "@/lib/api-client";
@@ -1460,35 +1470,131 @@ const FreelancerProfile = () => {
                   />
                 </label>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    From
-                    <input
-                      value={workForm.from}
-                      onChange={(event) =>
-                        setWorkForm((prev) => ({
-                          ...prev,
-                          from: event.target.value,
-                        }))
-                      }
-                      placeholder="Jan 2020"
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                    />
-                  </label>
-                  <label className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    To
-                    <input
-                      value={workForm.to}
-                      onChange={(event) =>
-                        setWorkForm((prev) => ({
-                          ...prev,
-                          to: event.target.value,
-                        }))
-                      }
-                      placeholder="Present"
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                    />
-                  </label>
+                <div className="mt-3 grid gap-6 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                      From
+                    </span>
+                    <Popover modal={true}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal rounded-2xl border-border bg-background px-3 py-2 h-auto hover:bg-background",
+                            !workForm.from && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {workForm.from ? (
+                            workForm.from
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={(() => {
+                            if (!workForm.from) return undefined;
+                            const d = parse(
+                              workForm.from,
+                              "MMM yyyy",
+                              new Date()
+                            );
+                            return isValid(d) ? d : undefined;
+                          })()}
+                          onSelect={(date) => {
+                            if (date) {
+                              setWorkForm((prev) => ({
+                                ...prev,
+                                from: format(date, "MMM yyyy"),
+                              }));
+                            }
+                          }}
+                          initialFocus
+                          captionLayout="dropdown"
+                          startMonth={new Date(1980, 0)}
+                          endMonth={new Date(2030, 11)}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                        To
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="present"
+                          checked={workForm.to === "Present"}
+                          onCheckedChange={(checked) => {
+                            setWorkForm((prev) => ({
+                              ...prev,
+                              to: checked ? "Present" : "",
+                            }));
+                          }}
+                        />
+                        <label
+                          htmlFor="present"
+                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer text-muted-foreground"
+                        >
+                          Present
+                        </label>
+                      </div>
+                    </div>
+
+                    <Popover modal={true}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          disabled={workForm.to === "Present"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal rounded-2xl border-border bg-background px-3 py-2 h-auto hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed",
+                            !workForm.to && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {workForm.to === "Present" ? (
+                            "Present"
+                          ) : workForm.to ? (
+                            workForm.to
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={(() => {
+                            if (!workForm.to || workForm.to === "Present")
+                              return undefined;
+                            const d = parse(
+                              workForm.to,
+                              "MMM yyyy",
+                              new Date()
+                            );
+                            return isValid(d) ? d : undefined;
+                          })()}
+                          onSelect={(date) => {
+                            if (date) {
+                              setWorkForm((prev) => ({
+                                ...prev,
+                                to: format(date, "MMM yyyy"),
+                              }));
+                            }
+                          }}
+                          initialFocus
+                          captionLayout="dropdown"
+                          startMonth={new Date(1980, 0)}
+                          endMonth={new Date(2030, 11)}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
 
                 <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
