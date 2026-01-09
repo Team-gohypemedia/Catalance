@@ -1,75 +1,52 @@
-# Customer Support Services - Client Intake Questionnaire
+﻿# Customer Support - Client Intake Questionnaire
 
 ## Instructions for AI Assistant
 Ask these questions ONE AT A TIME in order. Wait for each answer before proceeding.
-Use [SUGGESTIONS: ...] for multiple choice options. Use [MULTI_SELECT: ...] for multi-select.
+Use [SUGGESTIONS: ...] for multiple choice options.
 
 ## Questions (In Order)
 
-1. Please provide your first name.
+1. What's your name?
 
-2. What is your company or brand name?
+2. Which customer support channels do you require?
+   [SUGGESTIONS: Chat support | Email support | Voice support | Multi-channel support]
 
-3. Where is your business located? (City / Country)
+3. What support hours do you need?
+   [SUGGESTIONS: Business hours | Extended hours | 24/7 support]
 
-4. What type of customer support service do you require?
-   [MULTI_SELECT: Live Chat Support | Email Support | Phone Support / Call Center | Technical Support | Social Media Support | Helpdesk / Ticket Management | Multi-channel Support | Other]
+4. What volume of customer queries do you expect?
+   [SUGGESTIONS: Low | Medium | High]
 
-5. Is this for an existing support system or a new setup?
-   [SUGGESTIONS: Existing system | New setup]
+5. Who are your customers primarily?
+   [SUGGESTIONS: Individual consumers | Business clients | Both]
 
-6. Please describe your business or product so we can understand your customers.
+6. Which languages should support be provided in?
+   [SUGGESTIONS: English | Regional language | Multiple languages]
 
-7. How many support requests do you handle per day or week?
-   [SUGGESTIONS: Less than 50 | 50–200 | 200–500 | 500+ | Not sure yet]
+7. How should escalations be handled?
+   [SUGGESTIONS: Forwarded to your internal team | Fully managed by the support team]
 
-8. What are your customer support operating hours?
-   [SUGGESTIONS: Business hours (Mon–Fri) | 24/7 support | Weekends included | Flexible / TBD]
+8. Do you currently use any helpdesk or CRM tools?
+   [SUGGESTIONS: Yes, tools are already in place | No, setup is required]
 
-9. Do you require multi-language support?
-   [SUGGESTIONS: Yes | No | Maybe later]
+9. Which performance metric is most important to you?
+   [SUGGESTIONS: Response time | Resolution quality | Customer satisfaction]
 
-10. Which support tools/platforms do you currently use? (e.g., Zendesk, Freshdesk, Intercom)
+10. Do you require training for support agents?
+    [SUGGESTIONS: Yes | No]
 
-11. Would you like us to provide support agents, train your team, or both?
-    [SUGGESTIONS: Provide agents | Train our team | Both]
-
-12. Do you require technical support specialists, general support agents, or both?
-    [SUGGESTIONS: Technical | General | Both]
-
-13. What is your budget range for customer support services?
-    [SUGGESTIONS: Under ₹41,500/month | ₹41,500–₹83,000/month | ₹83,000–₹2,49,000/month | ₹2,49,000+/month | Not sure yet]
-
-14. When would you like support operations to start?
-    [SUGGESTIONS: Immediately | Within 2 weeks | Next month | Flexible]
-
-15. What is your top priority for your support team?
-    [SUGGESTIONS: Fast response time | High satisfaction rate | Brand-consistent communication | Technical expertise | Cost efficiency]
-
-16. Please share any additional notes or special requirements.
-
-17. Share support playbooks, KPIs, or case studies (optional).
+11. What is your monthly budget for customer support?
+    [SUGGESTIONS: Under ₹15,000 / month | ₹15,000 – ₹30,000 / month | ₹30,000 – ₹60,000 / month | ₹60,000 and above / month]
 
 ## Required Fields
-- First name
-- Company/brand name
-- Location
-- Support type
-- System status (existing/new)
-- Business description
-- Request volume
-- Operating hours
-- Agent/training needs
-- Support type preference
-- Budget
-- Start date
-- Top priority
-
-## Optional Fields
-- Multi-language support
-- Current tools
-- Additional notes
-- Playbooks/KPIs
-
-## Pricing Reference
-- Customer Support services are priced based on volume, hours, and channel coverage
+- What's your name?
+- Which customer support channels do you require?
+- What support hours do you need?
+- What volume of customer queries do you expect?
+- Who are your customers primarily?
+- Which languages should support be provided in?
+- How should escalations be handled?
+- Do you currently use any helpdesk or CRM tools?
+- Which performance metric is most important to you?
+- Do you require training for support agents?
+- What is your monthly budget for customer support?

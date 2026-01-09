@@ -26,14 +26,25 @@ const resolveServiceQuestions = (service = "") => {
             questions: cataConfig.questions,
             source: "cata",
             definition: { cata: true, requiredKeys: cataConfig.requiredKeys },
+            skipIntro: true,
         };
     }
     const definition = getServiceDefinition(service);
     if (definition && Array.isArray(definition.fields) && definition.fields.length) {
-        return { questions: definition.fields, source: "catalog", definition };
+        return {
+            questions: definition.fields,
+            source: "catalog",
+            definition,
+            skipIntro: Boolean(definition?.skipIntro),
+        };
     }
     const chatbot = getChatbot(service);
-    return { questions: chatbot?.questions || [], source: "chatbot", definition: null };
+    return {
+        questions: chatbot?.questions || [],
+        source: "chatbot",
+        definition: null,
+        skipIntro: Boolean(chatbot?.skipIntro),
+    };
 };
 
 const QUESTION_KEY_TAG_REGEX = /\[QUESTION_KEY:\s*([^\]]+)\]/i;
@@ -206,6 +217,9 @@ const CATA_SERVICE_MAP = new Map([
     ["leadgeneration", "Lead Generation"],
     ["seooptimization", "SEO Optimization"],
     ["seo", "SEO Optimization"],
+    ["brandingnaminglogoandbrandidentity", "Branding (Naming, Logo & Brand Identity)"],
+    ["branding", "Branding (Naming, Logo & Brand Identity)"],
+    ["brandidentity", "Branding (Naming, Logo & Brand Identity)"],
 ]);
 
 const resolveCataService = (service = "") => {
@@ -243,44 +257,295 @@ const CATA_WEBSITE_PAGES = [
     "None",
 ];
 
-const CATA_WEBSITE_TECH = [
-    "Next.js",
+const CATA_WEBSITE_REQUIREMENTS = ["New website", "Revamping existing website"];
+
+const CATA_PRIMARY_OBJECTIVES = [
+    "Generating leads",
+    "Selling products or services online",
+    "Building brand credibility",
+    "Showcasing work or portfolio",
+];
+
+const CATA_DESIGN_EXPERIENCES = [
+    "Clean and simple design",
+    "Premium and modern UI",
+    "Interactive or 3D-based design",
+];
+
+const CATA_WEBSITE_TYPES = [
+    "Platform-based website (No-code / CMS)",
+    "Coded website (Custom development)",
+];
+
+const CATA_PLATFORM_PREFERENCES = [
+    "WordPress",
+    "Webflow",
+    "Wix",
+    "Shopify",
+    "Squarespace",
+    "Framer",
+    "Bubble",
+    "Zoho Sites",
+    "Google Sites",
+    "Magento (Adobe Commerce)",
+    "Other: ________",
+];
+
+const CATA_CODED_TECH_STACKS = [
+    "HTML, CSS, JavaScript (Static)",
     "React.js",
-    "React.js + Node.js",
-    "Shopify + Hydrogen (React)",
-    "Laravel + Vue",
-    "Django + React",
-    "No preference",
+    "Next.js",
+    "Vue.js / Nuxt.js",
+    "Angular",
 ];
 
-const CATA_HOSTING = [
-    "Vercel",
-    "Netlify",
-    "AWS",
-    "DigitalOcean",
-    "Railway",
-    "Render",
-    "VPS/Custom Server",
-    "Not sure yet",
+const CATA_BACKEND_OPTIONS = [
+    "Node.js (Express)",
+    "Python (Django / Flask / FastAPI)",
+    "PHP (Laravel)",
+    "Java (Spring Boot)",
+    ".NET",
 ];
 
-const CATA_INTEGRATIONS = [
-    "Payment Gateway (Razorpay/Stripe)",
-    "Email Service (Nodemailer/Resend)",
-    "Delivery/Shipping Tracking",
-    "None",
+const CATA_DATABASE_OPTIONS = [
+    "MySQL",
+    "PostgreSQL",
+    "MongoDB",
+    "Firebase",
+    "Supabase",
 ];
 
-const CATA_DESIGN_STATUSES = [
-    "I have designs",
-    "Need design help",
-    "Have some references",
-    "Not sure yet",
+const CATA_ECOMMERCE_OPTIONS = [
+    "Custom eCommerce",
+    "Stripe / Razorpay integration",
+    "WooCommerce (if hybrid)",
 ];
 
-const CATA_BUILD_TYPES = ["No-code website", "Custom code (coded website)"];
+const CATA_CONTENT_STATUSES = ["All content is ready", "Content needs to be created"];
 
-const CATA_WEBSITE_TIMELINES = ["1 month", "2-3 months", "3-6 months"];
+const CATA_REFERENCE_OPTIONS = ["Yes - ________", "No"];
+
+const CATA_LAUNCH_TIMELINES = [
+    "Within 2-4 weeks",
+    "Within 1-2 months",
+    "The timeline is flexible",
+];
+
+const CATA_BUDGET_RANGES = [
+    "Under INR 25,000 (Basic website)",
+    "INR 25,000 - 50,000 (Standard website)",
+    "INR 50,000 - 1,00,000 (Advanced website)",
+    "INR 1,00,000 - 2,50,000 (Custom / dynamic website)",
+    "INR 2,50,000 and above (High-end, scalable platform)",
+];
+
+const CATA_SEO_BUSINESS_CATEGORIES = [
+    "Local service business",
+    "E-commerce or D2C brand",
+    "B2B or corporate business",
+];
+
+const CATA_SEO_TARGET_LOCATIONS = [
+    "A specific city - ________",
+    "A state or region - ________",
+    "Pan-India",
+    "International markets",
+];
+
+const CATA_SEO_KEYWORD_PLANNING = [
+    "We will provide keywords - ________",
+    "Open to expert recommendation",
+];
+
+const CATA_SEO_GOALS = [
+    "Increasing website traffic",
+    "Generating quality leads",
+    "Improving brand visibility",
+];
+
+const CATA_SEO_CONTENT_STATUS = [
+    "Content is already available",
+    "Content needs to be created",
+    "Content needs optimisation",
+];
+
+const CATA_SEO_SITUATIONS = [
+    "New website with no SEO",
+    "Some SEO work has been done",
+    "Website is already ranking",
+];
+
+const CATA_SEO_COMPETITION = [
+    "Low competition",
+    "Medium competition",
+    "High competition",
+];
+
+const CATA_SEO_SERVICE_DURATION = [
+    "1 month",
+    "3 months",
+    "6 months",
+    "12 months",
+];
+
+const CATA_SEO_GROWTH_EXPECTATIONS = [
+    "Slow and steady growth",
+    "Moderate growth",
+    "Aggressive growth",
+];
+
+const CATA_SEO_BUDGET_RANGES = [
+    "Under INR 10,000 / month",
+    "INR 10,000 - 25,000 / month",
+    "INR 25,000 - 50,000 / month",
+    "INR 50,000 and above / month",
+];
+
+const CATA_BRAND_STAGES = ["New brand", "Existing brand", "Rebranding"];
+
+const CATA_BRAND_NAMING_SUPPORT = [
+    "No, the brand name is already finalised",
+    "Yes, Few name suggestions",
+    "Yes, Complete naming strategy",
+];
+
+const CATA_BRAND_PERCEPTION = [
+    "Professional and trustworthy",
+    "Modern and bold",
+    "Premium and minimal",
+    "Youthful and energetic",
+];
+
+const CATA_BRAND_AUDIENCE = [
+    "Businesses (B2B)",
+    "Consumers (B2C)",
+    "Direct-to-consumer (D2C)",
+    "A mix of different audiences",
+];
+
+const CATA_BRAND_USAGE = [
+    "Website and digital platforms",
+    "Social media channels",
+    "Packaging and print materials",
+    "Across all platforms",
+];
+
+const CATA_BRAND_REFERENCES = ["Yes -", "No"];
+
+const CATA_BRAND_DELIVERABLES = [
+    "Brand strategy & positioning",
+    "Brand vision, mission & values",
+    "Target audience & buyer persona",
+    "Competitor & market analysis",
+    "Brand tone of voice",
+    "Logo design (primary, secondary, icon)",
+    "Color palette",
+    "Typography system",
+    "Visual identity elements & patterns",
+    "Iconography style",
+    "Image / illustration style",
+    "Brand guidelines / brand book",
+    "Business card design",
+    "Letterhead & stationery",
+    "Email signature",
+    "Pitch deck / presentation template",
+    "Brochure / flyer design",
+    "Social media profile & cover designs",
+    "Social media post templates",
+    "Website UI brand direction",
+    "Brand messaging & brand story",
+    "Complete brand identity kit",
+];
+
+const CATA_BRAND_TIMELINES = [
+    "Within 2 weeks",
+    "Within 3-4 weeks",
+    "Within 1-2 months",
+];
+
+const CATA_BRAND_CREATIVE_FREEDOM = [
+    "Full creative freedom",
+    "Some guidelines -",
+    "Strict brand guidelines -",
+];
+
+const CATA_BRAND_BUDGET_RANGES = [
+    "Under INR 25,000",
+    "INR 25,000 - 50,000",
+    "INR 50,000 - 1,00,000",
+    "INR 1,00,000 and above",
+];
+
+const normalizeCataChoice = (value = "") =>
+    canonicalize(normalizeText(value).toLowerCase());
+
+const isPlatformWebsiteType = (value = "") => {
+    const canon = normalizeCataChoice(value);
+    if (!canon) return false;
+    return (
+        canon.includes("platformbased") ||
+        canon.includes("nocode") ||
+        canon.includes("cms") ||
+        canon.includes("platform")
+    );
+};
+
+const isCodedWebsiteType = (value = "") => {
+    const canon = normalizeCataChoice(value);
+    if (!canon) return false;
+    return (
+        canon.includes("codedwebsite") ||
+        canon.includes("customdevelopment") ||
+        canon.includes("customcode") ||
+        canon.includes("coded")
+    );
+};
+
+const isStaticTechStack = (value = "") => {
+    const canon = normalizeCataChoice(value);
+    return canon.includes("htmlcssjavascript");
+};
+
+const shouldAskPlatformPreference = (data = {}) =>
+    isPlatformWebsiteType(data.website_type);
+
+const shouldAskTechStack = (data = {}) =>
+    isCodedWebsiteType(data.website_type);
+
+const shouldAskBackendStack = (data = {}) => {
+    if (!isCodedWebsiteType(data.website_type)) return false;
+    if (!normalizeText(data.tech_stack)) return false;
+    return !isStaticTechStack(data.tech_stack);
+};
+
+const shouldAskDatabaseStack = (data = {}) => {
+    if (!shouldAskBackendStack(data)) return false;
+    return Boolean(normalizeText(data.backend));
+};
+
+const shouldAskEcommerceStack = (data = {}) => {
+    const objective = normalizeText(data.primary_objective).toLowerCase();
+    if (objective.includes("selling")) return true;
+
+    const platforms = normalizeText(data.platform_preference).toLowerCase();
+    if (/(shopify|woocommerce|magento)/.test(platforms)) return true;
+
+    return false;
+};
+
+const shouldAskLeadCity = (data = {}) => {
+    const target = normalizeText(data.target_location).toLowerCase();
+    return target.includes("specific city");
+};
+
+const shouldAskLeadRegion = (data = {}) => {
+    const target = normalizeText(data.target_location).toLowerCase();
+    return (
+        target.includes("state or region") ||
+        target.includes("state") ||
+        target.includes("region")
+    );
+};
 
 const CATA_SERVICE_CONFIGS = new Map([
     [
@@ -288,44 +553,115 @@ const CATA_SERVICE_CONFIGS = new Map([
         {
             requiredKeys: [
                 "name",
-                "project_name",
-                "project_description_1_sentence",
-                "additional_pages",
-                "budget_inr",
-                "integrations",
-                "design_status",
-                "build_type",
+                "website_requirement",
+                "primary_objective",
+                "design_experience",
+                "website_type",
+                "platform_preference",
                 "tech_stack",
-                "hosting",
-                "domain_status",
-                "timeline",
+                "backend",
+                "database",
+                "ecommerce",
+                "additional_pages",
+                "content_status",
+                "references",
+                "launch_timeline",
+                "budget_range",
             ],
-            listFields: new Set(["additional_pages", "integrations", "hosting"]),
+            listFields: new Set([
+                "platform_preference",
+                "tech_stack",
+                "backend",
+                "database",
+                "ecommerce",
+                "additional_pages",
+            ]),
             questions: [
                 {
                     key: "name",
                     templates: [
-                        "Hey! Let's build something amazing. What's your name?",
-                        "Hi there! Ready to create your website? What should I call you?",
+                        "Hi! I see you're interested in Website Development. What's your name? Let's get started.",
                     ],
                     suggestions: null,
                     required: true,
                     tags: ["name"],
                 },
                 {
-                    key: "project_name",
-                    templates: ["Nice to meet you, {name}! What's the project name?"],
-                    suggestions: null,
+                    key: "website_requirement",
+                    templates: ["What best describes your website requirement?"],
+                    suggestions: CATA_WEBSITE_REQUIREMENTS,
+                    expectedType: "enum",
                     required: true,
                 },
                 {
-                    key: "project_description_1_sentence",
-                    templates: [
-                        "In 1 simple sentence, describe your project in easy words. (An e-commerce website for my clothing brand.)",
-                        "Briefly describe what you want to build (1 sentence).",
-                    ],
-                    suggestions: null,
+                    key: "primary_objective",
+                    templates: ["What is the primary objective of your website?"],
+                    suggestions: CATA_PRIMARY_OBJECTIVES,
+                    expectedType: "enum",
                     required: true,
+                },
+                {
+                    key: "design_experience",
+                    templates: ["What type of design experience are you looking for?"],
+                    suggestions: CATA_DESIGN_EXPERIENCES,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "website_type",
+                    templates: ["What type of website do you need?"],
+                    suggestions: CATA_WEBSITE_TYPES,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "platform_preference",
+                    templates: [
+                        "If Platform-based website is selected, choose preferred platform(s):",
+                    ],
+                    suggestions: CATA_PLATFORM_PREFERENCES,
+                    multiSelect: true,
+                    expectedType: "list",
+                    required: true,
+                    when: shouldAskPlatformPreference,
+                },
+                {
+                    key: "tech_stack",
+                    templates: [
+                        "If Coded website is selected, choose preferred tech stack/technology:",
+                    ],
+                    suggestions: CATA_CODED_TECH_STACKS,
+                    multiSelect: true,
+                    expectedType: "list",
+                    required: true,
+                    when: shouldAskTechStack,
+                },
+                {
+                    key: "backend",
+                    templates: ["Backend (if needed):"],
+                    suggestions: CATA_BACKEND_OPTIONS,
+                    multiSelect: true,
+                    expectedType: "list",
+                    required: true,
+                    when: shouldAskBackendStack,
+                },
+                {
+                    key: "database",
+                    templates: ["Database (if needed):"],
+                    suggestions: CATA_DATABASE_OPTIONS,
+                    multiSelect: true,
+                    expectedType: "list",
+                    required: true,
+                    when: shouldAskDatabaseStack,
+                },
+                {
+                    key: "ecommerce",
+                    templates: ["E-commerce (if needed):"],
+                    suggestions: CATA_ECOMMERCE_OPTIONS,
+                    multiSelect: true,
+                    expectedType: "list",
+                    required: true,
+                    when: shouldAskEcommerceStack,
                 },
                 {
                     key: "additional_pages",
@@ -338,67 +674,34 @@ const CATA_SERVICE_CONFIGS = new Map([
                     required: true,
                 },
                 {
-                    key: "budget_inr",
-                    templates: ["What's your budget in INR for this project?"],
-                    suggestions: null,
-                    expectedType: "budget_text",
-                    required: true,
-                    tags: ["budget"],
-                },
-                {
-                    key: "integrations",
-                    templates: ["What integrations do you need? (Select all that apply)"],
-                    suggestions: CATA_INTEGRATIONS,
-                    multiSelect: true,
-                    expectedType: "list",
-                    required: true,
-                },
-                {
-                    key: "design_status",
-                    templates: ["Do you have any designs or inspirations in mind?"],
-                    suggestions: CATA_DESIGN_STATUSES,
+                    key: "content_status",
+                    templates: ["What is the status of your website content?"],
+                    suggestions: CATA_CONTENT_STATUSES,
                     expectedType: "enum",
                     required: true,
                 },
                 {
-                    key: "build_type",
-                    templates: ["What type of technology stack do you want?"],
-                    suggestions: CATA_BUILD_TYPES,
+                    key: "references",
+                    templates: ["Do you have any reference websites you like?"],
+                    suggestions: CATA_REFERENCE_OPTIONS,
                     expectedType: "enum",
                     required: true,
                 },
                 {
-                    key: "tech_stack",
-                    templates: ["What technology stack would you prefer? (Select one)"],
-                    suggestions: CATA_WEBSITE_TECH,
-                    expectedType: "enum",
-                    required: true,
-                },
-                {
-                    key: "hosting",
-                    templates: [
-                        "Where would you like the website deployed/hosted? (Select up to 2)",
-                    ],
-                    suggestions: CATA_HOSTING,
-                    multiSelect: true,
-                    maxSelect: 2,
-                    expectedType: "list",
-                    required: true,
-                },
-                {
-                    key: "domain_status",
-                    templates: ["Do you have a domain name?"],
-                    suggestions: ["I already have domain", "I don't have domain"],
-                    expectedType: "enum",
-                    required: true,
-                },
-                {
-                    key: "timeline",
-                    templates: ["When do you need the website ready?"],
-                    suggestions: CATA_WEBSITE_TIMELINES,
+                    key: "launch_timeline",
+                    templates: ["When would you like to launch the website?"],
+                    suggestions: CATA_LAUNCH_TIMELINES,
                     expectedType: "timeline_text",
                     required: true,
                     tags: ["timeline"],
+                },
+                {
+                    key: "budget_range",
+                    templates: ["What budget range are you comfortable with for this project?"],
+                    suggestions: CATA_BUDGET_RANGES,
+                    expectedType: "budget_text",
+                    required: true,
+                    tags: ["budget"],
                 },
             ],
         },
@@ -406,44 +709,177 @@ const CATA_SERVICE_CONFIGS = new Map([
     [
         "Lead Generation",
         {
-            requiredKeys: ["name", "business_type", "target_audience", "budget_inr"],
-            listFields: new Set([]),
+            requiredKeys: [
+                "name",
+                "lead_type",
+                "target_audience",
+                "target_location",
+                "target_city",
+                "target_region",
+                "lead_volume",
+                "channels",
+                "lead_quality",
+                "crm_usage",
+                "campaign_duration",
+                "monthly_budget",
+            ],
+            listFields: new Set(["channels"]),
             questions: [
                 {
+                    id: "Q1",
+                    nextId: "Q2",
                     key: "name",
-                    templates: ["Please provide your full name."],
-                    suggestions: null,
+                    answerType: "text",
                     required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["name", "call you", "full name"],
+                    templates: ["What's your name?"],
+                    suggestions: null,
                     tags: ["name"],
                 },
                 {
-                    key: "business_type",
-                    templates: ["What type of business do you operate?"],
-                    suggestions: null,
+                    id: "Q2",
+                    nextId: "Q3",
+                    key: "lead_type",
+                    answerType: "single_select",
                     required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["lead type", "phone call", "form submissions", "whatsapp", "chat"],
+                    templates: ["What type of leads are you primarily looking for?"],
+                    suggestions: ["Phone call leads", "Form submissions", "WhatsApp or chat leads"],
                 },
                 {
+                    id: "Q3",
+                    nextId: "Q4",
                     key: "target_audience",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["target audience", "b2b", "b2c", "businesses", "consumers"],
                     templates: ["Who is your target audience?"],
-                    suggestions: null,
-                    required: true,
-                    tags: ["audience"],
+                    suggestions: ["Businesses (B2B)", "Consumers (B2C)", "A mix of both"],
                 },
                 {
-                    key: "budget_inr",
-                    templates: ["What is your estimated budget range? (Please provide amount in INR)"],
-                    suggestions: null,
-                    expectedType: "budget_text",
+                    id: "Q4",
+                    nextId: "Q5",
+                    key: "target_location",
+                    answerType: "single_select",
                     required: true,
-                    tags: ["budget"],
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["location", "city", "region", "pan-india"],
+                    templates: ["Which locations do you want to target for lead generation?"],
+                    suggestions: ["A specific city", "A state or region", "Pan-India"],
                 },
                 {
-                    key: "examples_links",
-                    templates: [
-                        "Please share any examples, case studies, or links to past campaigns (optional).",
+                    id: "Q5",
+                    nextId: "Q6",
+                    key: "target_city",
+                    answerType: "text",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["specific city", "city name", "which city"],
+                    templates: ["Please share the specific city name."],
+                    suggestions: null,
+                    tags: ["location"],
+                    when: shouldAskLeadCity,
+                },
+                {
+                    id: "Q6",
+                    nextId: "Q7",
+                    key: "target_region",
+                    answerType: "text",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["state", "region", "state or region"],
+                    templates: ["Please share the state or region."],
+                    suggestions: null,
+                    tags: ["location"],
+                    when: shouldAskLeadRegion,
+                },
+                {
+                    id: "Q7",
+                    nextId: "Q8",
+                    key: "lead_volume",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["leads per month", "lead volume", "volume"],
+                    templates: ["How many leads do you expect per month?"],
+                    suggestions: ["Low volume", "Medium volume", "High volume"],
+                },
+                {
+                    id: "Q8",
+                    nextId: "Q9",
+                    key: "channels",
+                    answerType: "multi_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["channels", "google", "meta", "linkedin", "email", "tools"],
+                    templates: ["Which channels should be used for lead generation? (Multiple)"],
+                    suggestions: ["Google", "Meta", "LinkedIn", "Email", "Third party tools"],
+                    multiSelect: true,
+                },
+                {
+                    id: "Q9",
+                    nextId: "Q10",
+                    key: "lead_quality",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["lead quality", "raw leads", "pre-qualified"],
+                    templates: ["What level of lead quality do you require?"],
+                    suggestions: ["Raw leads", "Pre-qualified leads"],
+                },
+                {
+                    id: "Q10",
+                    nextId: "Q11",
+                    key: "crm_usage",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["crm", "lead tracking", "tracking system"],
+                    templates: ["Do you currently use a CRM or lead tracking system?"],
+                    suggestions: ["Yes, a CRM is already in place", "No"],
+                },
+                {
+                    id: "Q11",
+                    nextId: "Q12",
+                    key: "campaign_duration",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["campaign duration", "how long", "short-term", "long-term"],
+                    templates: ["How long do you want to run the lead generation campaigns?"],
+                    suggestions: ["Short-term", "Medium-term", "Long-term"],
+                },
+                {
+                    id: "Q12",
+                    nextId: null,
+                    key: "monthly_budget",
+                    answerType: "single_select",
+                    required: true,
+                    disableSharedContext: true,
+                    forceAsk: true,
+                    patterns: ["budget", "monthly budget", "spend"],
+                    templates: ["What is your monthly budget for lead generation?"],
+                    suggestions: [
+                        "Under ₹15,000 / month",
+                        "₹15,000 – ₹30,000 / month",
+                        "₹30,000 – ₹60,000 / month",
+                        "₹60,000 – ₹1,00,000 / month",
+                        "₹1,00,000 and above / month",
                     ],
-                    suggestions: null,
-                    required: false,
                 },
             ],
         },
@@ -453,46 +889,202 @@ const CATA_SERVICE_CONFIGS = new Map([
         {
             requiredKeys: [
                 "name",
-                "website_live_status",
-                "target_location",
-                "seo_scope",
-                "keywords",
+                "business_category",
+                "target_locations",
+                "keyword_planning",
+                "primary_goal",
+                "content_status",
+                "seo_situation",
+                "competition_level",
+                "service_duration",
+                "growth_expectation",
+                "budget_range",
             ],
             listFields: new Set([]),
             questions: [
                 {
                     key: "name",
-                    templates: ["Please provide your full name."],
+                    templates: [
+                        "Hi! I see you're interested in SEO Optimization. What's your name? Let's get started.",
+                    ],
                     suggestions: null,
                     required: true,
                     tags: ["name"],
                 },
                 {
-                    key: "website_live_status",
-                    templates: ["Is your website live?"],
-                    suggestions: ["Yes", "No", "In progress"],
+                    key: "business_category",
+                    templates: ["Which category best describes your business?"],
+                    suggestions: CATA_SEO_BUSINESS_CATEGORIES,
                     expectedType: "enum",
                     required: true,
                 },
                 {
-                    key: "target_location",
-                    templates: ["What is your target location?"],
-                    suggestions: ["Global", "Local", "Both", "Specific location (please specify)"],
+                    key: "target_locations",
+                    templates: ["Which geographic locations would you like to target through SEO?"],
+                    suggestions: CATA_SEO_TARGET_LOCATIONS,
                     expectedType: "enum",
                     required: true,
                 },
                 {
-                    key: "seo_scope",
-                    templates: ["Do you want full SEO or specific services only?"],
-                    suggestions: ["Full SEO", "Specific services"],
+                    key: "keyword_planning",
+                    templates: ["How would you like to approach keyword planning?"],
+                    suggestions: CATA_SEO_KEYWORD_PLANNING,
                     expectedType: "enum",
                     required: true,
                 },
                 {
-                    key: "keywords",
-                    templates: ["Any keywords you want to rank for?"],
+                    key: "primary_goal",
+                    templates: ["What is your primary goal with SEO?"],
+                    suggestions: CATA_SEO_GOALS,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "content_status",
+                    templates: ["What is the current status of your website content?"],
+                    suggestions: CATA_SEO_CONTENT_STATUS,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "seo_situation",
+                    templates: ["What best describes your current SEO situation?"],
+                    suggestions: CATA_SEO_SITUATIONS,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "competition_level",
+                    templates: ["How competitive is your industry online?"],
+                    suggestions: CATA_SEO_COMPETITION,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "service_duration",
+                    templates: ["How long would you like to continue SEO services?"],
+                    suggestions: CATA_SEO_SERVICE_DURATION,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "growth_expectation",
+                    templates: ["What kind of growth are you expecting from SEO?"],
+                    suggestions: CATA_SEO_GROWTH_EXPECTATIONS,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "budget_range",
+                    templates: ["Which monthly budget range best suits you?"],
+                    suggestions: CATA_SEO_BUDGET_RANGES,
+                    expectedType: "budget_text",
+                    required: true,
+                    tags: ["budget"],
+                },
+            ],
+        },
+    ],
+    [
+        "Branding (Naming, Logo & Brand Identity)",
+        {
+            requiredKeys: [
+                "name",
+                "brand_stage",
+                "naming_support",
+                "brand_perception",
+                "target_audience",
+                "branding_usage",
+                "reference_brands",
+                "deliverables",
+                "timeline",
+                "creative_freedom",
+                "budget_range",
+            ],
+            listFields: new Set(["deliverables"]),
+            questions: [
+                {
+                    key: "name",
+                    templates: [
+                        "Hi! I see you're interested in Branding (Naming, Logo & Brand Identity). What's your name? Let's get started.",
+                    ],
                     suggestions: null,
                     required: true,
+                    tags: ["name"],
+                },
+                {
+                    key: "brand_stage",
+                    templates: ["At what stage is your brand currently?"],
+                    suggestions: CATA_BRAND_STAGES,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "naming_support",
+                    templates: ["Do you require assistance with finalising or creating your brand name?"],
+                    suggestions: CATA_BRAND_NAMING_SUPPORT,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "brand_perception",
+                    templates: ["How would you like your brand to be perceived by your audience?"],
+                    suggestions: CATA_BRAND_PERCEPTION,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "target_audience",
+                    templates: ["Who is your primary target audience?"],
+                    suggestions: CATA_BRAND_AUDIENCE,
+                    expectedType: "enum",
+                    required: true,
+                    tags: ["audience"],
+                },
+                {
+                    key: "branding_usage",
+                    templates: ["Where will this branding be used most frequently?"],
+                    suggestions: CATA_BRAND_USAGE,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "reference_brands",
+                    templates: ["Do you have any reference brands whose style you admire?"],
+                    suggestions: CATA_BRAND_REFERENCES,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "deliverables",
+                    templates: ["Which branding deliverables are you looking for? (multiple options)"],
+                    suggestions: CATA_BRAND_DELIVERABLES,
+                    multiSelect: true,
+                    expectedType: "list",
+                    required: true,
+                },
+                {
+                    key: "timeline",
+                    templates: ["What is your preferred timeline for completing the branding work?"],
+                    suggestions: CATA_BRAND_TIMELINES,
+                    expectedType: "timeline_text",
+                    required: true,
+                    tags: ["timeline"],
+                },
+                {
+                    key: "creative_freedom",
+                    templates: ["How much creative freedom would you like to give the design team?"],
+                    suggestions: CATA_BRAND_CREATIVE_FREEDOM,
+                    expectedType: "enum",
+                    required: true,
+                },
+                {
+                    key: "budget_range",
+                    templates: ["Which budget level best represents your expectation for this project?"],
+                    suggestions: CATA_BRAND_BUDGET_RANGES,
+                    expectedType: "budget_text",
+                    required: true,
+                    tags: ["budget"],
                 },
             ],
         },
@@ -538,8 +1130,25 @@ const stripMarkdownFormatting = (value = "") => {
 
 const CHANGE_TECH_SENTINEL = "__CHANGE_TECH__";
 
+const isBrandingNamingServiceQuestions = (questions = []) => {
+    const list = Array.isArray(questions) ? questions : [];
+    if (!list.length) return false;
+    const brandingKeys = new Set([
+        "brand_stage",
+        "naming_support",
+        "brand_perception",
+        "branding_usage",
+        "reference_brands",
+        "creative_freedom",
+    ]);
+    return list.some((question, index) =>
+        brandingKeys.has(resolveQuestionKey(question, index))
+    );
+};
+
 const withMandatoryBrief = (questions = []) => {
     const list = Array.isArray(questions) ? questions : [];
+    if (isBrandingNamingServiceQuestions(list)) return list;
     const hasExplicitFlow = list.some((q) =>
         Boolean(
             q?.nextId ||
@@ -580,6 +1189,29 @@ const withMandatoryBrief = (questions = []) => {
     ];
 };
 
+const shouldSkipMandatoryBrief = (service = "") => {
+    const canon = canonicalize(normalizeText(service));
+    return (
+        canon === "writingcontent" ||
+        canon === "writingandcontent" ||
+        canon === "customersupport" ||
+        canon === "influencermarketing" ||
+        canon === "influencerugcmarketing" ||
+        canon === "ugcmarketing" ||
+        canon === "ugcusergeneratedcontentmarketing" ||
+        canon === "3dmodeling" ||
+        canon.startsWith("3dmodeling") ||
+        canon === "aiautomation" ||
+        canon.startsWith("aiautomation") ||
+        canon === "whatsappchatbot" ||
+        canon.startsWith("whatsappchatbot") ||
+        canon === "voiceagent" ||
+        canon.startsWith("voiceagent") ||
+        canon === "creativeanddesign" ||
+        canon.startsWith("creativeanddesign")
+    );
+};
+
 const resolveIntroServiceLabel = (service = "") => {
     const label = normalizeText(service);
     if (!label) return "your project";
@@ -607,7 +1239,17 @@ const withGlobalIntroQuestion = (questions = [], service = "") => {
         ];
     }
 
-    const nameIndex = list.findIndex((q, index) => resolveQuestionKey(q, index) === "name");
+    const isPersonalNameQuestion = (question = {}, index = 0) => {
+        const key = resolveQuestionKey(question, index);
+        if (!key) return false;
+        const tags = new Set([...(question.tags || []), ...getQuestionTags({ ...question, key })]);
+        if (!tags.has("name")) return false;
+        if (tags.has("company")) return false;
+        if (/(company|business|brand|project|organization)/i.test(key)) return false;
+        return true;
+    };
+
+    const nameIndex = list.findIndex((q, index) => isPersonalNameQuestion(q, index));
     const existing = nameIndex >= 0 ? list[nameIndex] : null;
     const introQuestion = {
         ...(existing || {}),
@@ -1641,6 +2283,19 @@ const shouldSkipDeploymentQuestion = (collectedData = {}) => {
     return false;
 };
 
+const shouldSkipQuestion = (question, collectedData = {}) => {
+    if (!question || !Object.prototype.hasOwnProperty.call(question, "when")) {
+        return false;
+    }
+    if (typeof question.when === "function") {
+        return !question.when(collectedData);
+    }
+    if (typeof question.when === "boolean") {
+        return !question.when;
+    }
+    return false;
+};
+
 const resolveMinimumWebsiteTimelineWeeks = (collectedData = {}) => {
     const normalizeSelections = (value = "") =>
         splitSelections(value)
@@ -1897,6 +2552,12 @@ const isLikelyName = (value = "") => {
     if (/\bhttps?:\/\//i.test(text) || /\bwww\./i.test(text)) return false;
     if (text.includes("@")) return false;
     if (/\d{2,}/.test(text)) return false;
+    if (/\b(?:brand|company|business|project|product|app|website)\s+name\b/i.test(text)) {
+        return false;
+    }
+    if (/\bname\b/i.test(text) && /\b(finali[sz]ed|already|set|confirmed)\b/i.test(text)) {
+        return false;
+    }
 
     const tokens = text
         .toLowerCase()
@@ -2048,6 +2709,9 @@ const getCurrentStepFromCollected = (questions = [], collectedData = {}) => {
     for (let i = 0; i < questions.length; i++) {
         const key = questions[i]?.key;
         if (!key) continue;
+        if (shouldSkipQuestion(questions[i], collectedData)) {
+            continue;
+        }
         if (key === "deployment" && skipDeployment) {
             continue;
         }
@@ -2676,8 +3340,11 @@ const buildCollectedData = (questions = [], slots = {}) => {
     return collectedData;
 };
 
+const shouldIgnoreSharedContext = (question = {}) => Boolean(question?.disableSharedContext);
+
 const applyCataSharedContextUpdate = (sharedContext, question, slot, options = {}) => {
     if (!sharedContext || !question || !slot) return { updated: false };
+    if (shouldIgnoreSharedContext(question)) return { updated: false };
     if (slot.status !== "answered") return { updated: false };
     const resolvedService = resolveCataService(options.service);
     if (!resolvedService) return { updated: false };
@@ -2731,6 +3398,7 @@ const applyCataSharedContextUpdate = (sharedContext, question, slot, options = {
 
 const applySharedContextUpdate = (sharedContext, question, slot, options = {}) => {
     if (!sharedContext || !question || !slot) return { updated: false };
+    if (shouldIgnoreSharedContext(question)) return { updated: false };
     if (resolveCataService(options.service)) {
         return applyCataSharedContextUpdate(sharedContext, question, slot, options);
     }
@@ -2742,7 +3410,10 @@ const applySharedContextUpdate = (sharedContext, question, slot, options = {}) =
     if (!target) return { updated: false };
 
     const existingValue = resolveSharedContextValue(sharedContext, question, options.service);
-    const existingCompare = normalizeSharedComparison(existingValue, target.field);
+    let existingCompare = normalizeSharedComparison(existingValue, target.field);
+    if (target.field === "tech_preferences" && isTechPreferencePlaceholder(existingValue)) {
+        existingCompare = "";
+    }
     const nextCompare = normalizeSharedComparison(value, target.field);
 
     if (!existingCompare) {
@@ -2980,9 +3651,10 @@ const getQuestionTags = (question = {}) => {
     if (key.includes("audience")) tags.push("audience");
     if (key.includes("location")) tags.push("location");
     const hasName = key.includes("name");
+    const isBrandNameKey = key === "brand" || (key.includes("brand") && hasName);
     if (
         key.includes("company") ||
-        key.includes("brand") ||
+        isBrandNameKey ||
         key.includes("business") ||
         key.includes("organization") ||
         (hasName && key.includes("project"))
@@ -3267,13 +3939,26 @@ const normalizeSharedComparison = (value = "", field = "") => {
     return canonicalize(text);
 };
 
+const normalizeTechPreferenceValue = (value = "") =>
+    normalizeText(value).toLowerCase().replace(/\s*-\s*$/, "");
+
+const isTechPreferencePlaceholder = (value = "") => {
+    const normalized = normalizeTechPreferenceValue(value);
+    return (
+        normalized === "yes, specific technologies" ||
+        normalized === "no, open to recommendations"
+    );
+};
+
 const resolveSharedContextTarget = (question = {}) => {
     const key = normalizeText(question.key || "").toLowerCase();
     if (!key) return null;
     const tags = new Set([...(question.tags || []), ...getQuestionTags(question)]);
+    const isNamingSupportKey = key === "naming_support";
     const isBusinessNameKey = key.includes("business") && key.includes("name");
     const isCompanyNameKey = key.includes("company") && key.includes("name");
     const isProjectNameKey = key.includes("project") && key.includes("name");
+    const isBrandNameKey = key === "brand" || (key.includes("brand") && key.includes("name"));
     const isBusinessTypeKey =
         key.includes("business_type") ||
         (key.includes("business") && key.includes("type")) ||
@@ -3284,11 +3969,10 @@ const resolveSharedContextTarget = (question = {}) => {
         isBusinessNameKey ||
         isCompanyNameKey ||
         isProjectNameKey ||
+        isBrandNameKey ||
         key === "company" ||
-        key === "brand" ||
         key === "project" ||
         key.includes("company") ||
-        key.includes("brand") ||
         key.includes("project_name");
 
     if (isBusinessTypeKey) {
@@ -3298,7 +3982,7 @@ const resolveSharedContextTarget = (question = {}) => {
         return { field: "project_name" };
     }
 
-    if (tags.has("name") || key.includes("name")) {
+    if (!isNamingSupportKey && (tags.has("name") || key.includes("name"))) {
         return { field: "full_name" };
     }
     if (
@@ -3325,6 +4009,12 @@ const resolveSharedContextTarget = (question = {}) => {
     }
     if (tags.has("budget") || key.includes("budget")) {
         return { field: "general_budget" };
+    }
+    if (key.includes("delivery_approach")) {
+        return null;
+    }
+    if (key === "tech_stack_preference") {
+        return null;
     }
     if (tags.has("timeline") || key.includes("timeline") || key.includes("delivery")) {
         return { field: "timeline" };
@@ -3727,15 +4417,19 @@ const buildMissingLists = (questions, slots, collectedData = {}, options = {}) =
     for (const question of questions) {
         const key = question.key;
         if (!key) continue;
+        if (shouldSkipQuestion(question, collectedData)) continue;
         if (key === "deployment" && skipDeployment) continue;
         const slot = slots[key];
         const required = cataConfig
             ? cataConfig.requiredKeys.includes(key)
             : isRequiredQuestion(question);
         const answered = slot?.status === "answered";
+        const forceAsk = question?.forceAsk === true;
+        const askedCount = slot?.askedCount || 0;
+        const treatAsAnswered = answered && !(forceAsk && askedCount === 0);
         const declined = slot?.status === "declined";
-        if (required && !answered) missingRequired.push(key);
-        if (!isCataFlow && !required && !answered && !declined) missingOptional.push(key);
+        if (required && !treatAsAnswered) missingRequired.push(key);
+        if (!isCataFlow && !required && !treatAsAnswered && !declined) missingOptional.push(key);
     }
     return { missingRequired, missingOptional };
 };
@@ -3958,6 +4652,7 @@ const applySharedContextToState = (state) => {
 
     for (const question of questions) {
         if (!question?.key) continue;
+        if (shouldIgnoreSharedContext(question)) continue;
         const slot = ensureSlot(slots, question.key);
         if (slot.status !== "empty" && slot.status !== "declined") continue;
         const sharedValue = resolveSharedContextValue(sharedContext, question, state?.service);
@@ -3994,13 +4689,17 @@ const applySharedContextToState = (state) => {
  * @returns {Object} State with collectedData and currentStep
  */
 export function buildConversationState(history, service, sharedContext) {
-    const { questions: rawQuestions, source, definition } = resolveServiceQuestions(service);
+    const { questions: rawQuestions, source, definition, skipIntro } = resolveServiceQuestions(service);
     const resolvedService = resolveCataService(service) || service;
     const isCataService = source === "cata";
     const safeHistory = Array.isArray(history) ? history : [];
-    const needsBrief = !isCataService && source !== "catalog";
+    const needsBrief =
+        !isCataService &&
+        source !== "catalog" &&
+        !skipIntro &&
+        !shouldSkipMandatoryBrief(resolvedService);
     const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
-    const questionSeed = isCataService
+    const questionSeed = isCataService || skipIntro
         ? baseQuestions
         : withGlobalIntroQuestion(baseQuestions, resolvedService);
     const normalizedQuestions = normalizeQuestions(questionSeed);
@@ -4084,12 +4783,16 @@ export function buildConversationState(history, service, sharedContext) {
  */
 export function processUserAnswer(state, message) {
     const rawService = state?.service || "";
-    const { questions: rawQuestions, source, definition } = resolveServiceQuestions(rawService);
+    const { questions: rawQuestions, source, definition, skipIntro } = resolveServiceQuestions(rawService);
     const resolvedService = resolveCataService(rawService) || rawService;
     const isCataService = source === "cata";
-    const needsBrief = !isCataService && source !== "catalog";
+    const needsBrief =
+        !isCataService &&
+        source !== "catalog" &&
+        !skipIntro &&
+        !shouldSkipMandatoryBrief(resolvedService);
     const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
-    const questionSeed = isCataService
+    const questionSeed = isCataService || skipIntro
         ? baseQuestions
         : withGlobalIntroQuestion(baseQuestions, resolvedService);
     const normalizedQuestions = normalizeQuestions(questionSeed);
@@ -4204,6 +4907,9 @@ export function getNextHumanizedQuestion(state) {
     const missingRequired = Array.isArray(state?.missingRequired) ? state.missingRequired : [];
     const missingOptional = Array.isArray(state?.missingOptional) ? state.missingOptional : [];
     const isCataFlow = isCataService(state?.service);
+    const suppressSharedIntro = questions.length
+        ? questions.every((question) => Boolean(question?.disableSharedContext))
+        : false;
 
     if (!questions.length) return null;
 
@@ -4330,7 +5036,13 @@ export function getNextHumanizedQuestion(state) {
 
     text = applyTemplatePlaceholders(text, state);
 
-    if (!isClarification && !isCataFlow && !state?.meta?.sharedContextIntroShown && hasSharedContextValue(state?.sharedContext)) {
+    if (
+        !isClarification &&
+        !isCataFlow &&
+        !suppressSharedIntro &&
+        !state?.meta?.sharedContextIntroShown &&
+        hasSharedContextValue(state?.sharedContext)
+    ) {
         const asked = Array.isArray(state?.asked) ? state.asked : [];
         if (asked.length === 0) {
             const serviceLabel = resolveIntroServiceLabel(state?.service || "");
@@ -4732,55 +5444,75 @@ const generateCataProposalFromState = (state) => {
     );
 
     if (resolvedService === "Website Development") {
-        const projectName = normalizeText(resolveCataFieldValue(state, "project_name"));
-        const summary = normalizeText(resolveCataFieldValue(state, "project_description_1_sentence"));
+        const sharedContext = normalizeSharedContext(state?.sharedContext || {});
+        const projectName = normalizeText(sharedContext.project_name || "");
+
+        const requirement = normalizeText(resolveCataFieldValue(state, "website_requirement"));
+        const objective = normalizeText(resolveCataFieldValue(state, "primary_objective"));
+        const designExperience = normalizeText(resolveCataFieldValue(state, "design_experience"));
+        const websiteType = normalizeText(resolveCataFieldValue(state, "website_type"));
+        const platformPreference = formatCataListValue(
+            resolveCataFieldValue(state, "platform_preference")
+        );
+        const techStack = formatCataListValue(resolveCataFieldValue(state, "tech_stack"));
+        const backend = formatCataListValue(resolveCataFieldValue(state, "backend"));
+        const database = formatCataListValue(resolveCataFieldValue(state, "database"));
+        const ecommerce = formatCataListValue(resolveCataFieldValue(state, "ecommerce"));
         const additionalPages = formatCataListValue(resolveCataFieldValue(state, "additional_pages"));
-        const integrations = formatCataListValue(resolveCataFieldValue(state, "integrations"));
-        const designStatus = normalizeText(resolveCataFieldValue(state, "design_status"));
-        const techStack = normalizeText(resolveCataFieldValue(state, "tech_stack"));
-        const hosting = formatCataListValue(resolveCataFieldValue(state, "hosting"));
-        const domainStatus = normalizeText(resolveCataFieldValue(state, "domain_status"));
-        const timeline = normalizeText(resolveCataFieldValue(state, "timeline"));
-        const budget = normalizeText(resolveCataFieldValue(state, "budget_inr"));
+        const contentStatus = normalizeText(resolveCataFieldValue(state, "content_status"));
+        const references = normalizeText(resolveCataFieldValue(state, "references"));
+        const timeline = normalizeText(resolveCataFieldValue(state, "launch_timeline"));
+        const budget = normalizeText(resolveCataFieldValue(state, "budget_range"));
 
         const sections = ["[PROPOSAL_DATA]"];
         sections.push("## Proposal Title");
-        sections.push(`- Website Development Proposal — ${projectName}`);
+        const titleSuffix = projectName ? ` - ${projectName}` : "";
+        sections.push(`- Website Development Proposal${titleSuffix}`);
         sections.push("");
+
+        const overviewLines = ["- Service: Website Development"];
+        if (clientName) overviewLines.push(`- Client: ${clientName}`);
+        if (projectName) overviewLines.push(`- Project: ${projectName}`);
+        if (websiteType) overviewLines.push(`- Website type: ${websiteType}`);
+        if (requirement) overviewLines.push(`- Requirement: ${requirement}`);
+        if (objective) overviewLines.push(`- Primary objective: ${objective}`);
+        if (designExperience) overviewLines.push(`- Design experience: ${designExperience}`);
 
         sections.push("Project Overview");
-        sections.push("- Service: Website Development");
-        sections.push(`- Project: ${projectName}`);
-        sections.push(`- Client: ${clientName}`);
-        sections.push("- Website type: Web App");
-        sections.push(`- Tech stack: ${techStack}`);
+        sections.push(...overviewLines);
         sections.push("");
 
-        sections.push("Summary");
-        sections.push(`- ${summary}`);
+        const techLines = [];
+        if (platformPreference) techLines.push(`- Platform preference: ${platformPreference}`);
+        if (techStack) techLines.push(`- Tech stack: ${techStack}`);
+        if (backend) techLines.push(`- Backend: ${backend}`);
+        if (database) techLines.push(`- Database: ${database}`);
+        if (ecommerce) techLines.push(`- E-commerce: ${ecommerce}`);
+
+        if (techLines.length) {
+            sections.push("Tech & Platform");
+            sections.push(...techLines);
+            sections.push("");
+        }
+
+        sections.push("Pages & Content");
+        sections.push("- Core pages included: Home, About, Contact, Privacy Policy, Terms");
+        if (additionalPages) sections.push(`- Additional pages/features: ${additionalPages}`);
+        if (contentStatus) sections.push(`- Content status: ${contentStatus}`);
+        if (references) sections.push(`- Reference websites: ${references}`);
         sections.push("");
 
-        sections.push("Pages & Features");
-        sections.push(
-            "- Core pages included: Home, About, Contact, Privacy Policy, Terms"
-        );
-        sections.push(`- Additional pages/features: ${additionalPages}`);
-        sections.push("");
+        if (timeline) {
+            sections.push("Timeline");
+            sections.push(`- ${timeline}`);
+            sections.push("");
+        }
 
-        sections.push("Integrations");
-        sections.push(`- ${integrations}`);
-        sections.push(`- Designs: ${designStatus}`);
-        sections.push(`- Hosting/deployment: ${hosting}`);
-        sections.push(`- Domain: ${domainStatus}`);
-        sections.push("");
-
-        sections.push("Timeline");
-        sections.push(`- ${timeline}`);
-        sections.push("");
-
-        sections.push("Budget");
-        sections.push(`- INR ${budget}`);
-        sections.push("");
+        if (budget) {
+            sections.push("Budget Range");
+            sections.push(`- ${budget}`);
+            sections.push("");
+        }
 
         sections.push("Next Steps");
         sections.push("- Approve proposal to kick start the project");
@@ -4816,28 +5548,103 @@ const generateCataProposalFromState = (state) => {
     }
 
     if (resolvedService === "SEO Optimization") {
-        const websiteStatus = normalizeText(resolveCataFieldValue(state, "website_live_status"));
-        const targetLocation = normalizeText(resolveCataFieldValue(state, "target_location"));
-        const scope = normalizeText(resolveCataFieldValue(state, "seo_scope"));
-        const keywords = normalizeText(resolveCataFieldValue(state, "keywords"));
+        const businessCategory = normalizeText(resolveCataFieldValue(state, "business_category"));
+        const targetLocations = normalizeText(resolveCataFieldValue(state, "target_locations"));
+        const keywordPlanning = normalizeText(resolveCataFieldValue(state, "keyword_planning"));
+        const primaryGoal = normalizeText(resolveCataFieldValue(state, "primary_goal"));
+        const contentStatus = normalizeText(resolveCataFieldValue(state, "content_status"));
+        const seoSituation = normalizeText(resolveCataFieldValue(state, "seo_situation"));
+        const competitionLevel = normalizeText(resolveCataFieldValue(state, "competition_level"));
+        const serviceDuration = normalizeText(resolveCataFieldValue(state, "service_duration"));
+        const growthExpectation = normalizeText(resolveCataFieldValue(state, "growth_expectation"));
+        const budgetRange = normalizeText(resolveCataFieldValue(state, "budget_range"));
 
         const sections = ["[PROPOSAL_DATA]"];
         sections.push("## Proposal Title");
-        sections.push(`- SEO Optimization Proposal — ${clientName}`);
+        const titleSuffix = clientName ? ` - ${clientName}` : "";
+        sections.push(`- SEO Optimization Proposal${titleSuffix}`);
         sections.push("");
 
         sections.push("Confirmed Brief");
         sections.push("- Service: SEO Optimization");
-        sections.push(`- Website status: ${websiteStatus}`);
-        sections.push(`- Target location: ${targetLocation}`);
-        sections.push(`- Scope: ${scope}`);
-        sections.push(`- Keywords: ${keywords}`);
+        sections.push(`- Business category: ${businessCategory}`);
+        sections.push(`- Target locations: ${targetLocations}`);
+        sections.push(`- Keyword planning: ${keywordPlanning}`);
+        sections.push(`- Primary goal: ${primaryGoal}`);
+        sections.push(`- Content status: ${contentStatus}`);
+        sections.push(`- Current SEO situation: ${seoSituation}`);
+        sections.push(`- Competition level: ${competitionLevel}`);
+        sections.push(`- SEO duration: ${serviceDuration}`);
+        sections.push(`- Growth expectation: ${growthExpectation}`);
+        sections.push(`- Monthly budget range: ${budgetRange}`);
         sections.push("");
 
         sections.push("Next Steps");
         sections.push("- Confirm the brief");
         sections.push("- Share access/website details if needed");
         sections.push("- Approve proposal to begin");
+        sections.push("[/PROPOSAL_DATA]");
+
+        return sections.join("\n").trim();
+    }
+
+    if (resolvedService === "Branding (Naming, Logo & Brand Identity)") {
+        const brandStage = normalizeText(resolveCataFieldValue(state, "brand_stage"));
+        const namingSupport = normalizeText(resolveCataFieldValue(state, "naming_support"));
+        const brandPerception = normalizeText(resolveCataFieldValue(state, "brand_perception"));
+        const targetAudience = normalizeText(resolveCataFieldValue(state, "target_audience"));
+        const brandingUsage = normalizeText(resolveCataFieldValue(state, "branding_usage"));
+        const referenceBrands = normalizeText(resolveCataFieldValue(state, "reference_brands"));
+        const deliverablesRaw = resolveCataFieldValue(state, "deliverables");
+        const deliverablesList = listFromValue(deliverablesRaw);
+        const timeline = normalizeText(resolveCataFieldValue(state, "timeline"));
+        const creativeFreedom = normalizeText(resolveCataFieldValue(state, "creative_freedom"));
+        const budgetRange = normalizeText(resolveCataFieldValue(state, "budget_range"));
+
+        const sections = ["[PROPOSAL_DATA]"];
+        sections.push("## Proposal Title");
+        const titleSuffix = clientName ? ` - ${clientName}` : "";
+        sections.push(`- Branding Proposal${titleSuffix}`);
+        sections.push("");
+
+        sections.push("Confirmed Brief");
+        sections.push("- Service: Branding (Naming, Logo & Brand Identity)");
+        sections.push(`- Brand stage: ${brandStage}`);
+        sections.push(`- Naming support: ${namingSupport}`);
+        sections.push(`- Brand perception: ${brandPerception}`);
+        sections.push(`- Target audience: ${targetAudience}`);
+        sections.push(`- Primary usage: ${brandingUsage}`);
+        sections.push(`- Reference brands: ${referenceBrands}`);
+        sections.push("");
+
+        sections.push("Deliverables");
+        if (deliverablesList.length) {
+            deliverablesList.forEach((item) => sections.push(`- ${item}`));
+        } else {
+            sections.push("- To be confirmed");
+        }
+        sections.push("");
+
+        if (timeline) {
+            sections.push("Timeline");
+            sections.push(`- ${timeline}`);
+            sections.push("");
+        }
+
+        if (creativeFreedom) {
+            sections.push("Creative Direction");
+            sections.push(`- ${creativeFreedom}`);
+            sections.push("");
+        }
+
+        if (budgetRange) {
+            sections.push("Budget Range");
+            sections.push(`- ${budgetRange}`);
+            sections.push("");
+        }
+
+        sections.push("Next Steps");
+        sections.push("- Approve proposal to kick start the project");
         sections.push("[/PROPOSAL_DATA]");
 
         return sections.join("\n").trim();

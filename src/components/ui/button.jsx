@@ -50,7 +50,6 @@ const Button = React.forwardRef(({
       ref={ref}
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
-      ref={ref}
       {...props} />
   );
 })

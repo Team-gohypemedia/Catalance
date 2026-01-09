@@ -229,6 +229,8 @@ const getServiceDetails = (service) => {
     "Video Services":
       "Video editing, promotional content, CGI, UGC, and animation.",
     "Creative & Design": "Branding, UI/UX, graphics, and motion design.",
+    "Branding (Naming, Logo & Brand Identity)":
+      "Brand naming, logo design, and full brand identity systems.",
     "Lead Generation":
       "Targeted lists, outreach campaigns, and funnel building.",
     "Writing & Content":

@@ -1,80 +1,113 @@
-﻿export const service = "AI Automation";
-export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
+export const service = "AI Automation";
+export const openingMessage = `Hi! I see you're interested in ${service}. Let's get started.`;
 
-export const serviceDetails = `Sub-types: AI Chatbots, Workflow Automation, Lead Scoring
-Deliverables: Automation logic, tool integrations, testing & deployment
-Pricing: Basic â‚¹30,000â€“â‚¹80,000 | Advanced â‚¹1,50,000â€“â‚¹5,00,000
-Timelines: Full automation system 3â€“6 weeks | Partial scope: Single workflow automation 7â€“10 days (â‚¹25,000â€“â‚¹60,000), AI bot logic only 10â€“15 days (â‚¹40,000â€“â‚¹1,00,000)
-Timeline policy: timelines are in working days; 10â€“20% buffer included; delays due to missing client inputs pause the timeline.`;
+export const serviceDetails = `Sub-types: Workflow automation, AI agents, document processing, data extraction, customer support automation
+Deliverables: Process mapping, automation design, integrations, agent prompts, testing & monitoring
+Pricing: Automation workflow INR 60,000-300,000 | Custom AI agent INR 150,000-800,000
+Timelines: Discovery 1-2 weeks | Implementation 2-6 weeks (buffer included)
+Timeline policy: timelines are in working days; 10-20% buffer included; delays due to missing client inputs pause the timeline.`;
 
 export const questions = [
   {
-    id: "Q1",
-    nextId: "Q2",
-    key: "automation_process",
-    answerType: "text",
-    patterns: ["process", "automate", "workflow"],
-    templates: ["What process do you want to automate?"],
+    key: "name",
+    patterns: ["name", "full name", "call you"],
+    templates: ["What's your name?"],
     suggestions: null,
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
   },
   {
-    id: "Q2",
-    nextId: "Q3",
-    key: "brief",
-    answerType: "text",
-    patterns: ["brief", "summary", "overview", "requirements"],
-    templates: ["Please share a short brief of what you need (2-3 lines)."],
-    suggestions: null,
+    key: "automation_purpose",
+    patterns: ["purpose", "automation", "primary purpose"],
+    templates: ["What is the primary purpose of automation in your business?"],
+    suggestions: [
+      "Sales automation",
+      "Operations automation",
+      "Customer support automation",
+      "Marketing automation",
+    ],
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
   },
   {
-    id: "Q3",
-    nextId: "Q4",
-    key: "integrations",
-    answerType: "text",
-    patterns: ["tools", "platforms", "integrations"],
-    templates: ["Which tools or platforms should integrate?"],
-    suggestions: null,
+    key: "automation_complexity",
+    patterns: ["complexity", "complex", "advanced", "simple"],
+    templates: ["How complex do you want the automation to be?"],
+    suggestions: ["Simple workflows", "Moderate automation", "Advanced automation"],
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
   },
   {
-    id: "Q4",
-    nextId: "Q5",
-    key: "automation_type",
-    answerType: "single_select",
-    patterns: ["one-time", "ongoing", "workflows"],
-    templates: ["Is this one-time automation or ongoing workflows?"],
-    suggestions: ["One-time automation", "Ongoing workflows"],
+    key: "current_tools",
+    patterns: ["tools", "systems", "current"],
+    templates: ["Which tools or systems are currently in use?"],
+    suggestions: [
+      "CRM systems",
+      "Manual tools (Sheets, email, etc.)",
+      "Multiple connected systems",
+    ],
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
   },
   {
-    id: "Q5",
-    nextId: "Q6",
-    key: "complexity",
-    answerType: "single_select",
-    patterns: ["complexity", "basic", "advanced"],
-    templates: ["What is the complexity level?"],
-    suggestions: ["Basic", "Advanced"],
+    key: "integration_level",
+    patterns: ["integration", "integrations", "connect"],
+    templates: ["What level of integration do you require?"],
+    suggestions: [
+      "Basic integrations",
+      "Multiple tool integrations",
+      "Custom integrations",
+    ],
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
   },
   {
-    id: "Q6",
-    nextId: "Q7",
-    key: "timeline",
-    answerType: "text",
-    patterns: ["timeline", "deadline"],
-    templates: ["What is your timeline?"],
-    suggestions: null,
+    key: "data_organization",
+    patterns: ["data", "organized", "organised", "organization"],
+    templates: ["How organised is your data currently?"],
+    suggestions: ["Well-structured", "Partially structured", "Not organised"],
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
   },
   {
-    id: "Q7",
-    nextId: null,
-    key: "budget",
-    answerType: "text",
+    key: "go_live_timeline",
+    patterns: ["go live", "timeline", "launch"],
+    templates: ["When would you like the automation to go live?"],
+    suggestions: ["Immediately", "Short-term", "Flexible timeline"],
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
+  },
+  {
+    key: "maintenance_required",
+    patterns: ["maintenance", "updates", "ongoing"],
+    templates: ["Do you require ongoing maintenance and updates?"],
+    suggestions: ["Yes", "No"],
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
+  },
+  {
+    key: "budget_range",
     patterns: ["budget", "range", "cost"],
-    templates: ["What is your budget range?"],
-    suggestions: null,
+    templates: ["What budget range do you have in mind?"],
+    suggestions: [
+      "Under \u20B925,000",
+      "\u20B925,000 \u2013 \u20B975,000",
+      "\u20B975,000 \u2013 \u20B92,00,000",
+      "\u20B92,00,000 and above",
+    ],
+    required: true,
+    disableSharedContext: true,
+    forceAsk: true,
   },
 ];
 
 const chatbot = { service, openingMessage, questions, serviceDetails };
 export default chatbot;
-
-
-
