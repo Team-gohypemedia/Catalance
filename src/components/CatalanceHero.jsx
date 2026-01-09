@@ -7,6 +7,7 @@ import { useTheme } from "./theme-provider";
 import MatrixRain from "@/components/ui/matrix-code";
 import SparklesIcon from "@/components/ui/sparkles-icon";
 import { Spotlight } from "@/components/spotlight-new";
+import DecorativeIcons from "@/components/ui/decorative-icons";
 
 const CatalanceHero = () => {
 
@@ -80,6 +81,9 @@ const CatalanceHero = () => {
                     duration={8}
                     xOffset={80}
                 />
+
+                {/* Decorative Icons */}
+                <DecorativeIcons isDark={isDark} />
 
                 {/* Grid Background */}
                 <div
