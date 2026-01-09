@@ -100,6 +100,17 @@ const initialWorkForm = {
   description: "",
 };
 
+const gradients = [
+  "bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500",
+  "bg-linear-to-r from-cyan-500 via-blue-500 to-indigo-500",
+  "bg-linear-to-r from-rose-500 via-orange-500 to-yellow-500",
+  "bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500",
+  "bg-linear-to-r from-violet-600 via-purple-500 to-fuchsia-500",
+  "bg-linear-to-r from-blue-400 via-indigo-500 to-purple-500",
+  "bg-linear-to-r from-fuchsia-500 via-pink-500 to-rose-500",
+  "bg-linear-to-r from-orange-400 via-red-500 to-rose-500",
+];
+
 const FreelancerProfile = () => {
   const { user, authFetch } = useAuth();
   const [modalType, setModalType] = useState(null);
@@ -133,6 +144,11 @@ const FreelancerProfile = () => {
   const fileInputRef = useRef(null);
   const [initialData, setInitialData] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Random gradient for banner
+  const randomGradient = useMemo(() => {
+    return gradients[Math.floor(Math.random() * gradients.length)];
+  }, []);
 
   // Derive initials for avatar
   const initials =
@@ -636,8 +652,7 @@ const FreelancerProfile = () => {
         {/* Header Card */}
         <div className="relative rounded-3xl overflow-hidden bg-card border border-border/50 shadow-sm group/header">
           {/* Gradient Banner */}
-          {/* Gradient Banner */}
-          <div className="h-44 bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500 relative">
+          <div className={`h-44 relative ${randomGradient}`}>
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" />
           </div>
 
