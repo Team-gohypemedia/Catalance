@@ -131,6 +131,8 @@ const FreelancerProfile = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
+  const [initialData, setInitialData] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   // Derive initials for avatar
   const initials =
@@ -241,64 +243,61 @@ const FreelancerProfile = () => {
         );
 
         // Update state with API data
-        setPersonal((prev) => {
-          const rawBio = normalized.personal?.bio ?? prev.bio ?? "";
-          const safeBio = normalizeBioValue(rawBio);
+        const loadedPersonal = {
+          name: normalized.personal?.name ?? user?.fullName ?? user?.name ?? "",
+          email: normalized.personal?.email ?? user?.email ?? "",
+          phone: normalized.personal?.phone ?? "",
+          location: normalized.personal?.location ?? "",
+          headline: normalized.personal?.headline ?? "",
+          bio: normalizeBioValue(normalized.personal?.bio || ""),
+          experienceYears: normalized.personal?.experienceYears ?? "",
+          avatar: normalized.personal?.avatar ?? "",
+          available: normalized.personal?.available ?? true,
+        };
 
-          return {
-            ...prev,
-            name:
-              normalized.personal?.name ??
-              user?.fullName ??
-              user?.name ??
-              prev.name,
-            email: normalized.personal?.email ?? user?.email ?? prev.email,
-            phone: normalized.personal?.phone ?? prev.phone ?? "",
-            location: normalized.personal?.location ?? prev.location ?? "",
-            headline: normalized.personal?.headline ?? prev.headline ?? "",
-            bio: safeBio,
-            experienceYears:
-              normalized.personal?.experienceYears ??
-              prev.experienceYears ??
-              "",
-            avatar: normalized.personal?.avatar ?? prev.avatar ?? "",
-            available: normalized.personal?.available ?? true,
-          };
-        });
-
-        setPortfolio({
+        const loadedPortfolio = {
           portfolioUrl: normalized.portfolio?.portfolioUrl || "",
           linkedinUrl: normalized.portfolio?.linkedinUrl || "",
           githubUrl: normalized.portfolio?.githubUrl || "",
           resume: normalized.portfolio?.resume || normalized.resume || "",
+        };
+
+        const loadedSkills = (
+          Array.isArray(normalized.skills) ? normalized.skills : []
+        ).map((s) => {
+          if (
+            typeof s === "string" &&
+            s.trim().startsWith("{") &&
+            s.includes('"name"')
+          ) {
+            try {
+              return { name: JSON.parse(s).name };
+            } catch (e) {}
+          }
+          return typeof s === "string"
+            ? { name: s }
+            : { name: String(s?.name ?? "") };
         });
+
+        setPersonal((prev) => ({ ...prev, ...loadedPersonal }));
+        setPortfolio(loadedPortfolio);
         setPortfolioProjects(normalized.portfolioProjects || []);
-
-        const skillsFromApi = Array.isArray(normalized.skills)
-          ? normalized.skills
-          : [];
-        setSkills(
-          skillsFromApi.map((s) => {
-            // Self-heal: Check if skill is a JSON string
-            if (
-              typeof s === "string" &&
-              s.trim().startsWith("{") &&
-              s.includes('"name"')
-            ) {
-              try {
-                return { name: JSON.parse(s).name };
-              } catch (e) {}
-            }
-            return typeof s === "string"
-              ? { name: s }
-              : { name: String(s?.name ?? "") };
-          })
-        );
-
+        setSkills(loadedSkills);
         setWorkExperience(normalized.workExperience ?? []);
-        setServices(
-          Array.isArray(normalized.services) ? normalized.services : []
-        );
+
+        const loadedServices = Array.isArray(normalized.services)
+          ? normalized.services
+          : [];
+        setServices(loadedServices);
+
+        setInitialData({
+          personal: loadedPersonal,
+          portfolio: loadedPortfolio,
+          skills: loadedSkills,
+          workExperience: normalized.workExperience ?? [],
+          services: loadedServices,
+          portfolioProjects: normalized.portfolioProjects || [],
+        });
       } catch (error) {
         console.error("Unable to load profile", error);
         toast.error("Failed to load profile data");
@@ -313,6 +312,33 @@ const FreelancerProfile = () => {
       active = false;
     };
   }, [user?.email, authFetch, user?.fullName, user?.name]);
+
+  useEffect(() => {
+    if (!initialData) return;
+
+    const currentData = {
+      personal: {
+        ...personal,
+        // Ensure bio is normalized for comparison just in case
+        bio: normalizeBioValue(personal.bio),
+      },
+      portfolio,
+      skills,
+      workExperience,
+      services,
+      portfolioProjects,
+    };
+
+    setIsDirty(JSON.stringify(currentData) !== JSON.stringify(initialData));
+  }, [
+    personal,
+    portfolio,
+    skills,
+    workExperience,
+    services,
+    portfolioProjects,
+    initialData,
+  ]);
 
   // ----- Skills -----
   const addSkill = () => {
@@ -472,7 +498,18 @@ const FreelancerProfile = () => {
       });
 
       // Update local state to reflect saved changes (esp if avatar changed)
+      const newPersonal = { ...personal, avatar: currentAvatarUrl };
       setPersonal((prev) => ({ ...prev, avatar: currentAvatarUrl }));
+
+      setInitialData({
+        personal: newPersonal,
+        portfolio,
+        skills,
+        workExperience,
+        services,
+        portfolioProjects,
+      });
+      setIsDirty(false);
       setSelectedFile(null);
     } catch (error) {
       console.error("Save failed", error);
@@ -744,6 +781,22 @@ const FreelancerProfile = () => {
               </div>
             </div>
 
+            {/* Save Button */}
+            {isDirty && (
+              <Button
+                variant="default"
+                size="sm"
+                className="absolute top-4 right-14 bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/20 transition-all font-semibold shadow-lg animate-in fade-in zoom-in duration-300"
+                onClick={handleSave}
+                disabled={profileLoading}
+              >
+                {profileLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                Save Profile
+              </Button>
+            )}
+
             {/* Edit Button */}
             <Button
               variant="ghost"
@@ -976,16 +1029,6 @@ const FreelancerProfile = () => {
                 )}
               </div>
             </Card>
-
-            <Button
-              className="w-full"
-              variant="outline"
-              size="lg"
-              onClick={handleSave}
-              disabled={profileLoading}
-            >
-              {profileLoading ? "Saving..." : "Save Profile"}
-            </Button>
           </div>
         </div>
       </div>
