@@ -83,7 +83,8 @@ export const uploadImage = asyncHandler(async (req, res) => {
     // Wait, controller does `avatars/${key}`.
     // So if I pass just the filename (uuid.ext) to the route, it works.
     const justFileName = path.basename(fileName);
-    const publicUrl = `${process.env.API_URL || "http://localhost:5000"}/api/images/${justFileName}`;
+    const baseUrl = process.env.API_URL || `${req.protocol}://${req.get("host")}`;
+    const publicUrl = `${baseUrl}/api/images/${justFileName}`;
     
     // Fallback if we want relative:
     // const publicUrl = `/api/images/${justFileName}`; 
@@ -134,7 +135,8 @@ export const uploadChatFile = asyncHandler(async (req, res) => {
     await s3Client.send(command);
 
     // For chat files, use the chat images endpoint
-    const publicUrl = `${process.env.API_URL || "http://localhost:5000"}/api/images/chat/${uniqueId}${fileExt}`;
+    const baseUrl = process.env.API_URL || `${req.protocol}://${req.get("host")}`;
+    const publicUrl = `${baseUrl}/api/images/chat/${uniqueId}${fileExt}`;
 
     console.log(`Chat file uploaded: ${fileName}`);
 
@@ -322,7 +324,8 @@ export const uploadResume = asyncHandler(async (req, res) => {
     // If strict on URL structure, we might need to update image.routes.js.
     // Let's assume for now we return a URL like `/api/images/resumes/${uniqueId}${fileExt}`.
     // And I will Update image.routes.js to handle full paths or just `resumes/` prefix.
-    const publicUrl = `${process.env.API_URL || "http://localhost:5000"}/api/images/resumes/${uniqueId}${fileExt}`;
+    const baseUrl = process.env.API_URL || `${req.protocol}://${req.get("host")}`;
+    const publicUrl = `${baseUrl}/api/images/resumes/${uniqueId}${fileExt}`;
 
     console.log(`[uploadResume] Resume uploaded to R2: ${fileName}`);
     console.log(`[uploadResume] Public URL: ${publicUrl}`);
