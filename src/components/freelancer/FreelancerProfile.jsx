@@ -144,6 +144,7 @@ const FreelancerProfile = () => {
   const fileInputRef = useRef(null);
   const [initialData, setInitialData] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Random gradient for banner
   const randomGradient = useMemo(() => {
@@ -434,6 +435,8 @@ const FreelancerProfile = () => {
       return;
     }
 
+    setIsSaving(true);
+
     // Validation removed as per user request
     // const isDeveloper = services.some(s => ...);
     // if (isDeveloper && !portfolio.githubUrl?.trim()) ...
@@ -465,6 +468,7 @@ const FreelancerProfile = () => {
         currentAvatarUrl = data.data.url;
         console.log("New Avatar URL from upload:", currentAvatarUrl);
       } catch (uploadErr) {
+        setIsSaving(false);
         console.error("Image upload failed inside save:", uploadErr);
         toast.error("Failed to upload image. Profile not saved.");
         return;
@@ -506,7 +510,7 @@ const FreelancerProfile = () => {
         toast.error("Save failed", {
           description: "Check backend logs for more details.",
         });
-        return;
+        return; // Finally block will handle setIsSaving(false)
       }
 
       toast.success("Profile saved", {
@@ -532,6 +536,8 @@ const FreelancerProfile = () => {
       toast.error("Save failed", {
         description: "Something went wrong. Check console for details.",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -803,12 +809,12 @@ const FreelancerProfile = () => {
                 size="sm"
                 className="absolute top-4 right-14 bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/20 transition-all font-semibold shadow-lg animate-in fade-in zoom-in duration-300"
                 onClick={handleSave}
-                disabled={profileLoading}
+                disabled={isSaving}
               >
-                {profileLoading ? (
+                {isSaving ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : null}
-                Save Profile
+                {isSaving ? "Saving..." : "Save Profile"}
               </Button>
             )}
 
