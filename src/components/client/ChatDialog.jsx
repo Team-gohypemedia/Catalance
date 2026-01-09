@@ -41,9 +41,31 @@ const persistMessagesToStorage = (key, messages) => {
 const RESPONSE_TIMEOUT_MS = 25000;
 const normalizeContent = (value) => (value || "").trim();
 const DEFAULT_INTRO_SERVICE = "your project";
+const SERVICE_OPENERS = {
+  "lead generation":
+    "Hi! I see you're interested in Lead Generation. What's your name? Let's get started.\n" +
+    "[QUESTION_KEY: name]",
+  "lead generation services":
+    "Hi! I see you're interested in Lead Generation. What's your name? Let's get started.\n" +
+    "[QUESTION_KEY: name]",
+  "influencer marketing":
+    "Hi! I see you're interested in Influencer Marketing. What's your name? Let's get started.\n" +
+    "[QUESTION_KEY: name]",
+  "influencer/ugc marketing":
+    "Hi! I see you're interested in Influencer Marketing. What's your name? Let's get started.\n" +
+    "[QUESTION_KEY: name]",
+  "ugc (user-generated content) marketing":
+    "Hi! I see you're interested in UGC (User-Generated Content) Marketing. What's your name? Let's get started.\n" +
+    "[QUESTION_KEY: name]",
+  "ugc marketing":
+    "Hi! I see you're interested in UGC (User-Generated Content) Marketing. What's your name? Let's get started.\n" +
+    "[QUESTION_KEY: name]",
+};
 const buildIntroMessage = (serviceName = "") => {
   const label = normalizeContent(serviceName);
   const lower = label.toLowerCase();
+  const opener = SERVICE_OPENERS[lower];
+  if (opener) return opener;
   const serviceLabel =
     label && lower !== "default" && lower !== "project" ? label : DEFAULT_INTRO_SERVICE;
   return `Hi! I see you're interested in ${serviceLabel}. What's your name? Let's get started.\n[QUESTION_KEY: name]`;

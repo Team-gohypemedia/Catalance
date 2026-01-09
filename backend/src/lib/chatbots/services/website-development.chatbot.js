@@ -1,70 +1,216 @@
 export const service = "Website Development";
-export const openingMessage = `Hi! I see you're interested in ${service}. What's your name? Let's get started.`;
+export const openingMessage = "Hi! I see you're interested in Website Development. What's your name? Let's get started.";
 export const questions = [
   {
     "key": "name",
     "patterns": [
       "name",
-      "call you"
+      "call you",
+      "who are you"
     ],
     "templates": [
-      "Hey! Let's build something amazing. What's your name?",
-      "Hi there! Ready to create your website? What should I call you?"
-    ],
-    "suggestions": null
-  },
-  {
-    "key": "company",
-    "patterns": [
-      "company",
-      "project",
-      "business"
-    ],
-    "templates": [
-      "Nice to meet you, {name}! What's the project name?"
-    ],
-    "suggestions": null
-  },
-  {
-    "key": "description",
-    "patterns": [
-      "building",
-      "describe",
-      "tell me",
-      "about",
-      "idea"
-    ],
-    "templates": [
-      "In 1 simple sentence, describe your project in easy words. (An e-commerce website for my clothing brand.)",
-      "Briefly describe what you want to build (1 sentence)."
+      "Hi! I see you're interested in Website Development. What's your name? Let's get started."
     ],
     "suggestions": null,
     "required": true
   },
   {
-    "key": "website_type",
+    "key": "website_requirement",
     "patterns": [
-      "type",
-      "kind",
-      "what website",
-      "need"
+      "requirement",
+      "new website",
+      "revamp",
+      "revamping",
+      "existing website"
     ],
     "templates": [
-      "What kind of website do you need?"
+      "What best describes your website requirement?"
     ],
     "suggestions": [
-      "Landing Page",
-      "Business Website",
-      "Informational Website",
-      "E-commerce",
-      "Portfolio",
-      "Web App",
-      "Other"
+      "New website",
+      "Revamping existing website"
     ],
     "required": true
   },
   {
-    "key": "pages",
+    "key": "primary_objective",
+    "patterns": [
+      "objective",
+      "goal",
+      "purpose"
+    ],
+    "templates": [
+      "What is the primary objective of your website?"
+    ],
+    "suggestions": [
+      "Generating leads",
+      "Selling products or services online",
+      "Building brand credibility",
+      "Showcasing work or portfolio"
+    ],
+    "required": true
+  },
+  {
+    "key": "design_experience",
+    "patterns": [
+      "design",
+      "style",
+      "ui",
+      "experience"
+    ],
+    "templates": [
+      "What type of design experience are you looking for?"
+    ],
+    "suggestions": [
+      "Clean and simple design",
+      "Premium and modern UI",
+      "Interactive or 3D-based design"
+    ],
+    "required": true
+  },
+  {
+    "key": "website_type",
+    "patterns": [
+      "website type",
+      "platform",
+      "coded",
+      "custom",
+      "cms",
+      "no-code"
+    ],
+    "templates": [
+      "What type of website do you need?"
+    ],
+    "suggestions": [
+      "Platform-based website (No-code / CMS)",
+      "Coded website (Custom development)"
+    ],
+    "required": true
+  },
+  {
+    "key": "platform_preference",
+    "patterns": [
+      "platform",
+      "cms",
+      "builder",
+      "wordpress",
+      "webflow",
+      "wix",
+      "shopify",
+      "squarespace",
+      "framer",
+      "bubble",
+      "zoho",
+      "google sites",
+      "magento"
+    ],
+    "templates": [
+      "If Platform-based website is selected, choose preferred platform(s):"
+    ],
+    "suggestions": [
+      "WordPress",
+      "Webflow",
+      "Wix",
+      "Shopify",
+      "Squarespace",
+      "Framer",
+      "Bubble",
+      "Zoho Sites",
+      "Google Sites",
+      "Magento (Adobe Commerce)",
+      "Other: ________"
+    ],
+    "multiSelect": true,
+    "required": true
+  },
+  {
+    "key": "tech_stack",
+    "patterns": [
+      "tech",
+      "stack",
+      "framework",
+      "react",
+      "next",
+      "vue",
+      "angular",
+      "html"
+    ],
+    "templates": [
+      "If Coded website is selected, choose preferred tech stack/technology:"
+    ],
+    "suggestions": [
+      "HTML, CSS, JavaScript (Static)",
+      "React.js",
+      "Next.js",
+      "Vue.js / Nuxt.js",
+      "Angular"
+    ],
+    "multiSelect": true,
+    "required": true
+  },
+  {
+    "key": "backend",
+    "patterns": [
+      "backend",
+      "server",
+      "api"
+    ],
+    "templates": [
+      "Backend (if needed):"
+    ],
+    "suggestions": [
+      "Node.js (Express)",
+      "Python (Django / Flask / FastAPI)",
+      "PHP (Laravel)",
+      "Java (Spring Boot)",
+      ".NET"
+    ],
+    "multiSelect": true,
+    "required": true
+  },
+  {
+    "key": "database",
+    "patterns": [
+      "database",
+      "db"
+    ],
+    "templates": [
+      "Database (if needed):"
+    ],
+    "suggestions": [
+      "MySQL",
+      "PostgreSQL",
+      "MongoDB",
+      "Firebase",
+      "Supabase"
+    ],
+    "multiSelect": true,
+    "required": true
+  },
+  {
+    "key": "ecommerce",
+    "patterns": [
+      "ecommerce",
+      "e-commerce",
+      "shop",
+      "store",
+      "checkout",
+      "payment",
+      "woocommerce"
+    ],
+    "templates": [
+      "E-commerce (if needed):"
+    ],
+    "suggestions": [
+      "Custom eCommerce",
+      "Stripe / Razorpay integration",
+      "WooCommerce (if hybrid)"
+    ],
+    "multiSelect": true,
+    "required": true
+  },
+  {
+    "key": "additional_pages",
     "patterns": [
       "pages",
       "sections",
@@ -105,158 +251,76 @@ export const questions = [
     "required": true
   },
   {
-    "key": "budget",
+    "key": "content_status",
+    "patterns": [
+      "content",
+      "copy",
+      "assets"
+    ],
+    "templates": [
+      "What is the status of your website content?"
+    ],
+    "suggestions": [
+      "All content is ready",
+      "Content needs to be created"
+    ],
+    "required": true
+  },
+  {
+    "key": "references",
+    "patterns": [
+      "references",
+      "examples",
+      "inspirations"
+    ],
+    "templates": [
+      "Do you have any reference websites you like?"
+    ],
+    "suggestions": [
+      "Yes - ________",
+      "No"
+    ],
+    "required": true
+  },
+  {
+    "key": "launch_timeline",
+    "patterns": [
+      "timeline",
+      "launch",
+      "deadline",
+      "when"
+    ],
+    "templates": [
+      "When would you like to launch the website?"
+    ],
+    "suggestions": [
+      "Within 2-4 weeks",
+      "Within 1-2 months",
+      "The timeline is flexible"
+    ],
+    "expectedType": "timeline_text",
+    "required": true
+  },
+  {
+    "key": "budget_range",
     "patterns": [
       "budget",
       "cost",
       "price",
-      "spend"
+      "range"
     ],
     "templates": [
-      "What's your budget in INR for this project?"
-    ],
-    "expectedType": "money"
-  },
-  {
-    "key": "integrations",
-    "patterns": [
-      "integration",
-      "payment",
-      "api",
-      "third-party"
-    ],
-    "templates": [
-      "What integrations do you need? (Select all that apply)"
+      "What budget range are you comfortable with for this project?"
     ],
     "suggestions": [
-      "Payment Gateway (Razorpay/Stripe)",
-      "Email Service (Nodemailer/Resend)",
-      "Delivery/Shipping Tracking",
-      "None"
+      "Under INR 25,000 (Basic website)",
+      "INR 25,000 - 50,000 (Standard website)",
+      "INR 50,000 - 1,00,000 (Advanced website)",
+      "INR 1,00,000 - 2,50,000 (Custom / dynamic website)",
+      "INR 2,50,000 and above (High-end, scalable platform)"
     ],
-    "multiSelect": true
-  },
-  {
-    "key": "design",
-    "patterns": [
-      "design",
-      "look",
-      "style",
-      "wireframe"
-    ],
-    "templates": [
-      "Do you have any designs or inspirations in mind?"
-    ],
-    "suggestions": [
-      "I have designs",
-      "Need design help",
-      "Have some references",
-      "Not sure yet"
-    ]
-  },
-  {
-    "key": "build_mode",
-    "patterns": [
-      "no code",
-      "no-code",
-      "custom code",
-      "custom build",
-      "coding",
-      "build mode"
-    ],
-    "templates": [
-      "What type of technology stack do you want?"
-    ],
-    "suggestions": [
-      "No-code website",
-      "Custom code (coded website)"
-    ],
-    "required": false
-  },
-  {
-    "key": "tech",
-    "patterns": [
-      "tech",
-      "platform",
-      "wordpress",
-      "react"
-    ],
-    "templates": [
-      "What technology stack would you prefer? (Select one)"
-    ],
-    "suggestions": [
-      "Shopify",
-      "Wix",
-      "GoDaddy",
-      "Webflow",
-      "Framer",
-      "WordPress",
-      "Next.js",
-      "React.js",
-      "React.js + Node.js",
-      "Shopify + Hydrogen (React)",
-      "Laravel + Vue",
-      "Django + React",
-      "No preference"
-    ]
-  },
-  {
-    "key": "deployment",
-    "patterns": [
-      "deploy",
-      "hosting",
-      "server",
-      "cloud"
-    ],
-    "templates": [
-      "Where would you like the website deployed/hosted? (Select up to 2)"
-    ],
-    "suggestions": [
-      "Vercel",
-      "Netlify",
-      "AWS",
-      "DigitalOcean",
-      "Railway",
-      "Render",
-      "VPS/Custom Server",
-      "Not sure yet"
-    ],
-    "multiSelect": true,
-    "maxSelect": 2
-  },
-  {
-    "key": "domain",
-    "patterns": [
-      "domain",
-      "url",
-      "website name"
-    ],
-    "templates": [
-      "Do you have a domain name?"
-    ],
-    "suggestions": [
-      "I already have domain",
-      "I don't have domain"
-    ]
-  },
-  {
-    "key": "timeline",
-    "patterns": [
-      "timeline",
-      "deadline",
-      "when",
-      "launch"
-    ],
-    "templates": [
-      "When do you need the website ready?"
-    ],
-    "suggestions": [
-      "1-2 weeks",
-      "1 month",
-      "2-3 months",
-      "Flexible"
-    ],
-    "required": false
+    "expectedType": "budget_text",
+    "required": true
   }
 ];
 

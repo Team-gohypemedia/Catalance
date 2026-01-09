@@ -1,68 +1,49 @@
-# Video Services - Client Intake Questionnaire
+﻿# Video Services - Client Intake Questionnaire
 
 ## Instructions for AI Assistant
 Ask these questions ONE AT A TIME in order. Wait for each answer before proceeding.
-Use [SUGGESTIONS: ...] for multiple choice options. Use [MULTI_SELECT: ...] for multi-select.
+Use [SUGGESTIONS: ...] for multiple choice options.
 
 ## Questions (In Order)
 
-1. Please provide your first name.
+1. What type of videos do you require?
+   [SUGGESTIONS: Short-form videos (reels/shorts) | Advertising videos | Corporate or explainer videos]
 
-2. What type of video do you require?
-   [SUGGESTIONS: Promotional / Marketing | Social Media Content | YouTube / Vlog Editing | Corporate / Business | Event / Wedding | Explainer / Animated | Other]
+2. What is the primary objective of these videos?
+   [SUGGESTIONS: Brand awareness | Sales or conversions | Education or explanation]
 
-3. What is the primary goal of the video?
-   [SUGGESTIONS: Brand awareness | Lead generation | Engagement | Product launch]
+3. Where will these videos be used?
+   [SUGGESTIONS: Social media platforms | Website | Paid advertising]
 
-4. Do you already have raw footage, or do you require full production services?
-   [SUGGESTIONS: I already have footage | I need full production | Not sure yet]
+4. What video duration do you prefer?
+   [SUGGESTIONS: Short (15–30 seconds) | Medium (30–60 seconds) | Long (1–3 minutes)]
 
-5. Where will the video be used or published?
-   [MULTI_SELECT: Website | YouTube | Instagram | Facebook | LinkedIn | TikTok | Other]
+5. What type of production do you require?
+   [SUGGESTIONS: Live shooting | Animation | Stock-based visuals]
 
-6. Please share any examples, references, or inspiration videos you like (link or short note).
+6. Do you need help with scripting and concepts?
+   [SUGGESTIONS: Yes, full support is needed | No, scripts are ready]
 
-7. Please share a link to your portfolio or previous videos (optional).
+7. How many videos do you require per month or project?
+   [SUGGESTIONS: Low volume (1-10) | Medium volume (10-30) | High volume (above 30)]
 
-8. What is your preferred video duration?
-   [SUGGESTIONS: Under 30 seconds | 30–60 seconds | 1–3 minutes | 3+ minutes]
+8. How many revision rounds do you expect?
+   [SUGGESTIONS: Standard | Multiple]
 
-9. What style or mood should the video have?
-   [SUGGESTIONS: Professional / Corporate | Fun / Energetic | Emotional / Storytelling | Cinematic / Artistic | Informative / Educational]
+9. What is your preferred delivery timeline?
+   [SUGGESTIONS: Fast turnaround | Standard timeline - | Flexible]
 
-10. Do you require voiceover, background music, or subtitles?
-    [SUGGESTIONS: Yes | No | Not sure yet]
-
-11. Do you require scriptwriting, storyboarding, or creative direction?
-    [SUGGESTIONS: Yes | No | I will provide the script]
-
-12. Will the video include interviews, product shots, or animation elements?
-    [SUGGESTIONS: Yes | No | Maybe]
-
-13. What is your estimated budget range for this project?
-    [SUGGESTIONS: Under ₹24,900 | ₹24,900–₹58,100 | ₹58,100–₹1,24,500 | ₹1,24,500+ | Not sure yet]
-
-14. When do you need the final video delivered?
-    [SUGGESTIONS: Within 1 week | 2–4 weeks | 1–2 months | Flexible]
-
-15. Please mention any special requests or notes about your project.
+10. What budget range best fits your requirement?
+    [SUGGESTIONS: Under ₹2,000 per video | ₹2,000 – ₹7,000 per video | ₹7,000 – ₹15,000 per video | ₹15,000 and above per video]
 
 ## Required Fields
-- First name
-- Video type
-- Primary goal
-- Footage availability
-- Platforms
-- Video duration
-- Style/mood
-- Budget
-- Delivery timeline
-
-## Optional Fields
-- Examples/references
-- Portfolio links
-- Special requests
-
-## Pricing Reference
-- CGI Videos: ₹10,000 (Up to 15 sec)
-- UGC Videos: ₹7,000 (Up to 30 sec)
+- What type of videos do you require?
+- What is the primary objective of these videos?
+- Where will these videos be used?
+- What video duration do you prefer?
+- What type of production do you require?
+- Do you need help with scripting and concepts?
+- How many videos do you require per month or project?
+- How many revision rounds do you expect?
+- What is your preferred delivery timeline?
+- What budget range best fits your requirement?

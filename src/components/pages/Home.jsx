@@ -3,6 +3,13 @@ import CatalanceHero from "../CatalanceHero";
 import LogoCloud from "../logo-cloud";
 
 const Home = () => {
+    React.useEffect(() => {
+        document.documentElement.classList.add('home-page');
+        return () => {
+            document.documentElement.classList.remove('home-page');
+        };
+    }, []);
+
     return (
         <div className="flex flex-col min-h-screen">
             <CatalanceHero />

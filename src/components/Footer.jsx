@@ -7,7 +7,7 @@ import {
 
 const Footer = () => {
     const { theme } = useTheme();
-    const isDark = true; // Always dark
+    const isDark = theme === "dark";
 
     return (
         <footer className={`relative w-full pt-16 pb-12 overflow-hidden transition-colors duration-300 ${isDark ? "bg-black bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-black via-[#0a0a0a] to-black" : "bg-white"}`}>

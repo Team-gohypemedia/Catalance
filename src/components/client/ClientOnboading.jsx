@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { EvervaultCard, CardPattern, generateRandomString } from "@/components/ui/evervault-card";
 import { useMotionValue, useMotionTemplate, motion } from "motion/react";
@@ -23,6 +23,7 @@ import {
   Database,
   Workflow,
   MessageCircle,
+  PhoneCall,
   Users,
   Globe,
   Smartphone,
@@ -63,6 +64,18 @@ const features = [
     icon: Video,
   },
   {
+    title: "CGI Video",
+    description: "CGI product promos, cinematic visuals, and mixed live-action videos.",
+    price: "Starting at INR 15,000",
+    icon: Video,
+  },
+  {
+    title: "3D Modeling",
+    description: "Product visuals, architectural renders, and marketing assets.",
+    price: "Starting at INR 5,000 per model",
+    icon: Code,
+  },
+  {
     title: "SEO Optimization",
     description: "Rank higher on Google with on-page, off-page and technical SEO.",
     price: "Starting at ₹8,000",
@@ -73,6 +86,18 @@ const features = [
     description: "Content creation, scheduling and community management.",
     price: "Starting at ₹12,000",
     icon: Share2,
+  },
+  {
+    title: "Influencer Marketing",
+    description: "Collaborate with creators for authentic brand promotion.",
+    price: "Starting at ₹10,000",
+    icon: Users,
+  },
+  {
+    title: "UGC (User-Generated Content) Marketing",
+    description: "Customer-led videos and reviews for ads and social proof.",
+    price: "Starting at ₹2,000 per video",
+    icon: Mic,
   },
   {
     title: "Performance Marketing",
@@ -87,24 +112,22 @@ const features = [
     icon: Palette,
   },
   {
+    title: "Branding (Naming, Logo & Brand Identity)",
+    description: "Brand naming, logo design, and full brand identity systems.",
+    price: "Starting at INR 25,000",
+    icon: Palette,
+  },
+  {
     title: "Writing & Content",
     description: "Blogs, website copy, ad copy and scripts.",
     price: "Starting at ₹2,000",
     icon: FileText,
   },
-
   {
     title: "Customer Support",
     description: "Chat, email or voice support setup and staffing.",
     price: "Starting at ₹8,000",
     icon: Headphones,
-  },
-
-  {
-    title: "Influencer/UGC Marketing",
-    description: "Collaborate with creators for authentic brand promotion.",
-    price: "Starting at ₹10,000",
-    icon: Users,
   },
   {
     title: "CRM & ERP Solutions",
@@ -117,6 +140,12 @@ const features = [
     description: "Automate repetitive tasks with custom AI workflows and agents.",
     price: "Starting at ₹20,000",
     icon: Workflow,
+  },
+  {
+    title: "Voice Agent (AI Voice Bot / Call Automation)",
+    description: "AI voice agents for inbound/outbound calls, lead qualification, and support automation.",
+    price: "Starting at ₹130,000",
+    icon: PhoneCall,
   },
   {
     title: "WhatsApp Chat Bot",
@@ -281,34 +310,34 @@ const ClientOnboading = () => {
           >
             <div
               className={`
-                h-[340px] p-6 rounded-3xl border bg-black transition-all duration-300 flex flex-col items-center text-center group relative overflow-hidden
+                h-[380px] rounded-2xl border-4 transition-all duration-300 flex flex-col group relative overflow-hidden
                 ${selectedServices.some((item) => item.title === feature.title) && multiSelectEnabled
-                  ? "border-yellow-500 shadow-[0_0_30px_-5px_rgba(255,200,0,0.3)] bg-zinc-900"
-                  : "border-yellow-600/30 hover:border-yellow-500 hover:shadow-[0_0_20px_-5px_rgba(255,200,0,0.15)] bg-black"}
+                  ? "border-cyan-400 shadow-[0_0_30px_-5px_rgba(34,211,238,0.4)]"
+                  : "border-cyan-400/60 hover:border-cyan-400 hover:shadow-[0_0_25px_-5px_rgba(34,211,238,0.3)] hover:scale-[1.02]"}
               `}
             >
-              <div className="flex-1 flex flex-col items-center pt-4">
-                <div className="mb-5 text-yellow-500 p-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 group-hover:scale-110 transition-transform duration-300">
-                  <feature.icon className="w-7 h-7" strokeWidth={1.5} />
+              {/* Orange Gradient Background with Icon */}
+              <div className="h-48 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
+                <div className="bg-yellow-500/20 backdrop-blur-sm p-5 rounded-2xl border border-white/20 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <feature.icon className="w-12 h-12 text-white drop-shadow-lg" strokeWidth={1.5} />
                 </div>
+              </div>
 
-                <h3 className="text-xl font-bold text-white mb-3 tracking-wide group-hover:text-yellow-400 transition-colors">
+              {/* Card Content */}
+              <div className="flex-1 flex flex-col bg-zinc-900 border-t-4 border-[#ff5722] p-5">
+                <h3 className="text-lg font-bold text-white mb-2 text-center group-hover:text-yellow-400 transition-colors line-clamp-2">
                   {feature.title}
                 </h3>
 
-                <p className="text-sm text-zinc-400 font-medium leading-relaxed px-1">
+                <p className="text-xs text-zinc-400 font-medium leading-relaxed text-center mb-4 line-clamp-2 flex-1">
                   {feature.description}
                 </p>
-              </div>
 
-              <div className="w-full pt-4 mt-2">
-                <p className="text-sm font-bold text-yellow-500 items-baseline justify-center tracking-wide">
-                  {feature.price}
-                </p>
+                {/* Chat Now Button */}
+                <Button className="w-full bg-[#ffc800] text-[#181710] hover:bg-[#e5b400] font-bold rounded-lg shadow-md">
+                  Chat Now
+                </Button>
               </div>
-
-              {/* Optional: Subtle glow effect on hover */}
-              <div className="absolute inset-0 bg-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             </div>
             {multiSelectEnabled && (
               <div className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border text-xs ${selectedServices.some((item) => item.title === feature.title) ? "bg-primary text-primary-foreground border-primary" : "bg-background/80 text-muted-foreground border-border"}`}>
@@ -329,8 +358,16 @@ const ClientOnboading = () => {
         service={multiSelectEnabled ? null : selectedService}
         services={multiSelectEnabled ? selectedServices : null}
       />
-    </section>
+    </section >
   );
 };
 
 export default ClientOnboading;
+
+
+
+
+
+
+
+
