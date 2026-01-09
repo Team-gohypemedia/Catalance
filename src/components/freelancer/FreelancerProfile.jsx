@@ -712,9 +712,9 @@ const FreelancerProfile = () => {
                     <Linkedin className="w-5 h-5" />
                   </a>
                 )}
-                {portfolio.website && (
+                {portfolio.portfolioUrl && (
                   <a
-                    href={portfolio.website}
+                    href={portfolio.portfolioUrl}
                     target="_blank"
                     className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
                     rel="noreferrer"

@@ -1980,7 +1980,7 @@ const ClientDashboardContent = () => {
                         </div>
                       </DialogHeader>
 
-                      <div className="flex-1 overflow-y-auto py-6 space-y-8 pr-2">
+                      <div className="flex-1 overflow-y-auto py-6 space-y-8 pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                         {/* Bio */}
                         <div>
                           <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -2067,63 +2067,47 @@ const ClientDashboardContent = () => {
                                   <Briefcase className="w-5 h-5 text-primary" />{" "}
                                   Portfolio Projects
                                 </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 gap-3">
                                   {projects.map((project, i) => (
-                                    <Card
+                                    <a
                                       key={i}
-                                      className="overflow-hidden border-border/50 hover:border-primary/20 transition-all flex flex-col h-full group/card"
+                                      href={project.link || project.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="block group/card h-full"
                                     >
-                                      {(project.image ||
+                                      <Card className="overflow-hidden border-border/50 hover:border-primary/20 transition-all h-full relative">
+                                        {project.image ||
                                         project.imageUrl ||
-                                        project.thumbnail) && (
-                                        <div className="w-full h-28 bg-muted relative overflow-hidden">
-                                          <img
-                                            src={
-                                              project.image ||
-                                              project.imageUrl ||
-                                              project.thumbnail
-                                            }
-                                            alt={project.title}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
-                                          />
-                                        </div>
-                                      )}
-                                      <CardContent className="p-3 flex flex-col flex-1">
-                                        <h5 className="font-bold text-sm mb-1 line-clamp-1">
-                                          {project.title || `Project ${i + 1}`}
-                                        </h5>
-                                        {(project.description ||
-                                          project.desc) && (
-                                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2 flex-1">
-                                            {project.description ||
-                                              project.desc}
-                                          </p>
-                                        )}
-                                        <div className="flex justify-between items-center mt-auto pt-1">
-                                          <div className="flex gap-1.5">
-                                            {project.techStack && (
-                                              <Badge
-                                                variant="secondary"
-                                                className="text-[10px] h-4 px-1.5"
-                                              >
-                                                {project.techStack}
-                                              </Badge>
-                                            )}
+                                        project.thumbnail ? (
+                                          <div className="w-full aspect-video bg-muted relative overflow-hidden">
+                                            <img
+                                              src={
+                                                project.image ||
+                                                project.imageUrl ||
+                                                project.thumbnail
+                                              }
+                                              alt={project.title}
+                                              className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                                            />
+                                            {/* Optional: Add a subtle overlay so users know it's a link or what it is? User said 'only image' so maybe minimal. 
+                                                I'll add a simple hover name effect just in case, or just leave it clean.*/}
+                                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300">
+                                              <p className="text-white font-medium text-sm truncate">
+                                                {project.title ||
+                                                  "View Project"}
+                                              </p>
+                                            </div>
                                           </div>
-                                          {(project.link || project.url) && (
-                                            <a
-                                              href={project.link || project.url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-[10px] text-primary flex items-center hover:underline font-medium"
-                                            >
-                                              View{" "}
-                                              <ExternalLink className="w-2.5 h-2.5 ml-1" />
-                                            </a>
-                                          )}
-                                        </div>
-                                      </CardContent>
-                                    </Card>
+                                        ) : (
+                                          <div className="w-full aspect-video bg-muted flex items-center justify-center text-muted-foreground p-4 text-center">
+                                            <span className="font-medium text-sm">
+                                              {project.title || "View Project"}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </Card>
+                                    </a>
                                   ))}
                                 </div>
                               </div>
