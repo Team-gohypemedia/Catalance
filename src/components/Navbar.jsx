@@ -13,7 +13,7 @@ import {
   MobileNavToggle,
   NavbarLogo,
   NavbarButton,
-} from "@/components/ui/resizable-navbar";
+} from "@/components/ui/resizable-navbar-fixed";
 import { useTheme } from "./theme-provider";
 import { Sun, Moon } from "lucide-react";
 
@@ -25,7 +25,7 @@ const navItems = [
 ];
 
 const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
-  const forceWhite = isHome && !visible;
+  const forceWhite = isHome && isDark && !visible;
 
   return (
     <div
@@ -35,14 +35,14 @@ const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
       {isDark ? (
         <Sun className="h-6 w-6 text-yellow-500" />
       ) : (
-        <Moon className={cn("h-6 w-6", forceWhite ? "text-black" : "text-gray-500")} />
+        <Moon className={cn("h-6 w-6", forceWhite ? "text-white" : "text-gray-900")} />
       )}
     </div>
   );
 };
 
-const AuthButtons = ({ visible, isHome }) => {
-  const forceWhite = isHome && !visible;
+const AuthButtons = ({ visible, isHome, isDark }) => {
+  const forceWhite = isHome && isDark && !visible;
   return (
     <div className="flex items-center gap-2">
       <NavbarButton
@@ -81,15 +81,13 @@ const Navbar = () => {
         <NavbarLogo isHome={isHome} />
         <NavItems items={navItems} onItemClick={closeMobileMenu} isHome={isHome} />
         <div className="flex items-center">
-          {!isHome && (
-            <ThemeButton
-              isDark={isDark}
-              onClick={handleThemeToggle}
-              visible={true} // Always visible if rendered, or pass down navbar visibility if needed
-              isHome={isHome}
-            />
-          )}
-          <AuthButtons isHome={isHome} />
+          <ThemeButton
+            isDark={isDark}
+            onClick={handleThemeToggle}
+            visible={true}
+            isHome={isHome}
+          />
+          <AuthButtons isHome={isHome} isDark={isDark} />
         </div>
       </NavBody>
 

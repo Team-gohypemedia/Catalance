@@ -407,7 +407,14 @@ const parseServiceFile = (filePath) => {
     normalizedServiceName === "writing content" ||
     normalizedServiceName === "writing and content" ||
     slug === "writing-content";
-  const shouldDisableSharedContext = isVideoServices || isWritingContent;
+  const isCustomerSupport =
+    normalizedServiceName === "customer support" ||
+    slug === "customer-support";
+  const isInfluencerMarketing =
+    normalizedServiceName === "influencer marketing" ||
+    slug === "influencer-marketing";
+  const shouldDisableSharedContext =
+    isVideoServices || isWritingContent || isCustomerSupport || isInfluencerMarketing;
   const skipIntro = false;
   const finalFields = shouldDisableSharedContext
     ? fields.map((field) => ({

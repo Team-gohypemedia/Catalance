@@ -314,6 +314,98 @@ export const SERVICE_QUESTION_SETS = {
     },
   ],
 
+  "CGI Video Services": [
+    {
+      key: "cgi_video_purpose",
+      text: "What is the main purpose of the CGI video you want to create?",
+      type: "suggestion",
+      suggestions: [
+        "Product promotion",
+        "Brand storytelling",
+        "Launch or announcement video",
+        "Educational or explainer content",
+      ],
+    },
+    {
+      key: "cgi_video_type",
+      text: "What type of CGI video are you looking for?",
+      type: "suggestion",
+      suggestions: [
+        "Product\u2011focused CGI video",
+        "Concept or cinematic CGI video",
+        "Mixed live\u2011action and CGI video",
+      ],
+    },
+    {
+      key: "cgi_video_usage",
+      text: "Where will this CGI video be used?",
+      type: "suggestion",
+      suggestions: [
+        "Social media platforms",
+        "Website or landing pages",
+        "Paid advertising campaigns",
+        "Presentations or events",
+      ],
+    },
+    {
+      key: "cgi_video_duration",
+      text: "What duration do you prefer for the CGI video?",
+      type: "suggestion",
+      suggestions: [
+        "Short (15\u201330 seconds)",
+        "Medium (30\u201360 seconds)",
+        "Long (1\u20132 minutes)",
+      ],
+    },
+    {
+      key: "cgi_video_script",
+      text: "Do you already have a script or concept for the CGI video?",
+      type: "suggestion",
+      suggestions: [
+        "Yes, script and concept are ready",
+        "Partial idea, need creative support",
+        "No, full concept development is required",
+      ],
+    },
+    {
+      key: "cgi_video_style",
+      text: "What visual style do you prefer for the CGI video?",
+      type: "suggestion",
+      suggestions: [
+        "Highly realistic and cinematic",
+        "Stylised and creative",
+        "Minimal and clean",
+      ],
+    },
+    {
+      key: "cgi_video_audio",
+      text: "Do you require voice\u2011over, sound design, or background music?",
+      type: "suggestion",
+      suggestions: [
+        "Yes, full audio support is required",
+        "Partial audio support",
+        "No, visuals only",
+      ],
+    },
+    {
+      key: "cgi_video_timeline",
+      text: "What is your preferred delivery timeline for the CGI video?",
+      type: "suggestion",
+      suggestions: ["Fast turnaround", "Standard timeline", "Flexible timeline"],
+    },
+    {
+      key: "cgi_video_budget",
+      text: "What budget level best matches your CGI video requirement?",
+      type: "suggestion",
+      suggestions: [
+        "Under \u20B915,000",
+        "\u20B915,000 \u2013 \u20B940,000",
+        "\u20B940,000 \u2013 \u20B980,000",
+        "\u20B980,000 and above",
+      ],
+    },
+  ],
+
   "Travel Services": [
     { key: "name", text: "Hi! What's your first name?", type: "text" },
     { key: "destination", text: "Where to?", type: "text" },
@@ -634,6 +726,143 @@ export const SERVICE_QUESTION_SETS = {
     { key: "references", text: "Any past campaigns or examples?", type: "text" },
   ],
 
+  "Influencer Marketing": [
+    { key: "name", text: "What's your name?", type: "text" },
+    {
+      key: "platforms",
+      text: "Which platform do you want to run influencer campaigns on? (multiple)",
+      type: "multi_select",
+      suggestions: ["Instagram", "YouTube", "LinkedIn"]
+    },
+    {
+      key: "influencer_size",
+      text: "What size of influencers do you want to work with?",
+      type: "suggestion",
+      suggestions: [
+        "Nano Influencers (1,000 – 10,000 followers)",
+        "Micro Influencers (10,000 – 100,000 followers)",
+        "Macro Influencers (100,000+ followers)"
+      ]
+    },
+    {
+      key: "campaign_objective",
+      text: "What is the main objective of the influencer campaign?",
+      type: "suggestion",
+      suggestions: ["Brand reach", "Trust and credibility", "Conversions and sales"]
+    },
+    {
+      key: "content_type",
+      text: "What type of content should influencers create?",
+      type: "suggestion",
+      suggestions: ["Reels or videos", "Posts", "Stories", "A mix of formats -"]
+    },
+    {
+      key: "niche_relevance",
+      text: "Is industry or niche relevance important?",
+      type: "suggestion",
+      suggestions: ["Yes, niche-specific", "No, general creators are fine"]
+    },
+    {
+      key: "target_geography",
+      text: "Which geography should the influencers target?",
+      type: "suggestion",
+      suggestions: ["Local", "National", "International"]
+    },
+    {
+      key: "campaign_duration",
+      text: "How long should the campaign run?",
+      type: "suggestion",
+      suggestions: ["Short-term", "Medium-term", "Long-term"]
+    },
+    {
+      key: "usage_rights",
+      text: "Do you require usage rights for the content created?",
+      type: "suggestion",
+      suggestions: ["Limited usage", "Full usage rights"]
+    },
+    {
+      key: "budget_range",
+      text: "What is your campaign budget range?",
+      type: "suggestion",
+      suggestions: [
+        "Under ₹10,000",
+        "₹10,000 – ₹30,000",
+        "₹30,000 – ₹75,000",
+        "₹75,000 – ₹1,50,000",
+        "₹1,50,000 and above"
+      ]
+    }
+  ],
+
+  "UGC (User-Generated Content) Marketing": [
+    { key: "name", text: "What's your name?", type: "text" },
+    {
+      key: "ugc_purpose",
+      text: "What is the main purpose of UGC content for your brand?",
+      type: "suggestion",
+      suggestions: ["Paid ads", "Social proof", "Website content"]
+    },
+    {
+      key: "usage_channels",
+      text: "Where will this content be used?",
+      type: "suggestion",
+      suggestions: ["Social media", "Advertising campaigns", "Website"]
+    },
+    {
+      key: "creator_type",
+      text: "What type of creators do you prefer?",
+      type: "suggestion",
+      suggestions: ["Real customers", "Professional creators", "A mix of both"]
+    },
+    {
+      key: "ugc_style",
+      text: "What style of UGC do you prefer?",
+      type: "suggestion",
+      suggestions: ["Natural and unscripted", "Fully scripted", "Semi-scripted"]
+    },
+    {
+      key: "ugc_volume",
+      text: "How many UGC videos do you require?",
+      type: "suggestion",
+      suggestions: ["1-5 Videos", "5-10 Videos", "10+ Videos"]
+    },
+    {
+      key: "product_shipping",
+      text: "Will product shipping be required for creators?",
+      type: "suggestion",
+      suggestions: ["Yes", "No"]
+    },
+    {
+      key: "revision_expectations",
+      text: "How many revisions do you expect?",
+      type: "suggestion",
+      suggestions: ["Minimal", "Standard"]
+    },
+    {
+      key: "usage_rights_duration",
+      text: "How long do you need usage rights for the content?",
+      type: "suggestion",
+      suggestions: ["Limited duration", "Extended duration"]
+    },
+    {
+      key: "turnaround_time",
+      text: "What turnaround time do you prefer?",
+      type: "suggestion",
+      suggestions: ["Fast", "Standard", "Flexible"]
+    },
+    {
+      key: "budget_level",
+      text: "What budget level suits your requirement?",
+      type: "suggestion",
+      suggestions: [
+        "Under ₹2,000 per video",
+        "₹2,000 – ₹5,000 per video",
+        "₹5,000 – ₹10,000 per video",
+        "₹10,000 and above per video"
+      ]
+    }
+  ],
+
   "Writing & Content": [
     { key: "name", text: "What's your name?", type: "text" },
     {
@@ -922,54 +1151,72 @@ export const SERVICE_QUESTION_SETS = {
   ],
 
   "Customer Support": [
-    { key: "name", text: "Hi! What's your first name?", type: "text" },
-    { key: "company", text: "Company/brand name?", type: "text" },
+    { key: "name", text: "What's your name?", type: "text" },
     {
-      key: "support_type",
-      text: "Support type needed?",
+      key: "support_channels",
+      text: "Which customer support channels do you require?",
+      type: "suggestion",
+      suggestions: ["Chat support", "Email support", "Voice support", "Multi-channel support"],
+    },
+    {
+      key: "support_hours",
+      text: "What support hours do you need?",
+      type: "suggestion",
+      suggestions: ["Business hours", "Extended hours", "24/7 support"],
+    },
+    {
+      key: "query_volume",
+      text: "What volume of customer queries do you expect?",
+      type: "suggestion",
+      suggestions: ["Low", "Medium", "High"],
+    },
+    {
+      key: "customer_type",
+      text: "Who are your customers primarily?",
+      type: "suggestion",
+      suggestions: ["Individual consumers", "Business clients", "Both"],
+    },
+    {
+      key: "support_languages",
+      text: "Which languages should support be provided in?",
+      type: "suggestion",
+      suggestions: ["English", "Regional language", "Multiple languages"],
+    },
+    {
+      key: "escalation_handling",
+      text: "How should escalations be handled?",
+      type: "suggestion",
+      suggestions: ["Forwarded to your internal team", "Fully managed by the support team"],
+    },
+    {
+      key: "helpdesk_tools",
+      text: "Do you currently use any helpdesk or CRM tools?",
+      type: "suggestion",
+      suggestions: ["Yes, tools are already in place", "No, setup is required"],
+    },
+    {
+      key: "performance_metric",
+      text: "Which performance metric is most important to you?",
+      type: "suggestion",
+      suggestions: ["Response time", "Resolution quality", "Customer satisfaction"],
+    },
+    {
+      key: "agent_training",
+      text: "Do you require training for support agents?",
+      type: "suggestion",
+      suggestions: ["Yes", "No"],
+    },
+    {
+      key: "monthly_budget",
+      text: "What is your monthly budget for customer support?",
       type: "suggestion",
       suggestions: [
-        "Live chat",
-        "Email",
-        "Phone/Call center",
-        "Technical",
-        "Social",
-        "Helpdesk",
-        "Multi-channel",
-        "Other",
+        "Under \u20B915,000 / month",
+        "\u20B915,000 \u2013 \u20B930,000 / month",
+        "\u20B930,000 \u2013 \u20B960,000 / month",
+        "\u20B960,000 and above / month",
       ],
     },
-    {
-      key: "system",
-      text: "Existing system or new setup?",
-      type: "suggestion",
-      suggestions: ["Existing", "New"],
-    },
-    {
-      key: "volume",
-      text: "Request volume?",
-      type: "suggestion",
-      suggestions: ["<50/day", "50-200/day", "200-500/day", "500+/day", "Not sure"],
-    },
-    {
-      key: "hours",
-      text: "Operating hours?",
-      type: "suggestion",
-      suggestions: ["Business hours", "24/7", "Weekends included", "Flexible"],
-    },
-    { key: "tools", text: "Tools you use (e.g., Zendesk, Freshdesk)?", type: "text" },
-    {
-      key: "agents",
-      text: "Need agents, training, or both?",
-      type: "suggestion",
-      suggestions: ["Provide agents", "Train team", "Both"],
-    },
-    {
-      key: "budget",
-      text: "What is your budget? Please enter a single amount in INR (per month if applicable).",
-      type: "text",
-    },
-    { key: "notes", text: "Top priority or special notes?", type: "text" },
   ],
 
   "Administrative Services": [

@@ -1191,7 +1191,25 @@ const withMandatoryBrief = (questions = []) => {
 
 const shouldSkipMandatoryBrief = (service = "") => {
     const canon = canonicalize(normalizeText(service));
-    return canon === "writingcontent" || canon === "writingandcontent";
+    return (
+        canon === "writingcontent" ||
+        canon === "writingandcontent" ||
+        canon === "customersupport" ||
+        canon === "influencermarketing" ||
+        canon === "influencerugcmarketing" ||
+        canon === "ugcmarketing" ||
+        canon === "ugcusergeneratedcontentmarketing" ||
+        canon === "3dmodeling" ||
+        canon.startsWith("3dmodeling") ||
+        canon === "aiautomation" ||
+        canon.startsWith("aiautomation") ||
+        canon === "whatsappchatbot" ||
+        canon.startsWith("whatsappchatbot") ||
+        canon === "voiceagent" ||
+        canon.startsWith("voiceagent") ||
+        canon === "creativeanddesign" ||
+        canon.startsWith("creativeanddesign")
+    );
 };
 
 const resolveIntroServiceLabel = (service = "") => {
@@ -1221,7 +1239,17 @@ const withGlobalIntroQuestion = (questions = [], service = "") => {
         ];
     }
 
-    const nameIndex = list.findIndex((q, index) => resolveQuestionKey(q, index) === "name");
+    const isPersonalNameQuestion = (question = {}, index = 0) => {
+        const key = resolveQuestionKey(question, index);
+        if (!key) return false;
+        const tags = new Set([...(question.tags || []), ...getQuestionTags({ ...question, key })]);
+        if (!tags.has("name")) return false;
+        if (tags.has("company")) return false;
+        if (/(company|business|brand|project|organization)/i.test(key)) return false;
+        return true;
+    };
+
+    const nameIndex = list.findIndex((q, index) => isPersonalNameQuestion(q, index));
     const existing = nameIndex >= 0 ? list[nameIndex] : null;
     const introQuestion = {
         ...(existing || {}),
@@ -4668,6 +4696,7 @@ export function buildConversationState(history, service, sharedContext) {
     const needsBrief =
         !isCataService &&
         source !== "catalog" &&
+        !skipIntro &&
         !shouldSkipMandatoryBrief(resolvedService);
     const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
     const questionSeed = isCataService || skipIntro
@@ -4760,6 +4789,7 @@ export function processUserAnswer(state, message) {
     const needsBrief =
         !isCataService &&
         source !== "catalog" &&
+        !skipIntro &&
         !shouldSkipMandatoryBrief(resolvedService);
     const baseQuestions = needsBrief ? withMandatoryBrief(rawQuestions) : rawQuestions;
     const questionSeed = isCataService || skipIntro

@@ -27,11 +27,6 @@ export function ThemeProvider({
     root.classList.remove("light", "dark");
 
     // Force Light Mode on Home page
-    if (isHome) {
-      root.classList.add("light");
-      return;
-    }
-
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches
@@ -43,10 +38,10 @@ export function ThemeProvider({
     }
 
     root.classList.add(theme);
-  }, [theme, isHome]);
+  }, [theme]);
 
   const value = {
-    theme: !isHome ? theme : "light",
+    theme: theme,
     setTheme: (newTheme) => {
       // Only allow theme changes if we are in a dashboard context
       // OR if the user is forcing a change (though UI should hide it otherwise)

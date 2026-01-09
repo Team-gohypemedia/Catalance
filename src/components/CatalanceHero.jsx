@@ -3,15 +3,16 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles, Users, TrendingUp, ShieldCheck, Target, Zap, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "./theme-provider";
+import MatrixRain from "@/components/ui/matrix-code";
 
 const CatalanceHero = () => {
     // Symmetric pillar heights (percent). Tall at edges, low at center.
     const pillars = [92, 84, 78, 70, 62, 54, 46, 34, 18, 34, 46, 54, 62, 70, 78, 84, 92];
 
     const [isMounted, setIsMounted] = useState(false);
-
-    // Always Dark Mode for Hero
-    const isDark = true;
+    const { theme } = useTheme();
+    const isDark = theme === "dark";
 
     useEffect(() => {
         const timer = setTimeout(() => setIsMounted(true), 100);
@@ -52,35 +53,43 @@ const CatalanceHero = () => {
           }
         `}
             </style>
-            <section className="relative isolate min-h-screen w-full overflow-hidden bg-background text-foreground flex flex-col items-center transition-colors duration-500 dark">
+            <section className={`relative isolate min-h-screen w-full overflow-hidden bg-background text-foreground flex flex-col items-center transition-colors duration-500`}>
                 {/* ================== BACKGROUND ================== */}
                 <div
                     aria-hidden
                     className="absolute inset-0 -z-30 transition-opacity duration-500"
                     style={{
-                        backgroundImage: [
-                            "radial-gradient(circle at 50% -20%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 215, 0, 0.7) 20%, rgba(218, 165, 32, 0.5) 50%, rgba(0, 0, 0, 0) 80%)", /* Top Center Spotlight (Intense Core) */
-                            "radial-gradient(circle at 0% 0%, rgba(255, 140, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%)", /* Top Left Amber (Vibrant) */
-                            "radial-gradient(circle at 100% 0%, rgba(255, 215, 0, 0.6) 0%, rgba(0, 0, 0, 0) 60%)", /* Top Right Gold (Vibrant) */
-                            "linear-gradient(to bottom, transparent 0%, transparent 15%, #000000 95%)", /* Depth Fade */
-                        ].join(","),
-                        backgroundColor: "#000",
+                        backgroundImage: isDark ? [
+                            "radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.5) 0%, rgba(250, 204, 21, 0.95) 10%, rgba(234, 179, 8, 0.8) 25%, transparent 55%)", /* Ultra bright hot core */
+                            "radial-gradient(ellipse 150% 70% at 50% -5%, rgba(251, 191, 36, 0.5) 0%, transparent 70%)", /* Massive ambient glow */
+                            "radial-gradient(ellipse 80% 50% at 10% 0%, rgba(234, 179, 8, 0.5) 0%, transparent 60%)", /* Strong left gold (primary) */
+                            "radial-gradient(ellipse 80% 50% at 90% 0%, rgba(234, 179, 8, 0.5) 0%, transparent 60%)", /* Strong right gold (primary) */
+                            "radial-gradient(ellipse 100% 40% at 50% 15%, rgba(234, 179, 8, 0.25) 0%, transparent 100%)", /* Mid-level warm wash */
+                            "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.7) 75%, #000000 95%)" /* Deep vignette */
+                        ].join(",") : "linear-gradient(to bottom, #EAB308 0%, #FFFFFF 100%)",
+                        backgroundColor: isDark ? "#000000" : "#FFFFFF",
                     }} />
 
-                <div
-                    aria-hidden
-                    className={`absolute inset-0 -z-20 ${isDark ? 'bg-[radial-gradient(140%_120%_at_50%_0%,transparent_60%,rgba(0,0,0,0.85))]' : 'bg-transparent'}`} />
+                <MatrixRain
+                    color="#FFFFFF"
+                    className="absolute inset-0 z-[-25] opacity-10 mix-blend-screen"
+                    style={{
+                        opacity: isDark ? 0.08 : 0.05 // Very subtle so gradient shows
+                    }}
+                />
 
                 <div
                     aria-hidden
-                    className={`pointer-events-none absolute inset-0 -z-10 mix-blend-screen ${isDark ? 'opacity-30' : 'opacity-100'}`}
+                    className="absolute inset-0 -z-20 bg-transparent" />
+
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 -z-10 opacity-30"
                     style={{
                         backgroundImage: [
-                            `repeating-linear-gradient(90deg, ${isDark ? 'rgba(255, 220, 100, 0.12)' : 'rgba(0,0,0,0.06)'} 0 1px, transparent 1px 96px)`, /* Warm gold grid */
-                            `repeating-linear-gradient(90deg, ${isDark ? 'rgba(255, 220, 100, 0.08)' : 'rgba(0,0,0,0.03)'} 0 1px, transparent 1px 24px)`,
-                            `repeating-radial-gradient(80% 55% at 50% 52%, ${isDark ? 'rgba(255, 220, 100, 0.10)' : 'rgba(0,0,0,0.04)'} 0 1px, transparent 1px 120px)`
+                            `repeating-linear-gradient(90deg, rgba(0,0,0, 0.03) 0 1px, transparent 1px 96px)`,
+                            `repeating-linear-gradient(90deg, rgba(0,0,0, 0.02) 0 1px, transparent 1px 24px)`,
                         ].join(","),
-                        backgroundBlendMode: "screen",
                     }} />
 
                 {/* ================== CONTENT ================== */}
@@ -88,7 +97,7 @@ const CatalanceHero = () => {
 
                     {/* Badge */}
                     <div className={`flex justify-center mb-8 mt-16 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}>
-                        <Badge className={`group ${isDark ? 'bg-transparent hover:bg-white/5 text-white border-white/20' : 'bg-transparent hover:bg-black/5 text-gray-900 border-gray-200 shadow-sm'} border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-default`}>
+                        <Badge className={`group ${isDark ? 'bg-transparent hover:bg-white/5 text-white border-white/20' : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200 shadow-sm'} border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-default`}>
                             <Sparkles className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-300" />
                             Trusted by 10,000+ Freelancers & Clients
                         </Badge>
@@ -96,17 +105,17 @@ const CatalanceHero = () => {
 
                     {/* Headlines */}
                     <div className={`mb-6 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`} style={{ animationDelay: '100ms' }}>
-                        <h1 className="text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight text-white">
+                        <h1 className={`text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight ${textColor}`}>
                             Find clever minds
                         </h1>
-                        <h1 className="text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight text-white">
+                        <h1 className={`text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight ${textColor}`}>
                             Upgrade your craft
                         </h1>
                     </div>
 
                     {/* Subhead */}
                     <p
-                        className={`text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto mb-12 font-light leading-relaxed ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
+                        className={`text-lg md:text-xl lg:text-2xl ${subTextColor} max-w-3xl mx-auto mb-12 font-light leading-relaxed ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
                         style={{ animationDelay: '200ms' }}
                     >
                         Connect with world-class freelancers and find your next big project—built for creators, dreamers, and doers.
@@ -127,12 +136,12 @@ const CatalanceHero = () => {
                             </div>
 
                             {/* Business Card */}
-                            <div className="group relative p-6 rounded-3xl flex flex-col bg-linear-to-bl from-orange-500/40 via-background to-background text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[450px]">
+                            <div className="group relative p-6 rounded-3xl flex flex-col bg-linear-to-bl from-primary/40 via-background to-background text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[450px]">
                                 <div className="mb-6 flex flex-col items-start">
                                     <div className="px-0 py-2">
-                                        <Briefcase className="w-5 h-5 text-orange-500" />
+                                        <Briefcase className="w-5 h-5 text-primary" />
                                     </div>
-                                    <span className="text-sm font-medium uppercase tracking-wide text-orange-500">
+                                    <span className="text-sm font-medium uppercase tracking-wide text-primary">
                                         For Businesses
                                     </span>
                                 </div>
@@ -141,32 +150,32 @@ const CatalanceHero = () => {
                                 </h3>
                                 <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[40px]">
                                     Access our curated network of{" "}
-                                    <span className="text-orange-600 dark:text-orange-400 font-semibold">world-class professionals</span>{" "}
+                                    <span className="text-primary dark:text-primary font-semibold">world-class professionals</span>{" "}
                                     ready to transform your vision into reality.
                                 </p>
 
                                 {/* Features */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 mb-8">
                                     <div className="flex items-center gap-2.5">
-                                        <div className="p-1.5 text-orange-600">
+                                        <div className="p-1.5 text-primary">
                                             <Target className="w-4 h-4" />
                                         </div>
                                         <span className="text-sm font-medium text-foreground/90">Verified expertise</span>
                                     </div>
                                     <div className="flex items-center gap-2.5">
-                                        <div className="p-1.5 text-orange-600">
+                                        <div className="p-1.5 text-primary">
                                             <Users className="w-4 h-4" />
                                         </div>
                                         <span className="text-sm font-medium text-foreground/90">50K+ professionals</span>
                                     </div>
                                     <div className="flex items-center gap-2.5">
-                                        <div className="p-1.5 text-orange-600">
+                                        <div className="p-1.5 text-primary">
                                             <ShieldCheck className="w-4 h-4" />
                                         </div>
                                         <span className="text-sm font-medium text-foreground/90">Secure payments</span>
                                     </div>
                                     <div className="flex items-center gap-2.5">
-                                        <div className="p-1.5 text-orange-600">
+                                        <div className="p-1.5 text-primary">
                                             <Sparkles className="w-4 h-4" />
                                         </div>
                                         <span className="text-sm font-medium text-foreground/90">Dedicated support</span>
@@ -175,7 +184,7 @@ const CatalanceHero = () => {
                                 <Link to="/service" className="w-full mt-auto">
                                     <Button
                                         size="lg"
-                                        className="w-full group/btn bg-orange-600 hover:bg-orange-500 text-white font-semibold px-6 py-6 text-base shadow-lg shadow-orange-500/20 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-[1.02]"
+                                        className="w-full group/btn bfont-semibold px-6 py-6 text-base shadow-lg shadow-orange-500/20 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-[1.02]"
                                     >
                                         Explore Talent
                                         <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
@@ -253,7 +262,7 @@ const CatalanceHero = () => {
                         {pillars.map((h, i) => (
                             <div
                                 key={i}
-                                className={`flex-1 ${isDark ? 'bg-black' : 'bg-orange-200/40'} transition-height duration-1000 ease-in-out`}
+                                className={`flex-1 ${isDark ? 'bg-black' : 'bg-gray-100'} transition-height duration-1000 ease-in-out`}
                                 style={{
                                     height: isMounted ? `${h}%` : '0%',
                                     transitionDelay: `${Math.abs(i - Math.floor(pillars.length / 2)) * 60}ms`

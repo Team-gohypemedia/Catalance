@@ -198,7 +198,7 @@ const ClientInfoCard = ({ client }) => {
 
 const ClientAboutCard = ({ client, project, onUpdateLink }) => {
   if (!client) return null;
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [linkValue, setLinkValue] = useState(project?.externalLink || "");
   const [isSaving, setIsSaving] = useState(false);
@@ -211,12 +211,12 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-        await onUpdateLink(linkValue);
-        setIsEditing(false);
+      await onUpdateLink(linkValue);
+      setIsEditing(false);
     } catch (error) {
-        console.error("Failed to update link", error);
+      console.error("Failed to update link", error);
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
@@ -230,64 +230,64 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-base text-foreground">About</h3>
-      
+
       <div className="space-y-3">
         {/* Project Link with Edit Mode */}
         <div className="flex flex-col gap-2">
-            {isEditing ? (
-                 <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                        <Link2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            value={linkValue}
-                            onChange={(e) => setLinkValue(e.target.value)}
-                            className="pl-9 h-9 text-sm"
-                            placeholder="https://project-link.com"
-                            autoFocus
-                        />
-                    </div>
-                    <Button size="icon" variant="ghost" className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50" onClick={handleSave} disabled={isSaving}>
-                        <Check className="h-4 w-4" />
-                    </Button>
-                     <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={handleCancel} disabled={isSaving}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                 </div>
-            ) : (
-                // Display Mode
-                <div className="group relative min-h-[24px] flex items-center">
-                    {displayLink ? (
-                        <a 
-                            href={displayLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="flex items-start gap-2 text-sm text-blue-400 hover:underline font-medium break-all pr-8"
-                        >
-                            <Link2 className="w-4 h-4 mt-0.5 shrink-0" />
-                            <span>{displayLink.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
-                        </a>
-                    ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                             <Link2 className="w-4 h-4 shrink-0" />
-                             <span>No project link</span>
-                        </div>
-                    )}
-                    
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute -right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setIsEditing(true);
-                        }}
-                    >
-                        <Pencil className="h-3 w-3 text-muted-foreground" />
-                    </Button>
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Link2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={linkValue}
+                  onChange={(e) => setLinkValue(e.target.value)}
+                  className="pl-9 h-9 text-sm"
+                  placeholder="https://project-link.com"
+                  autoFocus
+                />
+              </div>
+              <Button size="icon" variant="ghost" className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50" onClick={handleSave} disabled={isSaving}>
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={handleCancel} disabled={isSaving}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            // Display Mode
+            <div className="group relative min-h-[24px] flex items-center">
+              {displayLink ? (
+                <a
+                  href={displayLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-2 text-sm text-blue-400 hover:underline font-medium break-all pr-8"
+                >
+                  <Link2 className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>{displayLink.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                </a>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Link2 className="w-4 h-4 shrink-0" />
+                  <span>No project link</span>
                 </div>
-            )}
+              )}
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -right-2 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsEditing(true);
+                }}
+              >
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+              </Button>
+            </div>
+          )}
         </div>
-        
+
         {/* Tech Stack - parsed from description */}
         {(() => {
           const desc = project?.description || "";
@@ -300,7 +300,7 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
             </div>
           ) : null;
         })()}
-        
+
         {/* Summary - parsed from description */}
         {(() => {
           const desc = project?.description || "";
@@ -493,14 +493,13 @@ const FreelancerProjectDetailContent = () => {
             budget: normalizedBudget,
             currency: match.project.currency || match.currency || "₹",
             spent: Number(match.project.spent || 0),
-            spent: Number(match.project.spent || 0),
             manager: match.project.manager, // Map manager details
             owner: match.project.owner, // Store full owner object for details card
             externalLink: match.project.externalLink || null, // Project link
             description: match.project.description || null // Project description
           });
           setIsFallback(false);
-          
+
           // Load saved task progress from database
           if (Array.isArray(match.project.completedTasks)) {
             setCompletedTaskIds(new Set(match.project.completedTasks));
@@ -632,7 +631,7 @@ const FreelancerProjectDetailContent = () => {
       setMessages(prev => {
         const pending = prev.filter(m => m.pending);
         // Dedupe based on signature (sender + text + attachment name)
-        const backendSignatures = new Set(normalized.map(m => 
+        const backendSignatures = new Set(normalized.map(m =>
           `${m.sender}:${m.text}:${m.attachment?.name || ''}`
         ));
 
@@ -735,9 +734,9 @@ const FreelancerProjectDetailContent = () => {
           attachment,
           pending: true
         };
-        
+
         setMessages((prev) => [...prev, userMessage]);
-        
+
         // Clear input immediately
         setInput("");
 
@@ -765,7 +764,7 @@ const FreelancerProjectDetailContent = () => {
         console.error("Upload failed", e);
         toast.error("Failed to send file");
       }
-      
+
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -1126,136 +1125,124 @@ const FreelancerProjectDetailContent = () => {
                   {/* Dark Progress Bar with Handle */}
                   <div className="relative">
                     <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-400"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
                     {/* Circular Handle */}
-                    <div 
+                    <div
                       className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-md transition-all duration-300"
                       style={{ left: `calc(${overallProgress}% - 8px)` }}
                     />
                   </div>
-                  
+
                   {/* Phase Cards */}
                   <div className="grid grid-cols-4 gap-3">
                     {/* Phase 1 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${
-                      derivedPhases[0]?.status === 'completed' 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
+                    <div className={`p-4 rounded-lg border-l-4 ${derivedPhases[0]?.status === 'completed'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500'
                         : derivedPhases[0]?.status === 'in-progress'
                           ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
                           : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                    }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                        derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
                       }`}>
+                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500'
+                        }`}>
                         Phase 1
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
                         {derivedPhases[0]?.name || 'Discovery'}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${
-                        derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
+                      <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500'
+                        }`}>
                         {derivedPhases[0]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
                         {derivedPhases[0]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[0]?.status === 'completed' ? 'Completed' 
+                        {derivedPhases[0]?.status === 'completed' ? 'Completed'
                           : derivedPhases[0]?.status === 'in-progress' ? 'Active' : 'Pending'}
                       </div>
                     </div>
-                    
+
                     {/* Phase 2 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${
-                      derivedPhases[1]?.status === 'completed' 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
+                    <div className={`p-4 rounded-lg border-l-4 ${derivedPhases[1]?.status === 'completed'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500'
                         : derivedPhases[1]?.status === 'in-progress'
                           ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
                           : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                    }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                        derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
                       }`}>
+                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500'
+                        }`}>
                         Phase 2
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
                         {derivedPhases[1]?.name || 'Development'}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${
-                        derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
+                      <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500'
+                        }`}>
                         {derivedPhases[1]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
                         {derivedPhases[1]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[1]?.status === 'completed' ? 'Completed' 
+                        {derivedPhases[1]?.status === 'completed' ? 'Completed'
                           : derivedPhases[1]?.status === 'in-progress' ? 'Active' : 'Pending'}
                       </div>
                     </div>
-                    
+
                     {/* Phase 3 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${
-                      derivedPhases[2]?.status === 'completed' 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
+                    <div className={`p-4 rounded-lg border-l-4 ${derivedPhases[2]?.status === 'completed'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500'
                         : derivedPhases[2]?.status === 'in-progress'
                           ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
                           : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                    }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                        derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
                       }`}>
+                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500'
+                        }`}>
                         Phase 3
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
                         {derivedPhases[2]?.name || 'Testing'}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${
-                        derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
+                      <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500'
+                        }`}>
                         {derivedPhases[2]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
                         {derivedPhases[2]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[2]?.status === 'completed' ? 'Completed' 
+                        {derivedPhases[2]?.status === 'completed' ? 'Completed'
                           : derivedPhases[2]?.status === 'in-progress' ? 'Active' : 'Pending'}
                       </div>
                     </div>
-                    
+
                     {/* Phase 4 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${
-                      derivedPhases[3]?.status === 'completed' 
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500' 
+                    <div className={`p-4 rounded-lg border-l-4 ${derivedPhases[3]?.status === 'completed'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500'
                         : derivedPhases[3]?.status === 'in-progress'
                           ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
                           : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                    }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                        derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
                       }`}>
+                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500'
+                        }`}>
                         Phase 4
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
                         {derivedPhases[3]?.name || 'Deployment'}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${
-                        derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' 
-                        : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500'
-                      }`}>
+                      <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-500'
+                        }`}>
                         {derivedPhases[3]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
                         {derivedPhases[3]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[3]?.status === 'completed' ? 'Completed' 
+                        {derivedPhases[3]?.status === 'completed' ? 'Completed'
                           : derivedPhases[3]?.status === 'in-progress' ? 'Active' : 'Pending'}
                       </div>
                     </div>
@@ -1273,12 +1260,12 @@ const FreelancerProjectDetailContent = () => {
                       {/* Parse and display all description fields */}
                       {(() => {
                         const desc = project.description;
-                        
+
                         // Field patterns - extract value until next field name or end
                         // Include Budget and Next Steps as terminators but we won't display them
                         const fieldNames = ['Service', 'Project', 'Client', 'Website type', 'Tech stack', 'Pages', 'Timeline', 'Budget', 'Next Steps', 'Summary', 'Deliverables', 'Pages & Features', 'Core pages', 'Additional pages', 'Integrations', 'Payment Gateway', 'Designs', 'Hosting', 'Domain'];
                         const fieldPattern = fieldNames.join('|');
-                        
+
                         // Extract a field value - stops at next field name
                         const extractField = (fieldName) => {
                           const regex = new RegExp(`${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`, 'is');
@@ -1289,7 +1276,7 @@ const FreelancerProjectDetailContent = () => {
                           }
                           return null;
                         };
-                        
+
                         const service = extractField('Service');
                         const projectName = extractField('Project');
                         const client = extractField('Client');
@@ -1297,11 +1284,11 @@ const FreelancerProjectDetailContent = () => {
                         const techStack = extractField('Tech stack');
                         const pages = extractField('Pages');
                         const timeline = extractField('Timeline');
-                        
+
                         // Extract summary (everything after "Summary:" until next major field or end)
                         const summaryMatch = desc.match(/Summary[:\s]+(.+?)(?=(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps)[:\s]|$)/is);
                         const summary = summaryMatch ? summaryMatch[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim() : null;
-                        
+
                         // Extract deliverables
                         const deliverables = [];
                         const delivMatch = desc.match(/Deliverables[:\s-]+([^-]+)/i);
@@ -1314,7 +1301,7 @@ const FreelancerProjectDetailContent = () => {
                             }
                           });
                         }
-                        
+
                         // Field items to display (excluding Budget, Next Steps)
                         const fields = [
                           { label: 'Service', value: service },
@@ -1324,11 +1311,11 @@ const FreelancerProjectDetailContent = () => {
                           { label: 'Tech Stack', value: techStack },
                           { label: 'Timeline', value: timeline },
                         ].filter(f => f.value);
-                        
+
                         // Extract pages from Core pages and Additional pages sections
                         const corePages = extractField('Core pages included') || extractField('Core pages');
                         const additionalPages = extractField('Additional pages\\/features') || extractField('Additional pages');
-                        
+
                         // Parse pages into arrays - clean up dashes and section markers
                         const parsePagesString = (str) => {
                           if (!str) return [];
@@ -1337,10 +1324,10 @@ const FreelancerProjectDetailContent = () => {
                             .map(p => p.replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim())
                             .filter(p => p.length > 2 && !p.includes(':') && !p.toLowerCase().includes('additional') && !p.toLowerCase().includes('pages'));
                         };
-                        
+
                         const corePagesArr = parsePagesString(corePages);
                         const additionalPagesArr = parsePagesString(additionalPages);
-                        
+
                         return (
                           <div className="space-y-4">
                             {/* Display structured fields */}
@@ -1354,7 +1341,7 @@ const FreelancerProjectDetailContent = () => {
                                 ))}
                               </div>
                             )}
-                            
+
                             {/* Summary */}
                             {summary && (
                               <div className="pt-2">
@@ -1362,7 +1349,7 @@ const FreelancerProjectDetailContent = () => {
                                 <p className="text-sm text-foreground leading-relaxed">{summary}</p>
                               </div>
                             )}
-                            
+
                             {/* Pages & Features */}
                             {(corePagesArr.length > 0 || additionalPagesArr.length > 0) && (
                               <div className="pt-2">
@@ -1395,7 +1382,7 @@ const FreelancerProjectDetailContent = () => {
                                 </div>
                               </div>
                             )}
-                            
+
                             {/* Deliverables */}
                             {deliverables.length > 0 && (
                               <div className="pt-2">
@@ -1410,7 +1397,7 @@ const FreelancerProjectDetailContent = () => {
                                 </ul>
                               </div>
                             )}
-                            
+
                             {/* If no structured fields found, show raw description */}
                             {fields.length === 0 && !summary && (
                               <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
@@ -1418,7 +1405,7 @@ const FreelancerProjectDetailContent = () => {
                           </div>
                         );
                       })()}
-                      
+
                       {/* Notes section - from project notes if available */}
                       {project?.notes && (
                         <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -1505,21 +1492,21 @@ const FreelancerProjectDetailContent = () => {
             <div className="space-y-4">
               {/* Client Info Card - Top of sidebar */}
               <ClientInfoCard client={project?.owner} />
-              <ClientAboutCard 
-                client={project?.owner} 
+              <ClientAboutCard
+                client={project?.owner}
                 project={project}
                 onUpdateLink={async (newLink) => {
-                    const response = await authFetch(`/projects/${projectId}`, {
-                        method: "PATCH",
-                        body: JSON.stringify({ externalLink: newLink })
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        setProject(prev => ({ ...prev, externalLink: data.data.externalLink }));
-                        toast.success("Project link updated");
-                    } else {
-                        toast.error("Failed to update link");
-                    }
+                  const response = await authFetch(`/projects/${projectId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ externalLink: newLink })
+                  });
+                  if (response.ok) {
+                    const data = await response.json();
+                    setProject(prev => ({ ...prev, externalLink: data.data.externalLink }));
+                    toast.success("Project link updated");
+                  } else {
+                    toast.error("Failed to update link");
+                  }
                 }}
               />
 
@@ -1534,7 +1521,7 @@ const FreelancerProjectDetailContent = () => {
                     const isSelf = message.sender === "user";
                     const isAssistant = message.sender === "assistant";
                     const align = isAssistant || !isSelf ? "justify-start" : "justify-end";
-                    
+
                     const prevMessage = messages[index - 1];
                     const currentDate = message.createdAt ? new Date(message.createdAt) : new Date();
                     const prevDate = prevMessage?.createdAt ? new Date(prevMessage.createdAt) : null;
@@ -1542,47 +1529,46 @@ const FreelancerProjectDetailContent = () => {
 
                     return (
                       <React.Fragment key={message.id || index}>
-                         {showDateDivider && (
+                        {showDateDivider && (
                           <div className="flex justify-center my-4">
                             <span className="bg-muted/40 px-3 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide text-muted-foreground/70">
                               {isToday(currentDate)
                                 ? "Today"
                                 : isYesterday(currentDate)
-                                ? "Yesterday"
-                                : format(currentDate, "MMMM d, yyyy")}
+                                  ? "Yesterday"
+                                  : format(currentDate, "MMMM d, yyyy")}
                             </span>
                           </div>
                         )}
                         <div className={`flex ${align}`}>
                           <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${
-                              isSelf 
-                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm" 
+                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${isSelf
+                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
                                 : "bg-muted text-foreground rounded-tl-sm border border-border/60"
-                            }`}
+                              }`}
                           >
-                           {message.sender === "other" && message.senderName && (
+                            {message.sender === "other" && message.senderName && (
                               <span className="text-[10px] opacity-70 mb-1 block">{message.senderName}</span>
                             )}
-                            
+
                             {message.text && (
                               <p className="leading-relaxed whitespace-pre-wrap break-words">
                                 {message.text}
                               </p>
                             )}
-                            
+
                             {message.attachment && (
                               <div className="mt-2">
                                 {message.attachment.type?.startsWith("image/") || message.attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                   <a href={message.attachment.url} target="_blank" rel="noopener noreferrer" className="block">
-                                    <img 
-                                      src={message.attachment.url} 
-                                      alt={message.attachment.name || "Attachment"} 
+                                  <a href={message.attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+                                    <img
+                                      src={message.attachment.url}
+                                      alt={message.attachment.name || "Attachment"}
                                       className="max-w-[180px] max-h-[180px] rounded-lg object-cover"
                                     />
                                   </a>
                                 ) : (
-                                  <a 
+                                  <a
                                     href={message.attachment.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -1661,17 +1647,17 @@ const FreelancerProjectDetailContent = () => {
                       {docs.map((doc, idx) => {
                         const isImage = doc.type?.startsWith("image/") || doc.url?.match(/\.(jpg|jpeg|png|webp|gif)$/i);
                         return (
-                          <a 
-                            key={idx} 
-                            href={doc.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                          <a
+                            key={idx}
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex items-center gap-2 text-sm p-2 border border-border/60 rounded bg-muted/20 hover:bg-muted/40 transition-colors"
                           >
                             {isImage ? (
-                               <Image className="w-4 h-4 text-blue-500 shrink-0" />
+                              <Image className="w-4 h-4 text-blue-500 shrink-0" />
                             ) : (
-                               <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+                              <FileText className="w-4 h-4 text-amber-500 shrink-0" />
                             )}
                             <span className="truncate flex-1">{doc.name}</span>
                             <span className="text-xs text-muted-foreground">
@@ -1747,8 +1733,8 @@ const FreelancerProjectDetailContent = () => {
               </div>
             )}
             <div className="flex flex-col gap-2">
-               <label className="text-sm font-medium">Add Note</label>
-               <Textarea
+              <label className="text-sm font-medium">Add Note</label>
+              <Textarea
                 placeholder="Add a note..."
                 value={issueText}
                 onChange={(e) => setIssueText(e.target.value)}
