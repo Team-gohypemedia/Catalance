@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Sparkles, Users, TrendingUp, ShieldCheck, Target, Zap, Briefcase } from "lucide-react";
+import { ArrowRight, Users, TrendingUp, ShieldCheck, Target, Zap, Briefcase, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./theme-provider";
 import MatrixRain from "@/components/ui/matrix-code";
+import SparklesIcon from "@/components/ui/sparkles-icon";
+import { Spotlight } from "@/components/spotlight-new";
 
 const CatalanceHero = () => {
 
@@ -51,7 +53,7 @@ const CatalanceHero = () => {
           }
         `}
             </style>
-            <section className={`relative isolate min-h-screen w-full overflow-hidden bg-background text-foreground flex flex-col items-center transition-colors duration-500`}>
+            <section className={`relative isolate min-h-screen w-full overflow-hidden bg-white dark:bg-black text-foreground flex flex-col items-center transition-colors duration-500`}>
                 {/* ================== BACKGROUND ================== */}
                 <div
                     aria-hidden
@@ -60,19 +62,29 @@ const CatalanceHero = () => {
                         backgroundColor: isDark ? "#000000" : "#FFFFFF",
                     }} />
 
+                {/* Matrix Rain Background */}
                 <MatrixRain
-                    color="#EAB308"
-                    className="absolute inset-0 z-[-25]"
-                    fadeOpacity={0.05}
+                    color="#FACC15"
+                    className="absolute inset-0 z-[-26]"
+                    fadeOpacity={0.1}
                     style={{
-                        opacity: isDark ? 0.4 : 0.25
+                        opacity: isDark ? 0.25 : 0.1
                     }}
+                />
+
+                {/* Spotlight Effect */}
+                <Spotlight
+                    gradientFirst="radial-gradient(68.54% 68.72% at 55.02% 31.46%, hsla(48, 96%, 53%, .25) 0, hsla(48, 96%, 53%, .1) 50%, hsla(48, 96%, 53%, 0) 80%)"
+                    gradientSecond="radial-gradient(50% 50% at 50% 50%, hsla(48, 96%, 53%, .18) 0, hsla(48, 96%, 53%, .06) 80%, transparent 100%)"
+                    gradientThird="radial-gradient(50% 50% at 50% 50%, hsla(48, 96%, 53%, .14) 0, hsla(48, 96%, 53%, .04) 80%, transparent 100%)"
+                    duration={8}
+                    xOffset={80}
                 />
 
                 {/* Grid Background */}
                 <div
                     aria-hidden
-                    className="absolute inset-0 z-[-28] opacity-30"
+                    className={`absolute inset-0 z-[-28] ${isDark ? 'opacity-30' : 'opacity-100'}`}
                     style={{
                         backgroundImage: isDark
                             ? `linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px),
@@ -99,9 +111,9 @@ const CatalanceHero = () => {
 
                     {/* Badge */}
                     <div className={`flex justify-center mb-8 mt-16 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}>
-                        <Badge className={`group ${isDark ? 'bg-transparent hover:bg-white/5 text-white border-white/20' : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200 shadow-sm'} border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-default`}>
-                            <Sparkles className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-300" />
-                            Trusted by 10,000+ Freelancers & Clients
+                        <Badge className={`group [&>svg]:size-6 [&>svg]:pointer-events-auto ${isDark ? 'bg-transparent hover:bg-white/5 text-white border-white/20' : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200 shadow-sm'} border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer`}>
+                            <SparklesIcon size={24} className="text-primary" />
+                            Trusted by <span className="text-primary font-semibold">10,000+</span> Freelancers & Clients
                         </Badge>
                     </div>
 
