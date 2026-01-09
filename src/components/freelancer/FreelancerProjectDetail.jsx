@@ -314,16 +314,6 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
               <Button size="icon" variant="ghost" className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50" onClick={handleSave} disabled={isSaving}>
                 <Check className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={handleCancel} disabled={isSaving}>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                <Check className="h-4 w-4" />
-              </Button>
               <Button
                 size="icon"
                 variant="ghost"
@@ -345,7 +335,6 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
                   className="flex items-start gap-2 text-sm text-blue-400 hover:underline font-medium break-all pr-8"
                 >
                   <Link2 className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{displayLink.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
                   <span>
                     {displayLink.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                   </span>
@@ -980,12 +969,6 @@ const FreelancerProjectDetailContent = () => {
       setMessages((prev) => {
         const pending = prev.filter((m) => m.pending);
         // Dedupe based on signature (sender + text + attachment name)
-        const backendSignatures = new Set(normalized.map(m =>
-          `${m.sender}:${m.text}:${m.attachment?.name || ''}`
-        ));
-
-        const stillPending = pending.filter(p => {
-          const signature = `${p.sender}:${p.text}:${p.attachment?.name || ''}`;
         const backendSignatures = new Set(
           normalized.map(
             (m) => `${m.sender}:${m.text}:${m.attachment?.name || ""}`
@@ -1481,7 +1464,6 @@ const FreelancerProjectDetailContent = () => {
                     <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-400"
-                        className="h-full rounded-full transition-all duration-300 bg-linear-to-r from-amber-500 via-yellow-400 to-amber-400"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
@@ -1505,28 +1487,10 @@ const FreelancerProjectDetailContent = () => {
                           : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
                             : 'text-gray-500'
                         }`}>
-                    <div
-                      className={`p-4 rounded-lg border-l-4 ${
-                        derivedPhases[0]?.status === "completed"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
-                          : derivedPhases[0]?.status === "in-progress"
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                          derivedPhases[0]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[0]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
                         Phase 1
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[0]?.name || "Discovery"}
+                        {derivedPhases[0]?.name || 'Discovery'}
                       </div>
                       <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
                           : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
@@ -1536,26 +1500,6 @@ const FreelancerProjectDetailContent = () => {
                         {derivedPhases[0]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
                         {derivedPhases[0]?.status === 'completed' ? 'Completed'
                           : derivedPhases[0]?.status === 'in-progress' ? 'Active' : 'Pending'}
-                      <div
-                        className={`text-xs flex items-center gap-1.5 ${
-                          derivedPhases[0]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[0]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {derivedPhases[0]?.status === "completed" && (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        {derivedPhases[0]?.status === "in-progress" && (
-                          <Circle className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        {derivedPhases[0]?.status === "completed"
-                          ? "Completed"
-                          : derivedPhases[0]?.status === "in-progress"
-                          ? "Active"
-                          : "Pending"}
                       </div>
                     </div>
 
@@ -1570,28 +1514,10 @@ const FreelancerProjectDetailContent = () => {
                           : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
                             : 'text-gray-500'
                         }`}>
-                    <div
-                      className={`p-4 rounded-lg border-l-4 ${
-                        derivedPhases[1]?.status === "completed"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
-                          : derivedPhases[1]?.status === "in-progress"
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                          derivedPhases[1]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[1]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
                         Phase 2
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[1]?.name || "Development"}
+                        {derivedPhases[1]?.name || 'Development'}
                       </div>
                       <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
                           : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
@@ -1601,26 +1527,6 @@ const FreelancerProjectDetailContent = () => {
                         {derivedPhases[1]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
                         {derivedPhases[1]?.status === 'completed' ? 'Completed'
                           : derivedPhases[1]?.status === 'in-progress' ? 'Active' : 'Pending'}
-                      <div
-                        className={`text-xs flex items-center gap-1.5 ${
-                          derivedPhases[1]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[1]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {derivedPhases[1]?.status === "completed" && (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        {derivedPhases[1]?.status === "in-progress" && (
-                          <Circle className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        {derivedPhases[1]?.status === "completed"
-                          ? "Completed"
-                          : derivedPhases[1]?.status === "in-progress"
-                          ? "Active"
-                          : "Pending"}
                       </div>
                     </div>
 
@@ -1635,28 +1541,10 @@ const FreelancerProjectDetailContent = () => {
                           : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
                             : 'text-gray-500'
                         }`}>
-                    <div
-                      className={`p-4 rounded-lg border-l-4 ${
-                        derivedPhases[2]?.status === "completed"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
-                          : derivedPhases[2]?.status === "in-progress"
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                          derivedPhases[2]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[2]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
                         Phase 3
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[2]?.name || "Testing"}
+                        {derivedPhases[2]?.name || 'Testing'}
                       </div>
                       <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
                           : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
@@ -1666,26 +1554,6 @@ const FreelancerProjectDetailContent = () => {
                         {derivedPhases[2]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
                         {derivedPhases[2]?.status === 'completed' ? 'Completed'
                           : derivedPhases[2]?.status === 'in-progress' ? 'Active' : 'Pending'}
-                      <div
-                        className={`text-xs flex items-center gap-1.5 ${
-                          derivedPhases[2]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[2]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {derivedPhases[2]?.status === "completed" && (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        {derivedPhases[2]?.status === "in-progress" && (
-                          <Circle className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        {derivedPhases[2]?.status === "completed"
-                          ? "Completed"
-                          : derivedPhases[2]?.status === "in-progress"
-                          ? "Active"
-                          : "Pending"}
                       </div>
                     </div>
 
@@ -1700,28 +1568,10 @@ const FreelancerProjectDetailContent = () => {
                           : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
                             : 'text-gray-500'
                         }`}>
-                    <div
-                      className={`p-4 rounded-lg border-l-4 ${
-                        derivedPhases[3]?.status === "completed"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
-                          : derivedPhases[3]?.status === "in-progress"
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
-                      }`}
-                    >
-                      <div
-                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
-                          derivedPhases[3]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[3]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
                         Phase 4
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[3]?.name || "Deployment"}
+                        {derivedPhases[3]?.name || 'Deployment'}
                       </div>
                       <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
                           : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
@@ -1731,26 +1581,6 @@ const FreelancerProjectDetailContent = () => {
                         {derivedPhases[3]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
                         {derivedPhases[3]?.status === 'completed' ? 'Completed'
                           : derivedPhases[3]?.status === 'in-progress' ? 'Active' : 'Pending'}
-                      <div
-                        className={`text-xs flex items-center gap-1.5 ${
-                          derivedPhases[3]?.status === "completed"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : derivedPhases[3]?.status === "in-progress"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {derivedPhases[3]?.status === "completed" && (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        {derivedPhases[3]?.status === "in-progress" && (
-                          <Circle className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        {derivedPhases[3]?.status === "completed"
-                          ? "Completed"
-                          : derivedPhases[3]?.status === "in-progress"
-                          ? "Active"
-                          : "Pending"}
                       </div>
                     </div>
                   </div>
@@ -2055,11 +1885,6 @@ const FreelancerProjectDetailContent = () => {
                 onUpdateLink={async (newLink) => {
                   const response = await authFetch(`/projects/${projectId}`, {
                     method: "PATCH",
-                    body: JSON.stringify({ externalLink: newLink })
-                  });
-                  if (response.ok) {
-                    const data = await response.json();
-                    setProject(prev => ({ ...prev, externalLink: data.data.externalLink }));
                     body: JSON.stringify({ externalLink: newLink }),
                   });
                   if (response.ok) {
@@ -2089,7 +1914,6 @@ const FreelancerProjectDetailContent = () => {
                   {messages.map((message, index) => {
                     const isSelf = message.sender === "user";
                     const isAssistant = message.sender === "assistant";
-                    const align = isAssistant || !isSelf ? "justify-start" : "justify-end";
                     const align =
                       isAssistant || !isSelf ? "justify-start" : "justify-end";
 
@@ -2119,41 +1943,28 @@ const FreelancerProjectDetailContent = () => {
                         <div className={`flex ${align}`}>
                           <div
                             className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${isSelf
-                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${
-                              isSelf
-                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
-                                : "bg-muted text-foreground rounded-tl-sm border border-border/60"
+                              ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
+                              : "bg-muted text-foreground rounded-tl-sm border border-border/60"
                               }`}
                           >
                             {message.sender === "other" && message.senderName && (
-                              <span className="text-[10px] opacity-70 mb-1 block">{message.senderName}</span>
+                              <span className="text-[10px] opacity-70 mb-1 block">
+                                {message.senderName}
+                              </span>
                             )}
-                            {message.sender === "other" &&
-                              message.senderName && (
-                                <span className="text-[10px] opacity-70 mb-1 block">
-                                  {message.senderName}
-                                </span>
-                              )}
 
                             {message.text && (
-                              <p className="leading-relaxed whitespace-pre-wrap wrap-break-word">
+                              <p className="leading-relaxed whitespace-pre-wrap break-words">
                                 {message.text}
                               </p>
                             )}
 
                             {message.attachment && (
                               <div className="mt-2">
-                                {message.attachment.type?.startsWith("image/") || message.attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                  <a href={message.attachment.url} target="_blank" rel="noopener noreferrer" className="block">
-                                    <img
-                                      src={message.attachment.url}
-                                      alt={message.attachment.name || "Attachment"}
-                                {message.attachment.type?.startsWith(
-                                  "image/"
-                                ) ||
-                                message.attachment.url?.match(
-                                  /\.(jpg|jpeg|png|gif|webp)$/i
-                                ) ? (
+                                {message.attachment.type?.startsWith("image/") ||
+                                  message.attachment.url?.match(
+                                    /\.(jpg|jpeg|png|gif|webp)$/i
+                                  ) ? (
                                   <a
                                     href={message.attachment.url}
                                     target="_blank"
@@ -2162,9 +1973,7 @@ const FreelancerProjectDetailContent = () => {
                                   >
                                     <img
                                       src={message.attachment.url}
-                                      alt={
-                                        message.attachment.name || "Attachment"
-                                      }
+                                      alt={message.attachment.name || "Attachment"}
                                       className="max-w-[180px] max-h-[180px] rounded-lg object-cover"
                                     />
                                   </a>
@@ -2173,11 +1982,10 @@ const FreelancerProjectDetailContent = () => {
                                     href={message.attachment.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${
-                                      !isSelf
-                                        ? "border border-border/50 bg-background/50"
-                                        : ""
-                                    }`}
+                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${!isSelf
+                                      ? "border border-border/50 bg-background/50"
+                                      : ""
+                                      }`}
                                   >
                                     <FileText className="h-4 w-4 shrink-0" />
                                     <div className="flex-1 min-w-0">
