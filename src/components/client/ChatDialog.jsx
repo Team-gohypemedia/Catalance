@@ -100,6 +100,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
     (API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1"));
   const [useSocket] = useState(SOCKET_ENABLED && isLocalhost);
   const [answeredOptions, setAnsweredOptions] = useState({});
+  const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
   const { user } = useAuth();
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -126,6 +127,40 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
     if (Number.isNaN(date.getTime())) return "";
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
+
+  // Typing effect for placeholder - runs constantly in a loop
+  const placeholderText = "If you don't see what you're looking for, just type here...";
+  useEffect(() => {
+    if (!isOpen) {
+      setAnimatedPlaceholder("");
+      return;
+    }
+    let index = 0;
+    let isTyping = true;
+    setAnimatedPlaceholder("");
+
+    const interval = setInterval(() => {
+      if (isTyping) {
+        if (index <= placeholderText.length) {
+          setAnimatedPlaceholder(placeholderText.slice(0, index));
+          index++;
+        } else {
+          // Pause at full text, then start deleting
+          isTyping = false;
+        }
+      } else {
+        if (index > 0) {
+          index--;
+          setAnimatedPlaceholder(placeholderText.slice(0, index));
+        } else {
+          // Start typing again
+          isTyping = true;
+        }
+      }
+    }, 80);
+
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
   const clearResponseTimeout = () => {
     if (responseTimeoutRef.current) {
@@ -880,8 +915,8 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
         <div className={`flex-1 overflow-hidden grid gap-6 min-h-0 ${hasProposals ? "lg:grid-cols-[1fr_400px]" : "grid-cols-1"}`}>
           {/* Chat Area */}
           <div className="flex flex-col h-full min-h-0 overflow-hidden">
-            <ScrollArea className="flex-1 min-h-0 pr-4">
-              <div className="space-y-4 min-w-0 pb-4">
+            <ScrollArea className="flex-1 min-h-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="space-y-4 min-w-0 pb-4 pr-4 [&::-webkit-scrollbar]:hidden">
                 {messages.map((msg, index) => {
                   const msgKey = getMessageKey(msg, index);
                   const isAssistant = (msg.role || "").toLowerCase() === "assistant" || (msg.senderName || "").toLowerCase() === "assistant";
@@ -1040,54 +1075,54 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                         msg.role === "assistant" &&
                         !isLoading &&
                         !hasUserReplyAfter && (
-                        <div className="flex flex-col gap-2 pl-12 w-full max-w-sm">
-                          <div className="flex flex-wrap gap-2">
-                            {multiSelectOptions.map((option, idx) => {
-                              const currentSelections = input ? input.split(",").map(s => s.trim()).filter(Boolean) : [];
-                              const isSelected = currentSelections.includes(option);
-                              const isLimitReached =
-                                Number.isFinite(maxSelect) &&
-                                maxSelect > 0 &&
-                                currentSelections.length >= maxSelect &&
-                                !isSelected;
+                          <div className="flex flex-col gap-2 pl-12 w-full max-w-sm">
+                            <div className="flex flex-wrap gap-2">
+                              {multiSelectOptions.map((option, idx) => {
+                                const currentSelections = input ? input.split(",").map(s => s.trim()).filter(Boolean) : [];
+                                const isSelected = currentSelections.includes(option);
+                                const isLimitReached =
+                                  Number.isFinite(maxSelect) &&
+                                  maxSelect > 0 &&
+                                  currentSelections.length >= maxSelect &&
+                                  !isSelected;
 
-                              return (
-                                <button
-                                  key={idx}
-                                  onClick={() => {
-                                    let next;
-                                    if (isSelected) {
-                                      next = currentSelections.filter(c => c !== option);
-                                    } else {
-                                      next = [...currentSelections, option];
-                                    }
-                                    setInput(next.join(", "));
-                                    inputRef.current?.focus();
-                                  }}
-                                  disabled={isLimitReached}
-                                  className={`text-xs px-3 py-1.5 rounded-full transition-colors border ${isSelected
-                                    ? "bg-primary text-primary-foreground border-primary"
-                                    : isLimitReached
-                                      ? "bg-background border-input opacity-40 cursor-not-allowed"
-                                      : "bg-background hover:bg-muted border-input"
-                                    }`}
-                                >
-                                  {option}
-                                </button>
-                              );
-                            })}
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={() => {
+                                      let next;
+                                      if (isSelected) {
+                                        next = currentSelections.filter(c => c !== option);
+                                      } else {
+                                        next = [...currentSelections, option];
+                                      }
+                                      setInput(next.join(", "));
+                                      inputRef.current?.focus();
+                                    }}
+                                    disabled={isLimitReached}
+                                    className={`text-xs px-3 py-1.5 rounded-full transition-colors border ${isSelected
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : isLimitReached
+                                        ? "bg-background border-input opacity-40 cursor-not-allowed"
+                                        : "bg-background hover:bg-muted border-input"
+                                      }`}
+                                  >
+                                    {option}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {input && multiSelectOptions.length > 0 && (
+                              <Button
+                                size="sm"
+                                className="self-start mt-1"
+                                onClick={() => handleSend()}
+                              >
+                                Done
+                              </Button>
+                            )}
                           </div>
-                          {input && multiSelectOptions.length > 0 && (
-                            <Button
-                              size="sm"
-                              className="self-start mt-1"
-                              onClick={() => handleSend()}
-                            >
-                              Done
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                        )}
                     </div>
                   );
                 })}
@@ -1117,21 +1152,44 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                 }}
                 className="flex w-full items-end gap-2"
               >
-                <Textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
+                <div className="flex-1 relative">
+                  <Textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder=""
+                    disabled={!conversationId}
+                    rows={1}
+                    className="flex-1 w-full min-h-[44px] max-h-32 resize-none overflow-hidden py-3 leading-5 text-sm"
+                  />
+                  {/* Custom animated shiny placeholder */}
+                  {!input && (
+                    <div
+                      className="absolute top-0 left-0 right-0 bottom-0 flex items-center px-3 py-3 pointer-events-none"
+                    >
+                      <span
+                        className="text-sm bg-gradient-to-r from-zinc-400 via-white to-zinc-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_100%]"
+                        style={{
+                          animation: 'shimmer 2s linear infinite',
+                        }}
+                      >
+                        {animatedPlaceholder}
+                      </span>
+                    </div>
+                  )}
+                  <style>{`
+                    @keyframes shimmer {
+                      0% { background-position: 100% 0; }
+                      100% { background-position: -100% 0; }
                     }
-                  }}
-                  placeholder="Type your message..."
-                  disabled={!conversationId}
-                  rows={1}
-                  className="flex-1 min-h-[44px] max-h-32 resize-none overflow-y-auto scrollbar-thin py-3 leading-5 text-sm"
-                />
+                  `}</style>
+                </div>
                 <Button
                   type="submit"
                   size="icon"

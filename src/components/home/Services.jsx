@@ -103,8 +103,8 @@ const Services = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {/* Card 1: Web Development */}
-                        <div className="group relative overflow-hidden rounded-2xl border-4 border-[#5dd3e8]/60 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-                            <div className="h-56 w-full bg-gradient-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
+                        <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
+                            <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <img
                                     src="/src/assets/icons/web_dev_icon.png"
                                     alt="Web Development"
@@ -120,8 +120,8 @@ const Services = () => {
                         </div>
 
                         {/* Card 2: App Development */}
-                        <div className="group relative overflow-hidden rounded-2xl border-4 border-[#5dd3e8]/60 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-                            <div className="h-56 w-full bg-gradient-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
+                        <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
+                            <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <img
                                     src="/src/assets/icons/app_dev_icon.png"
                                     alt="App Development"
@@ -137,8 +137,8 @@ const Services = () => {
                         </div>
 
                         {/* Card 3: Creative & Design */}
-                        <div className="group relative overflow-hidden rounded-2xl border-4 border-[#5dd3e8]/60 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-                            <div className="h-56 w-full bg-gradient-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
+                        <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
+                            <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <img
                                     src="/src/assets/icons/creative_design_icon.png"
                                     alt="Creative Design"
@@ -154,8 +154,8 @@ const Services = () => {
                         </div>
 
                         {/* Card 4: Performance Marketing */}
-                        <div className="group relative overflow-hidden rounded-2xl border-4 border-[#5dd3e8]/60 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-                            <div className="h-56 w-full bg-gradient-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
+                        <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
+                            <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <img
                                     src="/src/assets/icons/marketing_icon.png"
                                     alt="Marketing"
@@ -171,8 +171,8 @@ const Services = () => {
                         </div>
 
                         {/* Card 5: Voice Agent */}
-                        <div className="group relative overflow-hidden rounded-2xl border-4 border-[#5dd3e8]/60 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-                            <div className="h-56 w-full bg-gradient-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
+                        <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
+                            <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <PhoneCall className="w-20 h-20 text-white drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
@@ -249,7 +249,7 @@ const Services = () => {
                         src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzCs8GFeT9MRHYD-XO1pVjFbW5Wb5n3V-6gHt68r2qkfStt92aZE20P4bLU4GbIOBRssvnRafbtcv2_Ct4zlF0fL4__ATiOI9PaqsP2yIT7uHxwjBpFMnK2Wf52cM-xIUy25P5GktntQ9SO6Eqhr3OnYJUmgyuK1lZEUaUJCpW76yQd56NnCKPFyLbZjAloUaRqXDCqdjBWH4r5n5dJIyZiSQya_euH4bKJiIELVkzHpfh6NGMpF5vCvaszA79Z0Va51X_3lkorjo"
                     />
                     <div className="absolute inset-0 bg-black/70 mix-blend-multiply"></div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#181710] to-transparent"></div>
+                    <div className="absolute inset-0 bg-linear-to-t from-[#181710] to-transparent"></div>
                 </div>
 
                 <div className="relative z-10 max-w-4xl w-full text-center flex flex-col items-center gap-6">

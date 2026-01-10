@@ -114,7 +114,7 @@ const CatalanceHero = () => {
                 <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-20 text-center">
 
                     {/* Badge */}
-                    <div className={`flex justify-center mb-8 mt-16 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}>
+                    <div className={`flex justify-center mb-4 mt-16 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}>
                         <Badge className={`group [&>svg]:size-6 [&>svg]:pointer-events-auto ${isDark ? 'bg-transparent hover:bg-white/5 text-white border-white/20' : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200 shadow-sm'} border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer`}>
                             <SparklesIcon size={24} className="text-primary" />
                             Trusted by <span className="text-primary font-semibold">10,000+</span> Freelancers & Clients
@@ -122,18 +122,18 @@ const CatalanceHero = () => {
                     </div>
 
                     {/* Headlines */}
-                    <div className={`mb-6 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`} style={{ animationDelay: '100ms' }}>
-                        <h1 className={`text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight ${textColor}`}>
-                            Connecting <span className="text-primary">Ideas</span> with
-                        </h1>
-                        <h1 className={`text-6xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-tight ${textColor}`}>
-                            The Right <span className="text-primary">Experts</span>.
+                    <div className={` ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`} style={{ animationDelay: '100ms' }}>
+                        <h1
+                            className={`font-medium tracking-tight leading-tight whitespace-nowrap mb-4 ${textColor}`}
+                            style={{ fontSize: 'clamp(1.5rem, 4vw, 4rem)' }}
+                        >
+                            Connecting <span className="text-primary">Ideas</span> with The Right <span className="text-primary">Experts</span>.
                         </h1>
                     </div>
 
                     {/* Subhead */}
                     <p
-                        className={`text-lg md:text-xl lg:text-2xl ${subTextColor} max-w-3xl mx-auto mb-12 font-light leading-relaxed ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
+                        className={`text-lg md:text-xl lg:text-2xl ${subTextColor} mx-auto mb-6 font-light leading-relaxed whitespace-nowrap ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}
                         style={{ animationDelay: '200ms' }}
                     >
                         A platform that helps projects move from brief to delivery with clarity and control.

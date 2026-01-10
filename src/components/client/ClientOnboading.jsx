@@ -35,121 +35,125 @@ import {
 const features = [
   {
     title: "Website Development",
-    description: "Custom business websites, landing pages and e-commerce stores.",
+    description: "Custom websites built for performance, speed, and business growth.",
     price: "Starting at ₹15,000",
     icon: Globe,
+    image: "/src/assets/icons/web-icon.png",
   },
   {
     title: "App Development",
-    description: "Native and cross-platform mobile applications for iOS and Android.",
+    description: "Mobile apps designed to engage users and scale businesses.",
     price: "Starting at ₹25,000",
     icon: Smartphone,
+    image: "/src/assets/icons/android-icon.png",
   },
   {
     title: "Software Development",
-    description: "Custom software solutions, SaaS platforms and enterprise tools.",
+    description: "Custom software solutions built to solve real business problems.",
     price: "Starting at ₹30,000",
     icon: Terminal,
   },
   {
     title: "Lead Generation",
-    description: "Targeted leads & outreach campaigns to grow sales funnel.",
+    description: "Targeted campaigns that turn prospects into qualified business leads.",
     price: "Starting at ₹15,000",
     icon: Target,
   },
   {
     title: "Video Services",
-    description: "Promo, explainer, ads and product videos.",
+    description: "Creative videos that tell stories and boost brand engagement.",
     price: "Starting at ₹7,500",
     icon: Video,
   },
   {
-    title: "CGI Video",
-    description: "CGI product promos, cinematic visuals, and mixed live-action videos.",
+    title: "CGI Videos",
+    description: "High-impact CGI visuals for products, ads, and storytelling.",
     price: "Starting at INR 15,000",
     icon: Video,
   },
   {
     title: "3D Modeling",
-    description: "Product visuals, architectural renders, and marketing assets.",
+    description: "Detailed 3D models for products, visuals, and digital experiences.",
     price: "Starting at INR 5,000 per model",
     icon: Code,
   },
   {
     title: "SEO Optimization",
-    description: "Rank higher on Google with on-page, off-page and technical SEO.",
+    description: "Improve search rankings and drive consistent organic traffic.",
     price: "Starting at ₹8,000",
     icon: Search,
+    image: "/src/assets/icons/seo-icon.png",
   },
   {
     title: "Social Media Management",
-    description: "Content creation, scheduling and community management.",
+    description: "Content and community management to grow your brand online.",
     price: "Starting at ₹12,000",
     icon: Share2,
   },
   {
     title: "Influencer Marketing",
-    description: "Collaborate with creators for authentic brand promotion.",
+    description: "Collaborate with creators to build trust and audience reach.",
     price: "Starting at ₹10,000",
     icon: Users,
   },
   {
     title: "UGC (User-Generated Content) Marketing",
-    description: "Customer-led videos and reviews for ads and social proof.",
+    description: "Authentic creator content that boosts brand credibility and conversions.",
     price: "Starting at ₹2,000 per video",
     icon: Mic,
   },
   {
     title: "Performance Marketing",
-    description: "Paid ad campaigns (PPC) on Google, Facebook, and Instagram.",
+    description: "Data-driven advertising campaigns focused on measurable results.",
     price: "Starting at ₹15,000",
     icon: Activity,
   },
   {
     title: "Creative & Design",
-    description: "Logo, branding, UI/UX and visual design services.",
+    description: "Visual designs that strengthen branding and communication.",
     price: "Starting at ₹3,500",
     icon: Palette,
   },
   {
     title: "Branding (Naming, Logo & Brand Identity)",
-    description: "Brand naming, logo design, and full brand identity systems.",
+    description: "Build strong brand identities that people remember and trust.",
     price: "Starting at INR 25,000",
     icon: Palette,
   },
   {
     title: "Writing & Content",
-    description: "Blogs, website copy, ad copy and scripts.",
+    description: "Compelling content that informs, engages, and converts audiences.",
     price: "Starting at ₹2,000",
     icon: FileText,
   },
   {
     title: "Customer Support",
-    description: "Chat, email or voice support setup and staffing.",
+    description: "Reliable support services that improve customer satisfaction and retention.",
     price: "Starting at ₹8,000",
     icon: Headphones,
   },
   {
     title: "CRM & ERP Solutions",
-    description: "Custom CRM/ERP systems to streamline business operations.",
+    description: "Systems that streamline operations and centralize business data.",
     price: "Starting at ₹40,000",
     icon: Database,
   },
   {
     title: "AI Automation",
-    description: "Automate repetitive tasks with custom AI workflows and agents.",
+    description: "Automate workflows to save time and improve productivity.",
     price: "Starting at ₹20,000",
     icon: Workflow,
   },
   {
     title: "Voice Agent (AI Voice Bot / Call Automation)",
-    description: "AI voice agents for inbound/outbound calls, lead qualification, and support automation.",
+    description: "AI-powered voice agents for sales, support, and follow-ups.",
     price: "Starting at ₹130,000",
     icon: PhoneCall,
+    image: "/src/assets/icons/voice-agent-icon.png",
   },
   {
     title: "WhatsApp Chat Bot",
-    description: "Automated customer support and sales bots for WhatsApp.",
+    description: "Automated WhatsApp conversations for faster customer support and sales.",
     price: "Starting at ₹10,000",
     icon: MessageCircle,
   },
@@ -162,16 +166,16 @@ function MatrixPattern({ mouseX, mouseY, randomString }) {
 
   return (
     <div className="pointer-events-none">
-      <div className="absolute inset-0 [mask-image:linear-gradient(white,transparent)] opacity-20" /> {/* Base subtle pattern */}
+      <div className="absolute inset-0 mask-[linear-gradient(white,transparent)] opacity-20" /> {/* Base subtle pattern */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-primary to-orange-700 opacity-100 transition duration-500 backdrop-blur-xl" // Always visible, controlled by mask
+        className="absolute inset-0 bg-linear-to-r from-primary to-orange-700 opacity-100 transition duration-500 backdrop-blur-xl" // Always visible, controlled by mask
         style={style}
       />
       <motion.div
         className="absolute inset-0 opacity-100 mix-blend-overlay transition duration-500" // Always visible, controlled by mask
         style={style}
       >
-        <p className="absolute inset-x-0 h-full break-words whitespace-pre-wrap text-xs font-mono font-bold text-white transition duration-500">
+        <p className="absolute inset-x-0 h-full wrap-break-word whitespace-pre-wrap text-xs font-mono font-bold text-white transition duration-500">
           {randomString}
         </p>
       </motion.div>
@@ -265,7 +269,7 @@ const ClientOnboading = () => {
       className="mt-10 space-y-6 text-foreground transition-colors relative"
     >
       {/* Matrix Background Layer - Fixed to cover whole screen */}
-      <div className="fixed inset-0 z-[0] pointer-events-none overflow-hidden">
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <MatrixPattern mouseX={mouseX} mouseY={mouseY} randomString={randomString} />
       </div>
 
@@ -306,35 +310,37 @@ const ClientOnboading = () => {
           <div
             key={index}
             onClick={() => handleCardClick(feature)}
-            className="cursor-pointer relative"
+            className="cursor-pointer relative bg-background rounded-2xl border border-amber-500"
           >
             <div
               className={`
-                h-[380px] rounded-2xl border-4 transition-all duration-300 flex flex-col group relative overflow-hidden
+                h-[300px] rounded-2xl transition-all duration-300 flex flex-col group relative overflow-hidden shadow-xl
                 ${selectedServices.some((item) => item.title === feature.title) && multiSelectEnabled
-                  ? "border-cyan-400 shadow-[0_0_30px_-5px_rgba(34,211,238,0.4)]"
-                  : "border-cyan-400/60 hover:border-cyan-400 hover:shadow-[0_0_25px_-5px_rgba(34,211,238,0.3)] hover:scale-[1.02]"}
+                  ? "ring-2 ring-primary shadow-[0_0_30px_-5px_rgba(250,204,21,0.4)]"
+                  : "hover:shadow-2xl"}
               `}
             >
-              {/* Orange Gradient Background with Icon */}
-              <div className="h-48 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
-                <div className="bg-yellow-500/20 backdrop-blur-sm p-5 rounded-2xl border border-white/20 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                  <feature.icon className="w-12 h-12 text-white drop-shadow-lg" strokeWidth={1.5} />
-                </div>
+              {/* Icon */}
+              <div className="h-32 w-full flex items-center justify-center p-4 relative">
+                {feature.image ? (
+                  <img src={feature.image} alt={feature.title} className="w-30 h-24 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                ) : (
+                  <feature.icon className="w-16 h-16 text-primary drop-shadow-lg group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
+                )}
               </div>
 
               {/* Card Content */}
-              <div className="flex-1 flex flex-col bg-zinc-900 border-t-4 border-[#ff5722] p-5">
+              <div className="flex flex-col px-1 pt-1 pb-1 mt-auto">
                 <h3 className="text-lg font-bold text-white mb-2 text-center group-hover:text-yellow-400 transition-colors line-clamp-2">
                   {feature.title}
                 </h3>
 
-                <p className="text-xs text-zinc-400 font-medium leading-relaxed text-center mb-4 line-clamp-2 flex-1">
+                <p className="text-xs text-zinc-400 font-medium leading-relaxed text-center mb-2 line-clamp-2">
                   {feature.description}
                 </p>
 
                 {/* Chat Now Button */}
-                <Button className="w-full bg-[#ffc800] text-[#181710] hover:bg-[#e5b400] font-bold rounded-lg shadow-md">
+                <Button className="w-full bg-[#ffc800] text-[#181710] font-bold py-6 text-base shadow-md rounded-none rounded-b-xl">
                   Chat Now
                 </Button>
               </div>
