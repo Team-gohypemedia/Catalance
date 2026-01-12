@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Conversation State Machine for Chatbot
  * 
  * Deterministic state tracking to prevent:
@@ -228,6 +228,9 @@ const resolveCataService = (service = "") => {
     return CATA_SERVICE_MAP.get(key) || null;
 };
 
+const isWebsiteDevelopmentService = (service = "") =>
+    resolveCataService(service) === "Website Development";
+
 const CATA_WEBSITE_PAGES = [
     "Services",
     "Products",
@@ -331,12 +334,13 @@ const CATA_BACKEND_OPTIONS = [
 ];
 
 const CATA_DATABASE_OPTIONS = [
+    "No database needed",
     "MySQL",
     "PostgreSQL",
     "MongoDB",
-    "Firebase",
+    "Firebase / Firestore",
     "Supabase",
-    "Skip",
+    "Discuss later",
 ];
 
 const CATA_ECOMMERCE_OPTIONS = [
@@ -362,6 +366,7 @@ const CATA_BUDGET_RANGES = [
     "INR 1,00,000 - 2,50,000 (Custom / dynamic website)",
     "INR 2,50,000 and above (High-end, scalable platform)",
 ];
+const CATA_WEBSITE_MIN_BUDGET = 25000;
 
 const CATA_SEO_BUSINESS_CATEGORIES = [
     "Local service business",
@@ -593,7 +598,6 @@ const CATA_SERVICE_CONFIGS = new Map([
                 "tech_stack",
                 "backend",
                 "database",
-                "ecommerce",
                 "additional_pages",
                 "content_status",
                 "references",
@@ -604,8 +608,6 @@ const CATA_SERVICE_CONFIGS = new Map([
                 "platform_preference",
                 "tech_stack",
                 "backend",
-                "database",
-                "ecommerce",
                 "additional_pages",
             ]),
             questions: [
@@ -681,22 +683,11 @@ const CATA_SERVICE_CONFIGS = new Map([
                 },
                 {
                     key: "database",
-                    templates: ["Database (if needed):"],
+                    templates: ["Which database would you like to use for your website?"],
                     suggestions: CATA_DATABASE_OPTIONS,
-                    multiSelect: true,
-                    expectedType: "list",
+                    expectedType: "enum",
                     required: true,
                     when: shouldAskDatabaseStack,
-                    allowSkip: true,
-                },
-                {
-                    key: "ecommerce",
-                    templates: ["E-commerce (if needed):"],
-                    suggestions: CATA_ECOMMERCE_OPTIONS,
-                    multiSelect: true,
-                    expectedType: "list",
-                    required: true,
-                    when: shouldAskEcommerceStack,
                 },
                 {
                     key: "additional_pages",
@@ -911,11 +902,11 @@ const CATA_SERVICE_CONFIGS = new Map([
                     patterns: ["budget", "monthly budget", "spend"],
                     templates: ["What is your monthly budget for lead generation?"],
                     suggestions: [
-                        "Under ₹15,000 / month",
-                        "₹15,000 – ₹30,000 / month",
-                        "₹30,000 – ₹60,000 / month",
-                        "₹60,000 – ₹1,00,000 / month",
-                        "₹1,00,000 and above / month",
+                        "Under ?15,000 / month",
+                        "?15,000 � ?30,000 / month",
+                        "?30,000 � ?60,000 / month",
+                        "?60,000 � ?1,00,000 / month",
+                        "?1,00,000 and above / month",
                     ],
                 },
             ],
@@ -1575,7 +1566,7 @@ const extractDescriptionFromMixedMessage = (value = "") => {
         candidate = candidate
             .replace(/^(?:hi|hello|hey)\b[!,.\s-]*/i, "")
             .replace(
-                /^(?:my\s+name|name)\s*(?:is|:)?\s+(?!and\b|i\b|im\b|i'm\b|we\b|we're\b)[a-z][a-z'’.-]*(?:\s+(?!and\b|i\b|im\b|i'm\b|we\b|we're\b)[a-z][a-z'’.-]*){0,2}\b[!,.\s-]*/i,
+                /^(?:my\s+name|name)\s*(?:is|:)?\s+(?!and\b|i\b|im\b|i'm\b|we\b|we're\b)[a-z][a-z'�.-]*(?:\s+(?!and\b|i\b|im\b|i'm\b|we\b|we're\b)[a-z][a-z'�.-]*){0,2}\b[!,.\s-]*/i,
                 ""
             )
             .replace(/^\s*(?:and|so)\b\s*/i, "")
@@ -1667,8 +1658,8 @@ const extractOrganizationName = (value = "") => {
 
     const patterns = [
         // "The name I'm thinking of is CartNest"
-        /\b(?:the\s+)?name\s+i['’]m\s+thinking\s+of\s*(?:is|:)?\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
-        /\b(?:the\s+)?name\s+i[’'\?]m\s+thinking\s+of\s*(?:is|:)?\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
+        /\b(?:the\s+)?name\s+i['�]m\s+thinking\s+of\s*(?:is|:)?\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
+        /\b(?:the\s+)?name\s+i[�'\?]m\s+thinking\s+of\s*(?:is|:)?\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
         /\b(?:the\s+)?name\s+im\s+thinking\s+of\s*(?:is|:)?\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
         /\b(?:the\s+)?name\s+i\s+am\s+thinking\s+of\s*(?:is|:)?\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
         /\b(?:the\s+)?name\s+i\s+have\s+in\s+mind\s*(?:is|:)?\s*([a-z0-9][a-z0-9&._' -]{1,80})/i,
@@ -1753,7 +1744,7 @@ const extractBudget = (value = "") => {
     if (/^flexible$/i.test(text)) return "Flexible";
     if (/\bcustom\s*amount\b/i.test(text)) return "Custom amount";
 
-    // Range budget: "₹1,00,000 - ₹4,00,000" or "100000-400000"
+    // Range budget: "?1,00,000 - ?4,00,000" or "100000-400000"
 
     let match = text.match(
         /(?:\u20B9|inr|rs\.?|rupees?)?\s*([\d,]{4,}(?:\.\d+)?)\s*(?:-|to)\s*(?:\u20B9|inr|rs\.?|rupees?)?\s*([\d,]{4,}(?:\.\d+)?)\b/i
@@ -1768,7 +1759,7 @@ const extractBudget = (value = "") => {
     match = text.match(/(?:\u20B9|inr|rs\.?|rupees?)\s*([\d,]+(?:\.\d+)?)\b/i);
     if (match) return match[1].replace(/,/g, "");
 
-    // Chip/label style: "Custom React.js + Node.js (₹1,50,000+)" or "(1,50,000+)"
+    // Chip/label style: "Custom React.js + Node.js (?1,50,000+)" or "(1,50,000+)"
     match = text.match(/\(([^)]{0,60})\)\s*$/);
     if (match && /(?:\u20B9|inr|rs\.?|rupees?|\+|\/-)/i.test(match[1])) {
         const insideNumber = match[1].match(/([\d,]{4,})/);
@@ -1930,9 +1921,9 @@ const extractTechDetailsFromMessage = (value = "") => {
 const formatInr = (amount) => {
     if (!Number.isFinite(amount)) return "";
     try {
-        return `₹${Math.round(amount).toLocaleString("en-IN")}`;
+        return `?${Math.round(amount).toLocaleString("en-IN")}`;
     } catch {
-        return `₹${Math.round(amount)}`;
+        return `?${Math.round(amount)}`;
     }
 };
 
@@ -2066,26 +2057,28 @@ const splitSelections = (value = "") =>
 const parseInrAmount = (value = "") => {
     const text = normalizeText(value)
         .replace(/\?/g, "")
-        .replace(/[₹,]/g, "")
+        .replace(/[?,]/g, "")
         .replace(/\/-|\+/g, "")
         .trim()
         .toLowerCase();
 
     if (!text) return null;
 
-    let match = text.match(/^(\d+(?:\.\d+)?)\s*k$/i);
+    const cleaned = text.replace(/\b(inr|rs|rupees?)\b/g, "").trim();
+
+    let match = cleaned.match(/^(\d+(?:\.\d+)?)\s*k$/i);
     if (match) return Math.round(parseFloat(match[1]) * 1000);
 
-    match = text.match(/^(\d+(?:\.\d+)?)\s*l$/i);
+    match = cleaned.match(/^(\d+(?:\.\d+)?)\s*l$/i);
     if (match) return Math.round(parseFloat(match[1]) * 100000);
 
-    match = text.match(/^(\d+(?:\.\d+)?)\s*lakh$/i);
+    match = cleaned.match(/^(\d+(?:\.\d+)?)\s*lakh$/i);
     if (match) return Math.round(parseFloat(match[1]) * 100000);
 
-    match = text.match(/^(\d+(?:\.\d+)?)\s*lakhs$/i);
+    match = cleaned.match(/^(\d+(?:\.\d+)?)\s*lakhs$/i);
     if (match) return Math.round(parseFloat(match[1]) * 100000);
 
-    match = text.match(/^(\d{4,})$/);
+    match = cleaned.match(/(\d+)/);
     if (match) return parseInt(match[1], 10);
 
     return null;
@@ -2096,7 +2089,7 @@ const parseInrBudgetRange = (value = "") => {
     if (!text) return null;
     if (/^flexible$/i.test(text)) return { flexible: true };
 
-    const rangeMatch = text.match(/(.+?)\s*(?:-|–|to)\s*(.+)/i);
+    const rangeMatch = text.match(/(.+?)\s*(?:-|�|to)\s*(.+)/i);
     if (rangeMatch) {
         const min = parseInrAmount(rangeMatch[1]);
         const max = parseInrAmount(rangeMatch[2]);
@@ -2269,7 +2262,8 @@ const validateWebsiteBudget = (collectedData = {}) => {
     return { isValid: true, reason: null, requirement, parsed };
 };
 
-const LOW_BUDGET_SUGGESTIONS = ["Increase budget", "Continue with current budget"];
+const LOW_BUDGET_SUGGESTIONS = ["Continue with this budget", "Increase budget"];
+const LOW_BUDGET_CONFIRM_SUGGESTIONS = ["Confirm", "Increase budget"];
 
 const isIncreaseBudgetDecision = (value = "") => {
     const canon = canonicalize(value);
@@ -2285,6 +2279,7 @@ const isIncreaseBudgetDecision = (value = "") => {
 const isProceedWithLowBudgetDecision = (value = "") => {
     const canon = canonicalize(value);
     return (
+        canon === "continuewiththisbudget" ||
         canon === "continuewithcurrentbudget" ||
         canon === "continuewithbudget" ||
         canon === "continuebudget" ||
@@ -2294,6 +2289,19 @@ const isProceedWithLowBudgetDecision = (value = "") => {
         canon === "continue" ||
         canon === "proceed" ||
         canon === "goahead"
+    );
+};
+
+const isLowBudgetConfirmDecision = (value = "") => {
+    const canon = canonicalize(value);
+    return (
+        canon === "confirm" ||
+        canon === "confirmed" ||
+        canon === "yes" ||
+        canon === "yesconfirm" ||
+        canon === "yesproceed" ||
+        canon === "yescontinue" ||
+        isProceedWithLowBudgetDecision(value)
     );
 };
 
@@ -2474,7 +2482,7 @@ const isBareBudgetAnswer = (value = "") => {
     if (!text) return false;
     if (text === "flexible") return true;
 
-    // Examples: "60000", "₹60,000", "INR 60000", "60k", "1 lakh", "Under ₹120,000"
+    // Examples: "60000", "?60,000", "INR 60000", "60k", "1 lakh", "Under ?120,000"
     if (/^under\s+(?:\u20B9|inr|rs\.?|rupees?)?\s*\d[\d,]*(?:\.\d+)?\s*(?:k|l|lakh)?\s*$/i.test(text)) {
         return true;
     }
@@ -2484,7 +2492,7 @@ const isBareBudgetAnswer = (value = "") => {
 
 const isBareTimelineAnswer = (value = "") => {
     const text = normalizeText(value)
-        .replace(/[?？؟]/g, "")
+        .replace(/[???]/g, "")
         .toLowerCase();
     if (!text) return false;
     if (text === "flexible") return true;
@@ -2499,9 +2507,9 @@ const isUserQuestion = (value = "") => {
     // Treat as a question only when question-mark punctuation is present (not inside words like "I?m" or "?95,000").
     // This intentionally does NOT infer questions from leading words (e.g. "can you ...") unless the user
     // includes a question mark, so the chatbot doesn't break the questionnaire flow on statement-like inputs.
-    if (!/[?？؟](?![\p{L}\p{N}])/u.test(text)) return false;
+    if (!/[???](?![\p{L}\p{N}])/u.test(text)) return false;
 
-    const withoutMarks = text.replace(/[?？؟](?![\p{L}\p{N}])/gu, "");
+    const withoutMarks = text.replace(/[???](?![\p{L}\p{N}])/gu, "");
     // Treat pure budget/timeline inputs as answers even if a user typed '?'. Otherwise it's a question.
     if (isBareBudgetAnswer(withoutMarks) || isBareTimelineAnswer(withoutMarks)) return false;
     return true;
@@ -2517,7 +2525,7 @@ const looksLikeProjectBrief = (value = "") => {
 
     let signals = 0;
 
-    if (/\bbudget\b/.test(lower) || /\b(inr|rs\.?|rupees?)\b/.test(lower) || lower.includes("₹")) {
+    if (/\bbudget\b/.test(lower) || /\b(inr|rs\.?|rupees?)\b/.test(lower) || lower.includes("?")) {
         signals += 1;
     }
 
@@ -2713,7 +2721,7 @@ const extractName = (value = "") => {
 
     const explicitMyName = text.match(/\bmy\s+name\s*(?:is|:)?\s+(.+)$/i);
     const explicitNameLabel = text.match(/^\s*name\s*(?:is|:)?\s+(.+)$/i);
-    const explicitIAm = text.match(/\b(?:i\s+am|i['’\?]m|im|this\s+is)\s+(.+)$/i);
+    const explicitIAm = text.match(/\b(?:i\s+am|i['�\?]m|im|this\s+is)\s+(.+)$/i);
 
     const explicitMatch = explicitMyName || explicitNameLabel || explicitIAm;
     if (explicitMatch) {
@@ -2733,7 +2741,7 @@ const extractExplicitName = (value = "") => {
     const patterns = [
         /\bmy\s+name\s*(?:is|:)?\s+(.+)/i,
         /^\s*name\s*(?:is|:)?\s+(.+)/i,
-        /\b(?:i\s+am|i['’\?]m|im|this\s+is)\s+(.+)/i,
+        /\b(?:i\s+am|i['�\?]m|im|this\s+is)\s+(.+)/i,
     ];
 
     let explicitMatch = null;
@@ -2817,6 +2825,25 @@ const buildLowBudgetWarning = (state) => {
     const questions = Array.isArray(state?.questions) ? state.questions : [];
     const cataConfig = getCataConfig(state?.service);
     if (cataConfig) {
+        const resolvedService = resolveCataService(state?.service);
+        if (resolvedService === "Website Development") {
+            if (state?.meta?.allowLowBudget || state?.meta?.lowBudgetConfirmed) return null;
+            const collectedData = state?.collectedData || {};
+            const budgetQuestion = findBudgetQuestion(questions);
+            const budgetKey = budgetQuestion?.key || "";
+            const rawBudget = normalizeText(collectedData[budgetKey] || "");
+            if (!rawBudget || rawBudget === "[skipped]") return null;
+
+            const parsed = parseInrBudgetRange(rawBudget);
+            if (!parsed || parsed.flexible) return null;
+            if (Number.isFinite(parsed.max) && parsed.max >= CATA_WEBSITE_MIN_BUDGET) return null;
+
+            return (
+                "The budget you've entered is below the minimum amount required for this service.\n" +
+                "Please note that if we proceed with this budget, the quality, scalability, and reliability of the website may vary."
+            );
+        }
+
         if (state?.meta?.allowLowBudget) return null;
         const collectedData = state?.collectedData || {};
         const budgetQuestion = findBudgetQuestion(questions);
@@ -2859,11 +2886,10 @@ const buildLowBudgetWarning = (state) => {
     const budgetLabel = formatBudgetForWarning(rawBudget) || rawBudget;
     const minLabel = formatMinimumBudgetLabel(requirement);
     const minSuffix = minLabel ? ` (${minLabel})` : "";
-
     return (
-        `Your budget of ${budgetLabel} is below the minimum for ${techLabel}${minSuffix}. ` +
-        "We can still build with your budget, but the quality and polish may vary. " +
-        "Would you like to increase the budget or continue with the current budget?"
+        `Your budget (${budgetLabel}) is below the minimum for ${techLabel}${minSuffix}. ` +
+        "This may be too low to deliver the project at a professional standard. " +
+        "Would you like to increase your budget or continue with the current budget?"
     );
 };
 
@@ -3203,7 +3229,7 @@ const normalizeMoneyValue = (raw = "", locale = "en-IN") => {
         return { status: "ok", normalized: { flexible: true, currency: detectCurrency(text, locale) }, confidence: 0.7 };
     }
 
-    const lowered = text.toLowerCase().replace(/[–—]/g, "-");
+    const lowered = text.toLowerCase().replace(/[��]/g, "-");
     const currency = detectCurrency(lowered, locale);
     const period = /\b(per\s+month|monthly|\/month)\b/i.test(lowered) ? "month" : null;
 
@@ -3289,7 +3315,7 @@ const normalizeDurationValue = (raw = "", allowedUnits = null) => {
         return { status: "ok", normalized: { label: text, kind: "date" }, confidence: 0.7 };
     }
 
-    const normalized = lowered.replace(/[–—]/g, "-");
+    const normalized = lowered.replace(/[��]/g, "-");
     const rangeMatch = normalized.match(
         /(\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:-|to)\s*(\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(day|week|month|year)s?/i
     );
@@ -3333,7 +3359,7 @@ const normalizeDurationValue = (raw = "", allowedUnits = null) => {
 const normalizeNumberRangeValue = (raw = "") => {
     const text = normalizeText(raw);
     if (!text) return { status: "invalid", error: "empty" };
-    const lowered = text.toLowerCase().replace(/[–—]/g, "-");
+    const lowered = text.toLowerCase().replace(/[��]/g, "-");
 
     const rangeMatch = lowered.match(/(\d+(?:\.\d+)?)[\s-]*(?:to|-)[\s-]*(\d+(?:\.\d+)?)/);
     if (rangeMatch) {
@@ -4918,19 +4944,61 @@ export function processUserAnswer(state, message) {
         sharedContext: normalizeSharedContext(state?.sharedContext),
     };
     const hasLowBudgetPending = Boolean(workingState?.meta?.lowBudgetPending);
+    const hasLowBudgetConfirmPending = Boolean(workingState?.meta?.lowBudgetConfirmPending);
     const budgetDecisionIncrease = hasLowBudgetPending && isIncreaseBudgetDecision(normalizedMessage);
     const budgetDecisionProceed = hasLowBudgetPending && isProceedWithLowBudgetDecision(normalizedMessage);
     const budgetInputDetected =
         hasLowBudgetPending && (hasBudgetSignal(normalizedMessage) || isBareBudgetAnswer(normalizedMessage));
+    const budgetConfirmProceed =
+        hasLowBudgetConfirmPending && isLowBudgetConfirmDecision(normalizedMessage);
+    const budgetConfirmIncrease =
+        hasLowBudgetConfirmPending && isIncreaseBudgetDecision(normalizedMessage);
+
+    if (hasLowBudgetConfirmPending) {
+        if (budgetConfirmProceed) {
+            const nextState = recomputeProgress({
+                ...workingState,
+                meta: {
+                    ...(workingState?.meta || {}),
+                    lowBudgetConfirmPending: false,
+                    lowBudgetPending: false,
+                    allowLowBudget: true,
+                    lowBudgetConfirmed: true,
+                    lowBudgetStatus: "Proceeding below minimum budget",
+                },
+            });
+            return nextState;
+        }
+        if (budgetConfirmIncrease) {
+            const cleared = clearBudgetSlot(workingState);
+            const nextState = recomputeProgress({
+                ...cleared,
+                meta: {
+                    ...(cleared?.meta || {}),
+                    lowBudgetConfirmPending: false,
+                    lowBudgetPending: false,
+                    allowLowBudget: false,
+                    lowBudgetConfirmed: false,
+                },
+            });
+            return nextState;
+        }
+        return {
+            ...workingState,
+            meta: { ...(workingState?.meta || {}), wasQuestion: isUserQuestion(normalizedMessage) },
+        };
+    }
 
     if (hasLowBudgetPending) {
         if (budgetDecisionProceed) {
+            const shouldConfirmLowBudget = isWebsiteDevelopmentService(workingState?.service);
             const nextState = recomputeProgress({
                 ...workingState,
                 meta: {
                     ...(workingState?.meta || {}),
                     lowBudgetPending: false,
-                    allowLowBudget: true,
+                    lowBudgetConfirmPending: shouldConfirmLowBudget,
+                    allowLowBudget: shouldConfirmLowBudget ? false : true,
                 },
             });
             return nextState;
@@ -4942,7 +5010,9 @@ export function processUserAnswer(state, message) {
                 meta: {
                     ...(cleared?.meta || {}),
                     lowBudgetPending: false,
+                    lowBudgetConfirmPending: false,
                     allowLowBudget: false,
+                    lowBudgetConfirmed: false,
                 },
             });
             return nextState;
@@ -4955,7 +5025,12 @@ export function processUserAnswer(state, message) {
         }
         workingState = {
             ...workingState,
-            meta: { ...(workingState?.meta || {}), lowBudgetPending: false, allowLowBudget: false },
+            meta: {
+                ...(workingState?.meta || {}),
+                lowBudgetPending: false,
+                lowBudgetConfirmPending: false,
+                allowLowBudget: false,
+            },
         };
     }
 
@@ -4982,6 +5057,15 @@ export function processUserAnswer(state, message) {
         const budgetCheck = validateWebsiteBudget(nextState?.collectedData || {});
         if (budgetCheck?.isValid) {
             nextState.meta.allowLowBudget = false;
+        }
+    }
+    if (isWebsiteDevelopmentService(nextState?.service) && nextState?.meta?.allowLowBudget) {
+        const rawBudget = normalizeText(nextState?.collectedData?.budget_range || "");
+        const parsed = parseInrBudgetRange(rawBudget);
+        if (parsed && Number.isFinite(parsed.max) && parsed.max >= CATA_WEBSITE_MIN_BUDGET) {
+            nextState.meta.allowLowBudget = false;
+            nextState.meta.lowBudgetConfirmed = false;
+            nextState.meta.lowBudgetStatus = "";
         }
     }
 
@@ -5016,6 +5100,10 @@ export function getNextHumanizedQuestion(state) {
         : false;
 
     if (!questions.length) return null;
+
+    if (state?.meta?.lowBudgetConfirmPending) {
+        return `Please confirm you want to continue with this budget.\n[SUGGESTIONS: ${LOW_BUDGET_CONFIRM_SUGGESTIONS.join(" | ")}]`;
+    }
 
     const findSharedConflict = (requiredOnly) => {
         for (const question of questions) {
@@ -5208,6 +5296,9 @@ export function getNextHumanizedQuestion(state) {
 export function shouldGenerateProposal(state) {
     const questions = Array.isArray(state?.questions) ? state.questions : [];
     const slots = state?.slots || {};
+    const lowBudgetWarning = buildLowBudgetWarning(state);
+    if (lowBudgetWarning) return false;
+    if (state?.meta?.lowBudgetPending || state?.meta?.lowBudgetConfirmPending) return false;
     const { missingRequired, missingOptional } = buildMissingLists(
         questions,
         slots,
@@ -5623,9 +5714,12 @@ const generateCataProposalFromState = (state) => {
             sections.push("");
         }
 
-        if (budget) {
+        const lowBudgetStatus = normalizeText(state?.meta?.lowBudgetStatus || "");
+
+        if (budget || lowBudgetStatus) {
             sections.push("Budget Range");
-            sections.push(`- ${budget}`);
+            if (budget) sections.push(`- ${budget}`);
+            if (lowBudgetStatus) sections.push(`- ${lowBudgetStatus}`);
             sections.push("");
         }
 
@@ -5643,7 +5737,7 @@ const generateCataProposalFromState = (state) => {
 
         const sections = ["[PROPOSAL_DATA]"];
         sections.push("## Proposal Title");
-        sections.push(`- Lead Generation Proposal — ${clientName}`);
+        sections.push(`- Lead Generation Proposal � ${clientName}`);
         sections.push("");
 
         sections.push("Confirmed Brief");
@@ -6556,14 +6650,14 @@ export function generateProposalFromState(state) {
     const sections = ["[PROPOSAL_DATA]"];
 
     sections.push("## Proposal Title");
-    sections.push(`- ${serviceName} Proposal — ${projectName}`);
+    sections.push(`- ${serviceName} Proposal � ${projectName}`);
     sections.push("");
 
     sections.push("## 1. Project Overview");
     sections.push(`- Service: ${serviceName}`);
     sections.push(`- Project: ${projectName}`);
     sections.push(`- Client: ${clientName || "To be confirmed."}`);
-    sections.push(`- Goal (1–2 lines): ${goalLine}`);
+    sections.push(`- Goal (1�2 lines): ${goalLine}`);
     sections.push(`- Target audience / location (if relevant): ${targetLine}`);
     sections.push(`- Budget: ${budgetDisplay}`);
     sections.push(`- Timeline: ${timelineDisplay}`);
@@ -6609,7 +6703,7 @@ export function generateProposalFromState(state) {
     outOfScope.forEach((item) => sections.push(`- Out of scope: ${item}`));
     sections.push("");
 
-    sections.push("## 10. Next Steps (MANDATORY ENDING — VERBATIM)");
+    sections.push("## 10. Next Steps (MANDATORY ENDING � VERBATIM)");
     sections.push("Next Steps");
     sections.push("- Approve proposal to kick start the project");
     sections.push("[/PROPOSAL_DATA]");
@@ -6625,5 +6719,18 @@ export function generateProposalFromState(state) {
 export function getOpeningMessage(service) {
     return getChatbot(service).openingMessage;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
