@@ -98,9 +98,10 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
   const isLocalApi =
     typeof API_BASE_URL === "string" &&
     (API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1"));
-  const [useSocket] = useState(SOCKET_ENABLED && isLocalhost);
+  const [useSocket, setUseSocket] = useState(SOCKET_ENABLED && isLocalhost);
   const [answeredOptions, setAnsweredOptions] = useState({});
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
+  const [inputHint, setInputHint] = useState("");
   const { user } = useAuth();
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -115,8 +116,18 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
   const serviceStateRef = useRef(new Map());
   const previousServiceKeyRef = useRef(serviceKey);
   const messageStorageKey = useMemo(() => getMessageStorageKey(serviceKey), [serviceKey]);
+  const conversationIdRef = useRef(conversationId);
+  const serviceKeyRef = useRef(serviceKey);
+  const messageStorageKeyRef = useRef(messageStorageKey);
+  const isMultiServiceRef = useRef(isMultiService);
+  const activeServiceTitleRef = useRef(activeService?.title || "");
+  const conversationServiceMapRef = useRef(new Map());
   const getMessageKey = (msg, index) =>
     msg?.id || msg?._id || msg?.createdAt || `${msg?.serviceKey || "service"}-${index}`;
+  const getQuestionKeyFromMessage = (content = "") => {
+    const match = (content || "").match(/\[QUESTION_KEY:\s*([^\]]+)\]/i);
+    return match ? match[1].trim() : "";
+  };
 
   // Pricing features removed - no longer showing pricing info in chat
 
@@ -128,16 +139,46 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  // Typing effect for placeholder - runs constantly in a loop
+  // Typing effect for placeholder - runs after user has answered name question
   const placeholderText = "If you don't see what you're looking for, just type here...";
+  const hasUserReplied = messages.some((msg) => (msg.role || "").toLowerCase() === "user");
+  const [showAnimatedPlaceholder, setShowAnimatedPlaceholder] = useState(false);
+
   useEffect(() => {
-    if (!isOpen) {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    conversationServiceMapRef.current.set(conversationId, serviceKey);
+  }, [conversationId, serviceKey]);
+
+  useEffect(() => {
+    serviceKeyRef.current = serviceKey;
+  }, [serviceKey]);
+
+  useEffect(() => {
+    messageStorageKeyRef.current = messageStorageKey;
+  }, [messageStorageKey]);
+
+  useEffect(() => {
+    isMultiServiceRef.current = isMultiService;
+  }, [isMultiService]);
+
+  useEffect(() => {
+    activeServiceTitleRef.current = activeService?.title || "";
+  }, [activeService?.title]);
+
+  useEffect(() => {
+    if (!isOpen || !hasUserReplied) {
       setAnimatedPlaceholder("");
+      setShowAnimatedPlaceholder(false);
       return;
     }
-    let index = 0;
+    setShowAnimatedPlaceholder(true);
+    let index = 1; // Start with 1 character
     let isTyping = true;
-    setAnimatedPlaceholder("");
+    setAnimatedPlaceholder(placeholderText.slice(0, 1)); // Initialize with first character
 
     const interval = setInterval(() => {
       if (isTyping) {
@@ -149,7 +190,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
           isTyping = false;
         }
       } else {
-        if (index > 0) {
+        if (index > 1) { // Never go below 1 character
           index--;
           setAnimatedPlaceholder(placeholderText.slice(0, index));
         } else {
@@ -160,6 +201,12 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
     }, 80);
 
     return () => clearInterval(interval);
+  }, [isOpen, hasUserReplied]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setInputHint("");
+    }
   }, [isOpen]);
 
   const clearResponseTimeout = () => {
@@ -334,26 +381,45 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
 
   // Wire up socket.io for real-time chat.
   useEffect(() => {
-    if (!isOpen || !conversationId || !useSocket || !SOCKET_IO_URL) return;
+    if (!isOpen || !useSocket || !SOCKET_IO_URL) return;
+    if (socketRef.current) return;
 
     const socket = io(SOCKET_IO_URL, SOCKET_OPTIONS);
     socketRef.current = socket;
 
-    socket.emit("chat:join", { conversationId, service: activeService?.title });
+    const joinConversation = (conversationIdToJoin) => {
+      if (!conversationIdToJoin) return;
+      socket.emit("chat:join", {
+        conversationId: conversationIdToJoin,
+        service: activeServiceTitleRef.current
+      });
+    };
+
+    socket.on("connect", () => {
+      joinConversation(conversationIdRef.current);
+    });
 
     socket.on("chat:joined", (payload) => {
-      if (payload?.conversationId) {
-        setConversationId(payload.conversationId);
+      if (!payload?.conversationId) return;
+      setConversationId((current) => {
+        if (current === payload.conversationId) return current;
+        return payload.conversationId;
+      });
+      if (!isMultiServiceRef.current && isLocalhost && typeof window !== "undefined") {
+        const storageKey = `markify:chatConversationId:${serviceKeyRef.current}`;
+        window.localStorage.setItem(storageKey, payload.conversationId);
       }
     });
 
     socket.on("chat:history", (history = []) => {
-      if (isMultiService) return;
+      if (isMultiServiceRef.current) return;
       const sorted = [...history].sort((a, b) =>
         new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
       );
       setMessages(sorted);
-      persistMessagesToStorage(messageStorageKey, sorted);
+      if (messageStorageKeyRef.current) {
+        persistMessagesToStorage(messageStorageKeyRef.current, sorted);
+      }
     });
 
     socket.on("chat:message", (message) => {
@@ -367,9 +433,15 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
           incomingSenderRole === "assistant" ||
           incomingSenderName === "assistant" ||
           incomingSenderName === "cata";
+        const mappedServiceKey =
+          message?.serviceKey ||
+          (message?.conversationId
+            ? conversationServiceMapRef.current.get(message.conversationId)
+            : null) ||
+          serviceKeyRef.current;
         const incomingMessage = message?.serviceKey
           ? message
-          : { ...message, serviceKey };
+          : { ...message, serviceKey: mappedServiceKey };
 
         // Remove optimistic messages that match the incoming one to avoid duplicates.
         const filtered = prev.filter((msg) => {
@@ -388,6 +460,10 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
         });
 
         const finish = (currentMessages) => {
+          if (isAssistantMessage) {
+            clearResponseTimeout();
+            setIsLoading(false);
+          }
           // Double check: ensure we don't append a duplicate of the VERY LAST message
           // This handles echoes that might slip through if timing is off
           const lastMsg = currentMessages[currentMessages.length - 1];
@@ -398,14 +474,8 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
           }
 
           const next = [...currentMessages, incomingMessage];
-          if (!isMultiService) {
-            persistMessagesToStorage(messageStorageKey, next);
-          }
-
-          // Only set loading to false when we receive an assistant message
-          if (isAssistantMessage) {
-            clearResponseTimeout();
-            setIsLoading(false);
+          if (!isMultiServiceRef.current && messageStorageKeyRef.current) {
+            persistMessagesToStorage(messageStorageKeyRef.current, next);
           }
 
           return next;
@@ -453,15 +523,15 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                 senderRole: "assistant",
                 content: noticeContent,
                 localOnly: true,
-                serviceKey,
+                serviceKey: serviceKeyRef.current,
                 createdAt: new Date().toISOString()
               }
             ];
           }
         }
 
-        if (!isMultiService) {
-          persistMessagesToStorage(messageStorageKey, next);
+        if (!isMultiServiceRef.current && messageStorageKeyRef.current) {
+          persistMessagesToStorage(messageStorageKeyRef.current, next);
         }
         return next;
       });
@@ -469,11 +539,35 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
       setIsLoading(false);
     });
 
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error?.message || error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg?.pending ? { ...msg, pending: false, failed: true } : msg
+        )
+      );
+      clearResponseTimeout();
+      setIsLoading(false);
+      setUseSocket(false);
+      socket.disconnect();
+      socketRef.current = null;
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [conversationId, isOpen, activeService, useSocket, isMultiService, messageStorageKey, serviceKey]);
+  }, [isOpen, useSocket, isLocalhost]);
+
+  useEffect(() => {
+    if (!isOpen || !useSocket || !conversationId) return;
+    const socket = socketRef.current;
+    if (!socket || !socket.connected) return;
+    socket.emit("chat:join", {
+      conversationId,
+      service: activeService?.title
+    });
+  }, [conversationId, isOpen, useSocket, activeService?.title]);
 
   // Fallback: fetch messages when sockets are disabled/unavailable.
   useEffect(() => {
@@ -570,6 +664,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
   const handleSend = async (contentOverride) => {
     const msgContent = contentOverride || input;
     if (!msgContent.trim()) return;
+    if (inputHint) setInputHint("");
 
     let activeConversationId = conversationId;
     if (!activeConversationId) {
@@ -625,7 +720,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
       sharedContextId: ensureSharedContextId()
     };
 
-    if (useSocket && socketRef.current) {
+    if (useSocket && socketRef.current?.connected) {
       setMessages((prev) => [
         ...prev,
         { ...payload, role: "user", pending: true }
@@ -721,7 +816,16 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
       });
   };
 
-  const handleSuggestionSelect = (option, msgKey) => {
+  const handleSuggestionSelect = (option, msgKey, questionKey) => {
+    const normalizedQuestionKey = (questionKey || "").trim().toLowerCase();
+    const normalizedOption = (option || "").trim().toLowerCase();
+    if (normalizedOption === "yes" && normalizedQuestionKey === "references") {
+      setAnsweredOptions((prev) => ({ ...prev, [msgKey]: option }));
+      setInput("");
+      setInputHint("Share the reference link(s) here...");
+      queueMicrotask(() => inputRef.current?.focus());
+      return;
+    }
     setAnsweredOptions((prev) => ({ ...prev, [msgKey]: option }));
     handleSend(option);
   };
@@ -956,6 +1060,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
 
                   const maxSelectMatch = msg.content?.match(/\[MAX_SELECT:\s*(\d+)\s*\]/i);
                   const maxSelect = maxSelectMatch ? parseInt(maxSelectMatch[1], 10) : null;
+                  const questionKey = getQuestionKeyFromMessage(msg.content || "");
 
                   // Parse proposal data
                   const proposalMatch = msg.content?.match(/\[PROPOSAL_DATA\]([\s\S]*?)\[\/PROPOSAL_DATA\]/);
@@ -1052,7 +1157,7 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                             {suggestions.map((suggestion, idx) => (
                               <button
                                 key={idx}
-                                onClick={() => handleSuggestionSelect(suggestion, msgKey)}
+                                onClick={() => handleSuggestionSelect(suggestion, msgKey, questionKey)}
                                 className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-full transition-colors border border-primary/20 disabled:opacity-40 disabled:pointer-events-none"
                                 disabled={isLoading}
                               >
@@ -1166,21 +1271,32 @@ const ChatDialog = ({ isOpen, onClose, service, services }) => {
                     placeholder=""
                     disabled={!conversationId}
                     rows={1}
-                    className="flex-1 w-full min-h-[44px] max-h-32 resize-none overflow-hidden py-3 leading-5 text-sm"
+                    className="flex-1 w-full min-h-[44px] max-h-32 resize-none overflow-y-auto py-3 leading-5 text-sm !bg-background [&::-webkit-scrollbar]:hidden !ring-0 !outline-none focus:!ring-1 focus:!ring-primary focus:!border-primary"
+                    style={{ overflowWrap: 'break-word', wordBreak: 'break-word', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   />
                   {/* Custom animated shiny placeholder */}
                   {!input && (
                     <div
                       className="absolute top-0 left-0 right-0 bottom-0 flex items-center px-3 py-3 pointer-events-none"
                     >
-                      <span
-                        className="text-sm bg-gradient-to-r from-zinc-400 via-white to-zinc-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_100%]"
-                        style={{
-                          animation: 'shimmer 2s linear infinite',
-                        }}
-                      >
-                        {animatedPlaceholder}
-                      </span>
+                      {inputHint ? (
+                        <span className="text-sm text-muted-foreground">
+                          {inputHint}
+                        </span>
+                      ) : showAnimatedPlaceholder ? (
+                        <span
+                          className="text-sm bg-gradient-to-r from-zinc-400 via-white to-zinc-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_100%]"
+                          style={{
+                            animation: 'shimmer 2s linear infinite',
+                          }}
+                        >
+                          {animatedPlaceholder || "\u00A0"}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          Type your message here...
+                        </span>
+                      )}
                     </div>
                   )}
                   <style>{`

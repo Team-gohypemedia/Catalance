@@ -274,9 +274,9 @@ const ClientOnboading = () => {
       </div>
 
       <div className="text-center space-y-2 relative z-10">
-        <p className="text-lg uppercase tracking-[0.4em] text-primary">
+        <span className="inline-block px-6 py-2 text-lg uppercase tracking-[0.4em] bg-background text-primary rounded-full font-semibold shadow-md">
           Services
-        </p>
+        </span>
         <h2 className="text-3xl font-semibold">
           Clarity across every step of the freelance lifecycle.
         </h2>

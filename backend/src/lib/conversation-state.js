@@ -295,16 +295,39 @@ const CATA_CODED_TECH_STACKS = [
     "HTML, CSS, JavaScript (Static)",
     "React.js",
     "Next.js",
-    "Vue.js / Nuxt.js",
+    "Vue.js",
+    "Nuxt.js",
     "Angular",
+    "Svelte",
+    "SvelteKit",
+    "SolidJS",
+    "Qwik",
+    "Remix",
+    "Gatsby",
+    "Astro",
+    "Ember.js",
+    "Alpine.js",
+    "Lit / Web Components",
+    "jQuery",
+    "Other: ________",
+    "Discuss Later",
+    "Skip",
 ];
 
 const CATA_BACKEND_OPTIONS = [
     "Node.js (Express)",
-    "Python (Django / Flask / FastAPI)",
+    "Node.js (NestJS)",
+    "Python (Django)",
+    "Python (Flask)",
+    "Python (FastAPI)",
     "PHP (Laravel)",
+    "Ruby on Rails",
     "Java (Spring Boot)",
     ".NET",
+    "Go (Gin / Fiber)",
+    "Serverless (AWS / Vercel)",
+    "Discuss Later",
+    "Skip",
 ];
 
 const CATA_DATABASE_OPTIONS = [
@@ -313,6 +336,7 @@ const CATA_DATABASE_OPTIONS = [
     "MongoDB",
     "Firebase",
     "Supabase",
+    "Skip",
 ];
 
 const CATA_ECOMMERCE_OPTIONS = [
@@ -323,7 +347,7 @@ const CATA_ECOMMERCE_OPTIONS = [
 
 const CATA_CONTENT_STATUSES = ["All content is ready", "Content needs to be created"];
 
-const CATA_REFERENCE_OPTIONS = ["Yes - ________", "No"];
+const CATA_REFERENCE_OPTIONS = ["Yes", "No", "Skip"];
 
 const CATA_LAUNCH_TIMELINES = [
     "Within 2-4 weeks",
@@ -512,15 +536,23 @@ const shouldAskPlatformPreference = (data = {}) =>
 const shouldAskTechStack = (data = {}) =>
     isCodedWebsiteType(data.website_type);
 
+const isDiscussLaterChoice = (value = "") =>
+    splitSelections(value).some(
+        (item) => normalizeText(item).toLowerCase() === "discuss later"
+    );
+
 const shouldAskBackendStack = (data = {}) => {
     if (!isCodedWebsiteType(data.website_type)) return false;
     if (!normalizeText(data.tech_stack)) return false;
-    return !isStaticTechStack(data.tech_stack);
+    return true;
 };
 
 const shouldAskDatabaseStack = (data = {}) => {
     if (!shouldAskBackendStack(data)) return false;
-    return Boolean(normalizeText(data.backend));
+    const backendValue = normalizeText(data.backend);
+    if (!backendValue) return false;
+    if (backendValue === "[skipped]") return false;
+    return !isDiscussLaterChoice(backendValue);
 };
 
 const shouldAskEcommerceStack = (data = {}) => {
@@ -628,22 +660,24 @@ const CATA_SERVICE_CONFIGS = new Map([
                 {
                     key: "tech_stack",
                     templates: [
-                        "If Coded website is selected, choose preferred tech stack/technology:",
+                        "For coded websites, choose your preferred frontend technology:",
                     ],
                     suggestions: CATA_CODED_TECH_STACKS,
                     multiSelect: true,
                     expectedType: "list",
                     required: true,
                     when: shouldAskTechStack,
+                    allowSkip: true,
                 },
                 {
                     key: "backend",
-                    templates: ["Backend (if needed):"],
+                    templates: ["Which backend technology do you prefer?"],
                     suggestions: CATA_BACKEND_OPTIONS,
                     multiSelect: true,
                     expectedType: "list",
                     required: true,
                     when: shouldAskBackendStack,
+                    allowSkip: true,
                 },
                 {
                     key: "database",
@@ -653,6 +687,7 @@ const CATA_SERVICE_CONFIGS = new Map([
                     expectedType: "list",
                     required: true,
                     when: shouldAskDatabaseStack,
+                    allowSkip: true,
                 },
                 {
                     key: "ecommerce",
@@ -684,8 +719,9 @@ const CATA_SERVICE_CONFIGS = new Map([
                     key: "references",
                     templates: ["Do you have any reference websites you like?"],
                     suggestions: CATA_REFERENCE_OPTIONS,
-                    expectedType: "enum",
+                    expectedType: "text",
                     required: true,
+                    allowSkip: true,
                 },
                 {
                     key: "launch_timeline",
@@ -697,8 +733,9 @@ const CATA_SERVICE_CONFIGS = new Map([
                 },
                 {
                     key: "budget_range",
-                    templates: ["What budget range are you comfortable with for this project?"],
+                    templates: ["What is your budget for this project (in INR)?"],
                     suggestions: CATA_BUDGET_RANGES,
+                    hideSuggestions: true,
                     expectedType: "budget_text",
                     required: true,
                     tags: ["budget"],
@@ -2075,6 +2112,45 @@ const parseInrBudgetRange = (value = "") => {
     return { min: single, max: single };
 };
 
+const parseMinInrFromLabel = (value = "") => {
+    const text = normalizeText(value);
+    if (!text) return null;
+    const matches = text.match(/(\d[\d,]*)/g);
+    if (!matches || matches.length === 0) return null;
+    const numbers = matches
+        .map((item) => parseInt(item.replace(/,/g, ""), 10))
+        .filter((num) => Number.isFinite(num));
+    if (!numbers.length) return null;
+    return Math.min(...numbers);
+};
+
+const findBudgetQuestion = (questions = []) => {
+    const list = Array.isArray(questions) ? questions : [];
+    return (
+        list.find((question) => {
+            const key = question?.key || "";
+            const tags = Array.isArray(question?.tags) ? question.tags : getQuestionTags(question);
+            return key.includes("budget") || tags.includes("budget");
+        }) || null
+    );
+};
+
+const resolveCataBudgetMinimum = (questions = []) => {
+    const budgetQuestion = findBudgetQuestion(questions);
+    const suggestions = Array.isArray(budgetQuestion?.suggestions)
+        ? budgetQuestion.suggestions
+        : [];
+    let min = null;
+    for (const suggestion of suggestions) {
+        const candidate = parseMinInrFromLabel(suggestion);
+        if (!Number.isFinite(candidate)) continue;
+        if (min === null || candidate < min) {
+            min = candidate;
+        }
+    }
+    return Number.isFinite(min) ? min : null;
+};
+
 const formatBudgetDisplay = (range) => {
     if (!range) return "";
     if (range.flexible) return "Flexible";
@@ -2739,7 +2815,30 @@ const getCurrentStepFromCollected = (questions = [], collectedData = {}) => {
 
 const buildLowBudgetWarning = (state) => {
     const questions = Array.isArray(state?.questions) ? state.questions : [];
-    if (getCataConfig(state?.service)) return null;
+    const cataConfig = getCataConfig(state?.service);
+    if (cataConfig) {
+        if (state?.meta?.allowLowBudget) return null;
+        const collectedData = state?.collectedData || {};
+        const budgetQuestion = findBudgetQuestion(questions);
+        const budgetKey = budgetQuestion?.key || "";
+        const rawBudget = normalizeText(collectedData[budgetKey] || "");
+        if (!rawBudget || rawBudget === "[skipped]") return null;
+
+        const minBudget = resolveCataBudgetMinimum(questions);
+        if (!Number.isFinite(minBudget)) return null;
+
+        const parsed = parseInrBudgetRange(rawBudget);
+        if (!parsed || parsed.flexible) return null;
+        if (Number.isFinite(parsed.max) && parsed.max >= minBudget) return null;
+
+        const budgetLabel = formatBudgetDisplay(parsed) || rawBudget;
+        const minLabel = formatInr(minBudget);
+        return (
+            `Your budget of ${budgetLabel} is below the minimum for this service (${minLabel}). ` +
+            "This budget may be too low to attract freelancers. " +
+            "Would you like to increase the budget or continue with the current budget?"
+        );
+    }
     if (!shouldApplyWebsiteBudgetRules(questions)) return null;
     if (state?.meta?.allowLowBudget) return null;
 
@@ -4282,10 +4381,11 @@ const clearBudgetSlot = (state) => {
         slots: { ...(state.slots || {}) },
         collectedData: { ...(state.collectedData || {}) },
     };
-    if (next.slots.budget) {
-        next.slots.budget = createSlotDefaults();
+    const budgetKey = findBudgetQuestion(Array.isArray(state.questions) ? state.questions : [])?.key || "budget";
+    if (next.slots[budgetKey]) {
+        next.slots[budgetKey] = createSlotDefaults();
     }
-    delete next.collectedData.budget;
+    delete next.collectedData[budgetKey];
     return next;
 };
 
@@ -4426,8 +4526,11 @@ const buildMissingLists = (questions, slots, collectedData = {}, options = {}) =
         const answered = slot?.status === "answered";
         const forceAsk = question?.forceAsk === true;
         const askedCount = slot?.askedCount || 0;
-        const treatAsAnswered = answered && !(forceAsk && askedCount === 0);
         const declined = slot?.status === "declined";
+        const allowSkip = question?.allowSkip === true;
+        const treatAsAnswered =
+            (answered && !(forceAsk && askedCount === 0)) ||
+            (declined && allowSkip);
         if (required && !treatAsAnswered) missingRequired.push(key);
         if (!isCataFlow && !required && !treatAsAnswered && !declined) missingOptional.push(key);
     }
@@ -4535,7 +4638,8 @@ const applyMessageToState = (state, message, activeKey = null, options = {}) => 
         slot.askedCount += 1;
 
         if (isSkipMessage(stripped)) {
-            if (isRequiredQuestion(activeQuestion)) {
+            const canSkip = Boolean(activeQuestion?.allowSkip) || !isRequiredQuestion(activeQuestion);
+            if (!canSkip) {
                 applySlotResult(slot, { status: "invalid", error: "required" }, stripped);
             } else {
                 slot.status = "declined";
@@ -5074,9 +5178,11 @@ export function getNextHumanizedQuestion(state) {
     }
 
     const suggestionsToUse =
-        Array.isArray(suggestionsOverride) && suggestionsOverride.length
-            ? suggestionsOverride
-            : question?.suggestions;
+        question?.hideSuggestions
+            ? null
+            : Array.isArray(suggestionsOverride) && suggestionsOverride.length
+                ? suggestionsOverride
+                : question?.suggestions;
 
     if (suggestionsToUse && suggestionsToUse.length) {
         const tag = question.multiSelect ? "MULTI_SELECT" : "SUGGESTIONS";
@@ -5418,8 +5524,14 @@ export function generateRoadmapFromState(state) {
 }
 
 const formatCataListValue = (value) => {
-    if (Array.isArray(value)) return value.join(", ");
-    return normalizeText(value);
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => normalizeText(item))
+            .filter((item) => item && item !== "[skipped]")
+            .join(", ");
+    }
+    const normalized = normalizeText(value);
+    return normalized === "[skipped]" ? "" : normalized;
 };
 
 const resolveCataFieldValue = (state, key) => {
@@ -5428,9 +5540,12 @@ const resolveCataFieldValue = (state, key) => {
         return slot.normalized ?? formatSlotValue(slot);
     }
     const collected = state?.collectedData?.[key];
-    if (normalizeText(collected)) return collected;
+    const collectedText = normalizeText(collected);
+    if (collectedText && collectedText !== "[skipped]") return collected;
     const sharedContext = normalizeSharedContext(state?.sharedContext || {});
-    return resolveCataSharedValue(sharedContext, { key }, state?.service);
+    const sharedValue = resolveCataSharedValue(sharedContext, { key }, state?.service);
+    const sharedText = normalizeText(sharedValue);
+    return sharedText === "[skipped]" ? "" : sharedValue;
 };
 
 const generateCataProposalFromState = (state) => {
