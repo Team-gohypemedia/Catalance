@@ -1,10 +1,10 @@
 export const SOP_TEMPLATES = {
   WEBSITE: {
     phases: [
-      { id: "1", name: "Website Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Website Design Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Website Build & Completion", status: "pending", progress: 0 },
-      { id: "4", name: "Website Go‑Live & Handover", status: "pending", progress: 0 }
+      { id: "1", name: "Website Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Website Design Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Website Build & Completion ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Website Go‑Live & Handover ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -35,10 +35,10 @@ export const SOP_TEMPLATES = {
   },
   APP: {
     phases: [
-      { id: "1", name: "App Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "App UI Direction", status: "pending", progress: 0 },
-      { id: "3", name: "App Development & Completion", status: "pending", progress: 0 },
-      { id: "4", name: "App Launch & Handover", status: "pending", progress: 0 }
+      { id: "1", name: "App Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "App UI Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "App Development & Completion ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "App Launch & Handover ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -67,10 +67,10 @@ export const SOP_TEMPLATES = {
   },
   SOFTWARE: {
     phases: [
-      { id: "1", name: "Requirement & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "System Direction Setup", status: "pending", progress: 0 },
-      { id: "3", name: "Full Development & Completion", status: "pending", progress: 0 },
-      { id: "4", name: "Deployment & Handover", status: "pending", progress: 0 }
+      { id: "1", name: "Requirement & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "System Direction Setup ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Full Development & Completion ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Deployment & Handover ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -98,10 +98,10 @@ export const SOP_TEMPLATES = {
   },
   SEO: {
     phases: [
-      { id: "1", name: "SEO Planning & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "On‑Page SEO Execution", status: "pending", progress: 0 },
-      { id: "3", name: "Off‑Page SEO Execution", status: "pending", progress: 0 },
-      { id: "4", name: "SEO Reporting & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "SEO Planning & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "On‑Page SEO Execution ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Off‑Page SEO Execution ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "SEO Reporting & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -129,10 +129,10 @@ export const SOP_TEMPLATES = {
   },
   PERFORMANCE_MARKETING: {
     phases: [
-      { id: "1", name: "Campaign Planning & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Ad Setup Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Campaign Execution & Optimisation", status: "pending", progress: 0 },
-      { id: "4", name: "Reporting & Wrap‑Up", status: "pending", progress: 0 }
+      { id: "1", name: "Campaign Planning & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Ad Setup Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Campaign Execution & Optimisation ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Reporting & Wrap‑Up ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -160,10 +160,10 @@ export const SOP_TEMPLATES = {
   },
   LEAD_GENERATION: {
     phases: [
-      { id: "1", name: "Lead Strategy & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Funnel Setup", status: "pending", progress: 0 },
-      { id: "3", name: "Lead Execution", status: "pending", progress: 0 },
-      { id: "4", name: "Reporting & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Lead Strategy & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Funnel Setup ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Lead Execution ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Reporting & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -191,10 +191,10 @@ export const SOP_TEMPLATES = {
   },
   SOCIAL_MEDIA_MANAGEMENT: {
     phases: [
-      { id: "1", name: "Content Strategy & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Content Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Publishing & Management", status: "pending", progress: 0 },
-      { id: "4", name: "Reporting & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Content Strategy & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Content Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Publishing & Management ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Reporting & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -222,10 +222,10 @@ export const SOP_TEMPLATES = {
   },
   CREATIVE_DESIGN: {
     phases: [
-      { id: "1", name: "Design Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Design Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Design Completion", status: "pending", progress: 0 },
-      { id: "4", name: "Delivery & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Design Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Design Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Design Completion ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Delivery & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -250,10 +250,10 @@ export const SOP_TEMPLATES = {
   },
   VIDEO_SERVICE: {
     phases: [
-      { id: "1", name: "Video Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Video Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Final Video Creation", status: "pending", progress: 0 },
-      { id: "4", name: "Delivery & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Video Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Video Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Final Video Creation ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Delivery & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -277,10 +277,10 @@ export const SOP_TEMPLATES = {
   },
   WRITING_CONTENT: {
     phases: [
-      { id: "1", name: "Content Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Content Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Content Completion", status: "pending", progress: 0 },
-      { id: "4", name: "Delivery & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Content Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Content Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Content Completion ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Delivery & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -303,10 +303,10 @@ export const SOP_TEMPLATES = {
   },
   CUSTOMER_SUPPORT: {
     phases: [
-      { id: "1", name: "Support Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Support Setup", status: "pending", progress: 0 },
-      { id: "3", name: "Live Support Execution", status: "pending", progress: 0 },
-      { id: "4", name: "Reporting & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Support Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Support Setup ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Live Support Execution ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Reporting & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -331,10 +331,10 @@ export const SOP_TEMPLATES = {
   },
   INFLUENCER_MARKETING: {
     phases: [
-      { id: "1", name: "Campaign Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Influencer Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Campaign Execution", status: "pending", progress: 0 },
-      { id: "4", name: "Reporting & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Campaign Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Influencer Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Campaign Execution ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Reporting & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -359,10 +359,10 @@ export const SOP_TEMPLATES = {
   },
   UGC_MARKETING: {
     phases: [
-      { id: "1", name: "UGC Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Content Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Content Creation", status: "pending", progress: 0 },
-      { id: "4", name: "Delivery & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "UGC Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Content Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Content Creation ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Delivery & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -384,10 +384,10 @@ export const SOP_TEMPLATES = {
   },
   CRM_ERP: {
     phases: [
-      { id: "1", name: "System Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "System Direction", status: "pending", progress: 0 },
-      { id: "3", name: "System Implementation", status: "pending", progress: 0 },
-      { id: "4", name: "Deployment & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "System Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "System Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "System Implementation ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Deployment & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -412,10 +412,10 @@ export const SOP_TEMPLATES = {
   },
   AI_AUTOMATION: {
     phases: [
-      { id: "1", name: "Automation Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Automation Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Automation Completion", status: "pending", progress: 0 },
-      { id: "4", name: "Deployment & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Automation Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Automation Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Automation Completion ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Deployment & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -439,10 +439,10 @@ export const SOP_TEMPLATES = {
   },
   WHATSAPP_CHATBOT: {
     phases: [
-      { id: "1", name: "Bot Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Bot Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Bot Completion", status: "pending", progress: 0 },
-      { id: "4", name: "Deployment & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Bot Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Bot Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Bot Completion ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Deployment & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
@@ -466,10 +466,10 @@ export const SOP_TEMPLATES = {
   },
   AI_VOICE_AGENT: {
     phases: [
-      { id: "1", name: "Voice Agent Scope & Reference Lock", status: "in-progress", progress: 0 },
-      { id: "2", name: "Voice Direction", status: "pending", progress: 0 },
-      { id: "3", name: "Voice Agent Completion", status: "pending", progress: 0 },
-      { id: "4", name: "Deployment & Closure", status: "pending", progress: 0 }
+      { id: "1", name: "Voice Agent Scope & Reference Lock ( Phase-1 )", status: "in-progress", progress: 0 },
+      { id: "2", name: "Voice Direction ( Phase-2 )", status: "pending", progress: 0 },
+      { id: "3", name: "Voice Agent Completion ( Phase-3 )", status: "pending", progress: 0 },
+      { id: "4", name: "Deployment & Closure ( Phase-4 )", status: "pending", progress: 0 }
     ],
     tasks: [
       // Stage 1
