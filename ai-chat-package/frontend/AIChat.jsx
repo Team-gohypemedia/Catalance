@@ -3,6 +3,21 @@ import './AIChat.css';
 
 const API_URL = 'http://localhost:5000/api';
 
+const sanitizeAssistantContent = (content = '') => {
+    if (typeof content !== 'string') return '';
+    return content
+        .split('\n')
+        .map((line) =>
+            line.replace(/^\s*(?:-|\*)?\s*(?:your\s+)?options are\s*:?\s*/i, '')
+        )
+        .join('\n');
+};
+
+const buildConversationHistory = (history) =>
+    history
+        .filter((msg) => msg && msg.content && !msg.isError)
+        .map(({ role, content }) => ({ role, content }));
+
 function AIChat() {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -32,17 +47,20 @@ function AIChat() {
         // Add welcome message
         setMessages([{
             role: 'assistant',
-            content: `👋 Hello! I'm your AI business consultant. I'll help you find the perfect digital service for your needs and create a detailed proposal.\n\n**How this works:**\n1️⃣ Tell me what you're looking for\n2️⃣ I'll ask you some questions to understand your requirements\n3️⃣ After gathering your needs, I'll generate a customized proposal\n\n**Our services include:**\n• Branding & Logo Design\n• Website & App Development\n• SEO & Digital Marketing\n• AI Automation & Chatbots\n• And 16 more services!\n\n💬 What brings you here today?`
+            content: `👋 Hello! I'm your AI business consultant. I'll help you find the perfect digital service for your needs and create a detailed proposal.\n\nBefore we begin, what's your name?\n\n**How this works:**\n1️⃣ Tell me what you're looking for\n2️⃣ I'll ask you some questions to understand your requirements\n3️⃣ After gathering your needs, I'll generate a customized proposal\n\n**Our services include:**\n• Branding & Logo Design\n• Website & App Development\n• SEO & Digital Marketing\n• AI Automation & Chatbots\n• And 16 more services!\n\n💬 What brings you here today?`
         }]);
     }, []);
 
-    const sendMessage = async (e) => {
-        e.preventDefault();
-        if (!input.trim() || isLoading) return;
+    const sendMessage = async (messageText, options = {}) => {
+        const { skipUserAppend = false } = options;
+        const text = typeof messageText === 'string' ? messageText : input;
+        if (!text.trim() || isLoading) return;
 
-        const userMessage = { role: 'user', content: input };
-        setMessages(prev => [...prev, userMessage]);
-        setInput('');
+        if (!skipUserAppend) {
+            const userMessage = { role: 'user', content: text };
+            setMessages(prev => [...prev, userMessage]);
+            setInput('');
+        }
         setIsLoading(true);
 
         try {
@@ -52,43 +70,57 @@ function AIChat() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    message: input,
-                    conversationHistory: messages
+                    message: text,
+                    conversationHistory: buildConversationHistory(messages)
                 })
             });
 
             const data = await response.json();
 
-            if (data.success) {
+            if (data?.success && data.message) {
                 setMessages(prev => [...prev, {
                     role: 'assistant',
-                    content: data.message
+                    content: sanitizeAssistantContent(data.message)
                 }]);
             } else {
                 setMessages(prev => [...prev, {
                     role: 'assistant',
-                    content: '❌ Sorry, I encountered an error. Please try again.'
+                    content: 'Sorry, I encountered an error. Please try again.',
+                    isError: true,
+                    retryText: text
                 }]);
             }
         } catch (error) {
             console.error('Chat error:', error);
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: '❌ Connection error. Please check if the server is running.'
+                content: 'Connection error. Please check if the server is running.',
+                isError: true,
+                retryText: text
             }]);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        sendMessage(input);
+    };
+
     const handleQuickAction = (action) => {
         setInput(action);
+    };
+
+    const handleRetry = (retryText) => {
+        if (!retryText || isLoading) return;
+        sendMessage(retryText, { skipUserAppend: true });
     };
 
     const startNewChat = () => {
         setMessages([{
             role: 'assistant',
-            content: `👋 Hello! I'm your AI assistant. I can help you explore our digital services and find the perfect solution for your business needs.\n\nWe offer services like:\n• Branding & Logo Design\n• Website & UI/UX Design\n• SEO & Social Media Marketing\n• App & Software Development\n• And much more!\n\nWhat brings you here today?`
+            content: `👋 Hello! I'm your AI assistant. I can help you explore our digital services and find the perfect solution for your business needs.\n\nBefore we begin, what's your name?\n\nWe offer services like:\n• Branding & Logo Design\n• Website & UI/UX Design\n• SEO & Social Media Marketing\n• App & Software Development\n• And much more!\n\nWhat brings you here today?`
         }]);
         setInput('');
     };
@@ -158,6 +190,18 @@ function AIChat() {
                                     {msg.content.split('\n').map((line, i) => (
                                         <p key={i}>{line}</p>
                                     ))}
+                                    {msg.isError && msg.retryText && (
+                                        <div className="message-actions">
+                                            <button
+                                                type="button"
+                                                className="retry-button"
+                                                onClick={() => handleRetry(msg.retryText)}
+                                                disabled={isLoading}
+                                            >
+                                                Retry
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -179,7 +223,7 @@ function AIChat() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <form className="chat-input-form" onSubmit={sendMessage}>
+                <form className="chat-input-form" onSubmit={handleSubmit}>
                     <div className="input-wrapper">
                         <input
                             type="text"
