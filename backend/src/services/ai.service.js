@@ -2,6 +2,7 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { env } from "../config/env.js";
+import { AppError } from "../utils/app-error.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -13,6 +14,9 @@ const servicesData = JSON.parse(
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
 const DEFAULT_REFERER = process.env.FRONTEND_URL || "http://localhost:5173";
+
+const stripMarkdownHeadings = (text = "") =>
+  text.replace(/^\s*#{1,6}\s+/gm, "");
 
 const buildSystemPrompt = () => {
   const servicesWithQuestions = servicesData.services
@@ -48,7 +52,7 @@ const buildSystemPrompt = () => {
 
   return `You are an expert business consultant AI for a premium digital services agency. Your role is to understand client needs through a structured consultation process and generate detailed proposals.
 
-## YOUR CONSULTATION PROCESS
+YOUR CONSULTATION PROCESS
 
 PHASE 1: SERVICE IDENTIFICATION
 When a user first interacts, identify which service(s) they need based on their initial message. If unclear, ask clarifying questions.
@@ -103,6 +107,7 @@ CONVERSATION GUIDELINES:
 - Keep responses focused and actionable.
 - When asking questions, explain why the information matters.
 - If the user seems overwhelmed, offer to simplify.
+- Do not use Markdown headings or bold. Avoid lines that start with # (including ##).
 - Track conversation progress internally.
 - When enough information is gathered (at least 5 to 7 key questions answered), offer to generate the proposal.
 - Always confirm before generating the final proposal.`;
@@ -111,7 +116,7 @@ CONVERSATION GUIDELINES:
 export const chatWithAI = async (messages, conversationHistory = []) => {
   const apiKey = env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error("OpenRouter API key not configured");
+    throw new AppError("OpenRouter API key not configured", 500);
   }
 
   const systemMessage = {
@@ -151,21 +156,32 @@ export const chatWithAI = async (messages, conversationHistory = []) => {
     })
   });
 
+  const data = await response.json().catch(() => null);
+
   if (!response.ok) {
-    let errorMessage = "AI API request failed";
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData?.error?.message || errorMessage;
-    } catch {
-      // ignore parse errors
+    const errorMessage = data?.error?.message || "AI API request failed";
+    const isAuthError =
+      response.status === 401 ||
+      response.status === 403 ||
+      /user not found|invalid api key|unauthorized/i.test(errorMessage);
+
+    if (isAuthError) {
+      throw new AppError(
+        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in your .env.",
+        502
+      );
     }
-    throw new Error(errorMessage);
+
+    throw new AppError(errorMessage, 502);
   }
 
-  const data = await response.json();
+  if (!data) {
+    throw new AppError("AI API returned an invalid response", 502);
+  }
+  const content = data.choices?.[0]?.message?.content || "";
   return {
     success: true,
-    message: data.choices?.[0]?.message?.content || "",
+    message: stripMarkdownHeadings(content),
     usage: data.usage || null
   };
 };

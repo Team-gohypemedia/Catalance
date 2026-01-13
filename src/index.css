@@ -209,15 +209,7 @@
   z-index: 30;
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: 0% 50%;
-  }
 
-  100% {
-    background-position: -200% 50%;
-  }
-}
 
 @keyframes spotlight {
   0% {
@@ -228,6 +220,18 @@
   100% {
     opacity: 1;
     transform: translate(-50%, -40%) scale(1);
+  }
+}
+
+@keyframes mask-shimmer {
+  0% {
+    mask-position: 200% 0;
+    -webkit-mask-position: 200% 0;
+  }
+
+  100% {
+    mask-position: -200% 0;
+    -webkit-mask-position: -200% 0;
   }
 }
 
@@ -284,8 +288,8 @@
 
 /* Global Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {

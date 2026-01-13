@@ -24,7 +24,11 @@ aiRouter.post("/chat", async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("AI Chat Error:", error);
-    res.status(500).json({
+    const statusCode = Number.isInteger(error?.statusCode)
+      ? error.statusCode
+      : 500;
+    res.status(statusCode).json({
+      success: false,
       error: "Failed to process AI request",
       message: error.message
     });
