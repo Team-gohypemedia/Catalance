@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {
-  chatController,
   listUserConversations,
   createConversation,
   getConversationMessages,
@@ -12,7 +11,6 @@ import { optionalAuth } from "../middlewares/optional-auth.js";
 
 export const chatRouter = Router();
 
-chatRouter.post("/", chatController);
 // Protected conversation routes
 chatRouter.get("/conversations", requireAuth, listUserConversations);
 chatRouter.post("/conversations", optionalAuth, createConversation);

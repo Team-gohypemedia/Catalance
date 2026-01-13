@@ -202,13 +202,6 @@ export const resendOtp = (email) => {
   });
 };
 
-export const chat = ({ message, service, history = [] }) => {
-  return request("/chat", {
-    method: "POST",
-    body: JSON.stringify({ message, service, history })
-  });
-};
-
 export const createChatConversation = ({ service, ...rest }) => {
   return request("/chat/conversations", {
     method: "POST",
@@ -268,7 +261,6 @@ export const listFreelancers = (params = {}) => {
 export const apiClient = {
   signup,
   login,
-  chat,
   createChatConversation,
   fetchChatConversations,
   fetchChatMessages,

@@ -1,11 +1,13 @@
 ﻿import { useState, useEffect } from "react";
+import { useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { EvervaultCard, CardPattern, generateRandomString } from "@/components/ui/evervault-card";
 import { useMotionValue, useMotionTemplate, motion } from "motion/react";
-import ChatDialog from "./ChatDialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import AIChat from "@/components/ai/AIChat";
 import {
   Code,
   Target,
@@ -184,11 +186,16 @@ function MatrixPattern({ mouseX, mouseY, randomString }) {
 }
 
 const ClientOnboading = () => {
-  const [selectedService, setSelectedService] = useState(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [multiSelectEnabled, setMultiSelectEnabled] = useState(false);
   const [selectedServices, setSelectedServices] = useState([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatPrefill, setChatPrefill] = useState("");
   const location = useLocation();
+
+  const openChat = useCallback((message) => {
+    setChatPrefill(message || "");
+    setIsChatOpen(true);
+  }, []);
 
   // Matrix effect state
   const mouseX = useMotionValue(0);
@@ -221,15 +228,10 @@ const ClientOnboading = () => {
       if (feature) {
         setMultiSelectEnabled(false);
         setSelectedServices([]);
-        setSelectedService(feature);
-        setIsChatOpen(true);
-        // Clean up state to prevent reopening on casual refreshes/rerenders if desired
-        // history.replaceState({}, document.title) // valid JS but react-router handles differently. 
-        // We can leave it or clear it. Leaving it ensures back/forward works expectedly? 
-        // Actually, better to just let it be for now.
+        openChat(`I need help with ${feature.title}.`);
       }
     }
-  }, [location.state]);
+  }, [location.state, openChat]);
 
   const handleCardClick = (feature) => {
     if (multiSelectEnabled) {
@@ -247,8 +249,7 @@ const ClientOnboading = () => {
       return;
     }
 
-    setSelectedService(feature);
-    setIsChatOpen(true);
+    openChat(`I need help with ${feature.title}.`);
   };
 
   const handleToggleMultiSelect = (checked) => {
@@ -260,8 +261,8 @@ const ClientOnboading = () => {
 
   const handleStartMultiChat = () => {
     if (!selectedServices.length) return;
-    setSelectedService(null);
-    setIsChatOpen(true);
+    const selectedNames = selectedServices.map((item) => item.title).join(", ");
+    openChat(`I need help with ${selectedNames}.`);
   };
 
   return (
@@ -358,12 +359,15 @@ const ClientOnboading = () => {
         ))}
       </div>
 
-      <ChatDialog
-        isOpen={isChatOpen}
-        onClose={setIsChatOpen}
-        service={multiSelectEnabled ? null : selectedService}
-        services={multiSelectEnabled ? selectedServices : null}
-      />
+      <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+        <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-6xl h-[90vh] border-0 bg-transparent p-0">
+          <DialogTitle className="sr-only">Chat with Catalance</DialogTitle>
+          <div className="h-full w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
+            <AIChat embedded prefill={chatPrefill} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </section >
   );
 };

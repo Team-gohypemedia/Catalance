@@ -11,6 +11,7 @@ import ProposalDrafts from "@/components/client/ProposalDrafts.jsx";
 import ClientProjects from "@/components/client/ClientProjects.jsx";
 import ClientProjectDetail from "@/components/client/ClientProjectDetail.jsx";
 import ClientChat from "@/components/client/ClientChat.jsx";
+import AIChat from "@/components/ai/AIChat.jsx";
 import ClientProfile from "@/components/client/ClientProfile.jsx";
 import ProjectManagerDashboard from "@/components/project-manager/ProjectManagerDashboard";
 import ManagerAvailability from "@/components/project-manager/ManagerAvailability";
@@ -128,6 +129,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <ClientDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client/ai-chat"
+            element={
+              <ProtectedRoute>
+                <AIChat />
               </ProtectedRoute>
             }
           />

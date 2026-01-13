@@ -1,17 +1,6 @@
 import { Server } from "socket.io";
 import { env } from "../config/env.js";
 import { prisma } from "./prisma.js";
-import { generateChatReplyWithState } from "../controllers/chat.controller.js";
-import {
-  ensureConversation,
-  createConversation as createInMemoryConversation,
-  addMessage,
-  listMessages,
-  getConversation,
-  getSharedContext,
-  setSharedContext,
-  getSharedContextKey
-} from "./chat-store.js";
 import { sendNotificationToUser } from "./notification-util.js";
 import { setIo } from "./socket-manager.js";
 
@@ -44,11 +33,6 @@ const serializeMessage = (message) => ({
     message.createdAt instanceof Date
       ? message.createdAt.toISOString()
       : message.createdAt
-});
-
-const toHistoryMessage = (message) => ({
-  role: message.role === "assistant" ? "assistant" : "user",
-  content: message.content
 });
 
 let ioInstance;
@@ -118,13 +102,9 @@ export const initSocket = (server) => {
       console.log(`[Socket] chat:join request:`, { conversationId, service, senderId, socketId: socket.id });
       try {
         const serviceKey = service ? service.toString().trim() : null;
-        let useMemory = false;
-        let conversation = getConversation(conversationId);
-        if (conversation) {
-          useMemory = true;
-        }
+        let conversation = null;
 
-        if (!conversation && conversationId) {
+        if (conversationId) {
           conversation = await prisma.chatConversation.findUnique({
             where: { id: conversationId }
           });
@@ -164,13 +144,11 @@ export const initSocket = (server) => {
         presenceKeys.set(conversation.id, userKey);
         broadcastPresence(conversation.id);
 
-        const history = useMemory
-          ? listMessages(conversation.id, 100)
-          : await prisma.chatMessage.findMany({
-            where: { conversationId: conversation.id },
-            orderBy: { createdAt: "asc" },
-            take: 100
-          });
+        const history = await prisma.chatMessage.findMany({
+          where: { conversationId: conversation.id },
+          orderBy: { createdAt: "asc" },
+          take: 100
+        });
 
         if (history.length) {
           socket.emit(
@@ -229,10 +207,7 @@ export const initSocket = (server) => {
         senderId,
         senderRole,
         senderName,
-        skipAssistant = false,
-        attachment,
-        history: clientHistory,
-        sharedContextId
+        attachment
       }) => {
         if (!content && !attachment) {
           socket.emit("chat:error", {
@@ -243,108 +218,6 @@ export const initSocket = (server) => {
 
         try {
           const serviceKey = service ? service.toString().trim() : null;
-          const memoryConversation = getConversation(conversationId);
-          const useMemory = !skipAssistant || Boolean(memoryConversation);
-
-          // Ephemeral AI chat path
-          if (useMemory) {
-            let conversation = ensureConversation({
-              id: conversationId,
-              service: serviceKey || null,
-              createdById: senderId || null
-            });
-
-            if (!conversationId || conversation.id !== conversationId) {
-              socket.emit("chat:joined", { conversationId: conversation.id });
-            }
-
-            socket.join(conversation.id);
-
-            const userMessage = addMessage({
-              conversationId: conversation.id,
-              senderId: senderId || null,
-              senderName: senderName || null,
-              senderRole: senderRole || null,
-              role: "user",
-              content,
-              attachment: attachment || null
-            });
-
-            io.to(conversation.id).emit(
-              "chat:message",
-              serializeMessage(userMessage)
-            );
-
-            if (skipAssistant) return;
-
-            const serverHistory = listMessages(conversation.id, 100).map(toHistoryMessage);
-            const fallbackHistory = Array.isArray(clientHistory)
-              ? clientHistory.map(toHistoryMessage)
-              : [];
-
-            // Prefer server-side history when it exists; otherwise use client-provided history.
-            // This prevents repeated questions when the in-memory conversation is missing
-            // (e.g., after a restart or in multi-instance deployments).
-            const dbHistory =
-              fallbackHistory.length > 0 && serverHistory.length <= 1
-                ? fallbackHistory
-                : serverHistory;
-
-            let assistantReply = null;
-            try {
-              const sharedContextKey = getSharedContextKey({
-                sharedContextId,
-                senderId: senderId || null,
-                conversationId: conversation.id
-              });
-              const sharedContext = sharedContextKey ? getSharedContext(sharedContextKey) : null;
-
-              const { reply, state: nextState } = await generateChatReplyWithState({
-                message: content,
-                service: service || conversation.service || "",
-                history: dbHistory,
-                state: conversation.assistantState,
-                sharedContext
-              });
-              assistantReply = reply;
-              conversation.assistantState = nextState;
-              if (sharedContextKey && nextState?.sharedContext) {
-                setSharedContext(sharedContextKey, nextState.sharedContext);
-              }
-            } catch (error) {
-              console.error("Assistant generation failed", error);
-              try {
-                const fs = await import('fs');
-                const path = await import('path');
-                const logPath = path.resolve(process.cwd(), 'socket-errors.log');
-                const logEntry = `[${new Date().toISOString()}] Assistant generation error: ${error.message}\n${error.stack}\n---\n`;
-                fs.appendFileSync(logPath, logEntry);
-              } catch (e) { /* ignore */ }
-
-              socket.emit("chat:error", {
-                message:
-                  "Cata is temporarily unavailable. Please continue the chat."
-              });
-            }
-
-            if (assistantReply) {
-              const assistantMessage = addMessage({
-                conversationId: conversation.id,
-                senderName: "Cata",
-                senderRole: "assistant",
-                role: "assistant", // Ensuring role is 'assistant'
-                content: assistantReply
-              });
-
-              console.log("[Socket] Emitting assistant response:", serializeMessage(assistantMessage));
-
-              io.to(conversation.id).emit(
-                "chat:message",
-                serializeMessage(assistantMessage)
-              );
-            }
-            return;
-          }
 
           // Persisted client/freelancer chat path
           let conversation = null;
