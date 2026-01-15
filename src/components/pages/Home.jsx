@@ -13,8 +13,7 @@ const Home = () => {
 
     return (
         <div className="flex flex-col min-h-screen">
-            {/* <CatalanceHero /> */}
-            <DelphiHero />
+            <CatalanceHero />
             <LogoCloud />
         </div>
     );
