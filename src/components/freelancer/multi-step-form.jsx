@@ -2,7 +2,9 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, ChevronRight, X } from "lucide-react";
+import Check from "lucide-react/dist/esm/icons/check";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import X from "lucide-react/dist/esm/icons/x";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";

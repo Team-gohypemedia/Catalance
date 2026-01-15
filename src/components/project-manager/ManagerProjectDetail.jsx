@@ -32,21 +32,19 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  FileText,
-  User,
-  Briefcase,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle2,
-  Circle,
-  AlertCircle,
-  Calendar,
-  MessageSquare,
-  Send,
-  Loader2,
-} from "lucide-react";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import User from "lucide-react/dist/esm/icons/user";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import Circle from "lucide-react/dist/esm/icons/circle";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import Send from "lucide-react/dist/esm/icons/send";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { SOP_TEMPLATES, getSopFromTitle } from "@/data/sopTemplates";
 
 const getPhaseIcon = (status) => {

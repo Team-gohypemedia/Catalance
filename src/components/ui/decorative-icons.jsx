@@ -1,6 +1,21 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Code2, Palette, PenTool, Cpu, Globe, Layers, Zap, Smartphone, Terminal, Database, Cloud, Wifi, Settings, GitBranch, Box, Monitor } from "lucide-react";
+import Code2 from "lucide-react/dist/esm/icons/code-2";
+import Palette from "lucide-react/dist/esm/icons/palette";
+import PenTool from "lucide-react/dist/esm/icons/pen-tool";
+import Cpu from "lucide-react/dist/esm/icons/cpu";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Layers from "lucide-react/dist/esm/icons/layers";
+import Zap from "lucide-react/dist/esm/icons/zap";
+import Smartphone from "lucide-react/dist/esm/icons/smartphone";
+import Terminal from "lucide-react/dist/esm/icons/terminal";
+import Database from "lucide-react/dist/esm/icons/database";
+import Cloud from "lucide-react/dist/esm/icons/cloud";
+import Wifi from "lucide-react/dist/esm/icons/wifi";
+import Settings from "lucide-react/dist/esm/icons/settings";
+import GitBranch from "lucide-react/dist/esm/icons/git-branch";
+import Box from "lucide-react/dist/esm/icons/box";
+import Monitor from "lucide-react/dist/esm/icons/monitor";
 
 const DecorativeIcons = ({ isDark = true }) => {
     const icons = [

@@ -1,17 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import {
-  CheckCircle2,
-  Clock,
-  FileText,
-  XCircle,
-  Search,
-  ExternalLink,
-  Trash2,
-  Edit2,
-  MessageSquare,
-} from "lucide-react";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Search from "lucide-react/dist/esm/icons/search";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Edit2 from "lucide-react/dist/esm/icons/edit-2";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

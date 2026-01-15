@@ -8,30 +8,28 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import AIChat from "@/components/ai/AIChat";
-import {
-  Code,
-  Target,
-  Video,
-  Megaphone,
-  Palette,
-  FileText,
-  Heart,
-  Headphones,
-  ClipboardList,
-  Search,
-  Share2,
-  Activity,
-  Mic,
-  Database,
-  Workflow,
-  MessageCircle,
-  PhoneCall,
-  Users,
-  Globe,
-  Smartphone,
-  Terminal,
-  Check
-} from "lucide-react";
+import Code from "lucide-react/dist/esm/icons/code";
+import Target from "lucide-react/dist/esm/icons/target";
+import Video from "lucide-react/dist/esm/icons/video";
+import Megaphone from "lucide-react/dist/esm/icons/megaphone";
+import Palette from "lucide-react/dist/esm/icons/palette";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Heart from "lucide-react/dist/esm/icons/heart";
+import Headphones from "lucide-react/dist/esm/icons/headphones";
+import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import Search from "lucide-react/dist/esm/icons/search";
+import Share2 from "lucide-react/dist/esm/icons/share-2";
+import Activity from "lucide-react/dist/esm/icons/activity";
+import Mic from "lucide-react/dist/esm/icons/mic";
+import Database from "lucide-react/dist/esm/icons/database";
+import Workflow from "lucide-react/dist/esm/icons/workflow";
+import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import PhoneCall from "lucide-react/dist/esm/icons/phone-call";
+import Users from "lucide-react/dist/esm/icons/users";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Smartphone from "lucide-react/dist/esm/icons/smartphone";
+import Terminal from "lucide-react/dist/esm/icons/terminal";
+import Check from "lucide-react/dist/esm/icons/check";
 
 // ... features array remains the same ...
 const features = [

@@ -12,24 +12,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import {
-  CheckCircle2,
-  Circle,
-  AlertCircle,
-  Calendar as CalendarIcon,
-  Link2,
-  Info,
-  Headset,
-  Mail,
-  Phone,
-  IndianRupee,
-  Send,
-  Upload,
-  FileText,
-  Check,
-  CheckCheck,
-  ExternalLink,
-} from "lucide-react";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import Circle from "lucide-react/dist/esm/icons/circle";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
+import Link2 from "lucide-react/dist/esm/icons/link-2";
+import Info from "lucide-react/dist/esm/icons/info";
+import Headset from "lucide-react/dist/esm/icons/headset";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
+import Send from "lucide-react/dist/esm/icons/send";
+import Upload from "lucide-react/dist/esm/icons/upload";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Check from "lucide-react/dist/esm/icons/check";
+import CheckCheck from "lucide-react/dist/esm/icons/check-check";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
@@ -61,7 +59,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import format from "date-fns/format";
+import isToday from "date-fns/isToday";
+import isYesterday from "date-fns/isYesterday";
+import isSameDay from "date-fns/isSameDay";
 import { cn } from "@/lib/utils";
 import {
   Select,

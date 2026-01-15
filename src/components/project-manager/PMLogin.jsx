@@ -14,7 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { login } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import EyeOff from "lucide-react/dist/esm/icons/eye-off";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 
 const initialFormState = {
     email: "",

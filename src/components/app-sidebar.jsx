@@ -1,20 +1,18 @@
 "use client";
 
 import * as React from "react";
-import {
-  BarChart,
-  Briefcase,
-  ClipboardList,
-  CreditCard,
-  FileText,
-  LayoutDashboard,
-  MessageSquare,
-  User,
-  Users,
-  AlertCircle,
-  History,
-  CheckCircle,
-} from "lucide-react";
+import BarChart from "lucide-react/dist/esm/icons/bar-chart";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import User from "lucide-react/dist/esm/icons/user";
+import Users from "lucide-react/dist/esm/icons/users";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import History from "lucide-react/dist/esm/icons/history";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";

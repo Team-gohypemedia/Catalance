@@ -13,7 +13,9 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { verifyResetToken, resetPassword } from "@/lib/api-client";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import EyeOff from "lucide-react/dist/esm/icons/eye-off";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 
 function ResetPassword({ className, ...props }) {
     const [searchParams] = useSearchParams();

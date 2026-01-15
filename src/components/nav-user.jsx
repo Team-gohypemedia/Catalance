@@ -1,16 +1,14 @@
 import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  LogOut,
-  Sun,
-  Moon,
-  Monitor,
-  Check
-} from "lucide-react";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
+import Bell from "lucide-react/dist/esm/icons/bell";
+import ChevronsUpDown from "lucide-react/dist/esm/icons/chevrons-up-down";
+import LogOut from "lucide-react/dist/esm/icons/log-out";
+import Sun from "lucide-react/dist/esm/icons/sun";
+import Moon from "lucide-react/dist/esm/icons/moon";
+import Monitor from "lucide-react/dist/esm/icons/monitor";
+import Check from "lucide-react/dist/esm/icons/check";
 
 import {
   Avatar,

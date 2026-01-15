@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { StickyNote, Loader2 } from "lucide-react";
+import StickyNote from "lucide-react/dist/esm/icons/sticky-note";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import PropTypes from "prop-types";
-import { Sparkles } from "lucide-react";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 const BRAND_INFO = {

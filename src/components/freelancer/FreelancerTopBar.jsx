@@ -2,18 +2,16 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Bell,
-  BellRing,
-  ChevronRight,
-  MessageSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Sun,
-  Moon,
-  Check,
-  X,
-} from "lucide-react";
+import Bell from "lucide-react/dist/esm/icons/bell";
+import BellRing from "lucide-react/dist/esm/icons/bell-ring";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import PanelLeftClose from "lucide-react/dist/esm/icons/panel-left-close";
+import PanelLeftOpen from "lucide-react/dist/esm/icons/panel-left-open";
+import Sun from "lucide-react/dist/esm/icons/sun";
+import Moon from "lucide-react/dist/esm/icons/moon";
+import Check from "lucide-react/dist/esm/icons/check";
+import X from "lucide-react/dist/esm/icons/x";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";

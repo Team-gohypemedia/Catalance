@@ -34,16 +34,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import {
-  CornerDownLeftIcon,
-  ImageIcon,
-  Loader2Icon,
-  MicIcon,
-  PaperclipIcon,
-  PlusIcon,
-  SquareIcon,
-  XIcon,
-} from "lucide-react";
+import CornerDownLeftIcon from "lucide-react/dist/esm/icons/corner-down-left";
+import ImageIcon from "lucide-react/dist/esm/icons/image";
+import Loader2Icon from "lucide-react/dist/esm/icons/loader-2";
+import MicIcon from "lucide-react/dist/esm/icons/mic";
+import PaperclipIcon from "lucide-react/dist/esm/icons/paperclip";
+import PlusIcon from "lucide-react/dist/esm/icons/plus";
+import SquareIcon from "lucide-react/dist/esm/icons/square";
+import XIcon from "lucide-react/dist/esm/icons/x";
 import { nanoid } from "nanoid";
 import {
   Children,

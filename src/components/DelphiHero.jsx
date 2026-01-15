@@ -5,17 +5,14 @@ import { useTheme } from "./theme-provider";
 import { Link } from 'react-router-dom';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-    Sparkles as SparklesIcon,
-    Briefcase,
-    Target,
-    Users,
-    ShieldCheck,
-    Sparkles,
-    ArrowRight,
-    Zap,
-    TrendingUp
-} from 'lucide-react';
+import SparklesIcon from "lucide-react/dist/esm/icons/sparkles";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Target from "lucide-react/dist/esm/icons/target";
+import Users from "lucide-react/dist/esm/icons/users";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Zap from "lucide-react/dist/esm/icons/zap";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 
 const DelphiHero = () => {
     const { theme } = useTheme();
@@ -457,7 +454,7 @@ const DelphiHero = () => {
                                     </div>
                                     <div className="flex items-center gap-2.5">
                                         <div className="p-1.5 text-primary">
-                                            <Sparkles className="w-4 h-4" />
+                                            <SparklesIcon className="w-4 h-4" />
                                         </div>
                                         <span className="text-sm font-medium text-foreground/90">Dedicated support</span>
                                     </div>

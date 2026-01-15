@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText } from "lucide-react";
+import FileText from "lucide-react/dist/esm/icons/file-text";
 
 const ProjectDescriptionDialog = ({ description, open, onOpenChange }) => {
   return (

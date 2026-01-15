@@ -11,8 +11,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Calendar, Clock, User, Video, Check, X, Briefcase } from "lucide-react";
-import { format } from "date-fns";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import User from "lucide-react/dist/esm/icons/user";
+import Video from "lucide-react/dist/esm/icons/video";
+import Check from "lucide-react/dist/esm/icons/check";
+import X from "lucide-react/dist/esm/icons/x";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import format from "date-fns/format";
 
 const formatTime = (hour) => {
     const ampm = hour >= 12 ? "PM" : "AM";

@@ -7,8 +7,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { DollarSign } from "lucide-react";
+import format from "date-fns/format";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
 
 const ProposalsListDialog = ({ proposals, open, onOpenChange }) => {
   const formatCurrency = (amount) => {

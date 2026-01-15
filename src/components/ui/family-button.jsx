@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { PlusIcon, XIcon } from "lucide-react";
+import PlusIcon from "lucide-react/dist/esm/icons/plus";
+import XIcon from "lucide-react/dist/esm/icons/x";
 import { motion } from "motion/react";
 
 import { cn } from "@/lib/utils";

@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, EyeOff, Shield } from "lucide-react";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import EyeOff from "lucide-react/dist/esm/icons/eye-off";
+import Shield from "lucide-react/dist/esm/icons/shield";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");

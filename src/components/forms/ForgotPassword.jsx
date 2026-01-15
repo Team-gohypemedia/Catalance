@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { forgotPassword } from "@/lib/api-client";
-import { ArrowLeft } from "lucide-react";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 
 function ForgotPassword({ className, ...props }) {
     const [email, setEmail] = useState("");

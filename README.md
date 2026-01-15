@@ -7,6 +7,10 @@ This repository bundles two apps:
 
 The apps can run independently during development or be deployed separately.
 
+## Agent guidance
+
+React performance guidance for automated reviews and refactors lives in `AGENTS.md`.
+
 ## Frontend
 
 ```bash

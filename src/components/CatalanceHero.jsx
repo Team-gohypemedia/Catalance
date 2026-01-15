@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Users, TrendingUp, ShieldCheck, Target, Zap, Briefcase, Sparkles } from "lucide-react";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Users from "lucide-react/dist/esm/icons/users";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import Target from "lucide-react/dist/esm/icons/target";
+import Zap from "lucide-react/dist/esm/icons/zap";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./theme-provider";
 import MatrixRain from "@/components/ui/matrix-code";

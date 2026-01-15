@@ -7,8 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, CalendarIcon, Clock, Trash2, Check, CalendarDays } from "lucide-react";
-import { format, addDays, startOfDay } from "date-fns";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Check from "lucide-react/dist/esm/icons/check";
+import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
+import format from "date-fns/format";
+import addDays from "date-fns/addDays";
+import startOfDay from "date-fns/startOfDay";
 import { cn } from "@/lib/utils";
 
 const TIME_SLOTS = [

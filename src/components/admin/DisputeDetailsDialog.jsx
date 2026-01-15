@@ -7,8 +7,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { User, Briefcase, FileText, Calendar, Link as LinkIcon, CheckCircle } from "lucide-react";
+import format from "date-fns/format";
+import User from "lucide-react/dist/esm/icons/user";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import LinkIcon from "lucide-react/dist/esm/icons/link";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 
 const DisputeDetailsDialog = ({ dispute, open, onOpenChange }) => {
   if (!dispute) return null;

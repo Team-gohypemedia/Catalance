@@ -17,16 +17,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import {
-  Loader2,
-  User,
-  Building2,
-  MapPin,
-  Globe,
-  Mail,
-  Phone,
-  Camera,
-} from "lucide-react";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import User from "lucide-react/dist/esm/icons/user";
+import Building2 from "lucide-react/dist/esm/icons/building-2";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import Camera from "lucide-react/dist/esm/icons/camera";
 
 const ClientProfileContent = () => {
   const { user, authFetch, refreshUser } = useAuth();

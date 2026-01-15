@@ -5,19 +5,17 @@ import { AdminTopBar } from "./AdminTopBar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { 
-  User, 
-  Mail, 
-  Calendar, 
-  CheckCircle,
-  MapPin,
-  Phone,
-  Wrench,
-  Loader2,
-  ExternalLink,
-  Award,
-  ArrowLeft
-} from "lucide-react";
+import User from "lucide-react/dist/esm/icons/user";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import Wrench from "lucide-react/dist/esm/icons/wrench";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import Award from "lucide-react/dist/esm/icons/award";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 
 const AdminUserDetails = () => {
   const { userId } = useParams();

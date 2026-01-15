@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2, Save, User } from "lucide-react";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Save from "lucide-react/dist/esm/icons/save";
+import User from "lucide-react/dist/esm/icons/user";
 
 const ManagerProfileContent = () => {
     const { authFetch, user, refreshUser } = useAuth();

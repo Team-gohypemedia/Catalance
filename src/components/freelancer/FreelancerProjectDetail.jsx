@@ -19,33 +19,31 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  CheckCircle2,
-  MessageCircle,
-  Circle,
-  AlertCircle,
-  IndianRupee,
-  Send,
-  Upload,
-  FileText,
-  Calendar as CalendarIcon,
-  Headset,
-  Mail,
-  Phone,
-  Image,
-  Globe,
-  Linkedin,
-  Github,
-  Link2,
-  Info,
-  Check,
-  CheckCheck,
-  Pencil,
-  X,
-  ChevronUp,
-  ChevronDown,
-  ExternalLink,
-} from "lucide-react";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import Circle from "lucide-react/dist/esm/icons/circle";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
+import Send from "lucide-react/dist/esm/icons/send";
+import Upload from "lucide-react/dist/esm/icons/upload";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
+import Headset from "lucide-react/dist/esm/icons/headset";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import Image from "lucide-react/dist/esm/icons/image";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Linkedin from "lucide-react/dist/esm/icons/linkedin";
+import Github from "lucide-react/dist/esm/icons/github";
+import Link2 from "lucide-react/dist/esm/icons/link-2";
+import Info from "lucide-react/dist/esm/icons/info";
+import Check from "lucide-react/dist/esm/icons/check";
+import CheckCheck from "lucide-react/dist/esm/icons/check-check";
+import Pencil from "lucide-react/dist/esm/icons/pencil";
+import X from "lucide-react/dist/esm/icons/x";
+import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
@@ -70,7 +68,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import format from "date-fns/format";
+import isToday from "date-fns/isToday";
+import isYesterday from "date-fns/isYesterday";
+import isSameDay from "date-fns/isSameDay";
 import { cn } from "@/lib/utils";
 import {
   Select,

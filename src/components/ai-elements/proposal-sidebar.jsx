@@ -1,4 +1,10 @@
-import { X, Download, Check, Calendar, DollarSign, FileText, Layers } from "lucide-react";
+import X from "lucide-react/dist/esm/icons/x";
+import Download from "lucide-react/dist/esm/icons/download";
+import Check from "lucide-react/dist/esm/icons/check";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Layers from "lucide-react/dist/esm/icons/layers";
 
 export function ProposalSidebar({ proposal, isOpen, onClose }) {
     if (!proposal) return null;

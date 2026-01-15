@@ -2,7 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import format from "date-fns/format";
+import isToday from "date-fns/isToday";
+import isYesterday from "date-fns/isYesterday";
+import isSameDay from "date-fns/isSameDay";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FreelancerTopBar } from "@/components/freelancer/FreelancerTopBar";
-import { SendHorizontal, Paperclip, Loader2, Clock4, Check, CheckCheck, Trash2, X } from "lucide-react";
+import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
+import Paperclip from "lucide-react/dist/esm/icons/paperclip";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Clock4 from "lucide-react/dist/esm/icons/clock-4";
+import Check from "lucide-react/dist/esm/icons/check";
+import CheckCheck from "lucide-react/dist/esm/icons/check-check";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import X from "lucide-react/dist/esm/icons/x";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";

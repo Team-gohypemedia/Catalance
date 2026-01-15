@@ -1,21 +1,19 @@
-import {
-  Plus,
-  Trash2,
-  Edit2,
-  ExternalLink,
-  X,
-  Camera,
-  Loader2,
-  User,
-  Rocket,
-  Cpu,
-  Briefcase,
-  Github,
-  Linkedin,
-  Globe,
-  MapPin,
-  FileText,
-} from "lucide-react";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Edit2 from "lucide-react/dist/esm/icons/edit-2";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import X from "lucide-react/dist/esm/icons/x";
+import Camera from "lucide-react/dist/esm/icons/camera";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import User from "lucide-react/dist/esm/icons/user";
+import Rocket from "lucide-react/dist/esm/icons/rocket";
+import Cpu from "lucide-react/dist/esm/icons/cpu";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Github from "lucide-react/dist/esm/icons/github";
+import Linkedin from "lucide-react/dist/esm/icons/linkedin";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import FileText from "lucide-react/dist/esm/icons/file-text";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";

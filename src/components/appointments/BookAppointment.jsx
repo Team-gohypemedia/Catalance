@@ -10,8 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, CalendarIcon, Clock, User, Check, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import User from "lucide-react/dist/esm/icons/user";
+import Check from "lucide-react/dist/esm/icons/check";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import format from "date-fns/format";
 import { cn } from "@/lib/utils";
 
 const formatTime = (hour) => {

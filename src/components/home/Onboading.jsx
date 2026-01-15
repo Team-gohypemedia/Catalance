@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, ChevronRight, ArrowRight } from "lucide-react";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 
 import { Button } from "@/components/ui/button";
 import GradientBarsBackground from "@/components/ui/gradient-bars-background";
