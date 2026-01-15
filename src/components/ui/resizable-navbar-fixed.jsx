@@ -34,7 +34,7 @@ export const Navbar = ({
             className={cn("fixed inset-x-0 top-5 z-40 w-full", className)}>
             {React.Children.map(children, (child) =>
                 React.isValidElement(child)
-                    ? React.cloneElement(child, { visible })
+                    ? (typeof child.type === 'string' ? child : React.cloneElement(child, { visible }))
                     : child)}
         </motion.div>)
     );
@@ -70,7 +70,7 @@ export const NavBody = ({
             )}>
             {React.Children.map(children, (child) =>
                 React.isValidElement(child)
-                    ? React.cloneElement(child, { visible })
+                    ? (typeof child.type === 'string' ? child : React.cloneElement(child, { visible }))
                     : child)}
         </motion.div>)
     );

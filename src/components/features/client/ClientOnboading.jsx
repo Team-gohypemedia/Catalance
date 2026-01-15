@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, memo } from "react";
 import { useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { EvervaultCard, CardPattern, generateRandomString } from "@/components/ui/evervault-card";
@@ -11,12 +11,12 @@ import AIChat from "@/components/features/ai/AIChat";
 import Code from "lucide-react/dist/esm/icons/code";
 import Target from "lucide-react/dist/esm/icons/target";
 import Video from "lucide-react/dist/esm/icons/video";
-import Megaphone from "lucide-react/dist/esm/icons/megaphone";
+
 import Palette from "lucide-react/dist/esm/icons/palette";
 import FileText from "lucide-react/dist/esm/icons/file-text";
-import Heart from "lucide-react/dist/esm/icons/heart";
+
 import Headphones from "lucide-react/dist/esm/icons/headphones";
-import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+
 import Search from "lucide-react/dist/esm/icons/search";
 import Share2 from "lucide-react/dist/esm/icons/share-2";
 import Activity from "lucide-react/dist/esm/icons/activity";
@@ -30,64 +30,65 @@ import Globe from "lucide-react/dist/esm/icons/globe";
 import Smartphone from "lucide-react/dist/esm/icons/smartphone";
 import Terminal from "lucide-react/dist/esm/icons/terminal";
 import Check from "lucide-react/dist/esm/icons/check";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 
 // ... features array remains the same ...
 const features = [
   {
     title: "Website Development",
     description: "Custom websites built for performance, speed, and business growth.",
-    price: "Starting at ₹15,000",
+    price: "Starting at ₹25,000",
     icon: Globe,
     image: "/src/assets/icons/web-icon.png",
   },
   {
     title: "App Development",
     description: "Mobile apps designed to engage users and scale businesses.",
-    price: "Starting at ₹25,000",
+    price: "Starting at ₹1,00,000",
     icon: Smartphone,
     image: "/src/assets/icons/android-icon.png",
   },
   {
     title: "Software Development",
     description: "Custom software solutions built to solve real business problems.",
-    price: "Starting at ₹30,000",
+    price: "Starting at ₹1,00,000",
     icon: Terminal,
   },
   {
     title: "Lead Generation",
     description: "Targeted campaigns that turn prospects into qualified business leads.",
-    price: "Starting at ₹15,000",
+    price: "Starting at ₹15,000/mo",
     icon: Target,
   },
   {
     title: "Video Services",
     description: "Creative videos that tell stories and boost brand engagement.",
-    price: "Starting at ₹7,500",
+    price: "Starting at ₹2,000/video",
     icon: Video,
   },
   {
     title: "CGI Videos",
     description: "High-impact CGI visuals for products, ads, and storytelling.",
-    price: "Starting at INR 15,000",
+    price: "Starting at ₹15,000",
     icon: Video,
   },
   {
     title: "3D Modeling",
     description: "Detailed 3D models for products, visuals, and digital experiences.",
-    price: "Starting at INR 5,000 per model",
+    price: "Starting at ₹5,000/model",
     icon: Code,
   },
   {
     title: "SEO Optimization",
     description: "Improve search rankings and drive consistent organic traffic.",
-    price: "Starting at ₹8,000",
+    price: "Starting at ₹10,000/mo",
     icon: Search,
     image: "/src/assets/icons/seo-icon.png",
   },
   {
     title: "Social Media Management",
     description: "Content and community management to grow your brand online.",
-    price: "Starting at ₹12,000",
+    price: "Starting at ₹10,000/mo",
     icon: Share2,
   },
   {
@@ -99,37 +100,37 @@ const features = [
   {
     title: "UGC (User-Generated Content) Marketing",
     description: "Authentic creator content that boosts brand credibility and conversions.",
-    price: "Starting at ₹2,000 per video",
+    price: "Starting at ₹2,000/video",
     icon: Mic,
   },
   {
     title: "Performance Marketing",
     description: "Data-driven advertising campaigns focused on measurable results.",
-    price: "Starting at ₹15,000",
+    price: "Starting at ₹25,000/mo",
     icon: Activity,
   },
   {
     title: "Creative & Design",
     description: "Visual designs that strengthen branding and communication.",
-    price: "Starting at ₹3,500",
+    price: "Starting at ₹10,000",
     icon: Palette,
   },
   {
     title: "Branding (Naming, Logo & Brand Identity)",
     description: "Build strong brand identities that people remember and trust.",
-    price: "Starting at INR 25,000",
+    price: "Starting at ₹25,000",
     icon: Palette,
   },
   {
     title: "Writing & Content",
     description: "Compelling content that informs, engages, and converts audiences.",
-    price: "Starting at ₹2,000",
+    price: "Starting at ₹1,000/piece",
     icon: FileText,
   },
   {
     title: "Customer Support",
     description: "Reliable support services that improve customer satisfaction and retention.",
-    price: "Starting at ₹8,000",
+    price: "Starting at ₹15,000/mo",
     icon: Headphones,
   },
   {
@@ -141,20 +142,20 @@ const features = [
   {
     title: "AI Automation",
     description: "Automate workflows to save time and improve productivity.",
-    price: "Starting at ₹20,000",
+    price: "Starting at ₹25,000",
     icon: Workflow,
   },
   {
     title: "Voice Agent (AI Voice Bot / Call Automation)",
     description: "AI-powered voice agents for sales, support, and follow-ups.",
-    price: "Starting at ₹130,000",
+    price: "Starting at ₹1,30,000",
     icon: PhoneCall,
     image: "/src/assets/icons/voice-agent-icon.png",
   },
   {
     title: "WhatsApp Chat Bot",
     description: "Automated WhatsApp conversations for faster customer support and sales.",
-    price: "Starting at ₹10,000",
+    price: "Starting at ₹15,000",
     icon: MessageCircle,
   },
 ];
@@ -198,24 +199,24 @@ const ClientOnboading = () => {
   // Matrix effect state
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const [randomString, setRandomString] = useState("");
+
+  // OPTIMIZED: Initialize string only once using lazy initialization
+  const [randomString] = useState(() => generateRandomString(20000));
 
   useEffect(() => {
-    const str = generateRandomString(20000);
-    setRandomString(str);
+    // No need to set string here anymore as we use lazy init
 
     const handleMouseMove = (event) => {
       mouseX.set(event.clientX);
       mouseY.set(event.clientY);
 
-      // Optional: Regenerate string on movement for dynamic effect
-      const str = generateRandomString(20000);
-      setRandomString(str);
+      // CRITICAL FIX: Removed string regeneration on every mouse move
+      // This was causing 20,000 char generation + re-render on every pixel moved
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+  }, [mouseX, mouseY]);
 
   // Handle auto-open from dashboard
   useEffect(() => {
@@ -306,54 +307,13 @@ const ClientOnboading = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
         {features.map((feature, index) => (
-          <div
+          <ServiceCard
             key={index}
+            feature={feature}
+            selectedServices={selectedServices}
+            multiSelectEnabled={multiSelectEnabled}
             onClick={() => handleCardClick(feature)}
-            className="cursor-pointer relative bg-background rounded-2xl border border-amber-500"
-          >
-            <div
-              className={`
-                h-[300px] rounded-2xl transition-all duration-300 flex flex-col group relative overflow-hidden shadow-xl
-                ${selectedServices.some((item) => item.title === feature.title) && multiSelectEnabled
-                  ? "ring-2 ring-primary shadow-[0_0_30px_-5px_rgba(250,204,21,0.4)]"
-                  : "hover:shadow-2xl"}
-              `}
-            >
-              {/* Icon */}
-              <div className="h-32 w-full flex items-center justify-center p-4 relative">
-                {feature.image ? (
-                  <img src={feature.image} alt={feature.title} className="w-30 h-24 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                ) : (
-                  <feature.icon className="w-16 h-16 text-primary drop-shadow-lg group-hover:scale-110 transition-transform duration-300" strokeWidth={1.5} />
-                )}
-              </div>
-
-              {/* Card Content */}
-              <div className="flex flex-col px-1 pt-1 pb-1 mt-auto">
-                <h3 className="text-lg font-bold text-white mb-2 text-center group-hover:text-yellow-400 transition-colors line-clamp-2">
-                  {feature.title}
-                </h3>
-
-                <p className="text-xs text-zinc-400 font-medium leading-relaxed text-center mb-2 line-clamp-2">
-                  {feature.description}
-                </p>
-
-                {/* Price Display */}
-                <div className="w-full text-[#ffc800] font-medium py-4 text-base rounded-none rounded-b-xl text-center">
-                  Starts from <span className="text-lg">{feature.price.replace('Starting at ', '').replace('Starting at', '')}</span>
-                </div>
-              </div>
-            </div>
-            {multiSelectEnabled && (
-              <div className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border text-xs ${selectedServices.some((item) => item.title === feature.title) ? "bg-primary text-primary-foreground border-primary" : "bg-background/80 text-muted-foreground border-border"}`}>
-                {selectedServices.some((item) => item.title === feature.title) ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  "+"
-                )}
-              </div>
-            )}
-          </div>
+          />
         ))}
       </div>
 
@@ -369,6 +329,65 @@ const ClientOnboading = () => {
     </section >
   );
 };
+
+// Memoized Service Card Component to prevent re-renders
+const ServiceCard = memo(({ feature, selectedServices, multiSelectEnabled, onClick }) => {
+  const isSelected = selectedServices.some((item) => item.title === feature.title);
+
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full
+        ${isSelected
+          ? "border-[#ffc800] shadow-[0_0_40px_-10px_rgba(255,200,0,0.3)] bg-background"
+          : "border-white/20 bg-background shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:border-[#ffc800]/50 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2"}
+      `}
+    >
+      {/* Background Gradient Shine - Subtle premium feel */}
+      <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 ${isSelected ? "opacity-100" : "group-hover:opacity-100"}`} />
+
+      {/* Selection Glow Overlay */}
+      {isSelected && <div className="absolute inset-0 bg-[#ffc800]/5 pointer-events-none" />}
+
+      <div className="flex flex-col h-full p-8 relative z-10">
+
+        {/* Icon Container */}
+        <div className="h-24 w-full flex items-center justify-start mb-6 relative">
+          <div className="absolute -left-4 -top-4 w-32 h-32 bg-[#ffc800]/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          {feature.image ? (
+            <img src={feature.image} alt={feature.title} className="w-20 h-20 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out" />
+          ) : (
+            <feature.icon className="w-14 h-14 text-[#ffc800] drop-shadow-lg z-10 group-hover:scale-110 transition-transform duration-500 ease-out" strokeWidth={1.5} />
+          )}
+        </div>
+
+        {/* Card Content */}
+        <div className="flex flex-col grow">
+          <h3 className="text-xl font-bold text-white mb-3 leading-tight group-hover:text-[#ffc800] transition-colors duration-300">
+            {feature.title}
+          </h3>
+
+          <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-8 line-clamp-3 group-hover:text-zinc-300 transition-colors">
+            {feature.description}
+          </p>
+
+          <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-5">
+            <div>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Starting at</p>
+              <p className="text-white text-lg font-bold group-hover:text-[#ffc800] transition-colors duration-300">
+                {feature.price.replace('Starting at ', '').replace('Starting at', '')}
+              </p>
+            </div>
+            <div className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-[#ffc800] border-[#ffc800] text-black' : 'border-white/10 text-zinc-500 group-hover:border-[#ffc800] group-hover:text-[#ffc800]'}`}>
+              {isSelected ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default ClientOnboading;
 
