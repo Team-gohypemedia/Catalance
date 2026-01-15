@@ -338,10 +338,10 @@ const ClientOnboading = () => {
                   {feature.description}
                 </p>
 
-                {/* Chat Now Button */}
-                <Button className="w-full bg-[#ffc800] text-[#181710] font-bold py-6 text-base shadow-md rounded-none rounded-b-xl">
-                  Chat Now
-                </Button>
+                {/* Price Display */}
+                <div className="w-full text-[#ffc800] font-medium py-4 text-base rounded-none rounded-b-xl text-center">
+                  Starts from <span className="text-lg">{feature.price.replace('Starting at ', '').replace('Starting at', '')}</span>
+                </div>
               </div>
             </div>
             {multiSelectEnabled && (

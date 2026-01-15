@@ -110,10 +110,8 @@ const Services = () => {
                                 />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
-                                <h3 className="text-lg font-bold mb-3 text-center">Website Development</h3>
-                                <Button className="w-full bg-[#ffc800] text-[#181710] hover:bg-[#e5b400] font-bold rounded-lg">
-                                    Chat Now
-                                </Button>
+                                <h3 className="text-lg font-bold mb-2 text-center">Website Development</h3>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹25,000</span></p>
                             </div>
                         </div>
 
@@ -127,10 +125,8 @@ const Services = () => {
                                 />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
-                                <h3 className="text-lg font-bold mb-3 text-center">App Development</h3>
-                                <Button className="w-full bg-[#ffc800] text-[#181710] hover:bg-[#e5b400] font-bold rounded-lg">
-                                    Chat Now
-                                </Button>
+                                <h3 className="text-lg font-bold mb-2 text-center">App Development</h3>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹1,00,000</span></p>
                             </div>
                         </div>
 
@@ -144,10 +140,8 @@ const Services = () => {
                                 />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
-                                <h3 className="text-lg font-bold mb-3 text-center">Creative & Design</h3>
-                                <Button className="w-full bg-[#ffc800] text-[#181710] hover:bg-[#e5b400] font-bold rounded-lg">
-                                    Chat Now
-                                </Button>
+                                <h3 className="text-lg font-bold mb-2 text-center">Creative & Design</h3>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹25,000</span></p>
                             </div>
                         </div>
 
@@ -161,10 +155,8 @@ const Services = () => {
                                 />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
-                                <h3 className="text-lg font-bold mb-3 text-center">Marketing</h3>
-                                <Button className="w-full bg-[#ffc800] text-[#181710] hover:bg-[#e5b400] font-bold rounded-lg">
-                                    Chat Now
-                                </Button>
+                                <h3 className="text-lg font-bold mb-2 text-center">Marketing</h3>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹10,000</span>/mo</p>
                             </div>
                         </div>
 
@@ -174,10 +166,8 @@ const Services = () => {
                                 <PhoneCall className="w-20 h-20 text-white drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
-                                <h3 className="text-lg font-bold mb-3 text-center">Voice Agent (AI Voice Bot / Call Automation)</h3>
-                                <Button className="w-full bg-[#ffc800] text-[#181710] hover:bg-[#e5b400] font-bold rounded-lg">
-                                    Chat Now
-                                </Button>
+                                <h3 className="text-lg font-bold mb-2 text-center">Voice Agent (AI Voice Bot / Call Automation)</h3>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹50,000</span></p>
                             </div>
                         </div>
                     </div>
