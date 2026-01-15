@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { motion, useMotionTemplate, useMotionValue } from "motion/react"
 import PropTypes from "prop-types"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 export const EvervaultCard = ({ text, className, children, disableEffect = false }) => {
   const mouseX = useMotionValue(0)

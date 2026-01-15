@@ -1,80 +1,84 @@
 import PropTypes from "prop-types";
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { ThemeProvider } from "./components/theme-provider";
-import Navbar from "./components/Navbar";
-import Footer from "@/components/Footer";
-import { useAuth } from "@/context/AuthContext";
-import AdminRoute from "@/components/auth/AdminRoute";
-import CataButton from "./components/common/CataButton";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import { useAuth } from "@/shared/context/AuthContext";
+import AdminRoute from "@/components/features/auth/AdminRoute";
+import CataButton from "@/components/common/CataButton";
 
 const Home = lazy(() => import("@/components/pages/Home"));
-const About = lazy(() => import("@/components/home/About.jsx"));
-const Services = lazy(() => import("@/components/home/Services.jsx"));
-const Contact = lazy(() => import("@/components/home/Contact.jsx"));
-const Client = lazy(() => import("@/components/client/Client.jsx"));
-const ClientDashboard = lazy(() => import("@/components/client/ClientDashboard.jsx"));
-const ClientProposal = lazy(() => import("@/components/client/ClientProposal.jsx"));
-const ProposalDrafts = lazy(() => import("@/components/client/ProposalDrafts.jsx"));
-const ClientProjects = lazy(() => import("@/components/client/ClientProjects.jsx"));
-const ClientProjectDetail = lazy(() => import("@/components/client/ClientProjectDetail.jsx"));
-const ClientChat = lazy(() => import("@/components/client/ClientChat.jsx"));
-const AIChat = lazy(() => import("@/components/ai/AIChat.jsx"));
-const ClientProfile = lazy(() => import("@/components/client/ClientProfile.jsx"));
+const About = lazy(() => import("@/components/sections/home/About.jsx"));
+const Services = lazy(() => import("@/components/sections/home/Services.jsx"));
+const Contact = lazy(() => import("@/components/sections/home/Contact.jsx"));
+const Client = lazy(() => import("@/components/features/client/Client.jsx"));
+const ClientDashboard = lazy(() => import("@/components/features/client/ClientDashboard.jsx"));
+const ClientProposal = lazy(() => import("@/components/features/client/ClientProposal.jsx"));
+const ProposalDrafts = lazy(() => import("@/components/features/client/ProposalDrafts.jsx"));
+const ClientProjects = lazy(() => import("@/components/features/client/ClientProjects.jsx"));
+const ClientProjectDetail = lazy(() => import("@/components/features/client/ClientProjectDetail.jsx"));
+const ClientChat = lazy(() => import("@/components/features/client/ClientChat.jsx"));
+const AIChat = lazy(() => import("@/components/features/ai/AIChat.jsx"));
+const ClientProfile = lazy(() => import("@/components/features/client/ClientProfile.jsx"));
 const ProjectManagerDashboard = lazy(() =>
-  import("@/components/project-manager/ProjectManagerDashboard")
+  import("@/components/features/project-manager/ProjectManagerDashboard")
 );
 const ManagerAvailability = lazy(() =>
-  import("@/components/project-manager/ManagerAvailability")
+  import("@/components/features/project-manager/ManagerAvailability")
 );
 const ManagerAppointments = lazy(() =>
-  import("@/components/project-manager/ManagerAppointments")
+  import("@/components/features/project-manager/ManagerAppointments")
 );
 const ManagerProjects = lazy(() =>
-  import("@/components/project-manager/ManagerProjects")
+  import("@/components/features/project-manager/ManagerProjects")
 );
 const ManagerProjectDetail = lazy(() =>
-  import("@/components/project-manager/ManagerProjectDetail")
+  import("@/components/features/project-manager/ManagerProjectDetail")
 );
-const ManagerChat = lazy(() => import("@/components/project-manager/ManagerChat"));
+const ManagerChat = lazy(() => import("@/components/features/project-manager/ManagerChat"));
 const ManagerProfile = lazy(() =>
-  import("@/components/project-manager/ManagerProfile")
+  import("@/components/features/project-manager/ManagerProfile")
 );
-const SignupPage = lazy(() => import("./components/forms/Signup"));
-const LoginPage = lazy(() => import("./components/forms/Login"));
-const ForgotPasswordPage = lazy(() => import("./components/forms/ForgotPassword"));
-const ResetPasswordPage = lazy(() => import("./components/forms/ResetPassword"));
-const PMLogin = lazy(() => import("@/components/project-manager/PMLogin"));
+const SignupPage = lazy(() => import("@/components/features/auth/forms/Signup"));
+const LoginPage = lazy(() => import("@/components/features/auth/forms/Login"));
+const ForgotPasswordPage = lazy(() =>
+  import("@/components/features/auth/forms/ForgotPassword")
+);
+const ResetPasswordPage = lazy(() =>
+  import("@/components/features/auth/forms/ResetPassword")
+);
+const PMLogin = lazy(() => import("@/components/features/project-manager/PMLogin"));
 const FreelancerDashboard = lazy(() =>
-  import("@/components/freelancer/FreelancerDashboard")
+  import("@/components/features/freelancer/FreelancerDashboard")
 );
 const FreelancerProposal = lazy(() =>
-  import("@/components/freelancer/FreelancerProposal")
+  import("@/components/features/freelancer/FreelancerProposal")
 );
 const FreelancerProfile = lazy(() =>
-  import("@/components/freelancer/FreelancerProfile")
+  import("@/components/features/freelancer/FreelancerProfile")
 );
 const FreelancerProjects = lazy(() =>
-  import("@/components/freelancer/FreelancerProjects")
+  import("@/components/features/freelancer/FreelancerProjects")
 );
 const FreelancerProjectDetail = lazy(() =>
-  import("@/components/freelancer/FreelancerProjectDetail")
+  import("@/components/features/freelancer/FreelancerProjectDetail")
 );
-const FreelancerChat = lazy(() => import("@/components/freelancer/FreelancerChat"));
+const FreelancerChat = lazy(() => import("@/components/features/freelancer/FreelancerChat"));
 const FreelancerMultiStepForm = lazy(() =>
-  import("./components/freelancer/multi-step-form")
+  import("@/components/features/freelancer/multi-step-form")
 );
-const NotepadPage = lazy(() => import("@/components/ui/notepad-page"));
-const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
-const AdminUsers = lazy(() => import("@/components/admin/AdminUsers"));
-const AdminProjects = lazy(() => import("@/components/admin/AdminProjects"));
+const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
+const AdminDashboard = lazy(() => import("@/components/features/admin/AdminDashboard"));
+const AdminUsers = lazy(() => import("@/components/features/admin/AdminUsers"));
+const AdminProjects = lazy(() => import("@/components/features/admin/AdminProjects"));
 const AdminProjectDetail = lazy(() =>
-  import("@/components/admin/AdminProjectDetail")
+  import("@/components/features/admin/AdminProjectDetail")
 );
-const AdminDisputes = lazy(() => import("@/components/admin/AdminDisputes"));
-const AdminLogin = lazy(() => import("@/components/admin/AdminLogin"));
-const AdminApprovals = lazy(() => import("@/components/admin/AdminApprovals"));
-const AdminUserDetails = lazy(() => import("@/components/admin/AdminUserDetails"));
+const AdminDisputes = lazy(() => import("@/components/features/admin/AdminDisputes"));
+const AdminLogin = lazy(() => import("@/components/features/admin/AdminLogin"));
+const AdminApprovals = lazy(() => import("@/components/features/admin/AdminApprovals"));
+const AdminUserDetails = lazy(() => import("@/components/features/admin/AdminUserDetails"));
 
 
 

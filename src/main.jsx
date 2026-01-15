@@ -4,8 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App.jsx";
 import { Toaster } from "sonner";
-import { AuthProvider } from "@/context/AuthContext";
-import { NotificationProvider } from "@/context/NotificationContext";
+import { AuthProvider } from "@/shared/context/AuthContext";
+import { NotificationProvider } from "@/shared/context/NotificationContext";
 
 import "./font.css";
 

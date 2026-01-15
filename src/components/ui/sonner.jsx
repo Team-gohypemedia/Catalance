@@ -3,7 +3,7 @@ import InfoIcon from "lucide-react/dist/esm/icons/info";
 import Loader2Icon from "lucide-react/dist/esm/icons/loader-2";
 import OctagonXIcon from "lucide-react/dist/esm/icons/octagon-x";
 import TriangleAlertIcon from "lucide-react/dist/esm/icons/triangle-alert";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/providers/theme-provider";
 import { Toaster as Sonner } from "sonner";
 
 const Toaster = ({

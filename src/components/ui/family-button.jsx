@@ -3,7 +3,7 @@ import PlusIcon from "lucide-react/dist/esm/icons/plus";
 import XIcon from "lucide-react/dist/esm/icons/x";
 import { motion } from "motion/react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 const CONTAINER_SIZE = 260;
 
