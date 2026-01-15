@@ -1086,25 +1086,36 @@ const ProjectDashboard = () => {
 
   const derivedPhases = useMemo(() => {
     const phases = activeSOP.phases;
-    const step = 100 / phases.length;
-    return phases.map((phase, index) => {
-      // Calculate how much "progress" this phase accounts for
-      const phaseValue = Math.max(
-        0,
-        Math.min(step, overallProgress - index * step)
-      );
-      const normalized = Math.round((phaseValue / step) * 100);
+    const allTasks = activeSOP.tasks;
+
+    return phases.map((phase) => {
+      // Find tasks for this phase
+      const phaseTasks = allTasks.filter((t) => t.phase === phase.id);
+      const totalPhaseTasks = phaseTasks.length;
+
+      // Calculate verified count for this phase
+      const verifiedCount = phaseTasks.filter((t) =>
+        verifiedTaskIds.has(`${t.phase}-${t.id}`)
+      ).length;
+
+      const progress =
+        totalPhaseTasks > 0
+          ? Math.round((verifiedCount / totalPhaseTasks) * 100)
+          : 0;
+
       let status = "pending";
-      if (normalized >= 100) status = "completed";
-      else if (normalized > 0) status = "in-progress";
+      if (progress >= 100) status = "completed";
+      else if (verifiedCount > 0) status = "in-progress";
+
       return {
         ...phase,
+        name: phase.name.replace(/\s*\(\s*Phase-\d+\s*\)/i, "").trim(),
         status,
-        progress: normalized,
-        index, // Keep track of original index
+        progress,
+        index: phases.indexOf(phase),
       };
     });
-  }, [overallProgress, activeSOP]);
+  }, [activeSOP, verifiedTaskIds]);
 
   // Handle phase click to update progress
   const handlePhaseClick = (phaseIndex) => {
@@ -1153,7 +1164,17 @@ const ProjectDashboard = () => {
       const isCompleted = completedTaskIds.has(uniqueKey);
       const isVerified = verifiedTaskIds.has(uniqueKey);
       const taskPhase = derivedPhases.find((p) => p.id === task.phase);
-      const phaseStatus = taskPhase?.status || task.status;
+
+      // Check if task is verified (highest priority)
+      if (isVerified) {
+        return {
+          ...task,
+          uniqueKey,
+          status: "completed",
+          verified: true,
+          phaseName: taskPhase?.name,
+        };
+      }
 
       // Check if task is manually completed by user
       if (isCompleted) {
@@ -1161,31 +1182,15 @@ const ProjectDashboard = () => {
           ...task,
           uniqueKey,
           status: "completed",
-          verified: isVerified,
+          verified: false,
           phaseName: taskPhase?.name,
         };
       }
-      if (phaseStatus === "completed") {
-        return {
-          ...task,
-          uniqueKey,
-          status: "completed",
-          verified: isVerified,
-          phaseName: taskPhase?.name,
-        };
-      }
-      if (phaseStatus === "in-progress" && task.status === "completed") {
-        return {
-          ...task,
-          uniqueKey,
-          verified: isVerified,
-          phaseName: taskPhase?.name,
-        };
-      }
+
       return {
         ...task,
         uniqueKey,
-        status: phaseStatus === "in-progress" ? "in-progress" : "pending",
+        status: "pending",
         verified: false,
         phaseName: taskPhase?.name,
       };
@@ -1194,20 +1199,35 @@ const ProjectDashboard = () => {
 
   // Group tasks by phase for display
   const tasksByPhase = useMemo(() => {
+    // Group tasks by phase ID
     const grouped = {};
     derivedTasks.forEach((task) => {
-      if (!grouped[task.phase]) {
-        const phase = derivedPhases.find((p) => p.id === task.phase);
-        grouped[task.phase] = {
-          phaseId: task.phase,
-          phaseName: phase?.name || `Phase ${task.phase}`,
-          phaseStatus: phase?.status || "pending",
-          tasks: [],
-        };
-      }
-      grouped[task.phase].tasks.push(task);
+      if (!grouped[task.phase]) grouped[task.phase] = [];
+      grouped[task.phase].push(task);
     });
-    return Object.values(grouped);
+
+    // Iterate sorted phases to build groups and calculate locks
+    let isPrevPhaseComplete = true; // First phase is always unlocked
+
+    return derivedPhases.map((phase) => {
+      const tasks = grouped[phase.id] || [];
+      const isLocked = !isPrevPhaseComplete;
+
+      // Determine completion for THIS phase (for next iteration)
+      // A phase is complete if it has tasks AND all are verified
+      const isComplete = tasks.length > 0 && tasks.every((t) => t.verified);
+
+      // Update check for next phase
+      isPrevPhaseComplete = isComplete;
+
+      return {
+        phaseId: phase.id,
+        phaseName: phase.name,
+        phaseStatus: phase.status,
+        tasks,
+        isLocked,
+      };
+    });
   }, [derivedTasks, derivedPhases]);
 
   // Handle task click to toggle completion (just marks as checked, not verified)
@@ -1522,6 +1542,7 @@ const ProjectDashboard = () => {
                             {getPhaseIcon(phaseGroup.phaseStatus)}
                             <div className="flex-1 text-left">
                               <div className="font-semibold text-sm text-foreground">
+                                Phase {phaseGroup.phaseId}:{" "}
                                 {phaseGroup.phaseName}
                               </div>
                               <div className="text-xs text-muted-foreground">
@@ -1557,8 +1578,13 @@ const ProjectDashboard = () => {
                             {phaseGroup.tasks.map((task) => (
                               <div
                                 key={task.uniqueKey}
-                                className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent/60 transition-colors cursor-pointer"
+                                className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
+                                  phaseGroup.isLocked
+                                    ? "opacity-50 pointer-events-none bg-muted/50"
+                                    : "hover:bg-accent/60 cursor-pointer"
+                                }`}
                                 onClick={(e) =>
+                                  !phaseGroup.isLocked &&
                                   handleTaskClick(e, task.uniqueKey)
                                 }
                               >
@@ -1575,6 +1601,11 @@ const ProjectDashboard = () => {
                                   }`}
                                 >
                                   {task.title}
+                                  {phaseGroup.isLocked && (
+                                    <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
+                                      (Locked)
+                                    </span>
+                                  )}
                                 </span>
                                 {task.status === "completed" && (
                                   <Button
@@ -1582,12 +1613,14 @@ const ProjectDashboard = () => {
                                     variant={
                                       task.verified ? "default" : "outline"
                                     }
+                                    disabled={phaseGroup.isLocked}
                                     className={`h-7 px-3 text-xs transition-all ${
                                       task.verified
                                         ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent"
                                         : "border-primary text-primary hover:bg-primary/10"
                                     }`}
                                     onClick={(e) =>
+                                      !phaseGroup.isLocked &&
                                       promptVerifyTask(
                                         e,
                                         task.uniqueKey,

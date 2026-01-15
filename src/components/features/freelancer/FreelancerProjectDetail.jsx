@@ -312,7 +312,13 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
                   autoFocus
                 />
               </div>
-              <Button size="icon" variant="ghost" className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50" onClick={handleSave} disabled={isSaving}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
                 <Check className="h-4 w-4" />
               </Button>
               <Button
@@ -1142,23 +1148,33 @@ const FreelancerProjectDetailContent = () => {
 
   const derivedPhases = useMemo(() => {
     const phases = activeSOP.phases;
-    const step = 100 / phases.length;
+    const allTasks = activeSOP.tasks;
+
     return phases.map((phase, index) => {
-      const phaseValue = Math.max(
-        0,
-        Math.min(step, overallProgress - index * step)
-      );
-      const normalized = Math.round((phaseValue / step) * 100);
+      const phaseTasks = allTasks.filter((t) => t.phase === phase.id);
+      const totalPhaseTasks = phaseTasks.length;
+
+      const verifiedCount = phaseTasks.filter((t) =>
+        verifiedTaskIds.has(`${t.phase}-${t.id}`)
+      ).length;
+
+      const progress =
+        totalPhaseTasks > 0
+          ? Math.round((verifiedCount / totalPhaseTasks) * 100)
+          : 0;
+
       let status = "pending";
-      if (normalized >= 100) status = "completed";
-      else if (normalized > 0) status = "in-progress";
+      if (progress >= 100) status = "completed";
+      else if (verifiedCount > 0) status = "in-progress";
+
       return {
         ...phase,
+        name: phase.name.replace(/\s*\(\s*Phase-\d+\s*\)/i, "").trim(),
         status,
-        progress: normalized,
+        progress,
       };
     });
-  }, [overallProgress, activeSOP]);
+  }, [activeSOP, verifiedTaskIds]);
 
   const derivedTasks = useMemo(() => {
     const tasks = activeSOP.tasks;
@@ -1169,7 +1185,17 @@ const FreelancerProjectDetailContent = () => {
       const isCompleted = completedTaskIds.has(uniqueKey);
       const isVerified = verifiedTaskIds.has(uniqueKey);
       const taskPhase = derivedPhases.find((p) => p.id === task.phase);
-      const phaseStatus = taskPhase?.status || task.status;
+
+      // Check if task is verified (highest priority)
+      if (isVerified) {
+        return {
+          ...task,
+          uniqueKey,
+          status: "completed",
+          verified: true,
+          phaseName: taskPhase?.name,
+        };
+      }
 
       // Check if task is manually completed by user
       if (isCompleted) {
@@ -1177,31 +1203,15 @@ const FreelancerProjectDetailContent = () => {
           ...task,
           uniqueKey,
           status: "completed",
-          verified: isVerified,
+          verified: false,
           phaseName: taskPhase?.name,
         };
       }
-      if (phaseStatus === "completed") {
-        return {
-          ...task,
-          uniqueKey,
-          status: "completed",
-          verified: isVerified,
-          phaseName: taskPhase?.name,
-        };
-      }
-      if (phaseStatus === "in-progress" && task.status === "completed") {
-        return {
-          ...task,
-          uniqueKey,
-          verified: isVerified,
-          phaseName: taskPhase?.name,
-        };
-      }
+
       return {
         ...task,
         uniqueKey,
-        status: phaseStatus === "in-progress" ? "in-progress" : "pending",
+        status: "pending",
         verified: false,
         phaseName: taskPhase?.name,
       };
@@ -1210,20 +1220,35 @@ const FreelancerProjectDetailContent = () => {
 
   // Group tasks by phase for display
   const tasksByPhase = useMemo(() => {
+    // Group tasks by phase ID
     const grouped = {};
     derivedTasks.forEach((task) => {
-      if (!grouped[task.phase]) {
-        const phase = derivedPhases.find((p) => p.id === task.phase);
-        grouped[task.phase] = {
-          phaseId: task.phase,
-          phaseName: phase?.name || `Phase ${task.phase}`,
-          phaseStatus: phase?.status || "pending",
-          tasks: [],
-        };
-      }
-      grouped[task.phase].tasks.push(task);
+      if (!grouped[task.phase]) grouped[task.phase] = [];
+      grouped[task.phase].push(task);
     });
-    return Object.values(grouped);
+
+    // Iterate sorted phases to build groups and calculate locks
+    let isPrevPhaseComplete = true; // First phase is always unlocked
+
+    return derivedPhases.map((phase) => {
+      const tasks = grouped[phase.id] || [];
+      const isLocked = !isPrevPhaseComplete;
+
+      // Determine completion for THIS phase (for next iteration)
+      // A phase is complete if it has tasks AND all are verified
+      const isComplete = tasks.length > 0 && tasks.every((t) => t.verified);
+
+      // Update check for next phase
+      isPrevPhaseComplete = isComplete;
+
+      return {
+        phaseId: phase.id,
+        phaseName: phase.name,
+        phaseStatus: phase.status,
+        tasks,
+        isLocked,
+      };
+    });
   }, [derivedTasks, derivedPhases]);
 
   // Handle task click to toggle completion
@@ -1464,7 +1489,7 @@ const FreelancerProjectDetailContent = () => {
                   <div className="relative">
                     <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-400"
+                        className="h-full rounded-full transition-all duration-300 bg-linear-to-r from-amber-500 via-yellow-400 to-amber-400"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
@@ -1478,110 +1503,190 @@ const FreelancerProjectDetailContent = () => {
                   {/* Phase Cards */}
                   <div className="grid grid-cols-4 gap-3">
                     {/* Phase 1 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${derivedPhases[0]?.status === 'completed'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500'
-                        : derivedPhases[0]?.status === 'in-progress'
-                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
-                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                      }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                          : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-500'
-                        }`}>
+                    <div
+                      className={`p-4 rounded-lg border-l-4 ${
+                        derivedPhases[0]?.status === "completed"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                          : derivedPhases[0]?.status === "in-progress"
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                          derivedPhases[0]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[0]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
                         Phase 1
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[0]?.name || 'Discovery'}
+                        {derivedPhases[0]?.name || "Discovery"}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[0]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                          : derivedPhases[0]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-500'
-                        }`}>
-                        {derivedPhases[0]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {derivedPhases[0]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[0]?.status === 'completed' ? 'Completed'
-                          : derivedPhases[0]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      <div
+                        className={`text-xs flex items-center gap-1.5 ${
+                          derivedPhases[0]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[0]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {derivedPhases[0]?.status === "completed" && (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        {derivedPhases[0]?.status === "in-progress" && (
+                          <Circle className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {derivedPhases[0]?.status === "completed"
+                          ? "Completed"
+                          : derivedPhases[0]?.status === "in-progress"
+                          ? "Active"
+                          : "Pending"}
                       </div>
                     </div>
 
                     {/* Phase 2 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${derivedPhases[1]?.status === 'completed'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500'
-                        : derivedPhases[1]?.status === 'in-progress'
-                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
-                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                      }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                          : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-500'
-                        }`}>
+                    <div
+                      className={`p-4 rounded-lg border-l-4 ${
+                        derivedPhases[1]?.status === "completed"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                          : derivedPhases[1]?.status === "in-progress"
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                          derivedPhases[1]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[1]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
                         Phase 2
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[1]?.name || 'Development'}
+                        {derivedPhases[1]?.name || "Development"}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[1]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                          : derivedPhases[1]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-500'
-                        }`}>
-                        {derivedPhases[1]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {derivedPhases[1]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[1]?.status === 'completed' ? 'Completed'
-                          : derivedPhases[1]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      <div
+                        className={`text-xs flex items-center gap-1.5 ${
+                          derivedPhases[1]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[1]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {derivedPhases[1]?.status === "completed" && (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        {derivedPhases[1]?.status === "in-progress" && (
+                          <Circle className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {derivedPhases[1]?.status === "completed"
+                          ? "Completed"
+                          : derivedPhases[1]?.status === "in-progress"
+                          ? "Active"
+                          : "Pending"}
                       </div>
                     </div>
 
                     {/* Phase 3 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${derivedPhases[2]?.status === 'completed'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500'
-                        : derivedPhases[2]?.status === 'in-progress'
-                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
-                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                      }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                          : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-500'
-                        }`}>
+                    <div
+                      className={`p-4 rounded-lg border-l-4 ${
+                        derivedPhases[2]?.status === "completed"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                          : derivedPhases[2]?.status === "in-progress"
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                          derivedPhases[2]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[2]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
                         Phase 3
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[2]?.name || 'Testing'}
+                        {derivedPhases[2]?.name || "Testing"}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[2]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                          : derivedPhases[2]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-500'
-                        }`}>
-                        {derivedPhases[2]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {derivedPhases[2]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[2]?.status === 'completed' ? 'Completed'
-                          : derivedPhases[2]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      <div
+                        className={`text-xs flex items-center gap-1.5 ${
+                          derivedPhases[2]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[2]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {derivedPhases[2]?.status === "completed" && (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        {derivedPhases[2]?.status === "in-progress" && (
+                          <Circle className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {derivedPhases[2]?.status === "completed"
+                          ? "Completed"
+                          : derivedPhases[2]?.status === "in-progress"
+                          ? "Active"
+                          : "Pending"}
                       </div>
                     </div>
 
                     {/* Phase 4 */}
-                    <div className={`p-4 rounded-lg border-l-4 ${derivedPhases[3]?.status === 'completed'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500'
-                        : derivedPhases[3]?.status === 'in-progress'
-                          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-500'
-                          : 'bg-gray-50 dark:bg-gray-800/30 border-l-transparent'
-                      }`}>
-                      <div className={`text-xs font-medium uppercase tracking-wider mb-1 ${derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                          : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-500'
-                        }`}>
+                    <div
+                      className={`p-4 rounded-lg border-l-4 ${
+                        derivedPhases[3]?.status === "completed"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                          : derivedPhases[3]?.status === "in-progress"
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
+                          : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+                          derivedPhases[3]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[3]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
                         Phase 4
                       </div>
                       <div className="font-semibold text-foreground mb-1 text-sm">
-                        {derivedPhases[3]?.name || 'Deployment'}
+                        {derivedPhases[3]?.name || "Deployment"}
                       </div>
-                      <div className={`text-xs flex items-center gap-1.5 ${derivedPhases[3]?.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                          : derivedPhases[3]?.status === 'in-progress' ? 'text-blue-600 dark:text-blue-400'
-                            : 'text-gray-500'
-                        }`}>
-                        {derivedPhases[3]?.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                        {derivedPhases[3]?.status === 'in-progress' && <Circle className="w-3.5 h-3.5 fill-current" />}
-                        {derivedPhases[3]?.status === 'completed' ? 'Completed'
-                          : derivedPhases[3]?.status === 'in-progress' ? 'Active' : 'Pending'}
+                      <div
+                        className={`text-xs flex items-center gap-1.5 ${
+                          derivedPhases[3]?.status === "completed"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : derivedPhases[3]?.status === "in-progress"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {derivedPhases[3]?.status === "completed" && (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        {derivedPhases[3]?.status === "in-progress" && (
+                          <Circle className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        {derivedPhases[3]?.status === "completed"
+                          ? "Completed"
+                          : derivedPhases[3]?.status === "in-progress"
+                          ? "Active"
+                          : "Pending"}
                       </div>
                     </div>
                   </div>
@@ -1612,38 +1717,73 @@ const FreelancerProjectDetailContent = () => {
 
                         // Field patterns - extract value until next field name or end
                         // Include Budget and Next Steps as terminators but we won't display them
-                        const fieldNames = ['Service', 'Project', 'Client', 'Website type', 'Tech stack', 'Pages', 'Timeline', 'Budget', 'Next Steps', 'Summary', 'Deliverables', 'Pages & Features', 'Core pages', 'Additional pages', 'Integrations', 'Payment Gateway', 'Designs', 'Hosting', 'Domain'];
-                        const fieldPattern = fieldNames.join('|');
+                        const fieldNames = [
+                          "Service",
+                          "Project",
+                          "Client",
+                          "Website type",
+                          "Tech stack",
+                          "Pages",
+                          "Timeline",
+                          "Budget",
+                          "Next Steps",
+                          "Summary",
+                          "Deliverables",
+                          "Pages & Features",
+                          "Core pages",
+                          "Additional pages",
+                          "Integrations",
+                          "Payment Gateway",
+                          "Designs",
+                          "Hosting",
+                          "Domain",
+                        ];
+                        const fieldPattern = fieldNames.join("|");
 
                         // Extract a field value - stops at next field name
                         const extractField = (fieldName) => {
-                          const regex = new RegExp(`${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`, 'is');
+                          const regex = new RegExp(
+                            `${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`,
+                            "is"
+                          );
                           const match = desc.match(regex);
                           if (match) {
                             // Clean up - remove leading/trailing dashes and trim
-                            return match[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim();
+                            return match[1]
+                              .replace(/^[\s-]+/, "")
+                              .replace(/[\s-]+$/, "")
+                              .trim();
                           }
                           return null;
                         };
 
-                        const service = extractField('Service');
-                        const projectName = extractField('Project');
-                        const client = extractField('Client');
-                        const websiteType = extractField('Website type');
-                        const techStack = extractField('Tech stack');
-                        const pages = extractField('Pages');
-                        const timeline = extractField('Timeline');
+                        const service = extractField("Service");
+                        const projectName = extractField("Project");
+                        const client = extractField("Client");
+                        const websiteType = extractField("Website type");
+                        const techStack = extractField("Tech stack");
+                        const pages = extractField("Pages");
+                        const timeline = extractField("Timeline");
 
                         // Extract summary (everything after "Summary:" until next major field or end)
-                        const summaryMatch = desc.match(/Summary[:\s]+(.+?)(?=(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps)[:\s]|$)/is);
-                        const summary = summaryMatch ? summaryMatch[1].replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim() : null;
+                        const summaryMatch = desc.match(
+                          /Summary[:\s]+(.+?)(?=(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps)[:\s]|$)/is
+                        );
+                        const summary = summaryMatch
+                          ? summaryMatch[1]
+                              .replace(/^[\s-]+/, "")
+                              .replace(/[\s-]+$/, "")
+                              .trim()
+                          : null;
 
                         // Extract deliverables
                         const deliverables = [];
-                        const delivMatch = desc.match(/Deliverables[:\s-]+([^-]+)/i);
+                        const delivMatch = desc.match(
+                          /Deliverables[:\s-]+([^-]+)/i
+                        );
                         if (delivMatch) {
                           const items = delivMatch[1].split(/[,•]/);
-                          items.forEach(item => {
+                          items.forEach((item) => {
                             const trimmed = item.trim();
                             if (trimmed && trimmed.length > 3) {
                               deliverables.push(trimmed);
@@ -1653,29 +1793,46 @@ const FreelancerProjectDetailContent = () => {
 
                         // Field items to display (excluding Budget, Next Steps)
                         const fields = [
-                          { label: 'Service', value: service },
-                          { label: 'Project', value: projectName },
-                          { label: 'Client', value: client },
-                          { label: 'Website Type', value: websiteType },
-                          { label: 'Tech Stack', value: techStack },
-                          { label: 'Timeline', value: timeline },
-                        ].filter(f => f.value);
+                          { label: "Service", value: service },
+                          { label: "Project", value: projectName },
+                          { label: "Client", value: client },
+                          { label: "Website Type", value: websiteType },
+                          { label: "Tech Stack", value: techStack },
+                          { label: "Timeline", value: timeline },
+                        ].filter((f) => f.value);
 
                         // Extract pages from Core pages and Additional pages sections
-                        const corePages = extractField('Core pages included') || extractField('Core pages');
-                        const additionalPages = extractField('Additional pages\\/features') || extractField('Additional pages');
+                        const corePages =
+                          extractField("Core pages included") ||
+                          extractField("Core pages");
+                        const additionalPages =
+                          extractField("Additional pages\\/features") ||
+                          extractField("Additional pages");
 
                         // Parse pages into arrays - clean up dashes and section markers
                         const parsePagesString = (str) => {
                           if (!str) return [];
                           // Split by comma and clean each item
-                          return str.split(/[,]/)
-                            .map(p => p.replace(/^[\s-]+/, '').replace(/[\s-]+$/, '').trim())
-                            .filter(p => p.length > 2 && !p.includes(':') && !p.toLowerCase().includes('additional') && !p.toLowerCase().includes('pages'));
+                          return str
+                            .split(/[,]/)
+                            .map((p) =>
+                              p
+                                .replace(/^[\s-]+/, "")
+                                .replace(/[\s-]+$/, "")
+                                .trim()
+                            )
+                            .filter(
+                              (p) =>
+                                p.length > 2 &&
+                                !p.includes(":") &&
+                                !p.toLowerCase().includes("additional") &&
+                                !p.toLowerCase().includes("pages")
+                            );
                         };
 
                         const corePagesArr = parsePagesString(corePages);
-                        const additionalPagesArr = parsePagesString(additionalPages);
+                        const additionalPagesArr =
+                          parsePagesString(additionalPages);
 
                         return (
                           <div className="space-y-4">
@@ -1684,8 +1841,12 @@ const FreelancerProjectDetailContent = () => {
                               <div className="grid grid-cols-2 gap-3">
                                 {fields.map((field, index) => (
                                   <div key={index} className="text-sm">
-                                    <span className="text-muted-foreground">{field.label}: </span>
-                                    <span className="text-foreground font-medium">{field.value}</span>
+                                    <span className="text-muted-foreground">
+                                      {field.label}:{" "}
+                                    </span>
+                                    <span className="text-foreground font-medium">
+                                      {field.value}
+                                    </span>
                                   </div>
                                 ))}
                               </div>
@@ -1694,22 +1855,35 @@ const FreelancerProjectDetailContent = () => {
                             {/* Summary */}
                             {summary && (
                               <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-1">Summary</p>
-                                <p className="text-sm text-foreground leading-relaxed">{summary}</p>
+                                <p className="text-sm text-muted-foreground font-medium mb-1">
+                                  Summary
+                                </p>
+                                <p className="text-sm text-foreground leading-relaxed">
+                                  {summary}
+                                </p>
                               </div>
                             )}
 
                             {/* Pages & Features */}
-                            {(corePagesArr.length > 0 || additionalPagesArr.length > 0) && (
+                            {(corePagesArr.length > 0 ||
+                              additionalPagesArr.length > 0) && (
                               <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-3">Pages & Features</p>
+                                <p className="text-sm text-muted-foreground font-medium mb-3">
+                                  Pages & Features
+                                </p>
                                 <div className="space-y-4">
                                   {corePagesArr.length > 0 && (
                                     <div>
-                                      <p className="text-xs text-muted-foreground mb-2">Core Pages:</p>
+                                      <p className="text-xs text-muted-foreground mb-2">
+                                        Core Pages:
+                                      </p>
                                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                                         {corePagesArr.map((page, index) => (
-                                          <div key={index} className="text-xs bg-muted px-2 py-1.5 rounded-md text-foreground text-center truncate" title={page}>
+                                          <div
+                                            key={index}
+                                            className="text-xs bg-muted px-2 py-1.5 rounded-md text-foreground text-center truncate"
+                                            title={page}
+                                          >
                                             {page}
                                           </div>
                                         ))}
@@ -1718,13 +1892,21 @@ const FreelancerProjectDetailContent = () => {
                                   )}
                                   {additionalPagesArr.length > 0 && (
                                     <div>
-                                      <p className="text-xs text-muted-foreground mb-2">Additional Pages/Features:</p>
+                                      <p className="text-xs text-muted-foreground mb-2">
+                                        Additional Pages/Features:
+                                      </p>
                                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                        {additionalPagesArr.map((page, index) => (
-                                          <div key={index} className="text-xs bg-primary/10 px-2 py-1.5 rounded-md text-foreground text-center truncate" title={page}>
-                                            {page}
-                                          </div>
-                                        ))}
+                                        {additionalPagesArr.map(
+                                          (page, index) => (
+                                            <div
+                                              key={index}
+                                              className="text-xs bg-primary/10 px-2 py-1.5 rounded-md text-foreground text-center truncate"
+                                              title={page}
+                                            >
+                                              {page}
+                                            </div>
+                                          )
+                                        )}
                                       </div>
                                     </div>
                                   )}
@@ -1735,11 +1917,18 @@ const FreelancerProjectDetailContent = () => {
                             {/* Deliverables */}
                             {deliverables.length > 0 && (
                               <div className="pt-2">
-                                <p className="text-sm text-muted-foreground font-medium mb-2">Deliverables</p>
+                                <p className="text-sm text-muted-foreground font-medium mb-2">
+                                  Deliverables
+                                </p>
                                 <ul className="space-y-1.5">
                                   {deliverables.map((item, index) => (
-                                    <li key={index} className="flex items-start gap-2 text-sm text-foreground">
-                                      <span className="text-primary mt-1">•</span>
+                                    <li
+                                      key={index}
+                                      className="flex items-start gap-2 text-sm text-foreground"
+                                    >
+                                      <span className="text-primary mt-1">
+                                        •
+                                      </span>
                                       <span>{item}</span>
                                     </li>
                                   ))}
@@ -1749,7 +1938,9 @@ const FreelancerProjectDetailContent = () => {
 
                             {/* If no structured fields found, show raw description */}
                             {fields.length === 0 && !summary && (
-                              <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {desc}
+                              </p>
                             )}
                           </div>
                         );
@@ -1761,14 +1952,17 @@ const FreelancerProjectDetailContent = () => {
                           <div className="flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                             <p className="text-sm text-amber-800 dark:text-amber-200">
-                              <span className="font-medium">Note:</span> {project.notes}
+                              <span className="font-medium">Note:</span>{" "}
+                              {project.notes}
                             </p>
                           </div>
                         </div>
                       )}
                     </>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No project description available.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No project description available.
+                    </p>
                   )}
                   {renderProjectDescription({ showExtended: false })}
                 </CardContent>
@@ -1806,6 +2000,7 @@ const FreelancerProjectDetailContent = () => {
                             {getPhaseIcon(phaseGroup.phaseStatus)}
                             <div className="flex-1 text-left">
                               <div className="font-semibold text-sm text-foreground">
+                                Phase {phaseGroup.phaseId}:{" "}
                                 {phaseGroup.phaseName}
                               </div>
                               <div className="text-xs text-muted-foreground">
@@ -1842,8 +2037,13 @@ const FreelancerProjectDetailContent = () => {
                             {phaseGroup.tasks.map((task) => (
                               <div
                                 key={task.uniqueKey}
-                                className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card hover:bg-accent/60 transition-colors cursor-pointer"
+                                className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
+                                  phaseGroup.isLocked
+                                    ? "opacity-50 pointer-events-none bg-muted/50"
+                                    : "hover:bg-accent/60 cursor-pointer"
+                                }`}
                                 onClick={(e) =>
+                                  !phaseGroup.isLocked &&
                                   handleTaskClick(e, task.uniqueKey, task.title)
                                 }
                               >
@@ -1860,6 +2060,11 @@ const FreelancerProjectDetailContent = () => {
                                   }`}
                                 >
                                   {task.title}
+                                  {phaseGroup.isLocked && (
+                                    <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
+                                      (Locked)
+                                    </span>
+                                  )}
                                 </span>
                                 {task.verified && (
                                   <Badge className="h-6 px-2 text-[10px] bg-emerald-500 text-white">
@@ -1936,36 +2141,40 @@ const FreelancerProjectDetailContent = () => {
                               {isToday(currentDate)
                                 ? "Today"
                                 : isYesterday(currentDate)
-                                  ? "Yesterday"
-                                  : format(currentDate, "MMMM d, yyyy")}
+                                ? "Yesterday"
+                                : format(currentDate, "MMMM d, yyyy")}
                             </span>
                           </div>
                         )}
                         <div className={`flex ${align}`}>
                           <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${isSelf
-                              ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
-                              : "bg-muted text-foreground rounded-tl-sm border border-border/60"
-                              }`}
+                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm flex flex-col overflow-hidden ${
+                              isSelf
+                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-sm"
+                                : "bg-muted text-foreground rounded-tl-sm border border-border/60"
+                            }`}
                           >
-                            {message.sender === "other" && message.senderName && (
-                              <span className="text-[10px] opacity-70 mb-1 block">
-                                {message.senderName}
-                              </span>
-                            )}
+                            {message.sender === "other" &&
+                              message.senderName && (
+                                <span className="text-[10px] opacity-70 mb-1 block">
+                                  {message.senderName}
+                                </span>
+                              )}
 
                             {message.text && (
-                              <p className="leading-relaxed whitespace-pre-wrap break-words">
+                              <p className="leading-relaxed whitespace-pre-wrap wrap-break-word">
                                 {message.text}
                               </p>
                             )}
 
                             {message.attachment && (
                               <div className="mt-2">
-                                {message.attachment.type?.startsWith("image/") ||
-                                  message.attachment.url?.match(
-                                    /\.(jpg|jpeg|png|gif|webp)$/i
-                                  ) ? (
+                                {message.attachment.type?.startsWith(
+                                  "image/"
+                                ) ||
+                                message.attachment.url?.match(
+                                  /\.(jpg|jpeg|png|gif|webp)$/i
+                                ) ? (
                                   <a
                                     href={message.attachment.url}
                                     target="_blank"
@@ -1974,7 +2183,9 @@ const FreelancerProjectDetailContent = () => {
                                   >
                                     <img
                                       src={message.attachment.url}
-                                      alt={message.attachment.name || "Attachment"}
+                                      alt={
+                                        message.attachment.name || "Attachment"
+                                      }
                                       className="max-w-[180px] max-h-[180px] rounded-lg object-cover"
                                     />
                                   </a>
@@ -1983,10 +2194,11 @@ const FreelancerProjectDetailContent = () => {
                                     href={message.attachment.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${!isSelf
-                                      ? "border border-border/50 bg-background/50"
-                                      : ""
-                                      }`}
+                                    className={`flex items-center gap-2 p-2 rounded-lg bg-background/20 hover:bg-background/30 transition-colors ${
+                                      !isSelf
+                                        ? "border border-border/50 bg-background/50"
+                                        : ""
+                                    }`}
                                   >
                                     <FileText className="h-4 w-4 shrink-0" />
                                     <div className="flex-1 min-w-0">
