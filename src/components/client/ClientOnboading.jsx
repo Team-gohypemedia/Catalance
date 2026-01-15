@@ -360,7 +360,7 @@ const ClientOnboading = () => {
       </div>
 
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-        <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-6xl h-[90vh] border-0 bg-transparent p-0">
+        <DialogContent className="w-[96vw] max-w-5xl h-[85vh] border-0 bg-transparent p-0">
           <DialogTitle className="sr-only">Chat with Catalance</DialogTitle>
           <div className="h-full w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
             <AIChat embedded prefill={chatPrefill} />

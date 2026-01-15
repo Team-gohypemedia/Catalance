@@ -1,6 +1,7 @@
 import React from 'react';
 import CatalanceHero from "../CatalanceHero";
 import LogoCloud from "../logo-cloud";
+import DelphiHero from "../DelphiHero";
 
 const Home = () => {
     React.useEffect(() => {
@@ -12,7 +13,8 @@ const Home = () => {
 
     return (
         <div className="flex flex-col min-h-screen">
-            <CatalanceHero />
+            {/* <CatalanceHero /> */}
+            <DelphiHero />
             <LogoCloud />
         </div>
     );
