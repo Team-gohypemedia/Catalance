@@ -1,6 +1,7 @@
 import React from 'react';
-import CatalanceHero from "../CatalanceHero";
-import LogoCloud from "../logo-cloud";
+import CatalanceHero from "@/components/sections/home/CatalanceHero";
+import LogoCloud from "@/components/sections/home/logo-cloud";
+import DelphiHero from "@/components/sections/home/DelphiHero";
 
 const Home = () => {
     React.useEffect(() => {

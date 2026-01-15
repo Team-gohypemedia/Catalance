@@ -4,7 +4,7 @@ import { Canvas, createPortal, useFrame } from "@react-three/fiber";
 import { Effects, useFBO } from "@react-three/drei";
 import * as easing from "maath/easing";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 // Error boundary to catch WebGL rendering errors
 class WebGLErrorBoundary extends Component {

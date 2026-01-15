@@ -2,10 +2,13 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Bot, MessageCircle, X, Phone } from "lucide-react";
+import Bot from "lucide-react/dist/esm/icons/bot";
+import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import X from "lucide-react/dist/esm/icons/x";
+import Phone from "lucide-react/dist/esm/icons/phone";
 import { FamilyButton } from "@/components/ui/family-button";
-import { useAuth } from "@/context/AuthContext";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/shared/context/AuthContext";
+import { cn } from "@/shared/lib/utils";
 
 const STORAGE_KEY = "cata-button-position";
 const DEFAULT_BOTTOM = 32; // 8 * 4 = 32px (bottom-8)

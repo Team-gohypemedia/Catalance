@@ -1,6 +1,7 @@
 "use client";;
-import { cn } from "@/lib/utils";
-import { Menu, X } from 'lucide-react'
+import { cn } from "@/shared/lib/utils";
+import Menu from "lucide-react/dist/esm/icons/menu";
+import X from "lucide-react/dist/esm/icons/x";
 import {
   motion,
   AnimatePresence,

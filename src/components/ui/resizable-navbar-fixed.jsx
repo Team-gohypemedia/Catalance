@@ -1,6 +1,7 @@
 "use client";;
-import { cn } from "@/lib/utils";
-import { Menu, X } from 'lucide-react'
+import { cn } from "@/shared/lib/utils";
+import Menu from "lucide-react/dist/esm/icons/menu";
+import X from "lucide-react/dist/esm/icons/x";
 import {
     motion,
     AnimatePresence,
@@ -33,7 +34,7 @@ export const Navbar = ({
             className={cn("fixed inset-x-0 top-5 z-40 w-full", className)}>
             {React.Children.map(children, (child) =>
                 React.isValidElement(child)
-                    ? React.cloneElement(child, { visible })
+                    ? (typeof child.type === 'string' ? child : React.cloneElement(child, { visible }))
                     : child)}
         </motion.div>)
     );
@@ -64,12 +65,12 @@ export const NavBody = ({
             }}
             className={cn(
                 "relative z-60 mx-auto hidden w-full max-w-7xl flex-row items-center justify-between self-start rounded-full bg-transparent px-3 py-2 lg:flex dark:bg-transparent",
-                visible && "bg-neutral-900/90 border border-white/10 shadow-lg backdrop-blur-md",
+                visible && "bg-white/80 border border-gray-200 shadow-lg backdrop-blur-md dark:bg-neutral-900/90 dark:border-white/10",
                 className
             )}>
             {React.Children.map(children, (child) =>
                 React.isValidElement(child)
-                    ? React.cloneElement(child, { visible })
+                    ? (typeof child.type === 'string' ? child : React.cloneElement(child, { visible }))
                     : child)}
         </motion.div>)
     );

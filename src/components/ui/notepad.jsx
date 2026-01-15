@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { StickyNote, Loader2 } from "lucide-react";
+import StickyNote from "lucide-react/dist/esm/icons/sticky-note";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -10,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/shared/context/AuthContext";
 import { toast } from "sonner";
 
 // Simple single-note notepad for project detail pages - saves to database

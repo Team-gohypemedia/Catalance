@@ -1,9 +1,9 @@
 import * as React from "react"
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu"
 import { cva } from "class-variance-authority"
-import { ChevronDownIcon } from "lucide-react"
+import ChevronDownIcon from "lucide-react/dist/esm/icons/chevron-down";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 function NavigationMenu({
   className,
