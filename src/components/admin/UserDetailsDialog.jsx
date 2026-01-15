@@ -7,22 +7,20 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
-import { 
-  User, 
-  Mail, 
-  Calendar, 
-  Briefcase, 
-  DollarSign, 
-  FileText, 
-  Clock,
-  CheckCircle,
-  MapPin,
-  Phone,
-  Wrench,
-  Loader2,
-  ExternalLink,
-  Award
-} from "lucide-react";
+import User from "lucide-react/dist/esm/icons/user";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import Wrench from "lucide-react/dist/esm/icons/wrench";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import Award from "lucide-react/dist/esm/icons/award";
 
 const UserDetailsDialog = ({ userId, open, onOpenChange }) => {
   const { authFetch } = useAuth();

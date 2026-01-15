@@ -11,18 +11,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import {
-  ArrowLeft,
-  FileText,
-  User,
-  AlertCircle,
-  Briefcase,
-  Mail,
-  CheckCircle,
-  CheckCircle2,
-  Circle,
-} from "lucide-react";
-import { format } from "date-fns";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import User from "lucide-react/dist/esm/icons/user";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import Circle from "lucide-react/dist/esm/icons/circle";
+import format from "date-fns/format";
 import DisputeDetailsDialog from "./DisputeDetailsDialog";
 import ProposalsListDialog from "./ProposalsListDialog";
 import ProjectDescriptionDialog from "./ProjectDescriptionDialog";

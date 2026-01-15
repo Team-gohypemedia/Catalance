@@ -6,7 +6,13 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, Briefcase, User, Calendar, DollarSign, FileText } from "lucide-react";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Search from "lucide-react/dist/esm/icons/search";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import User from "lucide-react/dist/esm/icons/user";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import FileText from "lucide-react/dist/esm/icons/file-text";
 
 const ManagerProjectsContent = () => {
     const { authFetch } = useAuth();

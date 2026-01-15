@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import { Link, useLocation } from "react-router-dom";
 
 import {

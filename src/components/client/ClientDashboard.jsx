@@ -1,44 +1,42 @@
 ﻿"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Briefcase,
-  Clock,
-  Banknote,
-  Send,
-  Star,
-  CheckCircle,
-  ChevronRight,
-  Zap,
-  X,
-  Trash2,
-  MapPin,
-  Loader2,
-  User,
-  Wallet,
-  Eye,
-  Search,
-  Bell,
-  Plus,
-  Calendar,
-  Flag,
-  MessageCircle,
-  TrendingUp,
-  AlertTriangle,
-  Users,
-  ArrowRight,
-  Edit2,
-  ExternalLink,
-  Sun,
-  Moon,
-  CreditCard,
-  Bot,
-  Facebook,
-  Twitter,
-  Instagram,
-  Youtube,
-  Heart,
-} from "lucide-react";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import Banknote from "lucide-react/dist/esm/icons/banknote";
+import Send from "lucide-react/dist/esm/icons/send";
+import Star from "lucide-react/dist/esm/icons/star";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import Zap from "lucide-react/dist/esm/icons/zap";
+import X from "lucide-react/dist/esm/icons/x";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import User from "lucide-react/dist/esm/icons/user";
+import Wallet from "lucide-react/dist/esm/icons/wallet";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import Search from "lucide-react/dist/esm/icons/search";
+import Bell from "lucide-react/dist/esm/icons/bell";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import Flag from "lucide-react/dist/esm/icons/flag";
+import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
+import Users from "lucide-react/dist/esm/icons/users";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Edit2 from "lucide-react/dist/esm/icons/edit-2";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import Sun from "lucide-react/dist/esm/icons/sun";
+import Moon from "lucide-react/dist/esm/icons/moon";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import Bot from "lucide-react/dist/esm/icons/bot";
+import Facebook from "lucide-react/dist/esm/icons/facebook";
+import Twitter from "lucide-react/dist/esm/icons/twitter";
+import Instagram from "lucide-react/dist/esm/icons/instagram";
+import Youtube from "lucide-react/dist/esm/icons/youtube";
+import Heart from "lucide-react/dist/esm/icons/heart";
 import { Link, useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";

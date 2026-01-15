@@ -16,8 +16,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { signup, login, verifyOtp, resendOtp } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
-import { signInWithGoogle } from "@/lib/firebase";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import EyeOff from "lucide-react/dist/esm/icons/eye-off";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import {
   InputOTP,
   InputOTPGroup,
@@ -171,6 +173,7 @@ function Signup({ className, ...props }) {
     setIsGoogleLoading(true);
     setFormError("");
     try {
+      const { signInWithGoogle } = await import("@/lib/firebase");
       // Sign in with Firebase Google
       const firebaseUser = await signInWithGoogle();
       

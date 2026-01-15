@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { StickyNote, Plus, Trash2, FileText, Menu, X } from "lucide-react";
+import StickyNote from "lucide-react/dist/esm/icons/sticky-note";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Menu from "lucide-react/dist/esm/icons/menu";
+import X from "lucide-react/dist/esm/icons/x";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

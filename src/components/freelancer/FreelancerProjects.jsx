@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Clock, AlertCircle, Zap } from "lucide-react";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import Zap from "lucide-react/dist/esm/icons/zap";
 import { motion } from "framer-motion";
 
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";

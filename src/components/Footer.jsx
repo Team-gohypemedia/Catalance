@@ -1,9 +1,7 @@
 import React from 'react';
 import { useTheme } from "@/components/theme-provider";
-import {
-    ArrowRight,
-    Cpu
-} from 'lucide-react';
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Cpu from "lucide-react/dist/esm/icons/cpu";
 
 const Footer = () => {
     const { theme } = useTheme();

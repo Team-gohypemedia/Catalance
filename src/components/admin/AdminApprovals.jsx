@@ -5,7 +5,9 @@ import { AdminTopBar } from "./AdminTopBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { CheckCircle, XCircle, Eye } from "lucide-react";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Eye from "lucide-react/dist/esm/icons/eye";
 import { toast } from "sonner";
 import UserDetailsDialog from "./UserDetailsDialog";
 

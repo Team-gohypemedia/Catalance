@@ -5,7 +5,13 @@ import {
   PromptInput,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
-import { ArrowUp, Square, Plus, Brain, Bot, User, FileText } from "lucide-react";
+import ArrowUp from "lucide-react/dist/esm/icons/arrow-up";
+import Square from "lucide-react/dist/esm/icons/square";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Brain from "lucide-react/dist/esm/icons/brain";
+import Bot from "lucide-react/dist/esm/icons/bot";
+import User from "lucide-react/dist/esm/icons/user";
+import FileText from "lucide-react/dist/esm/icons/file-text";
 import { ProposalSidebar } from "@/components/ai-elements/proposal-sidebar";
 
 

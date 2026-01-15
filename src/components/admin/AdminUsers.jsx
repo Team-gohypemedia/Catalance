@@ -6,7 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { Search, Eye, Ban, CheckCircle } from "lucide-react";
+import Search from "lucide-react/dist/esm/icons/search";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import Ban from "lucide-react/dist/esm/icons/ban";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import { toast } from "sonner";
 
 

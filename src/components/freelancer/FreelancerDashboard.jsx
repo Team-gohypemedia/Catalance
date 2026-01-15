@@ -1,32 +1,30 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  LayoutGrid,
-  FolderOpen,
-  CreditCard,
-  Users,
-  Settings,
-  Search,
-  Bell,
-  TrendingUp,
-  PieChart,
-  CheckCircle,
-  ArrowRight,
-  MoreHorizontal,
-  Plus,
-  Filter,
-  ChevronRight,
-  Clock,
-  Briefcase,
-  Sparkles,
-  Banknote,
-  Sun,
-  Moon,
-  Menu,
-  X,
-  Gavel,
-  MessageSquare,
-  Video,
-} from "lucide-react";
+import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
+import FolderOpen from "lucide-react/dist/esm/icons/folder-open";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import Users from "lucide-react/dist/esm/icons/users";
+import Settings from "lucide-react/dist/esm/icons/settings";
+import Search from "lucide-react/dist/esm/icons/search";
+import Bell from "lucide-react/dist/esm/icons/bell";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import PieChart from "lucide-react/dist/esm/icons/pie-chart";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Filter from "lucide-react/dist/esm/icons/filter";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Banknote from "lucide-react/dist/esm/icons/banknote";
+import Sun from "lucide-react/dist/esm/icons/sun";
+import Moon from "lucide-react/dist/esm/icons/moon";
+import Menu from "lucide-react/dist/esm/icons/menu";
+import X from "lucide-react/dist/esm/icons/x";
+import Gavel from "lucide-react/dist/esm/icons/gavel";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import Video from "lucide-react/dist/esm/icons/video";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { getSession } from "@/lib/auth-storage";
 import { Card, CardContent } from "@/components/ui/card";

@@ -2,15 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Bell,
-  BellRing,
-  ChevronRight,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Sun,
-  Moon,
-} from "lucide-react";
+import Bell from "lucide-react/dist/esm/icons/bell";
+import BellRing from "lucide-react/dist/esm/icons/bell-ring";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import PanelLeftClose from "lucide-react/dist/esm/icons/panel-left-close";
+import PanelLeftOpen from "lucide-react/dist/esm/icons/panel-left-open";
+import Sun from "lucide-react/dist/esm/icons/sun";
+import Moon from "lucide-react/dist/esm/icons/moon";
 
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";

@@ -9,23 +9,21 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-    ArrowRight,
-    Globe,
-    Smartphone,
-    PenTool,
-    TrendingUp,
-    ClipboardList,
-    Brain,
-    Handshake,
-    DollarSign,
-    Monitor,
-    Layout,
-    Palette,
-    Megaphone,
-    PhoneCall,
-    Briefcase
-} from "lucide-react";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Smartphone from "lucide-react/dist/esm/icons/smartphone";
+import PenTool from "lucide-react/dist/esm/icons/pen-tool";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import Brain from "lucide-react/dist/esm/icons/brain";
+import Handshake from "lucide-react/dist/esm/icons/handshake";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import Monitor from "lucide-react/dist/esm/icons/monitor";
+import Layout from "lucide-react/dist/esm/icons/layout";
+import Palette from "lucide-react/dist/esm/icons/palette";
+import Megaphone from "lucide-react/dist/esm/icons/megaphone";
+import PhoneCall from "lucide-react/dist/esm/icons/phone-call";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import { useTheme } from "@/components/theme-provider";
 
 const Services = () => {

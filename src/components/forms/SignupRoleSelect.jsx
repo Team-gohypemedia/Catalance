@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { BadgeCheck, BriefcaseBusiness, Laptop } from "lucide-react";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
+import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
+import Laptop from "lucide-react/dist/esm/icons/laptop";
 import { cn } from "@/lib/utils";
 
 const ROLE_OPTIONS = [

@@ -1,4 +1,4 @@
-import { VerifiedIcon } from "lucide-react";
+import VerifiedIcon from "lucide-react/dist/esm/icons/verified";
 import { cn } from "@/lib/utils";
 
 export default function TweetCard({

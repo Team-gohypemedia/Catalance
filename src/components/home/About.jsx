@@ -7,18 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spotlight } from "@/components/ui/spotlight";
 import { Card, CardContent } from "@/components/ui/card";
-import { 
-  ArrowRight, 
-  Sparkles, 
-  Users, 
-  Target, 
-  ShieldCheck, 
-  Zap, 
-  Rocket,
-  Globe,
-  Heart,
-  Briefcase
-} from "lucide-react";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Users from "lucide-react/dist/esm/icons/users";
+import Target from "lucide-react/dist/esm/icons/target";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import Zap from "lucide-react/dist/esm/icons/zap";
+import Rocket from "lucide-react/dist/esm/icons/rocket";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Heart from "lucide-react/dist/esm/icons/heart";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import { useTheme } from "@/components/theme-provider";
 
 gsap.registerPlugin(SplitText, useGSAP);

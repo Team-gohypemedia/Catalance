@@ -14,7 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Video, CheckCircle2, AlertCircle, Clock, ChevronDown, UserPlus } from "lucide-react";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Video from "lucide-react/dist/esm/icons/video";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import UserPlus from "lucide-react/dist/esm/icons/user-plus";
 import { Separator } from "@/components/ui/separator";
 
 export const ProjectManagerDashboardContent = () => {
@@ -233,7 +239,8 @@ const PMOverview = ({ disputes }) => {
 };
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, X } from "lucide-react";
+import Check from "lucide-react/dist/esm/icons/check";
+import X from "lucide-react/dist/esm/icons/x";
 
 const UpcomingMeetingsSidebar = ({ disputes }) => {
     const { authFetch } = useAuth();

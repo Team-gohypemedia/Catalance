@@ -16,8 +16,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { login, loginWithGoogle } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { signInWithGoogle } from "@/lib/firebase";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import EyeOff from "lucide-react/dist/esm/icons/eye-off";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 
 const initialFormState = {
   email: "",
@@ -99,6 +100,7 @@ function Login({ className, ...props }) {
     setIsGoogleLoading(true);
     setFormError("");
     try {
+      const { signInWithGoogle } = await import("@/lib/firebase");
       // Sign in with Firebase Google
       const firebaseUser = await signInWithGoogle();
       const idToken = await firebaseUser.getIdToken();

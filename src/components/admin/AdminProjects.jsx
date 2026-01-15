@@ -6,7 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
-import { Search, Briefcase, User, Calendar, FileText, DollarSign } from "lucide-react";
+import Search from "lucide-react/dist/esm/icons/search";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import User from "lucide-react/dist/esm/icons/user";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
 
 const AdminProjects = () => {
   const { authFetch } = useAuth();

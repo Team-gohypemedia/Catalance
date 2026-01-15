@@ -6,8 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { Search, AlertCircle, FileText, User, Eye } from "lucide-react";
-import { format } from "date-fns";
+import Search from "lucide-react/dist/esm/icons/search";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import User from "lucide-react/dist/esm/icons/user";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import format from "date-fns/format";
 import DisputeDetailsDialog from "./DisputeDetailsDialog";
 
 const AdminDisputes = () => {

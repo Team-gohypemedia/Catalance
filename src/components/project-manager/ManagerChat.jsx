@@ -2,7 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import format from "date-fns/format";
+import isToday from "date-fns/isToday";
+import isYesterday from "date-fns/isYesterday";
+import isSameDay from "date-fns/isSameDay";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { ManagerTopBar } from "./ManagerTopBar";
 import { useAuth } from "@/context/AuthContext";
@@ -15,7 +18,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, MessageCircle, User as UserIcon } from "lucide-react";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Send from "lucide-react/dist/esm/icons/send";
+import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import UserIcon from "lucide-react/dist/esm/icons/user";
 import { cn } from "@/lib/utils";
 
 const formatTime = (value) => {

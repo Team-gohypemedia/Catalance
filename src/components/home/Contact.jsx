@@ -8,15 +8,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { 
-  MapPin, 
-  Phone, 
-  Mail, 
-  LifeBuoy, 
-  Briefcase, 
-  Send, 
-  ChevronDown
-} from "lucide-react";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import LifeBuoy from "lucide-react/dist/esm/icons/life-buoy";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Send from "lucide-react/dist/esm/icons/send";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import { useTheme } from "@/components/theme-provider";
 
 const Contact = () => {

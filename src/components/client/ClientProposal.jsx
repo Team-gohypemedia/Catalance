@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Trash2, ExternalLink, MessageSquare } from "lucide-react";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import { RoleAwareSidebar } from "@/components/dashboard/RoleAwareSidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
