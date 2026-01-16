@@ -191,8 +191,11 @@ const ClientOnboading = () => {
   const [chatPrefill, setChatPrefill] = useState("");
   const location = useLocation();
 
-  const openChat = useCallback((message) => {
+  const [selectedServiceTitle, setSelectedServiceTitle] = useState(null);
+
+  const openChat = useCallback((message, serviceTitle = null) => {
     setChatPrefill(message || "");
+    setSelectedServiceTitle(serviceTitle);
     setIsChatOpen(true);
   }, []);
 
@@ -204,14 +207,9 @@ const ClientOnboading = () => {
   const [randomString] = useState(() => generateRandomString(20000));
 
   useEffect(() => {
-    // No need to set string here anymore as we use lazy init
-
     const handleMouseMove = (event) => {
       mouseX.set(event.clientX);
       mouseY.set(event.clientY);
-
-      // CRITICAL FIX: Removed string regeneration on every mouse move
-      // This was causing 20,000 char generation + re-render on every pixel moved
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -227,13 +225,14 @@ const ClientOnboading = () => {
       if (feature) {
         setMultiSelectEnabled(false);
         setSelectedServices([]);
-        openChat(`I need help with ${feature.title}.`);
+        openChat(`I need help with ${feature.title}.`, feature.title);
       }
     }
   }, [location.state, openChat]);
 
   const handleCardClick = (feature) => {
     if (multiSelectEnabled) {
+      // ... (existing multi-select logic)
       setSelectedServices((prev) => {
         const exists = prev.some((item) => item.title === feature.title);
         if (exists) {
@@ -248,8 +247,24 @@ const ClientOnboading = () => {
       return;
     }
 
-    openChat(`I need help with ${feature.title}.`);
+    openChat(`I need help with ${feature.title}.`, feature.title);
   };
+
+  // ...
+
+  const handleStartMultiChat = () => {
+    if (!selectedServices.length) return;
+    const selectedNames = selectedServices.map((item) => item.title).join(", ");
+    openChat(`I need help with ${selectedNames}.`, "Multiple Services");
+  };
+
+  // ...
+
+  // Render AIChat with serviceName prop
+  // <AIChat embedded prefill={chatPrefill} serviceName={selectedServiceTitle} />
+
+  // (Applying the edit to the render part in a separate chunk if needed, but here I'll try to target the relevant blocks)
+
 
   const handleToggleMultiSelect = (checked) => {
     setMultiSelectEnabled(checked);
@@ -258,11 +273,7 @@ const ClientOnboading = () => {
     }
   };
 
-  const handleStartMultiChat = () => {
-    if (!selectedServices.length) return;
-    const selectedNames = selectedServices.map((item) => item.title).join(", ");
-    openChat(`I need help with ${selectedNames}.`);
-  };
+
 
   return (
     <section
@@ -321,7 +332,7 @@ const ClientOnboading = () => {
         <DialogContent className="w-[96vw] max-w-5xl h-[85vh] border-0 bg-transparent p-0">
           <DialogTitle className="sr-only">Chat with Catalance</DialogTitle>
           <div className="h-full w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
-            <AIChat embedded prefill={chatPrefill} />
+            <AIChat embedded prefill={chatPrefill} serviceName={selectedServiceTitle} />
           </div>
         </DialogContent>
       </Dialog>

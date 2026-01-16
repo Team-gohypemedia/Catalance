@@ -9,7 +9,7 @@ export const aiRouter = Router();
 
 aiRouter.post("/chat", async (req, res) => {
   try {
-    const { message, conversationHistory = [] } = req.body || {};
+    const { message, conversationHistory = [], serviceName } = req.body || {};
 
     if (!message) {
       res.status(400).json({ error: "Message is required" });
@@ -18,7 +18,8 @@ aiRouter.post("/chat", async (req, res) => {
 
     const result = await chatWithAI(
       [{ role: "user", content: message }],
-      conversationHistory
+      conversationHistory,
+      serviceName
     );
 
     res.json(result);
