@@ -154,6 +154,297 @@
                 "min_required_amount": 25000,
                 "unit": "project"
             },
+            "website_types": [
+                {
+                    "type": "ecommerce",
+                    "pages": [
+                        "Home",
+                        "Shop / Categories",
+                        "Product List (PLP)",
+                        "Product Details (PDP)",
+                        "Search Results",
+                        "Cart",
+                        "Checkout (Address, Shipping, Payment)",
+                        "Order Success / Thank You",
+                        "Track Order",
+                        "Account (Login/Signup)",
+                        "My Orders / Order Details",
+                        "Wishlist / Saved Items",
+                        "Returns & Refunds",
+                        "Shipping Info",
+                        "FAQ / Help Center",
+                        "Contact",
+                        "About",
+                        "Policies (Privacy, Terms, Return Policy)",
+                        "404 Not Found",
+                        "Sitemap (HTML/XML)"
+                    ]
+                },
+                {
+                    "type": "informational_corporate",
+                    "pages": [
+                        "Home",
+                        "About (Mission, Team, Story)",
+                        "Services (Overview)",
+                        "Service Details",
+                        "Industries / Use Cases",
+                        "Portfolio / Case Studies",
+                        "Testimonials",
+                        "Pricing (optional)",
+                        "Blog / Resources",
+                        "Careers",
+                        "Contact",
+                        "FAQ",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found",
+                        "Sitemap (HTML/XML)"
+                    ]
+                },
+                {
+                    "type": "portfolio_personal_brand",
+                    "pages": [
+                        "Home",
+                        "About Me",
+                        "Portfolio / Work",
+                        "Project Details",
+                        "Skills / Tools",
+                        "Resume / CV (Download)",
+                        "Testimonials",
+                        "Blog (optional)",
+                        "Contact",
+                        "Privacy Policy (optional)",
+                        "Terms & Conditions (optional)",
+                        "404 Not Found",
+                        "Sitemap (HTML/XML)"
+                    ]
+                },
+                {
+                    "type": "blog_news_magazine",
+                    "pages": [
+                        "Home",
+                        "Categories",
+                        "Article Page",
+                        "Author Page",
+                        "Tag Page",
+                        "Search",
+                        "Newsletter Signup",
+                        "About",
+                        "Contact",
+                        "Advertise / Media Kit (optional)",
+                        "Archive",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found",
+                        "Sitemap (HTML/XML)"
+                    ]
+                },
+                {
+                    "type": "saas_software",
+                    "pages": [
+                        "Home",
+                        "Product",
+                        "Features (Overview)",
+                        "Feature Details",
+                        "Integrations",
+                        "Pricing",
+                        "Security / Compliance",
+                        "Docs / Help Center",
+                        "API Docs (optional)",
+                        "Changelog / Updates",
+                        "Case Studies",
+                        "Blog",
+                        "Get Started",
+                        "Login",
+                        "Signup",
+                        "Contact / Sales",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found",
+                        "Sitemap (HTML/XML)"
+                    ]
+                },
+                {
+                    "type": "landing_page_single_product",
+                    "pages": [
+                        "Landing Page (Hero + CTA)",
+                        "Benefits",
+                        "Features",
+                        "How It Works",
+                        "Social Proof (Reviews/Logos)",
+                        "Pricing",
+                        "FAQ",
+                        "Contact / Lead Form",
+                        "Privacy Policy",
+                        "Terms & Conditions"
+                    ]
+                },
+                {
+                    "type": "restaurant_cafe",
+                    "pages": [
+                        "Home",
+                        "Menu (Categories)",
+                        "Menu Item Details (optional)",
+                        "Order Online (optional)",
+                        "Reservation (optional)",
+                        "Locations / Hours",
+                        "Gallery",
+                        "Events (optional)",
+                        "About",
+                        "Reviews",
+                        "Catering (optional)",
+                        "Contact",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found"
+                    ]
+                },
+                {
+                    "type": "real_estate",
+                    "pages": [
+                        "Home",
+                        "Listings (Buy/Rent)",
+                        "Listing Details",
+                        "Map Search (optional)",
+                        "Agents",
+                        "Neighborhood Guides",
+                        "Sell Your Property (Lead Form)",
+                        "Mortgage Calculator (optional)",
+                        "About",
+                        "Contact",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found"
+                    ]
+                },
+                {
+                    "type": "education_courses",
+                    "pages": [
+                        "Home",
+                        "Programs / Courses",
+                        "Course Details",
+                        "Admissions / Enrollment",
+                        "Fees / Pricing",
+                        "Schedule / Calendar",
+                        "Faculty / Instructors",
+                        "Student Reviews",
+                        "Resources / Blog (optional)",
+                        "Student Portal (optional)",
+                        "Contact",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found"
+                    ]
+                },
+                {
+                    "type": "healthcare_clinic",
+                    "pages": [
+                        "Home",
+                        "Services",
+                        "Service Details",
+                        "Doctors / Team",
+                        "Doctor Profile",
+                        "Book Appointment",
+                        "Patient Info (Insurance, Forms)",
+                        "FAQ",
+                        "Location / Contact",
+                        "Reviews (optional)",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found"
+                    ]
+                },
+                {
+                    "type": "nonprofit_ngo",
+                    "pages": [
+                        "Home",
+                        "About",
+                        "Programs",
+                        "Impact / Reports",
+                        "Donate",
+                        "Volunteer",
+                        "Events",
+                        "News / Blog (optional)",
+                        "Partners / Sponsors",
+                        "Contact",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found"
+                    ]
+                },
+                {
+                    "type": "community_forum_membership",
+                    "pages": [
+                        "Home",
+                        "Topics / Groups",
+                        "Thread / Post Page",
+                        "Create Post",
+                        "Member Profiles",
+                        "Membership Plans",
+                        "Rules / Guidelines",
+                        "Messages (optional)",
+                        "Events (optional)",
+                        "Help / Support",
+                        "Login",
+                        "Signup",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found"
+                    ]
+                },
+                {
+                    "type": "marketplace_multi_vendor",
+                    "pages": [
+                        "Home",
+                        "Categories",
+                        "Search Results",
+                        "Product Details",
+                        "Seller Storefront",
+                        "Become a Seller",
+                        "Seller Dashboard",
+                        "Cart",
+                        "Checkout",
+                        "Order Confirmation",
+                        "Orders / Tracking",
+                        "Returns / Refunds",
+                        "Disputes (optional)",
+                        "Reviews & Ratings",
+                        "Support / Help Center",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found",
+                        "Sitemap (HTML/XML)"
+                    ]
+                },
+                {
+                    "type": "booking_hotel_salon_travel",
+                    "pages": [
+                        "Home",
+                        "Services / Rooms / Tours List",
+                        "Detail Page",
+                        "Availability Calendar",
+                        "Booking Flow",
+                        "Payment",
+                        "Booking Confirmation",
+                        "Manage Booking",
+                        "Cancellation / Refund Policy",
+                        "FAQ",
+                        "Contact",
+                        "Privacy Policy",
+                        "Terms & Conditions",
+                        "404 Not Found"
+                    ]
+                }
+            ],
+            "universal_pages": [
+                "About",
+                "Contact",
+                "FAQ / Help",
+                "Privacy Policy",
+                "Terms & Conditions",
+                "404 Not Found",
+                "Sitemap (HTML/XML)"
+            ],
             "questions": [
                 {
                     "id": "requirement",
@@ -192,6 +483,68 @@
                     ]
                 },
                 {
+                    "id": "website_category",
+                    "question": "What kind of website are you looking for?",
+                    "options": [
+                        {
+                            "value": "ecommerce",
+                            "label": "E-commerce"
+                        },
+                        {
+                            "value": "informational_corporate",
+                            "label": "Informational / Corporate"
+                        },
+                        {
+                            "value": "portfolio_personal_brand",
+                            "label": "Portfolio / Personal Brand"
+                        },
+                        {
+                            "value": "blog_news_magazine",
+                            "label": "Blog / News / Magazine"
+                        },
+                        {
+                            "value": "saas_software",
+                            "label": "SaaS / Software"
+                        },
+                        {
+                            "value": "landing_page_single_product",
+                            "label": "Landing Page (Single Product)"
+                        },
+                        {
+                            "value": "restaurant_cafe",
+                            "label": "Restaurant / Cafe"
+                        },
+                        {
+                            "value": "real_estate",
+                            "label": "Real Estate"
+                        },
+                        {
+                            "value": "education_courses",
+                            "label": "Education / Courses"
+                        },
+                        {
+                            "value": "healthcare_clinic",
+                            "label": "Healthcare / Clinic"
+                        },
+                        {
+                            "value": "nonprofit_ngo",
+                            "label": "Nonprofit / NGO"
+                        },
+                        {
+                            "value": "community_forum_membership",
+                            "label": "Community Forum / Membership"
+                        },
+                        {
+                            "value": "marketplace_multi_vendor",
+                            "label": "Marketplace / Multi-vendor"
+                        },
+                        {
+                            "value": "booking_hotel_salon_travel",
+                            "label": "Booking (Hotel / Salon / Travel)"
+                        }
+                    ]
+                },
+                {
                     "id": "design_experience",
                     "question": "What type of design experience are you looking for?",
                     "options": [
@@ -211,7 +564,7 @@
                 },
                 {
                     "id": "website_type",
-                    "question": "What type of website do you need?",
+                    "question": "How do you want the website built?",
                     "options": [
                         {
                             "value": "platform_based",

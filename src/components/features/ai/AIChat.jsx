@@ -4,7 +4,9 @@ import { API_BASE_URL } from "@/shared/lib/api-client";
 import {
   PromptInput,
   PromptInputTextarea,
-} from "@/components/features/ai/elements/prompt-input";
+  PromptInputFooter,
+  PromptInputTools,
+} from "@/components/ai-elements/prompt-input";
 import ArrowUp from "lucide-react/dist/esm/icons/arrow-up";
 import Square from "lucide-react/dist/esm/icons/square";
 import Plus from "lucide-react/dist/esm/icons/plus";
@@ -12,7 +14,11 @@ import Brain from "lucide-react/dist/esm/icons/brain";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import User from "lucide-react/dist/esm/icons/user";
 import FileText from "lucide-react/dist/esm/icons/file-text";
+import Paperclip from "lucide-react/dist/esm/icons/paperclip";
 import { ProposalSidebar } from "@/components/features/ai/elements/proposal-sidebar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Clock, Mic, X, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 
 const DEFAULT_API_BASE = "http://localhost:5000/api";
@@ -34,42 +40,78 @@ const buildConversationHistory = (history) =>
     .filter((msg) => msg && msg.content && !msg.isError)
     .map(({ role, content }) => ({ role, content }));
 
-const DEFAULT_WELCOME_MESSAGE = [
-  "Hello! I am CATA, your AI assistant.",
-  "",
-  "Before we begin, what's your name?",
-  "",
-  "I can help you define your requirements and generate a custom proposal.",
-  "",
-  "What brings you here today?"
-].join("\n");
 
-const DEFAULT_NEW_CHAT_MESSAGE = [
-  "Hello! I am CATA, your assistant.",
-  "",
-  "Before we begin, what's your name?",
-  "",
-  "I can help you explore our digital services and find the right solution.",
-  "",
-  "What would you like to work on today?"
-].join("\n");
 
-function AIChat({ prefill = "", embedded = false }) {
+
+import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
+
+
+// Initialize PDF.js worker
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
+function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }) {
   const location = useLocation();
+  const serviceName = propServiceName || location.state?.serviceName;
+
+  const getWelcomeMessage = (isNewChat = false) => {
+    const baseHola = "Hello! I am CATA, your assistant.";
+    const contextPart = serviceName
+      ? `I'm here to help you explore our ${serviceName} services and find the perfect solution.`
+      : "I'm here to help you explore our digital services and find the perfect solution.";
+
+    const nameQuestion = "May I know your name?";
+
+    return isNewChat
+      ? [baseHola, "", contextPart + " " + nameQuestion].join("\n")
+      : `${baseHola} ${contextPart} ${nameQuestion}`;
+  };
+
   const prefillMessage = typeof prefill === "string" && prefill.length
     ? prefill
     : location.state?.prefill || "";
 
-  const [messages, setMessages] = useState(() => [
-    { role: "assistant", content: DEFAULT_WELCOME_MESSAGE }
-  ]);
+  const [messages, setMessages] = useState(() => {
+    const initialMsg = { role: "assistant", content: getWelcomeMessage(false) };
+    if (typeof window === "undefined") return [initialMsg];
+
+    try {
+      const saved = localStorage.getItem("cata_ai_chat_history");
+      // Only use saved history if it exists AND we haven't just switched services (context check could be improved later)
+      // For now, if saved exists, use it. But maybe user wants fresh start for new service?
+      // Let's assume reuse history, but if it's empty start with dynamic welcome.
+      return saved ? JSON.parse(saved) : [initialMsg];
+    } catch (e) {
+      console.error("Failed to load chat history:", e);
+      return [initialMsg];
+    }
+  });
+
+  // Persist messages to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("cata_ai_chat_history", JSON.stringify(messages));
+    } catch (e) {
+      console.error("Failed to save chat history:", e);
+    }
+  }, [messages]);
+
+
+
   const [input, setInput] = useState(prefillMessage);
+  const [activeFiles, setActiveFiles] = useState([]);
+  const [interimTranscript, setInterimTranscript] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [services, setServices] = useState([]);
   const [proposal, setProposal] = useState(null);
+  const [proposalProgress, setProposalProgress] = useState({ collected: 0, total: 6 });
   const [showProposal, setShowProposal] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -109,6 +151,259 @@ function AIChat({ prefill = "", embedded = false }) {
       .catch((err) => console.error("Failed to fetch services:", err));
   }, []);
 
+  const extractTextFromPdf = async (file) => {
+    console.log("Starting PDF extraction for:", file.name);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+
+        // Filter out empty items
+        const items = textContent.items.filter(item => item.str.trim().length > 0);
+
+        // Sort items by Y (descending) then X (ascending) to handle layout
+        // PDF coordinates: (0,0) is bottom-left usually, so higher Y is higher up on page.
+        items.sort((a, b) => {
+          const yDiff = b.transform[5] - a.transform[5]; // Compare Y
+          if (Math.abs(yDiff) > 5) { // If Y difference is significant
+            return yDiff; // Sort by Y
+          }
+          return a.transform[4] - b.transform[4]; // Else sort by X
+        });
+
+        let pageText = "";
+        let lastY = null;
+
+        items.forEach((item) => {
+          const y = item.transform[5];
+          const text = item.str;
+
+          if (lastY !== null && Math.abs(y - lastY) > 5) {
+            // New line detected (significant Y change)
+            pageText += "\n" + text;
+          } else {
+            // Same line (or close enough) - add space if not first item
+            pageText += (pageText ? " " : "") + text;
+          }
+          lastY = y;
+        });
+
+        fullText += pageText + "\n\n";
+      }
+      console.log("PDF extraction complete. Length:", fullText.length);
+      return fullText;
+    } catch (err) {
+      console.error("PDF Extraction Error:", err);
+      throw err;
+    }
+  };
+
+  const extractTextFromDocx = async (file) => {
+    console.log("Starting DOCX extraction for:", file.name);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      console.log("DOCX extraction complete. Length:", result.value.length);
+      return result.value;
+    } catch (err) {
+      console.error("DOCX Extraction Error:", err);
+      throw err;
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setIsProcessingFile(true);
+    const newFiles = [];
+
+    for (const file of files) {
+      console.log("Processing file:", file.name, file.type);
+      let extractedText = "";
+
+      try {
+        if (file.type === "application/pdf") {
+          extractedText = await extractTextFromPdf(file);
+        } else if (
+          file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+          file.name.endsWith('.docx')
+        ) {
+          extractedText = await extractTextFromDocx(file);
+        } else if (file.type === "text/plain") {
+          extractedText = await file.text();
+        } else {
+          console.warn("Unsupported file type:", file.type);
+          toast.error(`Unsupported file type: ${file.name}`);
+          continue;
+        }
+
+        if (extractedText.trim()) {
+          const structuredContent = [
+            `### Document Content: ${file.name}`,
+            "---",
+            extractedText.trim(),
+            "---",
+            `\n(System Note: Please analyze the document content above and extract key details.)`
+          ].join("\n");
+
+          newFiles.push({
+            id: Date.now() + Math.random(),
+            name: file.name,
+            type: file.type.includes('pdf') ? 'PDF' : file.type.includes('word') ? 'DOCX' : 'TXT',
+            content: structuredContent
+          });
+        } else {
+          toast.warning(`Could not extract text from: ${file.name}`);
+        }
+      } catch (error) {
+        console.error("File extraction error:", error);
+        toast.error(`Failed to read: ${file.name}`);
+      }
+    }
+
+    if (newFiles.length > 0) {
+      setActiveFiles(prev => [...prev, ...newFiles]);
+      toast.success(`${newFiles.length} document(s) attached`);
+      setTimeout(focusInput, 100);
+    }
+
+    setIsProcessingFile(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeFile = (fileId) => {
+    setActiveFiles(prev => prev.filter(f => f.id !== fileId));
+  };
+
+  const toggleListening = () => {
+    // Support both standard and webkit Speech Recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.error("Voice input is not supported in this browser.");
+      return;
+    }
+
+    if (isListening) {
+      console.log("Stopping speech recognition...");
+      window.recognition?.stop();
+      setIsListening(false);
+      setInterimTranscript("");
+      return;
+    }
+
+    const startRecognition = (retryCount = 0) => {
+      console.log(`Starting speech recognition... (attempt ${retryCount + 1})`);
+      const recognition = new SpeechRecognition();
+
+      // Simpler setup - sometimes complex settings cause issues
+      recognition.continuous = false; // Let it auto-stop after silence
+      recognition.interimResults = true;
+      recognition.lang = "en-IN"; // Try English-India first since you're in India
+      recognition.maxAlternatives = 1;
+
+      recognition.onaudiostart = () => {
+        console.log("Audio capture started - microphone is active");
+      };
+
+      recognition.onsoundstart = () => {
+        console.log("Sound detected");
+      };
+
+      recognition.onspeechstart = () => {
+        console.log("Speech detected - please speak");
+      };
+
+      recognition.onstart = () => {
+        console.log("Recognition started");
+        setIsListening(true);
+        setInterimTranscript("");
+        window.recognition = recognition;
+        toast.success("🎤 Listening... Speak now!");
+      };
+
+      recognition.onresult = (event) => {
+        console.log("Got result:", event.results);
+        let interim = '';
+        let final = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          console.log(`Result ${i}: "${transcript}" - isFinal: ${event.results[i].isFinal}`);
+          if (event.results[i].isFinal) {
+            final += transcript;
+          } else {
+            interim += transcript;
+          }
+        }
+
+        // Update interim transcript for real-time display
+        if (interim) {
+          console.log("Interim transcript:", interim);
+          setInterimTranscript(interim);
+        }
+
+        // Append final transcript to input
+        if (final) {
+          console.log("Final transcript:", final);
+          setInput((prev) => (prev ? prev + " " + final : final).trim());
+          setInterimTranscript("");
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error, event);
+        setInterimTranscript("");
+
+        switch (event.error) {
+          case 'not-allowed':
+            toast.error("🚫 Microphone access denied. Please allow microphone access in your browser settings.");
+            break;
+          case 'no-speech':
+            toast.info("🔇 No speech detected. Try speaking louder or closer to the mic.");
+            // Don't stop listening on no-speech, let it continue
+            return;
+          case 'audio-capture':
+            toast.error("🎤 No microphone found. Please connect a microphone and try again.");
+            break;
+          case 'network':
+            toast.error("🌐 Speech recognition network error. Try Microsoft Edge browser, or check if antivirus/firewall is blocking Google services.", { duration: 6000 });
+            break;
+          case 'aborted':
+            console.log("Speech recognition aborted");
+            break;
+          default:
+            toast.error(`Voice error: ${event.error}`);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        console.log("Recognition ended");
+        setIsListening(false);
+        setInterimTranscript("");
+      };
+
+      try {
+        recognition.start();
+      } catch (error) {
+        console.error("Failed to start speech recognition:", error);
+        toast.error("Failed to start voice input. Please try again.");
+        setIsListening(false);
+      }
+    };
+
+    // Call the startRecognition function
+    startRecognition();
+  };
+
   const sendMessage = async (messageText, options = {}) => {
     const { skipUserAppend = false } = options;
     const text = typeof messageText === "string" ? messageText : input;
@@ -118,6 +413,7 @@ function AIChat({ prefill = "", embedded = false }) {
       const userMessage = { role: "user", content: text };
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
+      setActiveFiles([]); // Clear all active files after sending
     }
     setIsLoading(true);
 
@@ -127,7 +423,8 @@ function AIChat({ prefill = "", embedded = false }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          conversationHistory: buildConversationHistory(messages)
+          conversationHistory: buildConversationHistory(messages),
+          serviceName
         })
       });
 
@@ -139,10 +436,18 @@ function AIChat({ prefill = "", embedded = false }) {
           { role: "assistant", content: sanitizeAssistantContent(data.message) }
         ]);
 
+        // Update proposal progress
+        if (data.proposalProgress) {
+          setProposalProgress(data.proposalProgress);
+        }
+
         // Check for proposal data in the response
         if (data.proposal) {
           setProposal(data.proposal);
-          setShowProposal(true);
+          // Auto-open sidebar only when proposal is complete
+          if (data.proposal.isComplete) {
+            setShowProposal(true);
+          }
         }
       } else {
         setMessages((prev) => [
@@ -186,8 +491,11 @@ function AIChat({ prefill = "", embedded = false }) {
   };
 
   const startNewChat = () => {
-    setMessages([{ role: "assistant", content: DEFAULT_NEW_CHAT_MESSAGE }]);
+    setMessages([{ role: "assistant", content: getWelcomeMessage(true) }]);
     setInput("");
+    setProposal(null);
+    setProposalProgress({ collected: 0, total: 6 });
+    setShowProposal(false);
     setTimeout(() => focusInput(), 50);
   };
 
@@ -201,6 +509,7 @@ function AIChat({ prefill = "", embedded = false }) {
         {/* Proposal Sidebar */}
         <ProposalSidebar
           proposal={proposal}
+          progress={proposalProgress}
           isOpen={showProposal}
           onClose={() => setShowProposal(false)}
         />
@@ -230,7 +539,21 @@ function AIChat({ prefill = "", embedded = false }) {
                 <Plus className="size-4" />
                 <span className="hidden sm:inline">New Chat</span>
               </button>
-              {proposal && !showProposal && (
+              {/* Progress indicator when collecting data */}
+              {proposalProgress.collected > 0 && !proposal?.isComplete && (
+                <button
+                  onClick={() => setShowProposal(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all cursor-pointer"
+                  title="View draft proposal"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="hidden sm:inline">Draft</span>
+                    <span className="text-xs opacity-70">{proposalProgress.collected}/{proposalProgress.total}</span>
+                  </div>
+                </button>
+              )}
+              {proposal && !showProposal && proposal.isComplete && (
                 <button
                   onClick={() => setShowProposal(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-lg shadow-primary/20 hover:shadow-primary/30"
@@ -282,29 +605,38 @@ function AIChat({ prefill = "", embedded = false }) {
               ))}
 
               {/* Loading State */}
-              {isLoading && (
+              {(isLoading || isProcessingFile) && (
                 <div className="flex flex-col items-start animate-fade-in">
                   <span className="text-xs font-medium mb-1.5 px-1 text-muted-foreground">CATA</span>
                   <div className="bg-card border border-border/50 rounded-2xl rounded-tl-md p-4">
                     <div className="relative flex items-center gap-2">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Brain className="size-4 animate-pulse" />
-                        <span className="text-sm font-medium">Thinking...</span>
-                      </div>
-                      <div
-                        className="absolute inset-0 flex items-center gap-2 text-primary"
-                        style={{
-                          maskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
-                          WebkitMaskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
-                          maskSize: '250% 100%',
-                          WebkitMaskSize: '250% 100%',
-                          animation: 'mask-shimmer 2s linear infinite',
-                          WebkitAnimation: 'mask-shimmer 2s linear infinite'
-                        }}
-                      >
-                        <Brain className="size-4" />
-                        <span className="text-sm font-medium">Thinking...</span>
-                      </div>
+                      {isProcessingFile ? (
+                        <>
+                          <FileText className="size-4 animate-pulse text-primary" />
+                          <span className="text-sm font-medium">Reading document...</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Brain className="size-4 animate-pulse" />
+                            <span className="text-sm font-medium">Thinking...</span>
+                          </div>
+                          <div
+                            className="absolute inset-0 flex items-center gap-2 text-primary"
+                            style={{
+                              maskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
+                              WebkitMaskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
+                              maskSize: '250% 100%',
+                              WebkitMaskSize: '250% 100%',
+                              animation: 'mask-shimmer 2s linear infinite',
+                              WebkitAnimation: 'mask-shimmer 2s linear infinite'
+                            }}
+                          >
+                            <Brain className="size-4" />
+                            <span className="text-sm font-medium">Thinking...</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -316,51 +648,123 @@ function AIChat({ prefill = "", embedded = false }) {
 
           {/* Input Area */}
           <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
+            {/* Hidden Input for File Upload - Moved outside PromptInput to avoid conflicts */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+              multiple
+              onChange={handleFileUpload}
+            />
             <div className="px-6 py-4">
-              {/* Quick Action Chips */}
-              {messages.length <= 1 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {[
-                    "What services do you offer?",
-                    "I need a website",
-                    "Help with branding",
-                    "App development"
-                  ].map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => handleQuickAction(suggestion)}
-                      className="px-3 py-1.5 text-sm border border-border rounded-full hover:border-primary hover:bg-primary/5 hover:text-primary transition-all cursor-pointer text-muted-foreground"
+              {/* Quick Action Chips Removed */}
+
+              {/* File Chips - Left aligned above input */}
+              {activeFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 justify-start mb-2">
+                  {activeFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      className="py-1 px-2 rounded-md bg-[#252525] border border-white/5 flex items-center gap-1.5 group animate-in slide-in-from-bottom-2 fade-in duration-300"
                     >
-                      {suggestion}
-                    </button>
+                      <div className="h-4 w-4 rounded-[3px] bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-500 shrink-0">
+                        <FileText className="size-2.5" />
+                      </div>
+                      <div className="flex flex-col min-w-0 max-w-[120px]">
+                        <span className="text-[9px] font-semibold text-white/90 truncate uppercase tracking-widest leading-none pt-0.5">{file.name}</span>
+                      </div>
+                      <button
+                        onClick={() => removeFile(file.id)}
+                        className="ml-0.5 p-0.5 rounded-sm hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                      >
+                        <X className="size-2.5" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
 
               <PromptInput
                 onSubmit={handleSubmit}
-                className="relative p-2 flex items-end gap-2"
+                className="relative border border-white/10 rounded-2xl bg-[#1a1a1a] shadow-lg focus-within:ring-1 focus-within:ring-primary/50 transition-all duration-300"
               >
+                {/* Interim transcript display when listening */}
+                {isListening && interimTranscript && (
+                  <div className="px-4 pt-3 pb-1">
+                    <div className="flex items-center gap-2 text-primary/80">
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-sm italic">{interimTranscript}</span>
+                    </div>
+                  </div>
+                )}
+
                 <PromptInputTextarea
                   ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask CATA anything..."
-                  disabled={isLoading}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit({ text: input });
+                    }
+                  }}
+                  placeholder={isListening ? "🎤 Listening..." : "Ask anything"}
+                  disabled={isLoading || isProcessingFile}
                   autoFocus
-                  className="w-full !bg-transparent !border-none !text-foreground text-base !p-4 !min-h-[50px] !max-h-[150px] resize-none !box-border !break-all !whitespace-pre-wrap !overflow-x-hidden [field-sizing:content] focus:!ring-0 placeholder:!text-muted-foreground/50"
+                  className="w-full !bg-transparent !border-none !text-white text-base !px-4 !py-3 !min-h-[50px] !max-h-[200px] resize-none !box-border !break-all !whitespace-pre-wrap !overflow-x-hidden [field-sizing:content] focus:!ring-0 placeholder:!text-white/20 font-light"
                 />
-                <button
-                  type="submit"
-                  disabled={!isLoading && !input.trim()}
-                  className="mr-2 h-10 w-10 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all shadow-lg shadow-primary/25"
-                >
-                  {isLoading ? (
-                    <Square className="size-3.5 fill-current" />
-                  ) : (
-                    <ArrowUp className="size-5" />
-                  )}
-                </button>
+
+                <PromptInputFooter className="px-3 pb-3 flex items-center justify-between">
+                  <PromptInputTools className="flex items-center gap-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="p-2 h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center text-white/40 hover:bg-white/5 hover:text-white transition-colors"
+                          title="Add attachment"
+                          disabled={isLoading || isProcessingFile}
+                        >
+                          <Plus className="size-5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[200px] bg-[#1a1a1a] border-white/10 text-white">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            fileInputRef.current?.click();
+                          }}
+                          className="cursor-pointer hover:bg-white/5 focus:bg-white/5 focus:text-white"
+                        >
+                          <FileText className="mr-2 size-4 text-white/60" />
+                          <span>Upload Document</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+
+                  </PromptInputTools>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`p-2 h-9 w-9 rounded-full flex items-center justify-center transition-colors ${isListening ? "bg-red-500/20 text-red-500 animate-pulse" : "text-white/40 hover:bg-white/5 hover:text-white"}`}
+                    >
+                      <Mic className="size-5" />
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={(!isLoading && !input.trim() && activeFiles.length === 0) || isProcessingFile}
+                      className="h-9 w-9 shrink-0 rounded-full border-none cursor-pointer flex items-center justify-center bg-white text-black hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-white/5"
+                    >
+                      {isLoading ? (
+                        <Square className="size-3.5 fill-current" />
+                      ) : (
+                        <ArrowUp className="size-5" />
+                      )}
+                    </button>
+                  </div>
+                </PromptInputFooter>
               </PromptInput>
               <p className="text-center text-xs text-muted-foreground/60 mt-3">CATA can make mistakes. Consider checking important information.</p>
             </div>
