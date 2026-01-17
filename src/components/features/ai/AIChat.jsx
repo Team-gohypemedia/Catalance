@@ -77,7 +77,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
     if (typeof window === "undefined") return [initialMsg];
 
     try {
-      const saved = localStorage.getItem("cata_ai_chat_history");
+      const saved = sessionStorage.getItem("cata_ai_chat_history");
       // Only use saved history if it exists AND we haven't just switched services (context check could be improved later)
       // For now, if saved exists, use it. But maybe user wants fresh start for new service?
       // Let's assume reuse history, but if it's empty start with dynamic welcome.
@@ -88,10 +88,10 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
     }
   });
 
-  // Persist messages to localStorage
+  // Persist messages to sessionStorage (clears when browser closes)
   useEffect(() => {
     try {
-      localStorage.setItem("cata_ai_chat_history", JSON.stringify(messages));
+      sessionStorage.setItem("cata_ai_chat_history", JSON.stringify(messages));
     } catch (e) {
       console.error("Failed to save chat history:", e);
     }
@@ -504,18 +504,10 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
   };
 
   return (
-    <div className={`text-foreground ${embedded ? "h-full" : ""}`}>
-      <div className={`flex ${embedded ? "h-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}>
-        {/* Proposal Sidebar */}
-        <ProposalSidebar
-          proposal={proposal}
-          progress={proposalProgress}
-          isOpen={showProposal}
-          onClose={() => setShowProposal(false)}
-        />
-
-        {/* Main Chat Area - Centered Layout */}
-        <main className="flex-1 flex flex-col">
+    <div className={`text-foreground ${embedded ? "h-full w-full" : ""}`}>
+      <div className={`flex ${embedded ? "h-full w-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}>
+        {/* Main Chat Area */}
+        <main className={`flex flex-col transition-all duration-300 ${showProposal && embedded ? 'w-[60%]' : 'flex-1'}`}>
           {/* Modern Header */}
           <header className="relative px-6 pr-20 py-4 border-b border-border/50 bg-background/80 backdrop-blur-xl flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -770,6 +762,31 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
             </div>
           </div>
         </main>
+
+        {/* Proposal Panel - Side by side with chat when embedded */}
+        {embedded && showProposal && (
+          <div className="w-[40%] h-full border-l border-white/10 bg-zinc-950 flex flex-col animate-in slide-in-from-right duration-300">
+            <ProposalSidebar
+              proposal={proposal}
+              progress={proposalProgress}
+              isOpen={true}
+              onClose={() => setShowProposal(false)}
+              embedded={embedded}
+              inline={true}
+            />
+          </div>
+        )}
+
+        {/* Proposal Sidebar - Fixed overlay for non-embedded mode */}
+        {!embedded && (
+          <ProposalSidebar
+            proposal={proposal}
+            progress={proposalProgress}
+            isOpen={showProposal}
+            onClose={() => setShowProposal(false)}
+            embedded={false}
+          />
+        )}
       </div>
     </div>
   );
