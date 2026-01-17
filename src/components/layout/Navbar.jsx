@@ -31,12 +31,16 @@ const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
   return (
     <div
       onClick={onClick}
-      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${isDark ? "rotate-180" : "rotate-0"
-        }`}>
+      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${
+        isDark ? "rotate-180" : "rotate-0"
+      }`}
+    >
       {isDark ? (
         <Sun className="h-6 w-6 text-yellow-500" />
       ) : (
-        <Moon className={cn("h-6 w-6", forceWhite ? "text-white" : "text-gray-900")} />
+        <Moon
+          className={cn("h-6 w-6", forceWhite ? "text-white" : "text-gray-900")}
+        />
       )}
     </div>
   );
@@ -50,7 +54,10 @@ const AuthButtons = ({ visible, isHome, isDark }) => {
         as={Link}
         to="/login"
         variant="outline"
-        className={cn(forceWhite ? "text-white border-white/20 hover:bg-white/10" : "")}>
+        className={cn(
+          forceWhite ? "text-white border-white/20 hover:bg-white/10" : ""
+        )}
+      >
         Log In
       </NavbarButton>
       <NavbarButton as={Link} to="/signup">
@@ -76,11 +83,15 @@ const Navbar = () => {
   };
 
   return (
-    <ResizableNavbar>
+    <ResizableNavbar isHome={isHome} isDark={isDark}>
       {/* Desktop Navbar */}
       <NavBody>
         <NavbarLogo isHome={isHome} />
-        <NavItems items={navItems} onItemClick={closeMobileMenu} isHome={isHome} />
+        <NavItems
+          items={navItems}
+          onItemClick={closeMobileMenu}
+          isHome={isHome}
+        />
         <div className="flex items-center">
           <ThemeButton
             isDark={isDark}
@@ -105,7 +116,8 @@ const Navbar = () => {
               key={`mobile-link-${idx}`}
               to={item.link}
               onClick={closeMobileMenu}
-              className="w-full px-4 py-2 text-lg text-white hover:bg-neutral-800 rounded">
+              className="w-full px-4 py-2 text-lg text-white hover:bg-neutral-800 rounded"
+            >
               {item.name}
             </Link>
           ))}

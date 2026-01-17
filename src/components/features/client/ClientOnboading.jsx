@@ -1,7 +1,11 @@
 ﻿import { useState, useEffect, memo } from "react";
 import { useCallback } from "react";
 import { useLocation } from "react-router-dom";
-import { EvervaultCard, CardPattern, generateRandomString } from "@/components/ui/evervault-card";
+import {
+  EvervaultCard,
+  CardPattern,
+  generateRandomString,
+} from "@/components/ui/evervault-card";
 import { useMotionValue, useMotionTemplate, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -36,7 +40,8 @@ import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 const features = [
   {
     title: "Website Development",
-    description: "Custom websites built for performance, speed, and business growth.",
+    description:
+      "Custom websites built for performance, speed, and business growth.",
     price: "Starting at ₹25,000",
     icon: Globe,
     image: "/src/assets/icons/web-icon.png",
@@ -50,19 +55,22 @@ const features = [
   },
   {
     title: "Software Development",
-    description: "Custom software solutions built to solve real business problems.",
+    description:
+      "Custom software solutions built to solve real business problems.",
     price: "Starting at ₹1,00,000",
     icon: Terminal,
   },
   {
     title: "Lead Generation",
-    description: "Targeted campaigns that turn prospects into qualified business leads.",
+    description:
+      "Targeted campaigns that turn prospects into qualified business leads.",
     price: "Starting at ₹15,000/mo",
     icon: Target,
   },
   {
     title: "Video Services",
-    description: "Creative videos that tell stories and boost brand engagement.",
+    description:
+      "Creative videos that tell stories and boost brand engagement.",
     price: "Starting at ₹2,000/video",
     icon: Video,
   },
@@ -74,13 +82,15 @@ const features = [
   },
   {
     title: "3D Modeling",
-    description: "Detailed 3D models for products, visuals, and digital experiences.",
+    description:
+      "Detailed 3D models for products, visuals, and digital experiences.",
     price: "Starting at ₹5,000/model",
     icon: Code,
   },
   {
     title: "SEO Optimization",
-    description: "Improve search rankings and drive consistent organic traffic.",
+    description:
+      "Improve search rankings and drive consistent organic traffic.",
     price: "Starting at ₹10,000/mo",
     icon: Search,
     image: "/src/assets/icons/seo-icon.png",
@@ -99,13 +109,15 @@ const features = [
   },
   {
     title: "UGC (User-Generated Content) Marketing",
-    description: "Authentic creator content that boosts brand credibility and conversions.",
+    description:
+      "Authentic creator content that boosts brand credibility and conversions.",
     price: "Starting at ₹2,000/video",
     icon: Mic,
   },
   {
     title: "Performance Marketing",
-    description: "Data-driven advertising campaigns focused on measurable results.",
+    description:
+      "Data-driven advertising campaigns focused on measurable results.",
     price: "Starting at ₹25,000/mo",
     icon: Activity,
   },
@@ -117,25 +129,29 @@ const features = [
   },
   {
     title: "Branding (Naming, Logo & Brand Identity)",
-    description: "Build strong brand identities that people remember and trust.",
+    description:
+      "Build strong brand identities that people remember and trust.",
     price: "Starting at ₹25,000",
     icon: Palette,
   },
   {
     title: "Writing & Content",
-    description: "Compelling content that informs, engages, and converts audiences.",
+    description:
+      "Compelling content that informs, engages, and converts audiences.",
     price: "Starting at ₹1,000/piece",
     icon: FileText,
   },
   {
     title: "Customer Support",
-    description: "Reliable support services that improve customer satisfaction and retention.",
+    description:
+      "Reliable support services that improve customer satisfaction and retention.",
     price: "Starting at ₹15,000/mo",
     icon: Headphones,
   },
   {
     title: "CRM & ERP Solutions",
-    description: "Systems that streamline operations and centralize business data.",
+    description:
+      "Systems that streamline operations and centralize business data.",
     price: "Starting at ₹40,000",
     icon: Database,
   },
@@ -154,7 +170,8 @@ const features = [
   },
   {
     title: "WhatsApp Chat Bot",
-    description: "Automated WhatsApp conversations for faster customer support and sales.",
+    description:
+      "Automated WhatsApp conversations for faster customer support and sales.",
     price: "Starting at ₹15,000",
     icon: MessageCircle,
   },
@@ -167,7 +184,8 @@ function MatrixPattern({ mouseX, mouseY, randomString }) {
 
   return (
     <div className="pointer-events-none">
-      <div className="absolute inset-0 mask-[linear-gradient(white,transparent)] opacity-20" /> {/* Base subtle pattern */}
+      <div className="absolute inset-0 mask-[linear-gradient(white,transparent)] opacity-20" />{" "}
+      {/* Base subtle pattern */}
       <motion.div
         className="absolute inset-0 bg-linear-to-r from-primary to-orange-700 opacity-100 transition duration-500 backdrop-blur-xl" // Always visible, controlled by mask
         style={style}
@@ -219,14 +237,9 @@ const ClientOnboading = () => {
   // Handle auto-open from dashboard
   useEffect(() => {
     if (location.state?.openChat && location.state?.serviceTitle) {
-      const feature = features.find(
-        (f) => f.title === location.state.serviceTitle
-      );
-      if (feature) {
-        setMultiSelectEnabled(false);
-        setSelectedServices([]);
-        openChat(`I need help with ${feature.title}.`, feature.title);
-      }
+      setMultiSelectEnabled(false);
+      setSelectedServices([]);
+      openChat(`I need help with ${location.state.serviceTitle}.`);
     }
   }, [location.state, openChat]);
 
@@ -276,12 +289,14 @@ const ClientOnboading = () => {
 
 
   return (
-    <section
-      className="mt-10 space-y-6 text-foreground transition-colors relative"
-    >
+    <section className="mt-10 space-y-6 text-foreground transition-colors relative">
       {/* Matrix Background Layer - Fixed to cover whole screen */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <MatrixPattern mouseX={mouseX} mouseY={mouseY} randomString={randomString} />
+        <MatrixPattern
+          mouseX={mouseX}
+          mouseY={mouseY}
+          randomString={randomString}
+        />
       </div>
 
       <div className="text-center space-y-2 relative z-10">
@@ -295,7 +310,10 @@ const ClientOnboading = () => {
 
       <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
         <div className="flex items-center gap-3">
-          <Switch checked={multiSelectEnabled} onCheckedChange={handleToggleMultiSelect} />
+          <Switch
+            checked={multiSelectEnabled}
+            onCheckedChange={handleToggleMultiSelect}
+          />
           <span className="text-sm font-medium">
             Select multiple services (up to 3)
           </span>
@@ -336,76 +354,99 @@ const ClientOnboading = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-    </section >
+    </section>
   );
 };
 
 // Memoized Service Card Component to prevent re-renders
-const ServiceCard = memo(({ feature, selectedServices, multiSelectEnabled, onClick }) => {
-  const isSelected = selectedServices.some((item) => item.title === feature.title);
+const ServiceCard = memo(
+  ({ feature, selectedServices, multiSelectEnabled, onClick }) => {
+    const isSelected = selectedServices.some(
+      (item) => item.title === feature.title
+    );
 
-  return (
-    <div
-      onClick={onClick}
-      className={`
+    return (
+      <div
+        onClick={onClick}
+        className={`
         group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full
-        ${isSelected
-          ? "border-[#ffc800] shadow-[0_0_40px_-10px_rgba(255,200,0,0.3)] bg-background"
-          : "border-white/20 bg-background shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:border-[#ffc800]/50 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2"}
+        ${
+          isSelected
+            ? "border-[#ffc800] shadow-[0_0_40px_-10px_rgba(255,200,0,0.3)] bg-background"
+            : "border-white/20 bg-background shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:border-[#ffc800]/50 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2"
+        }
       `}
-    >
-      {/* Background Gradient Shine - Subtle premium feel */}
-      <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 ${isSelected ? "opacity-100" : "group-hover:opacity-100"}`} />
+      >
+        {/* Background Gradient Shine - Subtle premium feel */}
+        <div
+          className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 ${
+            isSelected ? "opacity-100" : "group-hover:opacity-100"
+          }`}
+        />
 
-      {/* Selection Glow Overlay */}
-      {isSelected && <div className="absolute inset-0 bg-[#ffc800]/5 pointer-events-none" />}
+        {/* Selection Glow Overlay */}
+        {isSelected && (
+          <div className="absolute inset-0 bg-[#ffc800]/5 pointer-events-none" />
+        )}
 
-      <div className="flex flex-col h-full p-8 relative z-10">
+        <div className="flex flex-col h-full p-8 relative z-10">
+          {/* Icon Container */}
+          <div className="h-24 w-full flex items-center justify-start mb-6 relative">
+            <div className="absolute -left-4 -top-4 w-32 h-32 bg-[#ffc800]/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            {feature.image ? (
+              <img
+                src={feature.image}
+                alt={feature.title}
+                className="w-20 h-20 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
+              />
+            ) : (
+              <feature.icon
+                className="w-14 h-14 text-[#ffc800] drop-shadow-lg z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
+                strokeWidth={1.5}
+              />
+            )}
+          </div>
 
-        {/* Icon Container */}
-        <div className="h-24 w-full flex items-center justify-start mb-6 relative">
-          <div className="absolute -left-4 -top-4 w-32 h-32 bg-[#ffc800]/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-          {feature.image ? (
-            <img src={feature.image} alt={feature.title} className="w-20 h-20 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out" />
-          ) : (
-            <feature.icon className="w-14 h-14 text-[#ffc800] drop-shadow-lg z-10 group-hover:scale-110 transition-transform duration-500 ease-out" strokeWidth={1.5} />
-          )}
-        </div>
+          {/* Card Content */}
+          <div className="flex flex-col grow">
+            <h3 className="text-xl font-bold text-white mb-3 leading-tight group-hover:text-[#ffc800] transition-colors duration-300">
+              {feature.title}
+            </h3>
 
-        {/* Card Content */}
-        <div className="flex flex-col grow">
-          <h3 className="text-xl font-bold text-white mb-3 leading-tight group-hover:text-[#ffc800] transition-colors duration-300">
-            {feature.title}
-          </h3>
+            <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-8 line-clamp-3 group-hover:text-zinc-300 transition-colors">
+              {feature.description}
+            </p>
 
-          <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-8 line-clamp-3 group-hover:text-zinc-300 transition-colors">
-            {feature.description}
-          </p>
-
-          <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-5">
-            <div>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">Starting at</p>
-              <p className="text-white text-lg font-bold group-hover:text-[#ffc800] transition-colors duration-300">
-                {feature.price.replace('Starting at ', '').replace('Starting at', '')}
-              </p>
-            </div>
-            <div className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-[#ffc800] border-[#ffc800] text-black' : 'border-white/10 text-zinc-500 group-hover:border-[#ffc800] group-hover:text-[#ffc800]'}`}>
-              {isSelected ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />}
+            <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-5">
+              <div>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">
+                  Starting at
+                </p>
+                <p className="text-white text-lg font-bold group-hover:text-[#ffc800] transition-colors duration-300">
+                  {feature.price
+                    .replace("Starting at ", "")
+                    .replace("Starting at", "")}
+                </p>
+              </div>
+              <div
+                className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all duration-300 ${
+                  isSelected
+                    ? "bg-[#ffc800] border-[#ffc800] text-black"
+                    : "border-white/10 text-zinc-500 group-hover:border-[#ffc800] group-hover:text-[#ffc800]"
+                }`}
+              >
+                {isSelected ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <ArrowRight className="w-4 h-4 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 export default ClientOnboading;
-
-
-
-
-
-
-
-
