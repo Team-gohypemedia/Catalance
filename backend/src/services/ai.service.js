@@ -58,6 +58,191 @@ const buildWebsiteTypeReference = () => {
     .join("\n");
 };
 
+/**
+ * Build comprehensive technical expertise context for CATA
+ * This knowledge base allows CATA to provide informed, expert-level recommendations
+ */
+const buildTechnicalExpertise = () => {
+  return `
+**YOUR TECHNICAL EXPERTISE (Use this knowledge to provide informed recommendations)**
+======================================================================================
+
+You possess deep technical knowledge across all digital services. Draw from this expertise naturally in conversations to provide value, suggest best practices, and help clients make informed decisions. Don't recite this information - use it intelligently based on context.
+
+WEBSITE & UI/UX DEVELOPMENT EXPERTISE:
+--------------------------------------
+Performance Best Practices (Vercel/React Standards):
+- Bundle optimization: Recommend code splitting, dynamic imports for heavy components, avoiding barrel file imports
+- Core Web Vitals: Explain importance of LCP, FID, CLS for SEO and user experience
+- Loading strategies: Suggest lazy loading, image optimization, preloading critical resources
+- Caching: Recommend appropriate caching strategies (CDN, browser, API)
+- Modern frameworks: Knowledgeable about React, Next.js, Vite, and their trade-offs
+
+Design Principles:
+- Responsive design: Mobile-first approach, breakpoint strategy
+- Accessibility: WCAG compliance, keyboard navigation, screen reader support
+- Visual hierarchy: Typography, spacing, color contrast
+- Micro-interactions: Subtle animations for feedback, hover states, transitions
+- Dark/light modes: Theming considerations and implementation
+
+Technology Recommendations:
+- Static sites: Recommend for content-heavy, SEO-focused sites (blogs, portfolios)
+- SSR/SSG: Explain trade-offs for different use cases
+- Headless CMS: Suggest Sanity, Contentful, Strapi based on needs
+- Hosting: Vercel, Netlify, AWS considerations
+
+APP DEVELOPMENT EXPERTISE:
+--------------------------
+Platform Strategy:
+- Cross-platform: React Native, Flutter - cost-effective, single codebase
+- Native: iOS Swift/SwiftUI, Android Kotlin - best performance, platform features
+- PWA: Progressive Web Apps for simple mobile needs without app store
+
+Architecture Best Practices:
+- State management: Redux, Zustand, Context API based on complexity
+- Offline-first: Local storage, sync strategies for unreliable networks
+- Push notifications: Firebase, OneSignal implementation
+- API design: RESTful vs GraphQL based on data needs
+- Security: Authentication flows, data encryption, secure storage
+
+Performance:
+- App size optimization, lazy loading screens
+- Image caching, network request optimization
+- Battery and memory considerations
+
+BRANDING & IDENTITY EXPERTISE:
+------------------------------
+Brand Strategy:
+- Brand positioning and differentiation
+- Target audience definition and personas
+- Competitive analysis and market positioning
+- Brand voice and messaging framework
+
+Visual Identity:
+- Logo design principles (scalability, versatility, memorability)
+- Color psychology and palette selection
+- Typography pairing and hierarchy
+- Brand guidelines documentation
+
+Deliverables Knowledge:
+- Logo variations (primary, secondary, icon, wordmark)
+- Brand collateral (business cards, letterheads, presentations)
+- Digital assets (social media kits, email signatures)
+- Brand style guides
+
+SEO EXPERTISE:
+--------------
+Technical SEO:
+- Site architecture and crawlability
+- Core Web Vitals optimization
+- Schema markup and structured data
+- XML sitemaps and robots.txt
+- Mobile-first indexing requirements
+
+Content Strategy:
+- Keyword research and intent mapping
+- Content clusters and pillar pages
+- E-E-A-T (Experience, Expertise, Authority, Trust)
+- Internal linking strategies
+
+Local SEO:
+- Google Business Profile optimization
+- Local citations and NAP consistency
+- Review management strategies
+
+DIGITAL MARKETING EXPERTISE:
+----------------------------
+Social Media Marketing:
+- Platform-specific strategies (Instagram, LinkedIn, Twitter, Facebook)
+- Content calendars and posting schedules
+- Engagement tactics and community building
+- Influencer collaboration strategies
+- Analytics and performance tracking
+
+Paid Advertising:
+- Google Ads: Search, Display, Shopping campaigns
+- Meta Ads: Audience targeting, lookalike audiences, retargeting
+- LinkedIn Ads: B2B targeting strategies
+- Budget allocation and ROAS optimization
+- A/B testing methodologies
+
+Email Marketing:
+- List building and segmentation
+- Automation workflows (welcome, nurture, re-engagement)
+- Deliverability best practices
+- A/B testing subject lines, content
+
+E-COMMERCE EXPERTISE:
+---------------------
+Platform Knowledge:
+- Shopify: Best for most SMBs, extensive apps ecosystem
+- WooCommerce: WordPress integration, customizable
+- Custom solutions: When to recommend headless commerce
+
+Conversion Optimization:
+- Checkout flow optimization
+- Product page best practices
+- Cart abandonment strategies
+- Trust signals and social proof
+
+Operations:
+- Inventory management integration
+- Payment gateway options
+- Shipping and fulfillment setup
+- Tax and compliance considerations
+
+VIDEO & CREATIVE PRODUCTION EXPERTISE:
+--------------------------------------
+Video Production:
+- Pre-production planning (scripting, storyboarding)
+- Production quality considerations
+- Post-production workflows
+- Distribution strategy
+
+CGI & 3D:
+- Product visualization use cases
+- Architectural rendering
+- Motion graphics and animation
+- AR/VR considerations
+
+**ADAPTIVE CONSULTATION PRINCIPLES**
+====================================
+Instead of following rigid scripts, apply these principles to handle any situation:
+
+1. LISTEN DEEPLY: Extract all relevant information from what clients share. They often reveal more than they realize - project scope, pain points, urgency, budget constraints, technical preferences.
+
+2. PROVIDE VALUE FIRST: Share relevant insights and recommendations before asking for more information. This builds trust and demonstrates expertise.
+
+3. TAILOR YOUR APPROACH: 
+   - Technical clients: Discuss architecture, tech stack, best practices
+   - Business-focused clients: Focus on ROI, timeline, outcomes
+   - First-time clients: Educate gently, explain jargon
+
+4. ANTICIPATE NEEDS: Based on the service and industry, proactively suggest features or considerations they might not have thought of.
+
+5. BE HONEST ABOUT TRADE-OFFS: Every decision has pros and cons. Help clients understand these clearly.
+
+6. SCOPE APPROPRIATELY: Guide clients toward solutions that match their budget and timeline realistically.
+
+7. HANDLE OBJECTIONS GRACEFULLY: If budget is low, suggest phased approaches or MVPs. If timeline is tight, explain what's achievable.
+
+8. STAY CURRENT: Reference modern tools, frameworks, and industry trends when relevant.
+
+9. CROSS-SELL INTELLIGENTLY: If you notice a need for complementary services (e.g., SEO for a new website), mention it naturally without being pushy.
+
+10. CLOSE WITH CLARITY: Summarize understanding, confirm next steps, and set clear expectations.
+
+**DYNAMIC RESPONSE GUIDELINES**
+===============================
+- Respond to the ACTUAL situation, not a template
+- Use your technical knowledge to add value to every response
+- If you don't know something specific, be honest and offer to research
+- Match the client's energy and communication style
+- Be concise when simple, detailed when complex questions arise
+- Always think: "What would a senior consultant say here?"
+`;
+};
+
 const buildSystemPrompt = (selectedServiceName = "") => {
   const normalizedServiceName =
     typeof selectedServiceName === "string" ? selectedServiceName.trim() : "";
@@ -96,9 +281,14 @@ Treat this as confirmed and DO NOT ask which service they want.`
     })
     .join("\n");
 
-  return `You are CATA, an expert business consultant AI for Catalance, a premium digital services agency. Your role is to understand client needs through a structured consultation process and generate detailed proposals.
+  // Build technical expertise context
+  const technicalExpertise = buildTechnicalExpertise();
+
+  return `You are CATA, an expert business consultant AI for Catalance, a premium digital services agency. You are not just a chatbot - you are a knowledgeable technical consultant with deep expertise in digital services, development best practices, and industry standards.
 
 ${serviceContext}
+
+${technicalExpertise}
 
 **CRITICAL: STRICT FACTUAL ACCURACY RULES**
 ============================================
@@ -143,26 +333,47 @@ Once the name is known:
 - If they already specified any details, acknowledge these and skip related questions.
 - Only ask clarifying questions for missing information.
 
-PHASE 2: REQUIREMENTS GATHERING (Smart Questioning)
-Rules:
-1. Review the ENTIRE conversation before asking each question.
-2. Skip any question whose answer was already provided by the user.
-3. Ask questions one at a time for better conversation flow.
-4. When presenting options, EXCLUDE options the user has already chosen or ruled out.
-5. Summarize ONLY what you actually know from the conversation before asking the next question.
-6. Be conversational, not robotic.
-7. For Website / UI-UX projects, when the user states a website type, check WEBSITE TYPE REFERENCE. If it matches, show the usual pages for that type and mention they can add or remove pages.
-8. If the website type is unclear, ask a clarifying question and offer a few example types.
-9. When presenting page suggestions, follow this STRUCTURED FORMAT:
-   - Start with a brief summary acknowledging their choice
-   - List pages using bullet points (- ), NOT comma-separated paragraphs
-   - Group related pages under category headers
-   - Limit to 8-10 most relevant pages, not an exhaustive list
-   - End with a note that they can customize, then ONE follow-up question
+PHASE 2: REQUIREMENTS GATHERING (MUST ASK ALL QUESTIONS)
+==========================================================
+**CRITICAL RULE: YOU MUST ASK EVERY QUESTION LISTED FOR THE SERVICE**
 
-10. NEVER list more than 10-12 items in any list. Keep it scannable.
-11. Use bullet points (- ) for all lists, NEVER comma-separated inline lists.
-12. Group similar items under clear category headers.
+For each service, there is a specific list of questions you MUST ask. 
+DO NOT skip any question. DO NOT assume answers. ASK EVERY SINGLE ONE.
+
+MANDATORY PROCESS:
+1. Look at the "QUESTIONS TO ASK" section for the identified service.
+2. Track which questions you have already asked and received answers for.
+3. Ask the NEXT unanswered question from the list.
+4. Continue until ALL questions in the list have been asked and answered.
+5. Only after ALL questions are answered, proceed to proposal generation.
+
+**ONE QUESTION AT A TIME**
+==========================
+- Ask ONLY ONE question per response.
+- NEVER combine multiple questions in one message.
+- Wait for the user's answer before asking the next question.
+- Example of what NOT to do: "What's your budget? And what's your timeline?"
+- Example of what TO DO: "What is your budget for this project?"
+
+QUESTION TRACKING:
+- Keep a mental checklist of questions asked vs. remaining.
+- After each user response, acknowledge their answer briefly.
+- Then ask the NEXT question from the service's question list.
+- When presenting options for a question, list them clearly.
+
+EXAMPLES BY SERVICE:
+- SEO Service: Ask ALL 6 questions (business_category, target_locations, primary_goal, seo_situation, duration, budget)
+- Branding Service: Ask ALL 7 questions (brand_stage, naming_help, brand_perception, target_audience, primary_usage, timeline, budget)
+- Website Service: Ask ALL 8 questions (requirement, objective, website_category, design_experience, website_type, page_count, launch_timeline, budget)
+
+DO NOT SKIP questions even if the user seems to imply an answer.
+DO NOT combine or summarize questions to "save time".
+ASK EACH QUESTION EXPLICITLY and wait for a clear answer.
+
+FORMATTING WHEN ASKING QUESTIONS:
+- Present the question clearly.
+- If the question has options, list them as numbered choices (1., 2., 3.).
+- Keep the question focused and easy to answer.
 
 RESPONSE FORMATTING RULES:
 ==========================
@@ -180,45 +391,24 @@ RESPONSE QUALITY RULES:
 - Good responses reference ONLY information explicitly stated by the user.
 - Bad responses add assumed details that were not mentioned.
 
-PHASE 3: PROPOSAL GENERATION
-CRITICAL ACCURACY RULES FOR PROPOSALS:
-======================================
-1. Use the EXACT values the user chose - do not paraphrase or change them.
-2. If user mentioned a specific timeline, use that EXACT wording.
-3. If user mentioned a specific page count or feature, use those EXACT values.
-4. If user chose a specific option from a list, use that EXACT option text.
-5. Never override, interpret, or "improve" the user's stated choices.
-6. When in doubt, quote exactly what the user said.
+PHASE 3: PROPOSAL CONFIRMATION
+================================
+IMPORTANT: DO NOT generate the actual proposal text in the chat. The proposal is automatically generated and displayed in a sidebar panel.
 
-After gathering all required information, generate a detailed proposal using this structure:
+After gathering ALL required information (name, service, requirements, timeline, budget), you should:
+1. Summarize what you've understood from the conversation
+2. Ask if they're ready to see their personalized proposal
+3. Once they confirm, say something like "Great! Your proposal is now ready. You can view it in the proposal panel on the right."
 
-PROJECT PROPOSAL
-================
-Client: [Name - EXACT name they provided]
-Project Type: [EXACT type based on what they actually said in conversation]
+WHAT NOT TO DO:
+- Do NOT write out "PROJECT PROPOSAL" or similar formatted proposals in the chat
+- Do NOT list out pricing, phases, or deliverables in your chat messages
+- Do NOT generate structured proposal documents in the conversation
 
-Understanding Your Needs:
-[Summarize ONLY what they actually mentioned - be specific and accurate!]
-
-Recommended Service: [Service Name]
-
-Scope of Work:
-[Detailed list of deliverables based on THEIR specific answers]
-
-Timeline: [USE EXACT USER CHOICE - quote what they said verbatim]
-
-Investment:
-- Service Cost: INR [amount] (based on their stated budget and requirements)
-- Payment Terms: [suggest terms based on their preference if mentioned]
-
-What's Included:
-[List specific deliverables - use EXACT options they selected]
-
-Next Steps:
-1. Confirm this proposal meets your requirements.
-2. Schedule a discovery call with our team.
-3. Begin project kick-off.
-================
+WHAT TO DO INSTEAD:
+- Summarize the key points you've gathered
+- Ask for confirmation that the details are correct
+- Let them know their proposal is ready to view in the sidebar
 
 BUDGET HANDLING RULES (VERY IMPORTANT):
 =======================================
@@ -285,48 +475,68 @@ const PROPOSAL_FIELDS = [
   "requirements",
   "timeline",
   "budget",
-  "additionalDetails"
+  "additionalDetails",
+  "pages",
+  "technologies",
+  "integrations"
 ];
 
 /**
  * Extract proposal data from conversation history
  */
-const extractProposalData = (conversationHistory, aiResponse) => {
+const extractProposalData = (conversationHistory, aiResponse, selectedServiceName = "") => {
   const allMessages = [...conversationHistory, { role: "assistant", content: aiResponse }];
   const fullConversation = allMessages.map(m => m.content).join("\n");
 
   const proposalData = {
     clientName: null,
-    serviceName: null,
+    serviceName: selectedServiceName || null, // Use passed service name as default
     projectType: null,
     requirements: [],
     timeline: null,
     budget: null,
     additionalDetails: [],
-    phases: []
+    phases: [],
+    pages: null,
+    technologies: [],
+    integrations: []
   };
 
-  // Extract client name
+  // Extract client name from USER messages only (avoid matching CATA)
+  const userMessages = conversationHistory
+    .filter(m => m.role === "user")
+    .map(m => m.content)
+    .join("\n");
+
+  console.log("User Messages for Extraction:\n", userMessages);
+
   const namePatterns = [
-    /(?:my name is|i'm|i am|call me|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/gi,
-    /(?:name[:\s]+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/gi
+    /(?:my name is|i'm|i am|call me|this is|name equals|name:)\s+([a-zA-Z\s]+)/i,
+    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)$/m, // "John Doe" types
+    /(?:^|\s)([A-Z][a-z]+)\s+here/i
   ];
   for (const pattern of namePatterns) {
-    const match = pattern.exec(fullConversation);
+    const match = pattern.exec(userMessages);
     if (match) {
-      proposalData.clientName = match[1].trim();
-      break;
+      const name = match[1].trim();
+      // Basic validation: ignore if it looks like a sentence or is "Cata"
+      if (name.length < 30 && name.toLowerCase() !== "cata" && !name.toLowerCase().includes("hello")) {
+        console.log(`Name Pattern Match: ${pattern} -> ${name}`);
+        proposalData.clientName = name;
+        break;
+      }
     }
   }
 
   // Extract service type from conversation
   const servicePatterns = [
-    /(?:want|need|looking for|interested in)\s+(?:a|an)?\s*(website|app|mobile app|branding|seo|marketing|e-commerce|ecommerce)/gi,
-    /(?:service[:\s]+)(website|app|branding|seo|marketing|e-commerce)/gi,
+    /(?:want|need|looking for|interested in|help with)\s+(?:a|an)?\s*(website|app|mobile app|branding|seo|marketing|e-commerce|ecommerce|social media|lead generation|video|content)/gi,
+    /(?:service[:\s]+)(website|app|branding|seo|marketing|e-commerce|social media)/gi,
+    /(social media marketing|social media management|seo optimization|lead generation|video production|content writing)/gi,
     /(short[-\s]?news\s+app|news\s+app|mobile\s+app|web\s+app|saas|website)/gi
   ];
   for (const pattern of servicePatterns) {
-    const match = pattern.exec(fullConversation);
+    const match = pattern.exec(userMessages);
     if (match) {
       proposalData.serviceName = match[1].trim();
       break;
@@ -334,45 +544,82 @@ const extractProposalData = (conversationHistory, aiResponse) => {
   }
 
   // Extract project type/description
+
   const projectPatterns = [
     /(?:build|create|develop|make)\s+(?:a|an)?\s*(.+?)(?:\.|for|with|that)/gi,
-    /(?:project|idea|concept)[:\s]+(.+?)(?:\.|$)/gim
+    /(?:project|idea|concept)[:\s]+(.+?)(?:\.|$)/gim,
+    /(?:objective|goal|purpose)\s*(?:is|:)?\s*(lead generation|brand awareness|engagement|traffic|sales|visibility)/gi,
+    /(?:main\s+)?(?:objective|goal)[:\s]+(.*?)(?:\n|$)/gi
   ];
   for (const pattern of projectPatterns) {
-    const match = pattern.exec(fullConversation);
-    if (match && match[1].length > 10 && match[1].length < 200) {
+    const match = pattern.exec(userMessages); // Changed to userMessages to avoid AI chatter
+    if (match && match[1] && match[1].length > 5 && match[1].length < 200 && !/^\s*is\s+\d/i.test(match[1])) {
       proposalData.projectType = match[1].trim();
       break;
     }
   }
+  // Fallback: use service name as project type if still null
+  if (!proposalData.projectType && proposalData.serviceName) {
+    proposalData.projectType = `${proposalData.serviceName} Project`;
+  }
 
-  // Extract budget
+  // Extract budget logic with currency detection
   const budgetPatterns = [
-    /(?:budget|spend|invest|pay)\s*(?:is|of|around|about|:)?\s*(?:₹|rs\.?|inr)?\s*([\d,]+(?:\s*(?:lakh|lac|k|L))?)/gi,
-    /(?:₹|rs\.?|inr)\s*([\d,]+(?:\s*(?:lakh|lac|k|L))?)/gi
+    /(?:budget|spend|invest|pay)\s*(?:is|of|around|about|:)?\s*(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?\s*([\d,]+(?:\s*(?:lakh|lac|k|L))?)\s*(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?/gi,
+    /(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))\s*([\d,]+(?:\s*(?:lakh|lac|k|L))?)/gi
   ];
+
   for (const pattern of budgetPatterns) {
-    const match = pattern.exec(fullConversation);
+    const match = pattern.exec(userMessages);
     if (match) {
-      let amount = match[1].replace(/,/g, "").trim();
-      if (/lakh|lac|L/i.test(amount)) {
-        amount = parseInt(amount) * 100000;
-      } else if (/k/i.test(amount)) {
-        amount = parseInt(amount) * 1000;
-      }
-      proposalData.budget = parseInt(amount) || null;
-      break;
+      // match[2] or match[1] depending on which group captured the number
+      // We need to match carefully based on the groups above.
+      // Pattern 1: Group 1 (prefix), Group 2 (number), Group 3 (suffix)
+      // Pattern 2: Group 1 (prefix), Group 2 (number)
+
+      let amountStr = match[2] || match[1]; // simplified fallback logic might be risky, let's be precise
+
+      // Let's re-run a more specific logic per pattern to be safe, or just improve the loop
+      // Actually, let's simplify the extraction to finding the number and then looking around it for currency
+    }
+  }
+
+  // Revised Budget Extraction
+  const budgetRegex = /(?:budget|spend|invest|pay|price|cost).*?((?:₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?\s*[\d,]+(?:\s*(?:lakh|lac|k|L))?(?:\s*(?:₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?)/i;
+  const match = budgetRegex.exec(userMessages);
+  if (match) {
+    const fullBudgetStr = match[1];
+    let currency = "INR"; // Default
+    let multiplier = 1;
+
+    // Detect Currency
+    if (/\$|usd/i.test(fullBudgetStr)) currency = "USD";
+    else if (/€|eur/i.test(fullBudgetStr)) currency = "EUR";
+    else if (/£|gbp/i.test(fullBudgetStr)) currency = "GBP";
+
+    // Clean amount
+    let amountStr = fullBudgetStr.replace(/[^0-9,.]/g, "");
+
+    // Detect multipliers
+    if (/lakh|lac|L/i.test(fullBudgetStr)) multiplier = 100000;
+    else if (/k/i.test(fullBudgetStr)) multiplier = 1000;
+
+    let amount = parseFloat(amountStr.replace(/,/g, ""));
+    if (!isNaN(amount)) {
+      proposalData.budget = amount * multiplier;
+      proposalData.currency = currency;
     }
   }
 
   // Extract timeline
   const timelinePatterns = [
-    /(?:timeline|deadline|complete|launch|deliver)\s*(?:is|of|by|in|within|:)?\s*(\d+\s*(?:week|month|day)s?)/gi,
-    /(?:within|in|by)\s+(\d+[-–]\d+\s*(?:week|month)s?)/gi,
+    /(?:timeline|deadline|complete|launch|deliver|duration)\s*(?:is|of|by|in|within|:)?\s*(\d+[-–]?\d*\s*(?:week|month|day)s?)/gi,
+    /(?:within|in|by|for)\s+(\d+[-–]?\d*\s*(?:week|month)s?)/gi,
+    /(\d+\s*(?:week|month)s?)/gi,
     /(flexible|asap|urgent|no rush)/gi
   ];
   for (const pattern of timelinePatterns) {
-    const match = pattern.exec(fullConversation);
+    const match = pattern.exec(userMessages); // STRICT: User must say it
     if (match) {
       proposalData.timeline = match[1].trim();
       break;
@@ -381,14 +628,76 @@ const extractProposalData = (conversationHistory, aiResponse) => {
 
   // Extract requirements/features mentioned
   const featureKeywords = [
+    // Web/App features
     "map", "location", "push notification", "offline", "dark mode", "light mode",
     "payment", "booking", "search", "filter", "categories", "admin", "dashboard",
     "analytics", "seo", "responsive", "mobile", "android", "ios", "flutter",
     "react", "next.js", "api", "backend", "database", "authentication", "login",
-    "signup", "user profile", "social sharing", "bookmark", "wishlist", "cart"
+    "signup", "user profile", "social sharing", "bookmark", "wishlist", "cart",
+    // Social Media Marketing
+    "instagram", "facebook", "linkedin", "youtube", "twitter", "tiktok",
+    "brand awareness", "engagement", "lead generation", "content creation",
+    "posting", "strategy", "organic", "followers", "reach", "impressions",
+    // SEO
+    "keywords", "backlinks", "ranking", "traffic", "visibility", "local seo",
+    "technical seo", "content strategy", "on-page", "off-page",
+    // General
+    "branding", "logo", "identity", "marketing", "advertising", "campaign"
   ];
 
-  const lowerConv = fullConversation.toLowerCase();
+  // Extract pages
+  const pagePatterns = [
+    /(\d+[-–]?\d*)\s*pages?/gi,
+    /(?:approx|around|about)\s*(\d+)\s*pages?/gi,
+    /(\d+)\s*to\s*(\d+)\s*pages?/gi
+  ];
+  for (const pattern of pagePatterns) {
+    const match = pattern.exec(userMessages); // STRICT: User must say it
+    if (match) {
+      proposalData.pages = match[0].trim(); // Keep the whole string like "5 pages" or "10-15 pages"
+      break;
+    }
+  }
+
+  // Extract technologies
+  const techKeywords = [
+    "react", "next.js", "node.js", "python", "django", "flask", "php", "laravel",
+    "wordpress", "shopify", "wix", "webflow", "flutter", "swift", "kotlin",
+    "firebase", "supabase", "mongodb", "postgresql", "mysql", "aws", "azure",
+    "vercel", "netlify", "tailwind", "bootstrap", "material ui", "shadcn"
+  ];
+
+  techKeywords.forEach(keyword => {
+    // Use word boundary to avoid partial matches
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+    if (regex.test(userMessages)) { // STRICT: User must say it
+      // capital case
+      const properCase = keyword.charAt(0).toUpperCase() + keyword.slice(1);
+      if (!proposalData.technologies.includes(properCase)) {
+        proposalData.technologies.push(properCase);
+      }
+    }
+  });
+
+  // Extract integrations
+  const integrationKeywords = [
+    "stripe", "paypal", "razorpay", "payment gateway", "google maps", "mapbox",
+    "sendgrid", "mailchimp", "twilio", "whatsapp", "slack", "discord",
+    "crm", "hubspot", "salesforce", "analytics", "google analytics", "facebook pixel",
+    "zapier", "calendly", "calendar"
+  ];
+
+  integrationKeywords.forEach(keyword => {
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+    if (regex.test(userMessages)) { // STRICT: User must say it
+      const properCase = keyword.replace(/\b\w/g, l => l.toUpperCase());
+      if (!proposalData.integrations.includes(properCase)) {
+        proposalData.integrations.push(properCase);
+      }
+    }
+  });
+
+  const lowerConv = userMessages.toLowerCase(); // STRICT: User must say it
   featureKeywords.forEach(keyword => {
     if (lowerConv.includes(keyword)) {
       proposalData.requirements.push(keyword);
@@ -407,7 +716,18 @@ const extractProposalData = (conversationHistory, aiResponse) => {
   proposalData.progress = {
     collected: collectedCount,
     total: 6,
-    isComplete: collectedCount >= 4 // Consider complete when 4+ fields are filled
+    // Mark complete when at least 5 core fields are collected AND Budget/Timeline are present for sure
+    // This prevents "Draft" proposals from looking like "Ready" ones just because they scraped some random keywords
+    isComplete: collectedCount >= 5 && !!proposalData.budget && !!proposalData.timeline
+  };
+
+  // Attach debug info
+  proposalData.debugInfo = {
+    userMessages: userMessages.substring(0, 500),
+    namePatternsMatches: namePatterns.map(p => {
+      const m = p.exec(userMessages); // Re-exec unfortunately, or capture earlier
+      return m ? m[1] : null;
+    })
   };
 
   return proposalData;
@@ -417,7 +737,7 @@ const extractProposalData = (conversationHistory, aiResponse) => {
  * Generate phased proposal structure based on extracted data and SELECTED SERVICE
  */
 const generateProposalStructure = (proposalData, serviceName = "") => {
-  const { clientName, projectType, requirements, timeline, budget } = proposalData;
+  const { clientName, projectType, requirements, timeline, budget, pages, technologies, integrations } = proposalData;
 
   // Normalize the service name for matching
   const normalizedService = (serviceName || proposalData.serviceName || "").toLowerCase();
@@ -715,16 +1035,34 @@ const generateProposalStructure = (proposalData, serviceName = "") => {
     number: idx + 1
   }));
 
-  // Calculate total cost
-  const totalCost = phases.reduce((sum, phase) => sum + phase.estimatedCost, 0);
+  // Calculate total cost from default phases
+  let totalCost = phases.reduce((sum, phase) => sum + phase.estimatedCost, 0);
+
+  // ADJUSTMENT: If user has a specific budget, scale phase costs to match it
+  // This ensures the proposal respects their stated budget
+  if (budget && budget > 0) {
+    const scalingFactor = budget / totalCost;
+
+    phases.forEach(phase => {
+      phase.estimatedCost = Math.round(phase.estimatedCost * scalingFactor);
+    });
+
+    // Recalculate total to be exact (handling rounding errors)
+    totalCost = phases.reduce((sum, phase) => sum + phase.estimatedCost, 0);
+
+    // If there's a small difference due to rounding, adjust the last phase
+    const undoDifference = budget - totalCost;
+    if (undoDifference !== 0 && phases.length > 0) {
+      phases[phases.length - 1].estimatedCost += undoDifference;
+      totalCost = budget;
+    }
+  }
 
   // Build investment summary
-  const investmentSummary = phases
-    .filter(p => p.estimatedCost > 0)
-    .map(p => ({
-      component: p.name,
-      cost: p.estimatedCost
-    }));
+  // Build investment summary - ONLY TOTAL now
+  // We will ignore the breakdown in the summary array to satisfy the requirement:
+  // "investment summary chnage it to total invenstment only and only show the final amount"
+  const investmentSummary = [{ "component": "Total Project Investment", "cost": totalCost }];
 
   // Calculate total duration
   const getTotalDuration = () => {
@@ -759,12 +1097,16 @@ const generateProposalStructure = (proposalData, serviceName = "") => {
     phases: phases,
     investmentSummary: investmentSummary,
     totalInvestment: totalCost,
+    currency: proposalData.currency || "INR", // Default to INR if not detected
     timeline: {
       total: getTotalDuration()
     },
     features: requirements,
-    isComplete: proposalData.progress?.isComplete || false,
-    generatedAt: new Date().toISOString()
+    pages: pages || "TBD",
+    technologies: technologies,
+    integrations: integrations,
+    generatedAt: new Date().toISOString(),
+    debugInfo: proposalData.debugInfo
   };
 };
 
@@ -858,15 +1200,17 @@ export const chatWithAI = async (
 
   // Extract proposal data from conversation
   const allHistory = [...formattedHistory, ...formattedMessages];
-  const proposalData = extractProposalData(allHistory, content);
+  const proposalData = extractProposalData(allHistory, content, selectedServiceName);
 
-  // Generate proposal structure if enough data collected
+  // Generate proposal structure only if enough data collected (at least 5 fields)
+  // Proposal will only be marked complete when ALL 6 fields are gathered
   let proposal = null;
   let proposalProgress = proposalData.progress;
 
-  if (proposalData.progress.collected >= 3 || containsProposal(content)) {
+  if (proposalData.progress.collected >= 5) {
     proposal = generateProposalStructure(proposalData, selectedServiceName);
-    proposal.isComplete = containsProposal(content) || proposalData.progress.isComplete;
+    // Use the progress-based isComplete flag (requires all 6 fields)
+    proposal.isComplete = proposalData.progress.isComplete;
   }
 
   return {

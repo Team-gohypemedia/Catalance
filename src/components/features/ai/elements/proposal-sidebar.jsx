@@ -4,6 +4,9 @@ import Download from "lucide-react/dist/esm/icons/download";
 import Check from "lucide-react/dist/esm/icons/check";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import Euro from "lucide-react/dist/esm/icons/euro";
+import PoundSterling from "lucide-react/dist/esm/icons/pound-sterling";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
@@ -11,6 +14,28 @@ import Target from "lucide-react/dist/esm/icons/target";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import Clock from "lucide-react/dist/esm/icons/clock";
+
+// Helper to get currency icon
+const getCurrencyIcon = (currency) => {
+    switch (currency) {
+        case "USD": return DollarSign;
+        case "EUR": return Euro;
+        case "GBP": return PoundSterling;
+        default: return IndianRupee;
+    }
+}
+
+// Helper to format currency
+const formatCurrency = (amount, currency) => {
+    const localeMap = {
+        "USD": "en-US",
+        "EUR": "de-DE",
+        "GBP": "en-GB",
+        "INR": "en-IN"
+    };
+    const locale = localeMap[currency] || "en-US";
+    return amount?.toLocaleString(locale);
+}
 
 // Phase Card Component
 function PhaseCard({ phase, isExpanded, onToggle }) {
@@ -31,14 +56,7 @@ function PhaseCard({ phase, isExpanded, onToggle }) {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    {phase.estimatedCost > 0 && (
-                        <span className="text-sm font-medium text-primary">
-                            ₹{phase.estimatedCost.toLocaleString('en-IN')}
-                        </span>
-                    )}
-                    {phase.estimatedCost === 0 && (
-                        <span className="text-xs text-green-500 font-medium">Included</span>
-                    )}
+                    {/* Cost hidden as per requirement */}
                     {isExpanded ? (
                         <ChevronUp className="size-4 text-muted-foreground" />
                     ) : (
@@ -88,6 +106,14 @@ function PhaseCard({ phase, isExpanded, onToggle }) {
 }
 
 export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded = false, inline = false }) {
+    console.log("ProposalSidebar Render:", {
+        embedded,
+        show: isOpen,
+        hasProposal: !!proposal,
+        investment: proposal?.totalInvestment,
+        currency: proposal?.currency,
+        timeline: proposal?.timeline
+    });
     const [expandedPhases, setExpandedPhases] = useState(new Set([1]));
 
     const togglePhase = (phaseNumber) => {
@@ -113,6 +139,10 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
     };
 
     if (!proposal) return null;
+
+    const CurrencyIcon = getCurrencyIcon(proposal.currency);
+    const currencyCode = proposal.currency || "INR";
+    const currencySymbol = proposal.currency === "USD" ? "$" : proposal.currency === "EUR" ? "€" : proposal.currency === "GBP" ? "£" : "₹";
 
     // Inline mode: render as a static container (no positioning, fills parent)
     if (inline) {
@@ -163,6 +193,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                     <div className="p-5 space-y-5">
                         {/* Client & Timeline */}
                         <section className="space-y-3">
+                            {/* Row 1: Client & Timeline */}
                             <div className="flex items-center gap-3">
                                 <div className="flex-1 bg-white/5 rounded-lg p-2.5 border border-white/10">
                                     <p className="text-[10px] text-muted-foreground mb-0.5">Client</p>
@@ -176,6 +207,20 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                                 )}
                             </div>
 
+                            {/* Row 2: Total Budget (Requested by User) */}
+                            <div className="bg-emerald-500/10 rounded-lg p-3 border border-emerald-500/20 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500 mb-0.5 flex items-center gap-1">
+                                        <CurrencyIcon className="size-3" />
+                                        Total Investment
+                                    </h3>
+                                    <p className="text-xs text-emerald-400/80">Tailored to your budget</p>
+                                </div>
+                                <p className="text-lg font-bold text-emerald-400">
+                                    {currencySymbol}{formatCurrency(proposal.totalInvestment, currencyCode)}
+                                </p>
+                            </div>
+
                             {/* Project Objective */}
                             <div className="bg-linear-to-br from-primary/10 to-primary/5 rounded-lg p-3 border border-primary/20">
                                 <h3 className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1.5 flex items-center gap-1">
@@ -186,6 +231,45 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                                     {proposal.objective}
                                 </p>
                             </div>
+                        </section>
+
+                        {/* New Details: Pages, Tech, Integrations */}
+                        <section className="space-y-3">
+                            {/* Pages */}
+                            {proposal.pages && (
+                                <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                                    <p className="text-[10px] text-muted-foreground mb-1">Number of Pages</p>
+                                    <p className="text-sm font-semibold text-foreground">{proposal.pages}</p>
+                                </div>
+                            )}
+
+                            {/* Technologies */}
+                            {proposal.technologies && proposal.technologies.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] text-muted-foreground mb-2">Technologies</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {proposal.technologies.map((tech, idx) => (
+                                            <span key={idx} className="px-2 py-1 bg-blue-500/10 text-blue-400 text-xs rounded border border-blue-500/20 font-medium">
+                                                {tech}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Integrations */}
+                            {proposal.integrations && proposal.integrations.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] text-muted-foreground mb-2">Integrations</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {proposal.integrations.map((item, idx) => (
+                                            <span key={idx} className="px-2 py-1 bg-purple-500/10 text-purple-400 text-xs rounded border border-purple-500/20 font-medium">
+                                                {item}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </section>
 
                         {/* Phases */}
@@ -213,6 +297,38 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                                 </div>
                             </section>
                         )}
+
+                        {/* Investment Summary (Inline) */}
+                        {proposal.investmentSummary && proposal.investmentSummary.length > 0 && (
+                            <section className="pt-2 border-t border-white/10">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                                    <CurrencyIcon className="size-3.5" />
+                                    Investment
+                                </h3>
+                                <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+                                    <table className="w-full">
+                                        <tbody>
+                                            {proposal.investmentSummary.map((item, idx) => (
+                                                <tr key={idx} className="border-b border-white/5 last:border-0">
+                                                    <td className="text-xs text-foreground/90 p-2.5">{item.component}</td>
+                                                    <td className="text-xs text-foreground/90 p-2.5 text-right font-medium">
+                                                        {currencySymbol}{formatCurrency(item.cost, currencyCode)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="bg-primary/10">
+                                                <td className="text-xs font-bold text-foreground p-2.5">Total</td>
+                                                <td className="text-xs font-bold text-primary p-2.5 text-right">
+                                                    {currencySymbol}{formatCurrency(proposal.totalInvestment, currencyCode)}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
                     </div>
                 </div>
 
@@ -223,14 +339,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                         Accept Proposal
                     </button>
                     <div className="grid grid-cols-2 gap-2">
-                        <button className="py-2 px-2 bg-white/5 border border-white/10 text-foreground rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-white/10 transition-colors cursor-pointer">
-                            <Download className="size-3.5" />
-                            Download
-                        </button>
-                        <button className="py-2 px-2 bg-white/5 border border-white/10 text-foreground rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-white/10 transition-colors cursor-pointer">
-                            <Phone className="size-3.5" />
-                            Call
-                        </button>
+                        {/* Download/Call buttons removed */}
                     </div>
                     <p className="text-center text-[10px] text-muted-foreground/60">
                         Generated by CATA AI
@@ -257,7 +366,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
 
             {/* Sidebar */}
             <div
-                className={`${positionClass} w-[420px] max-w-[90%] bg-zinc-950 border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-out ${embedded ? 'z-30' : 'z-50'} flex flex-col ${isOpen ? "translate-x-0" : "translate-x-full"
+                className={`${positionClass} w-[500px] max-w-[90%] bg-zinc-950 border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-out ${embedded ? 'z-30' : 'z-50'} flex flex-col ${isOpen ? "translate-x-0" : "translate-x-full"
                     }`}
             >
                 {/* Header */}
@@ -306,6 +415,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
 
                         {/* Client & Objective */}
                         <section className="space-y-3">
+                            {/* Row 1: Client & Timeline */}
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 bg-white/5 rounded-xl p-3 border border-white/10">
                                     <p className="text-xs text-muted-foreground mb-0.5">Client</p>
@@ -319,6 +429,20 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                                 )}
                             </div>
 
+                            {/* Row 2: Total Budget (Requested by User) */}
+                            <div className="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-500 mb-1 flex items-center gap-1.5">
+                                        <CurrencyIcon className="size-3.5" />
+                                        Total Project Value
+                                    </h3>
+                                    <p className="text-sm text-emerald-400/80">Optimized for your budget</p>
+                                </div>
+                                <p className="text-2xl font-bold text-emerald-400">
+                                    {currencySymbol}{formatCurrency(proposal.totalInvestment, currencyCode)}
+                                </p>
+                            </div>
+
                             {/* Project Objective */}
                             <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20">
                                 <h3 className="text-xs font-semibold uppercase tracking-wider text-primary mb-2 flex items-center gap-1.5">
@@ -329,6 +453,45 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                                     {proposal.objective}
                                 </p>
                             </div>
+                        </section>
+
+                        {/* New Details: Pages, Tech, Integrations (Sidebar Mode) */}
+                        <section className="space-y-4">
+                            {/* Pages */}
+                            {proposal.pages && (
+                                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                                    <p className="text-xs text-muted-foreground mb-1">Estimated Pages</p>
+                                    <p className="text-sm font-semibold text-foreground">{proposal.pages}</p>
+                                </div>
+                            )}
+
+                            {/* Technologies */}
+                            {proposal.technologies && proposal.technologies.length > 0 && (
+                                <div>
+                                    <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Technologies</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {proposal.technologies.map((tech, idx) => (
+                                            <span key={idx} className="px-2.5 py-1 bg-blue-500/10 text-blue-400 text-xs rounded-full border border-blue-500/20 font-medium">
+                                                {tech}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Integrations */}
+                            {proposal.integrations && proposal.integrations.length > 0 && (
+                                <div>
+                                    <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Integrations</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {proposal.integrations.map((item, idx) => (
+                                            <span key={idx} className="px-2.5 py-1 bg-purple-500/10 text-purple-400 text-xs rounded-full border border-purple-500/20 font-medium">
+                                                {item}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </section>
 
                         {/* Phases */}
@@ -371,7 +534,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                         {proposal.investmentSummary && proposal.investmentSummary.length > 0 && (
                             <section>
                                 <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                                    <IndianRupee className="size-4" />
+                                    <CurrencyIcon className="size-4" />
                                     Investment Summary
                                 </h3>
                                 <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
@@ -387,7 +550,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                                                 <tr key={idx} className="border-b border-white/5 last:border-0">
                                                     <td className="text-sm text-foreground/90 p-3">{item.component}</td>
                                                     <td className="text-sm text-foreground/90 p-3 text-right">
-                                                        ₹{item.cost.toLocaleString('en-IN')}
+                                                        {currencySymbol}{formatCurrency(item.cost, currencyCode)}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -396,7 +559,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                                             <tr className="bg-primary/10">
                                                 <td className="text-sm font-bold text-foreground p-3">Total Investment</td>
                                                 <td className="text-sm font-bold text-primary p-3 text-right">
-                                                    ₹{proposal.totalInvestment?.toLocaleString('en-IN')}
+                                                    {currencySymbol}{formatCurrency(proposal.totalInvestment, currencyCode)}
                                                 </td>
                                             </tr>
                                         </tfoot>
@@ -461,14 +624,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                         Accept Proposal
                     </button>
                     <div className="grid grid-cols-2 gap-3">
-                        <button className="py-2.5 px-4 bg-white/5 border border-white/10 text-foreground rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-colors cursor-pointer">
-                            <Download className="size-4" />
-                            Download PDF
-                        </button>
-                        <button className="py-2.5 px-4 bg-white/5 border border-white/10 text-foreground rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-colors cursor-pointer">
-                            <Phone className="size-4" />
-                            Schedule Call
-                        </button>
+                        {/* Download/Call buttons removed */}
                     </div>
                     <p className="text-center text-xs text-muted-foreground/60">
                         Generated by CATA AI • {proposal.generatedAt ? new Date(proposal.generatedAt).toLocaleDateString() : "Today"}

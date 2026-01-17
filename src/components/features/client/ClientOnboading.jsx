@@ -210,6 +210,11 @@ const ClientOnboading = () => {
   const location = useLocation();
 
   const [selectedServiceTitle, setSelectedServiceTitle] = useState(null);
+  const [isProposalVisible, setIsProposalVisible] = useState(false);
+
+  const handleProposalChange = useCallback((visible) => {
+    setIsProposalVisible(visible);
+  }, []);
 
   const openChat = useCallback((message, serviceTitle = null) => {
     setChatPrefill(message || "");
@@ -347,10 +352,10 @@ const ClientOnboading = () => {
       </div>
 
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-        <DialogContent className="w-[95vw] max-w-[1400px] h-[90vh] border-0 bg-transparent p-0">
+        <DialogContent className={`${isProposalVisible ? 'w-[70vw]' : 'w-[30vw]'} max-w-none h-[90vh] border-0 bg-transparent p-0 transition-all duration-300`}>
           <DialogTitle className="sr-only">Chat with Catalance</DialogTitle>
           <div className="h-full w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
-            <AIChat embedded prefill={chatPrefill} serviceName={selectedServiceTitle} />
+            <AIChat embedded prefill={chatPrefill} serviceName={selectedServiceTitle} onProposalChange={handleProposalChange} />
           </div>
         </DialogContent>
       </Dialog>
@@ -370,18 +375,16 @@ const ServiceCard = memo(
         onClick={onClick}
         className={`
         group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full
-        ${
-          isSelected
+        ${isSelected
             ? "border-[#ffc800] shadow-[0_0_40px_-10px_rgba(255,200,0,0.3)] bg-background"
             : "border-white/20 bg-background shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:border-[#ffc800]/50 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2"
-        }
+          }
       `}
       >
         {/* Background Gradient Shine - Subtle premium feel */}
         <div
-          className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 ${
-            isSelected ? "opacity-100" : "group-hover:opacity-100"
-          }`}
+          className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 ${isSelected ? "opacity-100" : "group-hover:opacity-100"
+            }`}
         />
 
         {/* Selection Glow Overlay */}
@@ -429,11 +432,10 @@ const ServiceCard = memo(
                 </p>
               </div>
               <div
-                className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all duration-300 ${
-                  isSelected
-                    ? "bg-[#ffc800] border-[#ffc800] text-black"
-                    : "border-white/10 text-zinc-500 group-hover:border-[#ffc800] group-hover:text-[#ffc800]"
-                }`}
+                className={`h-8 w-8 rounded-full border flex items-center justify-center transition-all duration-300 ${isSelected
+                  ? "bg-[#ffc800] border-[#ffc800] text-black"
+                  : "border-white/10 text-zinc-500 group-hover:border-[#ffc800] group-hover:text-[#ffc800]"
+                  }`}
               >
                 {isSelected ? (
                   <Check className="w-4 h-4" />

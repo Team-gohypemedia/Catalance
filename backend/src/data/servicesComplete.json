@@ -577,6 +577,240 @@
                     ]
                 },
                 {
+                    "id": "platform_choice",
+                    "type": "single_select",
+                    "question": "Which platform would you like to use?",
+                    "show_if": {
+                        "question_id": "website_type",
+                        "equals": "platform_based"
+                    },
+                    "allow_other": true,
+                    "options": [
+                        {
+                            "value": "wordpress",
+                            "label": "WordPress"
+                        },
+                        {
+                            "value": "shopify",
+                            "label": "Shopify"
+                        },
+                        {
+                            "value": "woocommerce",
+                            "label": "WooCommerce (WordPress)"
+                        },
+                        {
+                            "value": "webflow",
+                            "label": "Webflow"
+                        },
+                        {
+                            "value": "wix",
+                            "label": "Wix"
+                        },
+                        {
+                            "value": "squarespace",
+                            "label": "Squarespace"
+                        },
+                        {
+                            "value": "framer",
+                            "label": "Framer"
+                        },
+                        {
+                            "value": "magento",
+                            "label": "Magento / Adobe Commerce"
+                        },
+                        {
+                            "value": "bigcommerce",
+                            "label": "BigCommerce"
+                        },
+                        {
+                            "value": "bubble",
+                            "label": "Bubble (No-code)"
+                        },
+                        {
+                            "value": "other",
+                            "label": "Other (Specify)"
+                        }
+                    ]
+                },
+                {
+                    "id": "coded_techstack",
+                    "type": "grouped_multi_select",
+                    "question": "Which technologies/tech stack do you prefer for a coded website?",
+                    "show_if": {
+                        "question_id": "website_type",
+                        "equals": "coded"
+                    },
+                    "allow_other": true,
+                    "groups": [
+                        {
+                            "id": "frontend",
+                            "label": "Frontend",
+                            "options": [
+                                {
+                                    "value": "nextjs",
+                                    "label": "Next.js (React)"
+                                },
+                                {
+                                    "value": "react",
+                                    "label": "React (SPA)"
+                                },
+                                {
+                                    "value": "nuxt",
+                                    "label": "Nuxt (Vue)"
+                                },
+                                {
+                                    "value": "vue",
+                                    "label": "Vue (SPA)"
+                                },
+                                {
+                                    "value": "angular",
+                                    "label": "Angular"
+                                },
+                                {
+                                    "value": "sveltekit",
+                                    "label": "SvelteKit"
+                                },
+                                {
+                                    "value": "html_css_js",
+                                    "label": "HTML/CSS/JS (Custom)"
+                                }
+                            ]
+                        },
+                        {
+                            "id": "backend",
+                            "label": "Backend",
+                            "options": [
+                                {
+                                    "value": "node_express",
+                                    "label": "Node.js (Express)"
+                                },
+                                {
+                                    "value": "node_nest",
+                                    "label": "Node.js (NestJS)"
+                                },
+                                {
+                                    "value": "laravel",
+                                    "label": "Laravel (PHP)"
+                                },
+                                {
+                                    "value": "django",
+                                    "label": "Django (Python)"
+                                },
+                                {
+                                    "value": "fastapi",
+                                    "label": "FastAPI (Python)"
+                                },
+                                {
+                                    "value": "rails",
+                                    "label": "Ruby on Rails"
+                                },
+                                {
+                                    "value": "dotnet",
+                                    "label": ".NET (C#)"
+                                },
+                                {
+                                    "value": "springboot",
+                                    "label": "Spring Boot (Java)"
+                                },
+                                {
+                                    "value": "no_custom_backend",
+                                    "label": "No custom backend (Frontend + APIs only)"
+                                }
+                            ]
+                        },
+                        {
+                            "id": "cms",
+                            "label": "CMS (Optional)",
+                            "options": [
+                                {
+                                    "value": "none",
+                                    "label": "No CMS"
+                                },
+                                {
+                                    "value": "strapi",
+                                    "label": "Strapi (Headless CMS)"
+                                },
+                                {
+                                    "value": "sanity",
+                                    "label": "Sanity"
+                                },
+                                {
+                                    "value": "contentful",
+                                    "label": "Contentful"
+                                },
+                                {
+                                    "value": "directus",
+                                    "label": "Directus"
+                                },
+                                {
+                                    "value": "wordpress_headless",
+                                    "label": "WordPress (Headless)"
+                                }
+                            ]
+                        },
+                        {
+                            "id": "database",
+                            "label": "Database (If needed)",
+                            "options": [
+                                {
+                                    "value": "postgresql",
+                                    "label": "PostgreSQL"
+                                },
+                                {
+                                    "value": "mysql",
+                                    "label": "MySQL"
+                                },
+                                {
+                                    "value": "mongodb",
+                                    "label": "MongoDB"
+                                },
+                                {
+                                    "value": "firebase",
+                                    "label": "Firebase / Firestore"
+                                },
+                                {
+                                    "value": "supabase",
+                                    "label": "Supabase"
+                                }
+                            ]
+                        },
+                        {
+                            "id": "hosting",
+                            "label": "Hosting / Deployment",
+                            "options": [
+                                {
+                                    "value": "vercel",
+                                    "label": "Vercel"
+                                },
+                                {
+                                    "value": "netlify",
+                                    "label": "Netlify"
+                                },
+                                {
+                                    "value": "aws",
+                                    "label": "AWS"
+                                },
+                                {
+                                    "value": "digitalocean",
+                                    "label": "DigitalOcean"
+                                },
+                                {
+                                    "value": "firebase_hosting",
+                                    "label": "Firebase Hosting"
+                                },
+                                {
+                                    "value": "shared_hosting",
+                                    "label": "Shared Hosting / cPanel"
+                                },
+                                {
+                                    "value": "other",
+                                    "label": "Other (Specify)"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
                     "id": "page_count",
                     "question": "Approximately how many pages do you require?",
                     "options": [

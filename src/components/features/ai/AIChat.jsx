@@ -51,7 +51,7 @@ import mammoth from 'mammoth';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }) {
+function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, onProposalChange }) {
   const location = useLocation();
   const serviceName = propServiceName || location.state?.serviceName;
 
@@ -118,16 +118,29 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
   };
 
   const focusInput = () => {
-    // Find the actual textarea element inside the chat input form
-    const textarea = document.querySelector('.max-w-\\[900px\\] textarea');
-    if (textarea && textarea.tagName === 'TEXTAREA') {
+    // Try using ref first
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      return;
+    }
+    // Fallback to querySelector
+    const textarea = document.querySelector('textarea[placeholder]');
+    if (textarea) {
       textarea.focus();
     }
   };
 
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // Notify parent when proposal visibility changes
+  useEffect(() => {
+    if (onProposalChange) {
+      onProposalChange(showProposal);
+    }
+  }, [showProposal, onProposalChange]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -443,6 +456,9 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
 
         // Check for proposal data in the response
         if (data.proposal) {
+          console.log("Proposal data received:", data.proposal);
+          console.log("investmentSummary:", data.proposal.investmentSummary);
+          console.log("timeline:", data.proposal.timeline);
           setProposal(data.proposal);
           // Auto-open sidebar only when proposal is complete
           if (data.proposal.isComplete) {
@@ -476,7 +492,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
       // Re-focus textarea after response
       setTimeout(() => {
         focusInput();
-      }, 150);
+      }, 300);
     }
   };
 
@@ -507,7 +523,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
     <div className={`text-foreground ${embedded ? "h-full w-full" : ""}`}>
       <div className={`flex ${embedded ? "h-full w-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}>
         {/* Main Chat Area */}
-        <main className={`flex flex-col transition-all duration-300 ${showProposal && embedded ? 'w-[60%]' : 'flex-1'}`}>
+        <main className={`flex flex-col transition-all duration-300 ${showProposal && embedded ? 'w-1/2' : 'flex-1'}`}>
           {/* Modern Header */}
           <header className="relative px-6 pr-20 py-4 border-b border-border/50 bg-background/80 backdrop-blur-xl flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -531,20 +547,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
                 <Plus className="size-4" />
                 <span className="hidden sm:inline">New Chat</span>
               </button>
-              {/* Progress indicator when collecting data */}
-              {proposalProgress.collected > 0 && !proposal?.isComplete && (
-                <button
-                  onClick={() => setShowProposal(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all cursor-pointer"
-                  title="View draft proposal"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    <span className="hidden sm:inline">Draft</span>
-                    <span className="text-xs opacity-70">{proposalProgress.collected}/{proposalProgress.total}</span>
-                  </div>
-                </button>
-              )}
+              {/* Show View Proposal button only when proposal is complete */}
               {proposal && !showProposal && proposal.isComplete && (
                 <button
                   onClick={() => setShowProposal(true)}
@@ -765,7 +768,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
 
         {/* Proposal Panel - Side by side with chat when embedded */}
         {embedded && showProposal && (
-          <div className="w-[40%] h-full border-l border-white/10 bg-zinc-950 flex flex-col animate-in slide-in-from-right duration-300">
+          <div className="w-1/2 h-full border-l border-white/10 bg-zinc-950 flex flex-col animate-in slide-in-from-right duration-300">
             <ProposalSidebar
               proposal={proposal}
               progress={proposalProgress}
