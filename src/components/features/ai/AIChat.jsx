@@ -51,7 +51,7 @@ import mammoth from 'mammoth';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }) {
+function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, onProposalChange }) {
   const location = useLocation();
   const serviceName = propServiceName || location.state?.serviceName;
 
@@ -77,7 +77,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
     if (typeof window === "undefined") return [initialMsg];
 
     try {
-      const saved = localStorage.getItem("cata_ai_chat_history");
+      const saved = sessionStorage.getItem("cata_ai_chat_history");
       // Only use saved history if it exists AND we haven't just switched services (context check could be improved later)
       // For now, if saved exists, use it. But maybe user wants fresh start for new service?
       // Let's assume reuse history, but if it's empty start with dynamic welcome.
@@ -88,10 +88,10 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
     }
   });
 
-  // Persist messages to localStorage
+  // Persist messages to sessionStorage (clears when browser closes)
   useEffect(() => {
     try {
-      localStorage.setItem("cata_ai_chat_history", JSON.stringify(messages));
+      sessionStorage.setItem("cata_ai_chat_history", JSON.stringify(messages));
     } catch (e) {
       console.error("Failed to save chat history:", e);
     }
@@ -105,8 +105,29 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [services, setServices] = useState([]);
-  const [proposal, setProposal] = useState(null);
-  const [proposalProgress, setProposalProgress] = useState({ collected: 0, total: 6 });
+
+  // Load proposal from sessionStorage
+  const [proposal, setProposal] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = sessionStorage.getItem("cata_ai_proposal");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Failed to load proposal:", e);
+      return null;
+    }
+  });
+
+  const [proposalProgress, setProposalProgress] = useState(() => {
+    if (typeof window === "undefined") return { collected: 0, total: 6 };
+    try {
+      const saved = sessionStorage.getItem("cata_ai_proposal_progress");
+      return saved ? JSON.parse(saved) : { collected: 0, total: 6 };
+    } catch (e) {
+      return { collected: 0, total: 6 };
+    }
+  });
+
   const [showProposal, setShowProposal] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const messagesEndRef = useRef(null);
@@ -118,16 +139,50 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
   };
 
   const focusInput = () => {
-    // Find the actual textarea element inside the chat input form
-    const textarea = document.querySelector('.max-w-\\[900px\\] textarea');
-    if (textarea && textarea.tagName === 'TEXTAREA') {
+    // Try using ref first
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      return;
+    }
+    // Fallback to querySelector
+    const textarea = document.querySelector('textarea[placeholder]');
+    if (textarea) {
       textarea.focus();
     }
   };
 
+
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // Persist proposal to sessionStorage
+  useEffect(() => {
+    try {
+      if (proposal) {
+        sessionStorage.setItem("cata_ai_proposal", JSON.stringify(proposal));
+      }
+    } catch (e) {
+      console.error("Failed to save proposal:", e);
+    }
+  }, [proposal]);
+
+  // Persist proposal progress to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("cata_ai_proposal_progress", JSON.stringify(proposalProgress));
+    } catch (e) {
+      console.error("Failed to save proposal progress:", e);
+    }
+  }, [proposalProgress]);
+
+  // Notify parent when proposal visibility changes
+  useEffect(() => {
+    if (onProposalChange) {
+      onProposalChange(showProposal);
+    }
+  }, [showProposal, onProposalChange]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -443,6 +498,9 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
 
         // Check for proposal data in the response
         if (data.proposal) {
+          console.log("Proposal data received:", data.proposal);
+          console.log("investmentSummary:", data.proposal.investmentSummary);
+          console.log("timeline:", data.proposal.timeline);
           setProposal(data.proposal);
           // Auto-open sidebar only when proposal is complete
           if (data.proposal.isComplete) {
@@ -476,7 +534,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
       // Re-focus textarea after response
       setTimeout(() => {
         focusInput();
-      }, 150);
+      }, 300);
     }
   };
 
@@ -496,6 +554,13 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
     setProposal(null);
     setProposalProgress({ collected: 0, total: 6 });
     setShowProposal(false);
+    // Clear proposal from sessionStorage
+    try {
+      sessionStorage.removeItem("cata_ai_proposal");
+      sessionStorage.removeItem("cata_ai_proposal_progress");
+    } catch (e) {
+      console.error("Failed to clear proposal from storage:", e);
+    }
     setTimeout(() => focusInput(), 50);
   };
 
@@ -504,18 +569,10 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
   };
 
   return (
-    <div className={`text-foreground ${embedded ? "h-full" : ""}`}>
-      <div className={`flex ${embedded ? "h-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}>
-        {/* Proposal Sidebar */}
-        <ProposalSidebar
-          proposal={proposal}
-          progress={proposalProgress}
-          isOpen={showProposal}
-          onClose={() => setShowProposal(false)}
-        />
-
-        {/* Main Chat Area - Centered Layout */}
-        <main className="flex-1 flex flex-col">
+    <div className={`text-foreground ${embedded ? "h-full w-full" : ""}`}>
+      <div className={`flex ${embedded ? "h-full w-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}>
+        {/* Main Chat Area */}
+        <main className={`flex flex-col transition-all duration-300 ${showProposal && embedded ? 'w-1/2' : 'flex-1'}`}>
           {/* Modern Header */}
           <header className="relative px-6 pr-20 py-4 border-b border-border/50 bg-background/80 backdrop-blur-xl flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -539,20 +596,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
                 <Plus className="size-4" />
                 <span className="hidden sm:inline">New Chat</span>
               </button>
-              {/* Progress indicator when collecting data */}
-              {proposalProgress.collected > 0 && !proposal?.isComplete && (
-                <button
-                  onClick={() => setShowProposal(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all cursor-pointer"
-                  title="View draft proposal"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    <span className="hidden sm:inline">Draft</span>
-                    <span className="text-xs opacity-70">{proposalProgress.collected}/{proposalProgress.total}</span>
-                  </div>
-                </button>
-              )}
+              {/* Show View Proposal button only when proposal is complete */}
               {proposal && !showProposal && proposal.isComplete && (
                 <button
                   onClick={() => setShowProposal(true)}
@@ -770,6 +814,31 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName }
             </div>
           </div>
         </main>
+
+        {/* Proposal Panel - Side by side with chat when embedded */}
+        {embedded && showProposal && (
+          <div className="w-1/2 h-full border-l border-white/10 bg-zinc-950 flex flex-col animate-in slide-in-from-right duration-300">
+            <ProposalSidebar
+              proposal={proposal}
+              progress={proposalProgress}
+              isOpen={true}
+              onClose={() => setShowProposal(false)}
+              embedded={embedded}
+              inline={true}
+            />
+          </div>
+        )}
+
+        {/* Proposal Sidebar - Fixed overlay for non-embedded mode */}
+        {!embedded && (
+          <ProposalSidebar
+            proposal={proposal}
+            progress={proposalProgress}
+            isOpen={showProposal}
+            onClose={() => setShowProposal(false)}
+            embedded={false}
+          />
+        )}
       </div>
     </div>
   );
