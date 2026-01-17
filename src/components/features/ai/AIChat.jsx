@@ -105,8 +105,29 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [services, setServices] = useState([]);
-  const [proposal, setProposal] = useState(null);
-  const [proposalProgress, setProposalProgress] = useState({ collected: 0, total: 6 });
+
+  // Load proposal from sessionStorage
+  const [proposal, setProposal] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = sessionStorage.getItem("cata_ai_proposal");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Failed to load proposal:", e);
+      return null;
+    }
+  });
+
+  const [proposalProgress, setProposalProgress] = useState(() => {
+    if (typeof window === "undefined") return { collected: 0, total: 6 };
+    try {
+      const saved = sessionStorage.getItem("cata_ai_proposal_progress");
+      return saved ? JSON.parse(saved) : { collected: 0, total: 6 };
+    } catch (e) {
+      return { collected: 0, total: 6 };
+    }
+  });
+
   const [showProposal, setShowProposal] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const messagesEndRef = useRef(null);
@@ -131,9 +152,30 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
   };
 
 
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // Persist proposal to sessionStorage
+  useEffect(() => {
+    try {
+      if (proposal) {
+        sessionStorage.setItem("cata_ai_proposal", JSON.stringify(proposal));
+      }
+    } catch (e) {
+      console.error("Failed to save proposal:", e);
+    }
+  }, [proposal]);
+
+  // Persist proposal progress to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("cata_ai_proposal_progress", JSON.stringify(proposalProgress));
+    } catch (e) {
+      console.error("Failed to save proposal progress:", e);
+    }
+  }, [proposalProgress]);
 
   // Notify parent when proposal visibility changes
   useEffect(() => {
@@ -512,6 +554,13 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
     setProposal(null);
     setProposalProgress({ collected: 0, total: 6 });
     setShowProposal(false);
+    // Clear proposal from sessionStorage
+    try {
+      sessionStorage.removeItem("cata_ai_proposal");
+      sessionStorage.removeItem("cata_ai_proposal_progress");
+    } catch (e) {
+      console.error("Failed to clear proposal from storage:", e);
+    }
     setTimeout(() => focusInput(), 50);
   };
 
