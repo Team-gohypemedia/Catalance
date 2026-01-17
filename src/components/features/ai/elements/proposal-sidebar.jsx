@@ -87,7 +87,7 @@ function PhaseCard({ phase, isExpanded, onToggle }) {
     );
 }
 
-export function ProposalSidebar({ proposal, isOpen, onClose, progress }) {
+export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded = false, inline = false }) {
     const [expandedPhases, setExpandedPhases] = useState(new Set([1]));
 
     const togglePhase = (phaseNumber) => {
@@ -114,10 +114,141 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress }) {
 
     if (!proposal) return null;
 
+    // Inline mode: render as a static container (no positioning, fills parent)
+    if (inline) {
+        return (
+            <div className="h-full flex flex-col bg-zinc-950">
+                {/* Header */}
+                <div className="p-5 border-b border-white/10 bg-linear-to-r from-primary/10 to-transparent">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <FileText className="size-4 text-primary" />
+                                <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                    {proposal.isComplete ? "Complete" : "Draft"}
+                                </span>
+                            </div>
+                            <h2 className="text-lg font-bold text-foreground">
+                                Project Proposal
+                            </h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">{proposal.projectTitle}</p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                            <X className="size-4" />
+                        </button>
+                    </div>
+
+                    {/* Progress bar if not complete */}
+                    {progress && !proposal.isComplete && (
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-muted-foreground">Progress</span>
+                                <span className="text-primary font-medium">{progress.collected}/{progress.total}</span>
+                            </div>
+                            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-linear-to-r from-primary to-primary/70 rounded-full transition-all duration-500"
+                                    style={{ width: `${(progress.collected / progress.total) * 100}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Content - Scrollable */}
+                <div className="flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary))_transparent]">
+                    <div className="p-5 space-y-5">
+                        {/* Client & Timeline */}
+                        <section className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 bg-white/5 rounded-lg p-2.5 border border-white/10">
+                                    <p className="text-[10px] text-muted-foreground mb-0.5">Client</p>
+                                    <p className="text-sm font-semibold text-foreground">{proposal.clientName}</p>
+                                </div>
+                                {proposal.timeline?.total && (
+                                    <div className="flex-1 bg-white/5 rounded-lg p-2.5 border border-white/10">
+                                        <p className="text-[10px] text-muted-foreground mb-0.5">Timeline</p>
+                                        <p className="text-sm font-semibold text-foreground">{proposal.timeline.total}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Project Objective */}
+                            <div className="bg-linear-to-br from-primary/10 to-primary/5 rounded-lg p-3 border border-primary/20">
+                                <h3 className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1.5 flex items-center gap-1">
+                                    <Target className="size-3" />
+                                    Objective
+                                </h3>
+                                <p className="text-xs text-foreground/90 leading-relaxed">
+                                    {proposal.objective}
+                                </p>
+                            </div>
+                        </section>
+
+                        {/* Phases */}
+                        {proposal.phases && proposal.phases.length > 0 && (
+                            <section>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Phases
+                                    </h3>
+                                    <div className="flex gap-2">
+                                        <button onClick={expandAll} className="text-[10px] text-primary hover:underline">Expand</button>
+                                        <span className="text-muted-foreground/50">|</span>
+                                        <button onClick={collapseAll} className="text-[10px] text-primary hover:underline">Collapse</button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    {proposal.phases.map((phase) => (
+                                        <PhaseCard
+                                            key={phase.number}
+                                            phase={phase}
+                                            isExpanded={expandedPhases.has(phase.number)}
+                                            onToggle={() => togglePhase(phase.number)}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="p-4 border-t border-white/10 bg-zinc-950/80 backdrop-blur-xl space-y-2">
+                    <button className="w-full py-2.5 px-4 bg-linear-to-r from-primary to-primary/80 text-primary-foreground rounded-lg font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-primary/20 cursor-pointer">
+                        <Check className="size-4" />
+                        Accept Proposal
+                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button className="py-2 px-2 bg-white/5 border border-white/10 text-foreground rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-white/10 transition-colors cursor-pointer">
+                            <Download className="size-3.5" />
+                            Download
+                        </button>
+                        <button className="py-2 px-2 bg-white/5 border border-white/10 text-foreground rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-white/10 transition-colors cursor-pointer">
+                            <Phone className="size-3.5" />
+                            Call
+                        </button>
+                    </div>
+                    <p className="text-center text-[10px] text-muted-foreground/60">
+                        Generated by CATA AI
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // Use absolute positioning when embedded in a dialog, fixed when standalone
+    const positionClass = embedded
+        ? "absolute inset-y-0 right-0"
+        : "fixed inset-y-0 right-0";
+
     return (
         <>
-            {/* Backdrop */}
-            {isOpen && (
+            {/* Backdrop - only show for fixed (non-embedded) mode */}
+            {isOpen && !embedded && (
                 <div
                     className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
                     onClick={onClose}
@@ -126,7 +257,7 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress }) {
 
             {/* Sidebar */}
             <div
-                className={`fixed inset-y-0 right-0 w-[480px] max-w-[95vw] bg-zinc-950 border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-out z-50 flex flex-col ${isOpen ? "translate-x-0" : "translate-x-full"
+                className={`${positionClass} w-[420px] max-w-[90%] bg-zinc-950 border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-out ${embedded ? 'z-30' : 'z-50'} flex flex-col ${isOpen ? "translate-x-0" : "translate-x-full"
                     }`}
             >
                 {/* Header */}
