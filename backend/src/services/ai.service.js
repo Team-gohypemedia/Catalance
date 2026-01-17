@@ -259,21 +259,42 @@ Treat this as confirmed and DO NOT ask which service they want.`
           .map((q, idx) => {
             // For budget questions, replace with generic question without minimum
             if (q.id === "user_budget" || q.type === "number") {
-              return `Q${idx + 1}: What is your budget for this project?`;
+              return `Q${idx + 1} [ID: ${q.id}]: What is your budget for this project?`;
             }
-            let questionText = `Q${idx + 1}: ${q.question}`;
-            if (Array.isArray(q.options) && q.options.length > 0) {
+
+            let questionText = `Q${idx + 1} [ID: ${q.id}]: ${q.question}`;
+
+            // Handle conditional questions (show_if)
+            if (q.show_if) {
+              questionText += `\n   [CONDITIONAL: Only ask if "${q.show_if.question_id}" = "${q.show_if.equals}"]`;
+            }
+
+            // Handle grouped multi-select questions
+            if (q.type === "grouped_multi_select" && Array.isArray(q.groups)) {
+              questionText += "\n   [GROUPED QUESTION - Present all groups together:]";
+              q.groups.forEach((group) => {
+                const groupOptions = Array.isArray(group.options)
+                  ? group.options.map((o) => o.label).join(" | ")
+                  : "";
+                questionText += `\n   - ${group.label}: ${groupOptions}`;
+              });
+            } else if (Array.isArray(q.options) && q.options.length > 0) {
+              // Regular options
               const options = q.options.map((o) => o.label).join(" | ");
               questionText += `\n   Options: ${options}`;
             }
+
             return questionText;
           })
           .join("\n")
         : "No specific questions";
 
+      const questionCount = Array.isArray(service.questions) ? service.questions.length : 0;
+
       return [
         `SERVICE ${service.number}: ${service.name}`,
         `ID: ${service.id}`,
+        `TOTAL QUESTIONS: ${questionCount} (You MUST ask ALL of these)`,
         "QUESTIONS TO ASK:",
         questions,
         "---"
@@ -361,19 +382,47 @@ QUESTION TRACKING:
 - Then ask the NEXT question from the service's question list.
 - When presenting options for a question, list them clearly.
 
-EXAMPLES BY SERVICE:
-- SEO Service: Ask ALL 6 questions (business_category, target_locations, primary_goal, seo_situation, duration, budget)
-- Branding Service: Ask ALL 7 questions (brand_stage, naming_help, brand_perception, target_audience, primary_usage, timeline, budget)
-- Website Service: Ask ALL 8 questions (requirement, objective, website_category, design_experience, website_type, page_count, launch_timeline, budget)
+EXAMPLES BY SERVICE (FOLLOW EXACT ORDER):
+- SEO Service: Ask ALL 6 questions in order: business_category → target_locations → primary_goal → seo_situation → duration → user_budget
+- Branding Service: Ask ALL 7 questions in order: brand_stage → naming_help → brand_perception → target_audience → primary_usage → timeline → user_budget
+- Website Service: Ask ALL questions in order: requirement → objective → website_category → design_experience → website_type → [IF platform_based: platform_choice] OR [IF coded: coded_frontend → coded_backend → coded_cms → coded_database → coded_hosting] → page_count → launch_timeline → user_budget
 
-DO NOT SKIP questions even if the user seems to imply an answer.
-DO NOT combine or summarize questions to "save time".
-ASK EACH QUESTION EXPLICITLY and wait for a clear answer.
+CRITICAL SEQUENCE ENFORCEMENT:
+- You MUST go through questions in the EXACT ORDER listed above.
+- After each question, check off that question ID mentally.
+- Before asking the next question, verify: "Have I asked ALL previous questions?"
+- If you realize you skipped a question, GO BACK and ask it before continuing.
+- The budget question (user_budget) is ALWAYS the LAST question - never ask it early.
 
 FORMATTING WHEN ASKING QUESTIONS:
 - Present the question clearly.
 - If the question has options, list them as numbered choices (1., 2., 3.).
 - Keep the question focused and easy to answer.
+
+CONDITIONAL QUESTION HANDLING:
+==============================
+Some questions have [CONDITIONAL] tags indicating they should only be asked based on a previous answer.
+- If a question says [CONDITIONAL: Only ask if "website_type" = "coded"], check the user's previous answer.
+- If the condition is NOT met, SKIP that question silently and move to the next one.
+- If the condition IS met, ask the question.
+- Do NOT mention to the user that you are skipping conditional questions.
+
+GROUPED QUESTIONS:
+==================
+Questions marked [GROUPED QUESTION] have multiple categories.
+- Present ALL groups together in one message.
+- Format each group clearly with its label and options.
+- Ask the user to select from each category as needed.
+
+STRICT PROPOSAL GENERATION RULE:
+================================
+**YOU MUST NOT OFFER TO GENERATE OR DISPLAY A PROPOSAL UNTIL:**
+1. You have asked the user's name
+2. You have asked ALL non-conditional questions for the service
+3. You have asked ALL conditional questions WHERE the condition was met
+4. The user has answered the budget question
+
+If the user asks for a proposal before all questions are answered, politely explain you need a few more details first and ask the next question.
 
 RESPONSE FORMATTING RULES:
 ==========================
@@ -528,6 +577,41 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
     }
   }
 
+  // FALLBACK: Context-based name extraction
+  // If name not found yet, look for when AI asks for name and user responds with a short answer
+  if (!proposalData.clientName) {
+    for (let i = 0; i < allMessages.length - 1; i++) {
+      const msg = allMessages[i];
+      const nextMsg = allMessages[i + 1];
+
+      // Check if current message is AI asking about name
+      if (msg.role === "assistant" && /what.*your name|may i know your name|what should i call you|your name|could you.*name/i.test(msg.content)) {
+        if (nextMsg && nextMsg.role === "user") {
+          const userResponse = nextMsg.content.trim();
+
+          // Check for short response that looks like a name (1-3 words, starts with capital or is short)
+          // Avoid matching sentences or numbers
+          if (
+            userResponse.length >= 2 &&
+            userResponse.length <= 50 &&
+            !/^\d+$/.test(userResponse) && // Not just numbers
+            !/^(yes|no|ok|sure|fine|hello|hi|hey|okay|yeah|nope|yup)$/i.test(userResponse) && // Not common responses
+            !userResponse.includes('.') && // Not a sentence
+            !userResponse.includes('?') // Not a question
+          ) {
+            // Extract first word if response is longer, or use whole response
+            const nameParts = userResponse.split(/\s+/).filter(p => /^[A-Za-z]+$/.test(p));
+            if (nameParts.length > 0 && nameParts.length <= 4) {
+              proposalData.clientName = nameParts.slice(0, 2).map(n => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ');
+              console.log(`Context-based name extraction: "${userResponse}" -> ${proposalData.clientName}`);
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
   // Extract service type from conversation
   const servicePatterns = [
     /(?:want|need|looking for|interested in|help with)\s+(?:a|an)?\s*(website|app|mobile app|branding|seo|marketing|e-commerce|ecommerce|social media|lead generation|video|content)/gi,
@@ -611,6 +695,42 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
     }
   }
 
+  // FALLBACK: Context-based budget extraction
+  // If budget not found yet, look for conversation patterns where AI asks about budget and user responds with a number
+  if (!proposalData.budget) {
+    for (let i = 0; i < allMessages.length - 1; i++) {
+      const msg = allMessages[i];
+      const nextMsg = allMessages[i + 1];
+
+      // Check if current message is AI asking about budget
+      if (msg.role === "assistant" && /budget|what is your budget|budget for this|budget range|investment/i.test(msg.content)) {
+        // Check if next message is user response with a number
+        if (nextMsg && nextMsg.role === "user") {
+          const userResponse = nextMsg.content.trim();
+          // Match standalone numbers (with optional currency symbols)
+          const numMatch = userResponse.match(/^(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|k|L|thousand)?\s*(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?$/i);
+          if (numMatch) {
+            let currency = "INR";
+            let multiplier = 1;
+            if (/\$|usd/i.test(userResponse)) currency = "USD";
+            else if (/€|eur/i.test(userResponse)) currency = "EUR";
+            else if (/£|gbp/i.test(userResponse)) currency = "GBP";
+
+            if (/lakh|lac/i.test(userResponse)) multiplier = 100000;
+            else if (/k|thousand/i.test(userResponse)) multiplier = 1000;
+
+            const amount = parseFloat(numMatch[2].replace(/,/g, ""));
+            if (!isNaN(amount) && amount > 0) {
+              proposalData.budget = amount * multiplier;
+              proposalData.currency = currency;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
   // Extract timeline
   const timelinePatterns = [
     /(?:timeline|deadline|complete|launch|deliver|duration)\s*(?:is|of|by|in|within|:)?\s*(\d+[-–]?\d*\s*(?:week|month|day)s?)/gi,
@@ -623,6 +743,63 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
     if (match) {
       proposalData.timeline = match[1].trim();
       break;
+    }
+  }
+
+  // FALLBACK: Context-based timeline extraction
+  // If timeline not found yet, look for when AI asks about timeline and user responds
+  if (!proposalData.timeline) {
+    for (let i = 0; i < allMessages.length - 1; i++) {
+      const msg = allMessages[i];
+      const nextMsg = allMessages[i + 1];
+
+      // Check if current message is AI asking about timeline
+      if (msg.role === "assistant" && /timeline|when.*launch|deadline|how soon|when.*need|when would you like/i.test(msg.content)) {
+        if (nextMsg && nextMsg.role === "user") {
+          const userResponse = nextMsg.content.trim();
+
+          // Check for week/month mentions
+          const timeMatch = userResponse.match(/(\d+[-–]?\d*)\s*(week|month|day)s?/i);
+          if (timeMatch) {
+            proposalData.timeline = timeMatch[0];
+            break;
+          }
+
+          // Check for common timeline phrases
+          if (/asap|urgent|immediately|as soon as possible/i.test(userResponse)) {
+            proposalData.timeline = "ASAP";
+            break;
+          }
+          if (/flexible|no rush|whenever/i.test(userResponse)) {
+            proposalData.timeline = "Flexible";
+            break;
+          }
+
+          // Check if user selected a numbered option - try to extract timeline from AI's options
+          const optionMatch = userResponse.match(/^(\d+)\.?$/);
+          if (optionMatch) {
+            // Look for numbered options in the AI's message
+            const optionNum = parseInt(optionMatch[1]);
+            const optionsText = msg.content;
+            const optionRegex = new RegExp(`${optionNum}\\.\\s*([^\\n]+)`, 'i');
+            const foundOption = optionsText.match(optionRegex);
+            if (foundOption) {
+              const optionText = foundOption[1];
+              // Extract timeline from the option text
+              const timeInOption = optionText.match(/(\d+[-–]?\d*\s*(?:week|month|day)s?)/i);
+              if (timeInOption) {
+                proposalData.timeline = timeInOption[1];
+                break;
+              }
+              // Use the whole option text as timeline if it seems relevant
+              if (/week|month|day|asap|urgent|flexible/i.test(optionText)) {
+                proposalData.timeline = optionText.replace(/^\*+|\*+$/g, '').trim();
+                break;
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -713,13 +890,31 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
   if (proposalData.timeline) collectedCount++;
   if (proposalData.budget) collectedCount++;
 
+  // Mark complete when we have the ESSENTIAL fields: name, service, budget, and timeline
+  // Requirements and projectType are optional - they'll get fallback values
+  const hasEssentialFields = !!proposalData.clientName &&
+    !!proposalData.serviceName &&
+    !!proposalData.budget &&
+    !!proposalData.timeline;
+
   proposalData.progress = {
     collected: collectedCount,
     total: 6,
-    // Mark complete when at least 5 core fields are collected AND Budget/Timeline are present for sure
-    // This prevents "Draft" proposals from looking like "Ready" ones just because they scraped some random keywords
-    isComplete: collectedCount >= 5 && !!proposalData.budget && !!proposalData.timeline
+    // Mark complete when essential fields are collected
+    isComplete: hasEssentialFields
   };
+
+  // DEBUG: Log extraction results
+  console.log("================== PROPOSAL EXTRACTION DEBUG ==================");
+  console.log("Client Name:", proposalData.clientName);
+  console.log("Service Name:", proposalData.serviceName);
+  console.log("Project Type:", proposalData.projectType);
+  console.log("Requirements:", proposalData.requirements);
+  console.log("Timeline:", proposalData.timeline);
+  console.log("Budget:", proposalData.budget);
+  console.log("Collected Count:", collectedCount);
+  console.log("Is Complete:", proposalData.progress.isComplete);
+  console.log("================================================================");
 
   // Attach debug info
   proposalData.debugInfo = {
@@ -1202,16 +1397,21 @@ export const chatWithAI = async (
   const allHistory = [...formattedHistory, ...formattedMessages];
   const proposalData = extractProposalData(allHistory, content, selectedServiceName);
 
-  // Generate proposal structure only if enough data collected (at least 5 fields)
-  // Proposal will only be marked complete when ALL 6 fields are gathered
+  // Generate proposal structure when essential fields are collected
   let proposal = null;
   let proposalProgress = proposalData.progress;
 
-  if (proposalData.progress.collected >= 5) {
+  if (proposalData.progress.isComplete) {
     proposal = generateProposalStructure(proposalData, selectedServiceName);
-    // Use the progress-based isComplete flag (requires all 6 fields)
-    proposal.isComplete = proposalData.progress.isComplete;
+    proposal.isComplete = true;
   }
+
+  // DEBUG: Log API response
+  console.log("================== API RESPONSE DEBUG ==================");
+  console.log("Proposal exists:", !!proposal);
+  console.log("isComplete:", proposalData.progress.isComplete);
+  console.log("proposalProgress:", JSON.stringify(proposalProgress));
+  console.log("=========================================================");
 
   return {
     success: true,
