@@ -58,6 +58,561 @@ const buildWebsiteTypeReference = () => {
     .join("\n");
 };
 
+const normalizeServiceText = (value = "") =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+const tokenizeServiceText = (value = "") =>
+  normalizeServiceText(value)
+    .split(/\s+/)
+    .filter(Boolean);
+
+const getServiceDefinition = (serviceName = "") => {
+  const normalized = normalizeServiceText(serviceName);
+  if (!normalized) return null;
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const service of servicesData.services || []) {
+    const nameNormalized = normalizeServiceText(service.name || "");
+    const idNormalized = normalizeServiceText(service.id || "");
+    let score = 0;
+
+    if (nameNormalized === normalized || idNormalized === normalized) score += 5;
+    if (nameNormalized && (nameNormalized.includes(normalized) || normalized.includes(nameNormalized))) {
+      score += 3;
+    }
+    if (idNormalized && (idNormalized.includes(normalized) || normalized.includes(idNormalized))) {
+      score += 2;
+    }
+
+    const candidateTokens = new Set(
+      tokenizeServiceText(`${service.name || ""} ${service.id || ""}`)
+    );
+    for (const token of tokenizeServiceText(serviceName)) {
+      if (candidateTokens.has(token)) score += 1;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = service;
+    }
+  }
+
+  return bestScore > 0 ? bestMatch : null;
+};
+
+const RANGE_SEPARATOR_PATTERN = "[-–—]";
+const TIME_RANGE_REGEX = new RegExp(
+  `\\d+(?:\\s*${RANGE_SEPARATOR_PATTERN}\\s*\\d+)?\\s*(?:second|minute|hour|day|week|month)s?`,
+  "i"
+);
+const TIMELINE_QUESTION_REGEX =
+  /timeline|when.*launch|deadline|how soon|when.*need|when would you like|how long|duration|campaign|turnaround/i;
+const PRICING_LEVEL_QUESTION_REGEX =
+  /pricing level|budget level|pricing tier|budget tier|level best matches/i;
+
+const extractTimelineValue = (text = "") => {
+  if (typeof text !== "string") return null;
+  const durationMatch = text.match(TIME_RANGE_REGEX);
+  if (durationMatch) {
+    return durationMatch[0].replace(/\s+/g, " ").trim();
+  }
+  if (/asap|urgent|immediately|as soon as possible/i.test(text)) return "ASAP";
+  if (/flexible|no rush|whenever/i.test(text)) return "Flexible";
+
+  const keywordMatch = text.match(
+    /short[-\s]?term|medium[-\s]?term|long[-\s]?term|standard timeline|fast turnaround|ongoing/i
+  );
+  if (keywordMatch) {
+    return keywordMatch[0].replace(/\s+/g, " ").trim();
+  }
+  return null;
+};
+
+const extractPricingLevel = (text = "", allowShort = false) => {
+  if (typeof text !== "string") return null;
+  const fullMatch = text.match(
+    /\b(entry level|growth level|enterprise level|premium level)\b/i
+  );
+  if (fullMatch) {
+    const normalized = fullMatch[1].replace(/\s+/g, " ").toLowerCase();
+    return `${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}`;
+  }
+
+  if (allowShort) {
+    const shortMatch = text.match(/\b(entry|growth|enterprise|premium)\b/i);
+    if (shortMatch) {
+      const normalized = shortMatch[1].toLowerCase();
+      return `${normalized.charAt(0).toUpperCase()}${normalized.slice(1)} level`;
+    }
+  }
+  return null;
+};
+
+const formatCurrencyValue = (amount, currencyCode = "INR") => {
+  if (typeof amount !== "number" || Number.isNaN(amount)) return null;
+  const localeMap = {
+    USD: "en-US",
+    EUR: "de-DE",
+    GBP: "en-GB",
+    INR: "en-IN"
+  };
+  const locale = localeMap[currencyCode] || "en-US";
+  return amount.toLocaleString(locale);
+};
+
+const normalizeQuestionText = (value = "") =>
+  normalizeServiceText(value).replace(/\s+/g, " ").trim();
+
+const QUESTION_STOPWORDS = new Set([
+  "what",
+  "which",
+  "how",
+  "when",
+  "where",
+  "why",
+  "do",
+  "does",
+  "is",
+  "are",
+  "can",
+  "could",
+  "would",
+  "should",
+  "you",
+  "your",
+  "the",
+  "a",
+  "an",
+  "to",
+  "for",
+  "of",
+  "in",
+  "on",
+  "with",
+  "like",
+  "need",
+  "want",
+  "prefer",
+  "please"
+]);
+
+const extractAssistantQuestionLine = (assistantText = "") => {
+  if (typeof assistantText !== "string") return null;
+  const lines = assistantText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (lines[i].includes("?")) return lines[i];
+  }
+
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (/^(what|which|how|when|where|why|do|does|is|are|can|could|would|should)\b/i.test(lines[i])) {
+      return lines[i];
+    }
+  }
+
+  return null;
+};
+
+const tokensForMatch = (value = "") =>
+  normalizeQuestionText(value)
+    .split(" ")
+    .filter((token) => {
+      if (!token) return false;
+      if (/^\d+$/.test(token)) return true;
+      return token.length > 2 && !QUESTION_STOPWORDS.has(token);
+    });
+
+const getQuestionMatchScore = (assistantQuestion = "", questionText = "") => {
+  const assistantNormalized = normalizeQuestionText(assistantQuestion);
+  const questionNormalized = normalizeQuestionText(questionText);
+  if (!assistantNormalized || !questionNormalized) return 0;
+
+  if (
+    assistantNormalized.includes(questionNormalized) ||
+    questionNormalized.includes(assistantNormalized)
+  ) {
+    return 1;
+  }
+
+  const questionTokens = tokensForMatch(questionNormalized);
+  if (!questionTokens.length) return 0;
+  const assistantTokens = new Set(tokensForMatch(assistantNormalized));
+
+  let hits = 0;
+  for (const token of questionTokens) {
+    if (assistantTokens.has(token)) hits += 1;
+  }
+  return hits / questionTokens.length;
+};
+
+const findBestQuestionMatch = (assistantQuestion, questions, usedQuestionIds) => {
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const question of questions || []) {
+    if (!question?.id || usedQuestionIds.has(question.id)) continue;
+    const score = getQuestionMatchScore(assistantQuestion, question.question || "");
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = question;
+    }
+  }
+
+  return bestScore >= 0.6 ? bestMatch : null;
+};
+
+const extractBulletItems = (text = "") => {
+  if (typeof text !== "string") return [];
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^[-•]/.test(line) || /^\d+\./.test(line))
+    .map((line) => line.replace(/^[-•]\s*/, "").replace(/^\d+\.\s*/, "").trim())
+    .filter(Boolean);
+};
+
+const matchOptionLabelsFromItems = (options = [], items = []) => {
+  if (!Array.isArray(options) || !Array.isArray(items)) return [];
+  const matched = [];
+
+  items.forEach((item) => {
+    const normalizedItem = normalizeQuestionText(item);
+    if (!normalizedItem) return;
+
+    const optionMatch = options.find((option) => {
+      const normalizedLabel = normalizeQuestionText(option.label || "");
+      if (!normalizedLabel) return false;
+      return (
+        normalizedLabel.includes(normalizedItem) ||
+        normalizedItem.includes(normalizedLabel)
+      );
+    });
+    if (optionMatch?.label) {
+      matched.push(optionMatch.label);
+    } else {
+      matched.push(item);
+    }
+  });
+
+  return Array.from(new Set(matched));
+};
+
+const parseNumericSelections = (text = "", optionsLength = 0) => {
+  const trimmed = text.trim();
+  if (!trimmed) return { numbers: [], ambiguous: false };
+
+  const digitsOnly = /^[\d\s,.-]+$/.test(trimmed);
+  const hasSeparator = /[,\s]/.test(trimmed);
+  const numberMatches = trimmed.match(/\d+/g) || [];
+  if (!numberMatches.length) return { numbers: [], ambiguous: false };
+
+  let numbers = [];
+  let ambiguous = false;
+
+  if (numberMatches.length === 1 && digitsOnly && !hasSeparator && numberMatches[0].length > 1) {
+    numbers = numberMatches[0]
+      .split("")
+      .map((value) => Number.parseInt(value, 10))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    ambiguous = true;
+  } else {
+    numbers = numberMatches
+      .map((value) => Number.parseInt(value, 10))
+      .filter((value) => Number.isFinite(value) && value > 0);
+  }
+
+  const validNumbers = optionsLength
+    ? numbers.filter((value) => value <= optionsLength)
+    : numbers;
+
+  return { numbers: validNumbers, ambiguous };
+};
+
+const parseBudgetFromText = (text = "") => {
+  if (typeof text !== "string") return null;
+  const budgetRegex = /(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|k|L|thousand)?\s*(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?/i;
+  const match = budgetRegex.exec(text);
+  if (!match) return null;
+
+  const currencyToken = match[1] || match[4] || "";
+  let currency = "INR";
+  if (/\$|usd/i.test(currencyToken)) currency = "USD";
+  else if (/€|eur/i.test(currencyToken)) currency = "EUR";
+  else if (/£|gbp/i.test(currencyToken)) currency = "GBP";
+
+  let multiplier = 1;
+  if (/lakh|lac/i.test(match[3] || "")) multiplier = 100000;
+  else if (/k|thousand/i.test(match[3] || "")) multiplier = 1000;
+
+  const amount = Number.parseFloat(match[2].replace(/,/g, ""));
+  if (!Number.isFinite(amount)) return null;
+
+  return { amount: amount * multiplier, currency };
+};
+
+const BUDGET_WARNING_REGEX =
+  /budget.*below|below.*minimum|required.*minimum|minimum required/i;
+const BUDGET_PROCEED_REGEX =
+  /proceed|go ahead|continue|move forward|use current|current budget|same budget|stick with|okay with|fine with|works with|keep it/i;
+
+const extractLatestBudgetFromBudgetQuestions = (conversationHistory = []) => {
+  let latest = null;
+  const budgetQuestionRegex = /budget|investment|how much|price|cost/i;
+
+  for (let i = 0; i < conversationHistory.length - 1; i++) {
+    const msg = conversationHistory[i];
+    const nextMsg = conversationHistory[i + 1];
+    if (msg?.role !== "assistant" || !budgetQuestionRegex.test(msg.content || "")) {
+      continue;
+    }
+    if (nextMsg?.role !== "user") continue;
+    const parsed = parseBudgetFromText(nextMsg.content || "");
+    if (parsed?.amount) {
+      latest = parsed;
+    }
+  }
+
+  return latest;
+};
+
+const evaluateBudgetStatus = (conversationHistory, budgetAmount, minBudget) => {
+  const status = {
+    minBudget,
+    isBelowMinimum: false,
+    isConfirmed: false,
+    updatedBudget: null,
+    updatedCurrency: null
+  };
+
+  if (!minBudget || !Number.isFinite(minBudget)) {
+    status.isConfirmed = !!budgetAmount;
+    return status;
+  }
+
+  if (!budgetAmount || !Number.isFinite(budgetAmount)) {
+    return status;
+  }
+
+  if (budgetAmount >= minBudget) {
+    status.isConfirmed = true;
+    return status;
+  }
+
+  status.isBelowMinimum = true;
+
+  let warningIndex = -1;
+  conversationHistory.forEach((msg, index) => {
+    if (msg?.role === "assistant" && BUDGET_WARNING_REGEX.test(msg.content || "")) {
+      warningIndex = index;
+    }
+  });
+
+  if (warningIndex < 0) return status;
+
+  for (let i = warningIndex + 1; i < conversationHistory.length; i++) {
+    const msg = conversationHistory[i];
+    if (msg?.role !== "user") continue;
+    const text = msg.content || "";
+    const parsed = parseBudgetFromText(text);
+
+    if (parsed?.amount) {
+      if (parsed.amount >= minBudget) {
+        status.isConfirmed = true;
+        status.updatedBudget = parsed.amount;
+        status.updatedCurrency = parsed.currency;
+        status.isBelowMinimum = false;
+        return status;
+      }
+      if (BUDGET_PROCEED_REGEX.test(text)) {
+        status.isConfirmed = true;
+        status.updatedBudget = parsed.amount;
+        status.updatedCurrency = parsed.currency;
+        return status;
+      }
+    } else if (BUDGET_PROCEED_REGEX.test(text)) {
+      status.isConfirmed = true;
+      return status;
+    }
+  }
+
+  return status;
+};
+
+const findOptionLabelMatch = (options = [], userText = "", question = {}) => {
+  const normalizedUser = normalizeQuestionText(userText);
+  if (!normalizedUser) return null;
+
+  if (/^(none|no|nope|not applicable|n a)$/i.test(normalizedUser)) {
+    const fallback = options.find((option) => {
+      const normalizedLabel = normalizeQuestionText(option.label || "");
+      return normalizedLabel.startsWith("no") || normalizedLabel.includes("no ");
+    });
+    if (fallback?.label) return fallback.label;
+  }
+
+  if (question?.id === "page_count") {
+    if (/[>+]/.test(userText) || /more than|over|above|greater than/i.test(normalizedUser)) {
+      const moreThan = options.find((option) =>
+        /more than|over|above|greater/i.test(
+          normalizeQuestionText(option.label || "")
+        )
+      );
+      if (moreThan?.label) return moreThan.label;
+    }
+  }
+
+  let bestLabel = null;
+  let bestScore = 0;
+  const userTokens = tokensForMatch(normalizedUser);
+
+  for (const option of options) {
+    const label = option?.label;
+    if (!label) continue;
+    const normalizedLabel = normalizeQuestionText(label);
+    if (!normalizedLabel) continue;
+
+    if (
+      normalizedLabel.includes(normalizedUser) ||
+      normalizedUser.includes(normalizedLabel)
+    ) {
+      return label;
+    }
+
+    const optionTokens = tokensForMatch(normalizedLabel);
+    if (!optionTokens.length) continue;
+
+    let hits = 0;
+    for (const token of optionTokens) {
+      if (userTokens.includes(token)) hits += 1;
+    }
+    const score = hits / optionTokens.length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestLabel = label;
+    }
+  }
+
+  return bestScore >= 0.6 ? bestLabel : null;
+};
+
+const resolveOptionAnswer = (question, assistantText, userText, summaryText = "") => {
+  const trimmed = (userText || "").trim();
+  if (!trimmed) return null;
+
+  const options = Array.isArray(question?.options) ? question.options : [];
+  const isMultiSelect = question?.type === "multi_select";
+
+  if (options.length) {
+    if (isMultiSelect) {
+      const { numbers, ambiguous } = parseNumericSelections(trimmed, options.length);
+      const numericLabels = numbers
+        .map((value) => options[value - 1]?.label)
+        .filter(Boolean);
+      const uniqueNumericLabels = Array.from(new Set(numericLabels));
+      if (uniqueNumericLabels.length) {
+        if (!ambiguous || !summaryText) {
+          return uniqueNumericLabels.join(", ");
+        }
+      }
+
+      const labelMatch = findOptionLabelMatch(options, trimmed, question);
+      if (labelMatch) return labelMatch;
+
+      const summaryItems = extractBulletItems(summaryText);
+      const summaryLabels = matchOptionLabelsFromItems(options, summaryItems);
+      if (summaryLabels.length) return summaryLabels.join(", ");
+
+      if (uniqueNumericLabels.length) {
+        return uniqueNumericLabels.join(", ");
+      }
+    } else {
+      const { numbers } = parseNumericSelections(trimmed, options.length);
+      if (numbers.length === 1 && numbers[0] <= options.length) {
+        const label = options[numbers[0] - 1]?.label;
+        if (label) return label;
+      }
+
+      const labelMatch = findOptionLabelMatch(options, trimmed, question);
+      if (labelMatch) return labelMatch;
+    }
+  }
+
+  const optionMatch = trimmed.match(/^(\d+)\.?$/);
+  if (optionMatch) {
+    const optionNum = Number.parseInt(optionMatch[1], 10);
+    const optionRegex = new RegExp(`${optionNum}\\.\\s*([^\\n]+)`, "i");
+    const foundOption = (assistantText || "").match(optionRegex);
+    if (foundOption) return foundOption[1].trim();
+  }
+
+  return trimmed;
+};
+
+const extractQuestionAnswers = (conversationHistory, serviceDefinition) => {
+  if (!Array.isArray(serviceDefinition?.questions)) return [];
+  const answers = [];
+  const usedQuestionIds = new Set();
+
+  for (let i = 0; i < conversationHistory.length - 1; i++) {
+    const msg = conversationHistory[i];
+    const nextMsg = conversationHistory[i + 1];
+
+    if (msg.role !== "assistant" || nextMsg.role !== "user") continue;
+    const assistantText = msg.content || "";
+    const userText = nextMsg.content || "";
+    const summaryText =
+      conversationHistory[i + 2]?.role === "assistant"
+        ? conversationHistory[i + 2].content
+        : "";
+    const assistantQuestion = extractAssistantQuestionLine(assistantText);
+    if (!assistantQuestion) continue;
+
+    const matchedQuestion = findBestQuestionMatch(
+      assistantQuestion,
+      serviceDefinition.questions,
+      usedQuestionIds
+    );
+    if (!matchedQuestion) continue;
+
+    const resolvedAnswer = resolveOptionAnswer(
+      matchedQuestion,
+      assistantText,
+      userText,
+      summaryText
+    );
+    if (resolvedAnswer) {
+      answers.push({
+        id: matchedQuestion.id,
+        label: matchedQuestion.question || "Question",
+        answer: resolvedAnswer
+      });
+      usedQuestionIds.add(matchedQuestion.id);
+    }
+  }
+
+  return answers;
+};
+
+const formatListValue = (items = []) =>
+  items
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean)
+    .join(", ");
+
+const getAnswerByIds = (answers = [], ids = []) => {
+  if (!Array.isArray(answers)) return null;
+  for (const id of ids) {
+    const match = answers.find((item) => item.id === id && item.answer);
+    if (match) return match;
+  }
+  return null;
+};
+
 /**
  * Build comprehensive technical expertise context for CATA
  * This knowledge base allows CATA to provide informed, expert-level recommendations
@@ -252,7 +807,14 @@ The user already chose the service: ${normalizedServiceName}.
 Treat this as confirmed and DO NOT ask which service they want.`
     : "SERVICE CONTEXT: No preselected service.";
   const websiteTypeReference = buildWebsiteTypeReference();
-  const servicesWithQuestions = servicesData.services
+  const selectedService = normalizedServiceName
+    ? getServiceDefinition(normalizedServiceName)
+    : null;
+  const servicesToInclude = selectedService
+    ? [selectedService]
+    : servicesData.services;
+
+  const servicesWithQuestions = servicesToInclude
     .map((service) => {
       const questions = Array.isArray(service.questions)
         ? service.questions
@@ -343,12 +905,28 @@ CONTEXT AWARENESS RULES:
 
 YOUR CONSULTATION PROCESS:
 
-PHASE 0: INTRODUCTION & NAME COLLECTION
-First, you MUST ask for the user's name. If the user provided it, confirm it and ask how you can help.
-CRITICAL: Do NOT proceed to service identification or ask any other questions until you have the user's name.
+PHASE 0: INTRODUCTION & CLIENT INFORMATION COLLECTION
+=====================================================
+You MUST collect the following information in this EXACT order, ONE question at a time:
+
+STEP 1 - NAME: First, ask for the user's name.
+STEP 2 - BUSINESS NAME: After getting the name, ask for their business/company name.
+STEP 3 - ABOUT BUSINESS: After getting the business name, ask them to briefly describe what their business does.
+
+CRITICAL RULES FOR PHASE 0:
+- Ask ONLY ONE question per response.
+- Do NOT skip any step.
+- Do NOT proceed to service identification until you have ALL THREE pieces of information.
+- If they provide multiple pieces of info at once (e.g., "I'm John from ABC Corp"), acknowledge what they gave and ask for the remaining info.
+
+Example flow:
+1. "May I know your name?" → User: "John"
+2. "Nice to meet you, John! What is your business or company name?" → User: "ABC Corp"
+3. "Great! Could you briefly tell me what ABC Corp does?" → User: "We sell organic food products"
+4. NOW proceed to service identification.
 
 PHASE 1: SERVICE IDENTIFICATION (with Context Awareness)
-Once the name is known:
+Once the name, business name, and about business are all collected:
 - Identify which service(s) they need based on their ENTIRE message history.
 - If SERVICE CONTEXT is preselected, acknowledge it and move to requirements. Do NOT ask which service they want.
 - If they already specified any details, acknowledge these and skip related questions.
@@ -384,7 +962,7 @@ QUESTION TRACKING:
 
 EXAMPLES BY SERVICE (FOLLOW EXACT ORDER):
 - SEO Service: Ask ALL 6 questions in order: business_category → target_locations → primary_goal → seo_situation → duration → user_budget
-- Branding Service: Ask ALL 7 questions in order: brand_stage → naming_help → brand_perception → target_audience → primary_usage → timeline → user_budget
+- Branding Service: Ask ALL 9 questions in order: brand_stage → naming_help → brand_perception → target_audience → primary_usage → reference_brands → branding_deliverables → timeline → user_budget
 - Website Service: Ask ALL questions in order: requirement → objective → website_category → design_experience → website_type → [IF platform_based: platform_choice] OR [IF coded: coded_frontend → coded_backend → coded_cms → coded_database → coded_hosting] → page_count → launch_timeline → user_budget
 
 CRITICAL SEQUENCE ENFORCEMENT:
@@ -503,7 +1081,7 @@ CONVERSATION GUIDELINES:
 - Do not use Markdown headings or bold. Avoid lines that start with # (including ##).
 - Track conversation progress internally.
 - ALWAYS acknowledge what you've learned before asking more questions.
-- When enough information is gathered (at least 5 to 7 key questions answered), offer to generate the proposal.
+- Only offer to generate the proposal after all required questions for the chosen service are answered (including budget or pricing level when applicable).
 - Always confirm before generating the final proposal.
 - EVERY response must follow a structured format with labeled lines.
 - Do NOT use the words "Options" or "Option" when listing choices.
@@ -539,11 +1117,15 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
 
   const proposalData = {
     clientName: null,
+    businessName: null,
+    aboutBusiness: null,
     serviceName: selectedServiceName || null, // Use passed service name as default
     projectType: null,
     requirements: [],
     timeline: null,
     budget: null,
+    pricingLevel: null,
+    questionAnswers: [],
     additionalDetails: [],
     phases: [],
     pages: null,
@@ -606,6 +1188,61 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
               console.log(`Context-based name extraction: "${userResponse}" -> ${proposalData.clientName}`);
               break;
             }
+          }
+        }
+      }
+    }
+  }
+
+  // FALLBACK: Context-based business name extraction
+  // Look for when AI asks about business/company name and user responds
+  if (!proposalData.businessName) {
+    for (let i = 0; i < allMessages.length - 1; i++) {
+      const msg = allMessages[i];
+      const nextMsg = allMessages[i + 1];
+
+      // Check if current message is AI asking about business/company name
+      if (msg.role === "assistant" && /business name|company name|name of your business|name of your company|what.*business.*called|what.*company.*called/i.test(msg.content)) {
+        if (nextMsg && nextMsg.role === "user") {
+          const userResponse = nextMsg.content.trim();
+
+          // Accept reasonably short responses that look like business names
+          if (
+            userResponse.length >= 2 &&
+            userResponse.length <= 100 &&
+            !/^(yes|no|ok|sure|fine|hello|hi|hey|okay|yeah|nope|yup)$/i.test(userResponse) &&
+            !userResponse.includes('?')
+          ) {
+            proposalData.businessName = userResponse;
+            console.log(`Context-based business name extraction: "${userResponse}"`);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // FALLBACK: Context-based about business extraction
+  // Look for when AI asks about what the business does and user responds
+  if (!proposalData.aboutBusiness) {
+    for (let i = 0; i < allMessages.length - 1; i++) {
+      const msg = allMessages[i];
+      const nextMsg = allMessages[i + 1];
+
+      // Check if current message is AI asking about what the business does
+      if (msg.role === "assistant" && /what.*business.*do|what does.*do|tell me about.*business|describe.*business|about your business|about your company|what.*company.*do/i.test(msg.content)) {
+        if (nextMsg && nextMsg.role === "user") {
+          const userResponse = nextMsg.content.trim();
+
+          // Accept reasonably descriptive responses
+          if (
+            userResponse.length >= 5 &&
+            userResponse.length <= 500 &&
+            !/^(yes|no|ok|sure|fine|hello|hi|hey|okay|yeah|nope|yup)$/i.test(userResponse)
+          ) {
+            proposalData.aboutBusiness = userResponse;
+            console.log(`Context-based about business extraction: "${userResponse}"`);
+            break;
           }
         }
       }
@@ -731,19 +1368,56 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
     }
   }
 
-  // Extract timeline
-  const timelinePatterns = [
-    /(?:timeline|deadline|complete|launch|deliver|duration)\s*(?:is|of|by|in|within|:)?\s*(\d+[-–]?\d*\s*(?:week|month|day)s?)/gi,
-    /(?:within|in|by|for)\s+(\d+[-–]?\d*\s*(?:week|month)s?)/gi,
-    /(\d+\s*(?:week|month)s?)/gi,
-    /(flexible|asap|urgent|no rush)/gi
-  ];
-  for (const pattern of timelinePatterns) {
-    const match = pattern.exec(userMessages); // STRICT: User must say it
-    if (match) {
-      proposalData.timeline = match[1].trim();
-      break;
+  const latestBudget = extractLatestBudgetFromBudgetQuestions(allMessages);
+  if (latestBudget?.amount) {
+    proposalData.budget = latestBudget.amount;
+    proposalData.currency = latestBudget.currency;
+  }
+
+  // Extract pricing level for services that use budget tiers instead of numeric budgets
+  const pricingLevelFromUser = extractPricingLevel(userMessages);
+  if (pricingLevelFromUser) {
+    proposalData.pricingLevel = pricingLevelFromUser;
+  }
+
+  if (!proposalData.pricingLevel) {
+    for (let i = 0; i < allMessages.length - 1; i++) {
+      const msg = allMessages[i];
+      const nextMsg = allMessages[i + 1];
+
+      if (
+        msg.role === "assistant" &&
+        PRICING_LEVEL_QUESTION_REGEX.test(msg.content)
+      ) {
+        if (nextMsg && nextMsg.role === "user") {
+          const userResponse = nextMsg.content.trim();
+          const directPricing = extractPricingLevel(userResponse, true);
+          if (directPricing) {
+            proposalData.pricingLevel = directPricing;
+            break;
+          }
+
+          const optionMatch = userResponse.match(/^(\d+)\.?$/);
+          if (optionMatch) {
+            const optionNum = parseInt(optionMatch[1]);
+            const optionRegex = new RegExp(`${optionNum}\\.\\s*([^\\n]+)`, "i");
+            const foundOption = msg.content.match(optionRegex);
+            if (foundOption) {
+              const optionText = foundOption[1];
+              const optionPricing = extractPricingLevel(optionText, true);
+              proposalData.pricingLevel = optionPricing || optionText.trim();
+              break;
+            }
+          }
+        }
+      }
     }
+  }
+
+  // Extract timeline
+  const timelineFromUser = extractTimelineValue(userMessages);
+  if (timelineFromUser) {
+    proposalData.timeline = timelineFromUser;
   }
 
   // FALLBACK: Context-based timeline extraction
@@ -753,25 +1427,14 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
       const msg = allMessages[i];
       const nextMsg = allMessages[i + 1];
 
-      // Check if current message is AI asking about timeline
-      if (msg.role === "assistant" && /timeline|when.*launch|deadline|how soon|when.*need|when would you like/i.test(msg.content)) {
+      // Check if current message is AI asking about timeline/duration
+      if (msg.role === "assistant" && TIMELINE_QUESTION_REGEX.test(msg.content)) {
         if (nextMsg && nextMsg.role === "user") {
           const userResponse = nextMsg.content.trim();
 
-          // Check for week/month mentions
-          const timeMatch = userResponse.match(/(\d+[-–]?\d*)\s*(week|month|day)s?/i);
-          if (timeMatch) {
-            proposalData.timeline = timeMatch[0];
-            break;
-          }
-
-          // Check for common timeline phrases
-          if (/asap|urgent|immediately|as soon as possible/i.test(userResponse)) {
-            proposalData.timeline = "ASAP";
-            break;
-          }
-          if (/flexible|no rush|whenever/i.test(userResponse)) {
-            proposalData.timeline = "Flexible";
+          const directTimeline = extractTimelineValue(userResponse);
+          if (directTimeline) {
+            proposalData.timeline = directTimeline;
             break;
           }
 
@@ -781,21 +1444,15 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
             // Look for numbered options in the AI's message
             const optionNum = parseInt(optionMatch[1]);
             const optionsText = msg.content;
-            const optionRegex = new RegExp(`${optionNum}\\.\\s*([^\\n]+)`, 'i');
+            const optionRegex = new RegExp(`${optionNum}\\.\\s*([^\\n]+)`, "i");
             const foundOption = optionsText.match(optionRegex);
             if (foundOption) {
               const optionText = foundOption[1];
-              // Extract timeline from the option text
-              const timeInOption = optionText.match(/(\d+[-–]?\d*\s*(?:week|month|day)s?)/i);
-              if (timeInOption) {
-                proposalData.timeline = timeInOption[1];
-                break;
-              }
-              // Use the whole option text as timeline if it seems relevant
-              if (/week|month|day|asap|urgent|flexible/i.test(optionText)) {
-                proposalData.timeline = optionText.replace(/^\*+|\*+$/g, '').trim();
-                break;
-              }
+              const optionTimeline = extractTimelineValue(optionText);
+              proposalData.timeline =
+                optionTimeline ||
+                optionText.replace(/^\*+|\*+$/g, "").trim();
+              break;
             }
           }
         }
@@ -824,7 +1481,7 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
 
   // Extract pages
   const pagePatterns = [
-    /(\d+[-–]?\d*)\s*pages?/gi,
+    /(\d+(?:\s*[-–—]\s*\d*)?)\s*pages?/gi,
     /(?:approx|around|about)\s*(\d+)\s*pages?/gi,
     /(\d+)\s*to\s*(\d+)\s*pages?/gi
   ];
@@ -881,26 +1538,81 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
     }
   });
 
-  // Calculate collected fields
-  let collectedCount = 0;
-  if (proposalData.clientName) collectedCount++;
-  if (proposalData.serviceName) collectedCount++;
-  if (proposalData.projectType) collectedCount++;
-  if (proposalData.requirements.length > 0) collectedCount++;
-  if (proposalData.timeline) collectedCount++;
-  if (proposalData.budget) collectedCount++;
+  // Calculate collected fields based on the selected service's question set
+  const serviceDefinition = getServiceDefinition(
+    selectedServiceName || proposalData.serviceName || ""
+  );
+  proposalData.questionAnswers = extractQuestionAnswers(
+    conversationHistory,
+    serviceDefinition
+  );
+  if (!proposalData.pricingLevel && Array.isArray(proposalData.questionAnswers)) {
+    const pricingAnswer = proposalData.questionAnswers.find(
+      (item) => item.id === "pricing_level"
+    );
+    if (pricingAnswer?.answer) {
+      proposalData.pricingLevel = pricingAnswer.answer;
+    }
+  }
+  const rawMinBudget = serviceDefinition?.budget?.min_required_amount;
+  const parsedMinBudget = Number.isFinite(rawMinBudget)
+    ? rawMinBudget
+    : Number.parseFloat(rawMinBudget);
+  const minBudget = Number.isFinite(parsedMinBudget) ? parsedMinBudget : null;
+  const budgetStatus = evaluateBudgetStatus(allMessages, proposalData.budget, minBudget);
+  if (budgetStatus.updatedBudget) {
+    proposalData.budget = budgetStatus.updatedBudget;
+    if (budgetStatus.updatedCurrency) {
+      proposalData.currency = budgetStatus.updatedCurrency;
+    }
+  }
+  proposalData.budgetStatus = budgetStatus;
+  const serviceQuestionIds = new Set(
+    Array.isArray(serviceDefinition?.questions)
+      ? serviceDefinition.questions.map((q) => q.id)
+      : []
+  );
+  const hasServiceDefinition = serviceQuestionIds.size > 0;
 
-  // Mark complete when we have the ESSENTIAL fields: name, service, budget, and timeline
-  // Requirements and projectType are optional - they'll get fallback values
-  const hasEssentialFields = !!proposalData.clientName &&
-    !!proposalData.serviceName &&
-    !!proposalData.budget &&
-    !!proposalData.timeline;
+  const requiresBudget = hasServiceDefinition
+    ? serviceQuestionIds.has("user_budget")
+    : true;
+  const requiresPricingLevel = hasServiceDefinition
+    ? serviceQuestionIds.has("pricing_level") && !requiresBudget
+    : false;
+  const requiresTimeline = hasServiceDefinition
+    ? ["timeline", "launch_timeline", "campaign_duration", "duration"].some((id) =>
+      serviceQuestionIds.has(id)
+    )
+    : true;
+
+  const requiredFields = [
+    { key: "clientName", present: !!proposalData.clientName },
+    { key: "serviceName", present: !!proposalData.serviceName },
+    ...(requiresBudget
+      ? [{ key: "budget", present: !!budgetStatus?.isConfirmed }]
+      : []),
+    ...(requiresPricingLevel
+      ? [
+        {
+          key: "pricingLevel",
+          present: !!proposalData.pricingLevel || !!proposalData.budget
+        }
+      ]
+      : []),
+    ...(requiresTimeline
+      ? [{ key: "timeline", present: !!proposalData.timeline }]
+      : [])
+  ];
+
+  const collectedCount = requiredFields.filter((field) => field.present).length;
+  const hasEssentialFields =
+    requiredFields.length > 0 &&
+    requiredFields.every((field) => field.present);
 
   proposalData.progress = {
     collected: collectedCount,
-    total: 6,
-    // Mark complete when essential fields are collected
+    total: requiredFields.length,
     isComplete: hasEssentialFields
   };
 
@@ -912,6 +1624,8 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
   console.log("Requirements:", proposalData.requirements);
   console.log("Timeline:", proposalData.timeline);
   console.log("Budget:", proposalData.budget);
+  console.log("Budget Confirmed:", proposalData.budgetStatus?.isConfirmed);
+  console.log("Pricing Level:", proposalData.pricingLevel);
   console.log("Collected Count:", collectedCount);
   console.log("Is Complete:", proposalData.progress.isComplete);
   console.log("================================================================");
@@ -922,10 +1636,246 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
     namePatternsMatches: namePatterns.map(p => {
       const m = p.exec(userMessages); // Re-exec unfortunately, or capture earlier
       return m ? m[1] : null;
-    })
+    }),
+    budgetStatus: proposalData.budgetStatus
   };
 
   return proposalData;
+};
+
+const buildProjectDetails = (proposalData, serviceDisplayName) => {
+  const details = [];
+  const labelSet = new Set();
+  const answers = Array.isArray(proposalData.questionAnswers)
+    ? proposalData.questionAnswers
+    : [];
+  const usedQuestionIds = new Set();
+  const addDetail = (label, value) => {
+    if (!value) return;
+    const normalizedLabel = label.toLowerCase();
+    if (labelSet.has(normalizedLabel)) return;
+    details.push({ label, value });
+    labelSet.add(normalizedLabel);
+  };
+  const addAnswerDetail = (label, ids) => {
+    const match = getAnswerByIds(answers, ids);
+    if (!match?.answer) return;
+    addDetail(label, match.answer);
+    usedQuestionIds.add(match.id);
+  };
+
+  const currencyCode = proposalData.currency || "INR";
+  const formattedBudget = formatCurrencyValue(
+    proposalData.budget,
+    currencyCode
+  );
+
+  addDetail("Service", serviceDisplayName);
+  const projectTypeAnswer = getAnswerByIds(answers, [
+    "website_category",
+    "project_type",
+    "app_type",
+    "service_type"
+  ]);
+  if (projectTypeAnswer?.answer) {
+    addDetail("Project Type", projectTypeAnswer.answer);
+    usedQuestionIds.add(projectTypeAnswer.id);
+  } else {
+    addDetail("Project Type", proposalData.projectType);
+  }
+  addDetail("Business", proposalData.businessName);
+  addDetail("Business Summary", proposalData.aboutBusiness);
+
+  addAnswerDetail("Website Requirement", ["requirement"]);
+  addAnswerDetail("Primary Objective", ["objective"]);
+  addAnswerDetail("Design Experience", ["design_experience"]);
+  addAnswerDetail("Build Type", ["website_type"]);
+  addAnswerDetail("Frontend Framework", ["coded_frontend"]);
+  addAnswerDetail("Backend Technology", ["coded_backend"]);
+  addAnswerDetail("CMS", ["coded_cms"]);
+  addAnswerDetail("Database", ["coded_database"]);
+  addAnswerDetail("Hosting", ["coded_hosting"]);
+
+  const featureAnswer = getAnswerByIds(answers, [
+    "website_features",
+    "app_features",
+    "features"
+  ]);
+  if (featureAnswer?.answer) {
+    addDetail("Features", featureAnswer.answer);
+    usedQuestionIds.add(featureAnswer.id);
+  } else {
+    const requirementsValue = formatListValue(
+      Array.from(new Set(proposalData.requirements || []))
+    );
+    addDetail("Requirements", requirementsValue);
+  }
+
+  addAnswerDetail("Page Count", ["page_count"]);
+
+  const technologiesValue = formatListValue(
+    Array.from(new Set(proposalData.technologies || []))
+  );
+  addDetail("Technologies", technologiesValue);
+
+  const integrationsValue = formatListValue(
+    Array.from(new Set(proposalData.integrations || []))
+  );
+  addDetail("Integrations", integrationsValue);
+
+  addDetail("Timeline", proposalData.timeline);
+  if (formattedBudget) {
+    addDetail("Budget", `${currencyCode} ${formattedBudget}`);
+  } else {
+    addDetail("Budget Level", proposalData.pricingLevel);
+  }
+
+  const skipQuestionIds = new Set([
+    "user_budget",
+    "pricing_level",
+    "timeline",
+    "launch_timeline",
+    "campaign_duration",
+    "duration",
+    ...usedQuestionIds
+  ]);
+
+  const labelOverrides = {
+    requirement: "Website Requirement",
+    objective: "Primary Objective",
+    website_category: "Website Type",
+    design_experience: "Design Experience",
+    website_type: "Build Type",
+    coded_frontend: "Frontend Framework",
+    coded_backend: "Backend Technology",
+    coded_cms: "CMS",
+    coded_database: "Database",
+    coded_hosting: "Hosting",
+    website_features: "Features",
+    page_count: "Page Count",
+    launch_timeline: "Launch Timeline",
+    campaign_duration: "Campaign Duration",
+    duration: "Duration"
+  };
+
+  answers.forEach((item) => {
+    if (!item?.label || skipQuestionIds.has(item.id)) return;
+    const label = labelOverrides[item.id] || item.label;
+    addDetail(label, item.answer);
+  });
+
+  return details;
+};
+
+const buildObjectiveSummary = (proposalData, serviceDisplayName) => {
+  const currencyCode = proposalData.currency || "INR";
+  const formattedBudget = formatCurrencyValue(
+    proposalData.budget,
+    currencyCode
+  );
+  const answers = Array.isArray(proposalData.questionAnswers)
+    ? proposalData.questionAnswers
+    : [];
+  const summaryParts = [];
+
+  const requirementAnswer = getAnswerByIds(answers, ["requirement"]);
+  const objectiveAnswer = getAnswerByIds(answers, ["objective"]);
+  const typeAnswer = getAnswerByIds(answers, [
+    "website_category",
+    "project_type",
+    "app_type",
+    "service_type"
+  ]);
+  const designAnswer = getAnswerByIds(answers, ["design_experience"]);
+  const buildAnswer = getAnswerByIds(answers, ["website_type"]);
+  const frontendAnswer = getAnswerByIds(answers, ["coded_frontend"]);
+  const backendAnswer = getAnswerByIds(answers, ["coded_backend"]);
+  const cmsAnswer = getAnswerByIds(answers, ["coded_cms"]);
+  const dbAnswer = getAnswerByIds(answers, ["coded_database"]);
+  const hostingAnswer = getAnswerByIds(answers, ["coded_hosting"]);
+  const featureAnswer = getAnswerByIds(answers, [
+    "website_features",
+    "app_features",
+    "features"
+  ]);
+  const pageCountAnswer = getAnswerByIds(answers, ["page_count"]);
+
+  let projectDescriptor =
+    typeAnswer?.answer || proposalData.projectType || `${serviceDisplayName} project`;
+  if (
+    typeAnswer?.answer &&
+    !/website|app|platform|system|service/i.test(typeAnswer.answer) &&
+    /website/i.test(serviceDisplayName)
+  ) {
+    projectDescriptor = `${typeAnswer.answer} website`;
+  }
+
+  let requirementPrefix = "";
+  if (requirementAnswer?.answer) {
+    if (/new/i.test(requirementAnswer.answer)) requirementPrefix = "new";
+    else if (/revamp|rebuild|redesign/i.test(requirementAnswer.answer)) {
+      requirementPrefix = "revamped";
+    } else {
+      requirementPrefix = requirementAnswer.answer.toLowerCase();
+    }
+  }
+
+  const headline = requirementPrefix
+    ? `${requirementPrefix} ${projectDescriptor}`
+    : projectDescriptor;
+  const headlineSuffix = proposalData.businessName
+    ? ` for ${proposalData.businessName}`
+    : "";
+  summaryParts.push(`Deliver a ${headline}${headlineSuffix}`);
+
+  const scopeParts = [];
+  const requirementsValue = featureAnswer?.answer
+    ? featureAnswer.answer
+    : formatListValue(Array.from(new Set(proposalData.requirements || [])));
+  const technologiesValue = formatListValue(
+    Array.from(new Set(proposalData.technologies || []))
+  );
+  const integrationsValue = formatListValue(
+    Array.from(new Set(proposalData.integrations || []))
+  );
+
+  if (objectiveAnswer?.answer) {
+    scopeParts.push(`goal: ${objectiveAnswer.answer}`);
+  }
+  if (requirementsValue) scopeParts.push(`features: ${requirementsValue}`);
+  if (designAnswer?.answer) {
+    scopeParts.push(`design: ${designAnswer.answer}`);
+  }
+  const buildParts = [
+    buildAnswer?.answer,
+    frontendAnswer?.answer,
+    backendAnswer?.answer,
+    cmsAnswer?.answer,
+    dbAnswer?.answer,
+    hostingAnswer?.answer
+  ].filter(Boolean);
+  if (buildParts.length) {
+    scopeParts.push(`build: ${buildParts.join(", ")}`);
+  }
+  const pagesValue = proposalData.pages || pageCountAnswer?.answer;
+  if (pagesValue) scopeParts.push(`pages: ${pagesValue}`);
+  if (technologiesValue) scopeParts.push(`tech: ${technologiesValue}`);
+  if (integrationsValue) scopeParts.push(`integrations: ${integrationsValue}`);
+  if (proposalData.timeline) scopeParts.push(`timeline: ${proposalData.timeline}`);
+  if (formattedBudget) {
+    scopeParts.push(`budget: ${currencyCode} ${formattedBudget}`);
+  } else if (proposalData.pricingLevel) {
+    scopeParts.push(`budget level: ${proposalData.pricingLevel}`);
+  }
+  if (proposalData.aboutBusiness) {
+    scopeParts.push(`business: ${proposalData.aboutBusiness}`);
+  }
+
+  if (scopeParts.length) {
+    summaryParts.push(scopeParts.join(", "));
+  }
+
+  return `${summaryParts.join(". ")}.`;
 };
 
 /**
@@ -1284,15 +2234,21 @@ const generateProposalStructure = (proposalData, serviceName = "") => {
     return names[serviceKey] || serviceName || "Digital Services";
   };
 
+  const serviceDisplayName = getServiceDisplayName();
+  const currencyCode = proposalData.currency || "INR";
+
+  const projectDetails = buildProjectDetails(proposalData, serviceDisplayName);
+  const objectiveSummary = buildObjectiveSummary(proposalData, serviceDisplayName);
+
   return {
-    projectTitle: projectType || `${getServiceDisplayName()} Project`,
+    projectTitle: projectType || `${serviceDisplayName} Project`,
     clientName: clientName || "Valued Client",
-    serviceName: getServiceDisplayName(),
-    objective: `To deliver a professional ${getServiceDisplayName().toLowerCase()} solution tailored to your specific needs and goals.`,
+    serviceName: serviceDisplayName,
+    objective: objectiveSummary,
     phases: phases,
     investmentSummary: investmentSummary,
     totalInvestment: totalCost,
-    currency: proposalData.currency || "INR", // Default to INR if not detected
+    currency: currencyCode, // Default to INR if not detected
     timeline: {
       total: getTotalDuration()
     },
@@ -1300,6 +2256,7 @@ const generateProposalStructure = (proposalData, serviceName = "") => {
     pages: pages || "TBD",
     technologies: technologies,
     integrations: integrations,
+    projectDetails: projectDetails,
     generatedAt: new Date().toISOString(),
     debugInfo: proposalData.debugInfo
   };
