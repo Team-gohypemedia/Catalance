@@ -143,6 +143,11 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
     const CurrencyIcon = getCurrencyIcon(proposal.currency);
     const currencyCode = proposal.currency || "INR";
     const currencySymbol = proposal.currency === "USD" ? "$" : proposal.currency === "EUR" ? "€" : proposal.currency === "GBP" ? "£" : "₹";
+    const projectDetails = Array.isArray(proposal.projectDetails) && proposal.projectDetails.length > 0
+        ? proposal.projectDetails
+        : proposal.pages
+            ? [{ label: "Pages", value: proposal.pages }]
+            : [];
 
     // Inline mode: render as a static container (no positioning, fills parent)
     if (inline) {
@@ -233,13 +238,20 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                             </div>
                         </section>
 
-                        {/* New Details: Pages, Tech, Integrations */}
+                        {/* New Details: Project Details, Tech, Integrations */}
                         <section className="space-y-3">
-                            {/* Pages */}
-                            {proposal.pages && (
+                            {/* Project Details */}
+                            {projectDetails.length > 0 && (
                                 <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                                    <p className="text-[10px] text-muted-foreground mb-1">Number of Pages</p>
-                                    <p className="text-sm font-semibold text-foreground">{proposal.pages}</p>
+                                    <p className="text-[10px] text-muted-foreground mb-2">Project Details</p>
+                                    <div className="space-y-2">
+                                        {projectDetails.map((detail, idx) => (
+                                            <div key={idx} className="space-y-0.5">
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{detail.label}</p>
+                                                <p className="text-xs text-foreground/90 break-words">{detail.value}</p>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 
@@ -455,13 +467,20 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                             </div>
                         </section>
 
-                        {/* New Details: Pages, Tech, Integrations (Sidebar Mode) */}
+                        {/* New Details: Project Details, Tech, Integrations (Sidebar Mode) */}
                         <section className="space-y-4">
-                            {/* Pages */}
-                            {proposal.pages && (
+                            {/* Project Details */}
+                            {projectDetails.length > 0 && (
                                 <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                                    <p className="text-xs text-muted-foreground mb-1">Estimated Pages</p>
-                                    <p className="text-sm font-semibold text-foreground">{proposal.pages}</p>
+                                    <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Project Details</p>
+                                    <div className="space-y-2">
+                                        {projectDetails.map((detail, idx) => (
+                                            <div key={idx} className="space-y-1">
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{detail.label}</p>
+                                                <p className="text-xs text-foreground/90 break-words">{detail.value}</p>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 
