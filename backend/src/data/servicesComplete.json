@@ -122,6 +122,115 @@
                     ]
                 },
                 {
+                    "id": "reference_brands",
+                    "question": "Do you have any reference brands whose style you admire?",
+                    "options": [
+                        {
+                            "value": "yes",
+                            "label": "Yes"
+                        },
+                        {
+                            "value": "no",
+                            "label": "No"
+                        }
+                    ]
+                },
+                {
+                    "id": "branding_deliverables",
+                    "type": "multi_select",
+                    "question": "Which branding deliverables are you looking for? (Select all that apply)",
+                    "options": [
+                        {
+                            "value": "brand_strategy",
+                            "label": "Brand strategy & positioning"
+                        },
+                        {
+                            "value": "brand_vision_mission",
+                            "label": "Brand vision, mission & values"
+                        },
+                        {
+                            "value": "target_audience_persona",
+                            "label": "Target audience & buyer persona"
+                        },
+                        {
+                            "value": "competitor_analysis",
+                            "label": "Competitor & market analysis"
+                        },
+                        {
+                            "value": "brand_tone",
+                            "label": "Brand tone of voice"
+                        },
+                        {
+                            "value": "logo_design",
+                            "label": "Logo design (primary, secondary, icon)"
+                        },
+                        {
+                            "value": "color_palette",
+                            "label": "Color palette"
+                        },
+                        {
+                            "value": "typography_system",
+                            "label": "Typography system"
+                        },
+                        {
+                            "value": "visual_identity",
+                            "label": "Visual identity elements & patterns"
+                        },
+                        {
+                            "value": "iconography",
+                            "label": "Iconography style"
+                        },
+                        {
+                            "value": "image_style",
+                            "label": "Image / illustration style"
+                        },
+                        {
+                            "value": "brand_guidelines",
+                            "label": "Brand guidelines / brand book"
+                        },
+                        {
+                            "value": "business_card",
+                            "label": "Business card design"
+                        },
+                        {
+                            "value": "letterhead_stationery",
+                            "label": "Letterhead & stationery"
+                        },
+                        {
+                            "value": "email_signature",
+                            "label": "Email signature"
+                        },
+                        {
+                            "value": "pitch_deck",
+                            "label": "Pitch deck / presentation template"
+                        },
+                        {
+                            "value": "brochure_flyer",
+                            "label": "Brochure / flyer design"
+                        },
+                        {
+                            "value": "social_profile_cover",
+                            "label": "Social media profile & cover designs"
+                        },
+                        {
+                            "value": "social_post_templates",
+                            "label": "Social media post templates"
+                        },
+                        {
+                            "value": "website_ui_direction",
+                            "label": "Website UI brand direction"
+                        },
+                        {
+                            "value": "brand_messaging",
+                            "label": "Brand messaging & brand story"
+                        },
+                        {
+                            "value": "complete_identity_kit",
+                            "label": "Complete brand identity kit"
+                        }
+                    ]
+                },
+                {
                     "id": "timeline",
                     "question": "What is your preferred timeline for completing the branding work?",
                     "options": [
@@ -827,6 +936,158 @@
                         {
                             "value": "other",
                             "label": "Other (Specify)"
+                        }
+                    ]
+                },
+                {
+                    "id": "website_features",
+                    "type": "multi_select",
+                    "question": "Which features do you want on your website? (Select all that apply)",
+                    "allow_other": true,
+                    "options": [
+                        {
+                            "value": "user_dashboard",
+                            "label": "User dashboard (profile, addresses, settings)"
+                        },
+                        {
+                            "value": "admin_dashboard",
+                            "label": "Admin dashboard (manage products, orders, users)"
+                        },
+                        {
+                            "value": "seller_dashboard",
+                            "label": "Seller dashboard / multi-vendor panel (optional)"
+                        },
+                        {
+                            "value": "signup_login",
+                            "label": "Signup / Login"
+                        },
+                        {
+                            "value": "google_auth",
+                            "label": "Google login (OAuth)"
+                        },
+                        {
+                            "value": "otp_login",
+                            "label": "OTP login (SMS/Email)"
+                        },
+                        {
+                            "value": "email_verification",
+                            "label": "Email verification"
+                        },
+                        {
+                            "value": "forgot_password",
+                            "label": "Forgot password / Reset password"
+                        },
+                        {
+                            "value": "product_catalog",
+                            "label": "Product catalog (categories, filters, sorting)"
+                        },
+                        {
+                            "value": "product_page_pdp",
+                            "label": "Product details page (PDP)"
+                        },
+                        {
+                            "value": "search",
+                            "label": "Search (site-wide)"
+                        },
+                        {
+                            "value": "wishlist",
+                            "label": "Wishlist / Saved items"
+                        },
+                        {
+                            "value": "compare_products",
+                            "label": "Compare products (optional)"
+                        },
+                        {
+                            "value": "add_to_cart",
+                            "label": "Add to cart"
+                        },
+                        {
+                            "value": "cart",
+                            "label": "Cart page"
+                        },
+                        {
+                            "value": "checkout",
+                            "label": "Checkout (address, shipping, payment)"
+                        },
+                        {
+                            "value": "coupon_discounts",
+                            "label": "Coupons / discounts"
+                        },
+                        {
+                            "value": "payment_gateway",
+                            "label": "Online payments (Razorpay/Stripe/PayPal etc.)"
+                        },
+                        {
+                            "value": "cod",
+                            "label": "Cash on delivery (COD)"
+                        },
+                        {
+                            "value": "order_tracking",
+                            "label": "Order tracking"
+                        },
+                        {
+                            "value": "order_history",
+                            "label": "Order history / My orders"
+                        },
+                        {
+                            "value": "returns_refunds",
+                            "label": "Returns & refunds"
+                        },
+                        {
+                            "value": "invoice_download",
+                            "label": "Invoice / PDF download"
+                        },
+                        {
+                            "value": "ratings_reviews",
+                            "label": "Ratings & reviews"
+                        },
+                        {
+                            "value": "live_chat",
+                            "label": "Live chat / WhatsApp chat integration"
+                        },
+                        {
+                            "value": "help_center_faq",
+                            "label": "Help center / FAQ"
+                        },
+                        {
+                            "value": "contact_form",
+                            "label": "Contact form / inquiry form"
+                        },
+                        {
+                            "value": "blog",
+                            "label": "Blog / Articles"
+                        },
+                        {
+                            "value": "newsletter",
+                            "label": "Newsletter signup"
+                        },
+                        {
+                            "value": "seo_basics",
+                            "label": "SEO setup (meta tags, sitemap, robots)"
+                        },
+                        {
+                            "value": "analytics",
+                            "label": "Analytics (GA4 / Pixel tracking)"
+                        },
+                        {
+                            "value": "multi_language",
+                            "label": "Multi-language support"
+                        },
+                        {
+                            "value": "multi_currency",
+                            "label": "Multi-currency support"
+                        },
+                        {
+                            "value": "notifications",
+                            "label": "Email/SMS notifications (orders, signup, updates)"
+                        },
+                        {
+                            "value": "appointment_booking",
+                            "label": "Appointment / booking system (optional)"
+                        },
+                        {
+                            "value": "membership_subscription",
+                            "label": "Membership / subscription plans (optional)"
                         }
                     ]
                 },
