@@ -11,6 +11,7 @@ import UserCheck from "lucide-react/dist/esm/icons/user-check";
 import { useTheme } from "@/components/providers/theme-provider";
 import { CoverflowCarousel } from "@/components/ui/coverflow-carousel";
 import { useNavigate } from "react-router-dom";
+import cardNoise from "@/assets/card-noise.png";
 
 const categories = [
   {
@@ -105,15 +106,26 @@ const ServiceCategoryCards = () => {
             className={`w-full h-full bg-linear-to-br ${cat.gradient} p-6 flex flex-col justify-between relative overflow-hidden group`}
           >
             {/* Abstract Background Pattern */}
-            <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+            <div
+              className="absolute inset-0 opacity-30 mix-blend-overlay bg-cover bg-center"
+              style={{ backgroundImage: `url(${cardNoise})` }}
+            ></div>
 
+            {/* Background Watermark Text */}
+            <div className="absolute top-10 -right-4 pointer-events-none opacity-10 select-none">
+              <span
+                className="text-8xl font-black text-white leading-none tracking-tighter"
+                style={{ writingMode: "vertical-rl" }}
+              >
+                {cat.name}
+              </span>
+            </div>
             {/* Icon in Glass Box */}
             <div className="relative z-10">
               <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-lg">
                 <cat.icon className="w-7 h-7 text-white" strokeWidth={1.5} />
               </div>
             </div>
-
             {/* Text Content at Bottom */}
             <div className="relative z-10 mt-auto">
               <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-md leading-tight">
@@ -126,7 +138,7 @@ const ServiceCategoryCards = () => {
           </div>
         ),
       })),
-    []
+    [],
   );
 
   return (
