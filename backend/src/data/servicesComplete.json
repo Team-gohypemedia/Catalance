@@ -830,41 +830,6 @@
                     ]
                 },
                 {
-                    "id": "coded_cms",
-                    "type": "single_select",
-                    "question": "Do you need a CMS (Content Management System)?",
-                    "show_if": {
-                        "question_id": "website_type",
-                        "equals": "coded"
-                    },
-                    "options": [
-                        {
-                            "value": "none",
-                            "label": "No CMS needed"
-                        },
-                        {
-                            "value": "strapi",
-                            "label": "Strapi (Headless CMS)"
-                        },
-                        {
-                            "value": "sanity",
-                            "label": "Sanity"
-                        },
-                        {
-                            "value": "contentful",
-                            "label": "Contentful"
-                        },
-                        {
-                            "value": "directus",
-                            "label": "Directus"
-                        },
-                        {
-                            "value": "wordpress_headless",
-                            "label": "WordPress (Headless)"
-                        }
-                    ]
-                },
-                {
                     "id": "coded_database",
                     "type": "single_select",
                     "question": "Which database would you prefer?",

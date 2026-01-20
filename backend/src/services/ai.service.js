@@ -359,6 +359,23 @@ const BUDGET_WARNING_REGEX =
   /budget.*below|below.*minimum|required.*minimum|minimum required/i;
 const BUDGET_PROCEED_REGEX =
   /proceed|go ahead|continue|move forward|use current|current budget|same budget|stick with|okay with|fine with|works with|keep it/i;
+const PROPOSAL_CONFIRMATION_QUESTION_REGEX =
+  /ready to (see|view).*proposal|see (your )?personalized proposal|view (your )?personalized proposal|show (me|us) (the )?proposal/i;
+const PROPOSAL_CONFIRMATION_RESPONSE_REGEX =
+  /^(yes|y|yeah|yep|sure|ok|okay|ready|go ahead|proceed|show me|show it|view it|let's do it|sounds good|please do|confirm)\b/i;
+
+const isProposalConfirmed = (conversationHistory = []) => {
+  for (let i = 0; i < conversationHistory.length - 1; i++) {
+    const msg = conversationHistory[i];
+    const nextMsg = conversationHistory[i + 1];
+    if (msg?.role !== "assistant") continue;
+    if (!PROPOSAL_CONFIRMATION_QUESTION_REGEX.test(msg.content || "")) continue;
+    if (nextMsg?.role !== "user") continue;
+    const response = (nextMsg.content || "").trim();
+    if (PROPOSAL_CONFIRMATION_RESPONSE_REGEX.test(response)) return true;
+  }
+  return false;
+};
 
 const extractLatestBudgetFromBudgetQuestions = (conversationHistory = []) => {
   let latest = null;
@@ -963,7 +980,7 @@ QUESTION TRACKING:
 EXAMPLES BY SERVICE (FOLLOW EXACT ORDER):
 - SEO Service: Ask ALL 6 questions in order: business_category → target_locations → primary_goal → seo_situation → duration → user_budget
 - Branding Service: Ask ALL 9 questions in order: brand_stage → naming_help → brand_perception → target_audience → primary_usage → reference_brands → branding_deliverables → timeline → user_budget
-- Website Service: Ask ALL questions in order: requirement → objective → website_category → design_experience → website_type → [IF platform_based: platform_choice] OR [IF coded: coded_frontend → coded_backend → coded_cms → coded_database → coded_hosting] → page_count → launch_timeline → user_budget
+- Website Service: Ask ALL questions in order: requirement → objective → website_category → design_experience → website_type → [IF platform_based: platform_choice] OR [IF coded: coded_frontend → coded_backend → coded_database → coded_hosting] → page_count → launch_timeline → user_budget
 
 CRITICAL SEQUENCE ENFORCEMENT:
 - You MUST go through questions in the EXACT ORDER listed above.
@@ -976,6 +993,7 @@ FORMATTING WHEN ASKING QUESTIONS:
 - Present the question clearly.
 - If the question has options, list them as numbered choices (1., 2., 3.).
 - Keep the question focused and easy to answer.
+- After every question (and its options), add this line on its own: "If you don't see what you need, kindly type it below."
 
 CONDITIONAL QUESTION HANDLING:
 ==============================
@@ -999,6 +1017,7 @@ STRICT PROPOSAL GENERATION RULE:
 2. You have asked ALL non-conditional questions for the service
 3. You have asked ALL conditional questions WHERE the condition was met
 4. The user has answered the budget question
+5. The user has confirmed they are ready to see the proposal
 
 If the user asks for a proposal before all questions are answered, politely explain you need a few more details first and ask the next question.
 
@@ -1024,8 +1043,9 @@ IMPORTANT: DO NOT generate the actual proposal text in the chat. The proposal is
 
 After gathering ALL required information (name, service, requirements, timeline, budget), you should:
 1. Summarize what you've understood from the conversation
-2. Ask if they're ready to see their personalized proposal
-3. Once they confirm, say something like "Great! Your proposal is now ready. You can view it in the proposal panel on the right."
+2. Ask exactly: "Are you ready to see your personalized proposal?"
+3. Do NOT generate the proposal until the user confirms with a clear "yes"
+4. Once they confirm, say something like "Great! Your proposal is now ready. You can view it in the proposal panel on the right."
 
 WHAT NOT TO DO:
 - Do NOT write out "PROJECT PROPOSAL" or similar formatted proposals in the chat
@@ -1567,6 +1587,7 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
     }
   }
   proposalData.budgetStatus = budgetStatus;
+  proposalData.proposalConfirmed = isProposalConfirmed(allMessages);
   const serviceQuestionIds = new Set(
     Array.isArray(serviceDefinition?.questions)
       ? serviceDefinition.questions.map((q) => q.id)
@@ -1602,8 +1623,15 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
       : []),
     ...(requiresTimeline
       ? [{ key: "timeline", present: !!proposalData.timeline }]
-      : [])
+      : []),
+    { key: "proposalConfirmation", present: !!proposalData.proposalConfirmed }
   ];
+  const baseRequiredFields = requiredFields.filter(
+    (field) => field.key !== "proposalConfirmation"
+  );
+  proposalData.readyForConfirmation =
+    baseRequiredFields.length > 0 &&
+    baseRequiredFields.every((field) => field.present);
 
   const collectedCount = requiredFields.filter((field) => field.present).length;
   const hasEssentialFields =
@@ -1626,6 +1654,8 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
   console.log("Budget:", proposalData.budget);
   console.log("Budget Confirmed:", proposalData.budgetStatus?.isConfirmed);
   console.log("Pricing Level:", proposalData.pricingLevel);
+  console.log("Proposal Confirmed:", proposalData.proposalConfirmed);
+  console.log("Ready For Confirmation:", proposalData.readyForConfirmation);
   console.log("Collected Count:", collectedCount);
   console.log("Is Complete:", proposalData.progress.isComplete);
   console.log("================================================================");
@@ -1637,7 +1667,9 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
       const m = p.exec(userMessages); // Re-exec unfortunately, or capture earlier
       return m ? m[1] : null;
     }),
-    budgetStatus: proposalData.budgetStatus
+    budgetStatus: proposalData.budgetStatus,
+    proposalConfirmed: proposalData.proposalConfirmed,
+    readyForConfirmation: proposalData.readyForConfirmation
   };
 
   return proposalData;
@@ -1876,6 +1908,91 @@ const buildObjectiveSummary = (proposalData, serviceDisplayName) => {
   }
 
   return `${summaryParts.join(". ")}.`;
+};
+
+const extractJsonFromText = (text = "") => {
+  if (typeof text !== "string") return null;
+  const fencedMatch =
+    text.match(/```json\s*([\s\S]*?)```/i) ||
+    text.match(/```\s*([\s\S]*?)```/i);
+  const candidate = (fencedMatch ? fencedMatch[1] : text).trim();
+  const firstBrace = candidate.indexOf("{");
+  const lastBrace = candidate.lastIndexOf("}");
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    return null;
+  }
+  const jsonString = candidate.slice(firstBrace, lastBrace + 1);
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    return null;
+  }
+};
+
+const parseNumberValue = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return 0;
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  const parsed = Number.parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizePhases = (phases = []) => {
+  if (!Array.isArray(phases)) return [];
+  return phases.map((phase, index) => {
+    const deliverables = Array.isArray(phase?.deliverables)
+      ? phase.deliverables.filter(Boolean).map((item) => String(item).trim())
+      : [];
+    const value = Array.isArray(phase?.value)
+      ? phase.value.filter(Boolean).map((item) => String(item).trim())
+      : [];
+    return {
+      number:
+        Number.isFinite(phase?.number) && phase.number > 0
+          ? phase.number
+          : index + 1,
+      name: (phase?.name || phase?.title || `Phase ${index + 1}`).toString().trim(),
+      description: (phase?.description || "").toString().trim(),
+      deliverables,
+      value,
+      estimatedCost: parseNumberValue(phase?.estimatedCost ?? phase?.cost),
+      estimatedDuration: (phase?.estimatedDuration || phase?.duration || "")
+        .toString()
+        .trim()
+    };
+  });
+};
+
+const scalePhasesToBudget = (phases = [], budget) => {
+  if (!Array.isArray(phases)) return { phases: [], totalCost: 0 };
+  const safeBudget = Number.isFinite(budget) ? budget : null;
+  let totalCost = phases.reduce(
+    (sum, phase) => sum + (Number.isFinite(phase.estimatedCost) ? phase.estimatedCost : 0),
+    0
+  );
+
+  if (!safeBudget || safeBudget <= 0 || totalCost <= 0) {
+    return { phases, totalCost };
+  }
+
+  const scalingFactor = safeBudget / totalCost;
+  const scaledPhases = phases.map((phase) => ({
+    ...phase,
+    estimatedCost: Math.round((phase.estimatedCost || 0) * scalingFactor)
+  }));
+
+  totalCost = scaledPhases.reduce(
+    (sum, phase) => sum + (Number.isFinite(phase.estimatedCost) ? phase.estimatedCost : 0),
+    0
+  );
+
+  const difference = safeBudget - totalCost;
+  if (difference !== 0 && scaledPhases.length > 0) {
+    scaledPhases[scaledPhases.length - 1].estimatedCost += difference;
+    totalCost = safeBudget;
+  }
+
+  return { phases: scaledPhases, totalCost };
 };
 
 /**
@@ -2262,6 +2379,136 @@ const generateProposalStructure = (proposalData, serviceName = "") => {
   };
 };
 
+const generateProposalWithLLM = async (proposalData, serviceName, apiKey) => {
+  const baseProposal = generateProposalStructure(proposalData, serviceName);
+  const proposalInput = {
+    projectTitle: baseProposal.projectTitle,
+    clientName: baseProposal.clientName,
+    serviceName: baseProposal.serviceName,
+    businessName: proposalData.businessName,
+    aboutBusiness: proposalData.aboutBusiness,
+    objective: baseProposal.objective,
+    projectDetails: baseProposal.projectDetails,
+    requirements: proposalData.requirements,
+    timeline: proposalData.timeline,
+    budget: proposalData.budget,
+    pricingLevel: proposalData.pricingLevel,
+    currency: baseProposal.currency,
+    pages: proposalData.pages || baseProposal.pages,
+    technologies: proposalData.technologies,
+    integrations: proposalData.integrations,
+    phasesBaseline: baseProposal.phases
+  };
+
+  const systemPrompt = [
+    "You are a proposal generator for a digital services agency.",
+    "Return ONLY valid JSON. Do not wrap in markdown. Do not include commentary.",
+    "Use the input data as the source of truth. Do not add details that are not provided.",
+    "If a budget is provided, keep totalInvestment within that amount.",
+    "Schema:",
+    "{",
+    '  "projectTitle": string,',
+    '  "clientName": string,',
+    '  "serviceName": string,',
+    '  "objective": string,',
+    '  "phases": [',
+    "    {",
+    '      "number": number,',
+    '      "name": string,',
+    '      "description": string,',
+    '      "deliverables": string[],',
+    '      "value": string[],',
+    '      "estimatedCost": number,',
+    '      "estimatedDuration": string',
+    "    }",
+    "  ],",
+    '  "investmentSummary": [ { "component": string, "cost": number } ],',
+    '  "totalInvestment": number,',
+    '  "currency": string,',
+    '  "timeline": { "total": string },',
+    '  "features": string[],',
+    '  "pages": string,',
+    '  "technologies": string[],',
+    '  "integrations": string[],',
+    '  "projectDetails": [ { "label": string, "value": string } ]',
+    "}"
+  ].join("\n");
+
+  try {
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": DEFAULT_REFERER,
+        "X-Title": "Catalance AI Assistant"
+      },
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: `Input data:\n${JSON.stringify(proposalInput, null, 2)}`
+          }
+        ],
+        temperature: 0.4,
+        max_tokens: 1800
+      })
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data) {
+      return baseProposal;
+    }
+
+    const raw = data.choices?.[0]?.message?.content || "";
+    const parsed = extractJsonFromText(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return baseProposal;
+    }
+
+    const normalizedPhases = normalizePhases(parsed.phases);
+    const phasesToUse = normalizedPhases.length ? normalizedPhases : baseProposal.phases;
+    const scaled = scalePhasesToBudget(phasesToUse, proposalData.budget);
+    const phaseTotal = scaled.totalCost || phasesToUse.reduce(
+      (sum, phase) => sum + (Number.isFinite(phase.estimatedCost) ? phase.estimatedCost : 0),
+      0
+    );
+
+    let totalInvestment = parseNumberValue(parsed.totalInvestment);
+    if (proposalData.budget && Number.isFinite(proposalData.budget)) {
+      totalInvestment = scaled.totalCost;
+    } else if (!totalInvestment || totalInvestment <= 0) {
+      totalInvestment = phaseTotal;
+    }
+
+    const investmentSummary = [
+      { component: "Total Project Investment", cost: totalInvestment }
+    ];
+
+    const timeline =
+      parsed.timeline && typeof parsed.timeline === "object" && parsed.timeline.total
+        ? { total: String(parsed.timeline.total).trim() }
+        : baseProposal.timeline;
+
+    return {
+      ...baseProposal,
+      projectTitle: parsed.projectTitle || baseProposal.projectTitle,
+      clientName: parsed.clientName || baseProposal.clientName,
+      serviceName: parsed.serviceName || baseProposal.serviceName,
+      phases: scaled.phases,
+      investmentSummary,
+      totalInvestment,
+      timeline,
+      generatedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("LLM proposal generation failed:", error);
+    return baseProposal;
+  }
+};
+
 
 /**
  * Check if AI response contains a proposal
@@ -2353,13 +2600,25 @@ export const chatWithAI = async (
   // Extract proposal data from conversation
   const allHistory = [...formattedHistory, ...formattedMessages];
   const proposalData = extractProposalData(allHistory, content, selectedServiceName);
+  let responseContent = content;
+  if (
+    proposalData.readyForConfirmation &&
+    !proposalData.proposalConfirmed &&
+    !PROPOSAL_CONFIRMATION_QUESTION_REGEX.test(responseContent)
+  ) {
+    responseContent = `${responseContent.trim()}\n\nAre you ready to see your personalized proposal?`;
+  }
 
   // Generate proposal structure when essential fields are collected
   let proposal = null;
   let proposalProgress = proposalData.progress;
 
   if (proposalData.progress.isComplete) {
-    proposal = generateProposalStructure(proposalData, selectedServiceName);
+    proposal = await generateProposalWithLLM(
+      proposalData,
+      selectedServiceName,
+      apiKey
+    );
     proposal.isComplete = true;
   }
 
@@ -2372,7 +2631,7 @@ export const chatWithAI = async (
 
   return {
     success: true,
-    message: stripMarkdownHeadings(content),
+    message: stripMarkdownHeadings(responseContent),
     usage: data.usage || null,
     proposal: proposal,
     proposalProgress: proposalProgress

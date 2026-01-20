@@ -310,37 +310,6 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                             </section>
                         )}
 
-                        {/* Investment Summary (Inline) */}
-                        {proposal.investmentSummary && proposal.investmentSummary.length > 0 && (
-                            <section className="pt-2 border-t border-white/10">
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                                    <CurrencyIcon className="size-3.5" />
-                                    Investment
-                                </h3>
-                                <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-                                    <table className="w-full">
-                                        <tbody>
-                                            {proposal.investmentSummary.map((item, idx) => (
-                                                <tr key={idx} className="border-b border-white/5 last:border-0">
-                                                    <td className="text-xs text-foreground/90 p-2.5">{item.component}</td>
-                                                    <td className="text-xs text-foreground/90 p-2.5 text-right font-medium">
-                                                        {currencySymbol}{formatCurrency(item.cost, currencyCode)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr className="bg-primary/10">
-                                                <td className="text-xs font-bold text-foreground p-2.5">Total</td>
-                                                <td className="text-xs font-bold text-primary p-2.5 text-right">
-                                                    {currencySymbol}{formatCurrency(proposal.totalInvestment, currencyCode)}
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </section>
-                        )}
                     </div>
                 </div>
 
@@ -549,44 +518,6 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                             </section>
                         )}
 
-                        {/* Investment Summary */}
-                        {proposal.investmentSummary && proposal.investmentSummary.length > 0 && (
-                            <section>
-                                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                                    <CurrencyIcon className="size-4" />
-                                    Investment Summary
-                                </h3>
-                                <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="border-b border-white/10">
-                                                <th className="text-left text-xs font-medium text-muted-foreground p-3">Component</th>
-                                                <th className="text-right text-xs font-medium text-muted-foreground p-3">Cost</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {proposal.investmentSummary.map((item, idx) => (
-                                                <tr key={idx} className="border-b border-white/5 last:border-0">
-                                                    <td className="text-sm text-foreground/90 p-3">{item.component}</td>
-                                                    <td className="text-sm text-foreground/90 p-3 text-right">
-                                                        {currencySymbol}{formatCurrency(item.cost, currencyCode)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr className="bg-primary/10">
-                                                <td className="text-sm font-bold text-foreground p-3">Total Investment</td>
-                                                <td className="text-sm font-bold text-primary p-3 text-right">
-                                                    {currencySymbol}{formatCurrency(proposal.totalInvestment, currencyCode)}
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </section>
-                        )}
-
                         {/* Timeline Summary */}
                         {proposal.timeline && (
                             <section>
@@ -615,24 +546,6 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
                             </section>
                         )}
 
-                        {/* Features if extracted */}
-                        {proposal.features && proposal.features.length > 0 && (
-                            <section>
-                                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                                    Identified Requirements
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {proposal.features.map((feature, idx) => (
-                                        <span
-                                            key={idx}
-                                            className="px-2.5 py-1 bg-primary/10 text-primary text-xs rounded-full border border-primary/20 capitalize"
-                                        >
-                                            {feature}
-                                        </span>
-                                    ))}
-                                </div>
-                            </section>
-                        )}
                     </div>
                 </div>
 
