@@ -12,12 +12,10 @@ import Square from "lucide-react/dist/esm/icons/square";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Brain from "lucide-react/dist/esm/icons/brain";
 import Bot from "lucide-react/dist/esm/icons/bot";
-import User from "lucide-react/dist/esm/icons/user";
 import FileText from "lucide-react/dist/esm/icons/file-text";
-import Paperclip from "lucide-react/dist/esm/icons/paperclip";
 import { ProposalSidebar } from "@/components/features/ai/elements/proposal-sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Clock, Mic, X, Sparkles } from "lucide-react";
+import X from "lucide-react/dist/esm/icons/x";
 import { toast } from "sonner";
 
 
@@ -51,7 +49,7 @@ import mammoth from 'mammoth';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, onProposalChange }) {
+function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propServiceName, onProposalChange }) {
   const location = useLocation();
   const serviceName = propServiceName || location.state?.serviceName;
 
@@ -67,10 +65,6 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
       ? [baseHola, "", contextPart + " " + nameQuestion].join("\n")
       : `${baseHola} ${contextPart} ${nameQuestion}`;
   };
-
-  const prefillMessage = typeof prefill === "string" && prefill.length
-    ? prefill
-    : location.state?.prefill || "";
 
   const [messages, setMessages] = useState(() => {
     const initialMsg = { role: "assistant", content: getWelcomeMessage(false) };
@@ -99,11 +93,9 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
 
 
 
-  const [input, setInput] = useState(prefillMessage);
+  const [input, setInput] = useState("");
   const [activeFiles, setActiveFiles] = useState([]);
-  const [interimTranscript, setInterimTranscript] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
   const [services, setServices] = useState([]);
 
   // Load proposal from sessionStorage
@@ -190,10 +182,6 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
     }, 100);
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    setInput(prefillMessage);
-  }, [prefillMessage]);
 
   useEffect(() => {
     fetch(`${API_URL}/services`)
@@ -335,128 +323,6 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
 
   const removeFile = (fileId) => {
     setActiveFiles(prev => prev.filter(f => f.id !== fileId));
-  };
-
-  const toggleListening = () => {
-    // Support both standard and webkit Speech Recognition
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      toast.error("Voice input is not supported in this browser.");
-      return;
-    }
-
-    if (isListening) {
-      console.log("Stopping speech recognition...");
-      window.recognition?.stop();
-      setIsListening(false);
-      setInterimTranscript("");
-      return;
-    }
-
-    const startRecognition = (retryCount = 0) => {
-      console.log(`Starting speech recognition... (attempt ${retryCount + 1})`);
-      const recognition = new SpeechRecognition();
-
-      // Simpler setup - sometimes complex settings cause issues
-      recognition.continuous = false; // Let it auto-stop after silence
-      recognition.interimResults = true;
-      recognition.lang = "en-IN"; // Try English-India first since you're in India
-      recognition.maxAlternatives = 1;
-
-      recognition.onaudiostart = () => {
-        console.log("Audio capture started - microphone is active");
-      };
-
-      recognition.onsoundstart = () => {
-        console.log("Sound detected");
-      };
-
-      recognition.onspeechstart = () => {
-        console.log("Speech detected - please speak");
-      };
-
-      recognition.onstart = () => {
-        console.log("Recognition started");
-        setIsListening(true);
-        setInterimTranscript("");
-        window.recognition = recognition;
-        toast.success("🎤 Listening... Speak now!");
-      };
-
-      recognition.onresult = (event) => {
-        console.log("Got result:", event.results);
-        let interim = '';
-        let final = '';
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          console.log(`Result ${i}: "${transcript}" - isFinal: ${event.results[i].isFinal}`);
-          if (event.results[i].isFinal) {
-            final += transcript;
-          } else {
-            interim += transcript;
-          }
-        }
-
-        // Update interim transcript for real-time display
-        if (interim) {
-          console.log("Interim transcript:", interim);
-          setInterimTranscript(interim);
-        }
-
-        // Append final transcript to input
-        if (final) {
-          console.log("Final transcript:", final);
-          setInput((prev) => (prev ? prev + " " + final : final).trim());
-          setInterimTranscript("");
-        }
-      };
-
-      recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error, event);
-        setInterimTranscript("");
-
-        switch (event.error) {
-          case 'not-allowed':
-            toast.error("🚫 Microphone access denied. Please allow microphone access in your browser settings.");
-            break;
-          case 'no-speech':
-            toast.info("🔇 No speech detected. Try speaking louder or closer to the mic.");
-            // Don't stop listening on no-speech, let it continue
-            return;
-          case 'audio-capture':
-            toast.error("🎤 No microphone found. Please connect a microphone and try again.");
-            break;
-          case 'network':
-            toast.error("🌐 Speech recognition network error. Try Microsoft Edge browser, or check if antivirus/firewall is blocking Google services.", { duration: 6000 });
-            break;
-          case 'aborted':
-            console.log("Speech recognition aborted");
-            break;
-          default:
-            toast.error(`Voice error: ${event.error}`);
-        }
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        console.log("Recognition ended");
-        setIsListening(false);
-        setInterimTranscript("");
-      };
-
-      try {
-        recognition.start();
-      } catch (error) {
-        console.error("Failed to start speech recognition:", error);
-        toast.error("Failed to start voice input. Please try again.");
-        setIsListening(false);
-      }
-    };
-
-    // Call the startRecognition function
-    startRecognition();
   };
 
   const sendMessage = async (messageText, options = {}) => {
@@ -731,18 +597,8 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
 
               <PromptInput
                 onSubmit={handleSubmit}
-                className="relative border border-white/10 rounded-2xl bg-[#1a1a1a] shadow-lg focus-within:ring-1 focus-within:ring-primary/50 transition-all duration-300"
+                className="relative border border-white/10 rounded-2xl bg-[#1a1a1a] shadow-lg focus-within:border-primary transition-all duration-300 overflow-hidden [&>[data-slot=input-group]]:!border-none"
               >
-                {/* Interim transcript display when listening */}
-                {isListening && interimTranscript && (
-                  <div className="px-4 pt-3 pb-1">
-                    <div className="flex items-center gap-2 text-primary/80">
-                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-sm italic">{interimTranscript}</span>
-                    </div>
-                  </div>
-                )}
-
                 <PromptInputTextarea
                   ref={textareaRef}
                   value={input}
@@ -753,7 +609,7 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
                       handleSubmit({ text: input });
                     }
                   }}
-                  placeholder={isListening ? "🎤 Listening..." : "Ask anything"}
+                  placeholder="Ask anything"
                   disabled={isLoading || isProcessingFile}
                   autoFocus
                   className="w-full !bg-transparent !border-none !text-white text-base !px-4 !py-3 !min-h-[50px] !max-h-[200px] resize-none !box-border !break-all !whitespace-pre-wrap !overflow-x-hidden [field-sizing:content] focus:!ring-0 placeholder:!text-white/20 font-light"
@@ -790,16 +646,9 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
 
                   <div className="flex items-center gap-2">
                     <button
-                      type="button"
-                      onClick={toggleListening}
-                      className={`p-2 h-9 w-9 rounded-full flex items-center justify-center transition-colors ${isListening ? "bg-red-500/20 text-red-500 animate-pulse" : "text-white/40 hover:bg-white/5 hover:text-white"}`}
-                    >
-                      <Mic className="size-5" />
-                    </button>
-                    <button
                       type="submit"
                       disabled={(!isLoading && !input.trim() && activeFiles.length === 0) || isProcessingFile}
-                      className="h-9 w-9 shrink-0 rounded-full border-none cursor-pointer flex items-center justify-center bg-white text-black hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-white/5"
+                      className="h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
                     >
                       {isLoading ? (
                         <Square className="size-3.5 fill-current" />
@@ -845,3 +694,4 @@ function AIChat({ prefill = "", embedded = false, serviceName: propServiceName, 
 }
 
 export default AIChat;
+

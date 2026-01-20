@@ -352,7 +352,7 @@ const ClientOnboading = () => {
       </div>
 
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-        <DialogContent className={`${isProposalVisible ? 'w-[70vw]' : 'w-[30vw]'} max-w-none h-[90vh] border-0 bg-transparent p-0 transition-all duration-300`}>
+        <DialogContent className={`${isProposalVisible ? 'w-[1100px]' : 'w-[550px]'} max-w-[95vw] h-[90vh] border-0 bg-transparent p-0 transition-all duration-300`}>
           <DialogTitle className="sr-only">Chat with Catalance</DialogTitle>
           <div className="h-full w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
             <AIChat embedded prefill={chatPrefill} serviceName={selectedServiceTitle} onProposalChange={handleProposalChange} />
