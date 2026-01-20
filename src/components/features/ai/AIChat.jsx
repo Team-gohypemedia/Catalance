@@ -345,7 +345,8 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
         body: JSON.stringify({
           message: text,
           conversationHistory: buildConversationHistory(messages),
-          serviceName
+          serviceName,
+          currentProposal: proposal?.isComplete ? proposal : null
         })
       });
 

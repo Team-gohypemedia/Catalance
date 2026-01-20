@@ -276,6 +276,63 @@ const extractBulletItems = (text = "") => {
     .filter(Boolean);
 };
 
+const splitCommaOutsideParens = (value = "") => {
+  if (typeof value !== "string") return [];
+  const items = [];
+  let current = "";
+  let depth = 0;
+
+  for (const char of value) {
+    if (char === "(") depth += 1;
+    if (char === ")" && depth > 0) depth -= 1;
+
+    if (char === "," && depth === 0) {
+      if (current.trim()) items.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+
+  if (current.trim()) items.push(current.trim());
+  return items;
+};
+
+const splitMultiSelectItems = (text = "") => {
+  if (typeof text !== "string") return [];
+  const bulletItems = extractBulletItems(text);
+  if (bulletItems.length) return bulletItems;
+
+  const normalized = text.replace(/\band\b/gi, ",");
+  const commaItems = splitCommaOutsideParens(normalized);
+  const items = [];
+
+  commaItems.forEach((chunk) => {
+    chunk
+      .split(/[;\/\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .forEach((item) => items.push(item));
+  });
+
+  return items;
+};
+
+const normalizeFeatureList = (value, fallback = []) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return splitCommaOutsideParens(value)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (Array.isArray(fallback)) {
+    return fallback.map((item) => String(item).trim()).filter(Boolean);
+  }
+  return [];
+};
+
 const matchOptionLabelsFromItems = (options = [], items = []) => {
   if (!Array.isArray(options) || !Array.isArray(items)) return [];
   const matched = [];
@@ -306,10 +363,26 @@ const parseNumericSelections = (text = "", optionsLength = 0) => {
   const trimmed = text.trim();
   if (!trimmed) return { numbers: [], ambiguous: false };
 
+  const rangeNumbers = [];
+  const rangeRegex = /(\d+)\s*(?:-|to)\s*(\d+)/gi;
+  let rangeMatch = null;
+  while ((rangeMatch = rangeRegex.exec(trimmed)) !== null) {
+    const start = Number.parseInt(rangeMatch[1], 10);
+    const end = Number.parseInt(rangeMatch[2], 10);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    const min = Math.min(start, end);
+    const max = Math.max(start, end);
+    for (let i = min; i <= max; i += 1) {
+      rangeNumbers.push(i);
+    }
+  }
+
   const digitsOnly = /^[\d\s,.-]+$/.test(trimmed);
   const hasSeparator = /[,\s]/.test(trimmed);
   const numberMatches = trimmed.match(/\d+/g) || [];
-  if (!numberMatches.length) return { numbers: [], ambiguous: false };
+  if (!numberMatches.length && rangeNumbers.length === 0) {
+    return { numbers: [], ambiguous: false };
+  }
 
   let numbers = [];
   let ambiguous = false;
@@ -326,11 +399,16 @@ const parseNumericSelections = (text = "", optionsLength = 0) => {
       .filter((value) => Number.isFinite(value) && value > 0);
   }
 
+  if (rangeNumbers.length) {
+    numbers = numbers.concat(rangeNumbers);
+    ambiguous = false;
+  }
+
   const validNumbers = optionsLength
     ? numbers.filter((value) => value <= optionsLength)
     : numbers;
 
-  return { numbers: validNumbers, ambiguous };
+  return { numbers: Array.from(new Set(validNumbers)), ambiguous };
 };
 
 const parseBudgetFromText = (text = "") => {
@@ -536,6 +614,10 @@ const resolveOptionAnswer = (question, assistantText, userText, summaryText = ""
           return uniqueNumericLabels.join(", ");
         }
       }
+
+      const userItems = splitMultiSelectItems(trimmed);
+      const userLabels = matchOptionLabelsFromItems(options, userItems);
+      if (userLabels.length) return userLabels.join(", ");
 
       const labelMatch = findOptionLabelMatch(options, trimmed, question);
       if (labelMatch) return labelMatch;
@@ -1566,6 +1648,15 @@ const extractProposalData = (conversationHistory, aiResponse, selectedServiceNam
     conversationHistory,
     serviceDefinition
   );
+  const featureAnswer = getAnswerByIds(proposalData.questionAnswers, [
+    "website_features",
+    "app_features",
+    "features"
+  ]);
+  const featureSelections = normalizeFeatureList(featureAnswer?.answer);
+  if (featureSelections.length) {
+    proposalData.requirements = featureSelections;
+  }
   if (!proposalData.pricingLevel && Array.isArray(proposalData.questionAnswers)) {
     const pricingAnswer = proposalData.questionAnswers.find(
       (item) => item.id === "pricing_level"
@@ -2000,6 +2091,15 @@ const scalePhasesToBudget = (phases = [], budget) => {
  */
 const generateProposalStructure = (proposalData, serviceName = "") => {
   const { clientName, projectType, requirements, timeline, budget, pages, technologies, integrations } = proposalData;
+  const answers = Array.isArray(proposalData.questionAnswers)
+    ? proposalData.questionAnswers
+    : [];
+  const featureAnswer = getAnswerByIds(answers, [
+    "website_features",
+    "app_features",
+    "features"
+  ]);
+  const featureList = normalizeFeatureList(featureAnswer?.answer, requirements);
 
   // Normalize the service name for matching
   const normalizedService = (serviceName || proposalData.serviceName || "").toLowerCase();
@@ -2369,7 +2469,7 @@ const generateProposalStructure = (proposalData, serviceName = "") => {
     timeline: {
       total: getTotalDuration()
     },
-    features: requirements,
+    features: featureList,
     pages: pages || "TBD",
     technologies: technologies,
     integrations: integrations,
@@ -2381,6 +2481,15 @@ const generateProposalStructure = (proposalData, serviceName = "") => {
 
 const generateProposalWithLLM = async (proposalData, serviceName, apiKey) => {
   const baseProposal = generateProposalStructure(proposalData, serviceName);
+  const answers = Array.isArray(proposalData.questionAnswers)
+    ? proposalData.questionAnswers
+    : [];
+  const featureAnswer = getAnswerByIds(answers, [
+    "website_features",
+    "app_features",
+    "features"
+  ]);
+  const featureList = normalizeFeatureList(featureAnswer?.answer, proposalData.requirements);
   const proposalInput = {
     projectTitle: baseProposal.projectTitle,
     clientName: baseProposal.clientName,
@@ -2389,7 +2498,7 @@ const generateProposalWithLLM = async (proposalData, serviceName, apiKey) => {
     aboutBusiness: proposalData.aboutBusiness,
     objective: baseProposal.objective,
     projectDetails: baseProposal.projectDetails,
-    requirements: proposalData.requirements,
+    requirements: featureList,
     timeline: proposalData.timeline,
     budget: proposalData.budget,
     pricingLevel: proposalData.pricingLevel,
@@ -2509,6 +2618,264 @@ const generateProposalWithLLM = async (proposalData, serviceName, apiKey) => {
   }
 };
 
+const PROPOSAL_UPDATE_INTENT_REGEX =
+  /\b(change|update|modify|revise|adjust|edit|replace|remove|add|include|exclude|increase|decrease|reduce|expand|shorten|extend|swap|fix)\b/i;
+
+const getLatestUserMessage = (messages = []) => {
+  if (!Array.isArray(messages)) return "";
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg?.role === "user" && msg.content) {
+      return String(msg.content).trim();
+    }
+  }
+  return "";
+};
+
+const getLatestAssistantMessage = (messages = []) => {
+  if (!Array.isArray(messages)) return "";
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg?.role === "assistant" && msg.content) {
+      return String(msg.content).trim();
+    }
+  }
+  return "";
+};
+
+const parseTimelineFromPrompt = (assistantText = "", userText = "") => {
+  const directTimeline = extractTimelineValue(userText);
+  if (directTimeline) return directTimeline;
+
+  const optionMatch = String(userText).trim().match(/^(\d+)\.?$/);
+  if (optionMatch && assistantText) {
+    const optionNum = Number.parseInt(optionMatch[1], 10);
+    const optionRegex = new RegExp(`${optionNum}\\.\\s*([^\\n]+)`, "i");
+    const foundOption = String(assistantText).match(optionRegex);
+    if (foundOption) {
+      const optionText = foundOption[1].trim();
+      return extractTimelineValue(optionText) || optionText;
+    }
+  }
+
+  return null;
+};
+
+const shouldUpdateProposal = (message = "", currentProposal) => {
+  if (!currentProposal || typeof message !== "string") return false;
+  return PROPOSAL_UPDATE_INTENT_REGEX.test(message);
+};
+
+const sanitizeProposalForUpdate = (proposal = {}) => {
+  if (!proposal || typeof proposal !== "object") return null;
+  return {
+    projectTitle: typeof proposal.projectTitle === "string" ? proposal.projectTitle : "",
+    clientName: typeof proposal.clientName === "string" ? proposal.clientName : "",
+    serviceName: typeof proposal.serviceName === "string" ? proposal.serviceName : "",
+    objective: typeof proposal.objective === "string" ? proposal.objective : "",
+    phases: Array.isArray(proposal.phases) ? proposal.phases : [],
+    investmentSummary: Array.isArray(proposal.investmentSummary) ? proposal.investmentSummary : [],
+    totalInvestment: parseNumberValue(proposal.totalInvestment),
+    currency: typeof proposal.currency === "string" ? proposal.currency : "INR",
+    timeline: proposal.timeline && typeof proposal.timeline === "object" ? proposal.timeline : {},
+    features: Array.isArray(proposal.features) ? proposal.features : [],
+    pages: proposal.pages ? String(proposal.pages) : "",
+    technologies: Array.isArray(proposal.technologies) ? proposal.technologies : [],
+    integrations: Array.isArray(proposal.integrations) ? proposal.integrations : [],
+    projectDetails: Array.isArray(proposal.projectDetails) ? proposal.projectDetails : []
+  };
+};
+
+const normalizeTimelineValue = (value, fallback = {}) => {
+  if (!value) return fallback;
+  if (typeof value === "string") {
+    return { ...fallback, total: value.trim() };
+  }
+  if (typeof value === "object") {
+    const merged = { ...fallback, ...value };
+    if (typeof merged.total === "string") {
+      merged.total = merged.total.trim();
+    }
+    return merged;
+  }
+  return fallback;
+};
+
+const upsertProjectDetail = (details = [], label, value) => {
+  if (!label || !value) return Array.isArray(details) ? details : [];
+  const normalizedLabel = normalizeQuestionText(label);
+  const normalizedValue = String(value).trim();
+  if (!normalizedValue) return Array.isArray(details) ? details : [];
+
+  const next = Array.isArray(details)
+    ? details.map((detail) => ({ ...detail }))
+    : [];
+  const index = next.findIndex(
+    (detail) => normalizeQuestionText(detail?.label || "") === normalizedLabel
+  );
+
+  if (index >= 0) {
+    next[index] = { ...next[index], value: normalizedValue };
+    return next;
+  }
+
+  next.push({ label, value: normalizedValue });
+  return next;
+};
+
+const updateProposalTimeline = (currentProposal, timelineValue) => {
+  const baseProposal = sanitizeProposalForUpdate(currentProposal);
+  if (!baseProposal) return null;
+  const timeline = normalizeTimelineValue({ total: timelineValue }, baseProposal.timeline);
+  const projectDetails = upsertProjectDetail(
+    baseProposal.projectDetails,
+    "Timeline",
+    timeline?.total
+  );
+  const objective =
+    typeof baseProposal.objective === "string"
+      ? baseProposal.objective.replace(
+          /timeline:\s*[^,.)]+/i,
+          `timeline: ${timeline?.total}`
+        )
+      : baseProposal.objective;
+  return {
+    ...baseProposal,
+    timeline,
+    projectDetails,
+    objective,
+    generatedAt: new Date().toISOString()
+  };
+};
+
+const updateProposalWithLLM = async (currentProposal, userRequest, apiKey) => {
+  const baseProposal = sanitizeProposalForUpdate(currentProposal);
+  if (!baseProposal) return null;
+
+  const systemPrompt = [
+    "You update an existing proposal JSON for a digital services agency.",
+    "Apply only the user's requested changes and keep all other fields unchanged.",
+    "Return ONLY valid JSON. Do not wrap in markdown. Do not include commentary.",
+    "Keep this schema:",
+    "{",
+    '  "projectTitle": string,',
+    '  "clientName": string,',
+    '  "serviceName": string,',
+    '  "objective": string,',
+    '  "phases": [',
+    "    {",
+    '      "number": number,',
+    '      "name": string,',
+    '      "description": string,',
+    '      "deliverables": string[],',
+    '      "value": string[],',
+    '      "estimatedCost": number,',
+    '      "estimatedDuration": string',
+    "    }",
+    "  ],",
+    '  "investmentSummary": [ { "component": string, "cost": number } ],',
+    '  "totalInvestment": number,',
+    '  "currency": string,',
+    '  "timeline": { "total": string },',
+    '  "features": string[],',
+    '  "pages": string,',
+    '  "technologies": string[],',
+    '  "integrations": string[],',
+    '  "projectDetails": [ { "label": string, "value": string } ]',
+    "}",
+    'If costs change, keep "totalInvestment" consistent with phase totals.',
+    'Set investmentSummary to [{ "component": "Total Project Investment", "cost": totalInvestment }].'
+  ].join("\n");
+
+  try {
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": DEFAULT_REFERER,
+        "X-Title": "Catalance AI Assistant"
+      },
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: `Current proposal:\n${JSON.stringify(baseProposal, null, 2)}\n\nChange request:\n${userRequest}`
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 2000
+      })
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data) {
+      return { ...baseProposal, generatedAt: new Date().toISOString() };
+    }
+
+    const raw = data.choices?.[0]?.message?.content || "";
+    const parsed = extractJsonFromText(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return { ...baseProposal, generatedAt: new Date().toISOString() };
+    }
+
+    const merged = { ...baseProposal, ...parsed };
+    const normalizedPhases = normalizePhases(parsed.phases ?? baseProposal.phases);
+    let phases = normalizedPhases.length ? normalizedPhases : normalizePhases(baseProposal.phases);
+    let phaseTotal = phases.reduce(
+      (sum, phase) => sum + (Number.isFinite(phase.estimatedCost) ? phase.estimatedCost : 0),
+      0
+    );
+
+    let totalInvestment = parseNumberValue(parsed.totalInvestment);
+    if (!totalInvestment || totalInvestment <= 0) {
+      totalInvestment = phaseTotal || baseProposal.totalInvestment || 0;
+    } else if (phaseTotal > 0 && totalInvestment !== phaseTotal) {
+      const scaled = scalePhasesToBudget(phases, totalInvestment);
+      phases = scaled.phases;
+      phaseTotal = scaled.totalCost;
+    }
+
+    const currency =
+      typeof merged.currency === "string" && merged.currency
+        ? merged.currency
+        : baseProposal.currency || "INR";
+    const timeline = normalizeTimelineValue(merged.timeline, baseProposal.timeline);
+    const investmentSummary = [
+      { component: "Total Project Investment", cost: totalInvestment }
+    ];
+    const features = normalizeFeatureList(merged.features, baseProposal.features);
+    let projectDetails = Array.isArray(merged.projectDetails)
+      ? merged.projectDetails
+      : baseProposal.projectDetails;
+    if (timeline?.total) {
+      projectDetails = upsertProjectDetail(projectDetails, "Timeline", timeline.total);
+    }
+    if (features.length) {
+      projectDetails = upsertProjectDetail(projectDetails, "Features", features.join(", "));
+    }
+
+    return {
+      ...baseProposal,
+      ...merged,
+      phases,
+      totalInvestment,
+      investmentSummary,
+      currency,
+      timeline,
+      features,
+      technologies: Array.isArray(merged.technologies) ? merged.technologies : baseProposal.technologies,
+      integrations: Array.isArray(merged.integrations) ? merged.integrations : baseProposal.integrations,
+      projectDetails,
+      generatedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("LLM proposal update failed:", error);
+    return { ...baseProposal, generatedAt: new Date().toISOString() };
+  }
+};
 
 /**
  * Check if AI response contains a proposal
@@ -2528,7 +2895,8 @@ const containsProposal = (content) => {
 export const chatWithAI = async (
   messages,
   conversationHistory = [],
-  selectedServiceName = ""
+  selectedServiceName = "",
+  currentProposal = null
 ) => {
   const apiKey = env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
@@ -2555,6 +2923,47 @@ export const chatWithAI = async (
       content: msg.content
     }))
     : [];
+
+  const latestUserMessage = getLatestUserMessage(formattedMessages);
+  const latestAssistantMessage = getLatestAssistantMessage(formattedHistory);
+  const timelineSelection = currentProposal
+    ? parseTimelineFromPrompt(latestAssistantMessage, latestUserMessage)
+    : null;
+  if (
+    timelineSelection &&
+    (TIMELINE_QUESTION_REGEX.test(latestAssistantMessage) ||
+      /timeline|deadline|duration|weeks|days|months|asap|urgent|flexible/i.test(
+        latestUserMessage
+      ))
+  ) {
+    const updatedProposal = updateProposalTimeline(
+      currentProposal,
+      timelineSelection
+    );
+    if (updatedProposal) {
+      return {
+        success: true,
+        message: `Updated the timeline to ${timelineSelection}.`,
+        proposal: { ...updatedProposal, isComplete: true },
+        proposalProgress: null
+      };
+    }
+  }
+  if (shouldUpdateProposal(latestUserMessage, currentProposal)) {
+    const updatedProposal = await updateProposalWithLLM(
+      currentProposal,
+      latestUserMessage,
+      apiKey
+    );
+    if (updatedProposal) {
+      return {
+        success: true,
+        message: "Updated the proposal based on your request. Let me know if you'd like more changes.",
+        proposal: { ...updatedProposal, isComplete: true },
+        proposalProgress: null
+      };
+    }
+  }
 
   const response = await fetch(OPENROUTER_API_URL, {
     method: "POST",
@@ -2642,4 +3051,5 @@ export const getServiceInfo = (serviceId) =>
   servicesData.services.find((service) => service.id === serviceId);
 
 export const getAllServices = () => servicesData.services;
+
 

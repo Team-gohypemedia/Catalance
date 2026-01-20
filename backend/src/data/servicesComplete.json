@@ -776,6 +776,26 @@
                             "label": "SvelteKit"
                         },
                         {
+                            "value": "remix",
+                            "label": "Remix (React)"
+                        },
+                        {
+                            "value": "gatsby",
+                            "label": "Gatsby (React)"
+                        },
+                        {
+                            "value": "astro",
+                            "label": "Astro"
+                        },
+                        {
+                            "value": "qwik",
+                            "label": "Qwik"
+                        },
+                        {
+                            "value": "solidjs",
+                            "label": "SolidJS"
+                        },
+                        {
                             "value": "html_css_js",
                             "label": "HTML/CSS/JS (Custom)"
                         }
@@ -824,6 +844,26 @@
                             "label": "Spring Boot (Java)"
                         },
                         {
+                            "value": "node_fastify",
+                            "label": "Node.js (Fastify)"
+                        },
+                        {
+                            "value": "go_gin",
+                            "label": "Go (Gin)"
+                        },
+                        {
+                            "value": "phoenix",
+                            "label": "Phoenix (Elixir)"
+                        },
+                        {
+                            "value": "rust_actix",
+                            "label": "Rust (Actix)"
+                        },
+                        {
+                            "value": "serverless",
+                            "label": "Serverless Functions"
+                        },
+                        {
                             "value": "no_custom_backend",
                             "label": "No custom backend (Frontend + APIs only)"
                         }
@@ -857,6 +897,26 @@
                         {
                             "value": "supabase",
                             "label": "Supabase"
+                        },
+                        {
+                            "value": "sqlite",
+                            "label": "SQLite"
+                        },
+                        {
+                            "value": "mariadb",
+                            "label": "MariaDB"
+                        },
+                        {
+                            "value": "redis",
+                            "label": "Redis"
+                        },
+                        {
+                            "value": "dynamodb",
+                            "label": "DynamoDB"
+                        },
+                        {
+                            "value": "cockroachdb",
+                            "label": "CockroachDB"
                         },
                         {
                             "value": "none",
@@ -897,6 +957,34 @@
                         {
                             "value": "shared_hosting",
                             "label": "Shared Hosting / cPanel"
+                        },
+                        {
+                            "value": "render",
+                            "label": "Render"
+                        },
+                        {
+                            "value": "fly",
+                            "label": "Fly.io"
+                        },
+                        {
+                            "value": "railway",
+                            "label": "Railway"
+                        },
+                        {
+                            "value": "heroku",
+                            "label": "Heroku"
+                        },
+                        {
+                            "value": "gcp",
+                            "label": "Google Cloud"
+                        },
+                        {
+                            "value": "azure",
+                            "label": "Azure"
+                        },
+                        {
+                            "value": "cloudflare_pages",
+                            "label": "Cloudflare Pages"
                         },
                         {
                             "value": "other",

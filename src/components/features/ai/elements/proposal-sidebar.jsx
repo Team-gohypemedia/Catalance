@@ -240,20 +240,95 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
 
                         {/* New Details: Project Details, Tech, Integrations */}
                         <section className="space-y-3">
-                            {/* Project Details */}
-                            {projectDetails.length > 0 && (
-                                <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                                    <p className="text-[10px] text-muted-foreground mb-2">Project Details</p>
-                                    <div className="space-y-2">
-                                        {projectDetails.map((detail, idx) => (
-                                            <div key={idx} className="space-y-0.5">
-                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{detail.label}</p>
-                                                <p className="text-xs text-foreground/90 break-words">{detail.value}</p>
+                            {/* Project Details - Enhanced */}
+                            {projectDetails.length > 0 && (() => {
+                                // Group details by category (Budget excluded from scope)
+                                const overviewFields = ['Service', 'Project Type', 'Business', 'Website Requirement', 'Primary Objective'];
+                                const techFields = ['Frontend Framework', 'Backend Technology', 'Database', 'Hosting', 'Build Type'];
+                                const scopeFields = ['Design Experience', 'Features', 'Page Count', 'Timeline'];
+                                const excludeFields = ['Budget']; // Excluded fields
+
+                                const groupDetails = (fields) => projectDetails.filter(d => fields.includes(d.label));
+                                const overview = groupDetails(overviewFields);
+                                const tech = groupDetails(techFields);
+                                const scope = groupDetails(scopeFields);
+                                const other = projectDetails.filter(d =>
+                                    !overviewFields.includes(d.label) &&
+                                    !techFields.includes(d.label) &&
+                                    !scopeFields.includes(d.label) &&
+                                    !excludeFields.includes(d.label)
+                                );
+
+                                return (
+                                    <div className="space-y-2.5">
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                                            <FileText className="size-3" />
+                                            Project Details
+                                        </p>
+
+                                        {/* Overview */}
+                                        {overview.length > 0 && (
+                                            <div className="rounded-lg p-3 bg-white/5 border border-white/10">
+                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                                    {overview.map((detail, idx) => (
+                                                        <div key={idx} className={detail.value?.length > 35 ? 'col-span-2' : ''}>
+                                                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">{detail.label}</p>
+                                                            <p className="text-xs text-foreground font-medium mt-0.5">{detail.value}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        ))}
+                                        )}
+
+                                        {/* Tech Stack - Improved */}
+                                        {tech.length > 0 && (
+                                            <div className="rounded-lg p-3 bg-white/5 border border-white/10">
+                                                <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-2.5">Tech Stack</p>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {tech.map((detail, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 px-2.5 py-1.5 bg-zinc-800/50 rounded-md">
+                                                            <span className="text-[9px] text-muted-foreground/50 uppercase shrink-0">{detail.label.replace(' Framework', '').replace(' Technology', '')}</span>
+                                                            <span className="text-[11px] text-foreground font-medium truncate">{detail.value}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Scope & Preferences */}
+                                        {scope.length > 0 && (
+                                            <div className="rounded-lg p-3 bg-white/5 border border-white/10">
+                                                <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-2">Scope & Preferences</p>
+                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                                    {scope.map((detail, idx) => {
+                                                        const isLong = detail.value?.length > 35;
+                                                        return (
+                                                            <div key={idx} className={isLong ? 'col-span-2' : ''}>
+                                                                <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">{detail.label}</p>
+                                                                <p className="text-xs text-foreground font-medium mt-0.5">{detail.value}</p>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Other */}
+                                        {other.length > 0 && (
+                                            <div className="rounded-lg p-3 bg-white/5 border border-white/10">
+                                                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                                    {other.map((detail, idx) => (
+                                                        <div key={idx} className={detail.value?.length > 35 ? 'col-span-2' : ''}>
+                                                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">{detail.label}</p>
+                                                            <p className="text-xs text-foreground font-medium mt-0.5">{detail.value}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
                             {/* Technologies */}
                             {proposal.technologies && proposal.technologies.length > 0 && (
@@ -438,20 +513,94 @@ export function ProposalSidebar({ proposal, isOpen, onClose, progress, embedded 
 
                         {/* New Details: Project Details, Tech, Integrations (Sidebar Mode) */}
                         <section className="space-y-4">
-                            {/* Project Details */}
-                            {projectDetails.length > 0 && (
-                                <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                                    <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider font-semibold">Project Details</p>
-                                    <div className="space-y-2">
-                                        {projectDetails.map((detail, idx) => (
-                                            <div key={idx} className="space-y-1">
-                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{detail.label}</p>
-                                                <p className="text-xs text-foreground/90 break-words">{detail.value}</p>
+                            {/* Project Details - Enhanced */}
+                            {projectDetails.length > 0 && (() => {
+                                const overviewFields = ['Service', 'Project Type', 'Business', 'Website Requirement', 'Primary Objective'];
+                                const techFields = ['Frontend Framework', 'Backend Technology', 'Database', 'Hosting', 'Build Type'];
+                                const scopeFields = ['Design Experience', 'Features', 'Page Count', 'Timeline'];
+                                const excludeFields = ['Budget'];
+
+                                const groupDetails = (fields) => projectDetails.filter(d => fields.includes(d.label));
+                                const overview = groupDetails(overviewFields);
+                                const tech = groupDetails(techFields);
+                                const scope = groupDetails(scopeFields);
+                                const other = projectDetails.filter(d =>
+                                    !overviewFields.includes(d.label) &&
+                                    !techFields.includes(d.label) &&
+                                    !scopeFields.includes(d.label) &&
+                                    !excludeFields.includes(d.label)
+                                );
+
+                                return (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-2">
+                                            <FileText className="size-3.5" />
+                                            Project Details
+                                        </p>
+
+                                        {/* Overview */}
+                                        {overview.length > 0 && (
+                                            <div className="rounded-xl p-4 bg-white/5 border border-white/10">
+                                                <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+                                                    {overview.map((detail, idx) => (
+                                                        <div key={idx} className={detail.value?.length > 35 ? 'col-span-2' : ''}>
+                                                            <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{detail.label}</p>
+                                                            <p className="text-sm text-foreground font-medium mt-0.5">{detail.value}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        ))}
+                                        )}
+
+                                        {/* Tech Stack - Improved Grid */}
+                                        {tech.length > 0 && (
+                                            <div className="rounded-xl p-4 bg-white/5 border border-white/10">
+                                                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mb-3">Tech Stack</p>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {tech.map((detail, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 rounded-lg">
+                                                            <span className="text-[9px] text-muted-foreground/50 uppercase shrink-0">{detail.label.replace(' Framework', '').replace(' Technology', '')}</span>
+                                                            <span className="text-xs text-foreground font-medium truncate">{detail.value}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Scope & Preferences */}
+                                        {scope.length > 0 && (
+                                            <div className="rounded-xl p-4 bg-white/5 border border-white/10">
+                                                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mb-3">Scope & Preferences</p>
+                                                <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+                                                    {scope.map((detail, idx) => {
+                                                        const isLong = detail.value?.length > 35;
+                                                        return (
+                                                            <div key={idx} className={isLong ? 'col-span-2' : ''}>
+                                                                <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{detail.label}</p>
+                                                                <p className="text-sm text-foreground font-medium mt-0.5">{detail.value}</p>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Other */}
+                                        {other.length > 0 && (
+                                            <div className="rounded-xl p-4 bg-white/5 border border-white/10">
+                                                <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+                                                    {other.map((detail, idx) => (
+                                                        <div key={idx} className={detail.value?.length > 35 ? 'col-span-2' : ''}>
+                                                            <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{detail.label}</p>
+                                                            <p className="text-sm text-foreground font-medium mt-0.5">{detail.value}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
 
                             {/* Technologies */}
                             {proposal.technologies && proposal.technologies.length > 0 && (
