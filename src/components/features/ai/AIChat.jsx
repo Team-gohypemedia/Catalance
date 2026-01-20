@@ -25,6 +25,15 @@ const API_URL = `${API_ROOT}/ai`;
 const PROPOSAL_CONTEXT_KEY = "proposal_context";
 const CHAT_HISTORY_KEY = "chat_history";
 
+const toStorageKeyPart = (value) => {
+  if (typeof value !== "string") return "general";
+  const normalized = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "general";
+};
+
 const sanitizeAssistantContent = (content = "") => {
   if (typeof content !== "string") return "";
   return content
@@ -363,6 +372,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propServiceName, onProposalChange }) {
   const location = useLocation();
   const serviceName = propServiceName || location.state?.serviceName;
+  const serviceKey = toStorageKeyPart(serviceName);
+  const chatHistoryKey = `${CHAT_HISTORY_KEY}:${serviceKey}`;
+  const proposalContextKey = `${PROPOSAL_CONTEXT_KEY}:${serviceKey}`;
 
   const getWelcomeMessage = (isNewChat = false) => {
     const baseHola = "Hello! I am CATA, your assistant.";
@@ -382,7 +394,7 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
     if (typeof window === "undefined") return [initialMsg];
 
     try {
-      const saved = getStoredJson(CHAT_HISTORY_KEY, null);
+      const saved = getStoredJson(chatHistoryKey, null);
       return Array.isArray(saved) && saved.length > 0 ? saved : [initialMsg];
     } catch (e) {
       console.error("Failed to load chat history:", e);
@@ -392,8 +404,8 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
 
   // Persist chat history to localStorage
   useEffect(() => {
-    setStoredJson(CHAT_HISTORY_KEY, buildConversationHistory(messages));
-  }, [messages]);
+    setStoredJson(chatHistoryKey, buildConversationHistory(messages));
+  }, [messages, chatHistoryKey]);
 
   const [input, setInput] = useState("");
   const [activeFiles, setActiveFiles] = useState([]);
@@ -403,7 +415,7 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
   const [proposal, setProposal] = useState("");
   const [proposalContext, setProposalContext] = useState(() => {
     const emptyContext = createEmptyProposalContext(serviceName);
-    const saved = getStoredJson(PROPOSAL_CONTEXT_KEY, null);
+    const saved = getStoredJson(proposalContextKey, null);
     return saved ? mergeProposalContext(emptyContext, saved) : emptyContext;
   });
 
@@ -439,8 +451,28 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
 
   useEffect(() => {
     proposalContextRef.current = proposalContext;
-    setStoredJson(PROPOSAL_CONTEXT_KEY, proposalContext);
-  }, [proposalContext]);
+    setStoredJson(proposalContextKey, proposalContext);
+  }, [proposalContext, proposalContextKey]);
+
+  useEffect(() => {
+    const emptyContext = createEmptyProposalContext(serviceName);
+    const savedContext = getStoredJson(proposalContextKey, null);
+    const nextContext = savedContext
+      ? mergeProposalContext(emptyContext, savedContext)
+      : emptyContext;
+    proposalContextRef.current = nextContext;
+    setProposalContext(nextContext);
+
+    const savedHistory = getStoredJson(chatHistoryKey, null);
+    if (Array.isArray(savedHistory) && savedHistory.length > 0) {
+      setMessages(savedHistory);
+    } else {
+      setMessages([{ role: "assistant", content: getWelcomeMessage(true) }]);
+    }
+
+    setProposal("");
+    setShowProposal(false);
+  }, [chatHistoryKey, proposalContextKey, serviceName]);
 
   useEffect(() => {
     if (!serviceName) return;
@@ -627,10 +659,10 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
       });
       nextContext = mergeProposalContext(proposalContextRef.current, contextUpdate);
       setProposalContext(nextContext);
-      setStoredJson(PROPOSAL_CONTEXT_KEY, nextContext);
+      setStoredJson(proposalContextKey, nextContext);
 
       nextHistory = [...buildConversationHistory(messages), userMessage];
-      setStoredJson(CHAT_HISTORY_KEY, nextHistory);
+      setStoredJson(chatHistoryKey, nextHistory);
     }
 
     const shouldGenerateProposal =
@@ -640,8 +672,8 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
 
     if (shouldGenerateProposal) {
       try {
-        const storedContext = getStoredJson(PROPOSAL_CONTEXT_KEY, nextContext);
-        const storedHistory = getStoredJson(CHAT_HISTORY_KEY, nextHistory);
+        const storedContext = getStoredJson(proposalContextKey, nextContext);
+        const storedHistory = getStoredJson(chatHistoryKey, nextHistory);
 
         if (!hasProposalContext(storedContext) || storedHistory.length === 0) {
           setMessages((prev) => [
@@ -786,8 +818,8 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
     }
 
     if (typeof window !== "undefined") {
-      localStorage.removeItem(PROPOSAL_CONTEXT_KEY);
-      localStorage.removeItem(CHAT_HISTORY_KEY);
+      localStorage.removeItem(proposalContextKey);
+      localStorage.removeItem(chatHistoryKey);
     }
   };
 
