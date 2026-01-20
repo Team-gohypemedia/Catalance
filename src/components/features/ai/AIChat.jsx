@@ -22,6 +22,8 @@ import { toast } from "sonner";
 const DEFAULT_API_BASE = "http://localhost:5000/api";
 const API_ROOT = API_BASE_URL || DEFAULT_API_BASE;
 const API_URL = `${API_ROOT}/ai`;
+const PROPOSAL_CONTEXT_KEY = "proposal_context";
+const CHAT_HISTORY_KEY = "chat_history";
 
 const sanitizeAssistantContent = (content = "") => {
   if (typeof content !== "string") return "";
@@ -37,6 +39,315 @@ const buildConversationHistory = (history) =>
   history
     .filter((msg) => msg && msg.content && !msg.isError)
     .map(({ role, content }) => ({ role, content }));
+
+const getStoredJson = (key, fallback) => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (error) {
+    console.error(`Failed to read ${key}:`, error);
+    return fallback;
+  }
+};
+
+const setStoredJson = (key, value) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Failed to write ${key}:`, error);
+  }
+};
+
+const createEmptyProposalContext = (serviceName = "") => ({
+  clientName: "",
+  companyName: "",
+  companyBackground: "",
+  requirements: [],
+  scope: {
+    features: [],
+    deliverables: []
+  },
+  timeline: "",
+  budget: "",
+  constraints: [],
+  preferences: [],
+  contactInfo: {
+    email: "",
+    phone: ""
+  },
+  notes: "",
+  serviceName: serviceName || ""
+});
+
+const normalizeList = (items) =>
+  Array.isArray(items)
+    ? items
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean)
+    : [];
+
+const mergeLists = (baseList, nextList) => {
+  const base = normalizeList(baseList);
+  const next = normalizeList(nextList);
+  const seen = new Set(base.map((item) => item.toLowerCase()));
+  const merged = [...base];
+  next.forEach((item) => {
+    const key = item.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(item);
+    }
+  });
+  return merged;
+};
+
+const mergeText = (base, next) => {
+  const normalized = typeof next === "string" ? next.trim() : "";
+  return normalized ? normalized : base;
+};
+
+const mergeProposalContext = (baseContext, update) => {
+  const base = baseContext || createEmptyProposalContext();
+  const next = update || {};
+
+  return {
+    ...base,
+    clientName: mergeText(base.clientName, next.clientName),
+    companyName: mergeText(base.companyName, next.companyName),
+    companyBackground: mergeText(base.companyBackground, next.companyBackground),
+    requirements: mergeLists(base.requirements, next.requirements),
+    timeline: mergeText(base.timeline, next.timeline),
+    budget: mergeText(base.budget, next.budget),
+    constraints: mergeLists(base.constraints, next.constraints),
+    preferences: mergeLists(base.preferences, next.preferences),
+    notes: mergeText(base.notes, next.notes),
+    serviceName: mergeText(base.serviceName, next.serviceName),
+    scope: {
+      features: mergeLists(base.scope?.features, next.scope?.features),
+      deliverables: mergeLists(base.scope?.deliverables, next.scope?.deliverables)
+    },
+    contactInfo: {
+      email: mergeText(base.contactInfo?.email, next.contactInfo?.email),
+      phone: mergeText(base.contactInfo?.phone, next.contactInfo?.phone)
+    }
+  };
+};
+
+const getLastAssistantMessage = (history) => {
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const msg = history[i];
+    if (msg?.role === "assistant" && msg?.content) {
+      return msg.content;
+    }
+  }
+  return "";
+};
+
+const parseNumberedOptions = (assistantText = "") => {
+  const options = new Map();
+  assistantText.split("\n").forEach((line) => {
+    const match = line.match(/^\s*(\d+)[.)]\s*(.+)$/);
+    if (match) {
+      options.set(Number(match[1]), match[2].trim());
+    }
+  });
+  return options;
+};
+
+const parseSelectionsFromText = (text, options) => {
+  const selections = new Set();
+  const numbers = text.match(/\d+/g) || [];
+  numbers.forEach((value) => {
+    const option = options.get(Number(value));
+    if (option) selections.add(option);
+  });
+
+  if (options.size > 0) {
+    const lowered = text.toLowerCase();
+    options.forEach((option) => {
+      if (lowered.includes(option.toLowerCase())) {
+        selections.add(option);
+      }
+    });
+  }
+
+  return Array.from(selections);
+};
+
+const extractListItems = (text) => {
+  const lines = text.split("\n").map((line) => line.trim());
+  const bullets = lines
+    .map((line) => line.match(/^[-*]\s+(.*)$/))
+    .filter(Boolean)
+    .map((match) => match[1].trim())
+    .filter(Boolean);
+  return bullets;
+};
+
+const extractCommaList = (text) => {
+  if (!text.includes(",")) return [];
+  const items = text
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return items.length > 1 ? items : [];
+};
+
+const extractTimeline = (text) => {
+  const match = text.match(/\b\d+\s*(?:-\s*\d+\s*)?(?:day|week|month|hour|year)s?\b/i);
+  if (match) return match[0].replace(/\s+/g, " ").trim();
+  if (/asap|urgent|immediately/i.test(text)) return "ASAP";
+  if (/flexible|no rush|whenever/i.test(text)) return "Flexible";
+  return "";
+};
+
+const extractEmail = (text) => {
+  const match = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match ? match[0] : "";
+};
+
+const extractPhone = (text) => {
+  const match = text.match(/\+?\d[\d\s()-]{6,}\d/);
+  return match ? match[0].trim() : "";
+};
+
+const extractPreferenceStatements = (text) => {
+  const statements = text
+    .split(/[.!?]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const preferences = statements.filter((statement) =>
+    /\bprefer|would like|nice to have|should\b/i.test(statement)
+  );
+  const constraints = statements.filter((statement) =>
+    /\bmust|must not|avoid|don't|do not|cannot|can't|no\b/i.test(statement)
+  );
+
+  return { preferences, constraints };
+};
+
+const isProposalConfirmation = (text, assistantText) => {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  const explicitRequestPatterns = [
+    /\b(generate|create|make|build|draft|update|revise|edit|regenerate)\b.*\bproposal\b/i,
+    /\bproposal\b.*\b(generate|create|make|build|draft|update|revise|edit|regenerate)\b/i,
+    /\bgo ahead\b/i,
+    /\bready\b.*\bproposal\b/i
+  ];
+
+  if (explicitRequestPatterns.some((pattern) => pattern.test(trimmed))) {
+    return true;
+  }
+
+  const simpleYes = /^(yes|y|yeah|yep|sure|ok|okay|ready|proceed)\b/i.test(trimmed);
+  const prompted = /ready to (see|view|generate).*proposal|generate (your )?proposal|proposal ready/i.test(
+    assistantText || ""
+  );
+
+  return simpleYes && prompted;
+};
+
+const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
+  const update = {};
+  const trimmed = userText.trim();
+  if (!trimmed) return update;
+
+  if (serviceName) {
+    update.serviceName = serviceName;
+  }
+
+  const assistantLower = (assistantText || "").toLowerCase();
+  const options = parseNumberedOptions(assistantText || "");
+  const selections = parseSelectionsFromText(trimmed, options);
+  const listItems = extractListItems(trimmed);
+  const commaItems = extractCommaList(trimmed);
+  const combinedItems = listItems.length ? listItems : commaItems;
+
+  if (/name\?/i.test(assistantLower) && !/business|company/i.test(assistantLower)) {
+    update.clientName = trimmed;
+  } else if (/business|company name/i.test(assistantLower)) {
+    update.companyName = trimmed;
+  } else if (/what.*business|describe.*business|about your business|tell me.*business/i.test(assistantLower)) {
+    update.companyBackground = trimmed;
+  }
+
+  if (/features|functionality|functionalities|modules|scope/i.test(assistantLower)) {
+    const features = selections.length ? selections : combinedItems;
+    if (features.length) {
+      update.scope = { features };
+    }
+  }
+
+  if (!update.scope?.features?.length && /features|include|need|requirements/i.test(trimmed)) {
+    const features = listItems.length ? listItems : commaItems.length ? commaItems : selections;
+    if (features.length) {
+      update.scope = { features };
+    }
+  }
+
+  if (/deliverables?/i.test(assistantLower)) {
+    const deliverables = selections.length ? selections : combinedItems;
+    if (deliverables.length) {
+      update.scope = { ...(update.scope || {}), deliverables };
+    }
+  }
+
+  if (/timeline|deadline|launch|delivery|duration|how soon/i.test(assistantLower) || /timeline|deadline|launch/i.test(trimmed)) {
+    update.timeline = extractTimeline(trimmed) || trimmed;
+  }
+
+  if (/budget|investment|cost|price/i.test(assistantLower) || /budget|cost|price/i.test(trimmed)) {
+    update.budget = trimmed;
+  }
+
+  if (/need|looking for|require|goal|objective|pain|problem/i.test(trimmed) && !update.scope?.features?.length) {
+    const requirements = combinedItems.length ? combinedItems : [trimmed];
+    update.requirements = requirements;
+  }
+
+  const { preferences, constraints } = extractPreferenceStatements(trimmed);
+  if (preferences.length) update.preferences = preferences;
+  if (constraints.length) update.constraints = constraints;
+
+  const email = extractEmail(trimmed);
+  const phone = extractPhone(trimmed);
+  if (email || phone) {
+    update.contactInfo = {
+      email,
+      phone
+    };
+  }
+
+  if (/note|important|remember|please make sure/i.test(trimmed)) {
+    update.notes = trimmed;
+  }
+
+  return update;
+};
+
+const hasProposalContext = (context) => {
+  if (!context || typeof context !== "object") return false;
+  const hasScope = context.scope?.features?.length || context.scope?.deliverables?.length;
+  const hasContact = context.contactInfo?.email || context.contactInfo?.phone;
+  return Boolean(
+    context.clientName ||
+      context.companyName ||
+      context.companyBackground ||
+      (context.requirements && context.requirements.length) ||
+      hasScope ||
+      context.timeline ||
+      context.budget ||
+      (context.constraints && context.constraints.length) ||
+      (context.preferences && context.preferences.length) ||
+      hasContact ||
+      context.notes
+  );
+};
 
 
 
@@ -71,53 +382,29 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
     if (typeof window === "undefined") return [initialMsg];
 
     try {
-      const saved = sessionStorage.getItem("cata_ai_chat_history");
-      // Only use saved history if it exists AND we haven't just switched services (context check could be improved later)
-      // For now, if saved exists, use it. But maybe user wants fresh start for new service?
-      // Let's assume reuse history, but if it's empty start with dynamic welcome.
-      return saved ? JSON.parse(saved) : [initialMsg];
+      const saved = getStoredJson(CHAT_HISTORY_KEY, null);
+      return Array.isArray(saved) && saved.length > 0 ? saved : [initialMsg];
     } catch (e) {
       console.error("Failed to load chat history:", e);
       return [initialMsg];
     }
   });
 
-  // Persist messages to sessionStorage (clears when browser closes)
+  // Persist chat history to localStorage
   useEffect(() => {
-    try {
-      sessionStorage.setItem("cata_ai_chat_history", JSON.stringify(messages));
-    } catch (e) {
-      console.error("Failed to save chat history:", e);
-    }
+    setStoredJson(CHAT_HISTORY_KEY, buildConversationHistory(messages));
   }, [messages]);
-
-
 
   const [input, setInput] = useState("");
   const [activeFiles, setActiveFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState([]);
 
-  // Load proposal from sessionStorage
-  const [proposal, setProposal] = useState(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = sessionStorage.getItem("cata_ai_proposal");
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      console.error("Failed to load proposal:", e);
-      return null;
-    }
-  });
-
-  const [proposalProgress, setProposalProgress] = useState(() => {
-    if (typeof window === "undefined") return { collected: 0, total: 6 };
-    try {
-      const saved = sessionStorage.getItem("cata_ai_proposal_progress");
-      return saved ? JSON.parse(saved) : { collected: 0, total: 6 };
-    } catch (e) {
-      return { collected: 0, total: 6 };
-    }
+  const [proposal, setProposal] = useState("");
+  const [proposalContext, setProposalContext] = useState(() => {
+    const emptyContext = createEmptyProposalContext(serviceName);
+    const saved = getStoredJson(PROPOSAL_CONTEXT_KEY, null);
+    return saved ? mergeProposalContext(emptyContext, saved) : emptyContext;
   });
 
   const [showProposal, setShowProposal] = useState(false);
@@ -125,6 +412,7 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const proposalContextRef = useRef(proposalContext);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -149,25 +437,17 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // Persist proposal to sessionStorage
   useEffect(() => {
-    try {
-      if (proposal) {
-        sessionStorage.setItem("cata_ai_proposal", JSON.stringify(proposal));
-      }
-    } catch (e) {
-      console.error("Failed to save proposal:", e);
-    }
-  }, [proposal]);
+    proposalContextRef.current = proposalContext;
+    setStoredJson(PROPOSAL_CONTEXT_KEY, proposalContext);
+  }, [proposalContext]);
 
-  // Persist proposal progress to sessionStorage
   useEffect(() => {
-    try {
-      sessionStorage.setItem("cata_ai_proposal_progress", JSON.stringify(proposalProgress));
-    } catch (e) {
-      console.error("Failed to save proposal progress:", e);
-    }
-  }, [proposalProgress]);
+    if (!serviceName) return;
+    setProposalContext((prev) =>
+      mergeProposalContext(prev, { serviceName })
+    );
+  }, [serviceName]);
 
   // Notify parent when proposal visibility changes
   useEffect(() => {
@@ -330,13 +610,108 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
     const text = typeof messageText === "string" ? messageText : input;
     if (!text.trim() || isLoading) return;
 
+    const lastAssistantMessage = getLastAssistantMessage(messages);
+    let nextContext = proposalContextRef.current;
+    let nextHistory = buildConversationHistory(messages);
+
     if (!skipUserAppend) {
       const userMessage = { role: "user", content: text };
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
       setActiveFiles([]); // Clear all active files after sending
+
+      const contextUpdate = extractProposalUpdate({
+        userText: text,
+        assistantText: lastAssistantMessage,
+        serviceName
+      });
+      nextContext = mergeProposalContext(proposalContextRef.current, contextUpdate);
+      setProposalContext(nextContext);
+      setStoredJson(PROPOSAL_CONTEXT_KEY, nextContext);
+
+      nextHistory = [...buildConversationHistory(messages), userMessage];
+      setStoredJson(CHAT_HISTORY_KEY, nextHistory);
     }
+
+    const shouldGenerateProposal =
+      !skipUserAppend && isProposalConfirmation(text, lastAssistantMessage);
+
     setIsLoading(true);
+
+    if (shouldGenerateProposal) {
+      try {
+        const storedContext = getStoredJson(PROPOSAL_CONTEXT_KEY, nextContext);
+        const storedHistory = getStoredJson(CHAT_HISTORY_KEY, nextHistory);
+
+        if (!hasProposalContext(storedContext) || storedHistory.length === 0) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content:
+                "I don't have your project details yet. Please share your requirements, timeline, budget, and any constraints, then tell me to generate the proposal."
+            }
+          ]);
+          return;
+        }
+
+        const response = await fetch(`${API_URL}/proposal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            proposalContext: storedContext,
+            chatHistory: storedHistory,
+            serviceName
+          })
+        });
+
+        const data = await response.json();
+
+        if (data?.success && data.proposal) {
+          const proposalText =
+            typeof data.proposal === "string" ? data.proposal.trim() : "";
+          if (!proposalText) {
+            throw new Error("Empty proposal response");
+          }
+          setProposal(proposalText);
+          setShowProposal(true);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: "Your proposal is ready. Open the proposal panel to review it."
+            }
+          ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: "I couldn't generate the proposal yet. Please try again.",
+              isError: true,
+              retryText: text
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error("Proposal error:", error);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "Proposal generation failed. Please try again.",
+            isError: true,
+            retryText: text
+          }
+        ]);
+      } finally {
+        setIsLoading(false);
+        setTimeout(() => {
+          focusInput();
+        }, 300);
+      }
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/chat`, {
@@ -345,8 +720,7 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
         body: JSON.stringify({
           message: text,
           conversationHistory: buildConversationHistory(messages),
-          serviceName,
-          currentProposal: proposal?.isComplete ? proposal : null
+          serviceName
         })
       });
 
@@ -357,23 +731,6 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
           ...prev,
           { role: "assistant", content: sanitizeAssistantContent(data.message) }
         ]);
-
-        // Update proposal progress
-        if (data.proposalProgress) {
-          setProposalProgress(data.proposalProgress);
-        }
-
-        // Check for proposal data in the response
-        if (data.proposal) {
-          console.log("Proposal data received:", data.proposal);
-          console.log("investmentSummary:", data.proposal.investmentSummary);
-          console.log("timeline:", data.proposal.timeline);
-          setProposal(data.proposal);
-          // Auto-open sidebar only when proposal is complete
-          if (data.proposal.isComplete) {
-            setShowProposal(true);
-          }
-        }
       } else {
         setMessages((prev) => [
           ...prev,
@@ -415,19 +772,33 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
     sendMessage(retryText, { skipUserAppend: true });
   };
 
-  const startNewChat = () => {
-    setMessages([{ role: "assistant", content: getWelcomeMessage(true) }]);
-    setInput("");
-    setProposal(null);
-    setProposalProgress({ collected: 0, total: 6 });
+  const resetProposalData = ({ resetMessages = false } = {}) => {
+    const emptyContext = createEmptyProposalContext(serviceName);
+    setProposal("");
     setShowProposal(false);
-    // Clear proposal from sessionStorage
-    try {
-      sessionStorage.removeItem("cata_ai_proposal");
-      sessionStorage.removeItem("cata_ai_proposal_progress");
-    } catch (e) {
-      console.error("Failed to clear proposal from storage:", e);
+    setProposalContext(emptyContext);
+    proposalContextRef.current = emptyContext;
+    setInput("");
+    setActiveFiles([]);
+
+    if (resetMessages) {
+      setMessages([{ role: "assistant", content: getWelcomeMessage(true) }]);
     }
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(PROPOSAL_CONTEXT_KEY);
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+    }
+  };
+
+  const startNewChat = () => {
+    resetProposalData({ resetMessages: true });
+    setTimeout(() => focusInput(), 50);
+  };
+
+  const handleResetProposalData = () => {
+    resetProposalData({ resetMessages: true });
+    toast.success("Proposal data reset.");
     setTimeout(() => focusInput(), 50);
   };
 
@@ -463,8 +834,15 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
                 <Plus className="size-4" />
                 <span className="hidden sm:inline">New Chat</span>
               </button>
-              {/* Show View Proposal button only when proposal is complete */}
-              {proposal && !showProposal && proposal.isComplete && (
+              <button
+                onClick={handleResetProposalData}
+                className="flex items-center gap-2 px-3 py-2 bg-secondary/60 hover:bg-secondary text-secondary-foreground rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                title="Reset proposal data"
+              >
+                <span className="hidden sm:inline">Reset Proposal</span>
+              </button>
+              {/* Show View Proposal button when a proposal exists */}
+              {proposal && !showProposal && (
                 <button
                   onClick={() => setShowProposal(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-lg shadow-primary/20 hover:shadow-primary/30"
@@ -670,7 +1048,6 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
           <div className="w-1/2 h-full border-l border-white/10 bg-zinc-950 flex flex-col animate-in slide-in-from-right duration-300">
             <ProposalSidebar
               proposal={proposal}
-              progress={proposalProgress}
               isOpen={true}
               onClose={() => setShowProposal(false)}
               embedded={embedded}
@@ -683,7 +1060,6 @@ function AIChat({ prefill: _prefill = "", embedded = false, serviceName: propSer
         {!embedded && (
           <ProposalSidebar
             proposal={proposal}
-            progress={proposalProgress}
             isOpen={showProposal}
             onClose={() => setShowProposal(false)}
             embedded={false}
