@@ -39,6 +39,7 @@ import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 // ... features array remains the same ...
 const features = [
   {
+    id: "website-development",
     title: "Website Development",
     description:
       "Custom websites built for performance, speed, and business growth.",
@@ -47,6 +48,7 @@ const features = [
     image: "/src/assets/icons/web-icon.png",
   },
   {
+    id: "app-development",
     title: "App Development",
     description: "Mobile apps designed to engage users and scale businesses.",
     price: "Starting at ₹1,00,000",
@@ -54,6 +56,7 @@ const features = [
     image: "/src/assets/icons/android-icon.png",
   },
   {
+    id: "software-development",
     title: "Software Development",
     description:
       "Custom software solutions built to solve real business problems.",
@@ -61,6 +64,7 @@ const features = [
     icon: Terminal,
   },
   {
+    id: "lead-generation",
     title: "Lead Generation",
     description:
       "Targeted campaigns that turn prospects into qualified business leads.",
@@ -68,6 +72,7 @@ const features = [
     icon: Target,
   },
   {
+    id: "video-services",
     title: "Video Services",
     description:
       "Creative videos that tell stories and boost brand engagement.",
@@ -75,12 +80,14 @@ const features = [
     icon: Video,
   },
   {
+    id: "cgi-videos",
     title: "CGI Videos",
     description: "High-impact CGI visuals for products, ads, and storytelling.",
     price: "Starting at ₹15,000",
     icon: Video,
   },
   {
+    id: "3d-modeling",
     title: "3D Modeling",
     description:
       "Detailed 3D models for products, visuals, and digital experiences.",
@@ -88,6 +95,7 @@ const features = [
     icon: Code,
   },
   {
+    id: "seo-optimization",
     title: "SEO Optimization",
     description:
       "Improve search rankings and drive consistent organic traffic.",
@@ -96,18 +104,21 @@ const features = [
     image: "/src/assets/icons/seo-icon.png",
   },
   {
+    id: "social-media-management",
     title: "Social Media Management",
     description: "Content and community management to grow your brand online.",
     price: "Starting at ₹10,000/mo",
     icon: Share2,
   },
   {
+    id: "influencer-marketing",
     title: "Influencer Marketing",
     description: "Collaborate with creators to build trust and audience reach.",
     price: "Starting at ₹10,000",
     icon: Users,
   },
   {
+    id: "ugc-marketing",
     title: "UGC (User-Generated Content) Marketing",
     description:
       "Authentic creator content that boosts brand credibility and conversions.",
@@ -115,6 +126,7 @@ const features = [
     icon: Mic,
   },
   {
+    id: "performance-marketing",
     title: "Performance Marketing",
     description:
       "Data-driven advertising campaigns focused on measurable results.",
@@ -122,12 +134,14 @@ const features = [
     icon: Activity,
   },
   {
+    id: "creative-design",
     title: "Creative & Design",
     description: "Visual designs that strengthen branding and communication.",
     price: "Starting at ₹10,000",
     icon: Palette,
   },
   {
+    id: "branding",
     title: "Branding (Naming, Logo & Brand Identity)",
     description:
       "Build strong brand identities that people remember and trust.",
@@ -135,6 +149,7 @@ const features = [
     icon: Palette,
   },
   {
+    id: "writing-content",
     title: "Writing & Content",
     description:
       "Compelling content that informs, engages, and converts audiences.",
@@ -142,6 +157,7 @@ const features = [
     icon: FileText,
   },
   {
+    id: "customer-support",
     title: "Customer Support",
     description:
       "Reliable support services that improve customer satisfaction and retention.",
@@ -149,6 +165,7 @@ const features = [
     icon: Headphones,
   },
   {
+    id: "crm-erp-solutions",
     title: "CRM & ERP Solutions",
     description:
       "Systems that streamline operations and centralize business data.",
@@ -156,12 +173,14 @@ const features = [
     icon: Database,
   },
   {
+    id: "ai-automation",
     title: "AI Automation",
     description: "Automate workflows to save time and improve productivity.",
     price: "Starting at ₹25,000",
     icon: Workflow,
   },
   {
+    id: "voice-agent",
     title: "Voice Agent (AI Voice Bot / Call Automation)",
     description: "AI-powered voice agents for sales, support, and follow-ups.",
     price: "Starting at ₹1,30,000",
@@ -169,6 +188,7 @@ const features = [
     image: "/src/assets/icons/voice-agent-icon.png",
   },
   {
+    id: "whatsapp-chatbot",
     title: "WhatsApp Chat Bot",
     description:
       "Automated WhatsApp conversations for faster customer support and sales.",
@@ -210,15 +230,17 @@ const ClientOnboading = () => {
   const location = useLocation();
 
   const [selectedServiceTitle, setSelectedServiceTitle] = useState(null);
+  const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [isProposalVisible, setIsProposalVisible] = useState(false);
 
   const handleProposalChange = useCallback((visible) => {
     setIsProposalVisible(visible);
   }, []);
 
-  const openChat = useCallback((message, serviceTitle = null) => {
+  const openChat = useCallback((message, serviceTitle = null, serviceId = null) => {
     setChatPrefill(message || "");
     setSelectedServiceTitle(serviceTitle);
+    setSelectedServiceId(serviceId);
     setIsChatOpen(true);
   }, []);
 
@@ -244,7 +266,11 @@ const ClientOnboading = () => {
     if (location.state?.openChat && location.state?.serviceTitle) {
       setMultiSelectEnabled(false);
       setSelectedServices([]);
-      openChat(`I need help with ${location.state.serviceTitle}.`);
+      openChat(
+        `I need help with ${location.state.serviceTitle}.`,
+        location.state.serviceTitle,
+        location.state.serviceId || null
+      );
     }
   }, [location.state, openChat]);
 
@@ -265,7 +291,7 @@ const ClientOnboading = () => {
       return;
     }
 
-    openChat(`I need help with ${feature.title}.`, feature.title);
+    openChat(`I need help with ${feature.title}.`, feature.title, feature.id);
   };
 
   // ...
@@ -273,7 +299,7 @@ const ClientOnboading = () => {
   const handleStartMultiChat = () => {
     if (!selectedServices.length) return;
     const selectedNames = selectedServices.map((item) => item.title).join(", ");
-    openChat(`I need help with ${selectedNames}.`, "Multiple Services");
+    openChat(`I need help with ${selectedNames}.`, "Multiple Services", "multi-services");
   };
 
   // ...
@@ -290,9 +316,6 @@ const ClientOnboading = () => {
       setSelectedServices([]);
     }
   };
-
-
-
   return (
     <section className="mt-10 space-y-6 text-foreground transition-colors relative">
       {/* Matrix Background Layer - Fixed to cover whole screen */}
@@ -353,12 +376,17 @@ const ClientOnboading = () => {
 
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
         <DialogContent
-          onInteractOutside={(event) => event.preventDefault()}
           className={`${isProposalVisible ? 'w-[1100px]' : 'w-[550px]'} max-w-[95vw] h-[90vh] border-0 bg-transparent p-0 transition-all duration-300`}
         >
           <DialogTitle className="sr-only">Chat with Catalance</DialogTitle>
           <div className="h-full w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
-            <AIChat embedded prefill={chatPrefill} serviceName={selectedServiceTitle} onProposalChange={handleProposalChange} />
+            <AIChat
+              embedded
+              prefill={chatPrefill}
+              serviceName={selectedServiceTitle}
+              serviceId={selectedServiceId}
+              onProposalChange={handleProposalChange}
+            />
           </div>
         </DialogContent>
       </Dialog>
