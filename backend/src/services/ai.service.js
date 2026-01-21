@@ -276,6 +276,63 @@ const extractBulletItems = (text = "") => {
     .filter(Boolean);
 };
 
+const splitCommaOutsideParens = (value = "") => {
+  if (typeof value !== "string") return [];
+  const items = [];
+  let current = "";
+  let depth = 0;
+
+  for (const char of value) {
+    if (char === "(") depth += 1;
+    if (char === ")" && depth > 0) depth -= 1;
+
+    if (char === "," && depth === 0) {
+      if (current.trim()) items.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+
+  if (current.trim()) items.push(current.trim());
+  return items;
+};
+
+const splitMultiSelectItems = (text = "") => {
+  if (typeof text !== "string") return [];
+  const bulletItems = extractBulletItems(text);
+  if (bulletItems.length) return bulletItems;
+
+  const normalized = text.replace(/\band\b/gi, ",");
+  const commaItems = splitCommaOutsideParens(normalized);
+  const items = [];
+
+  commaItems.forEach((chunk) => {
+    chunk
+      .split(/[;\/\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .forEach((item) => items.push(item));
+  });
+
+  return items;
+};
+
+const normalizeFeatureList = (value, fallback = []) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return splitCommaOutsideParens(value)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (Array.isArray(fallback)) {
+    return fallback.map((item) => String(item).trim()).filter(Boolean);
+  }
+  return [];
+};
+
 const matchOptionLabelsFromItems = (options = [], items = []) => {
   if (!Array.isArray(options) || !Array.isArray(items)) return [];
   const matched = [];
@@ -306,10 +363,26 @@ const parseNumericSelections = (text = "", optionsLength = 0) => {
   const trimmed = text.trim();
   if (!trimmed) return { numbers: [], ambiguous: false };
 
+  const rangeNumbers = [];
+  const rangeRegex = /(\d+)\s*(?:-|to)\s*(\d+)/gi;
+  let rangeMatch = null;
+  while ((rangeMatch = rangeRegex.exec(trimmed)) !== null) {
+    const start = Number.parseInt(rangeMatch[1], 10);
+    const end = Number.parseInt(rangeMatch[2], 10);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    const min = Math.min(start, end);
+    const max = Math.max(start, end);
+    for (let i = min; i <= max; i += 1) {
+      rangeNumbers.push(i);
+    }
+  }
+
   const digitsOnly = /^[\d\s,.-]+$/.test(trimmed);
   const hasSeparator = /[,\s]/.test(trimmed);
   const numberMatches = trimmed.match(/\d+/g) || [];
-  if (!numberMatches.length) return { numbers: [], ambiguous: false };
+  if (!numberMatches.length && rangeNumbers.length === 0) {
+    return { numbers: [], ambiguous: false };
+  }
 
   let numbers = [];
   let ambiguous = false;
@@ -326,11 +399,16 @@ const parseNumericSelections = (text = "", optionsLength = 0) => {
       .filter((value) => Number.isFinite(value) && value > 0);
   }
 
+  if (rangeNumbers.length) {
+    numbers = numbers.concat(rangeNumbers);
+    ambiguous = false;
+  }
+
   const validNumbers = optionsLength
     ? numbers.filter((value) => value <= optionsLength)
     : numbers;
 
-  return { numbers: validNumbers, ambiguous };
+  return { numbers: Array.from(new Set(validNumbers)), ambiguous };
 };
 
 const parseBudgetFromText = (text = "") => {
@@ -359,6 +437,23 @@ const BUDGET_WARNING_REGEX =
   /budget.*below|below.*minimum|required.*minimum|minimum required/i;
 const BUDGET_PROCEED_REGEX =
   /proceed|go ahead|continue|move forward|use current|current budget|same budget|stick with|okay with|fine with|works with|keep it/i;
+const PROPOSAL_CONFIRMATION_QUESTION_REGEX =
+  /ready to (see|view).*proposal|see (your )?personalized proposal|view (your )?personalized proposal|show (me|us) (the )?proposal/i;
+const PROPOSAL_CONFIRMATION_RESPONSE_REGEX =
+  /^(yes|y|yeah|yep|sure|ok|okay|ready|go ahead|proceed|show me|show it|view it|let's do it|sounds good|please do|confirm)\b/i;
+
+const isProposalConfirmed = (conversationHistory = []) => {
+  for (let i = 0; i < conversationHistory.length - 1; i++) {
+    const msg = conversationHistory[i];
+    const nextMsg = conversationHistory[i + 1];
+    if (msg?.role !== "assistant") continue;
+    if (!PROPOSAL_CONFIRMATION_QUESTION_REGEX.test(msg.content || "")) continue;
+    if (nextMsg?.role !== "user") continue;
+    const response = (nextMsg.content || "").trim();
+    if (PROPOSAL_CONFIRMATION_RESPONSE_REGEX.test(response)) return true;
+  }
+  return false;
+};
 
 const extractLatestBudgetFromBudgetQuestions = (conversationHistory = []) => {
   let latest = null;
@@ -519,6 +614,10 @@ const resolveOptionAnswer = (question, assistantText, userText, summaryText = ""
           return uniqueNumericLabels.join(", ");
         }
       }
+
+      const userItems = splitMultiSelectItems(trimmed);
+      const userLabels = matchOptionLabelsFromItems(options, userItems);
+      if (userLabels.length) return userLabels.join(", ");
 
       const labelMatch = findOptionLabelMatch(options, trimmed, question);
       if (labelMatch) return labelMatch;
@@ -794,6 +893,8 @@ Instead of following rigid scripts, apply these principles to handle any situati
 - If you don't know something specific, be honest and offer to research
 - Match the client's energy and communication style
 - Be concise when simple, detailed when complex questions arise
+- Avoid starting responses with "Thank you" or repeating gratitude after every answer
+- Use short acknowledgments like "Got it", "Noted", or move straight to the next question
 - Always think: "What would a senior consultant say here?"
 `;
 };
@@ -944,7 +1045,6 @@ MANDATORY PROCESS:
 2. Track which questions you have already asked and received answers for.
 3. Ask the NEXT unanswered question from the list.
 4. Continue until ALL questions in the list have been asked and answered.
-5. Only after ALL questions are answered, proceed to proposal generation.
 
 **ONE QUESTION AT A TIME**
 ==========================
@@ -963,7 +1063,7 @@ QUESTION TRACKING:
 EXAMPLES BY SERVICE (FOLLOW EXACT ORDER):
 - SEO Service: Ask ALL 6 questions in order: business_category → target_locations → primary_goal → seo_situation → duration → user_budget
 - Branding Service: Ask ALL 9 questions in order: brand_stage → naming_help → brand_perception → target_audience → primary_usage → reference_brands → branding_deliverables → timeline → user_budget
-- Website Service: Ask ALL questions in order: requirement → objective → website_category → design_experience → website_type → [IF platform_based: platform_choice] OR [IF coded: coded_frontend → coded_backend → coded_cms → coded_database → coded_hosting] → page_count → launch_timeline → user_budget
+- Website Service: Ask ALL questions in order: requirement → objective → website_category → design_experience → website_type → [IF platform_based: platform_choice] OR [IF coded: coded_frontend → coded_backend → coded_database → coded_hosting] → page_count → launch_timeline → user_budget
 
 CRITICAL SEQUENCE ENFORCEMENT:
 - You MUST go through questions in the EXACT ORDER listed above.
@@ -976,6 +1076,7 @@ FORMATTING WHEN ASKING QUESTIONS:
 - Present the question clearly.
 - If the question has options, list them as numbered choices (1., 2., 3.).
 - Keep the question focused and easy to answer.
+- After every question (and its options), add this line on its own: "If you don't see what you need, kindly type it below."
 
 CONDITIONAL QUESTION HANDLING:
 ==============================
@@ -992,16 +1093,6 @@ Questions marked [GROUPED QUESTION] have multiple categories.
 - Format each group clearly with its label and options.
 - Ask the user to select from each category as needed.
 
-STRICT PROPOSAL GENERATION RULE:
-================================
-**YOU MUST NOT OFFER TO GENERATE OR DISPLAY A PROPOSAL UNTIL:**
-1. You have asked the user's name
-2. You have asked ALL non-conditional questions for the service
-3. You have asked ALL conditional questions WHERE the condition was met
-4. The user has answered the budget question
-
-If the user asks for a proposal before all questions are answered, politely explain you need a few more details first and ask the next question.
-
 RESPONSE FORMATTING RULES:
 ==========================
 - ALWAYS use line breaks between sections for readability.
@@ -1017,25 +1108,6 @@ RESPONSE QUALITY RULES:
 - If user mentions an industry, acknowledge that exact industry - do not assume project details.
 - Good responses reference ONLY information explicitly stated by the user.
 - Bad responses add assumed details that were not mentioned.
-
-PHASE 3: PROPOSAL CONFIRMATION
-================================
-IMPORTANT: DO NOT generate the actual proposal text in the chat. The proposal is automatically generated and displayed in a sidebar panel.
-
-After gathering ALL required information (name, service, requirements, timeline, budget), you should:
-1. Summarize what you've understood from the conversation
-2. Ask if they're ready to see their personalized proposal
-3. Once they confirm, say something like "Great! Your proposal is now ready. You can view it in the proposal panel on the right."
-
-WHAT NOT TO DO:
-- Do NOT write out "PROJECT PROPOSAL" or similar formatted proposals in the chat
-- Do NOT list out pricing, phases, or deliverables in your chat messages
-- Do NOT generate structured proposal documents in the conversation
-
-WHAT TO DO INSTEAD:
-- Summarize the key points you've gathered
-- Ask for confirmation that the details are correct
-- Let them know their proposal is ready to view in the sidebar
 
 BUDGET HANDLING RULES (VERY IMPORTANT):
 =======================================
@@ -1081,1201 +1153,123 @@ CONVERSATION GUIDELINES:
 - Do not use Markdown headings or bold. Avoid lines that start with # (including ##).
 - Track conversation progress internally.
 - ALWAYS acknowledge what you've learned before asking more questions.
-- Only offer to generate the proposal after all required questions for the chosen service are answered (including budget or pricing level when applicable).
-- Always confirm before generating the final proposal.
+- Acknowledge without repetitive gratitude; avoid "Thank you for..." on every turn.
+- Do not start responses with "Thank you" or "Thanks" unless the user explicitly thanked you.
 - EVERY response must follow a structured format with labeled lines.
 - Do NOT use the words "Options" or "Option" when listing choices.
 - If presenting choices, ALWAYS list them as numbered items (1., 2., 3., ...), each on its own line.
 - Never inline choices in a sentence like "(Options include: ...)".
 
+PROPOSAL HANDOFF:
+- Never output a full proposal document in the chat.
+- If the user asks for a proposal, say you can generate it and ask if they want you to proceed.
+- Never ask the user to type or say "generate proposal" (or any magic phrase). Do not require keywords; ask for a simple confirmation instead.
+- Never output a proposal summary or list of proposal fields in chat; keep it to a short proceed question.
+
 REMEMBER: Your #1 job is to make the client feel HEARD. Never make them repeat themselves, and NEVER assume information they did not provide!`;
 };
 
-// ============================================
-// PROPOSAL EXTRACTION & GENERATION LOGIC
-// ============================================
+const buildProposalSystemPrompt = () => `You are a proposal generator for a digital services agency.
+Use only the information provided in proposal_context and chat_history.
+Do not invent or assume missing details.
+If launch timeline is missing, include this line exactly: "Launch Timeline: To be finalized based on kickoff date".
+If budget or pricing is missing, include this line exactly: "Budget: Pending confirmation of scope and volume".
 
-const PROPOSAL_FIELDS = [
-  "clientName",
-  "serviceName",
-  "projectType",
-  "requirements",
-  "timeline",
-  "budget",
-  "additionalDetails",
-  "pages",
-  "technologies",
-  "integrations"
-];
+Output requirements:
+- Return clean markdown only.
+- Use this exact structure (omit any field you truly do not have, except Launch Timeline and Budget must always appear):
+  # Proposal Summary
+  Business Name: ...
+  Website Requirement: ...
+  Primary Objectives:
+  - ...
+  Website Type: ...
+  Design Experience: ...
+  Website Build Type: ...
+  Frontend Framework: ...
+  Backend Technology: ...
+  Database: ...
+  Hosting: ...
+  Features Included:
+  - ...
+  Page Count: ...
+  Launch Timeline: ...
+  Budget: ...
+- Use concise, professional, business-ready language.
+- Use bullet list items for Primary Objectives and Features Included.
+`;
 
-/**
- * Extract proposal data from conversation history
- */
-const extractProposalData = (conversationHistory, aiResponse, selectedServiceName = "") => {
-  const allMessages = [...conversationHistory, { role: "assistant", content: aiResponse }];
-  const fullConversation = allMessages.map(m => m.content).join("\n");
+const buildProposalUserPrompt = (proposalContext, chatHistory) =>
+  `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}`;
 
-  const proposalData = {
-    clientName: null,
-    businessName: null,
-    aboutBusiness: null,
-    serviceName: selectedServiceName || null, // Use passed service name as default
-    projectType: null,
-    requirements: [],
-    timeline: null,
-    budget: null,
-    pricingLevel: null,
-    questionAnswers: [],
-    additionalDetails: [],
-    phases: [],
-    pages: null,
-    technologies: [],
-    integrations: []
-  };
-
-  // Extract client name from USER messages only (avoid matching CATA)
-  const userMessages = conversationHistory
-    .filter(m => m.role === "user")
-    .map(m => m.content)
-    .join("\n");
-
-  console.log("User Messages for Extraction:\n", userMessages);
-
-  const namePatterns = [
-    /(?:my name is|i'm|i am|call me|this is|name equals|name:)\s+([a-zA-Z\s]+)/i,
-    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)$/m, // "John Doe" types
-    /(?:^|\s)([A-Z][a-z]+)\s+here/i
-  ];
-  for (const pattern of namePatterns) {
-    const match = pattern.exec(userMessages);
-    if (match) {
-      const name = match[1].trim();
-      // Basic validation: ignore if it looks like a sentence or is "Cata"
-      if (name.length < 30 && name.toLowerCase() !== "cata" && !name.toLowerCase().includes("hello")) {
-        console.log(`Name Pattern Match: ${pattern} -> ${name}`);
-        proposalData.clientName = name;
-        break;
-      }
-    }
+export const generateProposalMarkdown = async (
+  proposalContext = {},
+  chatHistory = [],
+  selectedServiceName = ""
+) => {
+  const apiKey = env.OPENROUTER_API_KEY?.trim();
+  if (!apiKey) {
+    throw new AppError("OpenRouter API key not configured", 500);
   }
 
-  // FALLBACK: Context-based name extraction
-  // If name not found yet, look for when AI asks for name and user responds with a short answer
-  if (!proposalData.clientName) {
-    for (let i = 0; i < allMessages.length - 1; i++) {
-      const msg = allMessages[i];
-      const nextMsg = allMessages[i + 1];
-
-      // Check if current message is AI asking about name
-      if (msg.role === "assistant" && /what.*your name|may i know your name|what should i call you|your name|could you.*name/i.test(msg.content)) {
-        if (nextMsg && nextMsg.role === "user") {
-          const userResponse = nextMsg.content.trim();
-
-          // Check for short response that looks like a name (1-3 words, starts with capital or is short)
-          // Avoid matching sentences or numbers
-          if (
-            userResponse.length >= 2 &&
-            userResponse.length <= 50 &&
-            !/^\d+$/.test(userResponse) && // Not just numbers
-            !/^(yes|no|ok|sure|fine|hello|hi|hey|okay|yeah|nope|yup)$/i.test(userResponse) && // Not common responses
-            !userResponse.includes('.') && // Not a sentence
-            !userResponse.includes('?') // Not a question
-          ) {
-            // Extract first word if response is longer, or use whole response
-            const nameParts = userResponse.split(/\s+/).filter(p => /^[A-Za-z]+$/.test(p));
-            if (nameParts.length > 0 && nameParts.length <= 4) {
-              proposalData.clientName = nameParts.slice(0, 2).map(n => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ');
-              console.log(`Context-based name extraction: "${userResponse}" -> ${proposalData.clientName}`);
-              break;
-            }
-          }
-        }
-      }
-    }
+  const contextPayload =
+    proposalContext && typeof proposalContext === "object"
+      ? { ...proposalContext }
+      : {};
+  if (selectedServiceName && !contextPayload.serviceName) {
+    contextPayload.serviceName = selectedServiceName;
   }
 
-  // FALLBACK: Context-based business name extraction
-  // Look for when AI asks about business/company name and user responds
-  if (!proposalData.businessName) {
-    for (let i = 0; i < allMessages.length - 1; i++) {
-      const msg = allMessages[i];
-      const nextMsg = allMessages[i + 1];
-
-      // Check if current message is AI asking about business/company name
-      if (msg.role === "assistant" && /business name|company name|name of your business|name of your company|what.*business.*called|what.*company.*called/i.test(msg.content)) {
-        if (nextMsg && nextMsg.role === "user") {
-          const userResponse = nextMsg.content.trim();
-
-          // Accept reasonably short responses that look like business names
-          if (
-            userResponse.length >= 2 &&
-            userResponse.length <= 100 &&
-            !/^(yes|no|ok|sure|fine|hello|hi|hey|okay|yeah|nope|yup)$/i.test(userResponse) &&
-            !userResponse.includes('?')
-          ) {
-            proposalData.businessName = userResponse;
-            console.log(`Context-based business name extraction: "${userResponse}"`);
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // FALLBACK: Context-based about business extraction
-  // Look for when AI asks about what the business does and user responds
-  if (!proposalData.aboutBusiness) {
-    for (let i = 0; i < allMessages.length - 1; i++) {
-      const msg = allMessages[i];
-      const nextMsg = allMessages[i + 1];
-
-      // Check if current message is AI asking about what the business does
-      if (msg.role === "assistant" && /what.*business.*do|what does.*do|tell me about.*business|describe.*business|about your business|about your company|what.*company.*do/i.test(msg.content)) {
-        if (nextMsg && nextMsg.role === "user") {
-          const userResponse = nextMsg.content.trim();
-
-          // Accept reasonably descriptive responses
-          if (
-            userResponse.length >= 5 &&
-            userResponse.length <= 500 &&
-            !/^(yes|no|ok|sure|fine|hello|hi|hey|okay|yeah|nope|yup)$/i.test(userResponse)
-          ) {
-            proposalData.aboutBusiness = userResponse;
-            console.log(`Context-based about business extraction: "${userResponse}"`);
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // Extract service type from conversation
-  const servicePatterns = [
-    /(?:want|need|looking for|interested in|help with)\s+(?:a|an)?\s*(website|app|mobile app|branding|seo|marketing|e-commerce|ecommerce|social media|lead generation|video|content)/gi,
-    /(?:service[:\s]+)(website|app|branding|seo|marketing|e-commerce|social media)/gi,
-    /(social media marketing|social media management|seo optimization|lead generation|video production|content writing)/gi,
-    /(short[-\s]?news\s+app|news\s+app|mobile\s+app|web\s+app|saas|website)/gi
-  ];
-  for (const pattern of servicePatterns) {
-    const match = pattern.exec(userMessages);
-    if (match) {
-      proposalData.serviceName = match[1].trim();
-      break;
-    }
-  }
-
-  // Extract project type/description
-
-  const projectPatterns = [
-    /(?:build|create|develop|make)\s+(?:a|an)?\s*(.+?)(?:\.|for|with|that)/gi,
-    /(?:project|idea|concept)[:\s]+(.+?)(?:\.|$)/gim,
-    /(?:objective|goal|purpose)\s*(?:is|:)?\s*(lead generation|brand awareness|engagement|traffic|sales|visibility)/gi,
-    /(?:main\s+)?(?:objective|goal)[:\s]+(.*?)(?:\n|$)/gi
-  ];
-  for (const pattern of projectPatterns) {
-    const match = pattern.exec(userMessages); // Changed to userMessages to avoid AI chatter
-    if (match && match[1] && match[1].length > 5 && match[1].length < 200 && !/^\s*is\s+\d/i.test(match[1])) {
-      proposalData.projectType = match[1].trim();
-      break;
-    }
-  }
-  // Fallback: use service name as project type if still null
-  if (!proposalData.projectType && proposalData.serviceName) {
-    proposalData.projectType = `${proposalData.serviceName} Project`;
-  }
-
-  // Extract budget logic with currency detection
-  const budgetPatterns = [
-    /(?:budget|spend|invest|pay)\s*(?:is|of|around|about|:)?\s*(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?\s*([\d,]+(?:\s*(?:lakh|lac|k|L))?)\s*(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?/gi,
-    /(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))\s*([\d,]+(?:\s*(?:lakh|lac|k|L))?)/gi
-  ];
-
-  for (const pattern of budgetPatterns) {
-    const match = pattern.exec(userMessages);
-    if (match) {
-      // match[2] or match[1] depending on which group captured the number
-      // We need to match carefully based on the groups above.
-      // Pattern 1: Group 1 (prefix), Group 2 (number), Group 3 (suffix)
-      // Pattern 2: Group 1 (prefix), Group 2 (number)
-
-      let amountStr = match[2] || match[1]; // simplified fallback logic might be risky, let's be precise
-
-      // Let's re-run a more specific logic per pattern to be safe, or just improve the loop
-      // Actually, let's simplify the extraction to finding the number and then looking around it for currency
-    }
-  }
-
-  // Revised Budget Extraction
-  const budgetRegex = /(?:budget|spend|invest|pay|price|cost).*?((?:₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?\s*[\d,]+(?:\s*(?:lakh|lac|k|L))?(?:\s*(?:₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?)/i;
-  const match = budgetRegex.exec(userMessages);
-  if (match) {
-    const fullBudgetStr = match[1];
-    let currency = "INR"; // Default
-    let multiplier = 1;
-
-    // Detect Currency
-    if (/\$|usd/i.test(fullBudgetStr)) currency = "USD";
-    else if (/€|eur/i.test(fullBudgetStr)) currency = "EUR";
-    else if (/£|gbp/i.test(fullBudgetStr)) currency = "GBP";
-
-    // Clean amount
-    let amountStr = fullBudgetStr.replace(/[^0-9,.]/g, "");
-
-    // Detect multipliers
-    if (/lakh|lac|L/i.test(fullBudgetStr)) multiplier = 100000;
-    else if (/k/i.test(fullBudgetStr)) multiplier = 1000;
-
-    let amount = parseFloat(amountStr.replace(/,/g, ""));
-    if (!isNaN(amount)) {
-      proposalData.budget = amount * multiplier;
-      proposalData.currency = currency;
-    }
-  }
-
-  // FALLBACK: Context-based budget extraction
-  // If budget not found yet, look for conversation patterns where AI asks about budget and user responds with a number
-  if (!proposalData.budget) {
-    for (let i = 0; i < allMessages.length - 1; i++) {
-      const msg = allMessages[i];
-      const nextMsg = allMessages[i + 1];
-
-      // Check if current message is AI asking about budget
-      if (msg.role === "assistant" && /budget|what is your budget|budget for this|budget range|investment/i.test(msg.content)) {
-        // Check if next message is user response with a number
-        if (nextMsg && nextMsg.role === "user") {
-          const userResponse = nextMsg.content.trim();
-          // Match standalone numbers (with optional currency symbols)
-          const numMatch = userResponse.match(/^(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|k|L|thousand)?\s*(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?$/i);
-          if (numMatch) {
-            let currency = "INR";
-            let multiplier = 1;
-            if (/\$|usd/i.test(userResponse)) currency = "USD";
-            else if (/€|eur/i.test(userResponse)) currency = "EUR";
-            else if (/£|gbp/i.test(userResponse)) currency = "GBP";
-
-            if (/lakh|lac/i.test(userResponse)) multiplier = 100000;
-            else if (/k|thousand/i.test(userResponse)) multiplier = 1000;
-
-            const amount = parseFloat(numMatch[2].replace(/,/g, ""));
-            if (!isNaN(amount) && amount > 0) {
-              proposalData.budget = amount * multiplier;
-              proposalData.currency = currency;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const latestBudget = extractLatestBudgetFromBudgetQuestions(allMessages);
-  if (latestBudget?.amount) {
-    proposalData.budget = latestBudget.amount;
-    proposalData.currency = latestBudget.currency;
-  }
-
-  // Extract pricing level for services that use budget tiers instead of numeric budgets
-  const pricingLevelFromUser = extractPricingLevel(userMessages);
-  if (pricingLevelFromUser) {
-    proposalData.pricingLevel = pricingLevelFromUser;
-  }
-
-  if (!proposalData.pricingLevel) {
-    for (let i = 0; i < allMessages.length - 1; i++) {
-      const msg = allMessages[i];
-      const nextMsg = allMessages[i + 1];
-
-      if (
-        msg.role === "assistant" &&
-        PRICING_LEVEL_QUESTION_REGEX.test(msg.content)
-      ) {
-        if (nextMsg && nextMsg.role === "user") {
-          const userResponse = nextMsg.content.trim();
-          const directPricing = extractPricingLevel(userResponse, true);
-          if (directPricing) {
-            proposalData.pricingLevel = directPricing;
-            break;
-          }
-
-          const optionMatch = userResponse.match(/^(\d+)\.?$/);
-          if (optionMatch) {
-            const optionNum = parseInt(optionMatch[1]);
-            const optionRegex = new RegExp(`${optionNum}\\.\\s*([^\\n]+)`, "i");
-            const foundOption = msg.content.match(optionRegex);
-            if (foundOption) {
-              const optionText = foundOption[1];
-              const optionPricing = extractPricingLevel(optionText, true);
-              proposalData.pricingLevel = optionPricing || optionText.trim();
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Extract timeline
-  const timelineFromUser = extractTimelineValue(userMessages);
-  if (timelineFromUser) {
-    proposalData.timeline = timelineFromUser;
-  }
-
-  // FALLBACK: Context-based timeline extraction
-  // If timeline not found yet, look for when AI asks about timeline and user responds
-  if (!proposalData.timeline) {
-    for (let i = 0; i < allMessages.length - 1; i++) {
-      const msg = allMessages[i];
-      const nextMsg = allMessages[i + 1];
-
-      // Check if current message is AI asking about timeline/duration
-      if (msg.role === "assistant" && TIMELINE_QUESTION_REGEX.test(msg.content)) {
-        if (nextMsg && nextMsg.role === "user") {
-          const userResponse = nextMsg.content.trim();
-
-          const directTimeline = extractTimelineValue(userResponse);
-          if (directTimeline) {
-            proposalData.timeline = directTimeline;
-            break;
-          }
-
-          // Check if user selected a numbered option - try to extract timeline from AI's options
-          const optionMatch = userResponse.match(/^(\d+)\.?$/);
-          if (optionMatch) {
-            // Look for numbered options in the AI's message
-            const optionNum = parseInt(optionMatch[1]);
-            const optionsText = msg.content;
-            const optionRegex = new RegExp(`${optionNum}\\.\\s*([^\\n]+)`, "i");
-            const foundOption = optionsText.match(optionRegex);
-            if (foundOption) {
-              const optionText = foundOption[1];
-              const optionTimeline = extractTimelineValue(optionText);
-              proposalData.timeline =
-                optionTimeline ||
-                optionText.replace(/^\*+|\*+$/g, "").trim();
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Extract requirements/features mentioned
-  const featureKeywords = [
-    // Web/App features
-    "map", "location", "push notification", "offline", "dark mode", "light mode",
-    "payment", "booking", "search", "filter", "categories", "admin", "dashboard",
-    "analytics", "seo", "responsive", "mobile", "android", "ios", "flutter",
-    "react", "next.js", "api", "backend", "database", "authentication", "login",
-    "signup", "user profile", "social sharing", "bookmark", "wishlist", "cart",
-    // Social Media Marketing
-    "instagram", "facebook", "linkedin", "youtube", "twitter", "tiktok",
-    "brand awareness", "engagement", "lead generation", "content creation",
-    "posting", "strategy", "organic", "followers", "reach", "impressions",
-    // SEO
-    "keywords", "backlinks", "ranking", "traffic", "visibility", "local seo",
-    "technical seo", "content strategy", "on-page", "off-page",
-    // General
-    "branding", "logo", "identity", "marketing", "advertising", "campaign"
-  ];
-
-  // Extract pages
-  const pagePatterns = [
-    /(\d+(?:\s*[-–—]\s*\d*)?)\s*pages?/gi,
-    /(?:approx|around|about)\s*(\d+)\s*pages?/gi,
-    /(\d+)\s*to\s*(\d+)\s*pages?/gi
-  ];
-  for (const pattern of pagePatterns) {
-    const match = pattern.exec(userMessages); // STRICT: User must say it
-    if (match) {
-      proposalData.pages = match[0].trim(); // Keep the whole string like "5 pages" or "10-15 pages"
-      break;
-    }
-  }
-
-  // Extract technologies
-  const techKeywords = [
-    "react", "next.js", "node.js", "python", "django", "flask", "php", "laravel",
-    "wordpress", "shopify", "wix", "webflow", "flutter", "swift", "kotlin",
-    "firebase", "supabase", "mongodb", "postgresql", "mysql", "aws", "azure",
-    "vercel", "netlify", "tailwind", "bootstrap", "material ui", "shadcn"
-  ];
-
-  techKeywords.forEach(keyword => {
-    // Use word boundary to avoid partial matches
-    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-    if (regex.test(userMessages)) { // STRICT: User must say it
-      // capital case
-      const properCase = keyword.charAt(0).toUpperCase() + keyword.slice(1);
-      if (!proposalData.technologies.includes(properCase)) {
-        proposalData.technologies.push(properCase);
-      }
-    }
-  });
-
-  // Extract integrations
-  const integrationKeywords = [
-    "stripe", "paypal", "razorpay", "payment gateway", "google maps", "mapbox",
-    "sendgrid", "mailchimp", "twilio", "whatsapp", "slack", "discord",
-    "crm", "hubspot", "salesforce", "analytics", "google analytics", "facebook pixel",
-    "zapier", "calendly", "calendar"
-  ];
-
-  integrationKeywords.forEach(keyword => {
-    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-    if (regex.test(userMessages)) { // STRICT: User must say it
-      const properCase = keyword.replace(/\b\w/g, l => l.toUpperCase());
-      if (!proposalData.integrations.includes(properCase)) {
-        proposalData.integrations.push(properCase);
-      }
-    }
-  });
-
-  const lowerConv = userMessages.toLowerCase(); // STRICT: User must say it
-  featureKeywords.forEach(keyword => {
-    if (lowerConv.includes(keyword)) {
-      proposalData.requirements.push(keyword);
-    }
-  });
-
-  // Calculate collected fields based on the selected service's question set
-  const serviceDefinition = getServiceDefinition(
-    selectedServiceName || proposalData.serviceName || ""
-  );
-  proposalData.questionAnswers = extractQuestionAnswers(
-    conversationHistory,
-    serviceDefinition
-  );
-  if (!proposalData.pricingLevel && Array.isArray(proposalData.questionAnswers)) {
-    const pricingAnswer = proposalData.questionAnswers.find(
-      (item) => item.id === "pricing_level"
-    );
-    if (pricingAnswer?.answer) {
-      proposalData.pricingLevel = pricingAnswer.answer;
-    }
-  }
-  const rawMinBudget = serviceDefinition?.budget?.min_required_amount;
-  const parsedMinBudget = Number.isFinite(rawMinBudget)
-    ? rawMinBudget
-    : Number.parseFloat(rawMinBudget);
-  const minBudget = Number.isFinite(parsedMinBudget) ? parsedMinBudget : null;
-  const budgetStatus = evaluateBudgetStatus(allMessages, proposalData.budget, minBudget);
-  if (budgetStatus.updatedBudget) {
-    proposalData.budget = budgetStatus.updatedBudget;
-    if (budgetStatus.updatedCurrency) {
-      proposalData.currency = budgetStatus.updatedCurrency;
-    }
-  }
-  proposalData.budgetStatus = budgetStatus;
-  const serviceQuestionIds = new Set(
-    Array.isArray(serviceDefinition?.questions)
-      ? serviceDefinition.questions.map((q) => q.id)
-      : []
-  );
-  const hasServiceDefinition = serviceQuestionIds.size > 0;
-
-  const requiresBudget = hasServiceDefinition
-    ? serviceQuestionIds.has("user_budget")
-    : true;
-  const requiresPricingLevel = hasServiceDefinition
-    ? serviceQuestionIds.has("pricing_level") && !requiresBudget
-    : false;
-  const requiresTimeline = hasServiceDefinition
-    ? ["timeline", "launch_timeline", "campaign_duration", "duration"].some((id) =>
-      serviceQuestionIds.has(id)
-    )
-    : true;
-
-  const requiredFields = [
-    { key: "clientName", present: !!proposalData.clientName },
-    { key: "serviceName", present: !!proposalData.serviceName },
-    ...(requiresBudget
-      ? [{ key: "budget", present: !!budgetStatus?.isConfirmed }]
-      : []),
-    ...(requiresPricingLevel
-      ? [
-        {
-          key: "pricingLevel",
-          present: !!proposalData.pricingLevel || !!proposalData.budget
-        }
-      ]
-      : []),
-    ...(requiresTimeline
-      ? [{ key: "timeline", present: !!proposalData.timeline }]
-      : [])
-  ];
-
-  const collectedCount = requiredFields.filter((field) => field.present).length;
-  const hasEssentialFields =
-    requiredFields.length > 0 &&
-    requiredFields.every((field) => field.present);
-
-  proposalData.progress = {
-    collected: collectedCount,
-    total: requiredFields.length,
-    isComplete: hasEssentialFields
-  };
-
-  // DEBUG: Log extraction results
-  console.log("================== PROPOSAL EXTRACTION DEBUG ==================");
-  console.log("Client Name:", proposalData.clientName);
-  console.log("Service Name:", proposalData.serviceName);
-  console.log("Project Type:", proposalData.projectType);
-  console.log("Requirements:", proposalData.requirements);
-  console.log("Timeline:", proposalData.timeline);
-  console.log("Budget:", proposalData.budget);
-  console.log("Budget Confirmed:", proposalData.budgetStatus?.isConfirmed);
-  console.log("Pricing Level:", proposalData.pricingLevel);
-  console.log("Collected Count:", collectedCount);
-  console.log("Is Complete:", proposalData.progress.isComplete);
-  console.log("================================================================");
-
-  // Attach debug info
-  proposalData.debugInfo = {
-    userMessages: userMessages.substring(0, 500),
-    namePatternsMatches: namePatterns.map(p => {
-      const m = p.exec(userMessages); // Re-exec unfortunately, or capture earlier
-      return m ? m[1] : null;
-    }),
-    budgetStatus: proposalData.budgetStatus
-  };
-
-  return proposalData;
-};
-
-const buildProjectDetails = (proposalData, serviceDisplayName) => {
-  const details = [];
-  const labelSet = new Set();
-  const answers = Array.isArray(proposalData.questionAnswers)
-    ? proposalData.questionAnswers
-    : [];
-  const usedQuestionIds = new Set();
-  const addDetail = (label, value) => {
-    if (!value) return;
-    const normalizedLabel = label.toLowerCase();
-    if (labelSet.has(normalizedLabel)) return;
-    details.push({ label, value });
-    labelSet.add(normalizedLabel);
-  };
-  const addAnswerDetail = (label, ids) => {
-    const match = getAnswerByIds(answers, ids);
-    if (!match?.answer) return;
-    addDetail(label, match.answer);
-    usedQuestionIds.add(match.id);
-  };
-
-  const currencyCode = proposalData.currency || "INR";
-  const formattedBudget = formatCurrencyValue(
-    proposalData.budget,
-    currencyCode
-  );
-
-  addDetail("Service", serviceDisplayName);
-  const projectTypeAnswer = getAnswerByIds(answers, [
-    "website_category",
-    "project_type",
-    "app_type",
-    "service_type"
-  ]);
-  if (projectTypeAnswer?.answer) {
-    addDetail("Project Type", projectTypeAnswer.answer);
-    usedQuestionIds.add(projectTypeAnswer.id);
-  } else {
-    addDetail("Project Type", proposalData.projectType);
-  }
-  addDetail("Business", proposalData.businessName);
-  addDetail("Business Summary", proposalData.aboutBusiness);
-
-  addAnswerDetail("Website Requirement", ["requirement"]);
-  addAnswerDetail("Primary Objective", ["objective"]);
-  addAnswerDetail("Design Experience", ["design_experience"]);
-  addAnswerDetail("Build Type", ["website_type"]);
-  addAnswerDetail("Frontend Framework", ["coded_frontend"]);
-  addAnswerDetail("Backend Technology", ["coded_backend"]);
-  addAnswerDetail("CMS", ["coded_cms"]);
-  addAnswerDetail("Database", ["coded_database"]);
-  addAnswerDetail("Hosting", ["coded_hosting"]);
-
-  const featureAnswer = getAnswerByIds(answers, [
-    "website_features",
-    "app_features",
-    "features"
-  ]);
-  if (featureAnswer?.answer) {
-    addDetail("Features", featureAnswer.answer);
-    usedQuestionIds.add(featureAnswer.id);
-  } else {
-    const requirementsValue = formatListValue(
-      Array.from(new Set(proposalData.requirements || []))
-    );
-    addDetail("Requirements", requirementsValue);
-  }
-
-  addAnswerDetail("Page Count", ["page_count"]);
-
-  const technologiesValue = formatListValue(
-    Array.from(new Set(proposalData.technologies || []))
-  );
-  addDetail("Technologies", technologiesValue);
-
-  const integrationsValue = formatListValue(
-    Array.from(new Set(proposalData.integrations || []))
-  );
-  addDetail("Integrations", integrationsValue);
-
-  addDetail("Timeline", proposalData.timeline);
-  if (formattedBudget) {
-    addDetail("Budget", `${currencyCode} ${formattedBudget}`);
-  } else {
-    addDetail("Budget Level", proposalData.pricingLevel);
-  }
-
-  const skipQuestionIds = new Set([
-    "user_budget",
-    "pricing_level",
-    "timeline",
-    "launch_timeline",
-    "campaign_duration",
-    "duration",
-    ...usedQuestionIds
-  ]);
-
-  const labelOverrides = {
-    requirement: "Website Requirement",
-    objective: "Primary Objective",
-    website_category: "Website Type",
-    design_experience: "Design Experience",
-    website_type: "Build Type",
-    coded_frontend: "Frontend Framework",
-    coded_backend: "Backend Technology",
-    coded_cms: "CMS",
-    coded_database: "Database",
-    coded_hosting: "Hosting",
-    website_features: "Features",
-    page_count: "Page Count",
-    launch_timeline: "Launch Timeline",
-    campaign_duration: "Campaign Duration",
-    duration: "Duration"
-  };
-
-  answers.forEach((item) => {
-    if (!item?.label || skipQuestionIds.has(item.id)) return;
-    const label = labelOverrides[item.id] || item.label;
-    addDetail(label, item.answer);
-  });
-
-  return details;
-};
-
-const buildObjectiveSummary = (proposalData, serviceDisplayName) => {
-  const currencyCode = proposalData.currency || "INR";
-  const formattedBudget = formatCurrencyValue(
-    proposalData.budget,
-    currencyCode
-  );
-  const answers = Array.isArray(proposalData.questionAnswers)
-    ? proposalData.questionAnswers
-    : [];
-  const summaryParts = [];
-
-  const requirementAnswer = getAnswerByIds(answers, ["requirement"]);
-  const objectiveAnswer = getAnswerByIds(answers, ["objective"]);
-  const typeAnswer = getAnswerByIds(answers, [
-    "website_category",
-    "project_type",
-    "app_type",
-    "service_type"
-  ]);
-  const designAnswer = getAnswerByIds(answers, ["design_experience"]);
-  const buildAnswer = getAnswerByIds(answers, ["website_type"]);
-  const frontendAnswer = getAnswerByIds(answers, ["coded_frontend"]);
-  const backendAnswer = getAnswerByIds(answers, ["coded_backend"]);
-  const cmsAnswer = getAnswerByIds(answers, ["coded_cms"]);
-  const dbAnswer = getAnswerByIds(answers, ["coded_database"]);
-  const hostingAnswer = getAnswerByIds(answers, ["coded_hosting"]);
-  const featureAnswer = getAnswerByIds(answers, [
-    "website_features",
-    "app_features",
-    "features"
-  ]);
-  const pageCountAnswer = getAnswerByIds(answers, ["page_count"]);
-
-  let projectDescriptor =
-    typeAnswer?.answer || proposalData.projectType || `${serviceDisplayName} project`;
-  if (
-    typeAnswer?.answer &&
-    !/website|app|platform|system|service/i.test(typeAnswer.answer) &&
-    /website/i.test(serviceDisplayName)
-  ) {
-    projectDescriptor = `${typeAnswer.answer} website`;
-  }
-
-  let requirementPrefix = "";
-  if (requirementAnswer?.answer) {
-    if (/new/i.test(requirementAnswer.answer)) requirementPrefix = "new";
-    else if (/revamp|rebuild|redesign/i.test(requirementAnswer.answer)) {
-      requirementPrefix = "revamped";
-    } else {
-      requirementPrefix = requirementAnswer.answer.toLowerCase();
-    }
-  }
-
-  const headline = requirementPrefix
-    ? `${requirementPrefix} ${projectDescriptor}`
-    : projectDescriptor;
-  const headlineSuffix = proposalData.businessName
-    ? ` for ${proposalData.businessName}`
-    : "";
-  summaryParts.push(`Deliver a ${headline}${headlineSuffix}`);
-
-  const scopeParts = [];
-  const requirementsValue = featureAnswer?.answer
-    ? featureAnswer.answer
-    : formatListValue(Array.from(new Set(proposalData.requirements || [])));
-  const technologiesValue = formatListValue(
-    Array.from(new Set(proposalData.technologies || []))
-  );
-  const integrationsValue = formatListValue(
-    Array.from(new Set(proposalData.integrations || []))
-  );
-
-  if (objectiveAnswer?.answer) {
-    scopeParts.push(`goal: ${objectiveAnswer.answer}`);
-  }
-  if (requirementsValue) scopeParts.push(`features: ${requirementsValue}`);
-  if (designAnswer?.answer) {
-    scopeParts.push(`design: ${designAnswer.answer}`);
-  }
-  const buildParts = [
-    buildAnswer?.answer,
-    frontendAnswer?.answer,
-    backendAnswer?.answer,
-    cmsAnswer?.answer,
-    dbAnswer?.answer,
-    hostingAnswer?.answer
-  ].filter(Boolean);
-  if (buildParts.length) {
-    scopeParts.push(`build: ${buildParts.join(", ")}`);
-  }
-  const pagesValue = proposalData.pages || pageCountAnswer?.answer;
-  if (pagesValue) scopeParts.push(`pages: ${pagesValue}`);
-  if (technologiesValue) scopeParts.push(`tech: ${technologiesValue}`);
-  if (integrationsValue) scopeParts.push(`integrations: ${integrationsValue}`);
-  if (proposalData.timeline) scopeParts.push(`timeline: ${proposalData.timeline}`);
-  if (formattedBudget) {
-    scopeParts.push(`budget: ${currencyCode} ${formattedBudget}`);
-  } else if (proposalData.pricingLevel) {
-    scopeParts.push(`budget level: ${proposalData.pricingLevel}`);
-  }
-  if (proposalData.aboutBusiness) {
-    scopeParts.push(`business: ${proposalData.aboutBusiness}`);
-  }
-
-  if (scopeParts.length) {
-    summaryParts.push(scopeParts.join(", "));
-  }
-
-  return `${summaryParts.join(". ")}.`;
-};
-
-/**
- * Generate phased proposal structure based on extracted data and SELECTED SERVICE
- */
-const generateProposalStructure = (proposalData, serviceName = "") => {
-  const { clientName, projectType, requirements, timeline, budget, pages, technologies, integrations } = proposalData;
-
-  // Normalize the service name for matching
-  const normalizedService = (serviceName || proposalData.serviceName || "").toLowerCase();
-
-  // Service-specific phase definitions
-  const SERVICE_PHASES = {
-    // Branding Service
-    branding: [
-      {
-        number: 1,
-        name: "Discovery & Research",
-        description: "Understanding your brand values, target audience, and market positioning.",
-        deliverables: [
-          "Brand audit & competitor analysis",
-          "Target audience research",
-          "Brand positioning strategy",
-          "Mood board & creative direction"
-        ],
-        value: ["Clear brand direction", "Market differentiation", "Audience alignment"],
-        estimatedCost: 10000,
-        estimatedDuration: "1 week"
-      },
-      {
-        number: 2,
-        name: "Brand Identity Design",
-        description: "Creating your complete visual identity system.",
-        deliverables: [
-          "Logo design (3 concepts + refinements)",
-          "Color palette & typography system",
-          "Brand guidelines document",
-          "Social media kit",
-          "Business card & letterhead design"
-        ],
-        value: ["Professional brand image", "Consistent identity", "Market-ready assets"],
-        estimatedCost: 15000,
-        estimatedDuration: "2 weeks"
-      }
-    ],
-
-    // Website / UI-UX Service
-    website: [
-      {
-        number: 1,
-        name: "Discovery & Planning",
-        description: "Understanding your requirements and planning the website structure.",
-        deliverables: [
-          "Requirements gathering",
-          "Sitemap & information architecture",
-          "Content strategy outline",
-          "Technology recommendations"
-        ],
-        value: ["Clear project roadmap", "Structured approach", "Reduced revisions"],
-        estimatedCost: 5000,
-        estimatedDuration: "3-5 days"
-      },
-      {
-        number: 2,
-        name: "UI/UX Design",
-        description: "Creating beautiful and functional designs.",
-        deliverables: [
-          "Wireframes for all pages",
-          "High-fidelity UI designs",
-          "Mobile responsive layouts",
-          "Interactive prototype"
-        ],
-        value: ["User-friendly interface", "Modern aesthetics", "Conversion-optimized"],
-        estimatedCost: 15000,
-        estimatedDuration: "1-2 weeks"
-      },
-      {
-        number: 3,
-        name: "Development & Launch",
-        description: "Building and deploying your website.",
-        deliverables: [
-          "Frontend development",
-          "CMS integration",
-          "SEO optimization",
-          "Performance optimization",
-          "Deployment & launch"
-        ],
-        value: ["Fast-loading website", "Easy content updates", "Search engine visibility"],
-        estimatedCost: 15000,
-        estimatedDuration: "2-3 weeks"
-      }
-    ],
-
-    // App Development Service
-    app: [
-      {
-        number: 1,
-        name: "Planning & Architecture",
-        description: "Defining the app structure and technical requirements.",
-        deliverables: [
-          "Feature specification document",
-          "Technical architecture",
-          "Database design",
-          "API planning"
-        ],
-        value: ["Clear development roadmap", "Scalable foundation", "Reduced rework"],
-        estimatedCost: 25000,
-        estimatedDuration: "1-2 weeks"
-      },
-      {
-        number: 2,
-        name: "UI/UX Design",
-        description: "Creating the app's visual design and user experience.",
-        deliverables: [
-          "User flow diagrams",
-          "Wireframes",
-          "High-fidelity app screens",
-          "Dark & light mode designs",
-          "Interactive prototype"
-        ],
-        value: ["Intuitive user experience", "Modern app design", "Design system"],
-        estimatedCost: 40000,
-        estimatedDuration: "2-3 weeks"
-      },
-      {
-        number: 3,
-        name: "App Development",
-        description: "Building your mobile application.",
-        deliverables: [
-          "Cross-platform app (iOS & Android)",
-          "Backend API development",
-          "Database implementation",
-          "Push notifications",
-          "Third-party integrations"
-        ],
-        value: ["High-performance app", "Scalable backend", "Native-like experience"],
-        estimatedCost: 300000,
-        estimatedDuration: "8-12 weeks"
-      },
-      {
-        number: 4,
-        name: "Testing & Launch",
-        description: "Quality assurance and app store deployment.",
-        deliverables: [
-          "Comprehensive testing",
-          "Bug fixes & optimization",
-          "App Store submission",
-          "Play Store submission",
-          "Launch support"
-        ],
-        value: ["Bug-free launch", "Store approval", "Smooth rollout"],
-        estimatedCost: 35000,
-        estimatedDuration: "1-2 weeks"
-      }
-    ],
-
-    // SEO Service
-    seo: [
-      {
-        number: 1,
-        name: "SEO Audit & Strategy",
-        description: "Comprehensive analysis and strategic planning.",
-        deliverables: [
-          "Technical SEO audit",
-          "Keyword research",
-          "Competitor analysis",
-          "SEO strategy document"
-        ],
-        value: ["Clear SEO roadmap", "Targeted keywords", "Competitive edge"],
-        estimatedCost: 10000,
-        estimatedDuration: "1 week"
-      },
-      {
-        number: 2,
-        name: "On-Page Optimization",
-        description: "Optimizing your website for search engines.",
-        deliverables: [
-          "Meta tags optimization",
-          "Content optimization",
-          "Schema markup",
-          "Internal linking structure",
-          "Page speed improvements"
-        ],
-        value: ["Better rankings", "Improved CTR", "Faster loading"],
-        estimatedCost: 15000,
-        estimatedDuration: "2 weeks"
-      },
-      {
-        number: 3,
-        name: "Off-Page & Ongoing",
-        description: "Building authority and continuous improvement.",
-        deliverables: [
-          "Backlink building",
-          "Local SEO optimization",
-          "Monthly performance reports",
-          "Ongoing optimizations"
-        ],
-        value: ["Domain authority", "Local visibility", "Sustained growth"],
-        estimatedCost: 10000,
-        estimatedDuration: "Ongoing (monthly)"
-      }
-    ],
-
-    // Social Media Marketing
-    social: [
-      {
-        number: 1,
-        name: "Strategy & Setup",
-        description: "Creating your social media strategy.",
-        deliverables: [
-          "Platform strategy",
-          "Content calendar",
-          "Profile optimization",
-          "Brand voice guidelines"
-        ],
-        value: ["Clear direction", "Consistent posting", "Brand consistency"],
-        estimatedCost: 8000,
-        estimatedDuration: "1 week"
-      },
-      {
-        number: 2,
-        name: "Content Creation",
-        description: "Creating engaging content for your platforms.",
-        deliverables: [
-          "20 social media posts/month",
-          "Story designs",
-          "Reel concepts & editing",
-          "Caption writing"
-        ],
-        value: ["Engaging content", "Professional visuals", "Audience growth"],
-        estimatedCost: 15000,
-        estimatedDuration: "Ongoing (monthly)"
-      }
-    ],
-
-    // E-commerce Service
-    ecommerce: [
-      {
-        number: 1,
-        name: "Store Planning",
-        description: "Planning your online store structure.",
-        deliverables: [
-          "Store architecture",
-          "Product categorization",
-          "Payment gateway selection",
-          "Shipping integration planning"
-        ],
-        value: ["Optimized store structure", "Clear product hierarchy", "Smooth checkout"],
-        estimatedCost: 10000,
-        estimatedDuration: "1 week"
-      },
-      {
-        number: 2,
-        name: "Store Design & Development",
-        description: "Building your e-commerce store.",
-        deliverables: [
-          "Custom store design",
-          "Product page optimization",
-          "Cart & checkout flow",
-          "Payment integration",
-          "Inventory management"
-        ],
-        value: ["Beautiful store", "High conversion rate", "Easy management"],
-        estimatedCost: 40000,
-        estimatedDuration: "3-4 weeks"
-      },
-      {
-        number: 3,
-        name: "Launch & Optimization",
-        description: "Launching and optimizing your store.",
-        deliverables: [
-          "Product upload assistance",
-          "SEO for products",
-          "Performance optimization",
-          "Analytics setup"
-        ],
-        value: ["Ready to sell", "Search visibility", "Data-driven growth"],
-        estimatedCost: 10000,
-        estimatedDuration: "1 week"
-      }
-    ]
-  };
-
-  // Map service name to phase key
-  const getServiceKey = (name) => {
-    const lowered = name.toLowerCase();
-    if (lowered.includes("brand") || lowered.includes("logo") || lowered.includes("identity")) return "branding";
-    if (lowered.includes("website") || lowered.includes("ui") || lowered.includes("ux") || lowered.includes("web")) return "website";
-    if (lowered.includes("app") || lowered.includes("mobile") || lowered.includes("ios") || lowered.includes("android")) return "app";
-    if (lowered.includes("seo") || lowered.includes("search engine")) return "seo";
-    if (lowered.includes("social") || lowered.includes("marketing") || lowered.includes("instagram") || lowered.includes("facebook")) return "social";
-    if (lowered.includes("ecommerce") || lowered.includes("e-commerce") || lowered.includes("shop") || lowered.includes("store")) return "ecommerce";
-    return "website"; // Default to website
-  };
-
-  const serviceKey = getServiceKey(normalizedService);
-  const selectedPhases = SERVICE_PHASES[serviceKey] || SERVICE_PHASES.website;
-
-  // Renumber phases
-  const phases = selectedPhases.map((phase, idx) => ({
-    ...phase,
-    number: idx + 1
-  }));
-
-  // Calculate total cost from default phases
-  let totalCost = phases.reduce((sum, phase) => sum + phase.estimatedCost, 0);
-
-  // ADJUSTMENT: If user has a specific budget, scale phase costs to match it
-  // This ensures the proposal respects their stated budget
-  if (budget && budget > 0) {
-    const scalingFactor = budget / totalCost;
-
-    phases.forEach(phase => {
-      phase.estimatedCost = Math.round(phase.estimatedCost * scalingFactor);
-    });
-
-    // Recalculate total to be exact (handling rounding errors)
-    totalCost = phases.reduce((sum, phase) => sum + phase.estimatedCost, 0);
-
-    // If there's a small difference due to rounding, adjust the last phase
-    const undoDifference = budget - totalCost;
-    if (undoDifference !== 0 && phases.length > 0) {
-      phases[phases.length - 1].estimatedCost += undoDifference;
-      totalCost = budget;
-    }
-  }
-
-  // Build investment summary
-  // Build investment summary - ONLY TOTAL now
-  // We will ignore the breakdown in the summary array to satisfy the requirement:
-  // "investment summary chnage it to total invenstment only and only show the final amount"
-  const investmentSummary = [{ "component": "Total Project Investment", "cost": totalCost }];
-
-  // Calculate total duration
-  const getTotalDuration = () => {
-    if (timeline) return timeline;
-    if (serviceKey === "app") return "12-16 weeks";
-    if (serviceKey === "ecommerce") return "5-6 weeks";
-    if (serviceKey === "website") return "4-6 weeks";
-    if (serviceKey === "branding") return "3 weeks";
-    if (serviceKey === "seo") return "Ongoing";
-    if (serviceKey === "social") return "Ongoing";
-    return "4-6 weeks";
-  };
-
-  // Get service display name
-  const getServiceDisplayName = () => {
-    const names = {
-      branding: "Branding & Identity",
-      website: "Website Development",
-      app: "App Development",
-      seo: "SEO Services",
-      social: "Social Media Marketing",
-      ecommerce: "E-Commerce Store"
-    };
-    return names[serviceKey] || serviceName || "Digital Services";
-  };
-
-  const serviceDisplayName = getServiceDisplayName();
-  const currencyCode = proposalData.currency || "INR";
-
-  const projectDetails = buildProjectDetails(proposalData, serviceDisplayName);
-  const objectiveSummary = buildObjectiveSummary(proposalData, serviceDisplayName);
-
-  return {
-    projectTitle: projectType || `${serviceDisplayName} Project`,
-    clientName: clientName || "Valued Client",
-    serviceName: serviceDisplayName,
-    objective: objectiveSummary,
-    phases: phases,
-    investmentSummary: investmentSummary,
-    totalInvestment: totalCost,
-    currency: currencyCode, // Default to INR if not detected
-    timeline: {
-      total: getTotalDuration()
+  const historyPayload = Array.isArray(chatHistory) ? chatHistory : [];
+
+  const response = await fetch(OPENROUTER_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": DEFAULT_REFERER,
+      "X-Title": "Catalance AI Proposal Generator"
     },
-    features: requirements,
-    pages: pages || "TBD",
-    technologies: technologies,
-    integrations: integrations,
-    projectDetails: projectDetails,
-    generatedAt: new Date().toISOString(),
-    debugInfo: proposalData.debugInfo
-  };
-};
+    body: JSON.stringify({
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: buildProposalSystemPrompt() },
+        { role: "user", content: buildProposalUserPrompt(contextPayload, historyPayload) }
+      ],
+      temperature: 0.4,
+      max_tokens: 2200
+    })
+  });
 
+  const data = await response.json().catch(() => null);
 
-/**
- * Check if AI response contains a proposal
- */
-const containsProposal = (content) => {
-  const proposalIndicators = [
-    /PROJECT\s+PROPOSAL/i,
-    /PROPOSAL/i,
-    /Understanding\s+Your\s+Needs/i,
-    /Scope\s+of\s+Work/i,
-    /Investment:/i,
-    /Recommended\s+Service/i
-  ];
-  return proposalIndicators.some(pattern => pattern.test(content));
+  if (!response.ok) {
+    const errorMessage = data?.error?.message || "AI API request failed";
+    const isAuthError =
+      response.status === 401 ||
+      response.status === 403 ||
+      /user not found|invalid api key|unauthorized/i.test(errorMessage);
+
+    if (isAuthError) {
+      throw new AppError(
+        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in your .env.",
+        502
+      );
+    }
+
+    throw new AppError(errorMessage, 502);
+  }
+
+  if (!data) {
+    throw new AppError("AI API returned an invalid response", 502);
+  }
+
+  const content = data.choices?.[0]?.message?.content || "";
+  if (!content.trim()) {
+    throw new AppError("AI API returned an empty response", 502);
+  }
+
+  return content.trim();
 };
 
 export const chatWithAI = async (
@@ -2350,32 +1344,10 @@ export const chatWithAI = async (
 
   const content = data.choices?.[0]?.message?.content || "";
 
-  // Extract proposal data from conversation
-  const allHistory = [...formattedHistory, ...formattedMessages];
-  const proposalData = extractProposalData(allHistory, content, selectedServiceName);
-
-  // Generate proposal structure when essential fields are collected
-  let proposal = null;
-  let proposalProgress = proposalData.progress;
-
-  if (proposalData.progress.isComplete) {
-    proposal = generateProposalStructure(proposalData, selectedServiceName);
-    proposal.isComplete = true;
-  }
-
-  // DEBUG: Log API response
-  console.log("================== API RESPONSE DEBUG ==================");
-  console.log("Proposal exists:", !!proposal);
-  console.log("isComplete:", proposalData.progress.isComplete);
-  console.log("proposalProgress:", JSON.stringify(proposalProgress));
-  console.log("=========================================================");
-
   return {
     success: true,
     message: stripMarkdownHeadings(content),
-    usage: data.usage || null,
-    proposal: proposal,
-    proposalProgress: proposalProgress
+    usage: data.usage || null
   };
 };
 
@@ -2383,4 +1355,6 @@ export const getServiceInfo = (serviceId) =>
   servicesData.services.find((service) => service.id === serviceId);
 
 export const getAllServices = () => servicesData.services;
+
+
 
