@@ -79,6 +79,12 @@ const categories = [
   },
 ];
 
+const toServiceKey = (value) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 const ServiceCategoryCards = () => {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -92,6 +98,7 @@ const ServiceCategoryCards = () => {
         state: {
           openChat: true,
           serviceTitle: category.name,
+          serviceId: toServiceKey(category.name),
         },
       });
     }

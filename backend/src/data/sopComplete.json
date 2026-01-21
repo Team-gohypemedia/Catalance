@@ -1,0 +1,1332 @@
+{
+  "sop_pack_name": "Service SOPs (4-Stage Flow)",
+  "version": "1.0",
+  "services_catalog_as_provided": [
+    "Branding (Naming, Logo & Brand Identity)",
+    "Website / UI–UX Design (2D / 3D)",
+    "SEO (Search Engine Optimisation)",
+    "Social Media Marketing (Organic)",
+    "Paid Advertising / Performance Marketing",
+    "App Development (Android / iOS / Cross-Platform)",
+    "Software Development (Web / SaaS / Custom Systems)",
+    "Lead Generation",
+    "Video Services",
+    "Writing & Content",
+    "Customer Support",
+    "Influencer Marketing",
+    "UGC (User-Generated Content) Marketing",
+    "AI Automation",
+    "WhatsApp Chatbot",
+    "Creative & Design",
+    "3D Modeling",
+    "CGI Video Services",
+    "CRM & ERP Integrated Solutions",
+    "Voice Agent (AI Voice Bot / Call Automation)"
+  ],
+  "sops": [
+    {
+      "service_key": "website_development",
+      "service_name": "WEBSITE DEVELOPMENT",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Website Scope & Reference Lock",
+          "steps": [
+            "Understand business and website goal",
+            "Decide website type",
+            "Finalise pages and features",
+            "Decide content responsibility",
+            "Lock timeline",
+            "Create and share reference (Google Sheet / wireframe / temp site link)"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Website Design Direction",
+          "steps": [
+            "Decide visual style",
+            "Design homepage",
+            "Design inner pages",
+            "Ensure mobile layout",
+            "Align design direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Website Build & Completion",
+          "steps": [
+            "Develop frontend",
+            "Setup backend / CMS",
+            "Add content",
+            "Setup forms & integrations",
+            "Fix approved design changes"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Website Go-Live & Handover",
+          "steps": [
+            "Test on devices & browsers",
+            "Fix bugs",
+            "Make website live",
+            "Share access and close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "app_development",
+      "service_name": "APP DEVELOPMENT",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "App Scope & Reference Lock",
+          "steps": [
+            "App Launch & Handover",
+            "Finalise MVP features",
+            "Decide platform (Android / iOS)",
+            "Decide backend & admin needs",
+            "Lock timeline",
+            "Share feature list + user flow / wireframe link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "App UI Direction",
+          "steps": [
+            "Create wireframes",
+            "Design app screens",
+            "Create clickable prototype",
+            "Lock UI/UX direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "App Development & Completion",
+          "steps": [
+            "Develop app frontend",
+            "Setup backend & APIs",
+            "Setup admin panel",
+            "Fix bugs and flow issues"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "App Launch & Handover",
+          "steps": [
+            "Prepare store assets",
+            "Upload app to store",
+            "Publish app",
+            "Share links and credentials"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "software_development",
+      "service_name": "SOFTWARE DEVELOPMENT",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Requirement & Reference Lock",
+          "steps": [
+            "Understand business workflow",
+            "Finalise modules and features",
+            "Define user roles",
+            "Lock scope and timeline",
+            "Share requirement doc / workflow sheet / demo link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "System Direction Setup",
+          "steps": [
+            "Setup basic architecture",
+            "Design database structure",
+            "Build sample module or demo",
+            "Confirm technical direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Full Development & Completion",
+          "steps": [
+            "Develop all modules",
+            "Integrate features",
+            "Setup role-based access",
+            "Fix functional issues"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Deployment & Handover",
+          "steps": [
+            "Deploy to production",
+            "Share system access",
+            "Share basic documentation",
+            "Close work"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "seo",
+      "service_name": "SEO",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "SEO Planning & Reference Lock",
+          "steps": [
+            "Understand SEO goal",
+            "Audit website",
+            "Research keywords",
+            "Finalise SEO plan",
+            "Share audit + keyword mapping sheet"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "On-Page SEO Execution",
+          "steps": [
+            "Fix technical issues",
+            "Optimise pages",
+            "Optimise content",
+            "Improve internal linking"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Off-Page SEO Execution",
+          "steps": [
+            "Plan backlinks",
+            "Do outreach",
+            "Build links",
+            "Monitor link quality"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "SEO Reporting & Closure",
+          "steps": [
+            "Track rankings",
+            "Track traffic",
+            "Prepare report",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "performance_marketing",
+      "service_name": "PERFORMANCE MARKETING",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Campaign Planning & Reference Lock",
+          "steps": [
+            "Define campaign goal",
+            "Define target audience",
+            "Decide funnel",
+            "Lock budget",
+            "Share campaign plan sheet / funnel reference"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Ad Setup Direction",
+          "steps": [
+            "Create ad copies",
+            "Create creatives",
+            "Setup tracking",
+            "Prepare campaigns"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Campaign Execution & Optimisation",
+          "steps": [
+            "Launch ads",
+            "Test audiences",
+            "Optimise creatives",
+            "Control spend"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Reporting & Wrap-Up",
+          "steps": [
+            "Analyse performance",
+            "Prepare insights",
+            "Share final report",
+            "Close campaign"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "lead_generation",
+      "service_name": "LEAD GENERATION",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Lead Strategy & Reference Lock",
+          "steps": [
+            "Define target audience",
+            "Choose platforms",
+            "Decide funnel type",
+            "Lock CPL goal",
+            "Share funnel plan / lead sheet / form link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Funnel Setup",
+          "steps": [
+            "Create landing page / form",
+            "Setup CRM",
+            "Setup automation",
+            "Test lead flow"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Lead Execution",
+          "steps": [
+            "Run campaigns",
+            "Monitor lead quality",
+            "Optimise flow",
+            "Maintain data"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Reporting & Closure",
+          "steps": [
+            "Analyse leads",
+            "Prepare report",
+            "Share insights",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "social_media_management",
+      "service_name": "SOCIAL MEDIA MANAGEMENT",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Content Strategy & Reference Lock",
+          "steps": [
+            "Understand brand goal",
+            "Decide platforms",
+            "Decide posting frequency",
+            "Plan content themes",
+            "Share content calendar / drive folder link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Content Direction",
+          "steps": [
+            "Create post & reel previews",
+            "Write captions",
+            "Finalise hashtags",
+            "Lock content direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Publishing & Management",
+          "steps": [
+            "Schedule posts",
+            "Publish content",
+            "Handle basic engagement",
+            "Monitor performance"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Reporting & Closure",
+          "steps": [
+            "Analyse reach and engagement",
+            "Prepare report",
+            "Share insights",
+            "Close cycle"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "creative_and_design",
+      "service_name": "CREATIVE & DESIGN",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Design Scope & Reference Lock",
+          "steps": [
+            "Understand design purpose (brand, ads, social, UI assets)",
+            "Finalise design types and quantity",
+            "Decide brand guidelines or references",
+            "Lock timeline",
+            "Share reference link (brand kit / moodboard / sample links / Google Doc)"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Design Direction",
+          "steps": [
+            "Create initial design concepts",
+            "Align on layout, colors, style",
+            "Finalise visual direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Design Completion",
+          "steps": [
+            "Create all final designs",
+            "Apply approved changes",
+            "Do quality check"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Delivery & Closure",
+          "steps": [
+            "Export final files",
+            "Share all assets",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "video_service",
+      "service_name": "VIDEO SERVICE",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Video Scope & Reference Lock",
+          "steps": [
+            "Understand video goal (ad, brand, reel, explainer)",
+            "Decide format, duration, platform",
+            "Finalise style and references",
+            "Lock timeline",
+            "Share concept doc / script / reference video / storyboard link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Video Direction",
+          "steps": [
+            "Create rough cut / sample frames",
+            "Align on pacing, style, transitions"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Final Video Creation",
+          "steps": [
+            "Create final video",
+            "Apply changes",
+            "Final render & quality check"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Delivery & Closure",
+          "steps": [
+            "Export platform-specific formats",
+            "Share files",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "writing_and_content",
+      "service_name": "WRITING & CONTENT",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Content Scope & Reference Lock",
+          "steps": [
+            "Understand content goal (SEO, sales, branding)",
+            "Finalise content type and quantity",
+            "Decide tone and audience",
+            "Lock timeline",
+            "Share content outline / keyword doc / sample references"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Content Direction",
+          "steps": [
+            "Write initial drafts",
+            "Align on tone, structure, messaging"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Content Completion",
+          "steps": [
+            "Finalise all content",
+            "Apply edits",
+            "Proofread"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Delivery & Closure",
+          "steps": [
+            "Share final content files",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "customer_support",
+      "service_name": "CUSTOMER SUPPORT",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Support Scope & Reference Lock",
+          "steps": [
+            "Understand support type (chat, email, call)",
+            "Define working hours and SLAs",
+            "Define issue categories",
+            "Lock tools",
+            "Share SOP doc / FAQs / escalation sheet link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Support Setup",
+          "steps": [
+            "Setup tools and access",
+            "Prepare response templates",
+            "Test basic workflows"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Live Support Execution",
+          "steps": [
+            "Handle customer queries",
+            "Escalate issues as defined",
+            "Maintain support logs"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Reporting & Closure",
+          "steps": [
+            "Share support summary",
+            "Highlight recurring issues",
+            "Close cycle"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "influencer_marketing",
+      "service_name": "INFLUENCER MARKETING",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Campaign Scope & Reference Lock",
+          "steps": [
+            "Understand campaign goal",
+            "Decide influencer type & budget",
+            "Decide content format",
+            "Lock timeline",
+            "Share campaign brief / influencer shortlisting sheet"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Influencer Direction",
+          "steps": [
+            "Shortlist influencers",
+            "Align on content direction",
+            "Share posting guidelines"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Campaign Execution",
+          "steps": [
+            "Coordinate content creation",
+            "Ensure posting as planned",
+            "Track links and performance"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Reporting & Closure",
+          "steps": [
+            "Analyse reach and engagement",
+            "Share campaign report",
+            "Close campaign"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "ugc_marketing",
+      "service_name": "UGC MARKETING",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "UGC Scope & Reference Lock",
+          "steps": [
+            "Understand brand goal",
+            "Decide number and type of UGC",
+            "Decide creator profile",
+            "Lock timeline",
+            "Share UGC brief / sample references / content checklist"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Content Direction",
+          "steps": [
+            "Align creators on messaging",
+            "Approve content direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Content Creation",
+          "steps": [
+            "Collect UGC videos/photos",
+            "Apply fixes if required"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Delivery & Closure",
+          "steps": [
+            "Deliver all UGC assets",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "crm_erp",
+      "service_name": "CRM & ERP",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "System Scope & Reference Lock",
+          "steps": [
+            "Understand business process",
+            "Define modules and users",
+            "Decide integrations",
+            "Lock timeline",
+            "Share workflow doc / module list / sample system reference"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "System Direction",
+          "steps": [
+            "Setup basic system structure",
+            "Configure sample module",
+            "Align on workflow"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "System Implementation",
+          "steps": [
+            "Configure all modules",
+            "Setup users and permissions",
+            "Test workflows"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Deployment & Closure",
+          "steps": [
+            "Deploy system",
+            "Share access and basic documentation",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "ai_automation",
+      "service_name": "AI AUTOMATION",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Automation Scope & Reference Lock",
+          "steps": [
+            "Understand automation goal",
+            "Define triggers and actions",
+            "Decide tools and integrations",
+            "Lock timeline",
+            "Share automation flow diagram / logic doc"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Automation Direction",
+          "steps": [
+            "Build basic automation flow",
+            "Test logic"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Automation Completion",
+          "steps": [
+            "Implement full automation",
+            "Fix errors",
+            "Stress test"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Deployment & Closure",
+          "steps": [
+            "Deploy automation",
+            "Share access / usage notes",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "whatsapp_chatbot",
+      "service_name": "WHATSAPP CHATBOT",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Bot Scope & Reference Lock",
+          "steps": [
+            "Understand bot purpose",
+            "Decide conversation flow",
+            "Decide integrations",
+            "Lock timeline",
+            "Share flow chart / message script / reference bot link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Bot Direction",
+          "steps": [
+            "Build basic bot flow",
+            "Test conversation logic"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Bot Completion",
+          "steps": [
+            "Implement full flow",
+            "Fix responses",
+            "Final testing"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Deployment & Closure",
+          "steps": [
+            "Deploy bot",
+            "Share access and instructions",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "ai_voice_agent",
+      "service_name": "AI VOICE AGENT",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Voice Agent Scope & Reference Lock",
+          "steps": [
+            "Understand call purpose",
+            "Decide scripts and intent",
+            "Decide integrations",
+            "Lock timeline",
+            "Share call flow / script / voice reference link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Voice Direction",
+          "steps": [
+            "Build sample voice flow",
+            "Test call responses"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Voice Agent Completion",
+          "steps": [
+            "Implement full logic",
+            "Fix recognition and responses",
+            "Final testing"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Deployment & Closure",
+          "steps": [
+            "Deploy voice agent",
+            "Share access and usage guide",
+            "Close task"
+          ]
+        }
+      ]
+    },
+
+    {
+      "service_key": "branding",
+      "service_name": "Branding (Naming, Logo & Brand Identity)",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Brand Discovery & Reference Lock",
+          "steps": [
+            "Understand business, product/service, and target audience",
+            "Collect competitor references and market positioning",
+            "Define brand values, tone, and core messaging",
+            "Finalise deliverables (naming / logo / brand identity / guidelines)",
+            "Lock timeline and revision rounds",
+            "Share reference link (brand questionnaire / competitor sheet / moodboard / sample brand links / Google Doc)"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Naming & Identity Direction",
+          "steps": [
+            "Create naming options (with rationale)",
+            "Shortlist and validate name direction (availability checks if required)",
+            "Create logo concepts and variations",
+            "Propose color palette, typography, and visual language",
+            "Align and lock brand direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Brand Asset Completion",
+          "steps": [
+            "Finalise brand name (if included)",
+            "Finalise logo (primary, secondary, icon) and spacing rules",
+            "Create brand guideline document (colors, fonts, usage rules)",
+            "Create basic templates (social post, story, letterhead, business card) if included",
+            "Apply approved changes and do quality check"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Delivery & Handover",
+          "steps": [
+            "Export final files (AI / SVG / PDF / PNG / JPG) + font links if required",
+            "Share guideline PDF and editable source files",
+            "Share brand kit folder access and close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "website_ui_ux_design_2d_3d",
+      "service_name": "Website / UI–UX Design (2D / 3D)",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Design Scope & Reference Lock",
+          "steps": [
+            "Understand product/business goal and target users",
+            "Finalise platforms (website / app / dashboard) and key screens/pages",
+            "Define UX requirements (user flow, modules, CTAs, content needs)",
+            "Decide style references (2D / 3D / illustrations / animations) and brand guidelines",
+            "Lock timeline and revision rounds",
+            "Share reference link (user flow / wireframe doc / moodboard / temp link)"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "UX Direction",
+          "steps": [
+            "Create sitemap and user flows",
+            "Create wireframes for key pages/screens",
+            "Align on layout, navigation, and content structure",
+            "Lock UX direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "UI Design & Prototype",
+          "steps": [
+            "Design high-fidelity UI screens/pages",
+            "Ensure mobile/tablet responsiveness (where applicable)",
+            "Add 2D/3D elements (icons, illustrations, 3D assets) as per direction",
+            "Create clickable prototype and interaction notes",
+            "Fix approved design changes"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Handover & Closure",
+          "steps": [
+            "Share Figma/Adobe XD access and design system components",
+            "Share asset exports (SVG/PNG/WebP/Lottie) and 3D files if included",
+            "Share developer handoff notes (spacing, fonts, colors, states)",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "social_media_marketing_organic",
+      "service_name": "Social Media Marketing (Organic)",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Content Strategy & Reference Lock",
+          "steps": [
+            "Understand brand goal",
+            "Decide platforms",
+            "Decide posting frequency",
+            "Plan content themes",
+            "Share content calendar / drive folder link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Content Direction",
+          "steps": [
+            "Create post & reel previews",
+            "Write captions",
+            "Finalise hashtags",
+            "Lock content direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Publishing & Management",
+          "steps": [
+            "Schedule posts",
+            "Publish content",
+            "Handle basic engagement",
+            "Monitor performance"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Reporting & Closure",
+          "steps": [
+            "Analyse reach and engagement",
+            "Prepare report",
+            "Share insights",
+            "Close cycle"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "paid_advertising_performance_marketing",
+      "service_name": "Paid Advertising / Performance Marketing",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Campaign Planning & Reference Lock",
+          "steps": [
+            "Define campaign goal",
+            "Define target audience",
+            "Decide funnel",
+            "Lock budget",
+            "Share campaign plan sheet / funnel reference"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Ad Setup Direction",
+          "steps": [
+            "Create ad copies",
+            "Create creatives",
+            "Setup tracking",
+            "Prepare campaigns"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Campaign Execution & Optimisation",
+          "steps": [
+            "Launch ads",
+            "Test audiences",
+            "Optimise creatives",
+            "Control spend"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Reporting & Wrap-Up",
+          "steps": [
+            "Analyse performance",
+            "Prepare insights",
+            "Share final report",
+            "Close campaign"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "app_development_android_ios_cross_platform",
+      "service_name": "App Development (Android / iOS / Cross-Platform)",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "App Scope & Reference Lock",
+          "steps": [
+            "App Launch & Handover",
+            "Finalise MVP features",
+            "Decide platform (Android / iOS)",
+            "Decide backend & admin needs",
+            "Lock timeline",
+            "Share feature list + user flow / wireframe link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "App UI Direction",
+          "steps": [
+            "Create wireframes",
+            "Design app screens",
+            "Create clickable prototype",
+            "Lock UI/UX direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "App Development & Completion",
+          "steps": [
+            "Develop app frontend",
+            "Setup backend & APIs",
+            "Setup admin panel",
+            "Fix bugs and flow issues"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "App Launch & Handover",
+          "steps": [
+            "Prepare store assets",
+            "Upload app to store",
+            "Publish app",
+            "Share links and credentials"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "software_development_web_saas_custom_systems",
+      "service_name": "Software Development (Web / SaaS / Custom Systems)",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Requirement & Reference Lock",
+          "steps": [
+            "Understand business workflow",
+            "Finalise modules and features",
+            "Define user roles",
+            "Lock scope and timeline",
+            "Share requirement doc / workflow sheet / demo link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "System Direction Setup",
+          "steps": [
+            "Setup basic architecture",
+            "Design database structure",
+            "Build sample module or demo",
+            "Confirm technical direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Full Development & Completion",
+          "steps": [
+            "Develop all modules",
+            "Integrate features",
+            "Setup role-based access",
+            "Fix functional issues"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Deployment & Handover",
+          "steps": [
+            "Deploy to production",
+            "Share system access",
+            "Share basic documentation",
+            "Close work"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "video_services",
+      "service_name": "Video Services",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Video Scope & Reference Lock",
+          "steps": [
+            "Understand video goal (ad, brand, reel, explainer)",
+            "Decide format, duration, platform",
+            "Finalise style and references",
+            "Lock timeline",
+            "Share concept doc / script / reference video / storyboard link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Video Direction",
+          "steps": [
+            "Create rough cut / sample frames",
+            "Align on pacing, style, transitions"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Final Video Creation",
+          "steps": [
+            "Create final video",
+            "Apply changes",
+            "Final render & quality check"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Delivery & Closure",
+          "steps": [
+            "Export platform-specific formats",
+            "Share files",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "three_d_modeling",
+      "service_name": "3D Modeling",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Model Scope & Reference Lock",
+          "steps": [
+            "Understand 3D model purpose (product, character, environment, architecture)",
+            "Confirm style (realistic / stylized) and quality level (low / mid / high poly)",
+            "Finalise required outputs (FBX/OBJ/GLB, textures, renders, animations if any)",
+            "Collect reference images, dimensions, and brand guidelines if applicable",
+            "Lock timeline and revision rounds",
+            "Share reference link (moodboard / measurement sheet / sample style links / Google Drive folder)"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Blockout & Direction",
+          "steps": [
+            "Create base model/blockout for proportions and structure",
+            "Share preview renders/screenshots for approval",
+            "Apply changes and lock modeling direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Detailing & Texturing Completion",
+          "steps": [
+            "Create final high-detail model (and low-poly if required)",
+            "Do UV unwrapping and texture mapping",
+            "Create materials/shaders and texture sets (PBR if required)",
+            "Create final renders/turntable previews",
+            "Fix approved changes and do quality check"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Delivery & Closure",
+          "steps": [
+            "Export final files in agreed formats (FBX/OBJ/GLB + textures)",
+            "Share source files (Blender/Max/Maya) if included",
+            "Share render outputs and close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "cgi_video_services",
+      "service_name": "CGI Video Services",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "CGI Video Scope & Reference Lock",
+          "steps": [
+            "Understand CGI video goal (product demo, cinematic, explainer, ad)",
+            "Decide duration, format, and platform requirements",
+            "Finalise style references (look, lighting, realism level) and storyboard expectations",
+            "Confirm assets needed (3D models, environments, logos, text, voiceover)",
+            "Lock timeline and revision rounds",
+            "Share concept doc / script / storyboard / reference video link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Previs & Visual Direction",
+          "steps": [
+            "Create animatic / previs (basic shots, timing, camera movement)",
+            "Create sample frames / look-dev (materials, lighting, environment mood)",
+            "Align on pacing, transitions, and CGI direction"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "CGI Production & Completion",
+          "steps": [
+            "Model/prepare required 3D assets (if needed)",
+            "Animate scenes and camera as per storyboard",
+            "Setup lighting, shaders, and simulations (if any)",
+            "Render and do compositing/post-production",
+            "Apply approved changes and do final quality check"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Delivery & Closure",
+          "steps": [
+            "Export platform-specific formats (Reels, YouTube, Ads, etc.)",
+            "Share final files and project assets if included",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "crm_erp_integrated_solutions",
+      "service_name": "CRM & ERP Integrated Solutions",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "System Scope & Reference Lock",
+          "steps": [
+            "Understand business process",
+            "Define modules and users",
+            "Decide integrations",
+            "Lock timeline",
+            "Share workflow doc / module list / sample system reference"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "System Direction",
+          "steps": [
+            "Setup basic system structure",
+            "Configure sample module",
+            "Align on workflow"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "System Implementation",
+          "steps": [
+            "Configure all modules",
+            "Setup users and permissions",
+            "Test workflows"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Deployment & Closure",
+          "steps": [
+            "Deploy system",
+            "Share access and basic documentation",
+            "Close task"
+          ]
+        }
+      ]
+    },
+    {
+      "service_key": "voice_agent_ai_voice_bot_call_automation",
+      "service_name": "Voice Agent (AI Voice Bot / Call Automation)",
+      "flow_name": "4 STAGE FLOW",
+      "stages": [
+        {
+          "stage_number": 1,
+          "stage_title": "Voice Agent Scope & Reference Lock",
+          "steps": [
+            "Understand call purpose",
+            "Decide scripts and intent",
+            "Decide integrations",
+            "Lock timeline",
+            "Share call flow / script / voice reference link"
+          ]
+        },
+        {
+          "stage_number": 2,
+          "stage_title": "Voice Direction",
+          "steps": [
+            "Build sample voice flow",
+            "Test call responses"
+          ]
+        },
+        {
+          "stage_number": 3,
+          "stage_title": "Voice Agent Completion",
+          "steps": [
+            "Implement full logic",
+            "Fix recognition and responses",
+            "Final testing"
+          ]
+        },
+        {
+          "stage_number": 4,
+          "stage_title": "Deployment & Closure",
+          "steps": [
+            "Deploy voice agent",
+            "Share access and usage guide",
+            "Close task"
+          ]
+        }
+      ]
+    }
+  ]
+}
