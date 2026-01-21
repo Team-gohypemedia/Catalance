@@ -12,7 +12,7 @@ import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { cn } from "@/shared/lib/utils";
 
 // --- Parsers ---
