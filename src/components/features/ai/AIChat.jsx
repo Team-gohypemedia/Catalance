@@ -15,6 +15,8 @@ import Plus from "lucide-react/dist/esm/icons/plus";
 import Brain from "lucide-react/dist/esm/icons/brain";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import FileText from "lucide-react/dist/esm/icons/file-text";
+import Mic from "lucide-react/dist/esm/icons/mic";
+import MicOff from "lucide-react/dist/esm/icons/mic-off";
 import { ProposalSidebar } from "@/components/features/ai/elements/proposal-sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import X from "lucide-react/dist/esm/icons/x";
@@ -484,6 +486,19 @@ const getMultiSelection = (text, options = []) => {
   const combinedItems = extractCombinedItems(trimmed);
   if (combinedItems.length) return combinedItems;
   return trimmed ? [trimmed] : [];
+};
+
+const appendSpeechTranscript = (baseText, finalText, interimText) => {
+  const base = typeof baseText === "string" ? baseText : "";
+  const finalValue = typeof finalText === "string" ? finalText.trim() : "";
+  const interimValue = typeof interimText === "string" ? interimText.trim() : "";
+  const suffix = [finalValue, interimValue].filter(Boolean).join(" ").trim();
+
+  if (!suffix) return base;
+  if (!base.trim()) return suffix;
+
+  const needsSpace = /\s$/.test(base);
+  return `${base}${needsSpace ? "" : " "}${suffix}`;
 };
 
 const applyMissingFieldAnswer = (field, text) => {
@@ -1055,9 +1070,15 @@ function AIChat({
 
   const [showProposal, setShowProposal] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const [isSecureContext, setIsSecureContext] = useState(true);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const speechBaseInputRef = useRef("");
+  const speechFinalRef = useRef("");
   const proposalContextRef = useRef(proposalContext);
   const pendingMissingFieldRef = useRef(pendingMissingField);
 
@@ -1077,6 +1098,99 @@ function AIChat({
       textarea.focus();
     }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const secureContext =
+      typeof window.isSecureContext === "boolean" ? window.isSecureContext : true;
+    setIsSecureContext(secureContext);
+    if (!secureContext) {
+      setIsSpeechSupported(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setIsSpeechSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.lang = navigator.language || "en-US";
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const transcript = result[0]?.transcript || "";
+        if (result.isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        speechFinalRef.current = [speechFinalRef.current, finalTranscript]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+      }
+
+      setInput(
+        appendSpeechTranscript(
+          speechBaseInputRef.current,
+          speechFinalRef.current,
+          interimTranscript
+        )
+      );
+    };
+
+    recognition.onerror = (event) => {
+      setIsRecording(false);
+      const error = event?.error;
+      if (error === "not-allowed" || error === "service-not-allowed") {
+        toast.error("Microphone access is blocked.");
+        return;
+      }
+      if (error === "audio-capture") {
+        toast.error("No microphone detected.");
+        return;
+      }
+      if (error === "network") {
+        toast.error("Voice input failed due to a network error.");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      setInput(
+        appendSpeechTranscript(
+          speechBaseInputRef.current,
+          speechFinalRef.current,
+          ""
+        )
+      );
+    };
+
+    recognitionRef.current = recognition;
+    setIsSpeechSupported(true);
+
+    return () => {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
 
 
 
@@ -1319,6 +1433,39 @@ function AIChat({
     setActiveFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
+  const startVoiceInput = () => {
+    if (!recognitionRef.current) {
+      toast.error("Voice input isn't supported in this browser.");
+      return;
+    }
+
+    speechBaseInputRef.current = input;
+    speechFinalRef.current = "";
+
+    try {
+      recognitionRef.current.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Voice input start error:", error);
+      toast.error("Unable to start voice input.");
+      setIsRecording(false);
+    }
+  };
+
+  const stopVoiceInput = () => {
+    if (!recognitionRef.current) return;
+    recognitionRef.current.stop();
+    setIsRecording(false);
+  };
+
+  const toggleVoiceInput = () => {
+    if (isRecording) {
+      stopVoiceInput();
+      return;
+    }
+    startVoiceInput();
+  };
+
   const clearProposalApproval = () => {
     setPendingProposal(null);
     setProposalApproval(null);
@@ -1428,6 +1575,10 @@ function AIChat({
     const { skipUserAppend = false } = options;
     const text = typeof messageText === "string" ? messageText : input;
     if (!text.trim() || isLoading || isHistoryLoading) return;
+
+    if (isRecording) {
+      stopVoiceInput();
+    }
 
     if (proposalApprovalState === "approval-requested") {
       clearProposalApproval();
@@ -1615,6 +1766,9 @@ function AIChat({
   };
 
   const resetProposalData = ({ resetMessages = false } = {}) => {
+    if (isRecording) {
+      stopVoiceInput();
+    }
     const emptyContext = createEmptyProposalContext(serviceName);
     setProposal("");
     setShowProposal(false);
@@ -1651,13 +1805,30 @@ function AIChat({
     sendMessage(text);
   };
 
+  const voiceButtonDisabled =
+    !isSecureContext ||
+    !isSpeechSupported ||
+    (!isRecording && (isProcessingFile || isHistoryLoading || isLoading));
+  const voiceButtonLabel = !isSecureContext
+    ? "Voice input requires HTTPS (secure context)"
+    : !isSpeechSupported
+    ? "Voice input isn't supported in this browser"
+    : isRecording
+    ? "Stop voice input"
+    : "Start voice input";
+
   return (
     <div className={`text-foreground ${embedded ? "h-full w-full" : ""}`}>
       <div className={`flex ${embedded ? "h-full w-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}>
         {/* Main Chat Area */}
         <main className={`flex flex-col transition-all duration-300 ${showProposal && embedded ? 'w-1/2' : 'flex-1'}`}>
           {/* Modern Header */}
-          <header className="relative px-6 py-4 border-b border-border/50 bg-background/80 backdrop-blur-xl flex justify-between items-center">
+          <header
+            className={cn(
+              "relative px-6 py-4 border-b border-border/50 bg-background/80 backdrop-blur-xl flex justify-between items-center",
+              embedded && "pr-12 sm:pr-14"
+            )}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
                 <Bot className="size-5 text-primary-foreground" />
@@ -1927,6 +2098,7 @@ function AIChat({
                   }}
                   placeholder="Ask anything"
                   disabled={isLoading || isProcessingFile || isHistoryLoading}
+                  readOnly={isRecording}
                   autoFocus
                   className="w-full !bg-transparent !border-none !text-white text-base !px-4 !py-3 !min-h-[50px] !max-h-[200px] resize-none !box-border !break-all !whitespace-pre-wrap !overflow-x-hidden [field-sizing:content] focus:!ring-0 placeholder:!text-white/20 font-light"
                 />
@@ -1962,8 +2134,29 @@ function AIChat({
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      onClick={toggleVoiceInput}
+                      disabled={voiceButtonDisabled}
+                      title={voiceButtonLabel}
+                      aria-label={voiceButtonLabel}
+                      aria-pressed={isRecording}
+                      className={cn(
+                        "h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center transition-all",
+                        isRecording
+                          ? "bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
+                          : "text-white/40 hover:bg-white/5 hover:text-white",
+                        voiceButtonDisabled && "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/40"
+                      )}
+                    >
+                      {isRecording ? (
+                        <MicOff className="size-5" />
+                      ) : (
+                        <Mic className="size-5" />
+                      )}
+                    </button>
+                    <button
                       type="submit"
-                      disabled={(!isLoading && !input.trim() && activeFiles.length === 0) || isProcessingFile || isHistoryLoading}
+                      disabled={(!isLoading && !input.trim() && activeFiles.length === 0) || isProcessingFile || isHistoryLoading || isRecording}
                       className="h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
                     >
                       {isLoading ? (
