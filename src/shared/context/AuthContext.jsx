@@ -174,6 +174,7 @@ export const AuthProvider = ({ children }) => {
         signal: controller.signal,
         suppressAbortLog: true,
         suppressToast: true,
+        skipLogoutOn401: true,
       });
 
       if (response.status === 404) {
@@ -189,6 +190,10 @@ export const AuthProvider = ({ children }) => {
         );
         return;
       }
+
+      // If we got a 401 via skipLogoutOn401, response.status will be 401 (if authFetch returns response on error? No, authFetch throws)
+      // Actually authFetch throws on 401 even with skipLogoutOn401, but sets throw error.skipLogout = true
+      // So we won't reach here if it is 401.
 
       if (!response.ok) {
         console.warn(
@@ -207,6 +212,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       if (error.name === "AbortError") {
         // Timeout is non-fatal; just skip refresh.
+      } else if (error.code === 401) {
+        console.warn("User verification 401: validation failed, but suppressing auto-logout.");
       } else if (error.message !== "Unauthorized") {
         console.error("User verification failed:", error);
       }

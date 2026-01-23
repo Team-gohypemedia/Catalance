@@ -275,7 +275,6 @@
                         "Cart",
                         "Checkout (Address, Shipping, Payment)",
                         "Order Success / Thank You",
-                        "Track Order",
                         "Account (Login/Signup)",
                         "My Orders / Order Details",
                         "Wishlist / Saved Items",
@@ -284,9 +283,7 @@
                         "FAQ / Help Center",
                         "Contact",
                         "About",
-                        "Policies (Privacy, Terms, Return Policy)",
-                        "404 Not Found",
-                        "Sitemap (HTML/XML)"
+                        "Policies (Privacy, Terms, Return Policy)"
                     ]
                 },
                 {
@@ -305,9 +302,7 @@
                         "Contact",
                         "FAQ",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found",
-                        "Sitemap (HTML/XML)"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -323,9 +318,7 @@
                         "Blog (optional)",
                         "Contact",
                         "Privacy Policy (optional)",
-                        "Terms & Conditions (optional)",
-                        "404 Not Found",
-                        "Sitemap (HTML/XML)"
+                        "Terms & Conditions (optional)"
                     ]
                 },
                 {
@@ -343,9 +336,7 @@
                         "Advertise / Media Kit (optional)",
                         "Archive",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found",
-                        "Sitemap (HTML/XML)"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -368,9 +359,7 @@
                         "Signup",
                         "Contact / Sales",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found",
-                        "Sitemap (HTML/XML)"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -404,8 +393,7 @@
                         "Catering (optional)",
                         "Contact",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -422,8 +410,7 @@
                         "About",
                         "Contact",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -441,8 +428,7 @@
                         "Student Portal (optional)",
                         "Contact",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -459,8 +445,7 @@
                         "Location / Contact",
                         "Reviews (optional)",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -477,8 +462,7 @@
                         "Partners / Sponsors",
                         "Contact",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -497,8 +481,7 @@
                         "Login",
                         "Signup",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -520,9 +503,7 @@
                         "Reviews & Ratings",
                         "Support / Help Center",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found",
-                        "Sitemap (HTML/XML)"
+                        "Terms & Conditions"
                     ]
                 },
                 {
@@ -540,8 +521,7 @@
                         "FAQ",
                         "Contact",
                         "Privacy Policy",
-                        "Terms & Conditions",
-                        "404 Not Found"
+                        "Terms & Conditions"
                     ]
                 }
             ],
@@ -550,9 +530,7 @@
                 "Contact",
                 "FAQ / Help",
                 "Privacy Policy",
-                "Terms & Conditions",
-                "404 Not Found",
-                "Sitemap (HTML/XML)"
+                "Terms & Conditions"
             ],
             "questions": [
                 {
@@ -1145,20 +1123,29 @@
                     ]
                 },
                 {
-                    "id": "page_count",
-                    "question": "Approximately how many pages do you require?",
-                    "options": [
+                    "id": "page_template",
+                    "type": "template_with_additional",
+                    "question": "Based on your selected website type, here are the essential pages we recommend:",
+                    "template_source": {
+                        "from": "website_types",
+                        "match_question": "website_category",
+                        "display_format": "list"
+                    },
+                    "additional_pages_question": "Would you like any additional pages beyond the essential template listed above?",
+                    "additional_pages_options": [
                         {
-                            "value": "1_5",
-                            "label": "1–5 pages"
+                            "value": "no_additional",
+                            "label": "No, the template pages are sufficient"
                         },
                         {
-                            "value": "6_10",
-                            "label": "6–10 pages"
+                            "value": "yes_specify",
+                            "label": "Yes, I need additional pages (please specify)",
+                            "allow_text_input": true
                         },
                         {
-                            "value": "more_10",
-                            "label": "More than 10 pages"
+                            "value": "yes_count",
+                            "label": "Yes, specify number of additional pages",
+                            "allow_number_input": true
                         }
                     ]
                 },
