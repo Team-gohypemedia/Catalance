@@ -27,7 +27,7 @@ export const listUsers = async (filters = {}) => {
 };
 
 export const updateUserProfile = async (userId, updates) => {
-  const allowedUpdates = ["fullName", "phoneNumber", "bio", "portfolio", "linkedin", "github"];
+  const allowedUpdates = ["fullName", "phoneNumber", "bio", "portfolio", "linkedin", "github", "profileDetails", "onboardingComplete"];
   const cleanUpdates = {};
 
   Object.keys(updates).forEach(key => {
@@ -253,7 +253,7 @@ export const authenticateUser = async ({ email, password }) => {
 
 export const authenticateWithGoogle = async ({ token, role }) => {
   const { verifyFirebaseToken } = await import("../../lib/firebase-admin.js");
-  
+
   // Verify token with Firebase
   const decodedToken = await verifyFirebaseToken(token);
   const { email, name, picture, uid } = decodedToken;
@@ -271,7 +271,7 @@ export const authenticateWithGoogle = async ({ token, role }) => {
     // Create new user
     // Generate a random password since they use Google auth
     const randomPassword = crypto.randomBytes(16).toString("hex");
-    
+
     user = await prisma.user.create({
       data: {
         email,
@@ -290,10 +290,10 @@ export const authenticateWithGoogle = async ({ token, role }) => {
   } else {
     // If user exists but is not verified, verify them since they used Google
     if (!user.isVerified) {
-       user = await prisma.user.update({
-         where: { id: user.id },
-         data: { isVerified: true }
-       });
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true }
+      });
     }
   }
 
@@ -333,7 +333,9 @@ const createUserRecord = async (payload) => {
         portfolio: payload.portfolio,
         linkedin: payload.linkedin,
         github: payload.github,
-        portfolioProjects: payload.portfolioProjects ?? []
+        github: payload.github,
+        portfolioProjects: payload.portfolioProjects ?? [],
+        profileDetails: payload.freelancerProfile ?? {}
       }
     });
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
@@ -36,6 +36,7 @@ const CLIENT_ROLE = "CLIENT";
 
 function Signup({ className, ...props }) {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState(() => {
     // Pre-fill email if redirected from login for verification
     if (location.state?.verifyEmail) {
@@ -47,7 +48,7 @@ function Signup({ className, ...props }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Verification State - auto-enter verification mode if redirected from login
   const [isVerifying, setIsVerifying] = useState(!!location.state?.showVerification);
   const [otpValue, setOtpValue] = useState("");
@@ -63,7 +64,8 @@ function Signup({ className, ...props }) {
     if (isAuthenticated) {
       logout();
     }
-  }, [logout, isAuthenticated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -83,7 +85,7 @@ function Signup({ className, ...props }) {
         fullName: formData.fullName.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        role: CLIENT_ROLE,
+        role: searchParams.get("role")?.toUpperCase() || CLIENT_ROLE,
       });
 
       // Instead of logging in, switch to verification mode
@@ -91,7 +93,7 @@ function Signup({ className, ...props }) {
       setIsVerifying(true);
     } catch (error) {
       const message = error?.message || "Unable to create your account right now.";
-      
+
       if (message.toLowerCase().includes("already exists")) {
         toast.info("Account already exists. Redirecting to login...");
         setTimeout(() => navigate("/login", { state: { email: formData.email } }), 1000);
@@ -127,9 +129,14 @@ function Signup({ className, ...props }) {
       setFormData(initialFormState);
 
       const nextRole = authPayload?.user?.role?.toUpperCase() || CLIENT_ROLE;
-      navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", {
-        replace: true,
-      });
+
+      if (nextRole === "FREELANCER") {
+        navigate("/freelancer/onboarding", { replace: true });
+      } else {
+        navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", {
+          replace: true,
+        });
+      }
     } catch (error) {
       const message = error?.message || "Invalid verification code. Please try again.";
       setFormError(message);
@@ -141,10 +148,10 @@ function Signup({ className, ...props }) {
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
-    
+
     setFormError("");
     setIsResendingOtp(true);
-    
+
     try {
       await resendOtp(formData.email.trim().toLowerCase());
       toast.success("New verification code sent! Check your email.");
@@ -176,7 +183,7 @@ function Signup({ className, ...props }) {
       const { signInWithGoogle } = await import("@/shared/lib/firebase");
       // Sign in with Firebase Google
       const firebaseUser = await signInWithGoogle();
-      
+
       // Try to create account or log in if exists
       let authPayload;
       try {
@@ -198,10 +205,10 @@ function Signup({ className, ...props }) {
           throw signupError;
         }
       }
-      
+
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);
-      
+
       navigate("/client", { replace: true });
     } catch (error) {
       console.error("Google sign-up error:", error);
@@ -224,20 +231,20 @@ function Signup({ className, ...props }) {
                   <div className="flex flex-col items-center gap-2 text-center">
                     <h1 className="text-2xl font-bold">{isVerifying ? "Verify your email" : "Create your account"}</h1>
                     <p className="text-muted-foreground text-sm text-balance">
-                      {isVerifying 
-                        ? `Enter the code sent to ${formData.email}` 
+                      {isVerifying
+                        ? `Enter the code sent to ${formData.email}`
                         : "Enter your details below to create your account"}
                     </p>
                     {!isVerifying && (
                       <p className="text-xs uppercase tracking-[0.35em] text-primary">
-                        You&apos;re creating a client account.
+                        You&apos;re creating a {searchParams.get("role") === "freelancer" ? "freelancer" : "client"} account.
                       </p>
                     )}
                   </div>
 
                   {isVerifying ? (
                     <div className="flex flex-col items-center gap-4 py-4">
-                       <InputOTP maxLength={6} value={otpValue} onChange={setOtpValue}>
+                      <InputOTP maxLength={6} value={otpValue} onChange={setOtpValue}>
                         <InputOTPGroup>
                           <InputOTPSlot index={0} />
                           <InputOTPSlot index={1} />
@@ -267,10 +274,10 @@ function Signup({ className, ...props }) {
                         ) : (
                           <RefreshCw className="w-4 h-4" />
                         )}
-                        {resendCooldown > 0 
-                          ? `Resend in ${resendCooldown}s` 
-                          : isResendingOtp 
-                            ? "Sending..." 
+                        {resendCooldown > 0
+                          ? `Resend in ${resendCooldown}s`
+                          : isResendingOtp
+                            ? "Sending..."
                             : "Resend Code"}
                       </Button>
                       <Button
@@ -326,15 +333,15 @@ function Signup({ className, ...props }) {
                             required
                           />
                           <div
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute top-0 right-0 h-full px-3 flex items-center cursor-pointer select-none text-zinc-400 hover:text-white"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </div>
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute top-0 right-0 h-full px-3 flex items-center cursor-pointer select-none text-zinc-400 hover:text-white"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </div>
                         </div>
                         <FieldDescription>
                           Must be at least 8 characters long.

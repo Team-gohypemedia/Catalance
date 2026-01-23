@@ -25,6 +25,7 @@ export const createApp = () => {
   const defaultOrigins = [
     "http://localhost:5173",
     "http://localhost:5174",
+    "https://localhost:5173",
     "https://freelancer-self.vercel.app"
   ];
 
@@ -136,7 +137,7 @@ if (!runningInVercel) {
 
   const server = httpServer.listen(env.PORT, () => {
     console.log(`API server ready on http://localhost:${env.PORT}`);
-    
+
     // Check DB connection
     prisma.$connect()
       .then(() => console.log('✓ Database connected successfully'))

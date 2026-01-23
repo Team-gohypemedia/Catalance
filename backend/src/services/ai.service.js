@@ -927,6 +927,22 @@ Treat this as confirmed and DO NOT ask which service they want.`
 
             let questionText = `Q${idx + 1} [ID: ${q.id}]: ${q.question}`;
 
+            // Handle template-based questions with additional pages
+            if (q.type === "template_with_additional" && q.template_source) {
+              questionText += `\n   [TEMPLATE QUESTION - Show page template based on user's previous answer]`;
+              questionText += `\n   INSTRUCTIONS FOR THIS QUESTION:`;
+              questionText += `\n   1. Look up the user's previous answer to "${q.template_source.match_question}"`;
+              questionText += `\n   2. Find the matching website type in the website_types array`;
+              questionText += `\n   3. Display ALL pages from that template as a numbered list`;
+              questionText += `\n   4. After showing the template, ask: "${q.additional_pages_question}"`;
+              if (Array.isArray(q.additional_pages_options)) {
+                const addOptions = q.additional_pages_options.map(o => o.label).join(" | ");
+                questionText += `\n   5. Present these options: ${addOptions}`;
+              }
+              questionText += `\n   6. If user wants additional pages, collect the page names or count`;
+              return questionText;
+            }
+
             // Handle conditional questions (show_if)
             if (q.show_if) {
               questionText += `\n   [CONDITIONAL: Only ask if "${q.show_if.question_id}" = "${q.show_if.equals}"]`;

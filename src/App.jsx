@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -68,6 +68,9 @@ const FreelancerChat = lazy(() => import("@/components/features/freelancer/Freel
 const FreelancerMultiStepForm = lazy(() =>
   import("@/components/features/freelancer/multi-step-form")
 );
+const VerificationPending = lazy(() =>
+  import("@/components/features/freelancer/VerificationPending")
+);
 const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
 const AdminDashboard = lazy(() => import("@/components/features/admin/AdminDashboard"));
 const AdminUsers = lazy(() => import("@/components/features/admin/AdminUsers"));
@@ -79,6 +82,7 @@ const AdminDisputes = lazy(() => import("@/components/features/admin/AdminDisput
 const AdminLogin = lazy(() => import("@/components/features/admin/AdminLogin"));
 const AdminApprovals = lazy(() => import("@/components/features/admin/AdminApprovals"));
 const AdminUserDetails = lazy(() => import("@/components/features/admin/AdminUserDetails"));
+const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
 
 
 
@@ -102,6 +106,7 @@ const App = () => {
                 </LayoutWithNavbar>
               }
             />
+            <Route path="/get-started" element={<GetStarted />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route
               path="/about"
@@ -338,10 +343,14 @@ const App = () => {
             />
             <Route
               path="/freelancer/onboarding"
+              element={<FreelancerMultiStepForm />}
+            />
+            <Route
+              path="/freelancer/verification-pending"
               element={
-                <LayoutWithNavbar>
-                  <FreelancerMultiStepForm />
-                </LayoutWithNavbar>
+                <ProtectedRoute>
+                  <VerificationPending />
+                </ProtectedRoute>
               }
             />
             <Route
@@ -447,7 +456,8 @@ LayoutWithNavbar.propTypes = {
 };
 
 const ProtectedRoute = ({ children, loginPath = "/login" }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -459,6 +469,21 @@ const ProtectedRoute = ({ children, loginPath = "/login" }) => {
 
   if (!isAuthenticated) {
     return <Navigate to={loginPath} replace />;
+  }
+
+  // Check for freelancer onboarding
+  if (user?.role === "FREELANCER" && !user?.onboardingComplete && location.pathname.startsWith("/freelancer") && !location.pathname.includes("/onboarding")) {
+    return <Navigate to="/freelancer/onboarding" replace />;
+  }
+
+  // Check for freelancer verification status
+  if (user?.role === "FREELANCER" && user?.status === "PENDING_APPROVAL") {
+    const allowedPaths = ["/freelancer/verification-pending", "/freelancer/profile"];
+    const isAllowed = allowedPaths.some(path => location.pathname.startsWith(path));
+
+    if (!isAllowed && location.pathname.startsWith("/freelancer")) {
+      return <Navigate to="/freelancer/verification-pending" replace />;
+    }
   }
 
   return children;

@@ -29,29 +29,29 @@ const tryParseJSON = (str) => {
 // Migration: FORCE WIPE corrupted bio data
 export const migrateBioData = asyncHandler(async (req, res) => {
   console.log("[migrateBioData] Starting FORCE WIPE migration...");
-  
+
   // Find all users
   const users = await prisma.user.findMany();
   let wipedCount = 0;
-  
+
   for (const user of users) {
     // specific check for the user reporting issues, or any user with JSON-like bio
     if ((user.bio && user.bio.trim().startsWith('{')) || user.email.includes('wetivi')) {
       console.log(`[migrateBioData] Wiping bio for user: ${user.email}`);
-      
+
       await prisma.user.update({
         where: { id: user.id },
-        data: { 
+        data: {
           bio: "" // WIPE IT CLEAN
         }
       });
-      
+
       wipedCount++;
     }
   }
-  
+
   console.log(`[migrateBioData] Migration complete. Wiped bio for ${wipedCount} users.`);
-  
+
   res.json({
     data: {
       success: true,
@@ -65,23 +65,23 @@ export const migrateBioData = asyncHandler(async (req, res) => {
 export const getProfile = asyncHandler(async (req, res) => {
   const email = req.query.email;
   console.log("[getProfile] Called with email:", email);
-  
+
   if (!email) {
     throw new AppError("Email is required to fetch profile", 400);
   }
-  
+
   // Prevent caching
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  
+
   const user = await prisma.user.findUnique({
     where: { email }
   });
   if (!user) {
     throw new AppError("User not found", 404);
   }
-  
+
   console.log("[getProfile] Raw user.bio from DB:", user.bio);
-  
+
   // Initialize with native column values
   // We strictly treat bio as a string now. No more JSON parsing support.
   let bioText = user.bio || "";
@@ -128,7 +128,7 @@ export const saveProfile = asyncHandler(async (req, res) => {
   const payload = req.body;
   console.log("[saveProfile] Called with payload:", JSON.stringify(payload, null, 2));
   console.log("[saveProfile] *** EXECUTING NATIVE COLUMN UPDATE V2 ***");
-  
+
   const userId = req.user?.sub;
   const email = payload.email || payload.personal?.email || req.user?.email;
   console.log("[saveProfile] Email:", email);
@@ -219,7 +219,7 @@ export const saveProfile = asyncHandler(async (req, res) => {
   if (personal.headline !== undefined) updateData.jobTitle = personal.headline;
   if (payload.companyName !== undefined) updateData.companyName = payload.companyName;
   if (payload.website !== undefined) updateData.portfolio = payload.website;
-  
+
   // Bio should be plain text, NOT JSON
   const bioInput = personal.bio !== undefined ? personal.bio : payload.bio;
   if (bioInput !== undefined) {
@@ -242,10 +242,18 @@ export const saveProfile = asyncHandler(async (req, res) => {
       updateData.bio = extractBioText(trimmedBio);
     }
   }
-  
+
   // Experience years as number
   if (personal.experienceYears !== undefined) {
     updateData.experienceYears = Number(personal.experienceYears) || 0;
+  }
+
+  // Handle Onboarding Completion & Verification Flow
+  if (payload.onboardingComplete === true) {
+    updateData.onboardingComplete = true;
+    // Set status to PENDING_APPROVAL when onboarding is finished
+    // This locks the dashboard until admin approves
+    updateData.status = "PENDING_APPROVAL";
   }
 
   await prisma.user.update({

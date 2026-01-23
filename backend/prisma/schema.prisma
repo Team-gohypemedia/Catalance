@@ -58,6 +58,7 @@ model User {
   fcmToken     String?    // Firebase Cloud Messaging token for push notifications
   otpCode      String?
   otpExpires   DateTime?
+  onboardingComplete Boolean @default(false)
   isVerified   Boolean    @default(false)
   suspendedAt  DateTime?  // Track when user was suspended for 90-day deletion countdown
   phone        String?    // Contact number
@@ -81,6 +82,7 @@ model User {
   github       String?
   portfolioProjects Json?    @default("[]")
   resume       String?
+  profileDetails Json?       @default("{}")
 
 
   ownedProjects Project[] @relation("ProjectOwner")

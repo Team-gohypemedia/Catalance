@@ -31,9 +31,8 @@ const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
   return (
     <div
       onClick={onClick}
-      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${
-        isDark ? "rotate-180" : "rotate-0"
-      }`}
+      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${isDark ? "rotate-180" : "rotate-0"
+        }`}
     >
       {isDark ? (
         <Sun className="h-6 w-6 text-yellow-500" />
@@ -60,7 +59,7 @@ const AuthButtons = ({ visible, isHome, isDark }) => {
       >
         Log In
       </NavbarButton>
-      <NavbarButton as={Link} to="/signup">
+      <NavbarButton as={Link} to="/get-started">
         Sign Up
       </NavbarButton>
     </div>
@@ -129,7 +128,7 @@ const Navbar = () => {
           >
             Log In
           </NavbarButton>
-          <NavbarButton as={Link} to="/signup" className="w-full">
+          <NavbarButton as={Link} to="/get-started" className="w-full">
             Sign Up
           </NavbarButton>
         </MobileNavMenu>

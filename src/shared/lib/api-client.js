@@ -202,6 +202,13 @@ export const resendOtp = (email) => {
   });
 };
 
+export const updateProfile = (updates) => {
+  return request("/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(updates)
+  });
+};
+
 export const createChatConversation = ({ service, ...rest }) => {
   return request("/chat/conversations", {
     method: "POST",
