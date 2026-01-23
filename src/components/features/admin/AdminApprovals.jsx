@@ -20,15 +20,6 @@ const AdminApprovals = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   // Fetch only users who are pending approval or unverified freelancers
-  // Since our backend now supports filtering, we can use that.
-  // For now, let's fetch freelancer + unverified, AND pending_approval status
-  // We might need to make two requests or just one if we can combine.
-  // Given current backend API, let's fetch where status=PENDING_APPROVAL OR role=FREELANCER & isVerified=false
-  // The backend simple filter might not support OR across these easily without custom query logic update.
-  // Let's assume we want to show mostly Freelancers waiting for verification for now, as that was the context.
-  // Or we can just fetch all Freelancers and filter client side for the "Approvals" view if the list is small.
-  // IMPORTANT: The prompt implies a general "Approvals" section.
-  
   const fetchPendingUsers = async () => {
     setLoading(true);
     try {
@@ -38,10 +29,7 @@ const AdminApprovals = () => {
       });
       const res = await authFetch(`/admin/users?${params}`);
       const data = await res.json();
-      
-      // Also potentially fetch users with status 'PENDING_APPROVAL' if that exists for other roles
-      // For now, let's focus on the unverified freelancers as per previous context
-      
+
       if (data?.data?.users) {
         setUsers(data.data.users);
       }
@@ -67,14 +55,6 @@ const AdminApprovals = () => {
         body: JSON.stringify({ status: 'ACTIVE' })
       });
 
-      // 2. We should also verify them (custom endpoint might be needed, or we assume status active implies verified?)
-      // Actually, usually verification is separate. Let's assume for now setting status ACTIVE is the "Approval" action.
-      // But wait, if they are unverified, they might need an explicit "verify" flag update.
-      // The backend doesn't show a direct "verify" endpoint in admin routes.
-      // Let's just use status update for now and assume it unblocks them.
-      // Ideally we would want to update `isVerified` too.
-      // Since I don't see a verify endpoint, I will just activate them.
-      
       if (resStatus.ok) {
         toast.success("User approved successfully");
         setUsers(users.filter(u => u.id !== userId)); // Remove from list
@@ -112,10 +92,9 @@ const AdminApprovals = () => {
     }
   };
 
-  const navigate = useNavigate();
-
   const handleView = (userId) => {
-    navigate(`/admin/users/${userId}`);
+    setSelectedUserId(userId);
+    setDetailsDialogOpen(true);
   };
 
   return (
@@ -223,6 +202,11 @@ const AdminApprovals = () => {
         </div>
       </AdminLayout>
 
+      <UserDetailsDialog
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        userId={selectedUserId}
+      />
     </>
   );
 };

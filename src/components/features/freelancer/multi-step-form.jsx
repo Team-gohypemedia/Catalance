@@ -1,11 +1,10 @@
-"use client";
+﻿"use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ChevronLeft,
   Check,
-  ChevronRight,
-  X,
   User,
   Building2,
   Clock,
@@ -27,34 +26,17 @@ import {
   Box,
   Film,
   Loader2,
-  Trash2,
-  ExternalLink,
-  Link2,
-  DollarSign,
-  ClipboardCheck,
+  Sparkles,
+  Mic,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -64,55 +46,40 @@ import {
 } from "@/components/ui/select";
 
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
-
-import { API_BASE_URL, signup, verifyOtp } from "@/shared/lib/api-client";
+import { API_BASE_URL, signup, verifyOtp, updateProfile } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 
-const PROFESSIONAL_FIELD_ICONS = {
-  "Development & Tech": "💻",
-  "Digital Marketing": "📱",
-  "Creative & Design": "🎨",
-  "Writing & Content": "✍️",
-  "Lead Generation": "🎯",
-  "Video Services": "🎬",
-  "Lifestyle & Personal": "💆",
-  "Customer Support": "💬",
-  "Administrative Services": "📊",
-  "Audio Services": "🎧",
-};
+// ============================================================================
+// CONSTANTS & OPTIONS
+// ============================================================================
 
 const ROLE_OPTIONS = [
-  { value: "individual", label: "Individual Freelancer", icon: User },
-  { value: "agency", label: "Agency / Studio", icon: Building2 },
-  { value: "part-time", label: "Part-time Freelancer", icon: Clock },
+  { value: "individual", label: "Individual Freelancer", icon: User, description: "Working independently on projects" },
+  { value: "agency", label: "Agency / Studio", icon: Building2, description: "Team of professionals" },
+  { value: "part_time", label: "Part-time Freelancer", icon: Clock, description: "Freelancing alongside other work" },
 ];
 
 const SERVICE_OPTIONS = [
-  { value: "website_development", label: "Website Development", icon: Globe },
+  { value: "branding", label: "Branding", icon: Sparkles },
+  { value: "website_ui_ux", label: "Website / UI–UX Design", icon: Globe },
+  { value: "seo", label: "SEO", icon: Search },
+  { value: "social_media_marketing", label: "Social Media Marketing", icon: Share2 },
+  { value: "paid_advertising", label: "Paid Advertising / Performance Marketing", icon: TrendingUp },
   { value: "app_development", label: "App Development", icon: Smartphone },
   { value: "software_development", label: "Software Development", icon: Code },
   { value: "lead_generation", label: "Lead Generation", icon: Target },
   { value: "video_services", label: "Video Services", icon: Video },
-  { value: "seo_optimization", label: "SEO Optimization", icon: Search },
-  {
-    value: "social_media_management",
-    label: "Social Media Management",
-    icon: Share2,
-  },
-  {
-    value: "performance_marketing",
-    label: "Performance Marketing",
-    icon: TrendingUp,
-  },
-  { value: "creative_design", label: "Creative & Design", icon: Palette },
   { value: "writing_content", label: "Writing & Content", icon: PenTool },
   { value: "customer_support", label: "Customer Support", icon: MessageCircle },
-  { value: "influencer_ugc", label: "Influencer / UGC Marketing", icon: Star },
-  { value: "crm_erp", label: "CRM & ERP", icon: BarChart3 },
+  { value: "influencer_marketing", label: "Influencer Marketing", icon: Star },
+  { value: "ugc_marketing", label: "UGC Marketing", icon: Video },
   { value: "ai_automation", label: "AI Automation", icon: Bot },
   { value: "whatsapp_chatbot", label: "WhatsApp Chatbot", icon: MessageSquare },
+  { value: "creative_design", label: "Creative & Design", icon: Palette },
   { value: "3d_modeling", label: "3D Modeling", icon: Box },
-  { value: "cgi_videos", label: "CGI Videos", icon: Film },
+  { value: "cgi_videos", label: "CGI Video Services", icon: Film },
+  { value: "crm_erp", label: "CRM & ERP Integrated Solutions", icon: BarChart3 },
+  { value: "voice_agent", label: "Voice Agent", icon: Mic },
 ];
 
 const EXPERIENCE_YEARS_OPTIONS = [
@@ -124,200 +91,58 @@ const EXPERIENCE_YEARS_OPTIONS = [
 
 const WORKING_LEVEL_OPTIONS = [
   { value: "beginner", label: "Beginner", description: "Learning stage" },
-  {
-    value: "intermediate",
-    label: "Intermediate",
-    description: "Can handle projects independently",
-  },
-  {
-    value: "advanced",
-    label: "Advanced",
-    description: "Can handle complex projects",
-  },
+  { value: "intermediate", label: "Intermediate", description: "Can handle projects independently" },
+  { value: "advanced", label: "Advanced", description: "Can handle complex projects" },
 ];
 
 const TOOLS_BY_SERVICE = {
-  website_development: [
-    "WordPress",
-    "Webflow",
-    "Shopify",
-    "Wix",
-    "Squarespace",
-    "Figma",
-    "HTML/CSS",
-    "JavaScript",
-    "React",
-    "Vue.js",
-    "Next.js",
-  ],
-  app_development: [
-    "React Native",
-    "Flutter",
-    "Swift",
-    "Kotlin",
-    "Xcode",
-    "Android Studio",
-    "Firebase",
-    "Expo",
-  ],
-  software_development: [
-    "Python",
-    "Java",
-    "C++",
-    "Node.js",
-    "Docker",
-    "Git",
-    "AWS",
-    "Azure",
-    "PostgreSQL",
-    "MongoDB",
-  ],
-  lead_generation: [
-    "Apollo.io",
-    "LinkedIn Sales Navigator",
-    "Hunter.io",
-    "ZoomInfo",
-    "Lusha",
-    "Snov.io",
-    "Lemlist",
-  ],
-  video_services: [
-    "Adobe Premiere Pro",
-    "Final Cut Pro",
-    "DaVinci Resolve",
-    "After Effects",
-    "CapCut",
-    "Filmora",
-  ],
-  seo_optimization: [
-    "Ahrefs",
-    "SEMrush",
-    "Google Search Console",
-    "Screaming Frog",
-    "Moz",
-    "Ubersuggest",
-    "Yoast SEO",
-  ],
-  social_media_management: [
-    "Hootsuite",
-    "Buffer",
-    "Sprout Social",
-    "Later",
-    "Canva",
-    "Meta Business Suite",
-    "TikTok Creator Studio",
-  ],
-  performance_marketing: [
-    "Google Ads",
-    "Facebook Ads Manager",
-    "TikTok Ads",
-    "LinkedIn Ads",
-    "Google Analytics",
-    "Hotjar",
-  ],
-  creative_design: [
-    "Figma",
-    "Adobe Photoshop",
-    "Illustrator",
-    "Canva",
-    "Sketch",
-    "InDesign",
-    "Affinity Designer",
-  ],
-  writing_content: [
-    "Google Docs",
-    "Grammarly",
-    "Hemingway",
-    "Notion",
-    "WordPress",
-    "Medium",
-    "Jasper AI",
-  ],
-  customer_support: [
-    "Zendesk",
-    "Freshdesk",
-    "Intercom",
-    "HubSpot",
-    "LiveChat",
-    "Crisp",
-    "Tidio",
-  ],
-  influencer_ugc: [
-    "Instagram",
-    "TikTok",
-    "YouTube Studio",
-    "Canva",
-    "CapCut",
-    "Linktree",
-    "Later",
-  ],
-  crm_erp: [
-    "Salesforce",
-    "HubSpot",
-    "Zoho CRM",
-    "SAP",
-    "Oracle",
-    "Microsoft Dynamics",
-    "Pipedrive",
-  ],
-  ai_automation: [
-    "Zapier",
-    "Make (Integromat)",
-    "n8n",
-    "ChatGPT API",
-    "Python",
-    "LangChain",
-    "Flowise",
-  ],
-  whatsapp_chatbot: [
-    "Twilio",
-    "WhatsApp Business API",
-    "Chatfuel",
-    "ManyChat",
-    "Wati",
-    "Respond.io",
-  ],
-  "3d_modeling": [
-    "Blender",
-    "Maya",
-    "Cinema 4D",
-    "3ds Max",
-    "ZBrush",
-    "SketchUp",
-    "Houdini",
-  ],
-  cgi_videos: [
-    "Blender",
-    "After Effects",
-    "Cinema 4D",
-    "Unreal Engine",
-    "Houdini",
-    "Nuke",
-    "DaVinci Resolve",
-  ],
+  // Branding tools
+  branding: ["Adobe Illustrator", "Adobe Photoshop", "Figma", "Canva", "Sketch", "Adobe InDesign", "Affinity Designer", "CorelDRAW", "Brandmark", "Looka"],
+  // Website / UI-UX Design tools
+  website_ui_ux: ["Figma", "Adobe XD", "Sketch", "InVision", "Framer", "Zeplin", "Marvel", "Principle", "ProtoPie", "Maze"],
+  // SEO tools
+  seo: ["Ahrefs", "SEMrush", "Google Search Console", "Screaming Frog", "Moz", "Ubersuggest", "Yoast SEO", "Surfer SEO", "SE Ranking", "SpyFu"],
+  // Social Media Marketing tools
+  social_media_marketing: ["Hootsuite", "Buffer", "Sprout Social", "Later", "Canva", "Meta Business Suite", "TikTok Creator Studio", "Loomly", "SocialBee", "Agorapulse"],
+  // Paid Advertising / Performance Marketing tools
+  paid_advertising: ["Google Ads", "Facebook Ads Manager", "TikTok Ads", "LinkedIn Ads", "Google Analytics", "Hotjar", "Mixpanel", "Amplitude", "Optimizely", "VWO"],
+  // App Development tools
+  app_development: ["React Native", "Flutter", "Swift", "Kotlin", "Xcode", "Android Studio", "Firebase", "Expo", "Fastlane", "TestFlight"],
+  // Software Development tools
+  software_development: ["Python", "Java", "C++", "Node.js", "Docker", "Git", "AWS", "Azure", "PostgreSQL", "MongoDB"],
+  // Lead Generation tools
+  lead_generation: ["Apollo.io", "LinkedIn Sales Navigator", "Hunter.io", "ZoomInfo", "Lusha", "Snov.io", "Lemlist", "Clearbit", "Leadfeeder", "Outreach"],
+  // Video Services tools
+  video_services: ["Adobe Premiere Pro", "Final Cut Pro", "DaVinci Resolve", "After Effects", "CapCut", "Filmora", "Camtasia", "Sony Vegas", "HitFilm", "iMovie"],
+  // Writing & Content tools
+  writing_content: ["Google Docs", "Grammarly", "Hemingway", "Notion", "WordPress", "Medium", "Jasper AI", "Copy.ai", "Surfer SEO", "Clearscope"],
+  // Customer Support tools
+  customer_support: ["Zendesk", "Freshdesk", "Intercom", "HubSpot", "LiveChat", "Crisp", "Tidio", "Help Scout", "Kayako", "Zoho Desk"],
+  // Influencer Marketing tools
+  influencer_marketing: ["Instagram", "TikTok", "YouTube Studio", "Upfluence", "AspireIQ", "Grin", "CreatorIQ", "Heepsy", "Modash", "Traackr"],
+  // UGC Marketing tools
+  ugc_marketing: ["Instagram", "TikTok", "YouTube Studio", "Canva", "CapCut", "Linktree", "Later", "VSCO", "InShot", "Lightroom Mobile"],
+  // AI Automation tools
+  ai_automation: ["Zapier", "Make (Integromat)", "n8n", "ChatGPT API", "Python", "LangChain", "Flowise", "OpenAI", "Anthropic API", "Hugging Face"],
+  // WhatsApp Chatbot tools
+  whatsapp_chatbot: ["Twilio", "WhatsApp Business API", "Chatfuel", "ManyChat", "Wati", "Respond.io", "Gupshup", "Infobip", "MessageBird", "360dialog"],
+  // Creative & Design tools
+  creative_design: ["Figma", "Adobe Photoshop", "Illustrator", "Canva", "Sketch", "InDesign", "Affinity Designer", "Adobe XD", "Procreate", "CorelDRAW"],
+  // 3D Modeling tools
+  "3d_modeling": ["Blender", "Maya", "Cinema 4D", "3ds Max", "ZBrush", "SketchUp", "Houdini", "Rhino", "Modo", "Fusion 360"],
+  // CGI Videos tools
+  cgi_videos: ["Blender", "After Effects", "Cinema 4D", "Unreal Engine", "Houdini", "Nuke", "DaVinci Resolve", "Unity", "Octane Render", "V-Ray"],
+  // CRM & ERP tools
+  crm_erp: ["Salesforce", "HubSpot", "Zoho CRM", "SAP", "Oracle", "Microsoft Dynamics", "Pipedrive", "Freshsales", "Monday CRM", "NetSuite"],
+  // Voice Agent tools
+  voice_agent: ["Twilio", "Amazon Connect", "Google Cloud Speech", "Azure Cognitive Services", "Dialogflow", "VoiceFlow", "VAPI", "Retell AI", "Deepgram", "AssemblyAI"],
 };
 
 const PORTFOLIO_TYPE_OPTIONS = [
-  {
-    value: "live_links",
-    label: "Live links",
-    description: "Links to live websites or apps",
-  },
-  {
-    value: "drive_folder",
-    label: "Drive folder",
-    description: "Google Drive or cloud storage",
-  },
-  {
-    value: "case_studies",
-    label: "Case studies",
-    description: "Detailed project breakdowns",
-  },
-  {
-    value: "demo_samples",
-    label: "Demo samples",
-    description: "Sample work or mockups",
-  },
+  { value: "live_links", label: "Live links", description: "Links to live websites or apps" },
+  { value: "drive_folder", label: "Drive folder", description: "Google Drive or cloud storage" },
+  { value: "case_studies", label: "Case studies", description: "Detailed project breakdowns" },
+  { value: "demo_samples", label: "Demo samples", description: "Sample work or mockups" },
 ];
 
 const WORK_PREFERENCE_OPTIONS = [
@@ -345,288 +170,215 @@ const PRICING_MODEL_OPTIONS = [
 ];
 
 const PROJECT_RANGE_OPTIONS = [
-  { value: "entry_level", label: "Entry-level" },
-  { value: "mid_range", label: "Mid-range" },
-  { value: "premium", label: "Premium" },
+  { value: "entry_level", label: "Entry-level (< $500)" },
+  { value: "mid_range", label: "Mid-range ($500 - $5k)" },
+  { value: "premium", label: "Premium ($5k+)" },
 ];
 
+const COMMUNICATION_STYLE_OPTIONS = [
+  { value: "async", label: "Async", description: "Messages, updates at milestones" },
+  { value: "daily_checkins", label: "Daily check-ins", description: "Regular daily updates" },
+];
+
+const RESPONSE_TIME_OPTIONS = [
+  { value: "within_24h", label: "Within 24 hours" },
+  { value: "same_day", label: "Same working day" },
+];
+
+const QUALITY_PROCESS_OPTIONS = [
+  { value: "self_review", label: "Self-review" },
+  { value: "checklist_qa", label: "Checklist-based QA" },
+  { value: "peer_review", label: "Peer review" },
+];
+
+const TIMEZONE_OPTIONS = [
+  { value: "IST", label: "IST (Indian Standard Time)" },
+  { value: "PST", label: "PST (Pacific Standard Time)" },
+  { value: "EST", label: "EST (Eastern Standard Time)" },
+  { value: "CST", label: "CST (Central Standard Time)" },
+  { value: "GMT", label: "GMT (Greenwich Mean Time)" },
+  { value: "CET", label: "CET (Central European Time)" },
+  { value: "AST", label: "AST (Atlantic Standard Time)" },
+  { value: "MST", label: "MST (Mountain Standard Time)" },
+  { value: "UTC", label: "UTC (Coordinated Universal Time)" },
+  { value: "BST", label: "BST (British Summer Time)" },
+  { value: "AEST", label: "AEST (Australian Eastern Standard Time)" },
+];
+
+const WORKING_HOURS_OPTIONS = [
+  { value: "9_to_6", label: "9 AM - 6 PM" },
+  { value: "10_to_7", label: "10 AM - 7 PM" },
+  { value: "8_to_5", label: "8 AM - 5 PM" },
+  { value: "flexible", label: "Flexible Schedule" },
+  { value: "overlap_us", label: "Overlap with US Hours" },
+  { value: "overlap_uk", label: "Overlap with UK Hours" },
+  { value: "weekend_only", label: "Weekend Only" },
+  { value: "night_shift", label: "Night Shift" },
+];
+
+// Each step = one question/action
 const STEPS = [
-  { id: 1, key: "role", label: "Role & Intent" },
-  { id: 2, key: "skill_validation", label: "Skill Validation" },
-  { id: 3, key: "portfolio_proof", label: "Portfolio & Proof" },
-  { id: 4, key: "work_style", label: "Work Style" },
-  { id: 5, key: "pricing_availability", label: "Pricing & Availability" },
-  { id: 6, key: "sop_alignment", label: "SOP & Alignment" },
-  { id: 7, key: "professional", label: "Professional" },
-  { id: 8, key: "specialty", label: "Specialty" },
-  { id: 9, key: "skills", label: "Skills" },
-  { id: 10, key: "experience", label: "Experience" },
-  { id: 11, key: "portfolio", label: "Portfolio Links" },
-  { id: 12, key: "terms", label: "Terms" },
-  { id: 13, key: "personal", label: "Personal info" },
+  { id: 1, key: "role", label: "Role Type" },
+  { id: 2, key: "services", label: "Services" },
+  { id: 3, key: "experience_years", label: "Experience" },
+  { id: 4, key: "working_level", label: "Working Level" },
+  { id: 5, key: "primary_tools", label: "Primary Tools" },
+  { id: 6, key: "secondary_tools", label: "Secondary Tools" },
+  { id: 7, key: "has_previous_work", label: "Previous Work" },
+  { id: 8, key: "portfolio_types", label: "Portfolio Type" },
+  { id: 9, key: "worked_with_clients", label: "Client History" },
+  { id: 10, key: "work_preference", label: "Work Style" },
+  { id: 11, key: "hours_per_day", label: "Availability" },
+  { id: 12, key: "revision_handling", label: "Revisions" },
+  { id: 13, key: "pricing_model", label: "Pricing" },
+  { id: 14, key: "project_range", label: "Project Range" },
+  { id: 15, key: "partial_scope", label: "Partial Scope" },
+  { id: 16, key: "sop_agreement", label: "SOP Agreement" },
+  { id: 17, key: "scope_freeze", label: "Scope Freeze" },
+  { id: 18, key: "requote_agreement", label: "Re-quote Policy" },
+  { id: 19, key: "communication_style", label: "Communication" },
+  { id: 20, key: "response_time", label: "Response Time" },
+  { id: 21, key: "timezone", label: "Timezone" },
+  { id: 22, key: "quality_process", label: "Quality" },
+  { id: 23, key: "accepts_ratings", label: "Ratings" },
+  { id: 24, key: "why_catalance", label: "Motivation" },
+  { id: 25, key: "ready_to_start", label: "Readiness" },
+  { id: 26, key: "personal_info", label: "Account" },
 ];
 
-const PROFESSIONAL_FIELDS = [
-  "Development & Tech",
-  "Digital Marketing",
-  "Creative & Design",
-  "Writing & Content",
-  "Lead Generation",
-  "Video Services",
-  ,
-  "Lifestyle & Personal",
-  "Customer Support",
-  "Administrative Services",
-  "Audio Services",
-];
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
 
-const SPECIALTY_SKILLS_MAP = {
-  "Front-end Development": [
-    "React",
-    "Vue.js",
-    "Angular",
-    "Tailwind CSS",
-    "TypeScript",
-    "Next.js",
-    "Svelte",
-    "WordPress",
-    "Shopify",
-    "Webflow",
-    "HTML5",
-    "CSS3",
-    "Bootstrap",
-  ],
-  "Back-end Development": [
-    "Node.js",
-    "Python",
-    "Java",
-    "C#",
-    "PostgreSQL",
-    "MongoDB",
-    "Docker",
-    "PHP",
-    "Laravel",
-    "Ruby on Rails",
-    "Go",
-    "Redis",
-    "GraphQL",
-  ],
-  "Full-stack Development": [
-    "React",
-    "Node.js",
-    "PostgreSQL",
-    "Docker",
-    "TypeScript",
-    "AWS",
-    "Git",
-    "Next.js",
-    "GraphQL",
-    "Firebase",
-    "Supabase",
-    "PHP",
-    "Laravel",
-  ],
-  "Mobile App Development": [
-    "Swift (iOS)",
-    "Kotlin (Android)",
-    "React Native",
-    "Flutter",
-    "Firebase",
-    "Ionic",
-    "Xamarin",
-  ],
-  "DevOps & Cloud": [
-    "AWS",
-    "Docker",
-    "Kubernetes",
-    "CI/CD",
-    "Linux",
-    "Terraform",
-    "GitHub Actions",
-    "Azure",
-    "Google Cloud",
-    "Jenkins",
-    "Ansible",
-  ],
-  "Data & Analytics": [
-    "Python",
-    "SQL",
-    "Tableau",
-    "Power BI",
-    "Machine Learning",
-    "Pandas",
-    "Data Science",
-    "R",
-    "BigQuery",
-    "Apache Spark",
-    "Hadoop",
-  ],
-  "SEO Specialist": [
-    "SEO",
-    "SEM",
-    "Google Analytics",
-    "Keyword Research",
-    "Content Optimization",
-    "Link Building",
-    "Ahrefs",
-    "Semrush",
-    "Google Search Console",
-  ],
-  "Performance Marketer": [
-    "Google Ads",
-    "Facebook Ads",
-    "Conversion Optimization",
-    "A/B Testing",
-    "Analytics",
-    "LinkedIn Ads",
-    "TikTok Ads",
-  ],
-  "Content Marketing": [
-    "Content Writing",
-    "Copywriting",
-    "Blog Writing",
-    "SEO Writing",
-    "Social Media Content",
-    "Email Copy",
-    "Technical Writing",
-  ],
-  "Email Marketing": [
-    "Email Campaigns",
-    "Automation",
-    "Segmentation",
-    "Copy Writing",
-    "A/B Testing",
-    "Mailchimp",
-    "Klaviyo",
-    "HubSpot",
-  ],
-  "UI/UX Design": [
-    "Figma",
-    "Sketch",
-    "Adobe XD",
-    "Prototyping",
-    "User Research",
-    "Wireframing",
-    "InVision",
-    "Framer",
-  ],
-  "Graphic Design": [
-    "Adobe Creative Suite",
-    "Canva",
-    "Logo Design",
-    "Branding",
-    "Typography",
-    "Illustration",
-    "Photoshop",
-    "Illustrator",
-    "InDesign",
-  ],
-  "Product Design": [
-    "Figma",
-    "Prototyping",
-    "User Testing",
-    "Design Systems",
-    "Interaction Design",
-    "Product Strategy",
-  ],
-  "Brand Identity": [
-    "Logo Design",
-    "Brand Strategy",
-    "Color Theory",
-    "Typography",
-    "Visual Identity",
-    "Brand Guidelines",
-  ],
-  "WordPress Development": [
-    "Theme Development",
-    "Plugin Development",
-    "Elementor",
-    "WooCommerce",
-    "PHP",
-    "Speed Optimization",
-    "Security",
-    "Divi",
-  ],
-  "Shopify Development": [
-    "Liquid",
-    "Theme Customization",
-    "Shopify Plus",
-    "App Development",
-    "Store Setup",
-    "Migration",
-    "Headless Shopify",
-  ],
-  "CMS & No-Code": [
-    "Webflow",
-    "Wix",
-    "Squarespace",
-    "Bubble",
-    "Framer",
-    "Zapier",
-    "Airtable",
-  ],
-  "General Specialist": [
-    "General Services",
-    "Consulting",
-    "Strategy",
-    "Project Management",
-    "Virtual Assistance",
-  ],
+const ProgressBar = ({ currentStep, totalSteps }) => {
+  const progress = (currentStep / totalSteps) * 100;
+  return (
+    <div className="w-full h-[2px] bg-white/10 overflow-hidden relative">
+      <div
+        className="h-full bg-white transition-all duration-300 ease-out"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  );
 };
 
-const EXPERIENCE_OPTIONS = ["Fresher", "0-1", "1-3", "3-5", "5-8", "10+"];
+const StepHeader = ({ title, subtitle }) => (
+  <div className="mb-8 text-center px-4">
+    <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">
+      {title}
+    </h1>
+    {subtitle && (
+      <p className="text-white/60 text-sm">{subtitle}</p>
+    )}
+  </div>
+);
 
-const specialtyOptionsByField = {
-  "Development & Tech": [
-    "Front-end Development",
-    "Back-end Development",
-    "Full-stack Development",
-    "Mobile App Development",
-    "DevOps & Cloud",
-    "DevOps & Cloud",
-    "Data & Analytics",
-    "WordPress Development",
-    "Shopify Development",
-    "CMS & No-Code",
-  ],
-  "Digital Marketing": [
-    "SEO Specialist",
-    "Performance Marketer",
-    "Content Marketing",
-    "Email Marketing",
-  ],
-  "Creative & Design": [
-    "UI/UX Design",
-    "Graphic Design",
-    "Product Design",
-    "Brand Identity",
-  ],
-};
+const OptionCard = ({
+  selected,
+  onClick,
+  label,
+  description,
+  icon: Icon,
+  multiSelect = false,
+}) => (
+  <motion.button
+    layout
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    type="button"
+    onClick={onClick}
+    className={cn(
+      "group relative w-full flex items-center justify-between px-6 py-5 rounded-xl border transition-all duration-300 overflow-hidden",
+      selected
+        ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
+        : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20"
+    )}
+  >
+    {/* Active indicator bar */}
+    {selected && (
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+    )}
 
-const fallbackSpecialtyOptions = [
-  "General Specialist",
-  "Consultant",
-  "Strategist",
-  "Project Specialist",
-];
+    <div className="flex items-center gap-5">
+      {Icon && (
+        <div className={cn(
+          "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300",
+          selected
+            ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-110"
+            : "bg-white/10 text-white/60 group-hover:bg-white/20 group-hover:text-white"
+        )}>
+          <Icon className="w-5 h-5" />
+        </div>
+      )}
+      <div className="text-left">
+        <p className={cn(
+          "text-base font-semibold transition-colors",
+          selected ? "text-primary" : "text-white"
+        )}>{label}</p>
+        {description && (
+          <p className="text-white/50 text-sm mt-1 group-hover:text-white/70 transition-colors">{description}</p>
+        )}
+      </div>
+    </div>
+
+    <div className={cn(
+      "w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-4 transition-all duration-300",
+      selected
+        ? "bg-primary text-primary-foreground scale-110"
+        : "bg-white/10 text-transparent group-hover:bg-white/20"
+    )}>
+      <Check className="w-3.5 h-3.5" />
+    </div>
+  </motion.button>
+);
+
+const ActionButton = ({ onClick, disabled, loading, children, variant = "primary" }) => (
+  <Button
+    onClick={onClick}
+    disabled={disabled || loading}
+    className={cn(
+      "w-full py-6 text-base font-medium rounded-full transition-all",
+      variant === "primary"
+        ? "bg-primary hover:bg-primary-strong text-primary-foreground"
+        : "bg-white/10 hover:bg-white/20 text-white"
+    )}
+  >
+    {loading ? (
+      <Loader2 className="w-5 h-5 animate-spin" />
+    ) : (
+      children
+    )}
+  </Button>
+);
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 const FreelancerMultiStepForm = () => {
+  const navigate = useNavigate();
+  const { login: setAuthSession, user, refreshUser } = useAuth();
+
+  const [hasStarted, setHasStarted] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [otp, setOtp] = useState("");
+
   const [formData, setFormData] = useState({
     role: "",
     selectedServices: [],
     experienceYears: "",
     workingLevel: "",
-    selectedTools: [],
+    primarySkillTools: [],
+    secondarySkillTools: [],
     hasPreviousWork: "",
     portfolioTypes: [],
     hasWorkedWithClients: "",
     portfolioLink: "",
-    onboardingProjects: [],
     workPreference: "",
     hoursPerDay: "",
     revisionHandling: "",
@@ -636,17 +388,14 @@ const FreelancerMultiStepForm = () => {
     sopAgreement: "",
     scopeFreezeAgreement: "",
     requoteAgreement: "",
-    professionalField: "",
-    specialty: [],
-    skills: [],
-    customSkillInput: "",
-    experience: "",
-    portfolioWebsite: "",
-    linkedinProfile: "",
-    githubProfile: "",
-    portfolioProjects: [],
-    portfolioFileName: "",
-    termsAccepted: false,
+    communicationStyle: "",
+    responseTime: "",
+    timezone: "",
+    workingHours: "",
+    qualityProcess: [],
+    acceptsRatings: "",
+    whyCatalance: "",
+    readyToStart: "",
     fullName: "",
     email: "",
     password: "",
@@ -655,298 +404,173 @@ const FreelancerMultiStepForm = () => {
     location: "",
   });
 
-  const navigate = useNavigate();
-  const { login: setAuthSession } = useAuth();
-
   const totalSteps = STEPS.length;
-  const progress = Math.round((currentStep / totalSteps) * 100);
+
+  // Load saved state on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem("freelancer_onboarding_data");
+    const savedStep = localStorage.getItem("freelancer_onboarding_step");
+    const savedHasStarted = localStorage.getItem("freelancer_onboarding_started");
+
+    if (savedData) {
+      try {
+        setFormData(JSON.parse(savedData));
+      } catch (e) {
+        console.error("Failed to parse saved form data", e);
+      }
+    }
+    if (savedStep) {
+      setCurrentStep(parseInt(savedStep, 10));
+    }
+    if (savedHasStarted) {
+      setHasStarted(JSON.parse(savedHasStarted));
+    }
+  }, []);
+
+  // Save state on changes
+  useEffect(() => {
+    localStorage.setItem("freelancer_onboarding_data", JSON.stringify(formData));
+    localStorage.setItem("freelancer_onboarding_step", currentStep.toString());
+    localStorage.setItem("freelancer_onboarding_started", JSON.stringify(hasStarted));
+  }, [formData, currentStep, hasStarted]);
+
+  // Get relevant tools based on selected services
+  const availableTools = useMemo(() => {
+    const tools = new Set();
+    formData.selectedServices.forEach(service => {
+      const serviceTools = TOOLS_BY_SERVICE[service] || [];
+      serviceTools.forEach(tool => tools.add(tool));
+    });
+    return Array.from(tools);
+  }, [formData.selectedServices]);
+
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
 
   const handleFieldChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (stepError) {
-      setStepError("");
-    }
-  };
-
-  const toggleSpecialty = (specialtyValue) => {
-    setFormData((prev) => {
-      const currentSpecialties = Array.isArray(prev.specialty)
-        ? prev.specialty
-        : [];
-      const exists = currentSpecialties.includes(specialtyValue);
-      return {
-        ...prev,
-        specialty: exists
-          ? currentSpecialties.filter((s) => s !== specialtyValue)
-          : [...currentSpecialties, specialtyValue],
-      };
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
     if (stepError) setStepError("");
   };
 
-  const toggleSkill = (skill) => {
-    setFormData((prev) => {
-      const exists = prev.skills.includes(skill);
-      return {
-        ...prev,
-        skills: exists
-          ? prev.skills.filter((s) => s !== skill)
-          : [...prev.skills, skill],
-      };
-    });
-  };
+  const toggleArrayField = (field, value) => {
+    setFormData(prev => {
+      const current = Array.isArray(prev[field]) ? prev[field] : [];
+      const exists = current.includes(value);
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setFormData((prev) => ({
-      ...prev,
-      skills: prev.skills.filter((s) => s !== skillToRemove),
-    }));
-  };
-
-  const handleAddCustomSkill = () => {
-    const value = formData.customSkillInput.trim();
-    if (!value) return;
-
-    setFormData((prev) => {
-      if (prev.skills.includes(value)) {
-        return { ...prev, customSkillInput: "" };
+      // Special handling for selectedServices: max 2
+      if (field === "selectedServices" && !exists && current.length >= 2) {
+        toast.error("You can select up to 2 services (Primary & Secondary)");
+        return prev;
       }
 
       return {
         ...prev,
-        skills: [...prev.skills, value],
-        customSkillInput: "",
-      };
-    });
-  };
-
-  const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    handleFieldChange("portfolioFileName", file ? file.name : "");
-  };
-
-  const toggleService = (serviceValue) => {
-    setFormData((prev) => {
-      const currentServices = Array.isArray(prev.selectedServices)
-        ? prev.selectedServices
-        : [];
-      const exists = currentServices.includes(serviceValue);
-      return {
-        ...prev,
-        selectedServices: exists
-          ? currentServices.filter((s) => s !== serviceValue)
-          : [...currentServices, serviceValue],
+        [field]: exists
+          ? current.filter(v => v !== value)
+          : [...current, value],
       };
     });
     if (stepError) setStepError("");
   };
 
-  const toggleTool = (tool) => {
-    setFormData((prev) => {
-      const currentTools = Array.isArray(prev.selectedTools)
-        ? prev.selectedTools
-        : [];
-      const exists = currentTools.includes(tool);
-      return {
-        ...prev,
-        selectedTools: exists
-          ? currentTools.filter((t) => t !== tool)
-          : [...currentTools, tool],
-      };
-    });
-    if (stepError) setStepError("");
-  };
-
-  const togglePortfolioType = (type) => {
-    setFormData((prev) => {
-      const currentTypes = Array.isArray(prev.portfolioTypes)
-        ? prev.portfolioTypes
-        : [];
-      const exists = currentTypes.includes(type);
-      return {
-        ...prev,
-        portfolioTypes: exists
-          ? currentTypes.filter((t) => t !== type)
-          : [...currentTypes, type],
-      };
-    });
-    if (stepError) setStepError("");
-  };
-
-  const addOnboardingProject = (project) => {
-    setFormData((prev) => ({
-      ...prev,
-      onboardingProjects: [...(prev.onboardingProjects || []), project],
-    }));
-    if (stepError) setStepError("");
-  };
-
-  const removeOnboardingProject = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      onboardingProjects: prev.onboardingProjects.filter((_, i) => i !== index),
-    }));
-  };
+  // ============================================================================
+  // VALIDATION
+  // ============================================================================
 
   const validateStep = (step, data) => {
     switch (step) {
-      case 1: {
-        if (!data.role) {
-          return "Please select your role type to continue.";
-        }
-        if (!data.selectedServices || data.selectedServices.length === 0) {
-          return "Please select at least one service you want to offer.";
+      case 1:
+        if (!data.role) return "Please select your role type.";
+        return "";
+      case 2:
+        if (data.selectedServices.length === 0) return "Please select at least one service.";
+        return "";
+      case 3:
+        if (!data.experienceYears) return "Please select your experience.";
+        return "";
+      case 4:
+        if (!data.workingLevel) return "Please select your working level.";
+        return "";
+      case 5:
+        // Primary skill tools
+        if (data.primarySkillTools.length === 0) return "Please select at least one tool for your primary skill.";
+        return "";
+      case 6:
+        // Secondary skill tools (only required if 2 services selected)
+        if (data.selectedServices.length >= 2 && data.secondarySkillTools.length === 0) {
+          return "Please select at least one tool for your secondary skill.";
         }
         return "";
-      }
-      case 2: {
-        if (!data.experienceYears) {
-          return "Please select your years of experience.";
-        }
-        if (!data.workingLevel) {
-          return "Please select your working level.";
-        }
-        if (!data.selectedTools || data.selectedTools.length === 0) {
-          return "Please select at least one tool you actively use.";
+      case 7:
+        if (!data.hasPreviousWork) return "Please make a selection.";
+        return "";
+      case 8:
+        // Portfolio types only required if has previous work
+        if (data.hasPreviousWork === "yes" && data.portfolioTypes.length === 0) {
+          return "Please select at least one portfolio type.";
         }
         return "";
-      }
-      case 3: {
-        if (!data.hasPreviousWork) {
-          return "Please indicate if you have previous work to showcase.";
-        }
-        if (!data.hasWorkedWithClients) {
-          return "Please indicate if you have worked with clients before.";
-        }
+      case 9:
+        if (!data.hasWorkedWithClients) return "Please make a selection.";
         return "";
-      }
-      case 4: {
-        if (!data.workPreference) {
-          return "Please select your preferred work style.";
-        }
-        if (!data.hoursPerDay) {
-          return "Please select how many hours you can dedicate per day.";
-        }
-        if (!data.revisionHandling) {
-          return "Please select how you handle revisions.";
-        }
+      case 10:
+        if (!data.workPreference) return "Please select your work preference.";
         return "";
-      }
-      case 5: {
-        if (!data.pricingModel) {
-          return "Please select a pricing model.";
-        }
-        if (!data.projectRange) {
-          return "Please select your typical project range.";
-        }
-        if (!data.partialScope) {
-          return "Please indicate if you are open to partial-scope projects.";
-        }
+      case 11:
+        if (!data.hoursPerDay) return "Please select hours per day.";
         return "";
-      }
-      case 6: {
-        if (!data.sopAgreement) {
-          return "Please confirm if you agree to follow Catalance SOPs.";
-        }
-        if (data.sopAgreement === "no") {
-          return "You must agree to follow Catalance SOPs to proceed.";
-        }
-        if (!data.scopeFreezeAgreement) {
-          return "Please confirm your understanding of scope freeze.";
-        }
-        if (data.scopeFreezeAgreement === "no") {
-          return "You must agree to the scope freeze policy to proceed.";
-        }
-        if (!data.requoteAgreement) {
-          return "Please confirm your agreement on re-quoting policy.";
-        }
-        if (data.requoteAgreement === "no") {
-          return "You must agree to the re-quoting policy to proceed.";
-        }
+      case 12:
+        if (!data.revisionHandling) return "Please select revision handling.";
         return "";
-      }
-      case 7: {
-        if (!data.professionalField) {
-          return "Please choose your professional field to continue.";
-        }
+      case 13:
+        if (!data.pricingModel) return "Please select a pricing model.";
         return "";
-      }
-      case 8: {
-        if (!data.specialty || data.specialty.length === 0) {
-          return "Please select at least one specialty to continue.";
-        }
+      case 14:
+        if (!data.projectRange) return "Please select your project range.";
         return "";
-      }
-      case 9: {
-        if (!data.skills || data.skills.length === 0) {
-          return "Add at least one skill before continuing.";
-        }
+      case 15:
+        if (!data.partialScope) return "Please make a selection.";
         return "";
-      }
-      case 10: {
-        if (!data.experience) {
-          return "Please select your years of experience.";
-        }
+      case 16:
+        if (data.sopAgreement !== "yes") return "You must agree to follow Catalance SOPs.";
         return "";
-      }
-      case 11: {
-        if (data.experience === "Fresher") {
-          if (!data.linkedinProfile.trim()) {
-            return "Please provide your LinkedIn profile.";
-          }
-          if (!data.portfolioFileName) {
-            return "Please upload your resume/portfolio file.";
-          }
-          return "";
-        }
-
-        if (!data.portfolioWebsite.trim() || !data.linkedinProfile.trim()) {
-          return "Please provide both your portfolio website and LinkedIn profile.";
-        }
-        if (
-          data.professionalField === "Development & Tech" &&
-          !data.githubProfile.trim()
-        ) {
-          return "As a developer, you must provide your GitHub profile URL.";
-        }
+      case 17:
+        if (data.scopeFreezeAgreement !== "yes") return "You must understand scope freeze policy.";
         return "";
-      }
-      case 12: {
-        if (!data.termsAccepted) {
-          return "You must agree to the Terms and Conditions to continue.";
-        }
+      case 18:
+        if (data.requoteAgreement !== "yes") return "You must agree to re-quoting policy.";
         return "";
-      }
-      case 13: {
-        if (
-          !data.fullName.trim() ||
-          !data.email.trim() ||
-          !data.password.trim() ||
-          !data.location.trim()
-        ) {
-          return "Full name, email, password, and location are required.";
-        }
-        if (!data.email.includes("@")) {
-          return "Please enter a valid email address.";
-        }
-        if (data.password.trim().length < 8) {
-          return "Password must be at least 8 characters long.";
-        }
+      case 19:
+        if (!data.communicationStyle) return "Please select communication style.";
         return "";
-      }
+      case 20:
+        if (!data.responseTime) return "Please select response time.";
+        return "";
+      case 21:
+        // Timezone is optional, just continue
+        return "";
+      case 22:
+        if (data.qualityProcess.length === 0) return "Please select at least one QA method.";
+        return "";
+      case 23:
+        if (data.acceptsRatings !== "yes") return "You must accept ratings and reviews.";
+        return "";
+      case 24:
+        if (!data.whyCatalance.trim()) return "Please share your motivation.";
+        return "";
+      case 25:
+        if (!data.readyToStart) return "Please make a selection.";
+        return "";
+      case 26:
+        if (!data.fullName.trim()) return "Please enter your full name.";
+        if (!data.email.trim() || !data.email.includes("@")) return "Please enter a valid email.";
+        if (data.password.length < 8) return "Password must be at least 8 characters.";
+        if (!data.location.trim()) return "Please enter your location.";
+        return "";
       default:
         return "";
     }
-  };
-
-  const findFirstInvalidStep = (targetStep = totalSteps, data = formData) => {
-    for (let step = 1; step <= targetStep; step += 1) {
-      const message = validateStep(step, data);
-      if (message) {
-        return { step, message };
-      }
-    }
-    return null;
   };
 
   const handleNext = () => {
@@ -957,7 +581,26 @@ const FreelancerMultiStepForm = () => {
       return;
     }
 
+    // Skip secondary tools step if only one service selected
+    if (currentStep === 5 && formData.selectedServices.length < 2) {
+      setCurrentStep(7); // Skip to has_previous_work
+      setStepError("");
+      return;
+    }
+
+    // Skip portfolio types step if no previous work
+    if (currentStep === 7 && formData.hasPreviousWork === "no") {
+      setCurrentStep(9); // Skip to worked with clients
+      setStepError("");
+      return;
+    }
+
     if (currentStep < totalSteps) {
+      // If user is logged in and next step is the Account step (last step), submit instead
+      if (user && currentStep === totalSteps - 1) {
+        handleSubmit();
+        return;
+      }
       setCurrentStep(currentStep + 1);
       setStepError("");
     }
@@ -965,38 +608,32 @@ const FreelancerMultiStepForm = () => {
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      // Handle skip back for portfolio types
+      if (currentStep === 9 && formData.hasPreviousWork === "no") {
+        setCurrentStep(7);
+      }
+      // Handle skip back for secondary tools (if only one service selected)
+      else if (currentStep === 7 && formData.selectedServices.length < 2) {
+        setCurrentStep(5);
+      }
+      else {
+        setCurrentStep(currentStep - 1);
+      }
       setStepError("");
     }
   };
 
-  const handleGoToStep = (targetStep) => {
-    if (targetStep === currentStep) return;
-
-    if (targetStep < currentStep) {
-      setCurrentStep(targetStep);
-      setStepError("");
-      return;
-    }
-
-    const validation = findFirstInvalidStep(targetStep, formData);
-    if (validation) {
-      setCurrentStep(validation.step);
-      setStepError(validation.message);
-      toast.error(validation.message);
-      return;
-    }
-
-    setCurrentStep(targetStep);
-    setStepError("");
-  };
+  // ============================================================================
+  // SUBMIT
+  // ============================================================================
 
   const handleSubmit = async () => {
-    const validation = findFirstInvalidStep(totalSteps, formData);
+    // If NOT logged in, we must be on the last step (Account), so validate.
+    // If logged in, we skipped the last step, so we validate currentStep (which is 24).
+    const validation = validateStep(currentStep, formData);
     if (validation) {
-      setCurrentStep(validation.step);
-      setStepError(validation.message);
-      toast.error(validation.message);
+      setStepError(validation);
+      toast.error(validation);
       return;
     }
 
@@ -1004,100 +641,100 @@ const FreelancerMultiStepForm = () => {
     setStepError("");
 
     try {
-      const normalizedEmail = formData.email.trim().toLowerCase();
+      const normalizedEmail = formData.email?.trim().toLowerCase() || user?.email; // Use user email if logged in
       const freelancerProfile = {
-        category: formData.professionalField,
-        specialty: formData.specialty,
-        experience: formData.experience,
-        skills: formData.skills,
-        portfolio: {
-          portfolioUrl: formData.portfolioWebsite,
-          linkedinUrl: formData.linkedinProfile,
-          githubUrl: formData.githubProfile,
+        role: formData.role,
+        services: formData.selectedServices,
+        experienceYears: formData.experienceYears,
+        workingLevel: formData.workingLevel,
+        tools: {
+          primary: {
+            skill: formData.selectedServices[0] || "",
+            tools: formData.primarySkillTools,
+          },
+          secondary: formData.selectedServices[1] ? {
+            skill: formData.selectedServices[1],
+            tools: formData.secondarySkillTools,
+          } : null,
         },
-        acceptedTerms: formData.termsAccepted,
+        hasPreviousWork: formData.hasPreviousWork,
+        portfolioTypes: formData.portfolioTypes,
+        hasWorkedWithClients: formData.hasWorkedWithClients,
+        workPreference: formData.workPreference,
+        hoursPerDay: formData.hoursPerDay,
+        revisionHandling: formData.revisionHandling,
+        pricingModel: formData.pricingModel,
+        projectRange: formData.projectRange,
+        partialScope: formData.partialScope,
+        communicationStyle: formData.communicationStyle,
+        responseTime: formData.responseTime,
+        timezone: formData.timezone,
+        workingHours: formData.workingHours,
+        qualityProcess: formData.qualityProcess,
+        whyCatalance: formData.whyCatalance,
+        readyToStart: formData.readyToStart,
         phone: (() => {
-          const country = COUNTRY_CODES.find(
-            (c) => c.code === formData.countryCode
-          );
+          if (user) return user.phoneNumber || "";
+          const country = COUNTRY_CODES.find(c => c.code === formData.countryCode);
           const dialCode = country ? country.dial_code : "+1";
           return `${dialCode} ${formData.phone}`;
         })(),
-        location: formData.location,
+        location: formData.location || user?.location || "",
       };
 
-      const authPayload = await signup({
-        fullName: formData.fullName.trim(),
-        email: normalizedEmail,
-        password: formData.password,
-        role: "FREELANCER",
-        freelancerProfile,
-      });
-
-      // If signup returns an accessToken, it means verification wasn't required (legacy or changed)
-      // Otherwise, it prompts for OTP
-      if (!authPayload?.accessToken) {
-        setIsVerifying(true);
-        setIsSubmitting(false);
-        toast.success("Verification code sent to your email!");
-        return;
-      }
-
-      setAuthSession(authPayload?.user, authPayload?.accessToken);
-
-      const profilePayload = {
-        personal: {
-          name: formData.fullName.trim(),
-          email: normalizedEmail,
-          phone: (() => {
-            const country = COUNTRY_CODES.find(
-              (c) => c.code === formData.countryCode
-            );
-            const dialCode = country ? country.dial_code : "+1";
-            return `${dialCode} ${formData.phone}`;
-          })(),
-          location: formData.location.trim(),
-        },
-        skills: Array.isArray(formData.skills)
-          ? formData.skills.filter(Boolean)
-          : [],
-        workExperience: [],
-        services: [
-          formData.professionalField,
-          ...(Array.isArray(formData.specialty)
-            ? formData.specialty
-            : [formData.specialty]),
-        ].filter(Boolean),
-      };
-
-      try {
-        const baseUrl = API_BASE_URL || "/api";
-        const response = await fetch(`${baseUrl}/profile`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authPayload?.accessToken
-              ? { Authorization: `Bearer ${authPayload.accessToken}` }
-              : {}),
-          },
-          body: JSON.stringify(profilePayload),
+      if (user) {
+        // Authenticated flow: Update profile
+        await updateProfile({
+          freelancerProfile,
+          onboardingComplete: true
         });
 
-        if (!response.ok) {
-          console.warn(
-            "Unable to persist initial profile details",
-            response.status
-          );
-        }
-      } catch (error) {
-        console.warn("Profile save during onboarding failed:", error);
-      }
+        await refreshUser();
 
-      toast.success("Your freelancer account has been created.");
-      navigate("/freelancer", { replace: true });
+        // Clear saved state
+        localStorage.removeItem("freelancer_onboarding_data");
+        localStorage.removeItem("freelancer_onboarding_step");
+        localStorage.removeItem("freelancer_onboarding_started");
+
+        // Refresh session to get updated flags
+        toast.success("Profile completed successfully!");
+        navigate("/freelancer", { replace: true });
+        // Trigger a reload or re-fetch of user? 
+        // navigate usually triggers layout re-render, but context user might be stale.
+        // The verifyUser loop in AuthContext (if implemented correctly) or a page reload might be needed used.
+        // For now, assume verifyUser runs on mount or we can manually refresh.
+        // We can force refresh via window.location.reload() to be safe, 
+        // OR rely on the fact we are navigating to dashboard.
+
+      } else {
+        // Unauthenticated flow: Signup
+        const authPayload = await signup({
+          fullName: formData.fullName.trim(),
+          email: normalizedEmail,
+          password: formData.password,
+          role: "FREELANCER",
+          freelancerProfile,
+        });
+
+        if (!authPayload?.accessToken) {
+          setIsVerifying(true);
+          setIsSubmitting(false);
+          toast.success("Verification code sent to your email!");
+          return;
+        }
+
+        setAuthSession(authPayload?.user, authPayload?.accessToken);
+
+        // Clear saved state
+        localStorage.removeItem("freelancer_onboarding_data");
+        localStorage.removeItem("freelancer_onboarding_step");
+        localStorage.removeItem("freelancer_onboarding_started");
+
+        toast.success("Your freelancer account has been created.");
+        navigate("/freelancer", { replace: true });
+      }
     } catch (error) {
-      const message =
-        error?.message || "Unable to create your freelancer account right now.";
+      const message = error?.message || "Unable to complete setup right now.";
       setStepError(message);
       toast.error(message);
     } finally {
@@ -1118,47 +755,10 @@ const FreelancerMultiStepForm = () => {
 
       setAuthSession(authPayload?.user, authPayload?.accessToken);
 
-      // Now create the profile
-      const profilePayload = {
-        personal: {
-          name: formData.fullName.trim(),
-          email: normalizedEmail,
-          phone: (() => {
-            const country = COUNTRY_CODES.find(
-              (c) => c.code === formData.countryCode
-            );
-            const dialCode = country ? country.dial_code : "+1";
-            return `${dialCode} ${formData.phone}`;
-          })(),
-          location: formData.location.trim(),
-        },
-        skills: Array.isArray(formData.skills)
-          ? formData.skills.filter(Boolean)
-          : [],
-        workExperience: [],
-        services: [
-          formData.professionalField,
-          ...(Array.isArray(formData.specialty)
-            ? formData.specialty
-            : [formData.specialty]),
-        ].filter(Boolean),
-      };
-
-      try {
-        const baseUrl = API_BASE_URL || "/api";
-        const response = await fetch(`${baseUrl}/profile`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authPayload.accessToken}`,
-          },
-          body: JSON.stringify(profilePayload),
-        });
-        if (!response.ok)
-          console.warn("Profile creation warn:", response.status);
-      } catch (err) {
-        console.warn("Profile creation failed:", err);
-      }
+      // Clear saved state
+      localStorage.removeItem("freelancer_onboarding_data");
+      localStorage.removeItem("freelancer_onboarding_step");
+      localStorage.removeItem("freelancer_onboarding_started");
 
       toast.success("Account verified and created successfully!");
       navigate("/freelancer", { replace: true });
@@ -1169,2073 +769,978 @@ const FreelancerMultiStepForm = () => {
     }
   };
 
-  const currentSpecialtyOptions =
-    specialtyOptionsByField[formData.professionalField] ||
-    fallbackSpecialtyOptions;
+  // ============================================================================
+  // RENDER INDIVIDUAL STEPS
+  // ============================================================================
 
-  const currentSpecialtySkills = React.useMemo(() => {
-    const specialties = Array.isArray(formData.specialty)
-      ? formData.specialty
-      : [formData.specialty];
+  const renderWelcome = () => (
+    <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto space-y-8 animate-in fade-in zoom-in duration-500">
+      <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+        <Bot className="w-10 h-10 text-primary" />
+      </div>
 
-    // Collect all skills from all selected specialties
-    const allSkills = specialties.flatMap(
-      (spec) => SPECIALTY_SKILLS_MAP[spec] || []
-    );
+      <div className="space-y-4">
+        <h1 className="text-4xl md:text-5xl font-bold text-white">
+          Welcome to Catalance
+        </h1>
+        <p className="text-xl text-white/60 leading-relaxed font-light">
+          To help us know you better and build your personalized dashboard, we need a little information about your skills and preferences.
+        </p>
+      </div>
 
-    // Return unique skills
-    return [...new Set(allSkills)];
-  }, [formData.specialty]);
-
-  const isLastStep = currentStep === totalSteps;
-  const disableNext =
-    isSubmitting || (currentStep === 12 && !formData.termsAccepted);
-
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center px-4 py-8 md:py-12 relative overflow-hidden bg-background text-foreground">
-      <div className="absolute inset-0 -z-10 pointer-events-none">
-        <svg
-          className="w-full h-full opacity-10"
-          xmlns="http://www.w3.org/2000/svg"
+      <div className="pt-8 w-full max-w-sm">
+        <Button
+          onClick={() => setHasStarted(true)}
+          className="w-full py-8 text-lg font-medium rounded-full bg-linear-to-r from-primary to-primary-strong hover:from-primary-strong hover:to-primary border border-primary/20 shadow-lg shadow-primary/20 transition-all duration-300 transform hover:scale-[1.02] text-primary-foreground"
         >
-          <defs>
-            <pattern
-              id="grid"
-              width="40"
-              height="40"
-              patternUnits="userSpaceOnUse"
+          Let's Get Started
+        </Button>
+        <p className="text-white/30 text-sm mt-4">
+          Takes about 2-3 minutes
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderStep1 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        showBack={false}
+        title="What best describes you?"
+      />
+      <div className="space-y-3">
+        {ROLE_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.role === option.value}
+            onClick={() => handleFieldChange("role", option.value)}
+            label={option.label}
+            description={option.description}
+            icon={option.icon}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div className="space-y-6">
+      <StepHeader
+        onBack={handleBack}
+        title="Which services do you want to offer?"
+        subtitle="Select up to 2 services"
+      />
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-2">
+        {SERVICE_OPTIONS.map((option, index) => {
+          const selectedIndex = formData.selectedServices.indexOf(option.value);
+          const isSelected = selectedIndex !== -1;
+          const badgeLabel = selectedIndex === 0 ? "Primary" : (selectedIndex === 1 ? "Secondary" : "");
+
+          return (
+            <motion.button
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              key={option.value}
+              type="button"
+              onClick={() => toggleArrayField("selectedServices", option.value)}
+              className={cn(
+                "group flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-200 relative overflow-hidden min-h-[90px]",
+                isSelected
+                  ? "border-primary/50 bg-primary/5 shadow-md shadow-primary/5"
+                  : "border-white/10 bg-white/5 hover:border-primary/30 hover:bg-white/10"
+              )}
             >
-              <path
-                d="M 40 0 L 0 0 0 40"
-                fill="none"
-                stroke="var(--grid-line-color)"
-                strokeWidth="0.5"
-              />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-        {/* Animated orbs in primary tone */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/25 rounded-full blur-3xl animate-pulse" />
-        <div
-          className="absolute bottom-20 right-10 w-96 h-96 bg-primary/30 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "2s" }}
+              {isSelected && <div className="absolute inset-0 border-2 border-primary/50 rounded-xl" />}
+
+              <div className={cn(
+                "p-1.5 rounded-lg transition-colors mb-1.5",
+                isSelected ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/70 group-hover:bg-white/20 group-hover:text-white"
+              )}>
+                {option.icon && <option.icon className="w-4 h-4" />}
+              </div>
+
+              <span className={cn(
+                "text-[10px] font-semibold text-center leading-tight transition-colors line-clamp-2 px-1",
+                isSelected ? "text-primary" : "text-white"
+              )}>{option.label}</span>
+
+              {isSelected && (
+                <div className="absolute top-2 right-2">
+                  <span className="text-[9px] uppercase tracking-wider font-bold text-black bg-primary px-1.5 py-0.5 rounded-sm shadow-sm">
+                    {badgeLabel}
+                  </span>
+                </div>
+              )}
+            </motion.button>
+          )
+        })}
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="How many years of experience do you have?"
+        subtitle="In your selected service(s)"
+      />
+      <div className="space-y-3">
+        {EXPERIENCE_YEARS_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.experienceYears === option.value}
+            onClick={() => handleFieldChange("experienceYears", option.value)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="What is your working level?"
+      />
+      <div className="space-y-3">
+        {WORKING_LEVEL_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.workingLevel === option.value}
+            onClick={() => handleFieldChange("workingLevel", option.value)}
+            label={option.label}
+            description={option.description}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  // Get primary skill label
+  const getPrimarySkillLabel = () => {
+    const primaryService = formData.selectedServices[0];
+    const serviceOption = SERVICE_OPTIONS.find(s => s.value === primaryService);
+    return serviceOption?.label || "Primary Skill";
+  };
+
+  // Get secondary skill label
+  const getSecondarySkillLabel = () => {
+    const secondaryService = formData.selectedServices[1];
+    const serviceOption = SERVICE_OPTIONS.find(s => s.value === secondaryService);
+    return serviceOption?.label || "Secondary Skill";
+  };
+
+  // Get tools for primary skill
+  const getPrimarySkillTools = () => {
+    const primaryService = formData.selectedServices[0];
+    return TOOLS_BY_SERVICE[primaryService] || [];
+  };
+
+  // Get tools for secondary skill
+  const getSecondarySkillTools = () => {
+    const secondaryService = formData.selectedServices[1];
+    return TOOLS_BY_SERVICE[secondaryService] || [];
+  };
+
+  const renderStep5 = () => {
+    const tools = getPrimarySkillTools();
+    const skillLabel = getPrimarySkillLabel();
+
+    return (
+      <div className="space-y-4">
+        <StepHeader
+          onBack={handleBack}
+          title={`Tools for ${skillLabel}`}
+          subtitle="Select all tools you actively use for this skill"
+        />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {tools.map((tool, index) => {
+            const isSelected = formData.primarySkillTools.includes(tool);
+            return (
+              <motion.button
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.03 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                key={tool}
+                type="button"
+                onClick={() => toggleArrayField("primarySkillTools", tool)}
+                className={cn(
+                  "group flex items-center justify-between px-4 py-4 rounded-xl border transition-all duration-200",
+                  isSelected
+                    ? "border-primary/50 bg-primary/5 text-primary shadow-sm shadow-primary/10"
+                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                )}
+              >
+                <span className="text-sm font-medium text-left truncate">{tool}</span>
+                {isSelected && <Check className="w-4 h-4 text-primary shrink-0 ml-2" />}
+              </motion.button>
+            )
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderStep6 = () => {
+    const tools = getSecondarySkillTools();
+    const skillLabel = getSecondarySkillLabel();
+
+    return (
+      <div className="space-y-4">
+        <StepHeader
+          onBack={handleBack}
+          title={`Tools for ${skillLabel}`}
+          subtitle="Select all tools you actively use for this skill"
+        />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {tools.map((tool, index) => {
+            const isSelected = formData.secondarySkillTools.includes(tool);
+            return (
+              <motion.button
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.03 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                key={tool}
+                type="button"
+                onClick={() => toggleArrayField("secondarySkillTools", tool)}
+                className={cn(
+                  "group flex items-center justify-between px-4 py-4 rounded-xl border transition-all duration-200",
+                  isSelected
+                    ? "border-primary/50 bg-primary/5 text-primary shadow-sm shadow-primary/10"
+                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                )}
+              >
+                <span className="text-sm font-medium text-left truncate">{tool}</span>
+                {isSelected && <Check className="w-4 h-4 text-primary shrink-0 ml-2" />}
+              </motion.button>
+            )
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderStep7 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Do you have previous work to showcase?"
+      />
+      <div className="space-y-3">
+        <OptionCard
+          selected={formData.hasPreviousWork === "yes"}
+          onClick={() => handleFieldChange("hasPreviousWork", "yes")}
+          label="Yes"
+          description="I can upload links/files"
+        />
+        <OptionCard
+          selected={formData.hasPreviousWork === "no"}
+          onClick={() => handleFieldChange("hasPreviousWork", "no")}
+          label="No"
+          description="I'm new but skilled"
         />
       </div>
+    </div>
+  );
 
-      <div className="w-full max-w-7xl">
-        {/* Header */}
-        <div className="mb-8 text-center relative z-10 mt-5">
-          <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
-            Become a Freelancer
-          </h1>
-          <p className="text-sm md:text-base max-w-md mx-auto text-muted-foreground">
-            Join our community and start earning from your expertise
-          </p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-8 px-1 relative z-10">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Step {currentStep} of {totalSteps}
-            </span>
-            <span className="text-xs font-semibold text-primary">
-              {progress}% Complete
-            </span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Step Indicators */}
-        <div className="mb-12 px-1 relative z-10">
-          <div className="grid grid-cols-8 gap-2">
-            {STEPS.map((step) => {
-              const isCompleted = currentStep > step.id;
-              const isActive = currentStep === step.id;
-
-              return (
-                <button
-                  key={step.id}
-                  onClick={() => handleGoToStep(step.id)}
-                  className={cn(
-                    "relative flex flex-col items-center gap-2 group transition-all duration-300",
-                    isActive || isCompleted
-                      ? "cursor-pointer"
-                      : "cursor-not-allowed opacity-60"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-lg font-semibold text-sm transition-all duration-300 transform shadow-sm",
-                      isCompleted
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : isActive
-                          ? "bg-card text-primary border-2 border-primary"
-                          : "bg-muted text-muted-foreground border border-border"
-                    )}
-                  >
-                    {isCompleted ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <span>{step.id}</span>
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-xs font-medium text-center transition-all duration-300",
-                      isActive || isCompleted
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {step.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10 items-stretch">
-          {/* Left Panel - Form Content */}
-          <div className="lg:col-span-2">
-            <Card className="border border-border bg-card text-card-foreground shadow-xl backdrop-blur-sm h-full min-h-[500px] lg:min-h-[540px]">
-              <CardContent className="pt-8 pb-6 space-y-6 flex flex-col justify-between h-full">
-                {/* Step Content */}
-                <div className="space-y-6">
-                  {isVerifying ? (
-                    <div className="space-y-6 py-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <div className="text-center">
-                        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                          <span className="text-3xl">✉️</span>
-                        </div>
-                        <h2 className="text-2xl font-semibold text-foreground">
-                          Verify Your Email
-                        </h2>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          We sent a verification code to{" "}
-                          <span className="font-medium text-foreground">
-                            {formData.email}
-                          </span>
-                        </p>
-                      </div>
-
-                      <div className="space-y-4 max-w-sm mx-auto">
-                        <Input
-                          type="text"
-                          value={otp}
-                          onChange={(e) =>
-                            setOtp(
-                              e.target.value.replace(/[^0-9]/g, "").slice(0, 6)
-                            )
-                          }
-                          placeholder="000000"
-                          className="text-center text-3xl tracking-[0.5em] font-mono h-16"
-                          maxLength={6}
-                        />
-                        <Button
-                          className="w-full h-12 text-lg"
-                          onClick={handleVerifyOtp}
-                          disabled={isSubmitting || otp.length < 6}
-                        >
-                          {isSubmitting ? "Verifying..." : "Verify & Continue"}
-                        </Button>
-                        <p
-                          className="text-xs text-center text-muted-foreground cursor-pointer hover:text-primary"
-                          onClick={() => setIsVerifying(false)}
-                        >
-                          Incorrect email? Go back
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {currentStep === 1 && (
-                        <StepRoleIntent
-                          role={formData.role}
-                          selectedServices={formData.selectedServices}
-                          onSelectRole={(value) =>
-                            handleFieldChange("role", value)
-                          }
-                          onToggleService={toggleService}
-                        />
-                      )}
-                      {currentStep === 2 && (
-                        <StepSkillValidation
-                          experienceYears={formData.experienceYears}
-                          workingLevel={formData.workingLevel}
-                          selectedTools={formData.selectedTools}
-                          selectedServices={formData.selectedServices}
-                          onSelectExperienceYears={(value) =>
-                            handleFieldChange("experienceYears", value)
-                          }
-                          onSelectWorkingLevel={(value) =>
-                            handleFieldChange("workingLevel", value)
-                          }
-                          onToggleTool={toggleTool}
-                        />
-                      )}
-                      {currentStep === 3 && (
-                        <StepPortfolioProof
-                          hasPreviousWork={formData.hasPreviousWork}
-                          portfolioTypes={formData.portfolioTypes}
-                          hasWorkedWithClients={formData.hasWorkedWithClients}
-                          portfolioLink={formData.portfolioLink}
-                          portfolioProjects={formData.onboardingProjects}
-                          onSelectHasPreviousWork={(value) =>
-                            handleFieldChange("hasPreviousWork", value)
-                          }
-                          onTogglePortfolioType={togglePortfolioType}
-                          onSelectHasWorkedWithClients={(value) =>
-                            handleFieldChange("hasWorkedWithClients", value)
-                          }
-                          onPortfolioLinkChange={(value) =>
-                            handleFieldChange("portfolioLink", value)
-                          }
-                          onAddProject={addOnboardingProject}
-                          onRemoveProject={removeOnboardingProject}
-                        />
-                      )}
-                      {currentStep === 4 && (
-                        <StepWorkStyle
-                          workPreference={formData.workPreference}
-                          hoursPerDay={formData.hoursPerDay}
-                          revisionHandling={formData.revisionHandling}
-                          onSelectWorkPreference={(value) =>
-                            handleFieldChange("workPreference", value)
-                          }
-                          onSelectHoursPerDay={(value) =>
-                            handleFieldChange("hoursPerDay", value)
-                          }
-                          onSelectRevisionHandling={(value) =>
-                            handleFieldChange("revisionHandling", value)
-                          }
-                        />
-                      )}
-                      {currentStep === 5 && (
-                        <StepPricingAvailability
-                          pricingModel={formData.pricingModel}
-                          projectRange={formData.projectRange}
-                          partialScope={formData.partialScope}
-                          onSelectPricingModel={(value) =>
-                            handleFieldChange("pricingModel", value)
-                          }
-                          onSelectProjectRange={(value) =>
-                            handleFieldChange("projectRange", value)
-                          }
-                          onSelectPartialScope={(value) =>
-                            handleFieldChange("partialScope", value)
-                          }
-                        />
-                      )}
-                      {currentStep === 6 && (
-                        <StepSOPAlignment
-                          sopAgreement={formData.sopAgreement}
-                          scopeFreezeAgreement={formData.scopeFreezeAgreement}
-                          requoteAgreement={formData.requoteAgreement}
-                          onSelectSOPAgreement={(value) =>
-                            handleFieldChange("sopAgreement", value)
-                          }
-                          onSelectScopeFreezeAgreement={(value) =>
-                            handleFieldChange("scopeFreezeAgreement", value)
-                          }
-                          onSelectRequoteAgreement={(value) =>
-                            handleFieldChange("requoteAgreement", value)
-                          }
-                        />
-                      )}
-                      {currentStep === 7 && (
-                        <StepProfessional
-                          selectedField={formData.professionalField}
-                          onSelectField={(value) =>
-                            handleFieldChange("professionalField", value)
-                          }
-                        />
-                      )}
-                      {currentStep === 8 && (
-                        <StepSpecialty
-                          selectedSpecialties={formData.specialty}
-                          onToggle={toggleSpecialty}
-                          options={currentSpecialtyOptions}
-                        />
-                      )}
-                      {currentStep === 9 && (
-                        <StepSkills
-                          skills={formData.skills}
-                          currentSpecialtySkills={currentSpecialtySkills}
-                          customSkillInput={formData.customSkillInput}
-                          onToggleSkill={toggleSkill}
-                          onRemoveSkill={handleRemoveSkill}
-                          onCustomInputChange={(value) =>
-                            handleFieldChange("customSkillInput", value)
-                          }
-                          onAddCustomSkill={handleAddCustomSkill}
-                          specialty={formData.specialty}
-                        />
-                      )}
-                      {currentStep === 10 && (
-                        <StepExperience
-                          experience={formData.experience}
-                          onSelectExperience={(value) =>
-                            handleFieldChange("experience", value)
-                          }
-                        />
-                      )}
-                      {currentStep === 11 && (
-                        <StepPortfolio
-                          website={formData.portfolioWebsite}
-                          linkedin={formData.linkedinProfile}
-                          github={formData.githubProfile}
-                          fileName={formData.portfolioFileName}
-                          isDeveloper={
-                            formData.professionalField === "Development & Tech"
-                          }
-                          isFresher={formData.experience === "Fresher"}
-                          onWebsiteChange={(value) =>
-                            handleFieldChange("portfolioWebsite", value)
-                          }
-                          onLinkedinChange={(value) =>
-                            handleFieldChange("linkedinProfile", value)
-                          }
-                          onGithubChange={(value) =>
-                            handleFieldChange("githubProfile", value)
-                          }
-                          onFileChange={handleFileChange}
-                        />
-                      )}
-                      {currentStep === 12 && (
-                        <StepTerms
-                          accepted={formData.termsAccepted}
-                          onToggle={(value) =>
-                            handleFieldChange("termsAccepted", value)
-                          }
-                        />
-                      )}
-                      {currentStep === 13 && (
-                        <StepPersonalInfo
-                          fullName={formData.fullName}
-                          email={formData.email}
-                          password={formData.password}
-                          phone={formData.phone}
-                          countryCode={formData.countryCode}
-                          location={formData.location}
-                          onChange={handleFieldChange}
-                        />
-                      )}
-                    </>
-                  )}
-
-                  {stepError && (
-                    <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/40">
-                      <p className="text-sm text-destructive">{stepError}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="md:hidden flex justify-center">
-                  {!isVerifying && (
-                    <Button
-                      type="button"
-                      disabled={disableNext}
-                      onClick={isLastStep ? handleSubmit : handleNext}
-                    >
-                      <span className="absolute inset-0 bg-white/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                      <span className="relative flex items-center gap-2 justify-center">
-                        {isSubmitting && isLastStep
-                          ? "Submitting..."
-                          : isLastStep
-                            ? "Submit"
-                            : "Next"}
-                        {!isLastStep && !isSubmitting && (
-                          <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                        )}
-                      </span>
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Visual Panel */}
-          <div className="hidden lg:flex flex-col h-full items-center">
-            <div className="sticky top-6 w-full pt-30 h-full min-h-[500px] lg:min-h-[540px] max-w-[420px] rounded-xl overflow-hidden border border-border bg-card shadow-xl flex flex-col gap-6 items-center p-6">
-              <div className="w-full flex flex-col items-center justify-center text-center gap-4">
-                <StepVisualPanel
-                  currentStep={currentStep}
-                  formData={formData}
-                />
-              </div>
-              <div className="w-full text-center pt-10">
-                {/* Login Link */}
-                <p className="text-sm text-muted-foreground">
-                  Already have an account?{" "}
-                  <a
-                    href="/login"
-                    className="font-semibold text-primary hover:underline"
-                  >
-                    Login here
-                  </a>
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 w-full">
-                {!isVerifying && (
-                  <Button
-                    type="button"
-                    disabled={disableNext}
-                    onClick={isLastStep ? handleSubmit : handleNext}
-                  >
-                    <span className="absolute inset-0 bg-white/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                    <span className="relative flex items-center gap-2 justify-center">
-                      {isSubmitting && isLastStep
-                        ? "Submitting..."
-                        : isLastStep
-                          ? "Submit"
-                          : "Next"}
-                      {!isLastStep && !isSubmitting && (
-                        <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                      )}
-                    </span>
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+  const renderStep8 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="What type of portfolio do you have?"
+        subtitle="Select all that apply"
+      />
+      <div className="space-y-3">
+        {PORTFOLIO_TYPE_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.portfolioTypes.includes(option.value)}
+            onClick={() => toggleArrayField("portfolioTypes", option.value)}
+            label={option.label}
+            description={option.description}
+            multiSelect
+          />
+        ))}
+      </div>
+      <div className="pt-4">
+        <Label className="text-white/70 text-sm">Portfolio Link (optional)</Label>
+        <Input
+          value={formData.portfolioLink}
+          onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
+          placeholder="https://your-portfolio.com"
+          className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+        />
       </div>
     </div>
   );
-};
 
-const StepVisualPanel = ({ currentStep, formData }) => {
-  const getVisualContent = () => {
-    switch (currentStep) {
-      case 1: {
-        const selectedRole = ROLE_OPTIONS.find(
-          (r) => r.value === formData.role
-        );
-        const RoleIcon = selectedRole?.icon || Target;
-        const selectedServicesList =
-          formData.selectedServices
-            ?.map((svc) => SERVICE_OPTIONS.find((s) => s.value === svc))
-            .filter(Boolean) || [];
-
-        return (
-          <div className="text-center space-y-5 animate-in fade-in slide-in-from-right-8 duration-500">
-            {/* Dynamic Role Icon */}
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <RoleIcon className="h-8 w-8 text-primary" />
-            </div>
-
-            {/* Role Name */}
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                {selectedRole ? selectedRole.label : "Tell Us About Yourself"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {selectedServicesList.length > 0
-                  ? `${selectedServicesList.length} service(s) selected`
-                  : "Select your role and services"}
-              </p>
-            </div>
-
-            {/* Selected Services List */}
-            {selectedServicesList.length > 0 && (
-              <div className="space-y-2 pt-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                  Services
-                </p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {selectedServicesList.slice(0, 4).map((service) => {
-                    const ServiceIcon = service.icon;
-                    return (
-                      <div
-                        key={service.value}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium"
-                      >
-                        <ServiceIcon className="h-3.5 w-3.5" />
-                        <span>{service.label}</span>
-                      </div>
-                    );
-                  })}
-                  {selectedServicesList.length > 4 && (
-                    <div className="px-2.5 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-medium">
-                      +{selectedServicesList.length - 4} more
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      }
-      case 2:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Check className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                {formData.workingLevel
-                  ? WORKING_LEVEL_OPTIONS.find(
-                    (l) => l.value === formData.workingLevel
-                  )?.label
-                  : "Skill Validation"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.experienceYears
-                  ? `${EXPERIENCE_YEARS_OPTIONS.find(
-                    (e) => e.value === formData.experienceYears
-                  )?.label
-                  } experience`
-                  : "Validate your expertise level"}
-              </p>
-              {formData.selectedTools?.length > 0 && (
-                <p className="text-xs text-primary mt-2">
-                  {formData.selectedTools.length} tool(s) selected
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      case 3:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Palette className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                {formData.hasPreviousWork === "yes"
-                  ? "Portfolio Ready"
-                  : formData.hasPreviousWork === "no"
-                    ? "New & Skilled"
-                    : "Portfolio & Proof"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.onboardingProjects?.length > 0
-                  ? `${formData.onboardingProjects.length} project(s) added`
-                  : formData.portfolioLink
-                    ? "Portfolio website added"
-                    : "Share your proof of work"}
-              </p>
-              {formData.hasWorkedWithClients && (
-                <p className="text-xs text-primary mt-2">
-                  {formData.hasWorkedWithClients === "yes"
-                    ? "Experienced with clients"
-                    : "First-time freelancer"}
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      case 4:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Clock className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                Work Preference
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.workPreference
-                  ? WORK_PREFERENCE_OPTIONS.find(
-                    (w) => w.value === formData.workPreference
-                  )?.label
-                  : "Define your working style"}
-              </p>
-              {formData.hoursPerDay && (
-                <p className="text-xs text-primary mt-2">
-                  {
-                    HOURS_PER_DAY_OPTIONS.find(
-                      (h) => h.value === formData.hoursPerDay
-                    )?.label
-                  }{" "}
-                  availability
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      case 5:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <DollarSign className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                Pricing & Availability
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.pricingModel
-                  ? PRICING_MODEL_OPTIONS.find(
-                    (p) => p.value === formData.pricingModel
-                  )?.label
-                  : "Set your pricing preferences"}
-              </p>
-              {formData.projectRange && (
-                <p className="text-xs text-primary mt-2">
-                  {
-                    PROJECT_RANGE_OPTIONS.find(
-                      (r) => r.value === formData.projectRange
-                    )?.label
-                  }{" "}
-                  projects
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      case 6:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <ClipboardCheck className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                SOP & Alignment
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.sopAgreement === "yes" &&
-                  formData.scopeFreezeAgreement === "yes" &&
-                  formData.requoteAgreement === "yes"
-                  ? "Alignment Confirmed"
-                  : "Please confirm alignment"}
-              </p>
-            </div>
-          </div>
-        );
-      case 7:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-6xl">
-              {PROFESSIONAL_FIELD_ICONS[formData.professionalField] || "💼"}
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                {formData.professionalField
-                  ? "Professional Field Selected"
-                  : "Choose Your Field"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.professionalField
-                  ? `You're ready to share your ${formData.professionalField}`
-                  : "Pick a professional field that matches your expertise"}
-              </p>
-            </div>
-          </div>
-        );
-      case 8:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-6xl">🎯</div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                {formData.specialty && formData.specialty.length > 0
-                  ? "Specialties Selected"
-                  : "Select Your Specialties"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.specialty && formData.specialty.length > 0
-                  ? `Selected: ${formData.specialty.join(", ")}`
-                  : "Narrow down your focus area to attract the right clients"}
-              </p>
-            </div>
-          </div>
-        );
-      case 9:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="flex flex-wrap gap-2 justify-center">
-              {formData.skills.slice(0, 3).map((skill, idx) => (
-                <div
-                  key={skill}
-                  className="px-3 py-1 rounded-full bg-primary/15 border border-primary/40 text-primary text-xs font-semibold"
-                  style={{ animationDelay: `${idx * 100}ms` }}
-                >
-                  {skill}
-                </div>
-              ))}
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                Skills Added: {formData.skills.length}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.skills.length > 0
-                  ? "Great! Your skills make you stand out"
-                  : "Add skills that match your specialty"}
-              </p>
-            </div>
-          </div>
-        );
-      case 10:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-6xl">📈</div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                {formData.experience
-                  ? `${formData.experience} Years`
-                  : "Experience Level"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.experience
-                  ? `You bring ${formData.experience} years of expertise`
-                  : "Tell us about your professional experience"}
-              </p>
-            </div>
-          </div>
-        );
-      case 11:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-6xl">🎨</div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                Portfolio Links
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.portfolioWebsite && formData.linkedinProfile
-                  ? "Your profile is looking professional!"
-                  : "Link your portfolio and LinkedIn to showcase your work"}
-              </p>
-            </div>
-          </div>
-        );
-      case 12:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-6xl">
-              {formData.termsAccepted ? "✅" : "📋"}
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                {formData.termsAccepted ? "Terms Accepted" : "Agree to Terms"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.termsAccepted
-                  ? "You're all set with our terms!"
-                  : "Review and accept our terms to proceed"}
-              </p>
-            </div>
-          </div>
-        );
-      case 13:
-        return (
-          <div className="text-center space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="text-6xl">👤</div>
-            <div>
-              <h3 className="text-xl font-semibold text-foreground">
-                {formData.fullName
-                  ? "Profile Complete!"
-                  : "Complete Your Profile"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {formData.fullName
-                  ? `Welcome, ${formData.fullName}! Ready to launch your career`
-                  : "Add your personal details to finalize your profile"}
-              </p>
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return getVisualContent();
-};
-
-const StepRoleIntent = ({
-  role,
-  selectedServices,
-  onSelectRole,
-  onToggleService,
-}) => {
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Role & Intent
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Tell us about yourself and the services you want to offer on
-          Catelance.
-        </p>
-      </div>
-
-      {/* Role Selection */}
+  const renderStep9 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Have you worked with clients before?"
+      />
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          What best describes you?
-        </p>
-        <div className="grid gap-3 md:grid-cols-3">
-          {ROLE_OPTIONS.map((option) => {
-            const isActive = role === option.value;
-            return (
-              <button
-                key={option.value}
-                onClick={() => onSelectRole(option.value)}
-                className={cn(
-                  "w-full px-4 py-4 rounded-lg border text-center text-sm font-medium transition-all duration-300 transform hover:-translate-y-px flex flex-col items-center gap-2 shadow-xs",
-                  isActive
-                    ? "border-primary bg-primary/10 text-primary shadow-sm"
-                    : "border-border bg-muted text-foreground hover:bg-secondary"
-                )}
-              >
-                <option.icon className="h-6 w-6" />
-                <span>{option.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Services Multi-select */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Which services do you want to offer on Catelance? (Multi-select)
-        </p>
-        <div className="grid gap-2 md:grid-cols-2 max-h-[280px] overflow-y-auto pr-2">
-          {SERVICE_OPTIONS.map((service) => {
-            const isActive = selectedServices.includes(service.value);
-            return (
-              <button
-                key={service.value}
-                onClick={() => onToggleService(service.value)}
-                className={cn(
-                  "w-full px-3 py-2.5 rounded-lg border text-left text-sm font-medium transition-all duration-300 transform hover:-translate-y-px flex items-center justify-between gap-2 shadow-xs",
-                  isActive
-                    ? "border-primary bg-primary/10 text-primary shadow-sm"
-                    : "border-border bg-muted text-foreground hover:bg-secondary"
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <service.icon className="h-5 w-5" />
-                  <span>{service.label}</span>
-                </span>
-                {isActive && (
-                  <Check className="h-4 w-4 text-primary animate-in zoom-in spin-in-45" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        {selectedServices.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {selectedServices.length} service(s) selected
-          </p>
-        )}
+        <OptionCard
+          selected={formData.hasWorkedWithClients === "yes"}
+          onClick={() => handleFieldChange("hasWorkedWithClients", "yes")}
+          label="Yes"
+        />
+        <OptionCard
+          selected={formData.hasWorkedWithClients === "no"}
+          onClick={() => handleFieldChange("hasWorkedWithClients", "no")}
+          label="No"
+        />
       </div>
     </div>
   );
-};
 
-const StepSkillValidation = ({
-  experienceYears,
-  workingLevel,
-  selectedTools,
-  selectedServices,
-  onSelectExperienceYears,
-  onSelectWorkingLevel,
-  onToggleTool,
-}) => {
-  // Get available tools based on selected services
-  const availableTools = React.useMemo(() => {
-    const tools = new Set();
-    selectedServices.forEach((service) => {
-      const serviceTools = TOOLS_BY_SERVICE[service] || [];
-      serviceTools.forEach((tool) => tools.add(tool));
-    });
-    return Array.from(tools).sort();
-  }, [selectedServices]);
+  const renderStep10 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="How do you prefer to work?"
+      />
+      <div className="space-y-3">
+        {WORK_PREFERENCE_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.workPreference === option.value}
+            onClick={() => handleFieldChange("workPreference", option.value)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
 
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Skill Validation
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Help us understand your experience level and the tools you work with.
+  const renderStep11 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="How many hours per day can you dedicate?"
+      />
+      <div className="space-y-3">
+        {HOURS_PER_DAY_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.hoursPerDay === option.value}
+            onClick={() => handleFieldChange("hoursPerDay", option.value)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep12 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="How do you handle revisions?"
+      />
+      <div className="space-y-3">
+        {REVISION_HANDLING_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.revisionHandling === option.value}
+            onClick={() => handleFieldChange("revisionHandling", option.value)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep13 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="What pricing model do you prefer?"
+      />
+      <div className="space-y-3">
+        {PRICING_MODEL_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.pricingModel === option.value}
+            onClick={() => handleFieldChange("pricingModel", option.value)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep14 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Your typical project range?"
+      />
+      <div className="space-y-3">
+        {PROJECT_RANGE_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.projectRange === option.value}
+            onClick={() => handleFieldChange("projectRange", option.value)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep15 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Are you open to partial-scope projects?"
+      />
+      <div className="space-y-3">
+        <OptionCard
+          selected={formData.partialScope === "yes"}
+          onClick={() => handleFieldChange("partialScope", "yes")}
+          label="Yes"
+        />
+        <OptionCard
+          selected={formData.partialScope === "no"}
+          onClick={() => handleFieldChange("partialScope", "no")}
+          label="No"
+        />
+      </div>
+    </div>
+  );
+
+  const renderStep16 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Do you agree to follow Catalance's 4-phase SOP?"
+        subtitle="This is mandatory to proceed"
+      />
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
+        <p className="text-amber-200 text-sm">
+          âš ï¸ All projects on Catalance follow our standard operating procedures.
         </p>
       </div>
-
-      {/* Experience Years */}
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          How many years of experience do you have in your selected service(s)?
-        </p>
-        <div className="grid gap-2 md:grid-cols-4">
-          {EXPERIENCE_YEARS_OPTIONS.map((option) => {
-            const isActive = experienceYears === option.value;
-            return (
-              <button
-                key={option.value}
-                onClick={() => onSelectExperienceYears(option.value)}
-                className={cn(
-                  "w-full px-3 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-                  isActive
-                    ? "border-primary bg-primary/10 text-primary shadow-sm"
-                    : "border-border bg-muted text-foreground hover:bg-secondary"
-                )}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Working Level */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          What is your working level?
-        </p>
-        <div className="grid gap-3 md:grid-cols-3">
-          {WORKING_LEVEL_OPTIONS.map((option) => {
-            const isActive = workingLevel === option.value;
-            return (
-              <button
-                key={option.value}
-                onClick={() => onSelectWorkingLevel(option.value)}
-                className={cn(
-                  "w-full px-4 py-4 rounded-lg border text-left text-sm transition-all duration-300 hover:-translate-y-px",
-                  isActive
-                    ? "border-primary bg-primary/10 text-primary shadow-sm"
-                    : "border-border bg-muted text-foreground hover:bg-secondary"
-                )}
-              >
-                <span className="font-semibold block">{option.label}</span>
-                <span className="text-xs text-muted-foreground mt-1 block">
-                  {option.description}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Tools Multi-select */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-            Which tools do you actively use?
-          </p>
-          {selectedTools.length > 0 && (
-            <span className="text-xs text-primary font-medium">
-              {selectedTools.length} selected
-            </span>
+        <button
+          onClick={() => handleFieldChange("sopAgreement", "yes")}
+          className={cn(
+            "w-full py-4 rounded-xl font-medium transition-all text-center",
+            formData.sopAgreement === "yes"
+              ? "bg-green-500 text-white"
+              : "bg-white/10 text-white/70 hover:bg-white/20"
           )}
-        </div>
-        {availableTools.length > 0 ? (
-          <div className="grid gap-2 md:grid-cols-3 max-h-[200px] overflow-y-auto pr-2">
-            {availableTools.map((tool) => {
-              const isActive = selectedTools.includes(tool);
-              return (
-                <button
-                  key={tool}
-                  onClick={() => onToggleTool(tool)}
-                  className={cn(
-                    "w-full px-3 py-2 rounded-lg border text-left text-sm font-medium transition-all duration-200 flex items-center justify-between gap-2",
-                    isActive
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-muted text-foreground hover:bg-secondary"
-                  )}
-                >
-                  <span>{tool}</span>
-                  {isActive && <Check className="h-4 w-4 text-primary" />}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground italic">
-            Go back to Step 1 to select services first
-          </p>
-        )}
+        >
+          Yes, I agree
+        </button>
       </div>
     </div>
   );
-};
 
-const StepPortfolioProof = ({
-  hasPreviousWork,
-  portfolioTypes,
-  hasWorkedWithClients,
-  portfolioLink,
-  portfolioProjects,
-  onSelectHasPreviousWork,
-  onTogglePortfolioType,
-  onSelectHasWorkedWithClients,
-  onPortfolioLinkChange,
-  onAddProject,
-  onRemoveProject,
-}) => {
-  const [newProjectUrl, setNewProjectUrl] = useState("");
-  const [isLoadingProject, setIsLoadingProject] = useState(false);
-
-  const handleAddProject = async () => {
-    if (!newProjectUrl.trim()) return;
-
-    // Check for duplicates
-    if (portfolioProjects.some((p) => p.link === newProjectUrl)) {
-      toast.error("Project already added");
-      setNewProjectUrl("");
-      return;
-    }
-
-    setIsLoadingProject(true);
-    try {
-      const baseUrl = API_BASE_URL || "/api";
-      const res = await fetch(
-        `${baseUrl}/utils/metadata?url=${encodeURIComponent(newProjectUrl)}`
-      );
-      const data = await res.json();
-
-      if (data.success) {
-        onAddProject({
-          link: newProjectUrl,
-          image: data.data.image,
-          title:
-            data.data.title ||
-            newProjectUrl.replace(/^https?:\/\//, "").split("/")[0],
-        });
-        toast.success("Project added!");
-      } else {
-        onAddProject({
-          link: newProjectUrl,
-          image: null,
-          title: newProjectUrl.replace(/^https?:\/\//, "").split("/")[0],
-        });
-      }
-      setNewProjectUrl("");
-    } catch (err) {
-      console.error(err);
-      toast.error("Could not fetch preview, but link added.");
-      onAddProject({
-        link: newProjectUrl,
-        image: null,
-        title: newProjectUrl.replace(/^https?:\/\//, "").split("/")[0],
-      });
-      setNewProjectUrl("");
-    } finally {
-      setIsLoadingProject(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Portfolio & Proof of Work
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Share your previous work and experience with clients.
-        </p>
-      </div>
-
-      {/* Previous Work */}
+  const renderStep17 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Work starts only after scope freeze and approval"
+        subtitle="Do you understand this policy?"
+      />
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Do you have previous work to showcase?
-        </p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <button
-            onClick={() => onSelectHasPreviousWork("yes")}
-            className={cn(
-              "w-full px-4 py-4 rounded-lg border text-left text-sm transition-all duration-300 hover:-translate-y-px",
-              hasPreviousWork === "yes"
-                ? "border-primary bg-primary/10 text-primary shadow-sm"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            <span className="font-semibold block">Yes</span>
-            <span className="text-xs text-muted-foreground">
-              Upload links/files
-            </span>
-          </button>
-          <button
-            onClick={() => onSelectHasPreviousWork("no")}
-            className={cn(
-              "w-full px-4 py-4 rounded-lg border text-left text-sm transition-all duration-300 hover:-translate-y-px",
-              hasPreviousWork === "no"
-                ? "border-primary bg-primary/10 text-primary shadow-sm"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            <span className="font-semibold block">No</span>
-            <span className="text-xs text-muted-foreground">
-              I'm new but skilled
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Portfolio Types & Links - Only show if hasPreviousWork is "yes" */}
-      {hasPreviousWork === "yes" && (
-        <>
-          {/* Portfolio Website Link */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-              Portfolio Website (optional)
-            </p>
-            <div className="relative">
-              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="url"
-                placeholder="https://yourportfolio.com"
-                value={portfolioLink}
-                onChange={(e) => onPortfolioLinkChange(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          {/* Project Links */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-              Add Project Links
-            </p>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="url"
-                  placeholder="https://project-link.com"
-                  value={newProjectUrl}
-                  onChange={(e) => setNewProjectUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddProject()}
-                  className="pl-10"
-                  disabled={isLoadingProject}
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={handleAddProject}
-                disabled={!newProjectUrl.trim() || isLoadingProject}
-                size="icon"
-                className="shrink-0"
-              >
-                {isLoadingProject ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Check className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-
-            {/* Project Cards */}
-            {portfolioProjects.length > 0 && (
-              <div className="grid gap-3 grid-cols-2 md:grid-cols-3 mt-3">
-                {portfolioProjects.map((project, index) => (
-                  <div
-                    key={project.link}
-                    className="relative group rounded-lg border border-border bg-card overflow-hidden aspect-video"
-                  >
-                    {project.image ? (
-                      <img
-                        src={project.image}
-                        alt={project.title}
-                        className="w-full h-full object-contain bg-muted"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center">
-                        <Globe className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                    {/* Text Overlay */}
-                    <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/50 to-transparent p-2">
-                      <p className="text-xs font-medium text-white truncate">
-                        {project.title}
-                      </p>
-                      <a
-                        href={project.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-primary hover:underline flex items-center gap-1"
-                      >
-                        <ExternalLink className="h-2.5 w-2.5" />
-                        View
-                      </a>
-                    </div>
-                    <button
-                      onClick={() => onRemoveProject(index)}
-                      className="absolute top-1 right-1 p-1 rounded-full bg-destructive/90 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Worked with Clients */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Have you worked with clients before?
-        </p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <button
-            onClick={() => onSelectHasWorkedWithClients("yes")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              hasWorkedWithClients === "yes"
-                ? "border-primary bg-primary/10 text-primary shadow-sm"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            Yes
-          </button>
-          <button
-            onClick={() => onSelectHasWorkedWithClients("no")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              hasWorkedWithClients === "no"
-                ? "border-primary bg-primary/10 text-primary shadow-sm"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            No
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const StepWorkStyle = ({
-  workPreference,
-  hoursPerDay,
-  revisionHandling,
-  onSelectWorkPreference,
-  onSelectHoursPerDay,
-  onSelectRevisionHandling,
-}) => {
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Work Style & Productivity Check
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          How do you prefer to work?
-        </p>
-      </div>
-
-      {/* Work Preference */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Work Preference
-        </p>
-        <div className="grid gap-2 md:grid-cols-1">
-          {WORK_PREFERENCE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => onSelectWorkPreference(option.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-lg border text-left text-sm transition-all duration-200 flex items-center justify-between",
-                workPreference === option.value
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}
-            >
-              <span className="font-medium">{option.label}</span>
-              {workPreference === option.value && <Check className="h-4 w-4" />}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Hours Per Day */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          How many hours per day can you realistically dedicate?
-        </p>
-        <div className="grid gap-2 grid-cols-2">
-          {HOURS_PER_DAY_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => onSelectHoursPerDay(option.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-lg border text-center text-sm transition-all duration-200",
-                hoursPerDay === option.value
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}
-            >
-              <span className="font-medium">{option.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Revision Handling */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          How do you handle revisions?
-        </p>
-        <div className="grid gap-2 md:grid-cols-2">
-          {REVISION_HANDLING_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => onSelectRevisionHandling(option.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-lg border text-center text-sm transition-all duration-200",
-                revisionHandling === option.value
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}
-            >
-              <span className="font-medium">{option.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const StepPricingAvailability = ({
-  pricingModel,
-  projectRange,
-  partialScope,
-  onSelectPricingModel,
-  onSelectProjectRange,
-  onSelectPartialScope,
-}) => {
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Pricing & Availability
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Define your pricing preferences.
-        </p>
-      </div>
-
-      {/* Pricing Model */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          What pricing model do you prefer?
-        </p>
-        <div className="grid gap-2 grid-cols-3">
-          {PRICING_MODEL_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => onSelectPricingModel(option.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-lg border text-center text-sm transition-all duration-200",
-                pricingModel === option.value
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}
-            >
-              <span className="font-medium">{option.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Project Range */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Your typical project range (per service)?
-        </p>
-        <div className="grid gap-2 grid-cols-3">
-          {PROJECT_RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => onSelectProjectRange(option.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-lg border text-center text-sm transition-all duration-200",
-                projectRange === option.value
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}
-            >
-              <span className="font-medium">{option.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Partial Scope */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Are you open to partial-scope projects?
-        </p>
-        <div className="grid gap-2 grid-cols-2">
-          <button
-            onClick={() => onSelectPartialScope("yes")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              partialScope === "yes"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            Yes
-          </button>
-          <button
-            onClick={() => onSelectPartialScope("no")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              partialScope === "no"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            No
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const StepSOPAlignment = ({
-  sopAgreement,
-  scopeFreezeAgreement,
-  requoteAgreement,
-  onSelectSOPAgreement,
-  onSelectScopeFreezeAgreement,
-  onSelectRequoteAgreement,
-}) => {
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          SOP & Platform Alignment
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Please confirm your understanding of our operating procedures.
-        </p>
-      </div>
-
-      {/* SOP Agreement */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Do you agree to follow Catalance’s 4-phase SOP for all projects?
-        </p>
-        <div className="grid gap-2 grid-cols-2">
-          <button
-            onClick={() => onSelectSOPAgreement("yes")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              sopAgreement === "yes"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            Yes (mandatory)
-          </button>
-          <button
-            onClick={() => onSelectSOPAgreement("no")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              sopAgreement === "no"
-                ? "border-destructive bg-destructive/10 text-destructive"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            No
-          </button>
-        </div>
-      </div>
-
-      {/* Scope Freeze Agreement */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Do you understand that work starts only after scope freeze and
-          approval?
-        </p>
-        <div className="grid gap-2 grid-cols-2">
-          <button
-            onClick={() => onSelectScopeFreezeAgreement("yes")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              scopeFreezeAgreement === "yes"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            Yes
-          </button>
-          <button
-            onClick={() => onSelectScopeFreezeAgreement("no")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              scopeFreezeAgreement === "no"
-                ? "border-destructive bg-destructive/10 text-destructive"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            No
-          </button>
-        </div>
-      </div>
-
-      {/* Re-quote Agreement */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Do you agree that scope changes require re-quoting?
-        </p>
-        <div className="grid gap-2 grid-cols-2">
-          <button
-            onClick={() => onSelectRequoteAgreement("yes")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              requoteAgreement === "yes"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            Yes
-          </button>
-          <button
-            onClick={() => onSelectRequoteAgreement("no")}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg border text-center text-sm font-medium transition-all duration-300 hover:-translate-y-px",
-              requoteAgreement === "no"
-                ? "border-destructive bg-destructive/10 text-destructive"
-                : "border-border bg-muted text-foreground hover:bg-secondary"
-            )}
-          >
-            No
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const StepProfessional = ({ selectedField, onSelectField }) => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Choose Your Professional Field
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Select the category that best describes your work.
-        </p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        {PROFESSIONAL_FIELDS.map((field) => {
-          const isActive = selectedField === field;
-          const icon = PROFESSIONAL_FIELD_ICONS[field] || "💼";
-          return (
-            <button
-              key={field}
-              onClick={() => onSelectField(field)}
-              className={cn(
-                "w-full px-4 py-4 rounded-lg border text-left text-sm font-medium transition-all duration-300 transform hover:-translate-y-px flex items-center gap-3 shadow-xs",
-                isActive
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}
-            >
-              <span className="text-xl">{icon}</span>
-              <span>{field}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-const StepSpecialty = ({ selectedSpecialties, onToggle, options }) => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Select Your Specialties
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Choose your specific skills within your professional field. You can
-          select multiple.
-        </p>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        {options.map((option) => {
-          const isActive = selectedSpecialties.includes(option);
-          return (
-            <button
-              key={option}
-              onClick={() => onToggle(option)}
-              className={cn(
-                "w-full px-4 py-3 rounded-lg border text-left text-sm font-medium transition-all duration-300 transform hover:-translate-y-px flex items-center justify-between shadow-xs",
-                isActive
-                  ? "border-primary bg-primary/10 text-primary shadow-sm"
-                  : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}
-            >
-              <span>{option}</span>
-              {isActive && (
-                <Check className="h-4 w-4 text-primary animate-in zoom-in spin-in-45" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-const StepSkills = ({
-  skills,
-  currentSpecialtySkills,
-  customSkillInput,
-  onToggleSkill,
-  onRemoveSkill,
-  onCustomInputChange,
-  onAddCustomSkill,
-  specialty,
-}) => {
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      onAddCustomSkill();
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Select Your Skills
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Choose skills related to your specialties. You can also add custom
-          skills.
-        </p>
-      </div>
-
-      {skills.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-            Selected Skills ({skills.length})
-          </p>
-          <div className="flex flex-wrap gap-2 p-4 rounded-lg bg-muted border border-border min-h-12">
-            {skills.map((skill, index) => (
-              <div
-                key={skill}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/40 text-primary text-sm font-medium"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <span>{skill}</span>
-                <button
-                  type="button"
-                  onClick={() => onRemoveSkill(skill)}
-                  className="ml-1 hover:text-primary-foreground/80 transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.18em]">
-          Recommended Skills
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {currentSpecialtySkills.map((skill) => {
-            const isActive = skills.includes(skill);
-            return (
-              <button
-                key={skill}
-                type="button"
-                onClick={() => onToggleSkill(skill)}
-                className={cn(
-                  "px-3 py-1.5 rounded-full border text-sm font-medium transition-all duration-300 transform hover:-translate-y-px",
-                  isActive
-                    ? "border-primary bg-primary/10 text-primary shadow-sm"
-                    : "border-border bg-muted text-foreground hover:bg-secondary"
-                )}
-              >
-                {skill}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Custom skill input */}
-      <div className="space-y-3">
-        <Label className="text-sm text-foreground font-semibold">
-          Add Custom Skill
-        </Label>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Input
-            type="text"
-            value={customSkillInput}
-            onChange={(event) => onCustomInputChange(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a skill and press Add or Enter"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
-          <Button
-            type="button"
-            onClick={onAddCustomSkill}
-            className="h-11 rounded-lg bg-primary text-primary-foreground px-6 font-semibold hover:bg-primary/90"
-          >
-            Add
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const StepExperience = ({ experience, onSelectExperience }) => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Your Expertise Level
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Select your years of experience.
-        </p>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-5">
-        {EXPERIENCE_OPTIONS.map((option) => {
-          const isActive = experience === option;
-          return (
-            <button
-              key={option}
-              onClick={() => onSelectExperience(option)}
-              className={cn(
-                "w-full px-4 py-3 rounded-lg border text-sm font-medium transition-all duration-300 transform hover:-translate-y-px",
-                isActive
-                  ? "border-primary bg-primary/10 text-primary shadow-sm"
-                  : "border-border bg-muted text-foreground hover:bg-secondary"
-              )}
-            >
-              {option === "Fresher" ? option : `${option} years`}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-const StepPortfolio = ({
-  website,
-  linkedin,
-  github,
-  fileName,
-  isDeveloper,
-  isFresher,
-  onWebsiteChange,
-  onLinkedinChange,
-  onGithubChange,
-  onFileChange,
-}) => {
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">
-          Showcase Your Work
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Link your portfolio, LinkedIn, and GitHub to stand out.
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label
-            htmlFor="portfolioWebsite"
-            className="text-sm text-foreground font-semibold"
-          >
-            Portfolio Website {isFresher ? "(Optional)" : ""}
-          </Label>
-          <Input
-            id="portfolioWebsite"
-            type="url"
-            value={website}
-            onChange={(event) => onWebsiteChange(event.target.value)}
-            placeholder="https://yourportfolio.com"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="linkedinProfile"
-            className="text-sm text-foreground font-semibold"
-          >
-            LinkedIn Profile
-          </Label>
-          <Input
-            id="linkedinProfile"
-            type="url"
-            value={linkedin}
-            onChange={(event) => onLinkedinChange(event.target.value)}
-            placeholder="https://linkedin.com/in/yourprofile"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="githubProfile"
-            className="text-sm text-foreground font-semibold"
-          >
-            GitHub Profile{" "}
-            {isDeveloper && !isFresher ? "(Mandatory)" : "(Optional)"}
-          </Label>
-          <Input
-            id="githubProfile"
-            type="url"
-            value={github}
-            onChange={(event) => onGithubChange(event.target.value)}
-            placeholder="https://github.com/yourusername"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="portfolioFile"
-            className="text-sm text-foreground font-semibold"
-          >
-            Upload Resume/PDF {isFresher ? "(Mandatory)" : "(Optional)"}
-          </Label>
-          <Input
-            id="portfolioFile"
-            type="file"
-            accept=".pdf"
-            onChange={onFileChange}
-            className="h-11 cursor-pointer rounded-lg bg-background border border-input text-muted-foreground file:bg-transparent"
-          />
-          {fileName && (
-            <p className="text-xs text-muted-foreground">
-              Selected: {fileName}
-            </p>
+        <button
+          onClick={() => handleFieldChange("scopeFreezeAgreement", "yes")}
+          className={cn(
+            "w-full py-4 rounded-xl font-medium transition-all text-center",
+            formData.scopeFreezeAgreement === "yes"
+              ? "bg-green-500 text-white"
+              : "bg-white/10 text-white/70 hover:bg-white/20"
           )}
-        </div>
+        >
+          Yes, I understand
+        </button>
       </div>
     </div>
   );
-};
 
-const StepTerms = ({ accepted, onToggle }) => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Terms &amp; Conditions
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Please agree to the terms to complete your profile.
-        </p>
+  const renderStep18 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Scope changes require re-quoting"
+        subtitle="Do you agree to this policy?"
+      />
+      <div className="space-y-3">
+        <button
+          onClick={() => handleFieldChange("requoteAgreement", "yes")}
+          className={cn(
+            "w-full py-4 rounded-xl font-medium transition-all text-center",
+            formData.requoteAgreement === "yes"
+              ? "bg-green-500 text-white"
+              : "bg-white/10 text-white/70 hover:bg-white/20"
+          )}
+        >
+          Yes, I agree
+        </button>
       </div>
+    </div>
+  );
 
+  const renderStep19 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Preferred communication style?"
+      />
+      <div className="space-y-3">
+        {COMMUNICATION_STYLE_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.communicationStyle === option.value}
+            onClick={() => handleFieldChange("communicationStyle", option.value)}
+            label={option.label}
+            description={option.description}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep20 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Response time commitment?"
+      />
+      <div className="space-y-3">
+        {RESPONSE_TIME_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.responseTime === option.value}
+            onClick={() => handleFieldChange("responseTime", option.value)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep21 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Timezone & working hours"
+        subtitle="Optional but recommended"
+      />
       <div className="space-y-4">
-        <div className="max-h-64 overflow-y-auto rounded-lg bg-muted p-4 text-xs leading-relaxed text-muted-foreground border border-border scrollbar-thin">
-          <p className="font-semibold text-primary mb-3">
-            Freelancer Terms &amp; Conditions – GoHypeMedia
-          </p>
-          <ol className="list-decimal space-y-2 ps-4">
-            <li>
-              <span className="font-semibold">Project Completion</span> –
-              Payment will only be made upon successful completion and delivery
-              of the assigned project as per the agreed scope, timeline, and
-              quality standards.
-            </li>
-            <li>
-              <span className="font-semibold">Professional Conduct</span> – You
-              agree to maintain clear communication, meet deadlines, and deliver
-              original, high-quality work.
-            </li>
-            <li>
-              <span className="font-semibold">Confidentiality</span> – All
-              client and project information must remain confidential.
-            </li>
-            <li>
-              <span className="font-semibold">Payment Terms</span> – Payments
-              are processed after approval of deliverables.
-            </li>
-          </ol>
-        </div>
-
-        <label className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border cursor-pointer hover:bg-secondary transition-colors">
-          <Checkbox
-            checked={accepted}
-            onCheckedChange={(value) => onToggle(Boolean(value))}
-            className="border-input data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-          />
-          <span className="text-sm text-foreground">
-            I agree to the Terms and Conditions
-          </span>
-        </label>
-      </div>
-    </div>
-  );
-};
-
-const StepPersonalInfo = ({
-  fullName,
-  email,
-  password,
-  phone,
-  location,
-  countryCode,
-  onChange,
-}) => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-foreground">
-          Personal Information
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This information will be used to create your account.
-        </p>
-      </div>
-
-      <div className="grid gap-4">
-        <div className="space-y-2">
-          <Label
-            htmlFor="fullName"
-            className="text-sm text-foreground font-semibold"
-          >
-            Full Name *
-          </Label>
-          <Input
-            id="fullName"
-            type="text"
-            value={fullName}
-            onChange={(event) => onChange("fullName", event.target.value)}
-            placeholder="John Doe"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="email"
-            className="text-sm text-foreground font-semibold"
-          >
-            Email Address *
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) => onChange("email", event.target.value)}
-            placeholder="you@example.com"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="password"
-            className="text-sm text-foreground font-semibold"
-          >
-            Password * (Min 8 characters)
-          </Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(event) => onChange("password", event.target.value)}
-            placeholder="••••••••"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="phone"
-            className="text-sm text-foreground font-semibold"
-          >
-            Phone Number
-          </Label>
-          <div className="flex gap-2">
+        <div className="space-y-4">
+          <div>
+            <Label className="text-white/70 text-sm">Your timezone</Label>
             <Select
-              value={countryCode}
-              onValueChange={(value) => onChange("countryCode", value)}
+              value={formData.timezone}
+              onValueChange={(value) => handleFieldChange("timezone", value)}
             >
-              <SelectTrigger className="w-[140px] h-11 bg-background border border-input">
-                {/* Render selected value manually to keep trigger compact */}
-                <span className="truncate">
-                  {(() => {
-                    const selected = COUNTRY_CODES.find(
-                      (c) => c.code === countryCode
-                    );
-                    return selected
-                      ? `${selected.code} ${selected.dial_code}`
-                      : "Code";
-                  })()}
-                </span>
+              <SelectTrigger className="mt-2 w-full bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="Select timezone" />
               </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                {COUNTRY_CODES.map((country) => (
-                  <SelectItem key={country.code} value={country.code}>
-                    <span className="flex items-center gap-2">
-                      <span className="font-medium">{country.name}</span>
-                      <span className="text-muted-foreground">
-                        ({country.dial_code})
-                      </span>
-                    </span>
+              <SelectContent>
+                {TIMEZONE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(event) => onChange("phone", event.target.value)}
-              placeholder="(555) 000-0000"
-              className="flex-1 h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            />
+          </div>
+          <div>
+            <Label className="text-white/70 text-sm">Working hours</Label>
+            <Select
+              value={formData.workingHours}
+              onValueChange={(value) => handleFieldChange("workingHours", value)}
+            >
+              <SelectTrigger className="mt-2 w-full bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="Select working hours" />
+              </SelectTrigger>
+              <SelectContent>
+                {WORKING_HOURS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
+      </div>
+    </div>
+  );
 
-        <div className="space-y-2">
-          <Label
-            htmlFor="location"
-            className="text-sm text-foreground font-semibold"
-          >
-            Location *
-          </Label>
-          <Input
-            id="location"
-            type="text"
-            value={location}
-            onChange={(event) => onChange("location", event.target.value)}
-            placeholder="City, Country"
-            className="h-11 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+  const renderStep22 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="How do you ensure quality before delivery?"
+        subtitle="Select all that apply"
+      />
+      <div className="space-y-3">
+        {QUALITY_PROCESS_OPTIONS.map(option => (
+          <OptionCard
+            key={option.value}
+            selected={formData.qualityProcess.includes(option.value)}
+            onClick={() => toggleArrayField("qualityProcess", option.value)}
+            label={option.label}
+            multiSelect
           />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderStep23 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Are you comfortable with ratings and reviews?"
+        subtitle="After every project completion"
+      />
+      <div className="space-y-3">
+        <OptionCard
+          selected={formData.acceptsRatings === "yes"}
+          onClick={() => handleFieldChange("acceptsRatings", "yes")}
+          label="Yes"
+          description="I welcome feedback and ratings"
+        />
+      </div>
+    </div>
+  );
+
+  const renderStep24 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Why do you want to work on Catalance?"
+      />
+      <Textarea
+        value={formData.whyCatalance}
+        onChange={(e) => handleFieldChange("whyCatalance", e.target.value)}
+        placeholder="Share your motivation..."
+        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[150px]"
+      />
+    </div>
+  );
+
+  const renderStep25 = () => (
+    <div className="space-y-4">
+      <StepHeader
+        onBack={handleBack}
+        title="Ready to start immediately if selected?"
+      />
+      <div className="space-y-3">
+        <OptionCard
+          selected={formData.readyToStart === "yes"}
+          onClick={() => handleFieldChange("readyToStart", "yes")}
+          label="Yes"
+        />
+        <OptionCard
+          selected={formData.readyToStart === "not_yet"}
+          onClick={() => handleFieldChange("readyToStart", "not_yet")}
+          label="Not yet"
+        />
+      </div>
+    </div>
+  );
+
+  const renderStep26 = () => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 bg-[#121212] overflow-hidden rounded-3xl border border-white/5 shadow-2xl min-h-[600px]">
+      {/* Left Columns - Form */}
+      <div className="p-8 lg:p-12 flex flex-col justify-center">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-2">Create your account</h2>
+          <p className="text-white/50 text-sm">Enter your details below to create your account</p>
+          <p className="text-[10px] uppercase tracking-widest text-primary font-bold mt-2">
+            YOU'RE CREATING A FREELANCER ACCOUNT
+          </p>
         </div>
+
+        <div className="space-y-4">
+          <div>
+            <Label className="text-white/70 text-sm font-semibold">Full name</Label>
+            <Input
+              value={formData.fullName}
+              onChange={(e) => handleFieldChange("fullName", e.target.value)}
+              placeholder="John Doe"
+              className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg focus:border-primary/50 transition-colors"
+            />
+          </div>
+          <div>
+            <Label className="text-white/70 text-sm font-semibold">Email</Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleFieldChange("email", e.target.value)}
+              placeholder="you@example.com"
+              className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg focus:border-primary/50 transition-colors"
+            />
+          </div>
+          <div>
+            <Label className="text-white/70 text-sm font-semibold">Password</Label>
+            <div className="relative mt-1.5">
+              <Input
+                type="password"
+                value={formData.password}
+                onChange={(e) => handleFieldChange("password", e.target.value)}
+                placeholder="Min. 8 characters"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg pr-10 focus:border-primary/50 transition-colors"
+              />
+            </div>
+            <p className="text-white/30 text-xs mt-1">Must be at least 8 characters long.</p>
+          </div>
+
+          <Button
+            className="w-full h-11 bg-primary hover:bg-primary-strong text-black font-bold rounded-lg mt-4 transition-all"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create Account"}
+          </Button>
+
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#121212] px-2 text-white/30">Or continue with</span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full h-11 border-white/10 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg flex items-center justify-center gap-2 transition-all"
+            onClick={() => toast.info("Google Auth not implemented")}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="currentColor"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="currentColor"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z"
+              />
+              <path
+                fill="currentColor"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              />
+            </svg>
+            Continue with Google
+          </Button>
+
+          <div className="text-center mt-4">
+            <span className="text-white/50 text-sm">Already have an account? </span>
+            <button
+              onClick={() => navigate("/login")}
+              className="text-white/90 hover:text-white underline underline-offset-4 text-sm font-medium transition-colors"
+            >
+              Sign in
+            </button>
+          </div>
+
+          <div className="text-center mt-6">
+            <p className="text-[10px] text-white/30">
+              By clicking continue, you agree to our <a href="#" className="underline hover:text-white/50">Terms of Service</a> and <a href="#" className="underline hover:text-white/50">Privacy Policy</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column - Image & Branding */}
+      <div className="relative hidden lg:flex flex-col items-center justify-center p-12 bg-zinc-900 overflow-hidden">
+        {/* Background Image Placeholder with Overlay */}
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=1770&q=80')] bg-cover bg-center opacity-40 mix-blend-overlay" />
+        <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/80" />
+
+        <div className="relative z-10 text-center max-w-md">
+          <h3 className="text-4xl font-bold text-white/20 leading-tight mb-6 font-serif">
+            THE TRUSTED SPACE FOR <br />
+            <span className="text-white/40">SKILLED FREELANCERS.</span>
+          </h3>
+          {/* Abstract rings/decoration */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-white/5 rounded-full animate-pulse" style={{ animationDuration: '8s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] border border-white/5 rounded-full" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] border border-white/5 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderOtpVerification = () => (
+    <div className="space-y-6">
+      <StepHeader
+        onBack={() => setIsVerifying(false)}
+        title="Verify your email"
+        subtitle={`We sent a code to ${formData.email}`}
+      />
+      <div>
+        <Label className="text-white/70 text-sm">Verification Code</Label>
+        <Input
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          placeholder="Enter 6-digit code"
+          maxLength={6}
+          className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/30 text-center text-2xl tracking-widest"
+        />
+      </div>
+      <ActionButton onClick={handleVerifyOtp} loading={isSubmitting}>
+        Verify & Complete
+      </ActionButton>
+    </div>
+  );
+
+  const renderCurrentStep = () => {
+    if (isVerifying) return renderOtpVerification();
+
+    switch (currentStep) {
+      case 1: return renderStep1();
+      case 2: return renderStep2();
+      case 3: return renderStep3();
+      case 4: return renderStep4();
+      case 5: return renderStep5();
+      case 6: return renderStep6();
+      case 7: return renderStep7();
+      case 8: return renderStep8();
+      case 9: return renderStep9();
+      case 10: return renderStep10();
+      case 11: return renderStep11();
+      case 12: return renderStep12();
+      case 13: return renderStep13();
+      case 14: return renderStep14();
+      case 15: return renderStep15();
+      case 16: return renderStep16();
+      case 17: return renderStep17();
+      case 18: return renderStep18();
+      case 19: return renderStep19();
+      case 20: return renderStep20();
+      case 21: return renderStep21();
+      case 22: return renderStep22();
+      case 23: return renderStep23();
+      case 24: return renderStep24();
+      case 25: return renderStep25();
+      case 26: return renderStep26();
+      default: return null;
+    }
+  };
+
+  const isLastStep = currentStep === totalSteps;
+
+  // ============================================================================
+  // MAIN RENDER
+  // ============================================================================
+
+  return (
+    <div className="h-screen w-full bg-zinc-950 text-white relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
+      {/* Dynamic Background Elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[150px] mix-blend-screen" />
+      </div>
+
+      <div className="relative z-10 flex flex-col h-full">
+        {!hasStarted ? (
+          <div className="min-h-screen flex items-center justify-center px-6">
+            {renderWelcome()}
+          </div>
+        ) : (
+          <>
+            {/* Progress Bar - Clean top bar */}
+            {/* Top Navigation Bar */}
+            <div className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a] border-b border-white/5 shadow-2xl shadow-black/50">
+
+              {/* Progress Bar Line at the very top edge */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 w-full">
+                <div
+                  className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_10px_rgba(253,224,71,0.5)]"
+                  style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+                />
+              </div>
+
+              <div className="w-full px-6 h-16 relative flex items-center justify-center">
+                {/* Back Button - Absolute Left */}
+                {currentStep > 1 && (
+                  <button
+                    onClick={handleBack}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-all backdrop-blur-md z-20 group"
+                  >
+                    <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                  </button>
+                )}
+
+                {/* Step Counter - Centered */}
+                <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">
+                  Step {currentStep} of {totalSteps}
+                </span>
+              </div>
+            </div>
+
+            {/* Main Content - Scrollable Area */}
+            <div className="relative pt-24 pb-32 h-full overflow-y-auto w-full custom-scrollbar">
+              <div className="max-w-6xl mx-auto px-6 h-full flex flex-col justify-center min-h-[600px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={isVerifying ? 'verify' : currentStep}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="w-full"
+                  >
+                    {renderCurrentStep()}
+                  </motion.div>
+                </AnimatePresence>
+
+                {stepError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <p className="text-red-400 text-sm font-medium">{stepError}</p>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Action Button */}
+            {!isVerifying && (
+              <div className="fixed bottom-0 left-0 right-0 p-6 bg-linear-to-t from-[#0a0a0a] via-[#0a0a0a]/95 to-transparent">
+                <div className="max-w-md mx-auto">
+                  <ActionButton
+                    onClick={isLastStep ? handleSubmit : handleNext}
+                    loading={isSubmitting}
+                  >
+                    {isLastStep ? "Create Account" : "Continue"}
+                  </ActionButton>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
