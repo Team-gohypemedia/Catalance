@@ -45,7 +45,7 @@ const features = [
       "Custom websites built for performance, speed, and business growth.",
     price: "Starting at ₹25,000",
     icon: Globe,
-    image: "/src/assets/icons/web-icon.png",
+    image: "/icons/web-icon.png",
   },
   {
     id: "app-development",
@@ -53,7 +53,7 @@ const features = [
     description: "Mobile apps designed to engage users and scale businesses.",
     price: "Starting at ₹1,00,000",
     icon: Smartphone,
-    image: "/src/assets/icons/android-icon.png",
+    image: "/icons/android-icon.png",
   },
   {
     id: "software-development",
@@ -101,7 +101,7 @@ const features = [
       "Improve search rankings and drive consistent organic traffic.",
     price: "Starting at ₹10,000/mo",
     icon: Search,
-    image: "/src/assets/icons/seo-icon.png",
+    image: "/icons/seo-icon.png",
   },
   {
     id: "social-media-management",
@@ -185,7 +185,7 @@ const features = [
     description: "AI-powered voice agents for sales, support, and follow-ups.",
     price: "Starting at ₹1,30,000",
     icon: PhoneCall,
-    image: "/src/assets/icons/voice-agent-icon.png",
+    image: "/icons/voice-agent-icon.png",
   },
   {
     id: "whatsapp-chatbot",
@@ -423,9 +423,9 @@ const ServiceCard = memo(
           <div className="absolute inset-0 bg-[#ffc800]/5 pointer-events-none" />
         )}
 
-        <div className="flex flex-col h-full p-8 relative z-10">
+        <div className="flex flex-col h-full p-6 relative z-10">
           {/* Icon Container */}
-          <div className="h-24 w-full flex items-center justify-start mb-6 relative">
+          <div className="h-20 w-full flex items-center justify-start mb-5 relative">
             <div className="absolute -left-4 -top-4 w-32 h-32 bg-[#ffc800]/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             {feature.image ? (
               <img
@@ -435,7 +435,7 @@ const ServiceCard = memo(
               />
             ) : (
               <feature.icon
-                className="w-14 h-14 text-[#ffc800] drop-shadow-lg z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
+                className="w-12 h-12 text-[#ffc800] drop-shadow-lg z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
                 strokeWidth={1.5}
               />
             )}
@@ -443,15 +443,15 @@ const ServiceCard = memo(
 
           {/* Card Content */}
           <div className="flex flex-col grow">
-            <h3 className="text-xl font-bold text-white mb-3 leading-tight group-hover:text-[#ffc800] transition-colors duration-300">
+            <h3 className="text-lg font-bold text-white mb-2 leading-tight group-hover:text-[#ffc800] transition-colors duration-300">
               {feature.title}
             </h3>
 
-            <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-8 line-clamp-3 group-hover:text-zinc-300 transition-colors">
+            <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-6 line-clamp-3 group-hover:text-zinc-300 transition-colors">
               {feature.description}
             </p>
 
-            <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-5">
+            <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-4">
               <div>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">
                   Starting at

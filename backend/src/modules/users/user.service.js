@@ -64,18 +64,32 @@ export const registerUser = async (payload) => {
   if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
     try {
       const resend = ensureResendClient();
-      await resend.emails.send({
+      console.log(`[OTP Email] Attempting to send OTP to: ${user.email}`);
+      console.log(`[OTP Email] From: ${env.RESEND_FROM_EMAIL}`);
+
+      const result = await resend.emails.send({
         from: env.RESEND_FROM_EMAIL,
         to: user.email,
         subject: "Verify Your Email - Catalance",
         html: `<p>Your verification code is: <strong>${otpCode}</strong></p><p>This code expires in 15 minutes.</p>`
       });
+
+      console.log(`[OTP Email] Resend API Response:`, JSON.stringify(result, null, 2));
+
+      if (result.error) {
+        console.error(`[OTP Email] Resend returned error:`, result.error);
+        console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
+      } else {
+        console.log(`[OTP Email] ✅ Successfully sent to ${user.email}, ID: ${result.data?.id}`);
+      }
     } catch (error) {
-      console.error("Failed to send OTP email:", error);
+      console.error("[OTP Email] Failed to send OTP email:", error?.message || error);
+      console.error("[OTP Email] Full error:", error);
       // In dev, log the OTP so we can proceed
       console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
     }
   } else {
+    console.warn(`[OTP Email] Resend not configured. RESEND_API_KEY: ${!!env.RESEND_API_KEY}, RESEND_FROM_EMAIL: ${!!env.RESEND_FROM_EMAIL}`);
     console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
   }
 

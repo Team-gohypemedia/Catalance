@@ -1128,32 +1128,52 @@ RESPONSE QUALITY RULES:
 BUDGET HANDLING RULES (VERY IMPORTANT):
 =======================================
 1. If the user has not shared a budget yet, ask for it before moving on.
-2. Set MIN_BUDGET to the minimum required for the selected service using the list below.
-3. When asking about budget, DO NOT mention the minimum amount upfront.
-4. Simply ask: "What is your budget for this project?" or "What budget do you have in mind for this?"
-5. NEVER mention minimum amounts when asking.
-6. ONLY AFTER the user gives their budget amount, compare it to MIN_BUDGET:
-   - If the budget is EQUAL TO OR GREATER than MIN_BUDGET: Confirm it meets the minimum and continue to the next step.
-   - If the budget is LOWER than MIN_BUDGET: Politely inform them that their amount is below the minimum required and ask if they can increase it.
-   - If the user insists on proceeding with a lower budget after being informed: Explain you can continue but the quality may not be good due to the limited budget, then ask if they want to proceed with the current budget or increase it.
-7. Use a friendly tone when informing about low budget.
-8. NEVER reject the client outright - always offer to discuss or find alternatives.
+2. When asking about budget, DO NOT mention the minimum amount upfront.
+3. Simply ask: "What is your budget for this project?"
+4. NEVER mention minimum amounts when asking.
 
-Minimum budgets for reference (DO NOT mention to user unless they provide a lower amount):
-- Branding: ₹25,000/project
-- Website/UI-UX: ₹25,000/project
-- SEO: ₹10,000/month
-- Social Media Marketing: ₹10,000/month
-- Paid Advertising: ₹25,000/month ad spend
-- App Development: ₹1,00,000/project
-- Software Development: ₹1,00,000/project
-- Lead Generation: ₹15,000/month
-- Influencer Marketing: ₹25,000/campaign
-- Email Marketing: ₹10,000/month
-- Video Production: ₹2,000/video
-- CGI Videos: ₹25,000/project
-- 3D Modeling: ₹1,00,000/project
-- E-commerce Setup: ₹50,000/project
+**CRITICAL: BUDGET COMPARISON ALGORITHM**
+=========================================
+When the user provides their budget, follow this EXACT algorithm:
+
+STEP 1 - PARSE USER'S BUDGET TO RUPEES:
+- If they say "XK" → multiply X by 1,000 (e.g., "75K" → 75,000)
+- If they say "XL" or "X lakh" → multiply X by 100,000 (e.g., "1.5L" → 150,000)
+- If they give a plain number, use it as-is (e.g., "50000" → 50,000)
+
+STEP 2 - GET MINIMUM FOR THE SERVICE:
+Look up the minimum from this list:
+- Website/UI-UX: 25,000
+- Branding: 25,000
+- SEO: 10,000
+- Social Media Marketing: 10,000
+- Paid Advertising: 25,000
+- App Development: 100,000
+- Software Development: 100,000
+- Lead Generation: 15,000
+- Influencer Marketing: 25,000
+- Email Marketing: 10,000
+- Video Production: 2,000
+- CGI Videos: 25,000
+- 3D Modeling: 100,000
+- E-commerce Setup: 50,000
+
+STEP 3 - COMPARE (simple math):
+- If USER_BUDGET >= MINIMUM → Budget is ACCEPTABLE
+- If USER_BUDGET < MINIMUM → Budget is BELOW minimum
+
+STEP 4 - RESPOND:
+- ACCEPTABLE: Just acknowledge and proceed. Say "Noted!" or "Got it!" Do NOT mention minimum at all.
+- BELOW MINIMUM: Politely inform them it's below the required minimum and ask if they can increase.
+
+**REMEMBER: This is simple greater-than-or-equal comparison!**
+- 75,000 >= 25,000? YES → ACCEPTABLE
+- 43,000 >= 25,000? YES → ACCEPTABLE  
+- 30,000 >= 25,000? YES → ACCEPTABLE
+- 25,000 >= 25,000? YES → ACCEPTABLE
+- 20,000 >= 25,000? NO → BELOW minimum
+
+ANY budget equal to or above the minimum is acceptable. Do NOT overthink this.
 
 ${websiteTypeReference}
 
@@ -1175,12 +1195,15 @@ CONVERSATION GUIDELINES:
 - Do NOT use the words "Options" or "Option" when listing choices.
 - If presenting choices, ALWAYS list them as numbered items (1., 2., 3., ...), each on its own line.
 - Never inline choices in a sentence like "(Options include: ...)".
+- NEVER ask redundant questions. If the user already provided timeline, budget, scope, or any other information in earlier messages, DO NOT ask about it again. Review the entire conversation history before asking any question.
+- When all questions from the service flow have been answered, proceed to offer proposal generation immediately. Do not ask additional open-ended questions like "What are the key requirements?" if scope/features were already discussed.
 
 PROPOSAL HANDOFF:
 - Never output a full proposal document in the chat.
 - If the user asks for a proposal, say you can generate it and ask if they want you to proceed.
 - Never ask the user to type or say "generate proposal" (or any magic phrase). Do not require keywords; ask for a simple confirmation instead.
 - Never output a proposal summary or list of proposal fields in chat; keep it to a short proceed question.
+- Once all required questions have been answered, immediately offer to generate the proposal. Do not ask extra questions.
 
 REMEMBER: Your #1 job is to make the client feel HEARD. Never make them repeat themselves, and NEVER assume information they did not provide!`;
 };
@@ -1193,26 +1216,59 @@ If budget or pricing is missing, include this line exactly: "Budget: Pending con
 
 Output requirements:
 - Return clean markdown only.
-- Use this exact structure (omit any field you truly do not have, except Launch Timeline and Budget must always appear):
-  # Proposal Summary
-  Business Name: ...
-  Website Requirement: ...
+- Adapt the structure based on the SERVICE TYPE provided in the context. Include ONLY relevant fields for that service.
+- Always include these core fields in this EXACT order:
+  Client Name: ... (the person's name from the conversation, e.g., "Kaif", "John")
+  Business Name: ... (the company/business name, e.g., "Markify", "GHM")
+  Service Type: ... (the type of service requested, e.g., "Website Development", "Creative & Design")
+  Project Overview: ... (A 2-3 sentence comprehensive summary of the project including what the client wants, their business, key requirements, and goals - write this as a flowing paragraph, not a list)
   Primary Objectives:
   - ...
+  Features/Deliverables Included:
+  - ...
+  Launch Timeline: ...
+  Budget: ...
+
+For WEBSITE/UI-UX services, also include:
   Website Type: ...
-  Design Experience: ...
+  Design Style: ...
   Website Build Type: ...
   Frontend Framework: ...
   Backend Technology: ...
   Database: ...
   Hosting: ...
-  Features Included:
-  - ...
   Page Count: ...
-  Launch Timeline: ...
-  Budget: ...
+
+For CREATIVE & DESIGN services, include:
+  Creative Type: ... (social media/advertising/marketing collaterals)
+  Design Style: ... (professional/modern/premium/youthful)
+  Volume: ... (monthly output volume)
+  Engagement Model: ... (project-based/monthly retainer)
+
+For BRANDING services, include:
+  Brand Stage: ... (new brand/rebrand)
+  Brand Deliverables: ... (logo, brand guide, etc.)
+  Target Audience: ...
+
+For SEO services, include:
+  Business Category: ...
+  Target Locations: ...
+  SEO Goals: ...
+  Duration: ...
+
+For APP DEVELOPMENT services, include:
+  App Type: ... (iOS/Android/cross-platform)
+  App Features: ...
+  Platform Requirements: ...
+
+For other services, extract and include relevant fields from the chat history.
+
+CRITICAL INSTRUCTIONS:
+- ALWAYS extract the actual Launch Timeline value from the chat conversation. Look for user responses about duration, months, or timeline. For example, if user says "3 months" or selects option "3. 6 months", use that exact value (e.g., "3 months", "6 months"). Only use "To be finalized" if no timeline was discussed.
+- ALWAYS extract the actual Budget value from the chat conversation. Look for user responses about budget or pricing. If user mentions a specific amount like "60K" or "50000 INR", use that exact value. Only use "Pending confirmation" if no budget was discussed.
 - Use concise, professional, business-ready language.
-- Use bullet list items for Primary Objectives and Features Included.
+- Use bullet list items for objectives, features, and deliverables.
+- The Project Overview should be a well-written paragraph summarizing the entire project scope.
 `;
 
 const buildProposalUserPrompt = (proposalContext, chatHistory) =>
