@@ -183,6 +183,87 @@ const buildConversationHistory = (history) =>
     .filter((msg) => msg && msg.content && !msg.isError)
     .map(({ role, content }) => ({ role, content }));
 
+const normalizeServiceLabel = (value = "") =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+const tokenizeServiceLabel = (value = "") =>
+  normalizeServiceLabel(value)
+    .split(/\s+/)
+    .filter(Boolean);
+
+const findMatchingService = (services = [], serviceName = "", serviceId = "") => {
+  if (!Array.isArray(services) || services.length === 0) return null;
+  const lookup = [serviceName, serviceId].filter(Boolean).join(" ").trim();
+  if (!lookup) return null;
+
+  const normalized = normalizeServiceLabel(lookup);
+  let bestMatch = null;
+  let bestScore = 0;
+
+  services.forEach((service) => {
+    const nameNormalized = normalizeServiceLabel(service?.name || "");
+    const idNormalized = normalizeServiceLabel(service?.id || "");
+    let score = 0;
+
+    if (nameNormalized === normalized || idNormalized === normalized) score += 5;
+    if (
+      nameNormalized &&
+      (nameNormalized.includes(normalized) || normalized.includes(nameNormalized))
+    ) {
+      score += 3;
+    }
+    if (idNormalized && (idNormalized.includes(normalized) || normalized.includes(idNormalized))) {
+      score += 2;
+    }
+
+    const candidateTokens = new Set(
+      tokenizeServiceLabel(`${service?.name || ""} ${service?.id || ""}`)
+    );
+    tokenizeServiceLabel(lookup).forEach((token) => {
+      if (candidateTokens.has(token)) score += 1;
+    });
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = service;
+    }
+  });
+
+  return bestScore > 0 ? bestMatch : null;
+};
+
+const getServiceMinimumBudget = (services = [], serviceName = "", serviceId = "") => {
+  const match = findMatchingService(services, serviceName, serviceId);
+  const minBudget = match?.budget?.min_required_amount;
+  if (!Number.isFinite(minBudget)) return null;
+  return {
+    minBudget,
+    serviceLabel: match?.name || serviceName || serviceId || "this service"
+  };
+};
+
+const parseBudgetValue = (text = "") => {
+  if (typeof text !== "string") return null;
+  const budgetRegex =
+    /(?:\u20B9|rs\.?|inr|\$|usd|eur|gbp)?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|l|k|thousand)?/i;
+  const match = budgetRegex.exec(text);
+  if (!match) return null;
+
+  const amount = Number.parseFloat(match[1].replace(/,/g, ""));
+  if (!Number.isFinite(amount)) return null;
+
+  let multiplier = 1;
+  if (/lakh|lac|l/i.test(match[2] || "")) multiplier = 100000;
+  else if (/k|thousand/i.test(match[2] || "")) multiplier = 1000;
+
+  return amount * multiplier;
+};
+
+const formatBudgetValue = (amount) => {
+  if (!Number.isFinite(amount)) return "";
+  return amount.toLocaleString("en-IN");
+};
+
 const getStoredJson = (key, fallback) => {
   if (typeof window === "undefined") return fallback;
   try {
@@ -535,8 +616,6 @@ const applyMissingFieldAnswer = (field, text) => {
       return { database: getSingleSelection(trimmed, field.options) };
     case "hosting":
       return { hosting: getSingleSelection(trimmed, field.options) };
-    case "pageCount":
-      return { pageCount: getSingleSelection(trimmed, field.options) };
     case "features": {
       const features = getMultiSelection(trimmed);
       return features.length ? { scope: { features } } : {};
@@ -750,17 +829,6 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
         })
       );
     }
-    if (!hasText(context.pageCount)) {
-      missing.push(
-        createMissingField({
-          id: "pageCount",
-          label: "Page count",
-          question: "Approximately how many pages do you require?",
-          options: PAGE_COUNT_OPTIONS,
-          allowCustom: true
-        })
-      );
-    }
   }
 
   if (!hasScope) {
@@ -929,9 +997,7 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
     update.hosting = selections.length ? selections[0] : trimmed;
   }
 
-  if (/how many pages|page count|pages do you require/i.test(assistantLower)) {
-    update.pageCount = selections.length ? selections[0] : trimmed;
-  }
+
 
   if (/features|functionality|functionalities|modules|scope/i.test(assistantLower)) {
     const features = selections.length ? selections : combinedItems;
@@ -1067,6 +1133,7 @@ function AIChat({
   const [pendingProposal, setPendingProposal] = useState(null);
   const [proposalApproval, setProposalApproval] = useState(null);
   const [proposalApprovalState, setProposalApprovalState] = useState("input-available");
+  const [hasRequestedProposal, setHasRequestedProposal] = useState(false);
 
   const [showProposal, setShowProposal] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
@@ -1477,6 +1544,7 @@ function AIChat({
     setPendingProposal({ context, history });
     setProposalApproval({ id: `proposal-${Date.now()}` });
     setProposalApprovalState("approval-requested");
+    setHasRequestedProposal(true);
   };
 
   const generateProposal = async (context, history, retryText = "") => {
@@ -1569,6 +1637,15 @@ function AIChat({
     setProposalApproval((prev) => (prev ? { ...prev, approved: false } : prev));
     setProposalApprovalState("approval-responded");
     setPendingProposal(null);
+
+    // Show rejection briefly, then dismiss and add friendly message
+    setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "No problem! Let me know when you're ready to generate the proposal, or if you'd like to make any changes." }
+      ]);
+      clearProposalApproval();
+    }, 1500);
   };
 
   const sendMessage = async (messageText, options = {}) => {
@@ -1587,6 +1664,9 @@ function AIChat({
     const lastAssistantMessage = getLastAssistantMessage(messages);
     let nextContext = proposalContextRef.current;
     let nextHistory = buildConversationHistory(messages);
+    let contextUpdate = {};
+    let parsedBudgetAmount = null;
+    let hasBudgetSignal = false;
 
     if (!skipUserAppend) {
       const userMessage = { role: "user", content: text };
@@ -1594,11 +1674,25 @@ function AIChat({
       setInput("");
       setActiveFiles([]); // Clear all active files after sending
 
-      const contextUpdate = extractProposalUpdate({
+      contextUpdate = extractProposalUpdate({
         userText: text,
         assistantText: lastAssistantMessage,
         serviceName
       });
+      parsedBudgetAmount = parseBudgetValue(text);
+      hasBudgetSignal =
+        /budget|cost|price|investment/i.test(text) ||
+        /\d+\s*[kKlL]\b/.test(text) ||
+        /\b(lakh|lac|thousand)\b/i.test(text) ||
+        /\b\d{4,}\b/.test(text);
+      if (
+        !contextUpdate.budget &&
+        hasRequestedProposal &&
+        parsedBudgetAmount &&
+        hasBudgetSignal
+      ) {
+        contextUpdate = { ...contextUpdate, budget: text };
+      }
       nextContext = mergeProposalContext(proposalContextRef.current, contextUpdate);
       const pendingField = pendingMissingFieldRef.current;
       const pendingUpdate = pendingField
@@ -1637,10 +1731,6 @@ function AIChat({
 
       requestProposalApproval(nextContext, nextHistory);
       setPendingMissingField(null);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: PROPOSAL_APPROVAL_MESSAGE }
-      ]);
       return;
     }
 
@@ -1670,6 +1760,31 @@ function AIChat({
 
       setPendingMissingField(null);
       requestProposalApproval(storedContext, storedHistory);
+      return;
+    }
+
+    if (
+      !skipUserAppend &&
+      hasRequestedProposal &&
+      parsedBudgetAmount &&
+      hasBudgetSignal &&
+      missingFieldsNow.length === 0
+    ) {
+      const budgetInfo = getServiceMinimumBudget(services, serviceName, serviceId);
+      if (budgetInfo?.minBudget && parsedBudgetAmount < budgetInfo.minBudget) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `The budget of ${formatBudgetValue(
+              parsedBudgetAmount
+            )} is below the required minimum for this project. Can you increase your budget to meet the necessary requirements?`
+          }
+        ]);
+        return;
+      }
+
+      requestProposalApproval(nextContext, nextHistory);
       return;
     }
 
@@ -1708,16 +1823,17 @@ function AIChat({
           if (canApprove) {
             setPendingMissingField(null);
             requestProposalApproval(storedContext, storedHistory);
+            // Don't add any message - the Confirmation component handles the UI
           } else if (missingFields.length > 0) {
             setPendingMissingField(missingFields[0]);
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: getProposalPromptMessage(missingFields)
+              }
+            ]);
           }
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              content: getProposalPromptMessage(missingFields)
-            }
-          ]);
         } else {
           setMessages((prev) => [
             ...prev,
@@ -1774,6 +1890,7 @@ function AIChat({
     setShowProposal(false);
     clearProposalApproval();
     setPendingMissingField(null);
+    setHasRequestedProposal(false);
     setProposalContext(emptyContext);
     proposalContextRef.current = emptyContext;
     setInput("");
@@ -1812,10 +1929,10 @@ function AIChat({
   const voiceButtonLabel = !isSecureContext
     ? "Voice input requires HTTPS (secure context)"
     : !isSpeechSupported
-    ? "Voice input isn't supported in this browser"
-    : isRecording
-    ? "Stop voice input"
-    : "Start voice input";
+      ? "Voice input isn't supported in this browser"
+      : isRecording
+        ? "Stop voice input"
+        : "Start voice input";
 
   return (
     <div className={`text-foreground ${embedded ? "h-full w-full" : ""}`}>
@@ -1957,44 +2074,6 @@ function AIChat({
                     );
                   })}
 
-                  {/* Loading State */}
-                  {(isLoading || isProcessingFile) && (
-                    <div className="flex flex-col items-start animate-fade-in">
-                      <span className="text-xs font-medium mb-1.5 px-1 text-muted-foreground">CATA</span>
-                      <div className="bg-card border border-border/50 rounded-2xl rounded-tl-md p-4">
-                        <div className="relative flex items-center gap-2">
-                          {isProcessingFile ? (
-                            <>
-                              <FileText className="size-4 animate-pulse text-primary" />
-                              <span className="text-sm font-medium">Reading document...</span>
-                            </>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Brain className="size-4 animate-pulse" />
-                                <span className="text-sm font-medium">Thinking...</span>
-                              </div>
-                              <div
-                                className="absolute inset-0 flex items-center gap-2 text-primary"
-                                style={{
-                                  maskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
-                                  WebkitMaskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
-                                  maskSize: '250% 100%',
-                                  WebkitMaskSize: '250% 100%',
-                                  animation: 'mask-shimmer 2s linear infinite',
-                                  WebkitAnimation: 'mask-shimmer 2s linear infinite'
-                                }}
-                              >
-                                <Brain className="size-4" />
-                                <span className="text-sm font-medium">Thinking...</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {proposalApproval && (
                     <div className="flex flex-col items-start animate-fade-in">
                       <Confirmation
@@ -2033,6 +2112,44 @@ function AIChat({
                           </ConfirmationAction>
                         </ConfirmationActions>
                       </Confirmation>
+                    </div>
+                  )}
+
+                  {/* Loading State */}
+                  {(isLoading || isProcessingFile) && (
+                    <div className="flex flex-col items-start animate-fade-in">
+                      <span className="text-xs font-medium mb-1.5 px-1 text-muted-foreground">CATA</span>
+                      <div className="bg-card border border-border/50 rounded-2xl rounded-tl-md p-4">
+                        <div className="relative flex items-center gap-2">
+                          {isProcessingFile ? (
+                            <>
+                              <FileText className="size-4 animate-pulse text-primary" />
+                              <span className="text-sm font-medium">Reading document...</span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Brain className="size-4 animate-pulse" />
+                                <span className="text-sm font-medium">Thinking...</span>
+                              </div>
+                              <div
+                                className="absolute inset-0 flex items-center gap-2 text-primary"
+                                style={{
+                                  maskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
+                                  WebkitMaskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
+                                  maskSize: '250% 100%',
+                                  WebkitMaskSize: '250% 100%',
+                                  animation: 'mask-shimmer 2s linear infinite',
+                                  WebkitAnimation: 'mask-shimmer 2s linear infinite'
+                                }}
+                              >
+                                <Brain className="size-4" />
+                                <span className="text-sm font-medium">Thinking...</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>
