@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import X from "lucide-react/dist/esm/icons/x";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
@@ -12,6 +14,8 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import Check from "lucide-react/dist/esm/icons/check";
 
 import { cn } from "@/shared/lib/utils";
+import { useAuth } from "@/shared/context/AuthContext";
+
 
 // --- Parser to extract structured data from markdown ---
 const parseProposalContent = (markdown) => {
@@ -307,10 +311,88 @@ export function ProposalSidebar({
   embedded = false,
   inline = false,
 }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+
   const proposalData = useMemo(() => {
     const extracted = parseProposalContent(proposal);
     return mapToProposalData(extracted);
   }, [proposal]);
+
+  // Save proposal to localStorage
+  const saveProposalToStorage = () => {
+    if (typeof window === "undefined" || !proposalData) return;
+
+    const now = new Date().toISOString();
+    const proposalToSave = {
+      id: `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      projectTitle: proposalData.serviceType || "Project Proposal",
+      service: proposalData.serviceType || "General services",
+      serviceKey: proposalData.serviceType || "",
+      summary: proposal,
+      content: proposal,
+      budget: proposalData.budget || "",
+      timeline: proposalData.timeline || "",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Load existing proposals
+    const SAVED_PROPOSALS_KEY = "markify:savedProposals";
+    const SAVED_PROPOSAL_KEY = "markify:savedProposal";
+
+    let existingProposals = [];
+    try {
+      const stored = localStorage.getItem(SAVED_PROPOSALS_KEY);
+      if (stored) {
+        existingProposals = JSON.parse(stored);
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    // Add new proposal
+    existingProposals.push(proposalToSave);
+
+    // Save to localStorage
+    localStorage.setItem(SAVED_PROPOSALS_KEY, JSON.stringify(existingProposals));
+    localStorage.setItem(SAVED_PROPOSAL_KEY, JSON.stringify(proposalToSave));
+
+    return proposalToSave;
+  };
+
+  // Handle proceed button click
+  const handleProceed = () => {
+    if (!proposalData) {
+      toast.error("No proposal data available");
+      return;
+    }
+
+    // Save proposal to localStorage
+    saveProposalToStorage();
+
+    // Check if user is authenticated
+    if (user) {
+      if (user.role === "CLIENT") {
+        // Already a client - redirect to dashboard
+        toast.success("Proposal saved! Redirecting to dashboard...");
+        onClose?.();
+        navigate("/client");
+      } else {
+        // User is a freelancer - redirect to client signup
+        toast.info("Please create a client account to proceed with this proposal.");
+        onClose?.();
+        navigate("/signup?role=client", { state: { redirectTo: "/client" } });
+      }
+    } else {
+      // Not authenticated - redirect to client signup page
+      toast.success("Proposal saved! Please create an account to continue.");
+      onClose?.();
+      navigate("/signup?role=client", { state: { redirectTo: "/client" } });
+    }
+  };
+
 
   const content = (
     <div className="h-full flex flex-col bg-black">
@@ -351,17 +433,22 @@ export function ProposalSidebar({
       {/* Footer / Actions */}
       {proposal && (
         <div className="p-4 border-t border-zinc-800/50 bg-zinc-900/50">
-          <button className="w-full py-3 bg-primary text-primary-foreground font-semibold text-sm rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]">
+          <button
+            onClick={handleProceed}
+            className="w-full py-3 bg-primary text-primary-foreground font-semibold text-sm rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]"
+          >
             Proceed with this proposal
           </button>
         </div>
       )}
+
     </div>
   );
 
   if (inline) {
     return content;
   }
+
 
   return (
     <div
@@ -375,3 +462,4 @@ export function ProposalSidebar({
     </div>
   );
 }
+
