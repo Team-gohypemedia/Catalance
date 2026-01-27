@@ -11,7 +11,6 @@ import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/providers/theme-provider";
-import MatrixRain from "@/components/ui/matrix-code";
 import SparklesIcon from "@/components/ui/sparkles-icon";
 import { Spotlight } from "@/components/sections/home/spotlight-new";
 import DecorativeIcons from "@/components/ui/decorative-icons";
@@ -73,14 +72,8 @@ const CatalanceHero = () => {
         />
 
         {/* Matrix Rain Background */}
-        <MatrixRain
-          color="#FACC15"
-          className="absolute inset-0 z-[-26]"
-          fadeOpacity={0.1}
-          style={{
-            opacity: isDark ? 0.15 : 0.25,
-          }}
-        />
+        {/* Matrix Rain Background - Removed */}
+
 
         {/* Spotlight Effect */}
         <Spotlight

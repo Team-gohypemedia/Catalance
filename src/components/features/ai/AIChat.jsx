@@ -170,12 +170,19 @@ const toStorageKeyPart = (value) => {
 
 const sanitizeAssistantContent = (content = "") => {
   if (typeof content !== "string") return "";
-  return content
+  const lines = content
     .split("\n")
     .map((line) =>
       line.replace(/^\s*(?:-|\*)?\s*(?:your\s+)?options are\s*:?\s*/i, "")
     )
-    .join("\n");
+    .filter(
+      (line) =>
+        !/^\s*(?:-|\*)?\s*if you don't see what you need, kindly type it below\.?\s*$/i.test(
+          line
+        )
+    );
+
+  return lines.join("\n").trim();
 };
 
 const buildConversationHistory = (history) =>
@@ -642,9 +649,10 @@ const buildMissingFieldPrompt = (field) => {
   const lines = [PROPOSAL_MISSING_CONTEXT_MESSAGE, "", field.question];
   if (field.options?.length) {
     lines.push("", toNumberedList(field.options));
-    if (field.allowCustom) {
-      lines.push("If you don't see what you need, kindly type it below.");
-    }
+    // Instruction moved to input placeholder
+    // if (field.allowCustom) {
+    //   lines.push("If you don't see what you need, kindly type it below.");
+    // }
   }
   return lines.filter(Boolean).join("\n");
 };
@@ -1100,6 +1108,16 @@ function AIChat({
 
     try {
       const saved = getStoredJson(chatHistoryKey, null);
+
+      // Clean up legacy instruction text from saved history
+      if (Array.isArray(saved)) {
+        saved.forEach(msg => {
+          if (msg.role === "assistant" && typeof msg.content === "string") {
+            msg.content = sanitizeAssistantContent(msg.content);
+          }
+        });
+      }
+
       return Array.isArray(saved) && saved.length > 0 ? saved : [initialMsg];
     } catch (e) {
       console.error("Failed to load chat history:", e);
@@ -1142,6 +1160,25 @@ function AIChat({
   const [isSecureContext, setIsSecureContext] = useState(true);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const lastMessage = messages[messages.length - 1];
+  const lastAssistantContent =
+    lastMessage?.role === "assistant" && typeof lastMessage.content === "string"
+      ? lastMessage.content
+      : "";
+  const lastAssistantHasQuestion = lastAssistantContent
+    ? lastAssistantContent
+        .split("\n")
+        .some((line) => line.trim().endsWith("?"))
+    : false;
+  const lastAssistantHasOptions = lastAssistantContent
+    ? parseNumberedOptions(lastAssistantContent).size > 0 ||
+      extractListItems(lastAssistantContent).length > 0
+    : false;
+  const showServicePlaceholder =
+    lastMessage?.role === "assistant" &&
+    ((pendingMissingField &&
+      (pendingMissingField.allowCustom || pendingMissingField.options?.length)) ||
+      (lastAssistantHasQuestion && lastAssistantHasOptions));
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
   const speechBaseInputRef = useRef("");
@@ -2213,7 +2250,11 @@ function AIChat({
                       handleSubmit({ text: input });
                     }
                   }}
-                  placeholder="Ask anything"
+                  placeholder={
+                    showServicePlaceholder
+                      ? "If you don't see what you need, kindly type it below."
+                      : "Ask anything"
+                  }
                   disabled={isLoading || isProcessingFile || isHistoryLoading}
                   readOnly={isRecording}
                   autoFocus
