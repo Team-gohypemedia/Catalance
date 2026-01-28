@@ -241,8 +241,9 @@ const findMatchingService = (services = [], serviceName = "", serviceId = "") =>
 
 const getServiceMinimumBudget = (services = [], serviceName = "", serviceId = "") => {
   const match = findMatchingService(services, serviceName, serviceId);
-  const minBudget = match?.budget?.min_required_amount;
-  if (!Number.isFinite(minBudget)) return null;
+  const rawMinBudget = match?.budget?.min_required_amount;
+  const minBudget = Number(rawMinBudget);
+  if (!Number.isFinite(minBudget) || minBudget <= 0) return null;
   return {
     minBudget,
     serviceLabel: match?.name || serviceName || serviceId || "this service"
@@ -252,18 +253,25 @@ const getServiceMinimumBudget = (services = [], serviceName = "", serviceId = ""
 const parseBudgetValue = (text = "") => {
   if (typeof text !== "string") return null;
   const budgetRegex =
-    /(?:\u20B9|rs\.?|inr|\$|usd|eur|gbp)?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|l|k|thousand)?/i;
-  const match = budgetRegex.exec(text);
-  if (!match) return null;
+    /(?:\u20B9|rs\.?|inr|\$|usd|eur|gbp)?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|l|k|thousand)?/gi;
+  const matches = Array.from(text.matchAll(budgetRegex));
+  if (!matches.length) return null;
 
-  const amount = Number.parseFloat(match[1].replace(/,/g, ""));
-  if (!Number.isFinite(amount)) return null;
+  const values = matches
+    .map((match) => {
+      const amount = Number.parseFloat(match[1].replace(/,/g, ""));
+      if (!Number.isFinite(amount)) return null;
 
-  let multiplier = 1;
-  if (/lakh|lac|l/i.test(match[2] || "")) multiplier = 100000;
-  else if (/k|thousand/i.test(match[2] || "")) multiplier = 1000;
+      let multiplier = 1;
+      if (/lakh|lac|l/i.test(match[2] || "")) multiplier = 100000;
+      else if (/k|thousand/i.test(match[2] || "")) multiplier = 1000;
 
-  return amount * multiplier;
+      return amount * multiplier;
+    })
+    .filter((value) => Number.isFinite(value));
+
+  if (!values.length) return null;
+  return Math.max(...values);
 };
 
 const formatBudgetValue = (amount) => {
@@ -411,14 +419,34 @@ const parseNumberedOptions = (assistantText = "") => {
 
 const parseSelectionsFromText = (text, options) => {
   const selections = new Set();
-  const numbers = text.match(/\d+/g) || [];
+  const rawText = typeof text === "string" ? text : "";
+  const maxOption = options?.size || 0;
+
+  if (maxOption) {
+    const rangeRegex = /(\d+)\s*(?:-|to)\s*(\d+)/gi;
+    let rangeMatch = null;
+    while ((rangeMatch = rangeRegex.exec(rawText)) !== null) {
+      const start = Number.parseInt(rangeMatch[1], 10);
+      const end = Number.parseInt(rangeMatch[2], 10);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+      const min = Math.min(start, end);
+      const max = Math.max(start, end);
+      if (min < 1 || max > maxOption) continue;
+      for (let i = min; i <= max; i += 1) {
+        const option = options.get(i);
+        if (option) selections.add(option);
+      }
+    }
+  }
+
+  const numbers = rawText.match(/\b\d+\b/g) || [];
   numbers.forEach((value) => {
     const option = options.get(Number(value));
     if (option) selections.add(option);
   });
 
   if (options.size > 0) {
-    const lowered = text.toLowerCase();
+    const lowered = rawText.toLowerCase();
     if (/\ball\b/i.test(lowered)) {
       options.forEach((option) => {
         selections.add(option);
@@ -445,10 +473,14 @@ const extractListItems = (text) => {
   return bullets;
 };
 
-const extractCommaList = (text) => {
-  if (!text.includes(",")) return [];
-  const items = text
+const splitMultiSelectItems = (text = "") => {
+  if (typeof text !== "string") return [];
+  const listItems = extractListItems(text);
+  if (listItems.length) return listItems;
+  const normalized = text.replace(/\band\b/gi, ",");
+  const items = normalized
     .split(",")
+    .flatMap((item) => item.split(/[;\/\n]/))
     .map((item) => item.trim())
     .filter(Boolean);
   return items.length > 1 ? items : [];
@@ -551,11 +583,7 @@ const buildOptionsMap = (options = []) => {
 const parseSelectionsFromOptions = (text, options = []) =>
   parseSelectionsFromText(text, buildOptionsMap(options));
 
-const extractCombinedItems = (text) => {
-  const listItems = extractListItems(text);
-  const commaItems = extractCommaList(text);
-  return listItems.length ? listItems : commaItems;
-};
+const extractCombinedItems = (text) => splitMultiSelectItems(text);
 
 const getSingleSelection = (text, options = []) => {
   const trimmed = text.trim();
@@ -565,14 +593,18 @@ const getSingleSelection = (text, options = []) => {
   return selections.length ? selections[0] : trimmed;
 };
 
+const isNumericChoiceToken = (value = "") =>
+  /^\d+(?:\s*(?:-|to)\s*\d+)?$/i.test(String(value).trim());
+
 const getMultiSelection = (text, options = []) => {
   const trimmed = text.trim();
   const selections = options.length
     ? parseSelectionsFromOptions(trimmed, options)
     : [];
-  if (selections.length) return selections;
   const combinedItems = extractCombinedItems(trimmed);
-  if (combinedItems.length) return combinedItems;
+  const customItems = combinedItems.filter((item) => !isNumericChoiceToken(item));
+  const merged = mergeLists(selections, customItems);
+  if (merged.length) return merged;
   return trimmed ? [trimmed] : [];
 };
 
@@ -944,9 +976,11 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
   const assistantLower = (assistantText || "").toLowerCase();
   const options = parseNumberedOptions(assistantText || "");
   const selections = parseSelectionsFromText(trimmed, options);
-  const listItems = extractListItems(trimmed);
-  const commaItems = extractCommaList(trimmed);
-  const combinedItems = listItems.length ? listItems : commaItems;
+  const combinedItems = extractCombinedItems(trimmed);
+  const mergedSelections = mergeLists(
+    selections,
+    combinedItems.filter((item) => !isNumericChoiceToken(item))
+  );
 
   if (/name\?/i.test(assistantLower) && !/business|company/i.test(assistantLower)) {
     update.clientName = trimmed;
@@ -965,7 +999,7 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
   }
 
   if (/primary objective|primary objectives/i.test(assistantLower)) {
-    const objectives = selections.length ? selections : combinedItems;
+    const objectives = mergedSelections;
     if (objectives.length) {
       update.objectives = objectives;
     } else if (trimmed) {
@@ -1008,21 +1042,25 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
 
 
   if (/features|functionality|functionalities|modules|scope/i.test(assistantLower)) {
-    const features = selections.length ? selections : combinedItems;
+    const features = mergedSelections;
     if (features.length) {
       update.scope = { features };
     }
   }
 
   if (!update.scope?.features?.length && /features|include|need|requirements/i.test(trimmed)) {
-    const features = listItems.length ? listItems : commaItems.length ? commaItems : selections;
+    const features = mergedSelections.length
+      ? mergedSelections
+      : combinedItems.length
+        ? combinedItems
+        : selections;
     if (features.length) {
       update.scope = { features };
     }
   }
 
   if (/deliverables?/i.test(assistantLower)) {
-    const deliverables = selections.length ? selections : combinedItems;
+    const deliverables = mergedSelections;
     if (deliverables.length) {
       update.scope = { ...(update.scope || {}), deliverables };
     }
@@ -1718,10 +1756,12 @@ function AIChat({
       });
       parsedBudgetAmount = parseBudgetValue(text);
       hasBudgetSignal =
+        parsedBudgetAmount !== null ||
         /budget|cost|price|investment/i.test(text) ||
         /\d+\s*[kKlL]\b/.test(text) ||
         /\b(lakh|lac|thousand)\b/i.test(text) ||
-        /\b\d{4,}\b/.test(text);
+        /\b\d{4,}\b/.test(text) ||
+        /\b\d{1,3}(?:,\d{3})+\b/.test(text);
       if (
         !contextUpdate.budget &&
         hasRequestedProposal &&
@@ -1803,19 +1843,18 @@ function AIChat({
     if (
       !skipUserAppend &&
       hasRequestedProposal &&
-      parsedBudgetAmount &&
-      hasBudgetSignal &&
+      parsedBudgetAmount !== null &&
       missingFieldsNow.length === 0
     ) {
       const budgetInfo = getServiceMinimumBudget(services, serviceName, serviceId);
       if (budgetInfo?.minBudget && parsedBudgetAmount < budgetInfo.minBudget) {
+        const formattedMinBudget = formatBudgetValue(budgetInfo.minBudget);
+        const formattedBudget = formatBudgetValue(parsedBudgetAmount);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: `The budget of ${formatBudgetValue(
-              parsedBudgetAmount
-            )} is below the required minimum for this project. Can you increase your budget to meet the necessary requirements?`
+            content: `The budget of ${formattedBudget} is below the minimum required amount for ${budgetInfo.serviceLabel}. The minimum amount is ${formattedMinBudget}. We can continue with this price, but the service quality and output may not meet our standards. If you want quality work, please consider increasing the budget.`
           }
         ]);
         return;

@@ -383,13 +383,13 @@ export function ProposalSidebar({
         // User is a freelancer - redirect to client signup
         toast.info("Please create a client account to proceed with this proposal.");
         onClose?.();
-        navigate("/signup?role=client", { state: { redirectTo: "/client" } });
+        navigate("/signup?role=client", { state: { redirectTo: "/client", fromProposal: true } });
       }
     } else {
       // Not authenticated - redirect to client signup page
       toast.success("Proposal saved! Please create an account to continue.");
       onClose?.();
-      navigate("/signup?role=client", { state: { redirectTo: "/client" } });
+      navigate("/signup?role=client", { state: { redirectTo: "/client", fromProposal: true } });
     }
   };
 
