@@ -67,6 +67,14 @@ function Signup({ className, ...props }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Redirect clients to service selection if not coming from proposal
+  useEffect(() => {
+    const role = searchParams.get("role")?.toUpperCase();
+    if (role === CLIENT_ROLE && !location.state?.fromProposal) {
+      navigate("/service", { replace: true });
+    }
+  }, [searchParams, location.state, navigate]);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({
@@ -330,6 +338,7 @@ function Signup({ className, ...props }) {
                             value={formData.password}
                             onChange={handleChange}
                             className="pr-10"
+                            placeholder="••••••••"
                             required
                           />
                           <div
@@ -388,7 +397,7 @@ function Signup({ className, ...props }) {
                       </Field>
 
                       <FieldDescription className="text-center">
-                        Already have an account? <Link to="/login" className="underline hover:text-primary">Sign in</Link>
+                        Already have an account? <Link to="/login" className="underline hover:text-primary">Log in</Link>
                       </FieldDescription>
                     </>
                   )}
@@ -399,7 +408,7 @@ function Signup({ className, ...props }) {
                 <img
                   src={image}
                   alt="Signup illustration"
-                  className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+                  className="absolute inset-0 h-full w-full object-cover dark:brightness-75"
                 />
               </div>
             </CardContent>

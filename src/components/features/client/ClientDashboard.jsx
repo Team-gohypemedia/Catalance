@@ -2,12 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import Clock from "lucide-react/dist/esm/icons/clock";
-import Banknote from "lucide-react/dist/esm/icons/banknote";
+import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
 import Send from "lucide-react/dist/esm/icons/send";
 import Star from "lucide-react/dist/esm/icons/star";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Zap from "lucide-react/dist/esm/icons/zap";
 import X from "lucide-react/dist/esm/icons/x";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
@@ -16,27 +14,16 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import User from "lucide-react/dist/esm/icons/user";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
 import Eye from "lucide-react/dist/esm/icons/eye";
-import Search from "lucide-react/dist/esm/icons/search";
-import Bell from "lucide-react/dist/esm/icons/bell";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
 import Flag from "lucide-react/dist/esm/icons/flag";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
-import Users from "lucide-react/dist/esm/icons/users";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import Sun from "lucide-react/dist/esm/icons/sun";
-import Moon from "lucide-react/dist/esm/icons/moon";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
-import Bot from "lucide-react/dist/esm/icons/bot";
-import Facebook from "lucide-react/dist/esm/icons/facebook";
-import Twitter from "lucide-react/dist/esm/icons/twitter";
-import Instagram from "lucide-react/dist/esm/icons/instagram";
-import Youtube from "lucide-react/dist/esm/icons/youtube";
-import Heart from "lucide-react/dist/esm/icons/heart";
 import { Link, useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
@@ -276,13 +263,12 @@ const StatsCard = ({
         <h3 className="text-3xl tracking-tight">{value}</h3>
         {trend && (
           <p
-            className={`text-xs mt-2 flex items-center font-bold ${
-              trendType === "up"
-                ? "text-green-600"
-                : trendType === "warning"
+            className={`text-xs mt-2 flex items-center font-bold ${trendType === "up"
+              ? "text-green-600"
+              : trendType === "warning"
                 ? "text-orange-600"
                 : "text-muted-foreground"
-            }`}
+              }`}
           >
             {trendType === "up" && <TrendingUp className="w-3.5 h-3.5 mr-1" />}
             {trendType === "warning" && (
@@ -1075,11 +1061,64 @@ const ClientDashboardContent = () => {
                         <h4 className="font-semibold">
                           {savedProposal.projectTitle || "New Project"}
                         </h4>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {savedProposal.summary ||
-                            savedProposal.content ||
-                            "No description"}
-                        </p>
+                        {/* Parsed proposal content */}
+                        {(() => {
+                          const rawContent = savedProposal.summary || savedProposal.content || "";
+                          let cleanContent = rawContent.replace(/```markdown\n?/gi, '').replace(/```\n?/g, '').trim();
+                          let overview = "";
+                          const objectives = [];
+                          const features = [];
+                          const lines = cleanContent.split('\n');
+                          let currentSection = null;
+                          lines.forEach((line) => {
+                            const trimmed = line.trim();
+                            if (!trimmed) return;
+                            const lowerLine = trimmed.toLowerCase();
+                            if (lowerLine.includes('project overview:')) {
+                              currentSection = 'overview';
+                              const value = trimmed.split(':').slice(1).join(':').trim();
+                              if (value) overview = value;
+                            } else if (lowerLine.includes('primary objectives:') || lowerLine.includes('objectives:')) {
+                              currentSection = 'objectives';
+                            } else if (lowerLine.includes('features') || lowerLine.includes('deliverables')) {
+                              currentSection = 'features';
+                            } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                              const item = trimmed.replace(/^[-*]\s+/, '');
+                              if (currentSection === 'objectives') objectives.push(item);
+                              else if (currentSection === 'features') features.push(item);
+                            } else if (currentSection === 'overview' && !overview) {
+                              overview = trimmed;
+                            }
+                          });
+                          return (
+                            <div className="space-y-3">
+                              {overview && <p className="text-sm text-muted-foreground">{overview.length > 200 ? overview.slice(0, 200) + '...' : overview}</p>}
+                              {objectives.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Objectives</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {objectives.slice(0, 3).map((obj, i) => (
+                                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">{obj}</span>
+                                    ))}
+                                    {objectives.length > 3 && <span className="text-xs text-muted-foreground">+{objectives.length - 3} more</span>}
+                                  </div>
+                                </div>
+                              )}
+                              {features.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Key Features</p>
+                                  <ul className="text-sm text-muted-foreground space-y-0.5">
+                                    {features.slice(0, 3).map((feat, i) => (
+                                      <li key={i} className="flex items-start gap-1.5"><span className="text-primary mt-1"></span><span className="line-clamp-1">{feat}</span></li>
+                                    ))}
+                                    {features.length > 3 && <li className="text-xs text-muted-foreground pl-4">+{features.length - 3} more</li>}
+                                  </ul>
+                                </div>
+                              )}
+                              {!overview && objectives.length === 0 && features.length === 0 && <p className="text-sm text-muted-foreground line-clamp-2">{cleanContent.slice(0, 150) || "No description"}</p>}
+                            </div>
+                          );
+                        })()}
                         <div className="flex items-center justify-between">
                           <div className="flex flex-wrap gap-2 text-sm">
                             <Badge variant="secondary">
@@ -1127,7 +1166,7 @@ const ClientDashboardContent = () => {
                     if (
                       !currentStored ||
                       new Date(project.createdAt) >
-                        new Date(currentStored.createdAt)
+                      new Date(currentStored.createdAt)
                     ) {
                       acc[project.title] = project;
                     }
@@ -1261,10 +1300,10 @@ const ClientDashboardContent = () => {
                                         (proposal, idx) =>
                                           idx === existingIndex
                                             ? {
-                                                ...proposal,
-                                                ...normalized,
-                                                id: proposal.id,
-                                              }
+                                              ...proposal,
+                                              ...normalized,
+                                              id: proposal.id,
+                                            }
                                             : proposal
                                       );
                                       nextActiveId =
@@ -1680,10 +1719,10 @@ const ClientDashboardContent = () => {
                                   parsed.profileSummary ||
                                   parsed.shortDescription ||
                                   (Array.isArray(parsed.services) &&
-                                  parsed.services.length > 0
+                                    parsed.services.length > 0
                                     ? `Experienced in ${parsed.services.join(
-                                        ", "
-                                      )}`
+                                      ", "
+                                    )}`
                                     : null) ||
                                   "No bio available.";
                               } catch (e) {
@@ -1746,7 +1785,7 @@ const ClientDashboardContent = () => {
                                   {/* Skills Row */}
                                   <div className="flex flex-wrap justify-center gap-2 mb-4 px-2 min-h-[40px]">
                                     {Array.isArray(freelancer.skills) &&
-                                    freelancer.skills.length > 0 ? (
+                                      freelancer.skills.length > 0 ? (
                                       freelancer.skills
                                         .slice(0, 3)
                                         .map((skill, idx) => (
@@ -1789,7 +1828,7 @@ const ClientDashboardContent = () => {
                                         );
                                     } else if (
                                       typeof freelancer.portfolio ===
-                                        "string" &&
+                                      "string" &&
                                       freelancer.portfolio.startsWith("[")
                                     ) {
                                       try {
@@ -1800,7 +1839,7 @@ const ClientDashboardContent = () => {
                                           project = parsed.find(
                                             (p) => p.link || p.url
                                           );
-                                      } catch (e) {}
+                                      } catch (e) { }
                                     }
 
                                     if (
@@ -1837,8 +1876,8 @@ const ClientDashboardContent = () => {
                                               align="center"
                                             >
                                               {project.image ||
-                                              project.imageUrl ||
-                                              project.thumbnail ? (
+                                                project.imageUrl ||
+                                                project.thumbnail ? (
                                                 <div className="w-full aspect-video bg-muted relative">
                                                   <img
                                                     src={
@@ -2051,7 +2090,7 @@ const ClientDashboardContent = () => {
                               projects = JSON.parse(
                                 viewingFreelancer.portfolio
                               );
-                            } catch (e) {}
+                            } catch (e) { }
                           } else if (
                             Array.isArray(viewingFreelancer.portfolio)
                           ) {
@@ -2076,8 +2115,8 @@ const ClientDashboardContent = () => {
                                     >
                                       <Card className="overflow-hidden border-border/50 hover:border-primary/20 transition-all h-full relative">
                                         {project.image ||
-                                        project.imageUrl ||
-                                        project.thumbnail ? (
+                                          project.imageUrl ||
+                                          project.thumbnail ? (
                                           <div className="w-full aspect-video bg-muted relative overflow-hidden">
                                             <img
                                               src={
@@ -2132,69 +2171,195 @@ const ClientDashboardContent = () => {
                 open={showViewProposal}
                 onOpenChange={setShowViewProposal}
               >
-                <DialogContent className="max-w-4xl">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Eye className="w-5 h-5" />
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-6">
+                  <DialogHeader className="flex-shrink-0 mb-4">
+                    <DialogTitle className="flex items-center gap-3 text-2xl">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Eye className="w-6 h-6 text-primary" />
+                      </div>
                       {savedProposal?.projectTitle || "Proposal Details"}
                     </DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap gap-3">
-                      <Badge variant="outline">
-                        Budget: {formatBudget(savedProposal?.budget)}
-                      </Badge>
-                      <Badge variant="outline">
-                        Timeline: {savedProposal?.timeline || "Not set"}
-                      </Badge>
+
+                  <div className="flex-1 overflow-y-auto space-y-8 pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {/* Quick Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm hover:border-primary/20 transition-colors">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="p-2 bg-green-500/10 rounded-lg">
+                            <DollarSign className="w-4 h-4 text-green-500" />
+                          </div>
+                          <p className="text-sm font-medium text-muted-foreground">Estimate Budget</p>
+                        </div>
+                        <p className="text-xl font-bold text-foreground pl-1">
+                          {formatBudget(savedProposal?.budget)}
+                        </p>
+                      </div>
+
+                      <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm hover:border-blue-500/20 transition-colors">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="p-2 bg-blue-500/10 rounded-lg">
+                            <Calendar className="w-4 h-4 text-blue-500" />
+                          </div>
+                          <p className="text-sm font-medium text-muted-foreground">Timeline</p>
+                        </div>
+                        <p className="text-xl font-bold text-foreground pl-1">
+                          {savedProposal?.timeline || "Not specified"}
+                        </p>
+                      </div>
+
+                      <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm hover:border-purple-500/20 transition-colors">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="p-2 bg-purple-500/10 rounded-lg">
+                            <Briefcase className="w-4 h-4 text-purple-500" />
+                          </div>
+                          <p className="text-sm font-medium text-muted-foreground">Service Type</p>
+                        </div>
+                        <p className="text-xl font-bold text-foreground pl-1 truncate">
+                          {savedProposal?.service || savedProposal?.serviceKey || "General"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="p-4 bg-muted rounded-lg max-h-[50vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                      <h4 className="font-semibold mb-2 sticky top-0 bg-muted pb-2">
-                        Project Summary
-                      </h4>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {(() => {
-                          // Get the content and replace any budget mentions with the current budget
-                          let content =
-                            savedProposal?.summary ||
-                            savedProposal?.content ||
-                            "No description available";
-                          const currentBudget = formatBudget(
-                            savedProposal?.budget
-                          );
-                          // Replace various budget formats with the current formatted budget
-                          content = content.replace(
-                            /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹)?[\s]*[\d,]+k?/gi,
-                            `Budget\n- ${currentBudget}`
-                          );
-                          return content;
-                        })()}
-                      </p>
-                    </div>
+
+                    {/* Parsed Content Sections */}
+                    {(() => {
+                      const rawContent = savedProposal?.summary || savedProposal?.content || "";
+
+                      // Clean up markdown code block markers
+                      let cleanContent = rawContent
+                        .replace(/```markdown\n?/gi, '')
+                        .replace(/```\n?/g, '')
+                        .trim();
+
+                      // Parse sections from the content
+                      const sections = [];
+                      const lines = cleanContent.split('\n');
+                      let currentSection = { title: 'Overview', items: [], content: '' };
+
+                      lines.forEach((line) => {
+                        const trimmed = line.trim();
+                        if (!trimmed) return;
+
+                        // Check for section headers (various patterns)
+                        const headerMatch = trimmed.match(/^(?:\*{1,2})?([^:*]+?)(?:\*{1,2})?:\s*(.*)$/);
+                        const isListItem = trimmed.startsWith('- ') || trimmed.startsWith('* ');
+
+                        // Known section headers
+                        const sectionHeaders = [
+                          'project overview', 'primary objectives', 'features', 'deliverables',
+                          'tech stack', 'technology', 'timeline', 'budget', 'scope', 'preferences',
+                          'client name', 'business name', 'service type', 'platform', 'design',
+                          'payment', 'milestones', 'requirements', 'additional notes'
+                        ];
+
+                        if (headerMatch && !isListItem) {
+                          const key = headerMatch[1].toLowerCase().trim();
+                          const value = headerMatch[2].trim();
+
+                          // Skip if it's a known metadata field we display separately
+                          if (['client name', 'business name', 'service type'].includes(key)) {
+                            return;
+                          }
+
+                          if (sectionHeaders.some(h => key.includes(h))) {
+                            if (currentSection.title !== 'Overview' || currentSection.items.length > 0 || currentSection.content) {
+                              sections.push({ ...currentSection });
+                            }
+                            currentSection = { title: headerMatch[1].trim(), items: [], content: value };
+                          } else if (value) {
+                            currentSection.items.push({ key: headerMatch[1].trim(), value });
+                          }
+                        } else if (isListItem) {
+                          currentSection.items.push({ value: trimmed.replace(/^[-*]\s+/, '') });
+                        } else {
+                          if (currentSection.content) {
+                            currentSection.content += ' ' + trimmed;
+                          } else {
+                            currentSection.content = trimmed;
+                          }
+                        }
+                      });
+
+                      // Push last section
+                      if (currentSection.items.length > 0 || currentSection.content) {
+                        sections.push(currentSection);
+                      }
+
+                      if (sections.length === 0) {
+                        return (
+                          <div className="bg-muted/50 rounded-xl p-6">
+                            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                              {cleanContent || "No description available"}
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-6">
+                          {sections.map((section, idx) => (
+                            <div key={idx} className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm">
+                              <div className="px-6 py-3 bg-muted/30 border-b border-border/50 flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-primary/50" />
+                                <h4 className="font-semibold text-lg tracking-tight">{section.title}</h4>
+                              </div>
+                              <div className="p-6">
+                                {section.content && (
+                                  <p className="text-muted-foreground mb-4 leading-relaxed">
+                                    {section.content}
+                                  </p>
+                                )}
+                                {section.items.length > 0 && (
+                                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {section.items.map((item, i) => (
+                                      <li key={i} className="flex items-start gap-2 text-sm bg-muted/20 p-2 rounded-md">
+                                        {item.key ? (
+                                          <>
+                                            <span className="font-medium text-foreground min-w-[120px]">{item.key}:</span>
+                                            <span className="text-muted-foreground">{item.value}</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="text-primary mt-1.5">•</span>
+                                            <span className="text-muted-foreground leading-relaxed">{item.value}</span>
+                                          </>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <DialogFooter>
+
+                  <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4 gap-2">
                     <Button
                       variant="outline"
+                      size="lg"
                       onClick={() => setShowViewProposal(false)}
+                      className="gap-2"
                     >
-                      Close
+                      <X className="w-4 h-4" /> Close
                     </Button>
                     <Button
+                      size="lg"
                       onClick={() => {
                         setShowViewProposal(false);
                         setEditForm({
                           title: savedProposal?.projectTitle || "",
-                          summary:
-                            savedProposal?.summary ||
-                            savedProposal?.content ||
-                            "",
+                          summary: savedProposal?.summary || savedProposal?.content || "",
                           budget: savedProposal?.budget || "",
                           timeline: savedProposal?.timeline || "",
                         });
                         setShowEditProposal(true);
                       }}
+                      className="gap-2"
                     >
-                      <Edit2 className="w-4 h-4 mr-2" /> Edit
+                      <Edit2 className="w-4 h-4" /> Edit Proposal
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -2299,9 +2464,9 @@ const ClientDashboardContent = () => {
                         const nextProposals = savedProposals.map((proposal) =>
                           proposal.id === savedProposal.id
                             ? normalizeSavedProposal({
-                                ...proposal,
-                                ...updated,
-                              })
+                              ...proposal,
+                              ...updated,
+                            })
                             : proposal
                         );
                         persistSavedProposalState(
@@ -2375,7 +2540,7 @@ const ClientDashboardContent = () => {
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {Array.isArray(viewFreelancer?.skills) &&
-                        viewFreelancer.skills.length > 0 ? (
+                          viewFreelancer.skills.length > 0 ? (
                           viewFreelancer.skills.map((skill, idx) => (
                             <Badge
                               key={idx}
@@ -2918,8 +3083,8 @@ const ClientDashboardContent = () => {
                             idx === 0
                               ? "online"
                               : idx === 1
-                              ? "away"
-                              : "offline"
+                                ? "away"
+                                : "offline"
                           }
                           onClick={() =>
                             navigate(
@@ -2963,11 +3128,10 @@ const ClientDashboardContent = () => {
                             }
                           >
                             <div
-                              className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
-                                idx === 0
-                                  ? "bg-primary"
-                                  : "bg-muted-foreground/50"
-                              }`}
+                              className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${idx === 0
+                                ? "bg-primary"
+                                : "bg-muted-foreground/50"
+                                }`}
                             />
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
                               <span className="text-xs font-bold text-muted-foreground w-16 flex-shrink-0">

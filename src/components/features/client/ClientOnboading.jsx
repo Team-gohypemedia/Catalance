@@ -36,6 +36,27 @@ import Terminal from "lucide-react/dist/esm/icons/terminal";
 import Check from "lucide-react/dist/esm/icons/check";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 
+import WebsiteDevIcon from "@/assets/icons/website-development.png";
+import AppDevIcon from "@/assets/icons/app-development.png";
+import SoftwareDevIcon from "@/assets/icons/software-development.png";
+import LeadGenIcon from "@/assets/icons/lead-generation.png";
+import VideoServicesIcon from "@/assets/icons/video-services.png";
+import CgiVideoIcon from "@/assets/icons/cgi-video.png";
+import ThreeDModelingIcon from "@/assets/icons/3d-modeling.png";
+import SeoOptIcon from "@/assets/icons/seo-optimization.png";
+import SocialMediaIcon from "@/assets/icons/social-media-management.png";
+import InfluencerIcon from "@/assets/icons/influencer-marketing.png";
+import UgcMarketingIcon from "@/assets/icons/ugc-marketing.png";
+import PerformanceMarketingIcon from "@/assets/icons/performance-marketing.png";
+import CreativeDesignIcon from "@/assets/icons/creative-&-design.png";
+import BrandingIcon from "@/assets/icons/branding-&-brand-identity.png";
+import WritingContentIcon from "@/assets/icons/writing-&-content.png";
+import CustomerSupportIcon from "@/assets/icons/customer-support.png";
+import CrmErpIcon from "@/assets/icons/crm-&-erp- solutions.png";
+import AiAutomationIcon from "@/assets/icons/ai-automation.png";
+import VoiceAgentIcon from "@/assets/icons/voice-agent.png";
+import WhatsappChatBotIcon from "@/assets/icons/whatsapp-chat-bot.png";
+
 // ... features array remains the same ...
 const features = [
   {
@@ -45,7 +66,7 @@ const features = [
       "Custom websites built for performance, speed, and business growth.",
     price: "Starting at ₹25,000",
     icon: Globe,
-    image: "/icons/web-icon.png",
+    image: WebsiteDevIcon,
   },
   {
     id: "app-development",
@@ -53,7 +74,7 @@ const features = [
     description: "Mobile apps designed to engage users and scale businesses.",
     price: "Starting at ₹1,00,000",
     icon: Smartphone,
-    image: "/icons/android-icon.png",
+    image: AppDevIcon,
   },
   {
     id: "software-development",
@@ -62,6 +83,7 @@ const features = [
       "Custom software solutions built to solve real business problems.",
     price: "Starting at ₹1,00,000",
     icon: Terminal,
+    image: SoftwareDevIcon,
   },
   {
     id: "lead-generation",
@@ -70,6 +92,7 @@ const features = [
       "Targeted campaigns that turn prospects into qualified business leads.",
     price: "Starting at ₹15,000/mo",
     icon: Target,
+    image: LeadGenIcon,
   },
   {
     id: "video-services",
@@ -78,6 +101,7 @@ const features = [
       "Creative videos that tell stories and boost brand engagement.",
     price: "Starting at ₹2,000/video",
     icon: Video,
+    image: VideoServicesIcon,
   },
   {
     id: "cgi-videos",
@@ -85,6 +109,7 @@ const features = [
     description: "High-impact CGI visuals for products, ads, and storytelling.",
     price: "Starting at ₹15,000",
     icon: Video,
+    image: CgiVideoIcon,
   },
   {
     id: "3d-modeling",
@@ -93,6 +118,7 @@ const features = [
       "Detailed 3D models for products, visuals, and digital experiences.",
     price: "Starting at ₹5,000/model",
     icon: Code,
+    image: ThreeDModelingIcon,
   },
   {
     id: "seo-optimization",
@@ -101,7 +127,7 @@ const features = [
       "Improve search rankings and drive consistent organic traffic.",
     price: "Starting at ₹10,000/mo",
     icon: Search,
-    image: "/icons/seo-icon.png",
+    image: SeoOptIcon,
   },
   {
     id: "social-media-management",
@@ -109,6 +135,7 @@ const features = [
     description: "Content and community management to grow your brand online.",
     price: "Starting at ₹10,000/mo",
     icon: Share2,
+    image: SocialMediaIcon,
   },
   {
     id: "influencer-marketing",
@@ -116,6 +143,7 @@ const features = [
     description: "Collaborate with creators to build trust and audience reach.",
     price: "Starting at ₹10,000",
     icon: Users,
+    image: InfluencerIcon,
   },
   {
     id: "ugc-marketing",
@@ -124,6 +152,7 @@ const features = [
       "Authentic creator content that boosts brand credibility and conversions.",
     price: "Starting at ₹2,000/video",
     icon: Mic,
+    image: UgcMarketingIcon,
   },
   {
     id: "performance-marketing",
@@ -132,6 +161,7 @@ const features = [
       "Data-driven advertising campaigns focused on measurable results.",
     price: "Starting at ₹25,000/mo",
     icon: Activity,
+    image: PerformanceMarketingIcon,
   },
   {
     id: "creative-design",
@@ -139,6 +169,7 @@ const features = [
     description: "Visual designs that strengthen branding and communication.",
     price: "Starting at ₹10,000",
     icon: Palette,
+    image: CreativeDesignIcon,
   },
   {
     id: "branding",
@@ -147,6 +178,7 @@ const features = [
       "Build strong brand identities that people remember and trust.",
     price: "Starting at ₹25,000",
     icon: Palette,
+    image: BrandingIcon,
   },
   {
     id: "writing-content",
@@ -155,6 +187,7 @@ const features = [
       "Compelling content that informs, engages, and converts audiences.",
     price: "Starting at ₹1,000/piece",
     icon: FileText,
+    image: WritingContentIcon,
   },
   {
     id: "customer-support",
@@ -163,6 +196,7 @@ const features = [
       "Reliable support services that improve customer satisfaction and retention.",
     price: "Starting at ₹15,000/mo",
     icon: Headphones,
+    image: CustomerSupportIcon,
   },
   {
     id: "crm-erp-solutions",
@@ -171,6 +205,7 @@ const features = [
       "Systems that streamline operations and centralize business data.",
     price: "Starting at ₹40,000",
     icon: Database,
+    image: CrmErpIcon,
   },
   {
     id: "ai-automation",
@@ -178,6 +213,7 @@ const features = [
     description: "Automate workflows to save time and improve productivity.",
     price: "Starting at ₹25,000",
     icon: Workflow,
+    image: AiAutomationIcon,
   },
   {
     id: "voice-agent",
@@ -185,7 +221,7 @@ const features = [
     description: "AI-powered voice agents for sales, support, and follow-ups.",
     price: "Starting at ₹1,30,000",
     icon: PhoneCall,
-    image: "/icons/voice-agent-icon.png",
+    image: VoiceAgentIcon,
   },
   {
     id: "whatsapp-chatbot",
@@ -194,6 +230,7 @@ const features = [
       "Automated WhatsApp conversations for faster customer support and sales.",
     price: "Starting at ₹15,000",
     icon: MessageCircle,
+    image: WhatsappChatBotIcon,
   },
 ];
 
@@ -423,35 +460,35 @@ const ServiceCard = memo(
           <div className="absolute inset-0 bg-[#ffc800]/5 pointer-events-none" />
         )}
 
-        <div className="flex flex-col h-full p-6 relative z-10">
+        <div className="flex flex-col h-full p-5 relative z-10">
           {/* Icon Container */}
-          <div className="h-20 w-full flex items-center justify-start mb-5 relative">
-            <div className="absolute -left-4 -top-4 w-32 h-32 bg-[#ffc800]/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="h-32 w-full flex items-center justify-center mb-3 relative">
+            <div className="absolute left-1/2 -translate-x-1/2 -top-4 w-40 h-40 bg-[#ffc800]/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             {feature.image ? (
               <img
                 src={feature.image}
                 alt={feature.title}
-                className="w-20 h-20 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
+                className="w-32 h-32 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
               />
             ) : (
               <feature.icon
-                className="w-12 h-12 text-[#ffc800] drop-shadow-lg z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
+                className="w-16 h-16 text-[#ffc800] drop-shadow-lg z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
                 strokeWidth={1.5}
               />
             )}
           </div>
 
           {/* Card Content */}
-          <div className="flex flex-col grow">
+          <div className="flex flex-col grow items-center text-center">
             <h3 className="text-lg font-bold text-white mb-2 leading-tight group-hover:text-[#ffc800] transition-colors duration-300">
               {feature.title}
             </h3>
 
-            <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-6 line-clamp-3 group-hover:text-zinc-300 transition-colors">
+            <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-4 line-clamp-3 group-hover:text-zinc-300 transition-colors">
               {feature.description}
             </p>
 
-            <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-4">
+            <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-4 w-full text-left">
               <div>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">
                   Starting at

@@ -81,6 +81,12 @@ export function NavUser({ user = null }) {
     navigate("/login", { replace: true });
   };
 
+  const handleAccountClick = () => {
+    const isFreelancerPath = window.location.pathname.startsWith("/freelancer");
+    const path = isFreelancerPath ? "/freelancer/profile" : "/client/profile";
+    navigate(path);
+  };
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -119,11 +125,7 @@ export function NavUser({ user = null }) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => {
-                const role = activeUser?.role || "FREELANCER";
-                const path = role === "CLIENT" ? "/client/profile" : "/freelancer/profile";
-                navigate(path);
-              }}>
+              <DropdownMenuItem onClick={handleAccountClick}>
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>

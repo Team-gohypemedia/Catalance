@@ -2,7 +2,9 @@
 
 import PropTypes from "prop-types";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import { useLocation } from "react-router-dom";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { DashboardSwitcher } from "./DashboardSwitcher";
 
 const BRAND_INFO = {
   name: "Catalance",
@@ -11,8 +13,25 @@ const BRAND_INFO = {
 };
 
 export function TeamSwitcher({ brand = BRAND_INFO }) {
+  const location = useLocation();
   const activeBrand = brand;
 
+  // Show DashboardSwitcher for CLIENT and FREELANCER dashboard paths
+  const isClientOrFreelancer =
+    location.pathname.startsWith("/client") ||
+    location.pathname.startsWith("/freelancer");
+
+  if (isClientOrFreelancer) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DashboardSwitcher />
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
+
+  // Static display for other routes (ADMIN, PROJECT_MANAGER, etc.)
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -43,3 +62,4 @@ TeamSwitcher.propTypes = {
     logoText: PropTypes.string
   })
 };
+
