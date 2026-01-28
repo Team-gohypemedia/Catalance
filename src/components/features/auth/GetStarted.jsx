@@ -46,7 +46,11 @@ export default function GetStarted() {
 
     const handleContinue = (roleId) => {
         const role = roleId.toLowerCase();
-        navigate(`/signup?role=${role}`);
+        if (role === "client") {
+            navigate("/service");
+        } else {
+            navigate(`/signup?role=${role}`);
+        }
     };
 
     return (

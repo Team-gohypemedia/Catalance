@@ -359,6 +359,9 @@ const matchOptionLabelsFromItems = (options = [], items = []) => {
   return Array.from(new Set(matched));
 };
 
+const isNumericChoiceToken = (value = "") =>
+  /^\d+(?:\s*(?:-|to)\s*\d+)?$/i.test(String(value).trim());
+
 const parseNumericSelections = (text = "", optionsLength = 0) => {
   const trimmed = text.trim();
   if (!trimmed) return { numbers: [], ambiguous: false };
@@ -372,6 +375,7 @@ const parseNumericSelections = (text = "", optionsLength = 0) => {
     if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
     const min = Math.min(start, end);
     const max = Math.max(start, end);
+    if (optionsLength && (min < 1 || max > optionsLength)) continue;
     for (let i = min; i <= max; i += 1) {
       rangeNumbers.push(i);
     }
@@ -379,7 +383,7 @@ const parseNumericSelections = (text = "", optionsLength = 0) => {
 
   const digitsOnly = /^[\d\s,.-]+$/.test(trimmed);
   const hasSeparator = /[,\s]/.test(trimmed);
-  const numberMatches = trimmed.match(/\d+/g) || [];
+  const numberMatches = trimmed.match(/\b\d+\b/g) || [];
   if (!numberMatches.length && rangeNumbers.length === 0) {
     return { numbers: [], ambiguous: false };
   }
@@ -609,22 +613,33 @@ const resolveOptionAnswer = (question, assistantText, userText, summaryText = ""
         .map((value) => options[value - 1]?.label)
         .filter(Boolean);
       const uniqueNumericLabels = Array.from(new Set(numericLabels));
-      if (uniqueNumericLabels.length) {
-        if (!ambiguous || !summaryText) {
-          return uniqueNumericLabels.join(", ");
-        }
-      }
 
       const userItems = splitMultiSelectItems(trimmed);
-      const userLabels = matchOptionLabelsFromItems(options, userItems);
-      if (userLabels.length) return userLabels.join(", ");
+      const userLabels = matchOptionLabelsFromItems(options, userItems).filter(
+        (item) => !isNumericChoiceToken(item)
+      );
 
       const labelMatch = findOptionLabelMatch(options, trimmed, question);
-      if (labelMatch) return labelMatch;
 
       const summaryItems = extractBulletItems(summaryText);
-      const summaryLabels = matchOptionLabelsFromItems(options, summaryItems);
-      if (summaryLabels.length) return summaryLabels.join(", ");
+      const summaryLabels = matchOptionLabelsFromItems(options, summaryItems).filter(
+        (item) => !isNumericChoiceToken(item)
+      );
+
+      const combined = [];
+      const pushUnique = (value) => {
+        if (!value) return;
+        if (!combined.includes(value)) combined.push(value);
+      };
+
+      userLabels.forEach(pushUnique);
+      if (!ambiguous || !summaryText) {
+        uniqueNumericLabels.forEach(pushUnique);
+      }
+      summaryLabels.forEach(pushUnique);
+      if (labelMatch) pushUnique(labelMatch);
+
+      if (combined.length) return combined.join(", ");
 
       if (uniqueNumericLabels.length) {
         return uniqueNumericLabels.join(", ");
@@ -1091,6 +1106,10 @@ CRITICAL SEQUENCE ENFORCEMENT:
 FORMATTING WHEN ASKING QUESTIONS:
 - Present the question clearly.
 - If the question has options, list them as numbered choices (1., 2., 3.).
+- Assume multiple selections are allowed unless the question explicitly says to pick one.
+- Do not ask users to confirm whether multi-select is allowed; accept multiple choices by default.
+- If the user provides a custom option not in the list, accept it as-is and move on.
+- Never force the user to pick only from the listed options.
 - Keep the question focused and easy to answer.
 - After every question (and its options), add this line on its own: "If you don't see what you need, kindly type it below."
 
