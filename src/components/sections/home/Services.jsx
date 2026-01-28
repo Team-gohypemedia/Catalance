@@ -26,6 +26,12 @@ import PhoneCall from "lucide-react/dist/esm/icons/phone-call";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import { useTheme } from "@/components/providers/theme-provider";
 
+import WebsiteDevIcon from "@/assets/icons/website-development.png";
+import AppDevIcon from "@/assets/icons/app-development.png";
+import CreativeDesignIcon from "@/assets/icons/creative-&-design.png";
+import PerformanceMarketingIcon from "@/assets/icons/performance-marketing.png";
+import VoiceAgentIcon from "@/assets/icons/voice-agent.png";
+
 const Services = () => {
     const { theme } = useTheme();
     const [resolvedTheme, setResolvedTheme] = useState("dark");
@@ -104,9 +110,9 @@ const Services = () => {
                         <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
                             <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <img
-                                    src="/src/assets/icons/web_dev_icon.png"
+                                    src={WebsiteDevIcon}
                                     alt="Web Development"
-                                    className="w-32 h-32 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
+                                    className="w-40 h-40 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
                                 />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
@@ -119,9 +125,9 @@ const Services = () => {
                         <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
                             <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <img
-                                    src="/src/assets/icons/app_dev_icon.png"
+                                    src={AppDevIcon}
                                     alt="App Development"
-                                    className="w-32 h-32 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
+                                    className="w-40 h-40 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
                                 />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
@@ -134,9 +140,9 @@ const Services = () => {
                         <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
                             <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <img
-                                    src="/src/assets/icons/creative_design_icon.png"
+                                    src={CreativeDesignIcon}
                                     alt="Creative Design"
-                                    className="w-32 h-32 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
+                                    className="w-40 h-40 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
                                 />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
@@ -149,9 +155,9 @@ const Services = () => {
                         <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
                             <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
                                 <img
-                                    src="/src/assets/icons/marketing_icon.png"
+                                    src={PerformanceMarketingIcon}
                                     alt="Marketing"
-                                    className="w-32 h-32 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
+                                    className="w-40 h-40 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
                                 />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
@@ -163,7 +169,11 @@ const Services = () => {
                         {/* Card 5: Voice Agent */}
                         <div className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
                             <div className="h-56 w-full bg-linear-to-br from-[#ffa726] via-[#ff9800] to-[#ff7043] flex items-center justify-center p-6">
-                                <PhoneCall className="w-20 h-20 text-white drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                                <img
+                                    src={VoiceAgentIcon}
+                                    alt="Voice Agent"
+                                    className="w-32 h-32 object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
+                                />
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
                                 <h3 className="text-lg font-bold mb-2 text-center">Voice Agent (AI Voice Bot / Call Automation)</h3>

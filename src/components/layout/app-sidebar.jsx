@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useLocation } from "react-router-dom";
 import BarChart from "lucide-react/dist/esm/icons/bar-chart";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
@@ -204,6 +205,7 @@ const navConfigs = {
 
 export function AppSidebar({ ...props }) {
   const [sessionUser, setSessionUser] = React.useState(null);
+  const location = useLocation();
 
   React.useEffect(() => {
     const session = getSession();
@@ -219,9 +221,21 @@ export function AppSidebar({ ...props }) {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const role = sessionUser?.role ?? "FREELANCER";
-  const brand = brandPresets[role] ?? brandPresets.FREELANCER;
-  const navItems = navConfigs[role] ?? navConfigs.FREELANCER;
+  const userRole = sessionUser?.role ?? "FREELANCER";
+
+  // Determine which dashboard we're viewing based on URL path
+  // This allows the switcher to work correctly
+  const getActiveRole = () => {
+    if (location.pathname.startsWith("/freelancer")) return "FREELANCER";
+    if (location.pathname.startsWith("/client")) return "CLIENT";
+    if (location.pathname.startsWith("/project-manager")) return "PROJECT_MANAGER";
+    if (location.pathname.startsWith("/admin")) return "ADMIN";
+    return userRole; // fallback to user's actual role
+  };
+
+  const activeRole = getActiveRole();
+  const brand = brandPresets[activeRole] ?? brandPresets.FREELANCER;
+  const navItems = navConfigs[activeRole] ?? navConfigs.FREELANCER;
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -238,3 +252,4 @@ export function AppSidebar({ ...props }) {
     </Sidebar>
   );
 }
+

@@ -57,20 +57,20 @@ function Login({ className, ...props }) {
         email: formData.email.trim().toLowerCase(),
         password: formData.password
       });
-      
+
       // Handle unverified user - redirect to verification
       if (authPayload?.requiresVerification) {
         toast.info(authPayload.message || "Please verify your email.");
-        navigate("/signup", { 
-          state: { 
+        navigate("/signup", {
+          state: {
             verifyEmail: authPayload.email,
-            showVerification: true 
+            showVerification: true
           },
-          replace: true 
+          replace: true
         });
         return;
       }
-      
+
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success("Logged in successfully.");
       setFormData(initialFormState);
@@ -104,13 +104,13 @@ function Login({ className, ...props }) {
       // Sign in with Firebase Google
       const firebaseUser = await signInWithGoogle();
       const idToken = await firebaseUser.getIdToken();
-      
+
       // Perform backend login with Google token
       const authPayload = await loginWithGoogle(idToken);
-      
+
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success(`Welcome, ${authPayload?.user?.fullName || 'User'}!`);
-      
+
       const nextRole = authPayload?.user?.role?.toUpperCase();
       const redirectTo = location?.state?.redirectTo;
       if (redirectTo) {
@@ -178,6 +178,7 @@ function Login({ className, ...props }) {
                         value={formData.password}
                         onChange={handleChange}
                         className="pr-10"
+                        placeholder="••••••••"
                         required
                       />
                       <div
@@ -262,7 +263,7 @@ function Login({ className, ...props }) {
           </FieldDescription>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 
