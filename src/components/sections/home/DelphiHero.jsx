@@ -375,9 +375,27 @@ const DelphiHero = () => {
 
                     {/* Badge */}
                     <div className={`flex justify-center mb-4 mt-16 ${isMounted ? 'animate-fadeInUp' : 'opacity-0'}`}>
-                        <Badge className="group [&>svg]:size-6 [&>svg]:pointer-events-auto bg-white/30 hover:bg-white/50 text-gray-900 border-gray-200/50 backdrop-blur-sm dark:bg-black/30 dark:hover:bg-black/50 dark:text-white dark:border-white/20 dark:backdrop-blur-md border px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer">
+                        <Badge className="group [&>svg]:size-6 [&>svg]:pointer-events-auto bg-white/30 hover:bg-white/50 text-gray-900 border-gray-200/50 backdrop-blur-sm dark:bg-black/30 dark:hover:bg-black/50 dark:text-white dark:border-white/20 dark:backdrop-blur-md border px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer overflow-hidden">
                             <SparklesIcon size={24} className="text-primary" />
-                            Trusted by <span className="text-primary font-semibold">10,000+</span> Freelancers & Clients
+                            <span className="relative inline-block">
+                                Trusted by <span className="text-primary font-semibold">10,000+</span> Freelancers & Clients
+                                <span
+                                    className="absolute inset-0 w-[200%] animate-shimmer-slide"
+                                    style={{
+                                        background: `linear-gradient(90deg, transparent 0%, transparent 40%, hsl(var(--primary) / 0.4) 50%, transparent 60%, transparent 100%)`,
+                                        backgroundSize: '50% 100%',
+                                    }}
+                                />
+                            </span>
+                            <style>{`
+                                @keyframes shimmer-slide {
+                                    0% { transform: translateX(-100%); }
+                                    100% { transform: translateX(100%); }
+                                }
+                                .animate-shimmer-slide {
+                                    animation: shimmer-slide 2s ease-in-out infinite;
+                                }
+                            `}</style>
                         </Badge>
                     </div>
 
