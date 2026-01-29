@@ -28,6 +28,11 @@ import {
   Loader2,
   Sparkles,
   Mic,
+  Plus,
+  X,
+  Upload,
+  Link as LinkIcon,
+  FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -47,6 +52,7 @@ import {
 
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import { API_BASE_URL, signup, verifyOtp, updateProfile } from "@/shared/lib/api-client";
+import { getSession } from "@/shared/lib/auth-storage";
 import { useAuth } from "@/shared/context/AuthContext";
 
 // ============================================================================
@@ -61,7 +67,7 @@ const ROLE_OPTIONS = [
 
 const SERVICE_OPTIONS = [
   { value: "branding", label: "Branding", icon: Sparkles },
-  { value: "website_ui_ux", label: "Website / UI–UX Design", icon: Globe },
+  { value: "website_ui_ux", label: "Website Development", icon: Globe },
   { value: "seo", label: "SEO", icon: Search },
   { value: "social_media_marketing", label: "Social Media Marketing", icon: Share2 },
   { value: "paid_advertising", label: "Paid Advertising / Performance Marketing", icon: TrendingUp },
@@ -83,10 +89,10 @@ const SERVICE_OPTIONS = [
 ];
 
 const EXPERIENCE_YEARS_OPTIONS = [
-  { value: "less_than_1", label: "Less than 1 year" },
-  { value: "1_3", label: "1–3 years" },
-  { value: "3_5", label: "3–5 years" },
-  { value: "5_plus", label: "5+ years" },
+  { value: "less_than_1", label: "0-1 year", description: "Entry Level - Building foundational skills" },
+  { value: "1_3", label: "1–3", description: "Intermediate - Executing projects with confidence" },
+  { value: "3_5", label: "3–5", description: "Specialist - Proven track record of quality work" },
+  { value: "5_plus", label: "5+", description: "Expert - Mastery of skills and complex problem solving" },
 ];
 
 const WORKING_LEVEL_OPTIONS = [
@@ -97,46 +103,90 @@ const WORKING_LEVEL_OPTIONS = [
 
 const TOOLS_BY_SERVICE = {
   // Branding tools
-  branding: ["Adobe Illustrator", "Adobe Photoshop", "Figma", "Canva", "Sketch", "Adobe InDesign", "Affinity Designer", "CorelDRAW", "Brandmark", "Looka"],
+  branding: ["Adobe Illustrator", "Adobe Photoshop", "Figma", "Canva", "Adobe InDesign", "Sketch"],
   // Website / UI-UX Design tools
-  website_ui_ux: ["Figma", "Adobe XD", "Sketch", "InVision", "Framer", "Zeplin", "Marvel", "Principle", "ProtoPie", "Maze"],
+  website_ui_ux: ["Next.js", "Wordpress", "Shopify", "Framer", "Figma", "Webflow"],
   // SEO tools
-  seo: ["Ahrefs", "SEMrush", "Google Search Console", "Screaming Frog", "Moz", "Ubersuggest", "Yoast SEO", "Surfer SEO", "SE Ranking", "SpyFu"],
+  seo: ["Ahrefs", "SEMrush", "Google Search Console", "Moz", "Yoast SEO", "Ubersuggest"],
   // Social Media Marketing tools
-  social_media_marketing: ["Hootsuite", "Buffer", "Sprout Social", "Later", "Canva", "Meta Business Suite", "TikTok Creator Studio", "Loomly", "SocialBee", "Agorapulse"],
+  social_media_marketing: ["Hootsuite", "Buffer", "Canva", "Meta Business Suite", "Later", "Sprout Social"],
   // Paid Advertising / Performance Marketing tools
-  paid_advertising: ["Google Ads", "Facebook Ads Manager", "TikTok Ads", "LinkedIn Ads", "Google Analytics", "Hotjar", "Mixpanel", "Amplitude", "Optimizely", "VWO"],
+  paid_advertising: ["Google Ads", "Facebook Ads Manager", "Google Analytics", "TikTok Ads", "LinkedIn Ads", "Hotjar"],
   // App Development tools
-  app_development: ["React Native", "Flutter", "Swift", "Kotlin", "Xcode", "Android Studio", "Firebase", "Expo", "Fastlane", "TestFlight"],
+  app_development: ["React Native", "Flutter", "Swift", "Kotlin", "Firebase", "Expo"],
   // Software Development tools
-  software_development: ["Python", "Java", "C++", "Node.js", "Docker", "Git", "AWS", "Azure", "PostgreSQL", "MongoDB"],
+  software_development: ["Python", "JavaScript", "Node.js", "React", "AWS", "Docker"],
   // Lead Generation tools
-  lead_generation: ["Apollo.io", "LinkedIn Sales Navigator", "Hunter.io", "ZoomInfo", "Lusha", "Snov.io", "Lemlist", "Clearbit", "Leadfeeder", "Outreach"],
+  lead_generation: ["Apollo.io", "LinkedIn Sales Navigator", "HubSpot", "ZoomInfo", "Hunter.io", "Lusha"],
   // Video Services tools
-  video_services: ["Adobe Premiere Pro", "Final Cut Pro", "DaVinci Resolve", "After Effects", "CapCut", "Filmora", "Camtasia", "Sony Vegas", "HitFilm", "iMovie"],
+  video_services: ["Adobe Premiere Pro", "Final Cut Pro", "DaVinci Resolve", "After Effects", "CapCut", "Filmora"],
   // Writing & Content tools
-  writing_content: ["Google Docs", "Grammarly", "Hemingway", "Notion", "WordPress", "Medium", "Jasper AI", "Copy.ai", "Surfer SEO", "Clearscope"],
+  writing_content: ["Google Docs", "Grammarly", "Notion", "WordPress", "ChatGPT", "Jasper AI"],
   // Customer Support tools
-  customer_support: ["Zendesk", "Freshdesk", "Intercom", "HubSpot", "LiveChat", "Crisp", "Tidio", "Help Scout", "Kayako", "Zoho Desk"],
+  customer_support: ["Zendesk", "Freshdesk", "Intercom", "HubSpot", "LiveChat", "Crisp"],
   // Influencer Marketing tools
-  influencer_marketing: ["Instagram", "TikTok", "YouTube Studio", "Upfluence", "AspireIQ", "Grin", "CreatorIQ", "Heepsy", "Modash", "Traackr"],
+  influencer_marketing: ["Instagram", "TikTok", "YouTube Studio", "Upfluence", "CreatorIQ", "Grin"],
   // UGC Marketing tools
-  ugc_marketing: ["Instagram", "TikTok", "YouTube Studio", "Canva", "CapCut", "Linktree", "Later", "VSCO", "InShot", "Lightroom Mobile"],
+  ugc_marketing: ["Instagram", "TikTok", "Canva", "CapCut", "YouTube Studio", "InShot"],
   // AI Automation tools
-  ai_automation: ["Zapier", "Make (Integromat)", "n8n", "ChatGPT API", "Python", "LangChain", "Flowise", "OpenAI", "Anthropic API", "Hugging Face"],
+  ai_automation: ["Zapier", "Make (Integromat)", "ChatGPT API", "Python", "n8n", "LangChain"],
   // WhatsApp Chatbot tools
-  whatsapp_chatbot: ["Twilio", "WhatsApp Business API", "Chatfuel", "ManyChat", "Wati", "Respond.io", "Gupshup", "Infobip", "MessageBird", "360dialog"],
+  whatsapp_chatbot: ["WhatsApp Business API", "ManyChat", "Twilio", "Wati", "Respond.io", "Chatfuel"],
   // Creative & Design tools
-  creative_design: ["Figma", "Adobe Photoshop", "Illustrator", "Canva", "Sketch", "InDesign", "Affinity Designer", "Adobe XD", "Procreate", "CorelDRAW"],
+  creative_design: ["Figma", "Adobe Photoshop", "Adobe Illustrator", "Canva", "Procreate", "Sketch"],
   // 3D Modeling tools
-  "3d_modeling": ["Blender", "Maya", "Cinema 4D", "3ds Max", "ZBrush", "SketchUp", "Houdini", "Rhino", "Modo", "Fusion 360"],
+  "3d_modeling": ["Blender", "Maya", "Cinema 4D", "3ds Max", "SketchUp", "ZBrush"],
   // CGI Videos tools
-  cgi_videos: ["Blender", "After Effects", "Cinema 4D", "Unreal Engine", "Houdini", "Nuke", "DaVinci Resolve", "Unity", "Octane Render", "V-Ray"],
+  cgi_videos: ["Blender", "After Effects", "Cinema 4D", "Unreal Engine", "DaVinci Resolve", "Houdini"],
   // CRM & ERP tools
-  crm_erp: ["Salesforce", "HubSpot", "Zoho CRM", "SAP", "Oracle", "Microsoft Dynamics", "Pipedrive", "Freshsales", "Monday CRM", "NetSuite"],
+  crm_erp: ["Salesforce", "HubSpot", "Zoho CRM", "Pipedrive", "Microsoft Dynamics", "Freshsales"],
   // Voice Agent tools
-  voice_agent: ["Twilio", "Amazon Connect", "Google Cloud Speech", "Azure Cognitive Services", "Dialogflow", "VoiceFlow", "VAPI", "Retell AI", "Deepgram", "AssemblyAI"],
+  voice_agent: ["Twilio", "Dialogflow", "VoiceFlow", "VAPI", "Amazon Connect", "Retell AI"],
 };
+
+const STARTING_PRICE_RANGES = [
+  "₹1,000 - ₹5,000",
+  "₹5,000 - ₹10,000",
+  "₹10,000 - ₹20,000",
+  "₹20,000 - ₹50,000",
+  "₹50,000+",
+];
+
+const ALL_TOOLS_SUGGESTIONS = [
+  ...new Set([
+    ...Object.values(TOOLS_BY_SERVICE).flat(),
+    // Additional common tools
+    "Jira", "Asana", "Trello", "Slack", "Microsoft Teams", "Discord",
+    "Zoom", "Google Meet", "Tableau", "Power BI", "Looker",
+    "Snowflake", "Databricks", "Redshift", "BigQuery",
+    "Kubernetes", "Terraform", "Ansible", "Jenkins", "CircleCI",
+    "GitLab", "GitHub", "Bitbucket", "Visual Studio Code", "IntelliJ IDEA",
+    "Sublime Text", "Atom", "Eclipse", "NetBeans", "Android Studio",
+    "Xcode", "Unity", "Unreal Engine", "Godot", "CryEngine",
+    "Blender", "Maya", "3ds Max", "Cinema 4D", "ZBrush",
+    "Houdini", "SketchUp", "Rhino", "SolidWorks", "AutoCAD",
+    "Revit", "Fusion 360", "Inventor", "ArchiCAD", "Vectorworks",
+    "Adobe Creative Cloud", "CorelDRAW", "Affinity Designer", "Affinity Photo", "GIMP",
+    "Inkscape", "DaVinci Resolve", "Final Cut Pro", "Adobe Premiere Pro", "After Effects",
+    "Audacity", "Adobe Audition", "Logic Pro", "Pro Tools", "FL Studio",
+    "Ableton Live", "GarageBand", "Cubase", "Nuendo", "Studio One",
+    "WordPress", "Shopify", "Wix", "Squarespace", "Webflow",
+    "Magento", "WooCommerce", "BigCommerce", "PrestaShop", "Joomla",
+    "Drupal", "Salesforce", "HubSpot", "Zoho", "Pipedrive",
+    "Mailchimp", "Constant Contact", "Sendinblue", "ConvertKit", "AWeber",
+    "Google Analytics", "Google Search Console", "SEMrush", "Ahrefs", "Moz",
+    "Yoast SEO", "Screaming Frog", "Ubersuggest", "SpyFu", "Majestic",
+    "Facebook Ads", "Google Ads", "LinkedIn Ads", "Twitter Ads", "Pinterest Ads",
+    "TikTok Ads", "Snapchat Ads", "Bing Ads", "AdRoll", "Taboola",
+    "Outbrain", "Criteo", "Amazon Advertising", "Walmart Connect", "eBay Ads",
+    "Python", "JavaScript", "Java", "C++", "C#",
+    "Ruby", "PHP", "Swift", "Kotlin", "Go",
+    "Rust", "TypeScript", "Scala", "Perl", "Lua",
+    "R", "Matlab", "SAS", "SPSS", "Stata",
+    "Excel", "Google Sheets", "Airtable", "Notion", "Coda",
+    "Zapier", "Make", "n8n", "IFTTT", "Power Automate"
+  ])
+].sort();
 
 const PORTFOLIO_TYPE_OPTIONS = [
   { value: "live_links", label: "Live links", description: "Links to live websites or apps" },
@@ -152,10 +202,20 @@ const WORK_PREFERENCE_OPTIONS = [
 ];
 
 const HOURS_PER_DAY_OPTIONS = [
-  { value: "2_3", label: "2–3 hours" },
-  { value: "4_6", label: "4–6 hours" },
-  { value: "6_8", label: "6–8 hours" },
-  { value: "full_time", label: "Full-time" },
+  { value: "1_2", label: "1-2 hours" },
+  { value: "4_6", label: "4-6 hours" },
+  { value: "6_8", label: "6-8 hours" },
+  { value: "more_than_8", label: "More than 8 hours" },
+];
+
+const WORKING_DAYS_OPTIONS = [
+  { value: "monday", label: "Monday" },
+  { value: "tuesday", label: "Tuesday" },
+  { value: "wednesday", label: "Wednesday" },
+  { value: "thursday", label: "Thursday" },
+  { value: "friday", label: "Friday" },
+  { value: "saturday", label: "Saturday" },
+  { value: "sunday", label: "Sunday" },
 ];
 
 const REVISION_HANDLING_OPTIONS = [
@@ -224,26 +284,28 @@ const STEPS = [
   { id: 4, key: "working_level", label: "Working Level" },
   { id: 5, key: "primary_tools", label: "Primary Tools" },
   { id: 6, key: "secondary_tools", label: "Secondary Tools" },
-  { id: 7, key: "has_previous_work", label: "Previous Work" },
-  { id: 8, key: "portfolio_types", label: "Portfolio Type" },
-  { id: 9, key: "worked_with_clients", label: "Client History" },
-  { id: 10, key: "work_preference", label: "Work Style" },
-  { id: 11, key: "hours_per_day", label: "Availability" },
-  { id: 12, key: "revision_handling", label: "Revisions" },
-  { id: 13, key: "pricing_model", label: "Pricing" },
-  { id: 14, key: "project_range", label: "Project Range" },
-  { id: 15, key: "partial_scope", label: "Partial Scope" },
-  { id: 16, key: "sop_agreement", label: "SOP Agreement" },
-  { id: 17, key: "scope_freeze", label: "Scope Freeze" },
-  { id: 18, key: "requote_agreement", label: "Re-quote Policy" },
-  { id: 19, key: "communication_style", label: "Communication" },
-  { id: 20, key: "response_time", label: "Response Time" },
-  { id: 21, key: "timezone", label: "Timezone" },
-  { id: 22, key: "quality_process", label: "Quality" },
-  { id: 23, key: "accepts_ratings", label: "Ratings" },
-  { id: 24, key: "why_catalance", label: "Motivation" },
-  { id: 25, key: "ready_to_start", label: "Readiness" },
-  { id: 26, key: "personal_info", label: "Account" },
+  { id: 7, key: "tertiary_tools", label: "Tertiary Tools" },
+  { id: 8, key: "has_previous_work", label: "Previous Work" },
+  { id: 9, key: "starting_price", label: "Starting Price" },
+  { id: 10, key: "portfolio_types", label: "Portfolio Type" },
+  { id: 11, key: "worked_with_clients", label: "Client History" },
+  { id: 12, key: "work_preference", label: "Work Style" },
+  { id: 13, key: "hours_per_day", label: "Availability" },
+  { id: 14, key: "revision_handling", label: "Revisions" },
+  { id: 15, key: "pricing_model", label: "Pricing" },
+  { id: 16, key: "project_range", label: "Project Range" },
+  { id: 17, key: "partial_scope", label: "Partial Scope" },
+  { id: 18, key: "sop_agreement", label: "SOP Agreement" },
+  { id: 19, key: "scope_freeze", label: "Scope Freeze" },
+  { id: 20, key: "requote_agreement", label: "Re-quote Policy" },
+  { id: 21, key: "communication_style", label: "Communication" },
+  { id: 22, key: "response_time", label: "Response Time" },
+  { id: 23, key: "timezone", label: "Timezone" },
+  { id: 24, key: "quality_process", label: "Quality" },
+  { id: 25, key: "accepts_ratings", label: "Ratings" },
+  { id: 26, key: "why_catalance", label: "Motivation" },
+  { id: 27, key: "ready_to_start", label: "Readiness" },
+  { id: 28, key: "personal_info", label: "Account" },
 ];
 
 // ============================================================================
@@ -361,26 +423,32 @@ const FreelancerMultiStepForm = () => {
   const navigate = useNavigate();
   const { login: setAuthSession, user, refreshUser } = useAuth();
 
-  const [hasStarted, setHasStarted] = useState(false);
+
+
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [otp, setOtp] = useState("");
+  const [primaryToolInput, setPrimaryToolInput] = useState("");
+  const [secondaryToolInput, setSecondaryToolInput] = useState("");
 
   const [formData, setFormData] = useState({
     role: "",
     selectedServices: [],
     experienceYears: "",
     workingLevel: "",
-    primarySkillTools: [],
-    secondarySkillTools: [],
+    serviceTools: {}, // { [serviceKey]: [] }
+    customTools: {}, // { [serviceKey]: [] }
     hasPreviousWork: "",
+    hasPreviousWork: "",
+    startingPrices: {},
     portfolioTypes: [],
     hasWorkedWithClients: "",
     portfolioLink: "",
     workPreference: "",
     hoursPerDay: "",
+    workingDays: [],
     revisionHandling: "",
     pricingModel: "",
     projectRange: "",
@@ -402,6 +470,9 @@ const FreelancerMultiStepForm = () => {
     phone: "",
     countryCode: "US",
     location: "",
+    caseStudyLink: "",
+    caseStudyFile: null, // { name: string, url: string }
+    portfolioFile: null, // { name: string, url: string }
   });
 
   const totalSteps = STEPS.length;
@@ -422,17 +493,15 @@ const FreelancerMultiStepForm = () => {
     if (savedStep) {
       setCurrentStep(parseInt(savedStep, 10));
     }
-    if (savedHasStarted) {
-      setHasStarted(JSON.parse(savedHasStarted));
-    }
   }, []);
 
   // Save state on changes
   useEffect(() => {
     localStorage.setItem("freelancer_onboarding_data", JSON.stringify(formData));
     localStorage.setItem("freelancer_onboarding_step", currentStep.toString());
-    localStorage.setItem("freelancer_onboarding_started", JSON.stringify(hasStarted));
-  }, [formData, currentStep, hasStarted]);
+    localStorage.setItem("freelancer_onboarding_data", JSON.stringify(formData));
+    localStorage.setItem("freelancer_onboarding_step", currentStep.toString());
+  }, [formData, currentStep]);
 
   // Get relevant tools based on selected services
   const availableTools = useMemo(() => {
@@ -458,9 +527,9 @@ const FreelancerMultiStepForm = () => {
       const current = Array.isArray(prev[field]) ? prev[field] : [];
       const exists = current.includes(value);
 
-      // Special handling for selectedServices: max 2
-      if (field === "selectedServices" && !exists && current.length >= 2) {
-        toast.error("You can select up to 2 services (Primary & Secondary)");
+      // Special handling for selectedServices: max 3
+      if (field === "selectedServices" && !exists && current.length >= 3) {
+        toast.error("You can select up to 3 services (Primary, Secondary & Other)");
         return prev;
       }
 
@@ -492,81 +561,116 @@ const FreelancerMultiStepForm = () => {
       case 4:
         if (!data.workingLevel) return "Please select your working level.";
         return "";
-      case 5:
-        // Primary skill tools
-        if (data.primarySkillTools.length === 0) return "Please select at least one tool for your primary skill.";
+      case 5: {
+        // Step 5: Tools for Service 0
+        const svc0 = data.selectedServices[0];
+        const tools = data.serviceTools[svc0] || [];
+        const custom = data.customTools[svc0] || [];
+        if (tools.length === 0 && custom.length === 0) return "Please select at least one tool.";
         return "";
-      case 6:
-        // Secondary skill tools (only required if 2 services selected)
-        if (data.selectedServices.length >= 2 && data.secondarySkillTools.length === 0) {
-          return "Please select at least one tool for your secondary skill.";
-        }
+      }
+      case 6: {
+        // Step 6: Tools for Service 1 (only if >= 2 selected)
+        if (data.selectedServices.length < 2) return "";
+        const svc1 = data.selectedServices[1];
+        const tools = data.serviceTools[svc1] || [];
+        const custom = data.customTools[svc1] || [];
+        if (tools.length === 0 && custom.length === 0) return "Please select tools for your second service.";
         return "";
-      case 7:
+      }
+      case 7: {
+        // Step 7: Tools for Service 2 (only if >= 3 selected)
+        if (data.selectedServices.length < 3) return "";
+        const svc2 = data.selectedServices[2];
+        const tools = data.serviceTools[svc2] || [];
+        const custom = data.customTools[svc2] || [];
+        if (tools.length === 0 && custom.length === 0) return "Please select tools for your third service.";
+        return "";
+      }
+      case 8: // Previous Work (was 7)
         if (!data.hasPreviousWork) return "Please make a selection.";
-        return "";
-      case 8:
-        // Portfolio types only required if has previous work
-        if (data.hasPreviousWork === "yes" && data.portfolioTypes.length === 0) {
-          return "Please select at least one portfolio type.";
+        if (data.hasPreviousWork === "yes") {
+          const hasCaseStudy = data.caseStudyLink;
+          const hasPortfolio = data.portfolioLink;
+          if (!hasCaseStudy && !hasPortfolio) {
+            return "Please provide at least one case study or portfolio link.";
+          }
         }
         return "";
-      case 9:
-        if (!data.hasWorkedWithClients) return "Please make a selection.";
+      case 9: // Starting Price (was 8)
+        for (const service of data.selectedServices) {
+          if (!data.startingPrices[service]) return "Please select starting prices for all services.";
+        }
         return "";
-      case 10:
-        if (!data.workPreference) return "Please select your work preference.";
+      case 10: // Portfolio Types (was 9)
+        if (data.portfolioTypes.length === 0) return "Please select at least one portfolio type.";
         return "";
       case 11:
-        if (!data.hoursPerDay) return "Please select hours per day.";
+        if (!data.hasWorkedWithClients) return "Please make a selection.";
         return "";
       case 12:
-        if (!data.revisionHandling) return "Please select revision handling.";
+        if (!data.workPreference) return "Please select your work preference.";
         return "";
       case 13:
-        if (!data.pricingModel) return "Please select a pricing model.";
+        if (!data.hoursPerDay) return "Please select daily availability.";
+        if (data.hoursPerDay !== "full_time" && data.workingDays.length === 0) return "Please select working days.";
+        return "";
+      case 13:
+        if (!data.revisionHandling) return "Please select revision handling.";
         return "";
       case 14:
-        if (!data.projectRange) return "Please select your project range.";
+        if (!data.pricingModel) return "Please select a pricing model.";
         return "";
       case 15:
-        if (!data.partialScope) return "Please make a selection.";
+        if (!data.projectRange) return "Please select your project range.";
         return "";
       case 16:
-        if (data.sopAgreement !== "yes") return "You must agree to follow Catalance SOPs.";
+        if (!data.partialScope) return "Please make a selection.";
         return "";
       case 17:
-        if (data.scopeFreezeAgreement !== "yes") return "You must understand scope freeze policy.";
+        if (data.sopAgreement !== "yes") return "You must agree to follow Catalance SOPs.";
         return "";
       case 18:
-        if (data.requoteAgreement !== "yes") return "You must agree to re-quoting policy.";
+        if (data.scopeFreezeAgreement !== "yes") return "You must understand scope freeze policy.";
         return "";
       case 19:
-        if (!data.communicationStyle) return "Please select communication style.";
+        if (data.requoteAgreement !== "yes") return "You must agree to re-quoting policy.";
         return "";
       case 20:
-        if (!data.responseTime) return "Please select response time.";
+        if (!data.communicationStyle) return "Please select communication style.";
         return "";
       case 21:
-        // Timezone is optional, just continue
+        if (!data.responseTime) return "Please select response time.";
         return "";
       case 22:
-        if (data.qualityProcess.length === 0) return "Please select at least one QA method.";
+        // Timezone is optional
         return "";
       case 23:
-        if (data.acceptsRatings !== "yes") return "You must accept ratings and reviews.";
+        if (data.qualityProcess.length === 0) return "Please select at least one QA method.";
         return "";
       case 24:
-        if (!data.whyCatalance.trim()) return "Please share your motivation.";
+        if (data.acceptsRatings !== "yes") return "You must accept ratings and reviews.";
         return "";
       case 25:
-        if (!data.readyToStart) return "Please make a selection.";
+        if (!data.whyCatalance.trim()) return "Please share your motivation.";
         return "";
       case 26:
+        if (!data.readyToStart) return "Please make a selection.";
+        return "";
+      case 27:
+        // Final account validation
         if (!data.fullName.trim()) return "Please enter your full name.";
         if (!data.email.trim() || !data.email.includes("@")) return "Please enter a valid email.";
         if (data.password.length < 8) return "Password must be at least 8 characters.";
-        if (!data.location.trim()) return "Please enter your location.";
+        return "";
+      case 28:
+        // Account validation (renumbered) - duplicates case 27 logic if step shifted?
+        // Step 28 is now Account. Step 27 is Readiness.
+        // Wait, Readiness was 26, Account was 27.
+        // New: Readiness 27, Account 28.
+        if (!data.fullName.trim()) return "Please enter your full name.";
+        if (!data.email.trim() || !data.email.includes("@")) return "Please enter a valid email.";
+        if (data.password.length < 8) return "Password must be at least 8 characters.";
         return "";
       default:
         return "";
@@ -581,22 +685,32 @@ const FreelancerMultiStepForm = () => {
       return;
     }
 
-    // Skip secondary tools step if only one service selected
+    // Step 5 -> Next
+    // If < 2 services, skip 6 & 7 -> go to 8 (Prev Work)
     if (currentStep === 5 && formData.selectedServices.length < 2) {
-      setCurrentStep(7); // Skip to has_previous_work
+      setCurrentStep(8);
       setStepError("");
       return;
     }
 
-    // Skip portfolio types step if no previous work
-    if (currentStep === 7 && formData.hasPreviousWork === "no") {
-      setCurrentStep(9); // Skip to worked with clients
+    // Step 6 -> Next
+    // If < 3 services, skip 7 -> go to 8 (Prev Work)
+    if (currentStep === 6 && formData.selectedServices.length < 3) {
+      setCurrentStep(8);
+      setStepError("");
+      return;
+    }
+
+    // Portfolio types (Step 10) is typically skipped in current logic, let's keep that pattern if desired:
+    // Old logic skipped Step 9 (Portfolio Types) if navigating from 8 (Starting Price).
+    // New Step 9 is Starting Price. Step 10 is Portfolio Types.
+    if (currentStep === 9) {
+      setCurrentStep(11); // Skip to Client History
       setStepError("");
       return;
     }
 
     if (currentStep < totalSteps) {
-      // If user is logged in and next step is the Account step (last step), submit instead
       if (user && currentStep === totalSteps - 1) {
         handleSubmit();
         return;
@@ -608,20 +722,39 @@ const FreelancerMultiStepForm = () => {
 
   const handleBack = () => {
     if (currentStep > 1) {
-      // Handle skip back for portfolio types
-      if (currentStep === 9 && formData.hasPreviousWork === "no") {
-        setCurrentStep(7);
+      // Step 11 (Client History) -> Back logic
+      // Needs to go to Step 9 (Starting Price), skipping 10 (Portfolio Types)
+      if (currentStep === 11) {
+        setCurrentStep(9);
+        return;
       }
-      // Handle skip back for secondary tools (if only one service selected)
-      else if (currentStep === 7 && formData.selectedServices.length < 2) {
-        setCurrentStep(5);
+
+      // Step 8 (Prev Work) -> Back logic
+      // If < 2 services, go back to 5
+      // If 2 services, go back to 6
+      // If 3 services, go back to 7
+      if (currentStep === 8) {
+        if (formData.selectedServices.length < 2) {
+          setCurrentStep(5);
+          return;
+        }
+        if (formData.selectedServices.length < 3) {
+          setCurrentStep(6);
+          return;
+        }
       }
-      else {
-        setCurrentStep(currentStep - 1);
-      }
+
+      // Step 7 (Tertiary) -> Back logic (implicit: goes to 6)
+
+      // Step 6 (Secondary) -> Back logic
+      // If navigating back from 6, we always go to 5.
+
+      setCurrentStep(currentStep - 1);
       setStepError("");
     }
   };
+
+
 
   // ============================================================================
   // SUBMIT
@@ -648,20 +781,36 @@ const FreelancerMultiStepForm = () => {
         experienceYears: formData.experienceYears,
         workingLevel: formData.workingLevel,
         tools: {
-          primary: {
-            skill: formData.selectedServices[0] || "",
-            tools: formData.primarySkillTools,
-          },
-          secondary: formData.selectedServices[1] ? {
-            skill: formData.selectedServices[1],
-            tools: formData.secondarySkillTools,
-          } : null,
+          // Map service tools from new structure
+          ...formData.serviceTools,
+          // Merge custom tools into the same tool lists if needed, or send as separate structure
+          // For now, let's append custom tools to the list if backend expects simple lists
+          ...Object.keys(formData.customTools).reduce((acc, key) => {
+            const existing = formData.serviceTools[key] || [];
+            const custom = formData.customTools[key] || [];
+            acc[key] = [...new Set([...existing, ...custom])];
+            return acc;
+          }, {})
         },
         hasPreviousWork: formData.hasPreviousWork,
-        portfolioTypes: formData.portfolioTypes,
+        startingPrices: formData.startingPrices,
+        portfolioTypes: formData.portfolioTypes, // Deprecated/Empty
+        // Construct portfolio projects
+        portfolioProjects: [
+          (formData.caseStudyLink) ? {
+            type: 'case_study',
+            link: formData.caseStudyLink
+          } : null,
+          (formData.portfolioLink) ? {
+            type: 'portfolio',
+            link: formData.portfolioLink
+          } : null
+        ].filter(Boolean),
         hasWorkedWithClients: formData.hasWorkedWithClients,
         workPreference: formData.workPreference,
+        workPreference: formData.workPreference,
         hoursPerDay: formData.hoursPerDay,
+        workingDays: formData.workingDays,
         revisionHandling: formData.revisionHandling,
         pricingModel: formData.pricingModel,
         projectRange: formData.projectRange,
@@ -694,7 +843,7 @@ const FreelancerMultiStepForm = () => {
         // Clear saved state
         localStorage.removeItem("freelancer_onboarding_data");
         localStorage.removeItem("freelancer_onboarding_step");
-        localStorage.removeItem("freelancer_onboarding_started");
+
 
         // Refresh session to get updated flags
         toast.success("Profile completed successfully!");
@@ -728,7 +877,7 @@ const FreelancerMultiStepForm = () => {
         // Clear saved state
         localStorage.removeItem("freelancer_onboarding_data");
         localStorage.removeItem("freelancer_onboarding_step");
-        localStorage.removeItem("freelancer_onboarding_started");
+
 
         toast.success("Your freelancer account has been created.");
         navigate("/freelancer", { replace: true });
@@ -758,7 +907,6 @@ const FreelancerMultiStepForm = () => {
       // Clear saved state
       localStorage.removeItem("freelancer_onboarding_data");
       localStorage.removeItem("freelancer_onboarding_step");
-      localStorage.removeItem("freelancer_onboarding_started");
 
       toast.success("Account verified and created successfully!");
       navigate("/freelancer", { replace: true });
@@ -773,34 +921,7 @@ const FreelancerMultiStepForm = () => {
   // RENDER INDIVIDUAL STEPS
   // ============================================================================
 
-  const renderWelcome = () => (
-    <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto space-y-8 animate-in fade-in zoom-in duration-500">
-      <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
-        <Bot className="w-10 h-10 text-primary" />
-      </div>
 
-      <div className="space-y-4">
-        <h1 className="text-4xl md:text-5xl font-bold text-white">
-          Welcome to Catalance
-        </h1>
-        <p className="text-xl text-white/60 leading-relaxed font-light">
-          To help us know you better and build your personalized dashboard, we need a little information about your skills and preferences.
-        </p>
-      </div>
-
-      <div className="pt-8 w-full max-w-sm">
-        <Button
-          onClick={() => setHasStarted(true)}
-          className="w-full py-8 text-lg font-medium rounded-full bg-linear-to-r from-primary to-primary-strong hover:from-primary-strong hover:to-primary border border-primary/20 shadow-lg shadow-primary/20 transition-all duration-300 transform hover:scale-[1.02] text-primary-foreground"
-        >
-          Let's Get Started
-        </Button>
-        <p className="text-white/30 text-sm mt-4">
-          Takes about 2-3 minutes
-        </p>
-      </div>
-    </div>
-  );
 
   const renderStep1 = () => (
     <div className="space-y-4">
@@ -829,13 +950,13 @@ const FreelancerMultiStepForm = () => {
       <StepHeader
         onBack={handleBack}
         title="Which services do you want to offer?"
-        subtitle="Select up to 2 services"
+        subtitle="Select up to 3 services"
       />
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
         {SERVICE_OPTIONS.map((option, index) => {
           const selectedIndex = formData.selectedServices.indexOf(option.value);
           const isSelected = selectedIndex !== -1;
-          const badgeLabel = selectedIndex === 0 ? "Primary" : (selectedIndex === 1 ? "Secondary" : "");
+          const badgeLabel = selectedIndex === 0 ? "Primary" : (selectedIndex === 1 ? "Secondary" : "Other");
 
           return (
             <motion.button
@@ -849,7 +970,7 @@ const FreelancerMultiStepForm = () => {
               type="button"
               onClick={() => toggleArrayField("selectedServices", option.value)}
               className={cn(
-                "group flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-200 relative overflow-hidden min-h-[90px]",
+                "group flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 relative overflow-hidden min-h-[120px]",
                 isSelected
                   ? "border-primary/50 bg-primary/5 shadow-md shadow-primary/5"
                   : "border-white/10 bg-white/5 hover:border-primary/30 hover:bg-white/10"
@@ -858,14 +979,14 @@ const FreelancerMultiStepForm = () => {
               {isSelected && <div className="absolute inset-0 border-2 border-primary/50 rounded-xl" />}
 
               <div className={cn(
-                "p-1.5 rounded-lg transition-colors mb-1.5",
+                "p-2.5 rounded-lg transition-colors mb-2",
                 isSelected ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/70 group-hover:bg-white/20 group-hover:text-white"
               )}>
-                {option.icon && <option.icon className="w-4 h-4" />}
+                {option.icon && <option.icon className="w-5 h-5" />}
               </div>
 
               <span className={cn(
-                "text-[10px] font-semibold text-center leading-tight transition-colors line-clamp-2 px-1",
+                "text-xs font-semibold text-center leading-tight transition-colors line-clamp-2 px-2",
                 isSelected ? "text-primary" : "text-white"
               )}>{option.label}</span>
 
@@ -897,6 +1018,7 @@ const FreelancerMultiStepForm = () => {
             selected={formData.experienceYears === option.value}
             onClick={() => handleFieldChange("experienceYears", option.value)}
             label={option.label}
+            description={option.description}
           />
         ))}
       </div>
@@ -950,19 +1072,23 @@ const FreelancerMultiStepForm = () => {
   };
 
   const renderStep5 = () => {
-    const tools = getPrimarySkillTools();
-    const skillLabel = getPrimarySkillLabel();
+    const service = formData.selectedServices[0];
+    const serviceOption = SERVICE_OPTIONS.find(s => s.value === service);
+    const serviceLabel = serviceOption ? serviceOption.label : service;
+    const tools = TOOLS_BY_SERVICE[service] || [];
+    // Helper to get tools for this specific service from state
+    const currentServiceTools = formData.serviceTools[service] || [];
 
     return (
       <div className="space-y-4">
         <StepHeader
           onBack={handleBack}
-          title={`Tools for ${skillLabel}`}
+          title={`Tools for ${serviceLabel}`}
           subtitle="Select all tools you actively use for this skill"
         />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {tools.map((tool, index) => {
-            const isSelected = formData.primarySkillTools.includes(tool);
+            const isSelected = currentServiceTools.includes(tool);
             return (
               <motion.button
                 layout
@@ -973,7 +1099,16 @@ const FreelancerMultiStepForm = () => {
                 whileTap={{ scale: 0.95 }}
                 key={tool}
                 type="button"
-                onClick={() => toggleArrayField("primarySkillTools", tool)}
+                onClick={() => {
+                  // Custom toggle logic for serviceTools
+                  setFormData(prev => {
+                    const existing = prev.serviceTools[service] || [];
+                    const updated = existing.includes(tool)
+                      ? existing.filter(t => t !== tool)
+                      : [...existing, tool];
+                    return { ...prev, serviceTools: { ...prev.serviceTools, [service]: updated } };
+                  });
+                }}
                 className={cn(
                   "group flex items-center justify-between px-4 py-4 rounded-xl border transition-all duration-200",
                   isSelected
@@ -986,25 +1121,133 @@ const FreelancerMultiStepForm = () => {
               </motion.button>
             )
           })}
+        </div>
+
+        {/* Custom tools section */}
+        <div className="mt-8 pt-3 border-t border-white/10">
+          <p className="text-xs mb-4 flex items-center justify-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-primary" />
+            <span className="font-semibold text-primary">Recommendation:</span>
+            <span className="text-white/60">Accurate skill details improve project matching</span>
+          </p>
+
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+              <Plus className="w-3.5 h-3.5 text-white/60" />
+            </div>
+            <span className="text-white/80 text-sm font-medium">Add your own tools</span>
+          </div>
+          <div className="relative group/input">
+            <Input
+              type="text"
+              placeholder="Type a tool name and press Enter"
+              value={primaryToolInput}
+              onChange={(e) => setPrimaryToolInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && primaryToolInput.trim()) {
+                  e.preventDefault();
+                  const val = primaryToolInput.trim();
+                  setFormData(prev => {
+                    const existing = prev.customTools[service] || [];
+                    if (!existing.includes(val)) {
+                      return { ...prev, customTools: { ...prev.customTools, [service]: [...existing, val] } };
+                    }
+                    return prev;
+                  });
+                  setPrimaryToolInput("");
+                }
+              }}
+              className="bg-white/5 border-white/20 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 pr-20"
+            />
+            {primaryToolInput && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40 pointer-events-none">
+                Press Enter ↵
+              </span>
+            )}
+
+            {/* Autocomplete Suggestions */}
+            {primaryToolInput && (
+              <div className="absolute z-10 w-full mt-1 max-h-48 overflow-y-auto bg-[#1A1A1A] border border-white/10 rounded-lg shadow-xl">
+                {ALL_TOOLS_SUGGESTIONS
+                  .filter(tool =>
+                    tool.toLowerCase().includes(primaryToolInput.toLowerCase()) &&
+                    !(formData.customTools[service] || []).includes(tool)
+                  )
+                  .slice(0, 5)
+                  .map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => {
+                          const existing = prev.customTools[service] || [];
+                          if (!existing.includes(suggestion)) {
+                            return { ...prev, customTools: { ...prev.customTools, [service]: [...existing, suggestion] } };
+                          }
+                          return prev;
+                        });
+                        setPrimaryToolInput("");
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-white/80 hover:bg-white/5 hover:text-primary transition-colors flex items-center gap-2"
+                    >
+                      <Sparkles className="w-3 h-3 opacity-50" />
+                      {suggestion}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+          {(formData.customTools[service] || []).length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {(formData.customTools[service] || []).map((tool, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="group flex items-center gap-1.5 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg text-sm text-primary hover:bg-primary/10 hover:border-primary/40 transition-all"
+                >
+                  <span className="font-medium">{tool}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => {
+                        const existing = prev.customTools[service] || [];
+                        return { ...prev, customTools: { ...prev.customTools, [service]: existing.filter(t => t !== tool) } };
+                      });
+                    }}
+                    className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-primary/60 hover:bg-primary/20 hover:text-primary transition-colors ml-1"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
   const renderStep6 = () => {
-    const tools = getSecondarySkillTools();
-    const skillLabel = getSecondarySkillLabel();
+    // Only if >= 2 services
+    if (formData.selectedServices.length < 2) return null;
+    const service = formData.selectedServices[1];
+    const serviceOption = SERVICE_OPTIONS.find(s => s.value === service);
+    const serviceLabel = serviceOption ? serviceOption.label : service;
+    const tools = TOOLS_BY_SERVICE[service] || [];
+    const currentServiceTools = formData.serviceTools[service] || [];
 
     return (
       <div className="space-y-4">
         <StepHeader
           onBack={handleBack}
-          title={`Tools for ${skillLabel}`}
-          subtitle="Select all tools you actively use for this skill"
+          title={`Tools for ${serviceLabel}`}
+          subtitle="Select tools for your secondary skill"
         />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {tools.map((tool, index) => {
-            const isSelected = formData.secondarySkillTools.includes(tool);
+            const isSelected = currentServiceTools.includes(tool);
             return (
               <motion.button
                 layout
@@ -1015,7 +1258,15 @@ const FreelancerMultiStepForm = () => {
                 whileTap={{ scale: 0.95 }}
                 key={tool}
                 type="button"
-                onClick={() => toggleArrayField("secondarySkillTools", tool)}
+                onClick={() => {
+                  setFormData(prev => {
+                    const existing = prev.serviceTools[service] || [];
+                    const updated = existing.includes(tool)
+                      ? existing.filter(t => t !== tool)
+                      : [...existing, tool];
+                    return { ...prev, serviceTools: { ...prev.serviceTools, [service]: updated } };
+                  });
+                }}
                 className={cn(
                   "group flex items-center justify-between px-4 py-4 rounded-xl border transition-all duration-200",
                   isSelected
@@ -1029,34 +1280,356 @@ const FreelancerMultiStepForm = () => {
             )
           })}
         </div>
+
+        <div className="mt-8 pt-6 border-t border-white/10">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-white/80 text-sm font-medium">Add custom tools</span>
+          </div>
+          <div className="relative">
+            <Input
+              placeholder="Type tool name + Enter"
+              className="bg-white/5 border-white/20 text-white"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                  e.preventDefault();
+                  const val = e.currentTarget.value.trim();
+                  setFormData(prev => {
+                    const existing = prev.customTools[service] || [];
+                    if (!existing.includes(val)) {
+                      return { ...prev, customTools: { ...prev.customTools, [service]: [...existing, val] } };
+                    }
+                    return prev;
+                  });
+                  e.currentTarget.value = "";
+                }
+              }}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {(formData.customTools[service] || []).map((t, i) => (
+              <span key={i} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded border border-primary/20 flex items-center gap-1">
+                {t}
+                <X className="w-3 h-3 cursor-pointer" onClick={() => {
+                  setFormData(prev => {
+                    const existing = prev.customTools[service] || [];
+                    return { ...prev, customTools: { ...prev.customTools, [service]: existing.filter(tool => tool !== t) } };
+                  });
+                }} />
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     );
   };
 
-  const renderStep7 = () => (
-    <div className="space-y-4">
+  const renderStep7 = () => {
+    // Only if >= 3 services
+    if (formData.selectedServices.length < 3) return null;
+    const service = formData.selectedServices[2];
+    const serviceOption = SERVICE_OPTIONS.find(s => s.value === service);
+    const serviceLabel = serviceOption ? serviceOption.label : service;
+    const tools = TOOLS_BY_SERVICE[service] || [];
+    const currentServiceTools = formData.serviceTools[service] || [];
+
+    return (
+      <div className="space-y-4">
+        <StepHeader
+          onBack={handleBack}
+          title={`Tools for ${serviceLabel}`}
+          subtitle="Select tools for your third skill"
+        />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {tools.map((tool, index) => {
+            const isSelected = currentServiceTools.includes(tool);
+            return (
+              <motion.button
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.03 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                key={tool}
+                type="button"
+                onClick={() => {
+                  setFormData(prev => {
+                    const existing = prev.serviceTools[service] || [];
+                    const updated = existing.includes(tool)
+                      ? existing.filter(t => t !== tool)
+                      : [...existing, tool];
+                    return { ...prev, serviceTools: { ...prev.serviceTools, [service]: updated } };
+                  });
+                }}
+                className={cn(
+                  "group flex items-center justify-between px-4 py-4 rounded-xl border transition-all duration-200",
+                  isSelected
+                    ? "border-primary/50 bg-primary/5 text-primary shadow-sm shadow-primary/10"
+                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/20 hover:text-white"
+                )}
+              >
+                <span className="text-sm font-medium text-left truncate">{tool}</span>
+                {isSelected && <Check className="w-4 h-4 text-primary shrink-0 ml-2" />}
+              </motion.button>
+            )
+          })}
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-white/10">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-white/80 text-sm font-medium">Add custom tools</span>
+          </div>
+          <div className="relative">
+            <Input
+              placeholder="Type tool name + Enter"
+              className="bg-white/5 border-white/20 text-white"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                  e.preventDefault();
+                  const val = e.currentTarget.value.trim();
+                  setFormData(prev => {
+                    const existing = prev.customTools[service] || [];
+                    if (!existing.includes(val)) {
+                      return { ...prev, customTools: { ...prev.customTools, [service]: [...existing, val] } };
+                    }
+                    return prev;
+                  });
+                  e.currentTarget.value = "";
+                }
+              }}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {(formData.customTools[service] || []).map((t, i) => (
+              <span key={i} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded border border-primary/20 flex items-center gap-1">
+                {t}
+                <X className="w-3 h-3 cursor-pointer" onClick={() => {
+                  setFormData(prev => {
+                    const existing = prev.customTools[service] || [];
+                    return { ...prev, customTools: { ...prev.customTools, [service]: existing.filter(tool => tool !== t) } };
+                  });
+                }} />
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderStep8 = () => (
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
         title="Do you have previous work to showcase?"
+        subtitle="This helps clients evaluate your expertise"
       />
-      <div className="space-y-3">
-        <OptionCard
-          selected={formData.hasPreviousWork === "yes"}
-          onClick={() => handleFieldChange("hasPreviousWork", "yes")}
-          label="Yes"
-          description="I can upload links/files"
-        />
-        <OptionCard
-          selected={formData.hasPreviousWork === "no"}
-          onClick={() => handleFieldChange("hasPreviousWork", "no")}
-          label="No"
-          description="I'm new but skilled"
-        />
+      <div className="space-y-4">
+        {/* Yes Option */}
+        <div
+          className={cn(
+            "rounded-xl border transition-all duration-300 overflow-hidden",
+            formData.hasPreviousWork === "yes"
+              ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
+              : "border-white/10 bg-white/5 hover:bg-white/10"
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => handleFieldChange("hasPreviousWork", "yes")}
+            className="w-full flex items-center justify-between px-6 py-5 text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                formData.hasPreviousWork === "yes" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
+              )}>
+                <Check className="w-5 h-5" />
+              </div>
+              <div>
+                <span className={cn(
+                  "block text-base font-semibold",
+                  formData.hasPreviousWork === "yes" ? "text-primary" : "text-white"
+                )}>Yes</span>
+                <span className="text-white/50 text-sm">I can upload case studies & portfolio</span>
+              </div>
+            </div>
+            {formData.hasPreviousWork === "yes" && <div className="w-2 h-2 rounded-full bg-primary" />}
+          </button>
+
+          <AnimatePresence>
+            {formData.hasPreviousWork === "yes" && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="px-6 pb-6 pt-2 space-y-6 border-t border-primary/10">
+                  <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-primary" />
+                    <span className="font-semibold text-primary">Recommendation:</span>
+                    <span className="text-white/60">Detailed case studies significantly improve shortlisting chances.</span>
+                  </p>
+                  {/* Case Study Section */}
+                  <div className="space-y-3">
+                    <Label className="text-white/80 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" /> Case Study
+                    </Label>
+                    <div className="grid grid-cols-1 gap-3">
+                      <Input
+                        value={formData.caseStudyLink}
+                        onChange={(e) => handleFieldChange("caseStudyLink", e.target.value)}
+                        placeholder="Link to case study (e.g. Behance, Website)"
+                        className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Portfolio Section */}
+                  <div className="space-y-3">
+                    <Label className="text-white/80 flex items-center gap-2">
+                      <LinkIcon className="w-4 h-4 text-primary" /> Portfolio
+                    </Label>
+                    <div className="grid grid-cols-1 gap-3">
+                      <Input
+                        value={formData.portfolioLink}
+                        onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
+                        placeholder="Link to portfolio"
+                        className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* No Option */}
+        <div
+          className={cn(
+            "rounded-xl border transition-all duration-300 overflow-hidden",
+            formData.hasPreviousWork === "no"
+              ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
+              : "border-white/10 bg-white/5 hover:bg-white/10"
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => handleFieldChange("hasPreviousWork", "no")}
+            className="w-full flex items-center justify-between px-6 py-5 text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                formData.hasPreviousWork === "no" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
+              )}>
+                <span className="text-sm font-bold">N</span>
+              </div>
+              <div>
+                <span className={cn(
+                  "block text-base font-semibold",
+                  formData.hasPreviousWork === "no" ? "text-primary" : "text-white"
+                )}>No</span>
+                <span className="text-white/50 text-sm">I'm new but skilled</span>
+              </div>
+            </div>
+            {formData.hasPreviousWork === "no" && <div className="w-2 h-2 rounded-full bg-primary" />}
+          </button>
+
+          <AnimatePresence>
+            {formData.hasPreviousWork === "no" && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="px-6 pb-6 pt-2 space-y-4 border-t border-primary/10">
+                  <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-primary" />
+                    <span className="font-semibold text-primary">Recommendation:</span>
+                    <span className="text-white/60">You can add case studies later to unlock more projects.</span>
+                  </p>
+                  <div className="space-y-3">
+                    <Label className="text-white/80 flex items-center gap-2">
+                      <LinkIcon className="w-4 h-4 text-white/50" /> Portfolio (Optional)
+                    </Label>
+                    <div className="grid grid-cols-1 gap-3">
+                      <Input
+                        value={formData.portfolioLink}
+                        onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
+                        placeholder="Link to portfolio (optional)"
+                        className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
 
-  const renderStep8 = () => (
+  const renderStep9 = () => (
+    <div className="space-y-6">
+      <StepHeader
+        onBack={handleBack}
+        title="Your starting price for these services?"
+      />
+      <div className="space-y-6">
+        {formData.selectedServices.map((serviceKey) => {
+          const serviceOption = SERVICE_OPTIONS.find(s => s.value === serviceKey);
+          const serviceLabel = serviceOption ? serviceOption.label : serviceKey;
+          const currentPrice = formData.startingPrices[serviceKey] || "";
+
+          return (
+            <div key={serviceKey} className="space-y-2">
+              <Label className="text-white/80 text-sm ml-1">{serviceLabel}</Label>
+              <div className="relative group">
+                {/* Using Select instead of Input for Ranges */}
+                <Select
+                  value={currentPrice}
+                  onValueChange={(val) => {
+                    const newPrices = { ...formData.startingPrices, [serviceKey]: val };
+                    handleFieldChange("startingPrices", newPrices);
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+                    <SelectValue placeholder="Select starting price range" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
+                    {STARTING_PRICE_RANGES.map((range) => (
+                      <SelectItem key={range} value={range} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                        {range}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mt-2">
+          <p className="text-xs flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <span>
+              <span className="font-semibold text-primary block mb-1">Recommendation:</span>
+              <span className="text-white/60">Pricing far above market rates may reduce your chances of being selected.</span>
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+
+
+  const renderStep10 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1087,7 +1660,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep9 = () => (
+  const renderStep11 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1108,7 +1681,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep10 = () => (
+  const renderStep12 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1127,26 +1700,48 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep11 = () => (
-    <div className="space-y-4">
+  const renderStep13 = () => (
+    <div className="space-y-8">
       <StepHeader
         onBack={handleBack}
-        title="How many hours per day can you dedicate?"
+        title="Availability & Schedule"
+        subtitle="Set your preferred working hours and days"
       />
-      <div className="space-y-3">
-        {HOURS_PER_DAY_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.hoursPerDay === option.value}
-            onClick={() => handleFieldChange("hoursPerDay", option.value)}
-            label={option.label}
-          />
-        ))}
+
+      {/* Hours Per Day */}
+      <div className="space-y-4">
+        <label className="text-white/80 text-sm font-medium ml-1">How many hours per day can you dedicate?</label>
+        <div className="space-y-3">
+          {HOURS_PER_DAY_OPTIONS.map(option => (
+            <OptionCard
+              key={option.value}
+              selected={formData.hoursPerDay === option.value}
+              onClick={() => handleFieldChange("hoursPerDay", option.value)}
+              label={option.label}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Working Days */}
+      <div className="space-y-4">
+        <label className="text-white/80 text-sm font-medium ml-1">Which days do you prefer to work?</label>
+        <div className="grid grid-cols-2 gap-3">
+          {WORKING_DAYS_OPTIONS.map(option => (
+            <OptionCard
+              key={option.value}
+              selected={formData.workingDays.includes(option.value)}
+              onClick={() => toggleArrayField("workingDays", option.value)}
+              label={option.label}
+              multiSelect
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
 
-  const renderStep12 = () => (
+  const renderStep14 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1162,10 +1757,20 @@ const FreelancerMultiStepForm = () => {
           />
         ))}
       </div>
+
+      <div className="p-4 mt-2 flex justify-center">
+        <p className="text-xs flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-center">
+            <span className="font-semibold text-primary inline mr-1">Recommendation:</span>
+            <span className="text-white/60">Minimum 3 revisions included by default.</span>
+          </span>
+        </p>
+      </div>
     </div>
   );
 
-  const renderStep13 = () => (
+  const renderStep15 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1184,7 +1789,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep14 = () => (
+  const renderStep16 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1203,7 +1808,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep15 = () => (
+  const renderStep17 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1224,7 +1829,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep16 = () => (
+  const renderStep18 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1252,7 +1857,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep17 = () => (
+  const renderStep19 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1275,7 +1880,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep18 = () => (
+  const renderStep20 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1298,7 +1903,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep19 = () => (
+  const renderStep21 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1318,7 +1923,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep20 = () => (
+  const renderStep22 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1337,7 +1942,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep21 = () => (
+  const renderStep23 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1387,7 +1992,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep22 = () => (
+  const renderStep24 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1408,7 +2013,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep23 = () => (
+  const renderStep25 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1426,7 +2031,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep24 = () => (
+  const renderStep26 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1441,7 +2046,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep25 = () => (
+  const renderStep27 = () => (
     <div className="space-y-4">
       <StepHeader
         onBack={handleBack}
@@ -1462,7 +2067,7 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep26 = () => (
+  const renderStep28 = () => (
     <div className="grid grid-cols-1 lg:grid-cols-2 bg-[#121212] overflow-hidden rounded-3xl border border-white/5 shadow-2xl min-h-[600px]">
       {/* Left Columns - Form */}
       <div className="p-8 lg:p-12 flex flex-col justify-center">
@@ -1642,6 +2247,8 @@ const FreelancerMultiStepForm = () => {
       case 24: return renderStep24();
       case 25: return renderStep25();
       case 26: return renderStep26();
+      case 27: return renderStep27();
+      case 28: return renderStep28();
       default: return null;
     }
   };
@@ -1661,86 +2268,80 @@ const FreelancerMultiStepForm = () => {
       </div>
 
       <div className="relative z-10 flex flex-col h-full">
-        {!hasStarted ? (
-          <div className="min-h-screen flex items-center justify-center px-6">
-            {renderWelcome()}
+        <>
+          {/* Progress Bar - Clean top bar */}
+          {/* Top Navigation Bar */}
+          <div className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a] border-b border-white/5 shadow-2xl shadow-black/50">
+
+            {/* Progress Bar Line at the very top edge */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 w-full">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_10px_rgba(253,224,71,0.5)]"
+                style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+              />
+            </div>
+
+            <div className="w-full px-6 h-16 relative flex items-center justify-center">
+              {/* Back Button - Absolute Left */}
+              {currentStep > 1 && (
+                <button
+                  onClick={handleBack}
+                  className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-all backdrop-blur-md z-20 group"
+                >
+                  <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                </button>
+              )}
+
+              {/* Step Counter - Centered */}
+              <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">
+                Step {currentStep} of {totalSteps}
+              </span>
+            </div>
           </div>
-        ) : (
-          <>
-            {/* Progress Bar - Clean top bar */}
-            {/* Top Navigation Bar */}
-            <div className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a] border-b border-white/5 shadow-2xl shadow-black/50">
 
-              {/* Progress Bar Line at the very top edge */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 w-full">
-                <div
-                  className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_10px_rgba(253,224,71,0.5)]"
-                  style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-                />
-              </div>
+          {/* Main Content - Scrollable Area */}
+          <div className="relative pt-24 pb-32 h-full overflow-y-auto w-full custom-scrollbar">
+            <div className="max-w-6xl mx-auto px-6 h-full flex flex-col justify-center min-h-[600px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={isVerifying ? 'verify' : currentStep}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="w-full"
+                >
+                  {renderCurrentStep()}
+                </motion.div>
+              </AnimatePresence>
 
-              <div className="w-full px-6 h-16 relative flex items-center justify-center">
-                {/* Back Button - Absolute Left */}
-                {currentStep > 1 && (
-                  <button
-                    onClick={handleBack}
-                    className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-all backdrop-blur-md z-20 group"
-                  >
-                    <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
-                  </button>
-                )}
+              {stepError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3"
+                >
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <p className="text-red-400 text-sm font-medium">{stepError}</p>
+                </motion.div>
+              )}
+            </div>
+          </div>
 
-                {/* Step Counter - Centered */}
-                <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">
-                  Step {currentStep} of {totalSteps}
-                </span>
+          {/* Bottom Action Button */}
+          {!isVerifying && (
+            <div className="fixed bottom-0 left-0 right-0 p-6 bg-linear-to-t from-[#0a0a0a] via-[#0a0a0a]/95 to-transparent">
+              <div className="max-w-md mx-auto">
+                <ActionButton
+                  onClick={isLastStep ? handleSubmit : handleNext}
+                  loading={isSubmitting}
+                >
+                  {isLastStep ? "Create Account" : "Continue"}
+                </ActionButton>
               </div>
             </div>
-
-            {/* Main Content - Scrollable Area */}
-            <div className="relative pt-24 pb-32 h-full overflow-y-auto w-full custom-scrollbar">
-              <div className="max-w-6xl mx-auto px-6 h-full flex flex-col justify-center min-h-[600px]">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={isVerifying ? 'verify' : currentStep}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="w-full"
-                  >
-                    {renderCurrentStep()}
-                  </motion.div>
-                </AnimatePresence>
-
-                {stepError && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-red-500" />
-                    <p className="text-red-400 text-sm font-medium">{stepError}</p>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-
-            {/* Bottom Action Button */}
-            {!isVerifying && (
-              <div className="fixed bottom-0 left-0 right-0 p-6 bg-linear-to-t from-[#0a0a0a] via-[#0a0a0a]/95 to-transparent">
-                <div className="max-w-md mx-auto">
-                  <ActionButton
-                    onClick={isLastStep ? handleSubmit : handleNext}
-                    loading={isSubmitting}
-                  >
-                    {isLastStep ? "Create Account" : "Continue"}
-                  </ActionButton>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+          )}
+        </>
       </div>
     </div>
   );
