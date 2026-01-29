@@ -243,9 +243,20 @@ function Login({ className, ...props }) {
                       </span>
                     </Button>
                   </Field>
-                  <FieldDescription className="text-center">
-                    Don&apos;t have an account? <Link to="/signup" className="underline hover:text-primary">Sign up</Link>
-                  </FieldDescription>
+                  <div className="text-center text-sm text-muted-foreground space-y-1">
+                    <p>
+                      Don&apos;t have an account?{" "}
+                      <Link to="/freelancer/onboarding" className="underline hover:text-primary">
+                        Sign up as Freelancer
+                      </Link>
+                    </p>
+                    <p>
+                      Don&apos;t have an account?{" "}
+                      <Link to="/signup" className="underline hover:text-primary">
+                        Sign up as Client
+                      </Link>
+                    </p>
+                  </div>
                 </FieldGroup>
               </form>
               <div className="bg-muted relative hidden md:block">
