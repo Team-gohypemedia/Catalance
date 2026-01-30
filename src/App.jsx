@@ -83,6 +83,7 @@ const AdminLogin = lazy(() => import("@/components/features/admin/AdminLogin"));
 const AdminApprovals = lazy(() => import("@/components/features/admin/AdminApprovals"));
 const AdminUserDetails = lazy(() => import("@/components/features/admin/AdminUserDetails"));
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
+const TermsConditions = lazy(() => import("@/components/pages/TermsConditions"));
 
 
 
@@ -113,6 +114,14 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <About />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/terms"
+              element={
+                <LayoutWithNavbar>
+                  <TermsConditions />
                 </LayoutWithNavbar>
               }
             />
