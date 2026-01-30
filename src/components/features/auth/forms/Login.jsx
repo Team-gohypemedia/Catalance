@@ -246,13 +246,13 @@ function Login({ className, ...props }) {
                   <div className="text-center text-sm text-muted-foreground space-y-1">
                     <p>
                       Don&apos;t have an account?{" "}
-                      <Link to="/freelancer/onboarding" className="underline hover:text-primary">
+                      <Link to="/signup?role=freelancer" className="underline hover:text-primary">
                         Sign up as Freelancer
                       </Link>
                     </p>
                     <p>
                       Don&apos;t have an account?{" "}
-                      <Link to="/signup" className="underline hover:text-primary">
+                      <Link to="/service" className="underline hover:text-primary">
                         Sign up as Client
                       </Link>
                     </p>
