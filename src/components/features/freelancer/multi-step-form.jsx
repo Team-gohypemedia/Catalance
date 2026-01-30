@@ -334,26 +334,16 @@ const STEPS = [
   { id: 8, key: "has_previous_work", label: "Previous Work" },
   { id: 9, key: "starting_price", label: "Starting Price" },
   { id: 10, key: "portfolio_types", label: "Portfolio Type" },
-  { id: 11, key: "worked_with_clients", label: "Client History" },
-  { id: 12, key: "work_preference", label: "Work Style" },
-  { id: 13, key: "availability", label: "Availability" },
-  { id: 14, key: "revision_handling", label: "Revisions" },
-  { id: 15, key: "pricing_model", label: "Pricing" },
-  { id: 16, key: "project_range", label: "Project Range" },
-  { id: 17, key: "project_type_preference", label: "Project Type" },
-  { id: 18, key: "reliability_work_ethics", label: "Reliability" },
-  { id: 19, key: "partial_scope", label: "Partial Scope" },
-  { id: 20, key: "sop_agreement", label: "SOP Agreement" },
-  { id: 21, key: "scope_freeze", label: "Scope Freeze" },
-  { id: 22, key: "requote_agreement", label: "Re-quote Policy" },
-  { id: 23, key: "communication_style", label: "Communication" },
-  { id: 24, key: "response_time", label: "Response Time" },
-  { id: 25, key: "timezone", label: "Timezone" },
-  { id: 26, key: "quality_process", label: "Quality" },
-  { id: 27, key: "accepts_ratings", label: "Ratings" },
-  { id: 28, key: "why_catalance", label: "Motivation" },
-  { id: 29, key: "ready_to_start", label: "Readiness" },
-  { id: 30, key: "personal_info", label: "Account" },
+  { id: 11, key: "availability", label: "Availability" },
+  { id: 12, key: "revision_handling", label: "Revisions" },
+  { id: 13, key: "project_type_preference", label: "Project Type" },
+  { id: 14, key: "reliability_work_ethics", label: "Reliability" },
+  { id: 15, key: "partial_scope", label: "Partial Scope" },
+  { id: 16, key: "requote_agreement", label: "Re-quote Policy" },
+  { id: 17, key: "communication_style", label: "Communication" },
+  { id: 18, key: "response_time", label: "Response Time" },
+  { id: 19, key: "timezone", label: "Timezone" },
+  { id: 20, key: "why_catalance", label: "Motivation" },
 ];
 
 // ============================================================================
@@ -653,7 +643,7 @@ const FreelancerMultiStepForm = () => {
         if (tools.length === 0 && custom.length === 0) return "Please select tools for your third service.";
         return "";
       }
-      case 8: // Previous Work (was 7)
+      case 8: // Previous Work
         if (!data.hasPreviousWork) return "Please make a selection.";
         if (data.hasPreviousWork === "yes") {
           const hasCaseStudy = data.caseStudyLink;
@@ -663,85 +653,52 @@ const FreelancerMultiStepForm = () => {
           }
         }
         return "";
-      case 9: // Starting Price (was 8)
+      case 9: // Starting Price
         for (const service of data.selectedServices) {
           if (!data.startingPrices[service]) return "Please select starting prices for all services.";
         }
         return "";
-      case 10: // Portfolio Types (was 9)
+      case 10: // Portfolio Types
         if (data.portfolioTypes.length === 0) return "Please select at least one portfolio type.";
         return "";
-      case 11:
-        if (!data.hasWorkedWithClients) return "Please make a selection.";
-        return "";
-      case 12:
-        if (!data.workPreference) return "Please select your work preference.";
-        return "";
-      case 13:
+      case 11: // Availability (was 13)
         if (!data.hoursPerWeek) return "Please select weekly availability.";
         if (!data.workingMode) return "Please select your preferred working mode.";
         if (!data.startTimeline) return "Please select when you can start.";
         if (!data.openToLongTerm) return "Please indicate if you're open to long-term work.";
         return "";
-      case 14:
+      case 12: // Revisions (was 14)
         if (!data.revisionHandling) return "Please select revision handling.";
         return "";
-      case 15:
-        if (!data.pricingModel) return "Please select a pricing model.";
-        return "";
-      case 16:
-        if (!data.projectRange) return "Please select your project range.";
-        return "";
-      case 17:
+      case 13: // Project Type (was 17)
         if (!data.projectTypePreference) return "Please select your preferred project type.";
         if (!data.strictDeadlines) return "Please select your deadline comfort level.";
         if (!data.scopePreference) return "Please select your scope preference.";
         return "";
-      case 18:
+      case 14: // Reliability (was 18)
         if (!data.missedDeadlines) return "Please select your deadline history.";
         if (!data.delayHandling) return "Please select how you handle delays.";
         return "";
-      case 19:
+      case 15: // Partial Scope (was 19)
         if (!data.partialScope) return "Please make a selection.";
         return "";
-      case 20:
-        if (data.sopAgreement !== "yes") return "You must agree to follow Catalance SOPs.";
-        return "";
-      case 21:
-        if (data.scopeFreezeAgreement !== "yes") return "You must understand scope freeze policy.";
-        return "";
-      case 22:
+      case 16: // Re-quote Policy (was 22)
         if (data.requoteAgreement !== "yes") return "You must agree to re-quoting policy.";
         return "";
-      case 23:
+      case 17: // Communication (was 23)
         if (!data.platformChatOnly) return "Please select your in-platform chat preference.";
         if (!data.updateFrequency) return "Please select your update frequency.";
         if (!data.keepDiscussionsOnPlatform) return "Please confirm discussion preference.";
         return "";
-      case 24:
+      case 18: // Response Time (was 24)
         if (!data.responseTime) return "Please select response time.";
         return "";
-      case 25:
+      case 19: // Timezone (was 25)
         // Timezone is optional
         return "";
-      case 26:
-        if (data.qualityProcess.length === 0) return "Please select at least one QA method.";
-        return "";
-      case 27:
-        if (data.acceptsRatings !== "yes") return "You must accept ratings and reviews.";
-        return "";
-      case 28:
+      case 20: // Motivation (was 28)
         if (!data.whyCatalance.trim()) return "Please share your motivation.";
         if (!data.termsAccepted) return "You must accept the Terms & Conditions to continue.";
-        return "";
-      case 29:
-        if (!data.readyToStart) return "Please make a selection.";
-        return "";
-      case 30:
-        // Final account validation
-        if (!data.fullName.trim()) return "Please enter your full name.";
-        if (!data.email.trim() || !data.email.includes("@")) return "Please enter a valid email.";
-        if (data.password.length < 8) return "Password must be at least 8 characters.";
         return "";
       default:
         return "";
@@ -772,17 +729,16 @@ const FreelancerMultiStepForm = () => {
       return;
     }
 
-    // Portfolio types (Step 10) is typically skipped in current logic, let's keep that pattern if desired:
-    // Old logic skipped Step 9 (Portfolio Types) if navigating from 8 (Starting Price).
-    // New Step 9 is Starting Price. Step 10 is Portfolio Types.
+    // Portfolio types (Step 10) is skipped - go from 9 (Starting Price) directly to 11 (Availability)
     if (currentStep === 9) {
-      setCurrentStep(11); // Skip to Client History
+      setCurrentStep(11);
       setStepError("");
       return;
     }
 
     if (currentStep < totalSteps) {
-      if (user && currentStep === totalSteps - 1) {
+      // For logged-in users, submit on last step before account creation
+      if (user && currentStep === totalSteps) {
         handleSubmit();
         return;
       }
@@ -793,7 +749,7 @@ const FreelancerMultiStepForm = () => {
 
   const handleBack = () => {
     if (currentStep > 1) {
-      // Step 11 (Client History) -> Back logic
+      // Step 11 (Availability) -> Back logic
       // Needs to go to Step 9 (Starting Price), skipping 10 (Portfolio Types)
       if (currentStep === 11) {
         setCurrentStep(9);
@@ -824,7 +780,6 @@ const FreelancerMultiStepForm = () => {
       setStepError("");
     }
   };
-
 
 
   // ============================================================================
@@ -1696,11 +1651,11 @@ const FreelancerMultiStepForm = () => {
           );
         })}
 
-        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mt-2">
-          <p className="text-xs flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="p-4 mt-2 flex justify-center">
+          <p className="text-xs flex items-center justify-center gap-2 text-center">
+            <Sparkles className="w-4 h-4 text-primary shrink-0" />
             <span>
-              <span className="font-semibold text-primary block mb-1">Recommendation:</span>
+              <span className="font-semibold text-primary inline mr-1">Recommendation:</span>
               <span className="text-white/60">Pricing far above market rates may reduce your chances of being selected.</span>
             </span>
           </p>
@@ -1742,46 +1697,6 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep11 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Have you worked with clients before?"
-      />
-      <div className="space-y-3">
-        <OptionCard
-          selected={formData.hasWorkedWithClients === "yes"}
-          onClick={() => handleFieldChange("hasWorkedWithClients", "yes")}
-          label="Yes"
-        />
-        <OptionCard
-          selected={formData.hasWorkedWithClients === "no"}
-          onClick={() => handleFieldChange("hasWorkedWithClients", "no")}
-          label="No"
-        />
-      </div>
-    </div>
-  );
-
-  const renderStep12 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="How do you prefer to work?"
-      />
-      <div className="space-y-3">
-        {WORK_PREFERENCE_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.workPreference === option.value}
-            onClick={() => handleFieldChange("workPreference", option.value)}
-            label={option.label}
-          />
-        ))}
-      </div>
-    </div>
-  );
-
   const renderStep13 = () => (
     <div className="space-y-7">
       <StepHeader
@@ -1790,15 +1705,15 @@ const FreelancerMultiStepForm = () => {
         subtitle="Share your availability so we can match you faster"
       />
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-center">
+            <div className="text-center">
               <p className="text-white/90 text-sm font-semibold">Weekly hours</p>
               <p className="text-white/50 text-[11px]">Pick one option</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-nowrap gap-3 overflow-x-auto justify-center">
             {HOURS_PER_WEEK_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1812,13 +1727,13 @@ const FreelancerMultiStepForm = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-center">
+            <div className="text-center">
               <p className="text-white/90 text-sm font-semibold">Working mode</p>
               <p className="text-white/50 text-[11px]">How you prefer to schedule</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-nowrap gap-3 overflow-x-auto justify-center">
             {WORKING_MODE_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1832,13 +1747,13 @@ const FreelancerMultiStepForm = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-center">
+            <div className="text-center">
               <p className="text-white/90 text-sm font-semibold">Start timeline</p>
               <p className="text-white/50 text-[11px]">Earliest availability</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-nowrap gap-3 overflow-x-auto justify-center">
             {START_TIMELINE_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1852,13 +1767,13 @@ const FreelancerMultiStepForm = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-center">
+            <div className="text-center">
               <p className="text-white/90 text-sm font-semibold">Long‑term availability</p>
               <p className="text-white/50 text-[11px]">Ongoing or short‑term</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-nowrap gap-3 overflow-x-auto justify-center">
             {LONG_TERM_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1913,44 +1828,6 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep15 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="What pricing model do you prefer?"
-      />
-      <div className="space-y-3">
-        {PRICING_MODEL_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.pricingModel === option.value}
-            onClick={() => handleFieldChange("pricingModel", option.value)}
-            label={option.label}
-          />
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderStep16 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Your typical project range?"
-      />
-      <div className="space-y-3">
-        {PROJECT_RANGE_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.projectRange === option.value}
-            onClick={() => handleFieldChange("projectRange", option.value)}
-            label={option.label}
-          />
-        ))}
-      </div>
-    </div>
-  );
-
   const renderStep17ProjectType = () => (
     <div className="space-y-8">
       <StepHeader
@@ -1963,7 +1840,7 @@ const FreelancerMultiStepForm = () => {
 
         <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">What type of projects do you prefer?</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-nowrap gap-3 justify-center">
             {PROJECT_TYPE_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -2025,7 +1902,6 @@ const FreelancerMultiStepForm = () => {
       />
 
       <div className="max-w-3xl mx-auto text-center space-y-6">
-        <p className="text-white/60 text-xs uppercase tracking-[0.2em]">Questions</p>
 
         <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">Have you ever missed a project deadline?</p>
@@ -2045,7 +1921,7 @@ const FreelancerMultiStepForm = () => {
 
         <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">How do you handle delays?</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-nowrap gap-3 justify-center">
             {DELAY_HANDLING_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -2084,57 +1960,6 @@ const FreelancerMultiStepForm = () => {
           onClick={() => handleFieldChange("partialScope", "no")}
           label="No"
         />
-      </div>
-    </div>
-  );
-
-  const renderStep18 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Do you agree to follow Catalance's 4-phase SOP?"
-        subtitle="This is mandatory to proceed"
-      />
-      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
-        <p className="text-amber-200 text-sm">
-          âš ï¸ All projects on Catalance follow our standard operating procedures.
-        </p>
-      </div>
-      <div className="space-y-3">
-        <button
-          onClick={() => handleFieldChange("sopAgreement", "yes")}
-          className={cn(
-            "w-full py-4 rounded-xl font-medium transition-all text-center",
-            formData.sopAgreement === "yes"
-              ? "bg-green-500 text-white"
-              : "bg-white/10 text-white/70 hover:bg-white/20"
-          )}
-        >
-          Yes, I agree
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderStep19 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Work starts only after scope freeze and approval"
-        subtitle="Do you understand this policy?"
-      />
-      <div className="space-y-3">
-        <button
-          onClick={() => handleFieldChange("scopeFreezeAgreement", "yes")}
-          className={cn(
-            "w-full py-4 rounded-xl font-medium transition-all text-center",
-            formData.scopeFreezeAgreement === "yes"
-              ? "bg-green-500 text-white"
-              : "bg-white/10 text-white/70 hover:bg-white/20"
-          )}
-        >
-          Yes, I understand
-        </button>
       </div>
     </div>
   );
@@ -2189,7 +2014,7 @@ const FreelancerMultiStepForm = () => {
 
         <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">How often will you share project updates on the platform?</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-nowrap gap-3 justify-center">
             {UPDATE_FREQUENCY_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -2197,10 +2022,7 @@ const FreelancerMultiStepForm = () => {
                 selected={formData.updateFrequency === option.value}
                 onClick={() => handleFieldChange("updateFrequency", option.value)}
                 label={option.label}
-                className={cn(
-                  "justify-center",
-                  option.value === "milestones" && "col-span-2"
-                )}
+                className="justify-center"
               />
             ))}
           </div>
@@ -2250,90 +2072,28 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderStep23 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
-        title="Timezone & working hours"
-        subtitle="Optional but recommended"
+        title="Your Timezone"
+        subtitle="This helps us match you with clients in compatible time zones"
       />
       <div className="space-y-4">
-        <div className="space-y-4">
-          <div>
-            <Label className="text-white/70 text-sm">Your timezone</Label>
-            <Select
-              value={formData.timezone}
-              onValueChange={(value) => handleFieldChange("timezone", value)}
-            >
-              <SelectTrigger className="mt-2 w-full bg-white/5 border-white/10 text-white">
-                <SelectValue placeholder="Select timezone" />
-              </SelectTrigger>
-              <SelectContent>
-                {TIMEZONE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-white/70 text-sm">Working hours</Label>
-            <Select
-              value={formData.workingHours}
-              onValueChange={(value) => handleFieldChange("workingHours", value)}
-            >
-              <SelectTrigger className="mt-2 w-full bg-white/5 border-white/10 text-white">
-                <SelectValue placeholder="Select working hours" />
-              </SelectTrigger>
-              <SelectContent>
-                {WORKING_HOURS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderStep24 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="How do you ensure quality before delivery?"
-        subtitle="Select all that apply"
-      />
-      <div className="space-y-3">
-        {QUALITY_PROCESS_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.qualityProcess.includes(option.value)}
-            onClick={() => toggleArrayField("qualityProcess", option.value)}
-            label={option.label}
-            multiSelect
-          />
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderStep25 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Are you comfortable with ratings and reviews?"
-        subtitle="After every project completion"
-      />
-      <div className="space-y-3">
-        <OptionCard
-          selected={formData.acceptsRatings === "yes"}
-          onClick={() => handleFieldChange("acceptsRatings", "yes")}
-          label="Yes"
-          description="I welcome feedback and ratings"
-        />
+        <Select
+          value={formData.timezone}
+          onValueChange={(value) => handleFieldChange("timezone", value)}
+        >
+          <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+            <SelectValue placeholder="Select timezone" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
+            {TIMEZONE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
@@ -2363,154 +2123,6 @@ const FreelancerMultiStepForm = () => {
           />
           <span>Terms &amp; Conditions</span>
         </label>
-      </div>
-    </div>
-  );
-
-  const renderStep27 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Ready to start immediately if selected?"
-      />
-      <div className="space-y-3">
-        <OptionCard
-          selected={formData.readyToStart === "yes"}
-          onClick={() => handleFieldChange("readyToStart", "yes")}
-          label="Yes"
-        />
-        <OptionCard
-          selected={formData.readyToStart === "not_yet"}
-          onClick={() => handleFieldChange("readyToStart", "not_yet")}
-          label="Not yet"
-        />
-      </div>
-    </div>
-  );
-
-  const renderStep28 = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 bg-[#121212] overflow-hidden rounded-3xl border border-white/5 shadow-2xl min-h-[600px]">
-      {/* Left Columns - Form */}
-      <div className="p-8 lg:p-12 flex flex-col justify-center">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Create your account</h2>
-          <p className="text-white/50 text-sm">Enter your details below to create your account</p>
-          <p className="text-[10px] uppercase tracking-widest text-primary font-bold mt-2">
-            YOU'RE CREATING A FREELANCER ACCOUNT
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <Label className="text-white/70 text-sm font-semibold">Full name</Label>
-            <Input
-              value={formData.fullName}
-              onChange={(e) => handleFieldChange("fullName", e.target.value)}
-              placeholder="John Doe"
-              className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg focus:border-primary/50 transition-colors"
-            />
-          </div>
-          <div>
-            <Label className="text-white/70 text-sm font-semibold">Email</Label>
-            <Input
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleFieldChange("email", e.target.value)}
-              placeholder="you@example.com"
-              className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg focus:border-primary/50 transition-colors"
-            />
-          </div>
-          <div>
-            <Label className="text-white/70 text-sm font-semibold">Password</Label>
-            <div className="relative mt-1.5">
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => handleFieldChange("password", e.target.value)}
-                placeholder="Min. 8 characters"
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg pr-10 focus:border-primary/50 transition-colors"
-              />
-            </div>
-            <p className="text-white/30 text-xs mt-1">Must be at least 8 characters long.</p>
-          </div>
-
-          <Button
-            className="w-full h-11 bg-primary hover:bg-primary-strong text-black font-bold rounded-lg mt-4 transition-all"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create Account"}
-          </Button>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-white/10" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#121212] px-2 text-white/30">Or continue with</span>
-            </div>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full h-11 border-white/10 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg flex items-center justify-center gap-2 transition-all"
-            onClick={() => toast.info("Google Auth not implemented")}
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="currentColor"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            Continue with Google
-          </Button>
-
-          <div className="text-center mt-4">
-            <span className="text-white/50 text-sm">Already have an account? </span>
-            <button
-              onClick={() => navigate("/login")}
-              className="text-white/90 hover:text-white underline underline-offset-4 text-sm font-medium transition-colors"
-            >
-              Sign in
-            </button>
-          </div>
-
-          <div className="text-center mt-6">
-            <p className="text-[10px] text-white/30">
-              By clicking continue, you agree to our <a href="#" className="underline hover:text-white/50">Terms of Service</a> and <a href="#" className="underline hover:text-white/50">Privacy Policy</a>.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Column - Image & Branding */}
-      <div className="relative hidden lg:flex flex-col items-center justify-center p-12 bg-zinc-900 overflow-hidden">
-        {/* Background Image Placeholder with Overlay */}
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=1770&q=80')] bg-cover bg-center opacity-40 mix-blend-overlay" />
-        <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/80" />
-
-        <div className="relative z-10 text-center max-w-md">
-          <h3 className="text-4xl font-bold text-white/20 leading-tight mb-6 font-serif">
-            THE TRUSTED SPACE FOR <br />
-            <span className="text-white/40">SKILLED FREELANCERS.</span>
-          </h3>
-          {/* Abstract rings/decoration */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-white/5 rounded-full animate-pulse" style={{ animationDuration: '8s' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] border border-white/5 rounded-full" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] border border-white/5 rounded-full" />
-        </div>
       </div>
     </div>
   );
@@ -2552,26 +2164,16 @@ const FreelancerMultiStepForm = () => {
       case 8: return renderStep8();
       case 9: return renderStep9();
       case 10: return renderStep10();
-      case 11: return renderStep11();
-      case 12: return renderStep12();
-      case 13: return renderStep13();
-      case 14: return renderStep14();
-      case 15: return renderStep15();
-      case 16: return renderStep16();
-      case 17: return renderStep17ProjectType();
-      case 18: return renderStep18Reliability();
-      case 19: return renderStep17();
-      case 20: return renderStep18();
-      case 21: return renderStep19();
-      case 22: return renderStep20();
-      case 23: return renderStep21();
-      case 24: return renderStep22();
-      case 25: return renderStep23();
-      case 26: return renderStep24();
-      case 27: return renderStep25();
-      case 28: return renderStep26();
-      case 29: return renderStep27();
-      case 30: return renderStep28();
+      case 11: return renderStep13(); // Availability (was step 13)
+      case 12: return renderStep14(); // Revisions (was step 14)
+      case 13: return renderStep17ProjectType(); // Project Type (was step 17)
+      case 14: return renderStep18Reliability(); // Reliability (was step 18)
+      case 15: return renderStep17(); // Partial Scope (was step 19)
+      case 16: return renderStep20(); // Re-quote Policy (was step 22)
+      case 17: return renderStep21(); // Communication (was step 23)
+      case 18: return renderStep22(); // Response Time (was step 24)
+      case 19: return renderStep23(); // Timezone (was step 25)
+      case 20: return renderStep26(); // Motivation (was step 28)
       default: return null;
     }
   };
