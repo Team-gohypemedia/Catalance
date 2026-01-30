@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   ChevronLeft,
   Check,
@@ -33,6 +33,7 @@ import {
   Upload,
   Link as LinkIcon,
   FileText,
+  Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -322,8 +323,20 @@ const WORKING_HOURS_OPTIONS = [
   { value: "night_shift", label: "Night Shift" },
 ];
 
+const BUDGET_RANGE_OPTIONS = [
+  { value: "under_10k", label: "Under ₹10,000" },
+  { value: "10k_50k", label: "₹10,000 - ₹50,000" },
+  { value: "50k_1l", label: "₹50,000 - ₹1 Lakh" },
+  { value: "1l_2l", label: "₹1 Lakh - ₹2 Lakhs" },
+  { value: "2l_5l", label: "₹2 Lakhs - ₹5 Lakhs" },
+  { value: "5l_10l", label: "₹5 Lakhs - ₹10 Lakhs" },
+  { value: "over_10l", label: "Over ₹10 Lakhs" },
+];
+
 // Each step = one question/action
+// Organized into 6 logical phases
 const STEPS = [
+  // Phase 1: Identity & Skills (1-7)
   { id: 1, key: "role", label: "Role Type" },
   { id: 2, key: "services", label: "Services" },
   { id: 3, key: "experience_years", label: "Experience" },
@@ -331,19 +344,22 @@ const STEPS = [
   { id: 5, key: "primary_tools", label: "Primary Tools" },
   { id: 6, key: "secondary_tools", label: "Secondary Tools" },
   { id: 7, key: "tertiary_tools", label: "Tertiary Tools" },
+  // Phase 2: Portfolio & Work History (8)
   { id: 8, key: "has_previous_work", label: "Previous Work" },
+  // Phase 3: Pricing & Business Terms (9-12)
   { id: 9, key: "starting_price", label: "Starting Price" },
-  { id: 10, key: "portfolio_types", label: "Portfolio Type" },
-  { id: 11, key: "availability", label: "Availability" },
-  { id: 12, key: "revision_handling", label: "Revisions" },
+  { id: 10, key: "revision_handling", label: "Revisions" },
+  { id: 11, key: "partial_scope", label: "Partial Scope" },
+  { id: 12, key: "requote_agreement", label: "Re-quote Policy" },
+  // Phase 4: Work Style & Preferences (13-14)
   { id: 13, key: "project_type_preference", label: "Project Type" },
   { id: 14, key: "reliability_work_ethics", label: "Reliability" },
-  { id: 15, key: "partial_scope", label: "Partial Scope" },
-  { id: 16, key: "requote_agreement", label: "Re-quote Policy" },
-  { id: 17, key: "communication_style", label: "Communication" },
-  { id: 18, key: "response_time", label: "Response Time" },
-  { id: 19, key: "timezone", label: "Timezone" },
-  { id: 20, key: "why_catalance", label: "Motivation" },
+  // Phase 5: Availability & Logistics (15-17)
+  { id: 15, key: "availability", label: "Availability" },
+  { id: 16, key: "timezone", label: "Timezone" },
+  { id: 17, key: "response_time", label: "Response Time" },
+  // Phase 6: Final (18)
+  { id: 18, key: "why_catalance", label: "Motivation" },
 ];
 
 // ============================================================================
@@ -526,8 +542,8 @@ const FreelancerMultiStepForm = () => {
     phone: "",
     countryCode: "US",
     location: "",
-    caseStudyLink: "",
-    caseStudyFile: null, // { name: string, url: string }
+    // Case studies - array of { link: string, file: { name: string, url: string } | null, budget: string }
+    caseStudies: [{ link: "", file: null, budget: "" }],
     portfolioFile: null, // { name: string, url: string }
   });
 
@@ -646,10 +662,11 @@ const FreelancerMultiStepForm = () => {
       case 8: // Previous Work
         if (!data.hasPreviousWork) return "Please make a selection.";
         if (data.hasPreviousWork === "yes") {
-          const hasCaseStudy = data.caseStudyLink;
+          // Check if at least one case study has data OR there's a portfolio link
+          const hasCaseStudy = data.caseStudies.some(study => study.link || study.file);
           const hasPortfolio = data.portfolioLink;
           if (!hasCaseStudy && !hasPortfolio) {
-            return "Please provide at least one case study or portfolio link.";
+            return "Please provide at least one case study (link/file) or a portfolio link.";
           }
         }
         return "";
@@ -658,45 +675,36 @@ const FreelancerMultiStepForm = () => {
           if (!data.startingPrices[service]) return "Please select starting prices for all services.";
         }
         return "";
-      case 10: // Portfolio Types
-        if (data.portfolioTypes.length === 0) return "Please select at least one portfolio type.";
+      case 10: // Revisions
+        if (!data.revisionHandling) return "Please select revision handling.";
         return "";
-      case 11: // Availability (was 13)
+      case 11: // Partial Scope
+        if (!data.partialScope) return "Please make a selection.";
+        return "";
+      case 12: // Re-quote Policy
+        if (data.requoteAgreement !== "yes") return "You must agree to re-quoting policy.";
+        return "";
+      case 13: // Project Type
+        if (!data.projectTypePreference) return "Please select your preferred project type.";
+        if (!data.strictDeadlines) return "Please select your deadline comfort level.";
+        if (!data.scopePreference) return "Please select your scope preference.";
+        return "";
+      case 14: // Reliability
+        if (!data.missedDeadlines) return "Please select your deadline history.";
+        if (!data.delayHandling) return "Please select how you handle delays.";
+        return "";
+      case 15: // Availability
         if (!data.hoursPerWeek) return "Please select weekly availability.";
         if (!data.workingMode) return "Please select your preferred working mode.";
         if (!data.startTimeline) return "Please select when you can start.";
         if (!data.openToLongTerm) return "Please indicate if you're open to long-term work.";
         return "";
-      case 12: // Revisions (was 14)
-        if (!data.revisionHandling) return "Please select revision handling.";
+      case 16: // Timezone (optional)
         return "";
-      case 13: // Project Type (was 17)
-        if (!data.projectTypePreference) return "Please select your preferred project type.";
-        if (!data.strictDeadlines) return "Please select your deadline comfort level.";
-        if (!data.scopePreference) return "Please select your scope preference.";
-        return "";
-      case 14: // Reliability (was 18)
-        if (!data.missedDeadlines) return "Please select your deadline history.";
-        if (!data.delayHandling) return "Please select how you handle delays.";
-        return "";
-      case 15: // Partial Scope (was 19)
-        if (!data.partialScope) return "Please make a selection.";
-        return "";
-      case 16: // Re-quote Policy (was 22)
-        if (data.requoteAgreement !== "yes") return "You must agree to re-quoting policy.";
-        return "";
-      case 17: // Communication (was 23)
-        if (!data.platformChatOnly) return "Please select your in-platform chat preference.";
-        if (!data.updateFrequency) return "Please select your update frequency.";
-        if (!data.keepDiscussionsOnPlatform) return "Please confirm discussion preference.";
-        return "";
-      case 18: // Response Time (was 24)
+      case 17: // Response Time
         if (!data.responseTime) return "Please select response time.";
         return "";
-      case 19: // Timezone (was 25)
-        // Timezone is optional
-        return "";
-      case 20: // Motivation (was 28)
+      case 18: // Motivation
         if (!data.whyCatalance.trim()) return "Please share your motivation.";
         if (!data.termsAccepted) return "You must accept the Terms & Conditions to continue.";
         return "";
@@ -729,13 +737,6 @@ const FreelancerMultiStepForm = () => {
       return;
     }
 
-    // Portfolio types (Step 10) is skipped - go from 9 (Starting Price) directly to 11 (Availability)
-    if (currentStep === 9) {
-      setCurrentStep(11);
-      setStepError("");
-      return;
-    }
-
     if (currentStep < totalSteps) {
       // For logged-in users, submit on last step before account creation
       if (user && currentStep === totalSteps) {
@@ -749,13 +750,6 @@ const FreelancerMultiStepForm = () => {
 
   const handleBack = () => {
     if (currentStep > 1) {
-      // Step 11 (Availability) -> Back logic
-      // Needs to go to Step 9 (Starting Price), skipping 10 (Portfolio Types)
-      if (currentStep === 11) {
-        setCurrentStep(9);
-        return;
-      }
-
       // Step 8 (Prev Work) -> Back logic
       // If < 2 services, go back to 5
       // If 2 services, go back to 6
@@ -770,11 +764,6 @@ const FreelancerMultiStepForm = () => {
           return;
         }
       }
-
-      // Step 7 (Tertiary) -> Back logic (implicit: goes to 6)
-
-      // Step 6 (Secondary) -> Back logic
-      // If navigating back from 6, we always go to 5.
 
       setCurrentStep(currentStep - 1);
       setStepError("");
@@ -1454,162 +1443,283 @@ const FreelancerMultiStepForm = () => {
     );
   };
 
-  const renderStep8 = () => (
-    <div className="space-y-6">
-      <StepHeader
-        onBack={handleBack}
-        title="Do you have previous work to showcase?"
-        subtitle="This helps clients evaluate your expertise"
-      />
-      <div className="space-y-4">
-        {/* Yes Option */}
-        <div
-          className={cn(
-            "rounded-xl border transition-all duration-300 overflow-hidden",
-            formData.hasPreviousWork === "yes"
-              ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
-              : "border-white/10 bg-white/5 hover:bg-white/10"
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => handleFieldChange("hasPreviousWork", "yes")}
-            className="w-full flex items-center justify-between px-6 py-5 text-left"
+  const renderStep8 = () => {
+    const handleAddCaseStudy = () => {
+      const newCaseStudies = [...formData.caseStudies, { link: "", file: null, budget: "" }];
+      handleFieldChange("caseStudies", newCaseStudies);
+
+      // Auto-scroll to bottom after render
+      setTimeout(() => {
+        const container = document.querySelector('.custom-scrollbar');
+        if (container) {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+      }, 100);
+    };
+
+    const handleRemoveCaseStudy = (index) => {
+      if (formData.caseStudies.length > 1) {
+        const newCaseStudies = formData.caseStudies.filter((_, i) => i !== index);
+        handleFieldChange("caseStudies", newCaseStudies);
+      }
+    };
+
+    const handleCaseStudyChange = (index, field, value) => {
+      const newCaseStudies = [...formData.caseStudies];
+      newCaseStudies[index][field] = value;
+      handleFieldChange("caseStudies", newCaseStudies);
+    };
+
+    return (
+      <div className="space-y-6">
+        <StepHeader
+          onBack={handleBack}
+          title="Do you have previous work to showcase?"
+          subtitle="This helps clients evaluate your expertise"
+        />
+        <div className="space-y-4">
+          <div
+            className={cn(
+              "rounded-xl border transition-all duration-300 overflow-hidden",
+              formData.hasPreviousWork === "yes"
+                ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
+                : "border-white/10 bg-white/5 hover:bg-white/10"
+            )}
           >
-            <div className="flex items-center gap-4">
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-                formData.hasPreviousWork === "yes" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
-              )}>
-                <Check className="w-5 h-5" />
+            <button
+              type="button"
+              onClick={() => handleFieldChange("hasPreviousWork", "yes")}
+              className="w-full flex items-center justify-between px-6 py-5 text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                  formData.hasPreviousWork === "yes" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
+                )}>
+                  <Check className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className={cn(
+                    "block text-base font-semibold",
+                    formData.hasPreviousWork === "yes" ? "text-primary" : "text-white"
+                  )}>Yes</span>
+                  <span className="text-white/50 text-sm">I can upload case studies & portfolio</span>
+                </div>
               </div>
-              <div>
-                <span className={cn(
-                  "block text-base font-semibold",
-                  formData.hasPreviousWork === "yes" ? "text-primary" : "text-white"
-                )}>Yes</span>
-                <span className="text-white/50 text-sm">I can upload case studies & portfolio</span>
-              </div>
-            </div>
-            {formData.hasPreviousWork === "yes" && <div className="w-2 h-2 rounded-full bg-primary" />}
-          </button>
+              {formData.hasPreviousWork === "yes" && <div className="w-2 h-2 rounded-full bg-primary" />}
+            </button>
 
-          <AnimatePresence>
-            {formData.hasPreviousWork === "yes" && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="px-6 pb-6 pt-2 space-y-6 border-t border-primary/10">
-                  <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-primary" />
-                    <span className="font-semibold text-primary">Recommendation:</span>
-                    <span className="text-white/60">Detailed case studies significantly improve shortlisting chances.</span>
-                  </p>
-                  {/* Case Study Section */}
-                  <div className="space-y-3">
-                    <Label className="text-white/80 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-primary" /> Case Study
-                    </Label>
-                    <div className="grid grid-cols-1 gap-3">
-                      <Input
-                        value={formData.caseStudyLink}
-                        onChange={(e) => handleFieldChange("caseStudyLink", e.target.value)}
-                        placeholder="Link to case study (e.g. Behance, Website)"
-                        className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
-                      />
-                    </div>
-                  </div>
+            <AnimatePresence>
+              {formData.hasPreviousWork === "yes" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-6 pb-6 pt-2 space-y-6 border-t border-primary/10">
+                    <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-primary" />
+                      <span className="font-semibold text-primary">Recommendation:</span>
+                      <span className="text-white/60">Detailed case studies significantly improve shortlisting chances.</span>
+                    </p>
+                    <p className="text-xs text-center text-red-400 font-medium">
+                      Note: At least one case study is mandatory.
+                    </p>
 
-                  {/* Portfolio Section */}
-                  <div className="space-y-3">
-                    <Label className="text-white/80 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4 text-primary" /> Portfolio
-                    </Label>
-                    <div className="grid grid-cols-1 gap-3">
+                    {formData.caseStudies.map((study, index) => (
+                      <div key={index} className="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10 relative">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-white/90 font-medium flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-primary" /> Case Study {index + 1}
+                          </Label>
+                          {formData.caseStudies.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCaseStudy(index)}
+                              className="text-white/40 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          {/* Case Study Link */}
+                          <div>
+                            <Label className="text-white/60 text-xs mb-1.5 block">Project Link</Label>
+                            <Input
+                              value={study.link}
+                              onChange={(e) => handleCaseStudyChange(index, "link", e.target.value)}
+                              placeholder="e.g. Behance, Live Website, Dribbble"
+                              className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
+                            />
+                          </div>
+
+                          {/* File Upload for Case Study */}
+                          <div>
+                            <Label className="text-white/60 text-xs mb-1.5 block">Or Upload PDF Document</Label>
+                            <div className="relative">
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                className="hidden"
+                                id={`case-study-file-${index}`}
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    // Mock upload for now - in real app would upload to cloud storage
+                                    handleCaseStudyChange(index, "file", { name: file.name, url: URL.createObjectURL(file) });
+                                  }
+                                }}
+                              />
+                              <label
+                                htmlFor={`case-study-file-${index}`}
+                                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                                  <Upload className="w-4 h-4 text-white/70" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <span className="block text-sm text-white/80 truncate">
+                                    {study.file ? study.file.name : "Upload PDF (Max 10MB)"}
+                                  </span>
+                                </div>
+                                {study.file && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleCaseStudyChange(index, "file", null);
+                                    }}
+                                    className="p-1 hover:bg-white/10 rounded-full"
+                                  >
+                                    <X className="w-4 h-4 text-white/50" />
+                                  </button>
+                                )}
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Budget Range */}
+                          <div>
+                            <Label className="text-white/60 text-xs mb-1.5 block">Project Budget</Label>
+                            <Select
+                              value={study.budget}
+                              onValueChange={(val) => handleCaseStudyChange(index, "budget", val)}
+                            >
+                              <SelectTrigger className="w-full bg-black/20 border-white/10 text-white">
+                                <SelectValue placeholder="Select the budget range for this project" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-zinc-900 border-white/10 text-white">
+                                {BUDGET_RANGE_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddCaseStudy}
+                      className="w-full border-dashed border-white/20 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Another Case Study
+                    </Button>
+
+                    {/* General Portfolio Link */}
+                    <div className="space-y-3 pt-4 border-t border-white/10">
+                      <Label className="text-white/80 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-primary" /> General Portfolio Link
+                      </Label>
                       <Input
                         value={formData.portfolioLink}
                         onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
-                        placeholder="Link to portfolio"
+                        placeholder="Link to your main portfolio (optional)"
                         className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
                       />
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-        {/* No Option */}
-        <div
-          className={cn(
-            "rounded-xl border transition-all duration-300 overflow-hidden",
-            formData.hasPreviousWork === "no"
-              ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
-              : "border-white/10 bg-white/5 hover:bg-white/10"
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => handleFieldChange("hasPreviousWork", "no")}
-            className="w-full flex items-center justify-between px-6 py-5 text-left"
+          {/* No Option */}
+          <div
+            className={cn(
+              "rounded-xl border transition-all duration-300 overflow-hidden",
+              formData.hasPreviousWork === "no"
+                ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
+                : "border-white/10 bg-white/5 hover:bg-white/10"
+            )}
           >
-            <div className="flex items-center gap-4">
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-                formData.hasPreviousWork === "no" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
-              )}>
-                <span className="text-sm font-bold">N</span>
+            <button
+              type="button"
+              onClick={() => handleFieldChange("hasPreviousWork", "no")}
+              className="w-full flex items-center justify-between px-6 py-5 text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                  formData.hasPreviousWork === "no" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
+                )}>
+                  <span className="text-sm font-bold">N</span>
+                </div>
+                <div>
+                  <span className={cn(
+                    "block text-base font-semibold",
+                    formData.hasPreviousWork === "no" ? "text-primary" : "text-white"
+                  )}>No</span>
+                  <span className="text-white/50 text-sm">I'm new but skilled</span>
+                </div>
               </div>
-              <div>
-                <span className={cn(
-                  "block text-base font-semibold",
-                  formData.hasPreviousWork === "no" ? "text-primary" : "text-white"
-                )}>No</span>
-                <span className="text-white/50 text-sm">I'm new but skilled</span>
-              </div>
-            </div>
-            {formData.hasPreviousWork === "no" && <div className="w-2 h-2 rounded-full bg-primary" />}
-          </button>
+              {formData.hasPreviousWork === "no" && <div className="w-2 h-2 rounded-full bg-primary" />}
+            </button>
 
-          <AnimatePresence>
-            {formData.hasPreviousWork === "no" && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="px-6 pb-6 pt-2 space-y-4 border-t border-primary/10">
-                  <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-primary" />
-                    <span className="font-semibold text-primary">Recommendation:</span>
-                    <span className="text-white/60">You can add case studies later to unlock more projects.</span>
-                  </p>
-                  <div className="space-y-3">
-                    <Label className="text-white/80 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4 text-white/50" /> Portfolio (Optional)
-                    </Label>
-                    <div className="grid grid-cols-1 gap-3">
-                      <Input
-                        value={formData.portfolioLink}
-                        onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
-                        placeholder="Link to portfolio (optional)"
-                        className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
-                      />
+            <AnimatePresence>
+              {formData.hasPreviousWork === "no" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-6 pb-6 pt-2 space-y-4 border-t border-primary/10">
+                    <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-primary" />
+                      <span className="font-semibold text-primary">Recommendation:</span>
+                      <span className="text-white/60">You can add case studies later to unlock more projects.</span>
+                    </p>
+                    <div className="space-y-3">
+                      <Label className="text-white/80 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-white/50" /> Portfolio (Optional)
+                      </Label>
+                      <div className="grid grid-cols-1 gap-3">
+                        <Input
+                          value={formData.portfolioLink}
+                          onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
+                          placeholder="Link to portfolio (optional)"
+                          className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep9 = () => (
     <div className="space-y-6">
@@ -1713,7 +1823,7 @@ const FreelancerMultiStepForm = () => {
               <p className="text-white/50 text-[11px]">Pick one option</p>
             </div>
           </div>
-          <div className="flex flex-nowrap gap-3 overflow-x-auto justify-center">
+          <div className="flex flex-nowrap gap-3 justify-center overflow-x-auto pb-2 custom-scrollbar">
             {HOURS_PER_WEEK_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1733,7 +1843,7 @@ const FreelancerMultiStepForm = () => {
               <p className="text-white/50 text-[11px]">How you prefer to schedule</p>
             </div>
           </div>
-          <div className="flex flex-nowrap gap-3 overflow-x-auto justify-center">
+          <div className="flex flex-nowrap gap-3 justify-center overflow-x-auto pb-2 custom-scrollbar">
             {WORKING_MODE_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1753,7 +1863,7 @@ const FreelancerMultiStepForm = () => {
               <p className="text-white/50 text-[11px]">Earliest availability</p>
             </div>
           </div>
-          <div className="flex flex-nowrap gap-3 overflow-x-auto justify-center">
+          <div className="flex flex-nowrap gap-3 justify-center overflow-x-auto pb-2 custom-scrollbar">
             {START_TIMELINE_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1773,7 +1883,7 @@ const FreelancerMultiStepForm = () => {
               <p className="text-white/50 text-[11px]">Ongoing or short‑term</p>
             </div>
           </div>
-          <div className="flex flex-nowrap gap-3 overflow-x-auto justify-center">
+          <div className="flex flex-nowrap gap-3 justify-center overflow-x-auto pb-2 custom-scrollbar">
             {LONG_TERM_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1829,15 +1939,14 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderStep17ProjectType = () => (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
         title="Project Type Preference"
+        subtitle="Help us match you with the right projects"
       />
 
       <div className="max-w-3xl mx-auto text-center space-y-6">
-        <p className="text-white/60 text-xs uppercase tracking-[0.2em]">Questions</p>
-
         <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">What type of projects do you prefer?</p>
           <div className="flex flex-nowrap gap-3 justify-center">
@@ -1856,7 +1965,7 @@ const FreelancerMultiStepForm = () => {
 
         <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">Are you comfortable working with strict deadlines?</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-3 justify-center">
             {STRICT_DEADLINES_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1872,7 +1981,7 @@ const FreelancerMultiStepForm = () => {
 
         <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">Do you prefer clearly defined scopes or evolving requirements?</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-3 justify-center">
             {SCOPE_PREFERENCE_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1895,17 +2004,17 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderStep18Reliability = () => (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
         title="Reliability & Work Ethics"
+        subtitle="Help clients understand your work style"
       />
 
       <div className="max-w-3xl mx-auto text-center space-y-6">
-
         <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">Have you ever missed a project deadline?</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="flex gap-3 justify-center">
             {DEADLINE_HISTORY_OPTIONS.map(option => (
               <OptionCard
                 key={option.value}
@@ -1944,21 +2053,26 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderStep17 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
         title="Are you open to partial-scope projects?"
+        subtitle="Some projects may only need specific parts of a larger scope"
       />
-      <div className="space-y-3">
+      <div className="flex gap-3 justify-center">
         <OptionCard
+          compact
           selected={formData.partialScope === "yes"}
           onClick={() => handleFieldChange("partialScope", "yes")}
           label="Yes"
+          className="justify-center"
         />
         <OptionCard
+          compact
           selected={formData.partialScope === "no"}
           onClick={() => handleFieldChange("partialScope", "no")}
           label="No"
+          className="justify-center"
         />
       </div>
     </div>
@@ -1997,38 +2111,6 @@ const FreelancerMultiStepForm = () => {
 
       <div className="max-w-3xl mx-auto text-center space-y-6">
         <div className="space-y-3">
-          <p className="text-white/80 text-sm font-medium">Are you comfortable communicating only via in-platform chat?</p>
-          <div className="grid grid-cols-2 gap-3">
-            {PLATFORM_CHAT_ONLY_OPTIONS.map(option => (
-              <OptionCard
-                key={option.value}
-                compact
-                selected={formData.platformChatOnly === option.value}
-                onClick={() => handleFieldChange("platformChatOnly", option.value)}
-                label={option.label}
-                className="justify-center"
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-white/80 text-sm font-medium">How often will you share project updates on the platform?</p>
-          <div className="flex flex-nowrap gap-3 justify-center">
-            {UPDATE_FREQUENCY_OPTIONS.map(option => (
-              <OptionCard
-                key={option.value}
-                compact
-                selected={formData.updateFrequency === option.value}
-                onClick={() => handleFieldChange("updateFrequency", option.value)}
-                label={option.label}
-                className="justify-center"
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
           <p className="text-white/80 text-sm font-medium">Are you willing to keep all project-related discussions on Catalance?</p>
           <div className="grid grid-cols-2 gap-3">
             {PLATFORM_CHAT_ONLY_OPTIONS.map(option => (
@@ -2053,10 +2135,11 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderStep22 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
         title="Response time commitment?"
+        subtitle="How quickly can clients expect to hear from you?"
       />
       <div className="space-y-3">
         {RESPONSE_TIME_OPTIONS.map(option => (
@@ -2099,29 +2182,27 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderStep26 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
-        title="Final Intent"
+        title="Almost there!"
+        subtitle="Tell us why you want to join Catalance"
       />
-      <div className="space-y-4">
-        <p className="text-white/80 text-sm font-medium text-center">
-          Why do you want to work on Catelance?
-        </p>
+      <div className="space-y-6">
         <Textarea
           value={formData.whyCatalance}
           onChange={(e) => handleFieldChange("whyCatalance", e.target.value)}
-          placeholder="Short, serious answer"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[150px]"
+          placeholder="Share your motivation in a few sentences..."
+          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[150px] rounded-xl p-4"
         />
-        <label className="flex items-center gap-3 text-white/70 text-sm">
+        <label className="flex items-center justify-center gap-3 text-white/70 text-sm cursor-pointer">
           <input
             type="checkbox"
             checked={formData.termsAccepted}
             onChange={(e) => handleFieldChange("termsAccepted", e.target.checked)}
-            className="h-4 w-4 rounded border-white/20 bg-white/10 text-primary focus:ring-primary/40"
+            className="h-5 w-5 rounded border-white/20 bg-white/10 text-primary focus:ring-primary/40"
           />
-          <span>Terms &amp; Conditions</span>
+          <span>I agree to the <Link to="/terms" target="_blank" className="underline hover:text-primary">Terms & Conditions</Link></span>
         </label>
       </div>
     </div>
@@ -2154,6 +2235,7 @@ const FreelancerMultiStepForm = () => {
     if (isVerifying) return renderOtpVerification();
 
     switch (currentStep) {
+      // Phase 1: Identity & Skills (1-7)
       case 1: return renderStep1();
       case 2: return renderStep2();
       case 3: return renderStep3();
@@ -2161,19 +2243,22 @@ const FreelancerMultiStepForm = () => {
       case 5: return renderStep5();
       case 6: return renderStep6();
       case 7: return renderStep7();
+      // Phase 2: Portfolio & Work History (8)
       case 8: return renderStep8();
-      case 9: return renderStep9();
-      case 10: return renderStep10();
-      case 11: return renderStep13(); // Availability (was step 13)
-      case 12: return renderStep14(); // Revisions (was step 14)
-      case 13: return renderStep17ProjectType(); // Project Type (was step 17)
-      case 14: return renderStep18Reliability(); // Reliability (was step 18)
-      case 15: return renderStep17(); // Partial Scope (was step 19)
-      case 16: return renderStep20(); // Re-quote Policy (was step 22)
-      case 17: return renderStep21(); // Communication (was step 23)
-      case 18: return renderStep22(); // Response Time (was step 24)
-      case 19: return renderStep23(); // Timezone (was step 25)
-      case 20: return renderStep26(); // Motivation (was step 28)
+      // Phase 3: Pricing & Business Terms (9-12)
+      case 9: return renderStep9(); // Starting Price
+      case 10: return renderStep14(); // Revisions
+      case 11: return renderStep17(); // Partial Scope
+      case 12: return renderStep20(); // Re-quote Policy
+      // Phase 4: Work Style & Preferences (13-14)
+      case 13: return renderStep17ProjectType(); // Project Type
+      case 14: return renderStep18Reliability(); // Reliability
+      // Phase 5: Availability & Logistics (15-17)
+      case 15: return renderStep13(); // Availability
+      case 16: return renderStep23(); // Timezone
+      case 17: return renderStep22(); // Response Time
+      // Phase 6: Communication & Final (18-19)
+      case 18: return renderStep26(); // Motivation
       default: return null;
     }
   };
@@ -2225,8 +2310,8 @@ const FreelancerMultiStepForm = () => {
           </div>
 
           {/* Main Content - Scrollable Area */}
-          <div className="relative pt-24 pb-32 h-full overflow-y-auto w-full custom-scrollbar">
-            <div className="max-w-6xl mx-auto px-6 h-full flex flex-col justify-center min-h-[600px]">
+          <div className="relative h-full overflow-y-auto w-full custom-scrollbar">
+            <div className="max-w-6xl mx-auto px-6 py-24 min-h-full flex flex-col">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={isVerifying ? 'verify' : currentStep}
@@ -2234,22 +2319,13 @@ const FreelancerMultiStepForm = () => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="w-full"
+                  className="w-full my-auto"
                 >
                   {renderCurrentStep()}
                 </motion.div>
               </AnimatePresence>
 
-              {stepError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3"
-                >
-                  <div className="w-2 h-2 rounded-full bg-red-500" />
-                  <p className="text-red-400 text-sm font-medium">{stepError}</p>
-                </motion.div>
-              )}
+
             </div>
           </div>
 
