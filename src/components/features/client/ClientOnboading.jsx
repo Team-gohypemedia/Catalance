@@ -365,7 +365,7 @@ const ClientOnboading = () => {
       </div>
 
       <div className="text-center space-y-2 relative z-10">
-        <span className="inline-block px-6 py-2 text-lg uppercase tracking-[0.4em] bg-background text-primary rounded-full font-semibold shadow-md">
+        <span className="inline-block px-6 py-2 text-3xl uppercase tracking-[0.4em] bg-background text-primary rounded-full font-semibold shadow-md">
           Services
         </span>
         <h2 className="text-3xl font-semibold">

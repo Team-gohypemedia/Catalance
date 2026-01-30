@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   ChevronLeft,
   Check,
@@ -33,6 +33,7 @@ import {
   Upload,
   Link as LinkIcon,
   FileText,
+  Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -201,21 +202,28 @@ const WORK_PREFERENCE_OPTIONS = [
   { value: "monthly_retainer", label: "Monthly/retainer work" },
 ];
 
-const HOURS_PER_DAY_OPTIONS = [
-  { value: "1_2", label: "1-2 hours" },
-  { value: "4_6", label: "4-6 hours" },
-  { value: "6_8", label: "6-8 hours" },
-  { value: "more_than_8", label: "More than 8 hours" },
+const HOURS_PER_WEEK_OPTIONS = [
+  { value: "less_than_10", label: "Less than 10 hours" },
+  { value: "10_20", label: "10–20 hours" },
+  { value: "20_30", label: "20–30 hours" },
+  { value: "30_plus", label: "30+ hours" },
 ];
 
-const WORKING_DAYS_OPTIONS = [
-  { value: "monday", label: "Monday" },
-  { value: "tuesday", label: "Tuesday" },
-  { value: "wednesday", label: "Wednesday" },
-  { value: "thursday", label: "Thursday" },
-  { value: "friday", label: "Friday" },
-  { value: "saturday", label: "Saturday" },
-  { value: "sunday", label: "Sunday" },
+const WORKING_MODE_OPTIONS = [
+  { value: "fixed_hours", label: "Fixed hours" },
+  { value: "flexible_hours", label: "Flexible hours" },
+  { value: "on_demand", label: "On-demand" },
+];
+
+const START_TIMELINE_OPTIONS = [
+  { value: "immediately", label: "Immediately" },
+  { value: "within_3_5_days", label: "Within 3–5 days" },
+  { value: "after_1_week", label: "After 1 week" },
+];
+
+const LONG_TERM_OPTIONS = [
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
 ];
 
 const REVISION_HANDLING_OPTIONS = [
@@ -243,6 +251,45 @@ const COMMUNICATION_STYLE_OPTIONS = [
 const RESPONSE_TIME_OPTIONS = [
   { value: "within_24h", label: "Within 24 hours" },
   { value: "same_day", label: "Same working day" },
+];
+
+const PLATFORM_CHAT_ONLY_OPTIONS = [
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
+];
+
+const UPDATE_FREQUENCY_OPTIONS = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "milestones", label: "As per milestones" },
+];
+
+const PROJECT_TYPE_OPTIONS = [
+  { value: "short_term", label: "Short-term" },
+  { value: "long_term", label: "Long-term" },
+  { value: "one_time", label: "One-time tasks" },
+];
+
+const STRICT_DEADLINES_OPTIONS = [
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
+];
+
+const SCOPE_PREFERENCE_OPTIONS = [
+  { value: "defined", label: "Clearly defined" },
+  { value: "flexible", label: "Flexible" },
+];
+
+const DEADLINE_HISTORY_OPTIONS = [
+  { value: "never", label: "Never" },
+  { value: "rarely", label: "Rarely" },
+  { value: "occasionally", label: "Occasionally" },
+];
+
+const DELAY_HANDLING_OPTIONS = [
+  { value: "inform_client", label: "Inform client in advance" },
+  { value: "adjust_scope", label: "Adjust scope" },
+  { value: "extend_timeline", label: "Extend timeline" },
 ];
 
 const QUALITY_PROCESS_OPTIONS = [
@@ -276,8 +323,20 @@ const WORKING_HOURS_OPTIONS = [
   { value: "night_shift", label: "Night Shift" },
 ];
 
+const BUDGET_RANGE_OPTIONS = [
+  { value: "under_10k", label: "Under ₹10,000" },
+  { value: "10k_50k", label: "₹10,000 - ₹50,000" },
+  { value: "50k_1l", label: "₹50,000 - ₹1 Lakh" },
+  { value: "1l_2l", label: "₹1 Lakh - ₹2 Lakhs" },
+  { value: "2l_5l", label: "₹2 Lakhs - ₹5 Lakhs" },
+  { value: "5l_10l", label: "₹5 Lakhs - ₹10 Lakhs" },
+  { value: "over_10l", label: "Over ₹10 Lakhs" },
+];
+
 // Each step = one question/action
+// Organized into 6 logical phases
 const STEPS = [
+  // Phase 1: Identity & Skills (1-7)
   { id: 1, key: "role", label: "Role Type" },
   { id: 2, key: "services", label: "Services" },
   { id: 3, key: "experience_years", label: "Experience" },
@@ -285,27 +344,22 @@ const STEPS = [
   { id: 5, key: "primary_tools", label: "Primary Tools" },
   { id: 6, key: "secondary_tools", label: "Secondary Tools" },
   { id: 7, key: "tertiary_tools", label: "Tertiary Tools" },
+  // Phase 2: Portfolio & Work History (8)
   { id: 8, key: "has_previous_work", label: "Previous Work" },
+  // Phase 3: Pricing & Business Terms (9-12)
   { id: 9, key: "starting_price", label: "Starting Price" },
-  { id: 10, key: "portfolio_types", label: "Portfolio Type" },
-  { id: 11, key: "worked_with_clients", label: "Client History" },
-  { id: 12, key: "work_preference", label: "Work Style" },
-  { id: 13, key: "hours_per_day", label: "Availability" },
-  { id: 14, key: "revision_handling", label: "Revisions" },
-  { id: 15, key: "pricing_model", label: "Pricing" },
-  { id: 16, key: "project_range", label: "Project Range" },
-  { id: 17, key: "partial_scope", label: "Partial Scope" },
-  { id: 18, key: "sop_agreement", label: "SOP Agreement" },
-  { id: 19, key: "scope_freeze", label: "Scope Freeze" },
-  { id: 20, key: "requote_agreement", label: "Re-quote Policy" },
-  { id: 21, key: "communication_style", label: "Communication" },
-  { id: 22, key: "response_time", label: "Response Time" },
-  { id: 23, key: "timezone", label: "Timezone" },
-  { id: 24, key: "quality_process", label: "Quality" },
-  { id: 25, key: "accepts_ratings", label: "Ratings" },
-  { id: 26, key: "why_catalance", label: "Motivation" },
-  { id: 27, key: "ready_to_start", label: "Readiness" },
-  { id: 28, key: "personal_info", label: "Account" },
+  { id: 10, key: "revision_handling", label: "Revisions" },
+  { id: 11, key: "partial_scope", label: "Partial Scope" },
+  { id: 12, key: "requote_agreement", label: "Re-quote Policy" },
+  // Phase 4: Work Style & Preferences (13-14)
+  { id: 13, key: "project_type_preference", label: "Project Type" },
+  { id: 14, key: "reliability_work_ethics", label: "Reliability" },
+  // Phase 5: Availability & Logistics (15-17)
+  { id: 15, key: "availability", label: "Availability" },
+  { id: 16, key: "timezone", label: "Timezone" },
+  { id: 17, key: "response_time", label: "Response Time" },
+  // Phase 6: Final (18)
+  { id: 18, key: "why_catalance", label: "Motivation" },
 ];
 
 // ============================================================================
@@ -342,6 +396,8 @@ const OptionCard = ({
   description,
   icon: Icon,
   multiSelect = false,
+  compact = false,
+  className = "",
 }) => (
   <motion.button
     layout
@@ -352,10 +408,12 @@ const OptionCard = ({
     type="button"
     onClick={onClick}
     className={cn(
-      "group relative w-full flex items-center justify-between px-6 py-5 rounded-xl border transition-all duration-300 overflow-hidden",
+      "group relative w-full flex items-center justify-between rounded-xl border transition-all duration-300 overflow-hidden",
+      compact ? "px-4 py-3" : "px-6 py-5",
       selected
         ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
-        : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20"
+        : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20",
+      className
     )}
   >
     {/* Active indicator bar */}
@@ -376,11 +434,14 @@ const OptionCard = ({
       )}
       <div className="text-left">
         <p className={cn(
-          "text-base font-semibold transition-colors",
+          compact ? "text-sm font-semibold transition-colors" : "text-base font-semibold transition-colors",
           selected ? "text-primary" : "text-white"
         )}>{label}</p>
         {description && (
-          <p className="text-white/50 text-sm mt-1 group-hover:text-white/70 transition-colors">{description}</p>
+          <p className={cn(
+            "text-white/50 mt-1 group-hover:text-white/70 transition-colors",
+            compact ? "text-xs" : "text-sm"
+          )}>{description}</p>
         )}
       </div>
     </div>
@@ -447,22 +508,33 @@ const FreelancerMultiStepForm = () => {
     hasWorkedWithClients: "",
     portfolioLink: "",
     workPreference: "",
-    hoursPerDay: "",
-    workingDays: [],
+    hoursPerWeek: "",
+    workingMode: "",
+    startTimeline: "",
+    openToLongTerm: "",
     revisionHandling: "",
     pricingModel: "",
     projectRange: "",
+    projectTypePreference: "",
+    strictDeadlines: "",
+    scopePreference: "",
+    missedDeadlines: "",
+    delayHandling: "",
     partialScope: "",
     sopAgreement: "",
     scopeFreezeAgreement: "",
     requoteAgreement: "",
     communicationStyle: "",
     responseTime: "",
+    platformChatOnly: "",
+    updateFrequency: "",
+    keepDiscussionsOnPlatform: "",
     timezone: "",
     workingHours: "",
     qualityProcess: [],
     acceptsRatings: "",
     whyCatalance: "",
+    termsAccepted: false,
     readyToStart: "",
     fullName: "",
     email: "",
@@ -470,8 +542,8 @@ const FreelancerMultiStepForm = () => {
     phone: "",
     countryCode: "US",
     location: "",
-    caseStudyLink: "",
-    caseStudyFile: null, // { name: string, url: string }
+    // Case studies - array of { link: string, file: { name: string, url: string } | null, budget: string }
+    caseStudies: [{ link: "", file: null, budget: "" }],
     portfolioFile: null, // { name: string, url: string }
   });
 
@@ -587,90 +659,54 @@ const FreelancerMultiStepForm = () => {
         if (tools.length === 0 && custom.length === 0) return "Please select tools for your third service.";
         return "";
       }
-      case 8: // Previous Work (was 7)
+      case 8: // Previous Work
         if (!data.hasPreviousWork) return "Please make a selection.";
         if (data.hasPreviousWork === "yes") {
-          const hasCaseStudy = data.caseStudyLink;
+          // Check if at least one case study has data OR there's a portfolio link
+          const hasCaseStudy = data.caseStudies.some(study => study.link || study.file);
           const hasPortfolio = data.portfolioLink;
           if (!hasCaseStudy && !hasPortfolio) {
-            return "Please provide at least one case study or portfolio link.";
+            return "Please provide at least one case study (link/file) or a portfolio link.";
           }
         }
         return "";
-      case 9: // Starting Price (was 8)
+      case 9: // Starting Price
         for (const service of data.selectedServices) {
           if (!data.startingPrices[service]) return "Please select starting prices for all services.";
         }
         return "";
-      case 10: // Portfolio Types (was 9)
-        if (data.portfolioTypes.length === 0) return "Please select at least one portfolio type.";
-        return "";
-      case 11:
-        if (!data.hasWorkedWithClients) return "Please make a selection.";
-        return "";
-      case 12:
-        if (!data.workPreference) return "Please select your work preference.";
-        return "";
-      case 13:
-        if (!data.hoursPerDay) return "Please select daily availability.";
-        if (data.hoursPerDay !== "full_time" && data.workingDays.length === 0) return "Please select working days.";
-        return "";
-      case 13:
+      case 10: // Revisions
         if (!data.revisionHandling) return "Please select revision handling.";
         return "";
-      case 14:
-        if (!data.pricingModel) return "Please select a pricing model.";
-        return "";
-      case 15:
-        if (!data.projectRange) return "Please select your project range.";
-        return "";
-      case 16:
+      case 11: // Partial Scope
         if (!data.partialScope) return "Please make a selection.";
         return "";
-      case 17:
-        if (data.sopAgreement !== "yes") return "You must agree to follow Catalance SOPs.";
-        return "";
-      case 18:
-        if (data.scopeFreezeAgreement !== "yes") return "You must understand scope freeze policy.";
-        return "";
-      case 19:
+      case 12: // Re-quote Policy
         if (data.requoteAgreement !== "yes") return "You must agree to re-quoting policy.";
         return "";
-      case 20:
-        if (!data.communicationStyle) return "Please select communication style.";
+      case 13: // Project Type
+        if (!data.projectTypePreference) return "Please select your preferred project type.";
+        if (!data.strictDeadlines) return "Please select your deadline comfort level.";
+        if (!data.scopePreference) return "Please select your scope preference.";
         return "";
-      case 21:
+      case 14: // Reliability
+        if (!data.missedDeadlines) return "Please select your deadline history.";
+        if (!data.delayHandling) return "Please select how you handle delays.";
+        return "";
+      case 15: // Availability
+        if (!data.hoursPerWeek) return "Please select weekly availability.";
+        if (!data.workingMode) return "Please select your preferred working mode.";
+        if (!data.startTimeline) return "Please select when you can start.";
+        if (!data.openToLongTerm) return "Please indicate if you're open to long-term work.";
+        return "";
+      case 16: // Timezone (optional)
+        return "";
+      case 17: // Response Time
         if (!data.responseTime) return "Please select response time.";
         return "";
-      case 22:
-        // Timezone is optional
-        return "";
-      case 23:
-        if (data.qualityProcess.length === 0) return "Please select at least one QA method.";
-        return "";
-      case 24:
-        if (data.acceptsRatings !== "yes") return "You must accept ratings and reviews.";
-        return "";
-      case 25:
+      case 18: // Motivation
         if (!data.whyCatalance.trim()) return "Please share your motivation.";
-        return "";
-      case 26:
-        if (!data.readyToStart) return "Please make a selection.";
-        return "";
-      case 27:
-        // Final account validation
-        if (!data.fullName.trim()) return "Please enter your full name.";
-        if (!data.email.trim() || !data.email.includes("@")) return "Please enter a valid email.";
-        if (data.password.length < 8) return "Password must be at least 8 characters.";
-        return "";
-      case 28:
-        // Account validation (renumbered) - duplicates case 27 logic if step shifted?
-        // Step 28 is now Account. Step 27 is Readiness.
-        // Wait, Readiness was 26, Account was 27.
-        // New: Readiness 27, Account 28.
-        if (!data.fullName.trim()) return "Please enter your full name.";
-        if (!data.email.trim() || !data.email.includes("@")) return "Please enter a valid email.";
-        if (data.password.length < 8) return "Password must be at least 8 characters.";
+        if (!data.termsAccepted) return "You must accept the Terms & Conditions to continue.";
         return "";
       default:
         return "";
@@ -701,17 +737,9 @@ const FreelancerMultiStepForm = () => {
       return;
     }
 
-    // Portfolio types (Step 10) is typically skipped in current logic, let's keep that pattern if desired:
-    // Old logic skipped Step 9 (Portfolio Types) if navigating from 8 (Starting Price).
-    // New Step 9 is Starting Price. Step 10 is Portfolio Types.
-    if (currentStep === 9) {
-      setCurrentStep(11); // Skip to Client History
-      setStepError("");
-      return;
-    }
-
     if (currentStep < totalSteps) {
-      if (user && currentStep === totalSteps - 1) {
+      // For logged-in users, submit on last step before account creation
+      if (user && currentStep === totalSteps) {
         handleSubmit();
         return;
       }
@@ -722,13 +750,6 @@ const FreelancerMultiStepForm = () => {
 
   const handleBack = () => {
     if (currentStep > 1) {
-      // Step 11 (Client History) -> Back logic
-      // Needs to go to Step 9 (Starting Price), skipping 10 (Portfolio Types)
-      if (currentStep === 11) {
-        setCurrentStep(9);
-        return;
-      }
-
       // Step 8 (Prev Work) -> Back logic
       // If < 2 services, go back to 5
       // If 2 services, go back to 6
@@ -744,16 +765,10 @@ const FreelancerMultiStepForm = () => {
         }
       }
 
-      // Step 7 (Tertiary) -> Back logic (implicit: goes to 6)
-
-      // Step 6 (Secondary) -> Back logic
-      // If navigating back from 6, we always go to 5.
-
       setCurrentStep(currentStep - 1);
       setStepError("");
     }
   };
-
 
 
   // ============================================================================
@@ -809,18 +824,29 @@ const FreelancerMultiStepForm = () => {
         hasWorkedWithClients: formData.hasWorkedWithClients,
         workPreference: formData.workPreference,
         workPreference: formData.workPreference,
-        hoursPerDay: formData.hoursPerDay,
-        workingDays: formData.workingDays,
+        hoursPerWeek: formData.hoursPerWeek,
+        workingMode: formData.workingMode,
+        startTimeline: formData.startTimeline,
+        openToLongTerm: formData.openToLongTerm,
         revisionHandling: formData.revisionHandling,
         pricingModel: formData.pricingModel,
         projectRange: formData.projectRange,
+        projectTypePreference: formData.projectTypePreference,
+        strictDeadlines: formData.strictDeadlines,
+        scopePreference: formData.scopePreference,
+        missedDeadlines: formData.missedDeadlines,
+        delayHandling: formData.delayHandling,
         partialScope: formData.partialScope,
         communicationStyle: formData.communicationStyle,
+        platformChatOnly: formData.platformChatOnly,
+        updateFrequency: formData.updateFrequency,
+        keepDiscussionsOnPlatform: formData.keepDiscussionsOnPlatform,
         responseTime: formData.responseTime,
         timezone: formData.timezone,
         workingHours: formData.workingHours,
         qualityProcess: formData.qualityProcess,
         whyCatalance: formData.whyCatalance,
+        termsAccepted: formData.termsAccepted,
         readyToStart: formData.readyToStart,
         phone: (() => {
           if (user) return user.phoneNumber || "";
@@ -1417,162 +1443,283 @@ const FreelancerMultiStepForm = () => {
     );
   };
 
-  const renderStep8 = () => (
-    <div className="space-y-6">
-      <StepHeader
-        onBack={handleBack}
-        title="Do you have previous work to showcase?"
-        subtitle="This helps clients evaluate your expertise"
-      />
-      <div className="space-y-4">
-        {/* Yes Option */}
-        <div
-          className={cn(
-            "rounded-xl border transition-all duration-300 overflow-hidden",
-            formData.hasPreviousWork === "yes"
-              ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
-              : "border-white/10 bg-white/5 hover:bg-white/10"
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => handleFieldChange("hasPreviousWork", "yes")}
-            className="w-full flex items-center justify-between px-6 py-5 text-left"
+  const renderStep8 = () => {
+    const handleAddCaseStudy = () => {
+      const newCaseStudies = [...formData.caseStudies, { link: "", file: null, budget: "" }];
+      handleFieldChange("caseStudies", newCaseStudies);
+
+      // Auto-scroll to bottom after render
+      setTimeout(() => {
+        const container = document.querySelector('.custom-scrollbar');
+        if (container) {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+      }, 100);
+    };
+
+    const handleRemoveCaseStudy = (index) => {
+      if (formData.caseStudies.length > 1) {
+        const newCaseStudies = formData.caseStudies.filter((_, i) => i !== index);
+        handleFieldChange("caseStudies", newCaseStudies);
+      }
+    };
+
+    const handleCaseStudyChange = (index, field, value) => {
+      const newCaseStudies = [...formData.caseStudies];
+      newCaseStudies[index][field] = value;
+      handleFieldChange("caseStudies", newCaseStudies);
+    };
+
+    return (
+      <div className="space-y-6">
+        <StepHeader
+          onBack={handleBack}
+          title="Do you have previous work to showcase?"
+          subtitle="This helps clients evaluate your expertise"
+        />
+        <div className="space-y-4">
+          <div
+            className={cn(
+              "rounded-xl border transition-all duration-300 overflow-hidden",
+              formData.hasPreviousWork === "yes"
+                ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
+                : "border-white/10 bg-white/5 hover:bg-white/10"
+            )}
           >
-            <div className="flex items-center gap-4">
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-                formData.hasPreviousWork === "yes" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
-              )}>
-                <Check className="w-5 h-5" />
+            <button
+              type="button"
+              onClick={() => handleFieldChange("hasPreviousWork", "yes")}
+              className="w-full flex items-center justify-between px-6 py-5 text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                  formData.hasPreviousWork === "yes" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
+                )}>
+                  <Check className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className={cn(
+                    "block text-base font-semibold",
+                    formData.hasPreviousWork === "yes" ? "text-primary" : "text-white"
+                  )}>Yes</span>
+                  <span className="text-white/50 text-sm">I can upload case studies & portfolio</span>
+                </div>
               </div>
-              <div>
-                <span className={cn(
-                  "block text-base font-semibold",
-                  formData.hasPreviousWork === "yes" ? "text-primary" : "text-white"
-                )}>Yes</span>
-                <span className="text-white/50 text-sm">I can upload case studies & portfolio</span>
-              </div>
-            </div>
-            {formData.hasPreviousWork === "yes" && <div className="w-2 h-2 rounded-full bg-primary" />}
-          </button>
+              {formData.hasPreviousWork === "yes" && <div className="w-2 h-2 rounded-full bg-primary" />}
+            </button>
 
-          <AnimatePresence>
-            {formData.hasPreviousWork === "yes" && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="px-6 pb-6 pt-2 space-y-6 border-t border-primary/10">
-                  <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-primary" />
-                    <span className="font-semibold text-primary">Recommendation:</span>
-                    <span className="text-white/60">Detailed case studies significantly improve shortlisting chances.</span>
-                  </p>
-                  {/* Case Study Section */}
-                  <div className="space-y-3">
-                    <Label className="text-white/80 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-primary" /> Case Study
-                    </Label>
-                    <div className="grid grid-cols-1 gap-3">
-                      <Input
-                        value={formData.caseStudyLink}
-                        onChange={(e) => handleFieldChange("caseStudyLink", e.target.value)}
-                        placeholder="Link to case study (e.g. Behance, Website)"
-                        className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
-                      />
-                    </div>
-                  </div>
+            <AnimatePresence>
+              {formData.hasPreviousWork === "yes" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-6 pb-6 pt-2 space-y-6 border-t border-primary/10">
+                    <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-primary" />
+                      <span className="font-semibold text-primary">Recommendation:</span>
+                      <span className="text-white/60">Detailed case studies significantly improve shortlisting chances.</span>
+                    </p>
+                    <p className="text-xs text-center text-red-400 font-medium">
+                      Note: At least one case study is mandatory.
+                    </p>
 
-                  {/* Portfolio Section */}
-                  <div className="space-y-3">
-                    <Label className="text-white/80 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4 text-primary" /> Portfolio
-                    </Label>
-                    <div className="grid grid-cols-1 gap-3">
+                    {formData.caseStudies.map((study, index) => (
+                      <div key={index} className="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10 relative">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-white/90 font-medium flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-primary" /> Case Study {index + 1}
+                          </Label>
+                          {formData.caseStudies.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCaseStudy(index)}
+                              className="text-white/40 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          {/* Case Study Link */}
+                          <div>
+                            <Label className="text-white/60 text-xs mb-1.5 block">Project Link</Label>
+                            <Input
+                              value={study.link}
+                              onChange={(e) => handleCaseStudyChange(index, "link", e.target.value)}
+                              placeholder="e.g. Behance, Live Website, Dribbble"
+                              className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
+                            />
+                          </div>
+
+                          {/* File Upload for Case Study */}
+                          <div>
+                            <Label className="text-white/60 text-xs mb-1.5 block">Or Upload PDF Document</Label>
+                            <div className="relative">
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                className="hidden"
+                                id={`case-study-file-${index}`}
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    // Mock upload for now - in real app would upload to cloud storage
+                                    handleCaseStudyChange(index, "file", { name: file.name, url: URL.createObjectURL(file) });
+                                  }
+                                }}
+                              />
+                              <label
+                                htmlFor={`case-study-file-${index}`}
+                                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                                  <Upload className="w-4 h-4 text-white/70" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                  <span className="block text-sm text-white/80 truncate">
+                                    {study.file ? study.file.name : "Upload PDF (Max 10MB)"}
+                                  </span>
+                                </div>
+                                {study.file && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleCaseStudyChange(index, "file", null);
+                                    }}
+                                    className="p-1 hover:bg-white/10 rounded-full"
+                                  >
+                                    <X className="w-4 h-4 text-white/50" />
+                                  </button>
+                                )}
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Budget Range */}
+                          <div>
+                            <Label className="text-white/60 text-xs mb-1.5 block">Project Budget</Label>
+                            <Select
+                              value={study.budget}
+                              onValueChange={(val) => handleCaseStudyChange(index, "budget", val)}
+                            >
+                              <SelectTrigger className="w-full bg-black/20 border-white/10 text-white">
+                                <SelectValue placeholder="Select the budget range for this project" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-zinc-900 border-white/10 text-white">
+                                {BUDGET_RANGE_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white">
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddCaseStudy}
+                      className="w-full border-dashed border-white/20 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Another Case Study
+                    </Button>
+
+                    {/* General Portfolio Link */}
+                    <div className="space-y-3 pt-4 border-t border-white/10">
+                      <Label className="text-white/80 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-primary" /> General Portfolio Link
+                      </Label>
                       <Input
                         value={formData.portfolioLink}
                         onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
-                        placeholder="Link to portfolio"
+                        placeholder="Link to your main portfolio (optional)"
                         className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
                       />
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-        {/* No Option */}
-        <div
-          className={cn(
-            "rounded-xl border transition-all duration-300 overflow-hidden",
-            formData.hasPreviousWork === "no"
-              ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
-              : "border-white/10 bg-white/5 hover:bg-white/10"
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => handleFieldChange("hasPreviousWork", "no")}
-            className="w-full flex items-center justify-between px-6 py-5 text-left"
+          {/* No Option */}
+          <div
+            className={cn(
+              "rounded-xl border transition-all duration-300 overflow-hidden",
+              formData.hasPreviousWork === "no"
+                ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
+                : "border-white/10 bg-white/5 hover:bg-white/10"
+            )}
           >
-            <div className="flex items-center gap-4">
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-                formData.hasPreviousWork === "no" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
-              )}>
-                <span className="text-sm font-bold">N</span>
+            <button
+              type="button"
+              onClick={() => handleFieldChange("hasPreviousWork", "no")}
+              className="w-full flex items-center justify-between px-6 py-5 text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                  formData.hasPreviousWork === "no" ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/60"
+                )}>
+                  <span className="text-sm font-bold">N</span>
+                </div>
+                <div>
+                  <span className={cn(
+                    "block text-base font-semibold",
+                    formData.hasPreviousWork === "no" ? "text-primary" : "text-white"
+                  )}>No</span>
+                  <span className="text-white/50 text-sm">I'm new but skilled</span>
+                </div>
               </div>
-              <div>
-                <span className={cn(
-                  "block text-base font-semibold",
-                  formData.hasPreviousWork === "no" ? "text-primary" : "text-white"
-                )}>No</span>
-                <span className="text-white/50 text-sm">I'm new but skilled</span>
-              </div>
-            </div>
-            {formData.hasPreviousWork === "no" && <div className="w-2 h-2 rounded-full bg-primary" />}
-          </button>
+              {formData.hasPreviousWork === "no" && <div className="w-2 h-2 rounded-full bg-primary" />}
+            </button>
 
-          <AnimatePresence>
-            {formData.hasPreviousWork === "no" && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="px-6 pb-6 pt-2 space-y-4 border-t border-primary/10">
-                  <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
-                    <Sparkles className="w-3 h-3 text-primary" />
-                    <span className="font-semibold text-primary">Recommendation:</span>
-                    <span className="text-white/60">You can add case studies later to unlock more projects.</span>
-                  </p>
-                  <div className="space-y-3">
-                    <Label className="text-white/80 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4 text-white/50" /> Portfolio (Optional)
-                    </Label>
-                    <div className="grid grid-cols-1 gap-3">
-                      <Input
-                        value={formData.portfolioLink}
-                        onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
-                        placeholder="Link to portfolio (optional)"
-                        className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
-                      />
+            <AnimatePresence>
+              {formData.hasPreviousWork === "no" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-6 pb-6 pt-2 space-y-4 border-t border-primary/10">
+                    <p className="text-xs mb-2 flex items-center justify-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-primary" />
+                      <span className="font-semibold text-primary">Recommendation:</span>
+                      <span className="text-white/60">You can add case studies later to unlock more projects.</span>
+                    </p>
+                    <div className="space-y-3">
+                      <Label className="text-white/80 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-white/50" /> Portfolio (Optional)
+                      </Label>
+                      <div className="grid grid-cols-1 gap-3">
+                        <Input
+                          value={formData.portfolioLink}
+                          onChange={(e) => handleFieldChange("portfolioLink", e.target.value)}
+                          placeholder="Link to portfolio (optional)"
+                          className="bg-black/20 border-white/10 text-white placeholder:text-white/30"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep9 = () => (
     <div className="space-y-6">
@@ -1614,11 +1761,11 @@ const FreelancerMultiStepForm = () => {
           );
         })}
 
-        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mt-2">
-          <p className="text-xs flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="p-4 mt-2 flex justify-center">
+          <p className="text-xs flex items-center justify-center gap-2 text-center">
+            <Sparkles className="w-4 h-4 text-primary shrink-0" />
             <span>
-              <span className="font-semibold text-primary block mb-1">Recommendation:</span>
+              <span className="font-semibold text-primary inline mr-1">Recommendation:</span>
               <span className="text-white/60">Pricing far above market rates may reduce your chances of being selected.</span>
             </span>
           </p>
@@ -1660,83 +1807,104 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep11 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Have you worked with clients before?"
-      />
-      <div className="space-y-3">
-        <OptionCard
-          selected={formData.hasWorkedWithClients === "yes"}
-          onClick={() => handleFieldChange("hasWorkedWithClients", "yes")}
-          label="Yes"
-        />
-        <OptionCard
-          selected={formData.hasWorkedWithClients === "no"}
-          onClick={() => handleFieldChange("hasWorkedWithClients", "no")}
-          label="No"
-        />
-      </div>
-    </div>
-  );
-
-  const renderStep12 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="How do you prefer to work?"
-      />
-      <div className="space-y-3">
-        {WORK_PREFERENCE_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.workPreference === option.value}
-            onClick={() => handleFieldChange("workPreference", option.value)}
-            label={option.label}
-          />
-        ))}
-      </div>
-    </div>
-  );
-
   const renderStep13 = () => (
-    <div className="space-y-8">
+    <div className="space-y-7">
       <StepHeader
         onBack={handleBack}
-        title="Availability & Schedule"
-        subtitle="Set your preferred working hours and days"
+        title="Availability & Commitment"
+        subtitle="Share your availability so we can match you faster"
       />
 
-      {/* Hours Per Day */}
-      <div className="space-y-4">
-        <label className="text-white/80 text-sm font-medium ml-1">How many hours per day can you dedicate?</label>
-        <div className="space-y-3">
-          {HOURS_PER_DAY_OPTIONS.map(option => (
-            <OptionCard
-              key={option.value}
-              selected={formData.hoursPerDay === option.value}
-              onClick={() => handleFieldChange("hoursPerDay", option.value)}
-              label={option.label}
-            />
-          ))}
+      <div className="grid grid-cols-1 gap-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-white/90 text-sm font-semibold">Weekly hours</p>
+              <p className="text-white/50 text-[11px]">Pick one option</p>
+            </div>
+          </div>
+          <div className="flex flex-nowrap gap-3 justify-center overflow-x-auto pb-2 custom-scrollbar">
+            {HOURS_PER_WEEK_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.hoursPerWeek === option.value}
+                onClick={() => handleFieldChange("hoursPerWeek", option.value)}
+                label={option.label}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-white/90 text-sm font-semibold">Working mode</p>
+              <p className="text-white/50 text-[11px]">How you prefer to schedule</p>
+            </div>
+          </div>
+          <div className="flex flex-nowrap gap-3 justify-center overflow-x-auto pb-2 custom-scrollbar">
+            {WORKING_MODE_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.workingMode === option.value}
+                onClick={() => handleFieldChange("workingMode", option.value)}
+                label={option.label}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-white/90 text-sm font-semibold">Start timeline</p>
+              <p className="text-white/50 text-[11px]">Earliest availability</p>
+            </div>
+          </div>
+          <div className="flex flex-nowrap gap-3 justify-center overflow-x-auto pb-2 custom-scrollbar">
+            {START_TIMELINE_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.startTimeline === option.value}
+                onClick={() => handleFieldChange("startTimeline", option.value)}
+                label={option.label}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-white/90 text-sm font-semibold">Long‑term availability</p>
+              <p className="text-white/50 text-[11px]">Ongoing or short‑term</p>
+            </div>
+          </div>
+          <div className="flex flex-nowrap gap-3 justify-center overflow-x-auto pb-2 custom-scrollbar">
+            {LONG_TERM_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.openToLongTerm === option.value}
+                onClick={() => handleFieldChange("openToLongTerm", option.value)}
+                label={option.label}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Working Days */}
-      <div className="space-y-4">
-        <label className="text-white/80 text-sm font-medium ml-1">Which days do you prefer to work?</label>
-        <div className="grid grid-cols-2 gap-3">
-          {WORKING_DAYS_OPTIONS.map(option => (
-            <OptionCard
-              key={option.value}
-              selected={formData.workingDays.includes(option.value)}
-              onClick={() => toggleArrayField("workingDays", option.value)}
-              label={option.label}
-              multiSelect
-            />
-          ))}
-        </div>
+      <div className="flex justify-center">
+        <p className="text-[11px] flex items-center gap-2 text-white/60">
+          <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>
+            <span className="font-semibold text-primary inline mr-1">Recommendation:</span>
+            Clear availability helps us match you with the right projects.
+          </span>
+        </p>
       </div>
     </div>
   );
@@ -1770,112 +1938,142 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderStep15 = () => (
-    <div className="space-y-4">
+  const renderStep17ProjectType = () => (
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
-        title="What pricing model do you prefer?"
+        title="Project Type Preference"
+        subtitle="Help us match you with the right projects"
       />
-      <div className="space-y-3">
-        {PRICING_MODEL_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.pricingModel === option.value}
-            onClick={() => handleFieldChange("pricingModel", option.value)}
-            label={option.label}
-          />
-        ))}
+
+      <div className="max-w-3xl mx-auto text-center space-y-6">
+        <div className="space-y-3">
+          <p className="text-white/80 text-sm font-medium">What type of projects do you prefer?</p>
+          <div className="flex flex-nowrap gap-3 justify-center">
+            {PROJECT_TYPE_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.projectTypePreference === option.value}
+                onClick={() => handleFieldChange("projectTypePreference", option.value)}
+                label={option.label}
+                className="justify-center"
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-white/80 text-sm font-medium">Are you comfortable working with strict deadlines?</p>
+          <div className="flex gap-3 justify-center">
+            {STRICT_DEADLINES_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.strictDeadlines === option.value}
+                onClick={() => handleFieldChange("strictDeadlines", option.value)}
+                label={option.label}
+                className="justify-center"
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-white/80 text-sm font-medium">Do you prefer clearly defined scopes or evolving requirements?</p>
+          <div className="flex gap-3 justify-center">
+            {SCOPE_PREFERENCE_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.scopePreference === option.value}
+                onClick={() => handleFieldChange("scopePreference", option.value)}
+                label={option.label}
+                className="justify-center"
+              />
+            ))}
+          </div>
+        </div>
       </div>
+
+      <p className="text-white/50 text-xs text-center">
+        <span className="font-semibold text-primary inline mr-1">Recommendation:</span>
+        Choosing the right project type improves long-term success.
+      </p>
     </div>
   );
 
-  const renderStep16 = () => (
-    <div className="space-y-4">
+  const renderStep18Reliability = () => (
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
-        title="Your typical project range?"
+        title="Reliability & Work Ethics"
+        subtitle="Help clients understand your work style"
       />
-      <div className="space-y-3">
-        {PROJECT_RANGE_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.projectRange === option.value}
-            onClick={() => handleFieldChange("projectRange", option.value)}
-            label={option.label}
-          />
-        ))}
+
+      <div className="max-w-3xl mx-auto text-center space-y-6">
+        <div className="space-y-3">
+          <p className="text-white/80 text-sm font-medium">Have you ever missed a project deadline?</p>
+          <div className="flex gap-3 justify-center">
+            {DEADLINE_HISTORY_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.missedDeadlines === option.value}
+                onClick={() => handleFieldChange("missedDeadlines", option.value)}
+                label={option.label}
+                className="justify-center"
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-white/80 text-sm font-medium">How do you handle delays?</p>
+          <div className="flex flex-nowrap gap-3 justify-center">
+            {DELAY_HANDLING_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.delayHandling === option.value}
+                onClick={() => handleFieldChange("delayHandling", option.value)}
+                label={option.label}
+                className="justify-center"
+              />
+            ))}
+          </div>
+        </div>
       </div>
+
+      <p className="text-white/50 text-xs text-center">
+        <span className="font-semibold text-primary inline mr-1">Recommendation:</span>
+        Honest answers help set realistic client expectations.
+      </p>
     </div>
   );
 
   const renderStep17 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
         title="Are you open to partial-scope projects?"
+        subtitle="Some projects may only need specific parts of a larger scope"
       />
-      <div className="space-y-3">
+      <div className="flex gap-3 justify-center">
         <OptionCard
+          compact
           selected={formData.partialScope === "yes"}
           onClick={() => handleFieldChange("partialScope", "yes")}
           label="Yes"
+          className="justify-center"
         />
         <OptionCard
+          compact
           selected={formData.partialScope === "no"}
           onClick={() => handleFieldChange("partialScope", "no")}
           label="No"
+          className="justify-center"
         />
-      </div>
-    </div>
-  );
-
-  const renderStep18 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Do you agree to follow Catalance's 4-phase SOP?"
-        subtitle="This is mandatory to proceed"
-      />
-      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
-        <p className="text-amber-200 text-sm">
-          âš ï¸ All projects on Catalance follow our standard operating procedures.
-        </p>
-      </div>
-      <div className="space-y-3">
-        <button
-          onClick={() => handleFieldChange("sopAgreement", "yes")}
-          className={cn(
-            "w-full py-4 rounded-xl font-medium transition-all text-center",
-            formData.sopAgreement === "yes"
-              ? "bg-green-500 text-white"
-              : "bg-white/10 text-white/70 hover:bg-white/20"
-          )}
-        >
-          Yes, I agree
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderStep19 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Work starts only after scope freeze and approval"
-        subtitle="Do you understand this policy?"
-      />
-      <div className="space-y-3">
-        <button
-          onClick={() => handleFieldChange("scopeFreezeAgreement", "yes")}
-          className={cn(
-            "w-full py-4 rounded-xl font-medium transition-all text-center",
-            formData.scopeFreezeAgreement === "yes"
-              ? "bg-green-500 text-white"
-              : "bg-white/10 text-white/70 hover:bg-white/20"
-          )}
-        >
-          Yes, I understand
-        </button>
       </div>
     </div>
   );
@@ -1904,30 +2102,44 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderStep21 = () => (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <StepHeader
         onBack={handleBack}
-        title="Preferred communication style?"
+        title="Communication & Platform Usage"
+        subtitle="Help us set the right expectations with clients"
       />
-      <div className="space-y-3">
-        {COMMUNICATION_STYLE_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.communicationStyle === option.value}
-            onClick={() => handleFieldChange("communicationStyle", option.value)}
-            label={option.label}
-            description={option.description}
-          />
-        ))}
+
+      <div className="max-w-3xl mx-auto text-center space-y-6">
+        <div className="space-y-3">
+          <p className="text-white/80 text-sm font-medium">Are you willing to keep all project-related discussions on Catalance?</p>
+          <div className="grid grid-cols-2 gap-3">
+            {PLATFORM_CHAT_ONLY_OPTIONS.map(option => (
+              <OptionCard
+                key={option.value}
+                compact
+                selected={formData.keepDiscussionsOnPlatform === option.value}
+                onClick={() => handleFieldChange("keepDiscussionsOnPlatform", option.value)}
+                label={option.label}
+                className="justify-center"
+              />
+            ))}
+          </div>
+        </div>
       </div>
+
+      <p className="text-white/50 text-xs text-center">
+        <span className="font-semibold text-primary inline mr-1">Recommendation:</span>
+        Keeping communication on the platform helps us track work and resolve issues faster.
+      </p>
     </div>
   );
 
   const renderStep22 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
         title="Response time commitment?"
+        subtitle="How quickly can clients expect to hear from you?"
       />
       <div className="space-y-3">
         {RESPONSE_TIME_OPTIONS.map(option => (
@@ -1943,253 +2155,55 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderStep23 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
-        title="Timezone & working hours"
-        subtitle="Optional but recommended"
+        title="Your Timezone"
+        subtitle="This helps us match you with clients in compatible time zones"
       />
       <div className="space-y-4">
-        <div className="space-y-4">
-          <div>
-            <Label className="text-white/70 text-sm">Your timezone</Label>
-            <Select
-              value={formData.timezone}
-              onValueChange={(value) => handleFieldChange("timezone", value)}
-            >
-              <SelectTrigger className="mt-2 w-full bg-white/5 border-white/10 text-white">
-                <SelectValue placeholder="Select timezone" />
-              </SelectTrigger>
-              <SelectContent>
-                {TIMEZONE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-white/70 text-sm">Working hours</Label>
-            <Select
-              value={formData.workingHours}
-              onValueChange={(value) => handleFieldChange("workingHours", value)}
-            >
-              <SelectTrigger className="mt-2 w-full bg-white/5 border-white/10 text-white">
-                <SelectValue placeholder="Select working hours" />
-              </SelectTrigger>
-              <SelectContent>
-                {WORKING_HOURS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderStep24 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="How do you ensure quality before delivery?"
-        subtitle="Select all that apply"
-      />
-      <div className="space-y-3">
-        {QUALITY_PROCESS_OPTIONS.map(option => (
-          <OptionCard
-            key={option.value}
-            selected={formData.qualityProcess.includes(option.value)}
-            onClick={() => toggleArrayField("qualityProcess", option.value)}
-            label={option.label}
-            multiSelect
-          />
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderStep25 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Are you comfortable with ratings and reviews?"
-        subtitle="After every project completion"
-      />
-      <div className="space-y-3">
-        <OptionCard
-          selected={formData.acceptsRatings === "yes"}
-          onClick={() => handleFieldChange("acceptsRatings", "yes")}
-          label="Yes"
-          description="I welcome feedback and ratings"
-        />
+        <Select
+          value={formData.timezone}
+          onValueChange={(value) => handleFieldChange("timezone", value)}
+        >
+          <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+            <SelectValue placeholder="Select timezone" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
+            {TIMEZONE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
 
   const renderStep26 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <StepHeader
         onBack={handleBack}
-        title="Why do you want to work on Catalance?"
+        title="Almost there!"
+        subtitle="Tell us why you want to join Catalance"
       />
-      <Textarea
-        value={formData.whyCatalance}
-        onChange={(e) => handleFieldChange("whyCatalance", e.target.value)}
-        placeholder="Share your motivation..."
-        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[150px]"
-      />
-    </div>
-  );
-
-  const renderStep27 = () => (
-    <div className="space-y-4">
-      <StepHeader
-        onBack={handleBack}
-        title="Ready to start immediately if selected?"
-      />
-      <div className="space-y-3">
-        <OptionCard
-          selected={formData.readyToStart === "yes"}
-          onClick={() => handleFieldChange("readyToStart", "yes")}
-          label="Yes"
+      <div className="space-y-6">
+        <Textarea
+          value={formData.whyCatalance}
+          onChange={(e) => handleFieldChange("whyCatalance", e.target.value)}
+          placeholder="Share your motivation in a few sentences..."
+          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[150px] rounded-xl p-4"
         />
-        <OptionCard
-          selected={formData.readyToStart === "not_yet"}
-          onClick={() => handleFieldChange("readyToStart", "not_yet")}
-          label="Not yet"
-        />
-      </div>
-    </div>
-  );
-
-  const renderStep28 = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 bg-[#121212] overflow-hidden rounded-3xl border border-white/5 shadow-2xl min-h-[600px]">
-      {/* Left Columns - Form */}
-      <div className="p-8 lg:p-12 flex flex-col justify-center">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Create your account</h2>
-          <p className="text-white/50 text-sm">Enter your details below to create your account</p>
-          <p className="text-[10px] uppercase tracking-widest text-primary font-bold mt-2">
-            YOU'RE CREATING A FREELANCER ACCOUNT
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <Label className="text-white/70 text-sm font-semibold">Full name</Label>
-            <Input
-              value={formData.fullName}
-              onChange={(e) => handleFieldChange("fullName", e.target.value)}
-              placeholder="John Doe"
-              className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg focus:border-primary/50 transition-colors"
-            />
-          </div>
-          <div>
-            <Label className="text-white/70 text-sm font-semibold">Email</Label>
-            <Input
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleFieldChange("email", e.target.value)}
-              placeholder="you@example.com"
-              className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg focus:border-primary/50 transition-colors"
-            />
-          </div>
-          <div>
-            <Label className="text-white/70 text-sm font-semibold">Password</Label>
-            <div className="relative mt-1.5">
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => handleFieldChange("password", e.target.value)}
-                placeholder="Min. 8 characters"
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/20 h-11 rounded-lg pr-10 focus:border-primary/50 transition-colors"
-              />
-            </div>
-            <p className="text-white/30 text-xs mt-1">Must be at least 8 characters long.</p>
-          </div>
-
-          <Button
-            className="w-full h-11 bg-primary hover:bg-primary-strong text-black font-bold rounded-lg mt-4 transition-all"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create Account"}
-          </Button>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-white/10" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#121212] px-2 text-white/30">Or continue with</span>
-            </div>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full h-11 border-white/10 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg flex items-center justify-center gap-2 transition-all"
-            onClick={() => toast.info("Google Auth not implemented")}
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="currentColor"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            Continue with Google
-          </Button>
-
-          <div className="text-center mt-4">
-            <span className="text-white/50 text-sm">Already have an account? </span>
-            <button
-              onClick={() => navigate("/login")}
-              className="text-white/90 hover:text-white underline underline-offset-4 text-sm font-medium transition-colors"
-            >
-              Sign in
-            </button>
-          </div>
-
-          <div className="text-center mt-6">
-            <p className="text-[10px] text-white/30">
-              By clicking continue, you agree to our <a href="#" className="underline hover:text-white/50">Terms of Service</a> and <a href="#" className="underline hover:text-white/50">Privacy Policy</a>.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Column - Image & Branding */}
-      <div className="relative hidden lg:flex flex-col items-center justify-center p-12 bg-zinc-900 overflow-hidden">
-        {/* Background Image Placeholder with Overlay */}
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=1770&q=80')] bg-cover bg-center opacity-40 mix-blend-overlay" />
-        <div className="absolute inset-0 bg-linear-to-b from-transparent to-black/80" />
-
-        <div className="relative z-10 text-center max-w-md">
-          <h3 className="text-4xl font-bold text-white/20 leading-tight mb-6 font-serif">
-            THE TRUSTED SPACE FOR <br />
-            <span className="text-white/40">SKILLED FREELANCERS.</span>
-          </h3>
-          {/* Abstract rings/decoration */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-white/5 rounded-full animate-pulse" style={{ animationDuration: '8s' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] border border-white/5 rounded-full" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] border border-white/5 rounded-full" />
-        </div>
+        <label className="flex items-center justify-center gap-3 text-white/70 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={formData.termsAccepted}
+            onChange={(e) => handleFieldChange("termsAccepted", e.target.checked)}
+            className="h-5 w-5 rounded border-white/20 bg-white/10 text-primary focus:ring-primary/40"
+          />
+          <span>I agree to the <Link to="/terms" target="_blank" className="underline hover:text-primary">Terms & Conditions</Link></span>
+        </label>
       </div>
     </div>
   );
@@ -2221,6 +2235,7 @@ const FreelancerMultiStepForm = () => {
     if (isVerifying) return renderOtpVerification();
 
     switch (currentStep) {
+      // Phase 1: Identity & Skills (1-7)
       case 1: return renderStep1();
       case 2: return renderStep2();
       case 3: return renderStep3();
@@ -2228,27 +2243,22 @@ const FreelancerMultiStepForm = () => {
       case 5: return renderStep5();
       case 6: return renderStep6();
       case 7: return renderStep7();
+      // Phase 2: Portfolio & Work History (8)
       case 8: return renderStep8();
-      case 9: return renderStep9();
-      case 10: return renderStep10();
-      case 11: return renderStep11();
-      case 12: return renderStep12();
-      case 13: return renderStep13();
-      case 14: return renderStep14();
-      case 15: return renderStep15();
-      case 16: return renderStep16();
-      case 17: return renderStep17();
-      case 18: return renderStep18();
-      case 19: return renderStep19();
-      case 20: return renderStep20();
-      case 21: return renderStep21();
-      case 22: return renderStep22();
-      case 23: return renderStep23();
-      case 24: return renderStep24();
-      case 25: return renderStep25();
-      case 26: return renderStep26();
-      case 27: return renderStep27();
-      case 28: return renderStep28();
+      // Phase 3: Pricing & Business Terms (9-12)
+      case 9: return renderStep9(); // Starting Price
+      case 10: return renderStep14(); // Revisions
+      case 11: return renderStep17(); // Partial Scope
+      case 12: return renderStep20(); // Re-quote Policy
+      // Phase 4: Work Style & Preferences (13-14)
+      case 13: return renderStep17ProjectType(); // Project Type
+      case 14: return renderStep18Reliability(); // Reliability
+      // Phase 5: Availability & Logistics (15-17)
+      case 15: return renderStep13(); // Availability
+      case 16: return renderStep23(); // Timezone
+      case 17: return renderStep22(); // Response Time
+      // Phase 6: Communication & Final (18-19)
+      case 18: return renderStep26(); // Motivation
       default: return null;
     }
   };
@@ -2300,8 +2310,8 @@ const FreelancerMultiStepForm = () => {
           </div>
 
           {/* Main Content - Scrollable Area */}
-          <div className="relative pt-24 pb-32 h-full overflow-y-auto w-full custom-scrollbar">
-            <div className="max-w-6xl mx-auto px-6 h-full flex flex-col justify-center min-h-[600px]">
+          <div className="relative h-full overflow-y-auto w-full custom-scrollbar">
+            <div className="max-w-6xl mx-auto px-6 py-24 min-h-full flex flex-col">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={isVerifying ? 'verify' : currentStep}
@@ -2309,22 +2319,13 @@ const FreelancerMultiStepForm = () => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="w-full"
+                  className="w-full my-auto"
                 >
                   {renderCurrentStep()}
                 </motion.div>
               </AnimatePresence>
 
-              {stepError && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3"
-                >
-                  <div className="w-2 h-2 rounded-full bg-red-500" />
-                  <p className="text-red-400 text-sm font-medium">{stepError}</p>
-                </motion.div>
-              )}
+
             </div>
           </div>
 

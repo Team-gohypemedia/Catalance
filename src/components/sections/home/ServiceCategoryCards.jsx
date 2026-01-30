@@ -12,6 +12,8 @@ import { useTheme } from "@/components/providers/theme-provider";
 import { CoverflowCarousel } from "@/components/ui/coverflow-carousel";
 import { useNavigate } from "react-router-dom";
 import cardNoise from "@/assets/card-noise.png";
+import webDevImg from "@/assets/web development.png";
+import appDevImg from "@/assets/app development.png";
 
 const categories = [
   {
@@ -20,6 +22,7 @@ const categories = [
     description: "Custom software, web apps, and technical solutions.",
     icon: Monitor,
     gradient: "from-blue-600 to-indigo-900",
+    image: webDevImg,
   },
   {
     id: 2,
@@ -34,6 +37,7 @@ const categories = [
     description: "SEO, social media, and performance marketing.",
     icon: Smartphone,
     gradient: "from-orange-500 to-red-900",
+    image: appDevImg,
   },
   {
     id: 4,
@@ -114,9 +118,15 @@ const ServiceCategoryCards = () => {
           >
             {/* Abstract Background Pattern */}
             <div
-              className="absolute inset-0 opacity-30 mix-blend-overlay bg-cover bg-center"
-              style={{ backgroundImage: `url(${cardNoise})` }}
+              className={`absolute inset-0 bg-cover bg-center transition-all duration-500 ${cat.image
+                  ? "opacity-60 mix-blend-overlay group-hover:scale-110 group-hover:opacity-80"
+                  : "opacity-30 mix-blend-overlay"
+                }`}
+              style={{ backgroundImage: `url(${cat.image || cardNoise})` }}
             ></div>
+
+            {/* Overlay for text readability if image exists */}
+            {cat.image && <div className="absolute inset-0 bg-black/40 mix-blend-multiply transition-opacity group-hover:bg-black/20" />}
 
             {/* Background Watermark Text */}
             <div className="absolute top-10 -right-4 pointer-events-none opacity-10 select-none">
@@ -150,9 +160,8 @@ const ServiceCategoryCards = () => {
 
   return (
     <section
-      className={`w-full py-20 overflow-hidden ${
-        isDark ? "bg-black" : "bg-white"
-      } flex items-center justify-center`}
+      className={`w-full py-20 overflow-hidden ${isDark ? "bg-black" : "bg-white"
+        } flex items-center justify-center`}
     >
       <div className="max-w-7xl mx-auto px-4 w-full flex flex-col items-center gap-4">
         <div className="text-center space-y-4 mb-8">
