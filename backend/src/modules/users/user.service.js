@@ -12,6 +12,51 @@ import {
   generatePasswordResetTextEmail
 } from "../../lib/email-templates/password-reset.template.js";
 
+const normalizeRoleValue = (value) =>
+  typeof value === "string" ? value.toUpperCase() : null;
+
+const ensureUserRoles = async (user, requestedRole) => {
+  if (!user) return user;
+
+  const baseRole = normalizeRoleValue(user.role) || "FREELANCER";
+  const requested = normalizeRoleValue(requestedRole);
+  const existingRoles = Array.isArray(user.roles)
+    ? user.roles.map((role) => normalizeRoleValue(role)).filter(Boolean)
+    : [];
+  const roles = existingRoles.length ? existingRoles : [baseRole];
+  const updates = {};
+
+  if (!roles.includes(baseRole)) {
+    roles.push(baseRole);
+  }
+
+  if (requested && !roles.includes(requested)) {
+    roles.push(requested);
+    if (requested === "FREELANCER") {
+      updates.status = "PENDING_APPROVAL";
+      updates.onboardingComplete = false;
+    }
+  }
+
+  const uniqueRoles = Array.from(new Set(roles));
+  const needsRoleUpdate =
+    !existingRoles.length ||
+    uniqueRoles.length !== existingRoles.length ||
+    uniqueRoles.some((entry) => !existingRoles.includes(entry));
+  if (needsRoleUpdate) {
+    updates.roles = uniqueRoles;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return user;
+  }
+
+  return prisma.user.update({
+    where: { id: user.id },
+    data: updates
+  });
+};
+
 export const listUsers = async (filters = {}) => {
   const users = await prisma.user.findMany({
     where: {
@@ -195,7 +240,7 @@ export const resendOtp = async (email) => {
   };
 };
 
-export const authenticateUser = async ({ email, password }) => {
+export const authenticateUser = async ({ email, password, role }) => {
   const user = await prisma.user.findUnique({
     where: { email }
   });
@@ -259,14 +304,27 @@ export const authenticateUser = async ({ email, password }) => {
     };
   }
 
+  const updatedUser = await ensureUserRoles(user, role);
+  const requestedRole = normalizeRoleValue(role);
+  const roles = Array.isArray(updatedUser?.roles)
+    ? updatedUser.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+    : [];
+  const activeRole = requestedRole && roles.includes(requestedRole)
+    ? requestedRole
+    : normalizeRoleValue(updatedUser?.role) || "FREELANCER";
+
   return {
-    user: sanitizeUser(user),
-    accessToken: issueAccessToken(user)
+    user: sanitizeUser(updatedUser),
+    accessToken: issueAccessToken(updatedUser, activeRole)
   };
 };
 
 export const authenticateWithGoogle = async ({ token, role }) => {
   const { verifyFirebaseToken } = await import("../../lib/firebase-admin.js");
+  const normalizedRole = typeof role === "string" ? role.toUpperCase() : null;
+  const requestedRole = ["CLIENT", "FREELANCER"].includes(normalizedRole)
+    ? normalizedRole
+    : null;
 
   // Verify token with Firebase
   const decodedToken = await verifyFirebaseToken(token);
@@ -285,18 +343,20 @@ export const authenticateWithGoogle = async ({ token, role }) => {
     // Create new user
     // Generate a random password since they use Google auth
     const randomPassword = crypto.randomBytes(16).toString("hex");
+    const initialRole = requestedRole || "CLIENT";
 
     user = await prisma.user.create({
       data: {
         email,
         fullName: name || email.split("@")[0],
         passwordHash: await hashUserPassword(randomPassword), // We still set a password to avoid null constraints if any
-        role: role || "CLIENT", // Default to CLIENT if not specified in request, though usually frontend might send it
+        role: initialRole, // Default to CLIENT if not specified in request
+        roles: [initialRole],
         isVerified: true, // Google users are verified by definition
         // We can store the profile picture if we had a field for it, maybe update later
         otpCode: null,
         otpExpires: null,
-        status: "ACTIVE"
+        status: initialRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE"
       }
     });
 
@@ -309,11 +369,24 @@ export const authenticateWithGoogle = async ({ token, role }) => {
         data: { isVerified: true }
       });
     }
+
+    const currentPrimaryRole = normalizeRoleValue(user.role);
+    const allowRequestedRole =
+      requestedRole &&
+      !["ADMIN", "PROJECT_MANAGER"].includes(currentPrimaryRole || "");
+    user = await ensureUserRoles(user, allowRequestedRole ? requestedRole : null);
   }
+
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+    : [];
+  const activeRole = requestedRole && roles.includes(requestedRole)
+    ? requestedRole
+    : normalizeRoleValue(user?.role) || "FREELANCER";
 
   return {
     user: sanitizeUser(user),
-    accessToken: issueAccessToken(user)
+    accessToken: issueAccessToken(user, activeRole)
   };
 };
 
@@ -331,19 +404,24 @@ export const getUserById = async (id) => {
 
 const createUserRecord = async (payload) => {
   try {
+    const normalizedRole = (payload.role || "FREELANCER").toUpperCase();
+    const roles = Array.isArray(payload.roles) && payload.roles.length
+      ? Array.from(new Set(payload.roles.map((role) => String(role).toUpperCase())))
+      : [normalizedRole];
     const user = await prisma.user.create({
       data: {
         email: payload.email,
         fullName: payload.fullName,
         passwordHash: await hashUserPassword(payload.password),
-        role: payload.role ?? "FREELANCER",
+        role: normalizedRole,
+        roles,
         bio: extractBioText(payload.bio),
         skills: payload.skills ?? [],
         hourlyRate: payload.hourlyRate ?? null,
         otpCode: payload.otpCode,
         otpExpires: payload.otpExpires,
         isVerified: false,
-        status: (payload.role === "FREELANCER") ? "PENDING_APPROVAL" : "ACTIVE",
+        status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
         portfolio: payload.portfolio,
         linkedin: payload.linkedin,
         github: payload.github,
@@ -402,14 +480,26 @@ export const sanitizeUser = (user) => {
 
   // eslint-disable-next-line no-unused-vars
   const { passwordHash, ...safeUser } = user;
-  return safeUser;
+  const normalizedRole = normalizeRoleValue(safeUser.role) || "FREELANCER";
+  const roles = Array.isArray(safeUser.roles)
+    ? safeUser.roles.map((role) => normalizeRoleValue(role)).filter(Boolean)
+    : [];
+  const mergedRoles = roles.includes(normalizedRole)
+    ? roles
+    : [...roles, normalizedRole];
+
+  return {
+    ...safeUser,
+    roles: mergedRoles.length ? mergedRoles : [normalizedRole]
+  };
 };
 
-const issueAccessToken = (user) => {
+const issueAccessToken = (user, activeRole) => {
+  const tokenRole = normalizeRoleValue(activeRole) || normalizeRoleValue(user.role);
   return jwt.sign(
     {
       sub: user.id,
-      role: user.role,
+      role: tokenRole,
       email: user.email
     },
     env.JWT_SECRET,

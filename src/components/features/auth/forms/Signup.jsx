@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
@@ -61,12 +61,13 @@ function Signup({ className, ...props }) {
   const { login: setAuthSession, logout, isAuthenticated } = useAuth();
 
   const isFromProposal = Boolean(location.state?.fromProposal);
+  const initialAuthStateRef = useRef(isAuthenticated);
 
-  // Clear existing session on mount
+  // Clear existing session only if user was already authenticated on first render.
   useEffect(() => {
-    if (!isAuthenticated) return;
-    logout(isFromProposal ? { redirect: false, showToast: false } : undefined);
-  }, [isAuthenticated, isFromProposal, logout]);
+    if (!initialAuthStateRef.current) return;
+    logout({ redirect: false, showToast: false });
+  }, [logout]);
 
   // Redirect clients to service selection if not coming from proposal
   useEffect(() => {
@@ -105,7 +106,12 @@ function Signup({ className, ...props }) {
 
       if (message.toLowerCase().includes("already exists")) {
         toast.info("Account already exists. Redirecting to login...");
-        setTimeout(() => navigate("/login", { state: { email: formData.email } }), 1000);
+        const roleParam = searchParams.get("role");
+        const loginPath = roleParam ? `/login?role=${roleParam}` : "/login";
+        setTimeout(
+          () => navigate(loginPath, { state: { email: formData.email, role: roleParam } }),
+          1000
+        );
         return;
       }
 
@@ -138,9 +144,15 @@ function Signup({ className, ...props }) {
       setFormData(initialFormState);
 
       const nextRole = authPayload?.user?.role?.toUpperCase() || CLIENT_ROLE;
+      const requestedRole = searchParams.get("role")?.toUpperCase();
 
-      if (nextRole === "FREELANCER") {
-        navigate("/freelancer/onboarding", { replace: true });
+      if (requestedRole === CLIENT_ROLE) {
+        navigate("/client", { replace: true });
+      } else if (requestedRole === FREELANCER_ROLE || nextRole === FREELANCER_ROLE) {
+        const hasCompletedOnboarding = Boolean(authPayload?.user?.onboardingComplete);
+        navigate(hasCompletedOnboarding ? "/freelancer" : "/freelancer/onboarding", {
+          replace: true,
+        });
       } else {
         navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", {
           replace: true,
@@ -201,8 +213,15 @@ function Signup({ className, ...props }) {
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);
       const nextRole = authPayload?.user?.role?.toUpperCase() || selectedRole;
-      if (nextRole === FREELANCER_ROLE) {
-        navigate("/freelancer/onboarding", { replace: true });
+      const requestedRole = selectedRole?.toUpperCase();
+
+      if (requestedRole === CLIENT_ROLE) {
+        navigate("/client", { replace: true });
+      } else if (requestedRole === FREELANCER_ROLE || nextRole === FREELANCER_ROLE) {
+        const hasCompletedOnboarding = Boolean(authPayload?.user?.onboardingComplete);
+        navigate(hasCompletedOnboarding ? "/freelancer" : "/freelancer/onboarding", {
+          replace: true,
+        });
       } else {
         navigate(nextRole === CLIENT_ROLE ? "/client" : "/freelancer", {
           replace: true,

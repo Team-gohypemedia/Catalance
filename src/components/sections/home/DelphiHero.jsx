@@ -535,7 +535,7 @@ const DelphiHero = () => {
                                         <span className="text-sm font-medium text-foreground/90">Fast hiring</span>
                                     </div>
                                 </div>
-                                <Link to="/freelancer/onboarding" className="w-full mt-auto">
+                                <Link to="/signup?role=freelancer" className="w-full mt-auto">
                                     <Button
                                         size="lg"
                                         className="w-full group/btn bg-transparent hover:bg-primary text-primary hover:text-primary-foreground border border-primary/50 hover:border-primary font-semibold px-6 py-6 text-base shadow-none hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02]"
