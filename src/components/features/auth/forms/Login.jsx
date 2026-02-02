@@ -84,11 +84,6 @@ function Login({ className, ...props }) {
       setFormData(initialFormState);
       const nextRole = authPayload?.user?.role?.toUpperCase();
       const redirectTo = location?.state?.redirectTo;
-      const requestedRole =
-        searchParams.get("role")?.toUpperCase() ||
-        (typeof location.state?.role === "string"
-          ? location.state.role.toUpperCase()
-          : null);
       const normalizedRequestedRole =
         requestedRole === "CLIENT" || requestedRole === "FREELANCER"
           ? requestedRole
