@@ -937,7 +937,17 @@ Treat this as confirmed and DO NOT ask which service they want.`
           .map((q, idx) => {
             // For budget questions, replace with generic question without minimum
             if (q.id === "user_budget" || q.type === "number") {
-              return `Q${idx + 1} [ID: ${q.id}]: What is your budget for this project?`;
+              const quantityUnit = service?.budget?.quantity_unit_label || "";
+              const unitSingular = quantityUnit
+                ? quantityUnit.replace(/s$/i, "")
+                : "";
+              const isPerDeliverable =
+                service?.budget?.pricing_model === "per_deliverable";
+              const perUnitLabel = unitSingular || quantityUnit;
+              const budgetPrompt = isPerDeliverable && perUnitLabel
+                ? `What is your budget per ${perUnitLabel}?`
+                : "What is your budget for this project?";
+              return `Q${idx + 1} [ID: ${q.id}]: ${budgetPrompt}`;
             }
 
             let questionText = `Q${idx + 1} [ID: ${q.id}]: ${q.question}`;
@@ -985,9 +995,30 @@ Treat this as confirmed and DO NOT ask which service they want.`
 
       const questionCount = Array.isArray(service.questions) ? service.questions.length : 0;
 
+      const budgetLines = [];
+      const minBudget = Number(service?.budget?.min_required_amount);
+      if (Number.isFinite(minBudget)) {
+        const unitLabel = service?.budget?.unit || "unit";
+        budgetLines.push(`MINIMUM BUDGET: ${minBudget} (${unitLabel})`);
+      }
+      if (service?.budget?.pricing_model) {
+        budgetLines.push(`PRICING MODEL: ${service.budget.pricing_model}`);
+      }
+      if (service?.budget?.quantity_question_id) {
+        budgetLines.push(
+          `QUANTITY QUESTION ID: ${service.budget.quantity_question_id}`
+        );
+      }
+      if (service?.budget?.quantity_unit_label) {
+        budgetLines.push(
+          `QUANTITY UNIT: ${service.budget.quantity_unit_label}`
+        );
+      }
+
       return [
         `SERVICE ${service.number}: ${service.name}`,
         `ID: ${service.id}`,
+        ...(budgetLines.length ? budgetLines : []),
         `TOTAL QUESTIONS: ${questionCount} (You MUST ask ALL of these)`,
         "QUESTIONS TO ASK:",
         questions,
@@ -1150,49 +1181,12 @@ BUDGET HANDLING RULES (VERY IMPORTANT):
 2. When asking about budget, DO NOT mention the minimum amount upfront.
 3. Simply ask: "What is your budget for this project?"
 4. NEVER mention minimum amounts when asking.
+5. Minimum budgets are defined in the service catalog (servicesComplete.json) and shown under each service as "MINIMUM BUDGET".
+6. If the user asks about the minimum, respond with the minimum for the selected service.
+7. If the user provides a budget:
+   - If it is below the minimum: politely say it's below the minimum requirement and ask to increase.
+   - If it is equal to or above the minimum: acknowledge and continue.
 
-**CRITICAL: BUDGET COMPARISON ALGORITHM**
-=========================================
-When the user provides their budget, follow this EXACT algorithm:
-
-STEP 1 - PARSE USER'S BUDGET TO RUPEES:
-- If they say "XK" → multiply X by 1,000 (e.g., "75K" → 75,000)
-- If they say "XL" or "X lakh" → multiply X by 100,000 (e.g., "1.5L" → 150,000)
-- If they give a plain number, use it as-is (e.g., "50000" → 50,000)
-
-STEP 2 - GET MINIMUM FOR THE SERVICE:
-Look up the minimum from this list:
-- Website/UI-UX: 25,000
-- Branding: 25,000
-- SEO: 10,000
-- Social Media Marketing: 10,000
-- Paid Advertising: 25,000
-- App Development: 100,000
-- Software Development: 100,000
-- Lead Generation: 15,000
-- Influencer Marketing: 25,000
-- Email Marketing: 10,000
-- Video Production: 2,000
-- CGI Videos: 25,000
-- 3D Modeling: 100,000
-- E-commerce Setup: 50,000
-
-STEP 3 - COMPARE (simple math):
-- If USER_BUDGET >= MINIMUM → Budget is ACCEPTABLE
-- If USER_BUDGET < MINIMUM → Budget is BELOW minimum
-
-STEP 4 - RESPOND:
-- ACCEPTABLE: Just acknowledge and proceed. Say "Noted!" or "Got it!" Do NOT mention minimum at all.
-- BELOW MINIMUM: Politely inform them it's below the required minimum and ask if they can increase.
-
-**REMEMBER: This is simple greater-than-or-equal comparison!**
-- 75,000 >= 25,000? YES → ACCEPTABLE
-- 43,000 >= 25,000? YES → ACCEPTABLE  
-- 30,000 >= 25,000? YES → ACCEPTABLE
-- 25,000 >= 25,000? YES → ACCEPTABLE
-- 20,000 >= 25,000? NO → BELOW minimum
-
-ANY budget equal to or above the minimum is acceptable. Do NOT overthink this.
 
 ${websiteTypeReference}
 
