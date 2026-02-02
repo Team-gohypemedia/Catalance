@@ -56,8 +56,6 @@ const PROPOSAL_CONTENT_KEY = "proposal_content";
 const CHAT_HISTORY_KEY = "chat_history";
 const PROPOSAL_APPROVAL_MESSAGE =
   "You're all set to generate the proposal. Please confirm below.";
-const PROPOSAL_MISSING_CONTEXT_MESSAGE =
-  "I can generate the proposal once I have one more detail.";
 
 const WEBSITE_REQUIREMENT_OPTIONS = [
   "New website",
@@ -205,6 +203,49 @@ const normalizeServiceLabel = (value = "") =>
 const tokenizeServiceLabel = (value = "") =>
   normalizeServiceLabel(value).split(/\s+/).filter(Boolean);
 
+const normalizeTextForMatch = (value = "") =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const parseQuantityValue = (text = "") => {
+  if (typeof text !== "string") return null;
+  const matches = text.match(/\d+/g);
+  if (!matches || matches.length === 0) return null;
+  const values = matches
+    .map((value) => Number.parseInt(value, 10))
+    .filter((value) => Number.isFinite(value));
+  if (!values.length) return null;
+  return Math.max(...values);
+};
+
+const findLatestAnswerForQuestion = (messages = [], questionText = "") => {
+  if (!Array.isArray(messages) || messages.length < 2) return null;
+  const target = normalizeTextForMatch(questionText);
+  if (!target) return null;
+
+  for (let i = messages.length - 1; i >= 1; i -= 1) {
+    const userMessage = messages[i];
+    const assistantMessage = messages[i - 1];
+    if (assistantMessage?.role !== "assistant" || userMessage?.role !== "user")
+      continue;
+    const assistantText =
+      typeof assistantMessage.content === "string"
+        ? assistantMessage.content
+        : "";
+    if (!assistantText) continue;
+    const normalizedAssistant = normalizeTextForMatch(assistantText);
+    if (normalizedAssistant.includes(target)) {
+      return typeof userMessage.content === "string"
+        ? userMessage.content
+        : "";
+    }
+  }
+
+  return null;
+};
+
 const findMatchingService = (
   services = [],
   serviceName = "",
@@ -259,14 +300,37 @@ const getServiceMinimumBudget = (
   services = [],
   serviceName = "",
   serviceId = "",
+  conversationHistory = [],
 ) => {
   const match = findMatchingService(services, serviceName, serviceId);
   const rawMinBudget = match?.budget?.min_required_amount;
-  const minBudget = Number(rawMinBudget);
-  if (!Number.isFinite(minBudget) || minBudget <= 0) return null;
+  const minPerUnit = Number(rawMinBudget);
+  if (!Number.isFinite(minPerUnit) || minPerUnit <= 0) return null;
+
+  let minBudget = minPerUnit;
+  let quantity = null;
+
+  if (match?.budget?.pricing_model === "per_deliverable") {
+    const quantityQuestionId = match?.budget?.quantity_question_id;
+    const quantityQuestion = Array.isArray(match?.questions)
+      ? match.questions.find((q) => q.id === quantityQuestionId)
+      : null;
+    const answerText = quantityQuestion?.question
+      ? findLatestAnswerForQuestion(conversationHistory, quantityQuestion.question)
+      : null;
+    const parsedQuantity = parseQuantityValue(answerText);
+    if (Number.isFinite(parsedQuantity) && parsedQuantity > 0) {
+      quantity = parsedQuantity;
+      minBudget = minPerUnit * parsedQuantity;
+    }
+  }
+
   return {
     minBudget,
     serviceLabel: match?.name || serviceName || serviceId || "this service",
+    quantity,
+    unitLabel: match?.budget?.quantity_unit_label,
+    minPerUnit,
   };
 };
 
@@ -294,10 +358,7 @@ const parseBudgetValue = (text = "") => {
   return Math.max(...values);
 };
 
-const formatBudgetValue = (amount) => {
-  if (!Number.isFinite(amount)) return "";
-  return amount.toLocaleString("en-IN");
-};
+const BUDGET_QUESTION_REGEX = /budget|investment|price|cost|spend/i;
 
 const getStoredJson = (key, fallback) => {
   if (typeof window === "undefined") return fallback;
@@ -715,13 +776,19 @@ const applyMissingFieldAnswer = (field, text) => {
   }
 };
 
-const isMissingFieldPromptMessage = (assistantText = "") =>
-  typeof assistantText === "string" &&
-  assistantText.trim().startsWith(PROPOSAL_MISSING_CONTEXT_MESSAGE);
+const isMissingFieldPromptMessage = (assistantText = "", missingFields = []) => {
+  if (typeof assistantText !== "string") return false;
+  const trimmed = assistantText.trim();
+  if (!trimmed) return false;
+  return (missingFields || []).some((field) => {
+    const question = typeof field?.question === "string" ? field.question.trim() : "";
+    return question && trimmed.startsWith(question);
+  });
+};
 
 const buildMissingFieldPrompt = (field) => {
   if (!field) return PROPOSAL_APPROVAL_MESSAGE;
-  const lines = [PROPOSAL_MISSING_CONTEXT_MESSAGE, "", field.question];
+  const lines = [field.question];
   if (field.options?.length) {
     lines.push("", toNumberedList(field.options));
     // Instruction moved to input placeholder
@@ -918,17 +985,6 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
         }),
       );
     }
-  }
-
-  if (!hasScope) {
-    missing.push(
-      createMissingField({
-        id: "requirements",
-        label: "Project requirements or scope",
-        question:
-          "What are the key requirements or scope you want us to cover?",
-      }),
-    );
   }
 
   if (!hasText(context.timeline)) {
@@ -1285,8 +1341,10 @@ function AIChat({
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isVoiceStarting, setIsVoiceStarting] = useState(false);
+  const [isBraveBrowser, setIsBraveBrowser] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [isSecureContext, setIsSecureContext] = useState(true);
+  const [showThinking, setShowThinking] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const lastMessage = messages[messages.length - 1];
@@ -1313,6 +1371,8 @@ function AIChat({
   const voiceReleaseTimeoutRef = useRef(null);
   const speechBaseInputRef = useRef("");
   const speechFinalRef = useRef("");
+  const thinkingTimerRef = useRef(null);
+  const thinkingStartRef = useRef(0);
   const proposalContextRef = useRef(proposalContext);
   const pendingMissingFieldRef = useRef(pendingMissingField);
 
@@ -1395,48 +1455,85 @@ function AIChat({
     };
 
     recognition.onerror = (event) => {
+      console.log("[Voice] Error event:", event?.error, event);
       setIsRecording(false);
       setIsVoiceStarting(false);
       const error = event?.error;
       if (error === "not-allowed" || error === "service-not-allowed") {
-        toast.error("Microphone access is blocked.");
+        toast.error("Microphone access is blocked. Please allow microphone access in your browser settings.");
         return;
       }
       if (error === "audio-capture") {
-        toast.error("No microphone detected.");
+        toast.error("No microphone detected. Please connect a microphone and try again.");
         return;
       }
       if (error === "network") {
-        // Network errors can be transient - try to restart after a short delay
+        console.log("[Voice] Network error detected. Attempting workaround...");
+        // Network errors can occur due to Chrome's Web Speech API bugs
+        // Workaround: Recreate the recognition instance
         try {
           recognition.abort();
         } catch {
           // Ignore abort errors
         }
-        // Auto-retry once after a brief delay
+
+        // Auto-retry once by recreating the recognition instance
         if (!recognition._networkRetried) {
           recognition._networkRetried = true;
           voiceReleaseTimeoutRef.current = setTimeout(() => {
+            console.log("[Voice] Retrying with fresh instance...");
             voiceStartLockRef.current = false;
             setIsVoiceStarting(false);
             setIsRecording(false);
-            // Attempt to restart voice input
-            try {
-              speechBaseInputRef.current = input;
-              speechFinalRef.current = "";
-              voiceStartLockRef.current = true;
-              setIsVoiceStarting(true);
-              recognition.start();
-            } catch {
-              toast.error("Voice input is not available. Please check your internet connection and try again.");
-              recognition._networkRetried = false;
+
+            // Recreate SpeechRecognition instance (workaround for Chrome bug)
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+              const newRecognition = new SpeechRecognition();
+              newRecognition.continuous = true;
+              newRecognition.interimResults = true;
+              newRecognition.maxAlternatives = 1;
+              newRecognition.lang = navigator.language || "en-US";
+
+              // Copy event handlers to new instance
+              newRecognition.onstart = recognition.onstart;
+              newRecognition.onresult = recognition.onresult;
+              newRecognition.onerror = recognition.onerror;
+              newRecognition.onend = recognition.onend;
+              newRecognition._networkRetried = false;
+
+              recognitionRef.current = newRecognition;
+
+              // Attempt to start the new instance
+              try {
+                speechBaseInputRef.current = input;
+                speechFinalRef.current = "";
+                voiceStartLockRef.current = true;
+                setIsVoiceStarting(true);
+                newRecognition.start();
+              } catch (e) {
+                console.error("[Voice] Retry failed:", e);
+                toast.error("Voice input is unavailable right now. This may be due to your browser, network, or extensions blocking the feature.");
+              }
             }
-          }, 1000);
+          }, 1500);
           return;
         }
         recognition._networkRetried = false;
-        toast.error("Voice input is not available. Please check your internet connection and try again.");
+        toast.error("Voice input is unavailable. Please try using a different browser (Edge recommended) or check if browser extensions are blocking this feature.");
+        return;
       }
+      if (error === "aborted") {
+        // User or system aborted - no error message needed
+        console.log("[Voice] Recognition aborted");
+        return;
+      }
+      if (error === "no-speech") {
+        toast.info("No speech detected. Please try again and speak clearly.");
+        return;
+      }
+      // Unknown error
+      console.error("[Voice] Unknown error:", error);
       try {
         recognition.abort();
       } catch {
@@ -1482,6 +1579,53 @@ function AIChat({
         clearTimeout(voiceReleaseTimeoutRef.current);
         voiceReleaseTimeoutRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const minDurationMs = 400;
+    if (isLoading) {
+      thinkingStartRef.current = Date.now();
+      setShowThinking(true);
+      return;
+    }
+
+    if (!showThinking) return;
+    const elapsed = Date.now() - (thinkingStartRef.current || 0);
+    const remaining = Math.max(0, minDurationMs - elapsed);
+
+    if (thinkingTimerRef.current) {
+      clearTimeout(thinkingTimerRef.current);
+    }
+
+    thinkingTimerRef.current = setTimeout(() => {
+      setShowThinking(false);
+      thinkingTimerRef.current = null;
+    }, remaining);
+
+    return () => {
+      if (thinkingTimerRef.current) {
+        clearTimeout(thinkingTimerRef.current);
+        thinkingTimerRef.current = null;
+      }
+    };
+  }, [isLoading, showThinking]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    let cancelled = false;
+    const braveCheck = navigator.brave?.isBrave?.();
+    if (braveCheck && typeof braveCheck.then === "function") {
+      braveCheck
+        .then((isBrave) => {
+          if (!cancelled) {
+            setIsBraveBrowser(Boolean(isBrave));
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -1537,7 +1681,7 @@ function AIChat({
       setMessages(nextMessages);
       const lastAssistant = getLastAssistantMessage(nextMessages);
       setPendingMissingField(
-        isMissingFieldPromptMessage(lastAssistant)
+        isMissingFieldPromptMessage(lastAssistant, missingFieldsForHistory)
           ? missingFieldsForHistory[0] || null
           : null,
       );
@@ -1733,6 +1877,11 @@ function AIChat({
   const startVoiceInput = () => {
     if (!recognitionRef.current) {
       toast.error("Voice input isn't supported in this browser.");
+      return;
+    }
+
+    if (isBraveBrowser) {
+      toast.error("Voice input isn't supported in Brave due to privacy restrictions.");
       return;
     }
 
@@ -1967,7 +2116,7 @@ function AIChat({
       setStoredJson(activeChatHistoryKey, nextHistory);
     }
 
-    const wasMissingPrompt = isMissingFieldPromptMessage(lastAssistantMessage);
+    const wasMissingPrompt = Boolean(pendingMissingFieldRef.current);
     const missingFieldsNow = getMissingProposalFields(
       nextContext,
       serviceName,
@@ -1987,9 +2136,8 @@ function AIChat({
         return;
       }
 
-      requestProposalApproval(nextContext, nextHistory);
       setPendingMissingField(null);
-      return;
+      // Continue to backend response before showing proposal confirmation.
     }
 
     const shouldGenerateProposal =
@@ -2021,34 +2169,6 @@ function AIChat({
 
       setPendingMissingField(null);
       requestProposalApproval(storedContext, storedHistory);
-      return;
-    }
-
-    if (
-      !skipUserAppend &&
-      hasRequestedProposal &&
-      parsedBudgetAmount !== null &&
-      missingFieldsNow.length === 0
-    ) {
-      const budgetInfo = getServiceMinimumBudget(
-        services,
-        serviceName,
-        serviceId,
-      );
-      if (budgetInfo?.minBudget && parsedBudgetAmount < budgetInfo.minBudget) {
-        const formattedMinBudget = formatBudgetValue(budgetInfo.minBudget);
-        const formattedBudget = formatBudgetValue(parsedBudgetAmount);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: `The budget of ${formattedBudget} is below the minimum required amount for ${budgetInfo.serviceLabel}. The minimum amount is ${formattedMinBudget}. We can continue with this price, but the service quality and output may not meet our standards. If you want quality work, please consider increasing the budget.`,
-          },
-        ]);
-        return;
-      }
-
-      requestProposalApproval(nextContext, nextHistory);
       return;
     }
 
@@ -2189,11 +2309,14 @@ function AIChat({
 
   const voiceButtonDisabled =
     !isSecureContext ||
+    isBraveBrowser ||
     !isSpeechSupported ||
     isVoiceStarting ||
     (!isRecording && (isProcessingFile || isHistoryLoading || isLoading));
   const voiceButtonLabel = !isSecureContext
     ? "Voice input requires HTTPS (secure context)"
+    : isBraveBrowser
+      ? "Voice input isn't supported in Brave (privacy restrictions)"
     : !isSpeechSupported
       ? "Voice input isn't supported in this browser"
       : isVoiceStarting
@@ -2401,7 +2524,7 @@ function AIChat({
                   )}
 
                   {/* Loading State */}
-                  {(isLoading || isProcessingFile) && (
+                  {((isLoading && showThinking) || isProcessingFile) && (
                     <div className="flex flex-col items-start animate-fade-in">
                       <span className="text-xs font-medium mb-1.5 px-1 text-muted-foreground">
                         CATA
@@ -2610,6 +2733,7 @@ function AIChat({
               onClose={() => setShowProposal(false)}
               embedded={embedded}
               inline={true}
+              services={services}
             />
           </div>
         )}
@@ -2621,6 +2745,7 @@ function AIChat({
             isOpen={showProposal}
             onClose={() => setShowProposal(false)}
             embedded={false}
+            services={services}
           />
         )}
       </div>

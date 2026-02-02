@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import X from "lucide-react/dist/esm/icons/x";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
-import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Layers from "lucide-react/dist/esm/icons/layers";
 import ListChecks from "lucide-react/dist/esm/icons/list-checks";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
@@ -100,6 +100,11 @@ const mapToProposalData = (extracted) => {
   });
   const scopeObjectives = scopeLines.join("\n");
 
+  const rawBudget = get(["budget"]);
+  const budget = rawBudget
+    ? rawBudget.replace(/["'`~]+/g, "").replace(/\s{2,}/g, " ").trim()
+    : "";
+
   return {
     clientName: get(["client name", "name"]),
     businessName: get(["business name", "company name", "company"]),
@@ -117,11 +122,69 @@ const mapToProposalData = (extracted) => {
       get(["platform requirements", "platform"]),
     ].filter(t => t && !t.toLowerCase().includes("to be finalized")),
     timeline: get(["launch timeline", "timeline", "duration"]),
-    budget: get(["budget"]),
+    budget,
+    rawBudget,
     designStyle,
     volume: get(["volume"]),
     engagement: get(["engagement model", "engagement"]),
   };
+};
+
+const isTechnicalService = (data, services = []) => {
+  if (!data?.serviceType || !Array.isArray(services) || services.length === 0) {
+    return false;
+  }
+  const normalized = data.serviceType.toLowerCase().trim();
+  const match = services.find((service) => {
+    if (!service?.name && !service?.id) return false;
+    const name = String(service.name || "").toLowerCase().trim();
+    const id = String(service.id || "").toLowerCase().trim();
+    return name === normalized || id === normalized;
+  });
+  return Boolean(match?.show_techstack);
+};
+
+const parseBudgetNumber = (value = "") => {
+  if (typeof value !== "string") return null;
+  const match = value.match(/[\d,]+(?:\.\d+)?/);
+  if (!match) return null;
+  const amount = Number.parseFloat(match[0].replace(/,/g, ""));
+  return Number.isFinite(amount) ? amount : null;
+};
+
+const findQuantityFromText = (text = "", unitLabel = "") => {
+  if (typeof text !== "string") return null;
+  const lowered = text.toLowerCase();
+  const unit = unitLabel ? unitLabel.toLowerCase() : "";
+  if (unit) {
+    const unitRegex = new RegExp(`(\\d+)\\s*(?:${unit}|${unit.replace(/s$/, "")})\\b`, "i");
+    const match = lowered.match(unitRegex);
+    if (match) {
+      const parsed = Number.parseInt(match[1], 10);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+};
+
+const formatRupees = (amount) => {
+  if (!Number.isFinite(amount)) return "";
+  return `₹${amount.toLocaleString("en-IN")}`;
+};
+
+const singularizeUnit = (value = "") =>
+  value ? value.replace(/s$/i, "") : value;
+
+const parsePerUnitBudget = (budgetText = "", unitLabel = "") => {
+  if (typeof budgetText !== "string") return null;
+  const lowered = budgetText.toLowerCase();
+  if (!lowered) return null;
+  const unit = unitLabel ? unitLabel.toLowerCase() : "";
+  const hasPer =
+    /\bper\b/i.test(lowered) ||
+    (unit && (lowered.includes(unit) || lowered.includes(unit.replace(/s$/, ""))));
+  if (!hasPer) return null;
+  return parseBudgetNumber(budgetText);
 };
 
 // --- Accordion Component ---
@@ -198,7 +261,7 @@ const TechTags = ({ items }) => {
 };
 
 // --- Main Proposal Card ---
-const ProposalCard = ({ data }) => {
+const ProposalCard = ({ data, services = [] }) => {
   if (!data) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center px-6">
@@ -211,6 +274,44 @@ const ProposalCard = ({ data }) => {
       </div>
     );
   }
+
+  const normalizedService = data?.serviceType
+    ? data.serviceType.toLowerCase().trim()
+    : "";
+  const serviceMatch = services.find((service) => {
+    if (!service?.name && !service?.id) return false;
+    const name = String(service.name || "").toLowerCase().trim();
+    const id = String(service.id || "").toLowerCase().trim();
+    return name === normalizedService || id === normalizedService;
+  });
+
+  const quantityUnit = serviceMatch?.budget?.quantity_unit_label || "";
+  const isPerDeliverable = serviceMatch?.budget?.pricing_model === "per_deliverable";
+  const quantitySources = [
+    data.volume,
+    data.overview,
+    ...(Array.isArray(data.features) ? data.features : []),
+  ];
+  const quantity =
+    quantitySources.reduce((found, source) => {
+      if (found) return found;
+      return findQuantityFromText(source, quantityUnit);
+    }, null) || null;
+
+  const perUnitBudget = parsePerUnitBudget(
+    data.rawBudget || data.budget || "",
+    quantityUnit,
+  );
+  const totalBudget =
+    isPerDeliverable && quantity && perUnitBudget
+      ? perUnitBudget * quantity
+      : parseBudgetNumber(data.budget || "");
+
+  const unitLabel = singularizeUnit(quantityUnit || "deliverables");
+  const budgetSummary =
+    isPerDeliverable && perUnitBudget && unitLabel
+      ? `${formatRupees(perUnitBudget)}/- per ${unitLabel}`
+      : data.budget || "";
 
   return (
     <div className="space-y-4">
@@ -273,9 +374,11 @@ const ProposalCard = ({ data }) => {
           <FeatureList items={data.features} />
         </AccordionSection>
 
-        <AccordionSection icon={Cpu} title="Platform & Techstack">
-          <TechTags items={data.techstack} />
-        </AccordionSection>
+        {isTechnicalService(data, services) && (
+          <AccordionSection icon={Cpu} title="Platform & Techstack">
+            <TechTags items={data.techstack} />
+          </AccordionSection>
+        )}
       </div>
 
       {/* Footer Grid - Timeline & Budget */}
@@ -291,11 +394,11 @@ const ProposalCard = ({ data }) => {
         </div>
         <div className="group bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50 hover:bg-slate-700/30 transition-colors cursor-default">
           <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="w-4 h-4 text-emerald-400" />
+            <IndianRupee className="w-4 h-4 text-emerald-400" />
             <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Budget</p>
           </div>
           <p className="text-white font-semibold text-sm">
-            {data.budget || "Pending confirmation"}
+            {budgetSummary || "Pending confirmation"}
           </p>
         </div>
       </div>
@@ -310,6 +413,7 @@ export function ProposalSidebar({
   onClose,
   embedded = false,
   inline = false,
+  services = [],
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -426,7 +530,7 @@ export function ProposalSidebar({
       {/* Content */}
       <div className="flex-1 overflow-y-auto bg-black scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
         <div className="p-6">
-          <ProposalCard data={proposalData} />
+          <ProposalCard data={proposalData} services={services} />
         </div>
       </div>
 
