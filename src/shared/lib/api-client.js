@@ -154,10 +154,10 @@ export const signup = ({
   });
 };
 
-export const login = ({ email, password }) => {
+export const login = ({ email, password, role }) => {
   return request("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password, role })
   });
 };
 

@@ -49,6 +49,7 @@ model User {
   phoneNumber  String?
   passwordHash String
   role         UserRole   @default(FREELANCER)
+  roles        String[]   @default([])
   status       UserStatus @default(ACTIVE)
   bio          String?    @db.Text
   skills       String[]   @default([])

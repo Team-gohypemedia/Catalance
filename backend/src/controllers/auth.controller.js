@@ -49,7 +49,9 @@ export const profileHandler = asyncHandler(async (req, res) => {
   }
 
   const user = await getUserById(userId);
-  res.json({ data: user });
+  const tokenRole = req.user?.role;
+  const payload = tokenRole ? { ...user, role: tokenRole } : user;
+  res.json({ data: payload });
 });
 
 export const updateProfileHandler = asyncHandler(async (req, res) => {
