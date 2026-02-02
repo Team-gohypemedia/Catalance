@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
@@ -27,6 +27,7 @@ const initialFormState = {
 
 function Login({ className, ...props }) {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: location.state?.email || "",
     password: ""
@@ -99,6 +100,7 @@ function Login({ className, ...props }) {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     setFormError("");
+    const selectedRole = searchParams.get("role")?.toUpperCase() || location.state?.role;
     try {
       const { signInWithGoogle } = await import("@/shared/lib/firebase");
       // Sign in with Firebase Google
@@ -106,7 +108,7 @@ function Login({ className, ...props }) {
       const idToken = await firebaseUser.getIdToken();
 
       // Perform backend login with Google token
-      const authPayload = await loginWithGoogle(idToken);
+      const authPayload = await loginWithGoogle(idToken, selectedRole);
 
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success(`Welcome, ${authPayload?.user?.fullName || 'User'}!`);

@@ -85,11 +85,26 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
-  const logout = useCallback(() => {
-    syncSession(null);
-    toast.success("You have been logged out.");
-    navigate("/login", { replace: true });
-  }, [navigate, syncSession]);
+  const logout = useCallback(
+    (options = {}) => {
+      const {
+        redirect = true,
+        redirectTo = "/login",
+        showToast = true,
+      } = options || {};
+
+      syncSession(null);
+
+      if (showToast) {
+        toast.success("You have been logged out.");
+      }
+
+      if (redirect) {
+        navigate(redirectTo, { replace: true });
+      }
+    },
+    [navigate, syncSession]
+  );
 
   const authFetch = useCallback(
     async (target, options = {}) => {
@@ -296,4 +311,3 @@ export const useAuth = () => {
   return context;
 };
 
-export { AuthContext };

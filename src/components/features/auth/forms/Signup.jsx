@@ -14,7 +14,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { signup, login, verifyOtp, resendOtp } from "@/shared/lib/api-client";
+import { signup, login, loginWithGoogle, verifyOtp, resendOtp } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
@@ -33,6 +33,7 @@ const initialFormState = {
 };
 
 const CLIENT_ROLE = "CLIENT";
+const FREELANCER_ROLE = "FREELANCER";
 
 function Signup({ className, ...props }) {
   const location = useLocation();
@@ -59,21 +60,21 @@ function Signup({ className, ...props }) {
   const navigate = useNavigate();
   const { login: setAuthSession, logout, isAuthenticated } = useAuth();
 
+  const isFromProposal = Boolean(location.state?.fromProposal);
+
   // Clear existing session on mount
   useEffect(() => {
-    if (isAuthenticated) {
-      logout();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!isAuthenticated) return;
+    logout(isFromProposal ? { redirect: false, showToast: false } : undefined);
+  }, [isAuthenticated, isFromProposal, logout]);
 
   // Redirect clients to service selection if not coming from proposal
   useEffect(() => {
     const role = searchParams.get("role")?.toUpperCase();
-    if (role === CLIENT_ROLE && !location.state?.fromProposal) {
+    if (role === CLIENT_ROLE && !isFromProposal) {
       navigate("/service", { replace: true });
     }
-  }, [searchParams, location.state, navigate]);
+  }, [searchParams, isFromProposal, navigate]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -187,37 +188,26 @@ function Signup({ className, ...props }) {
   const handleGoogleSignUp = async () => {
     setIsGoogleLoading(true);
     setFormError("");
+    const selectedRole = searchParams.get("role")?.toUpperCase() || CLIENT_ROLE;
     try {
       const { signInWithGoogle } = await import("@/shared/lib/firebase");
       // Sign in with Firebase Google
       const firebaseUser = await signInWithGoogle();
+      const idToken = await firebaseUser.getIdToken();
 
-      // Try to create account or log in if exists
-      let authPayload;
-      try {
-        // Try to sign up
-        authPayload = await signup({
-          fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
-          email: firebaseUser.email,
-          password: firebaseUser.uid, // Use Firebase UID as password
-          role: CLIENT_ROLE,
-        });
-      } catch (signupError) {
-        // If user already exists, try to log in
-        if (signupError?.message?.includes("already exists")) {
-          authPayload = await login({
-            email: firebaseUser.email,
-            password: firebaseUser.uid
-          });
-        } else {
-          throw signupError;
-        }
-      }
+      // Authenticate via backend Google endpoint (creates user if needed)
+      const authPayload = await loginWithGoogle(idToken, selectedRole);
 
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);
-
-      navigate("/client", { replace: true });
+      const nextRole = authPayload?.user?.role?.toUpperCase() || selectedRole;
+      if (nextRole === FREELANCER_ROLE) {
+        navigate("/freelancer/onboarding", { replace: true });
+      } else {
+        navigate(nextRole === CLIENT_ROLE ? "/client" : "/freelancer", {
+          replace: true,
+        });
+      }
     } catch (error) {
       console.error("Google sign-up error:", error);
       const message = error?.message || "Unable to sign up with Google.";
@@ -397,7 +387,7 @@ function Signup({ className, ...props }) {
                       </Field>
 
                       <FieldDescription className="text-center">
-                        Already have an account? <Link to="/login" className="underline hover:text-primary">Log in</Link>
+                        Already have an account? <Link to={`/login${searchParams.get("role") ? `?role=${searchParams.get("role")}` : ""}`} className="underline hover:text-primary">Log in</Link>
                       </FieldDescription>
                     </>
                   )}

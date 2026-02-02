@@ -20,6 +20,10 @@
             },
             "questions": [
                 {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Branding (Naming, Logo & Brand Identity) project in detail?"
+                },
+                {
                     "id": "brand_stage",
                     "question": "At what stage is your brand currently?",
                     "options": [
@@ -533,6 +537,10 @@
                 "Terms & Conditions"
             ],
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Website / UI–UX Design (2D / 3D) project in detail?"
+                },
                 {
                     "id": "requirement",
                     "question": "What best describes your website requirement?",
@@ -1172,7 +1180,8 @@
                     "type": "number",
                     "question": "What is your budget for this website project (minimum ₹25,000)?"
                 }
-            ]
+            ],
+            "show_techstack": true
         },
         {
             "number": 3,
@@ -1183,6 +1192,10 @@
                 "unit": "per_month"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this SEO (Search Engine Optimisation) project in detail?"
+                },
                 {
                     "id": "business_category",
                     "question": "Which category best describes your business?",
@@ -1294,6 +1307,10 @@
             },
             "questions": [
                 {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Social Media Marketing (Organic) project in detail?"
+                },
+                {
                     "id": "platforms",
                     "question": "Which social media platforms would you like us to manage?",
                     "options": [
@@ -1404,6 +1421,10 @@
             },
             "questions": [
                 {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Paid Advertising / Performance Marketing project in detail?"
+                },
+                {
                     "id": "platforms",
                     "question": "Which advertising platforms would you like to run campaigns on?",
                     "options": [
@@ -1506,6 +1527,10 @@
             },
             "questions": [
                 {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this App Development (Android / iOS / Cross-Platform) project in detail?"
+                },
+                {
                     "id": "app_type",
                     "question": "What type of application are you planning to build?",
                     "options": [
@@ -1596,7 +1621,8 @@
                     "type": "number",
                     "question": "What budget level best suits this project (minimum ₹1,00,000)?"
                 }
-            ]
+            ],
+            "show_techstack": true
         },
         {
             "number": 7,
@@ -1607,6 +1633,10 @@
                 "unit": "project"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Software Development (Web / SaaS / Custom Systems) project in detail?"
+                },
                 {
                     "id": "purpose",
                     "question": "What is the primary purpose of the software you want to build?",
@@ -1698,7 +1728,8 @@
                     "type": "number",
                     "question": "What budget range do you have in mind (minimum ₹1,00,000)?"
                 }
-            ]
+            ],
+            "show_techstack": true
         },
         {
             "number": 8,
@@ -1709,6 +1740,10 @@
                 "unit": "per_month"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Lead Generation project in detail?"
+                },
                 {
                     "id": "lead_type",
                     "question": "What type of leads are you primarily looking for?",
@@ -1807,10 +1842,17 @@
             "id": "video_services",
             "name": "Video Services",
             "budget": {
-                "min_required_amount": 2000,
-                "unit": "per_video"
+                "min_required_amount": 1000,
+                "unit": "per_video",
+                "pricing_model": "per_deliverable",
+                "quantity_question_id": "deliverable_count",
+                "quantity_unit_label": "videos"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Video Services project in detail?"
+                },
                 {
                     "id": "video_type",
                     "question": "What type of videos do you require?",
@@ -1884,27 +1926,16 @@
                     ]
                 },
                 {
-                    "id": "volume",
-                    "question": "How many videos do you require per month or project?",
-                    "options": [
-                        {
-                            "value": "low_1_10",
-                            "label": "Low volume (1–10)"
-                        },
-                        {
-                            "value": "medium_10_30",
-                            "label": "Medium volume (10–30)"
-                        },
-                        {
-                            "value": "high_above_30",
-                            "label": "High volume (above 30)"
-                        }
-                    ]
+                    "id": "deliverable_count",
+                    "type": "quantity",
+                    "question": "How many videos do you need for this project?",
+                    "min": 1,
+                    "unit_label": "videos"
                 },
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget per video (minimum ₹2,000/video)?"
+                    "question": "What is your budget per video (minimum ₹1,000/video)?"
                 }
             ]
         },
@@ -1917,6 +1948,10 @@
                 "unit": "per_piece"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Writing & Content project in detail?"
+                },
                 {
                     "id": "content_type",
                     "question": "What type of content do you need?",
@@ -2024,6 +2059,10 @@
             },
             "questions": [
                 {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Customer Support project in detail?"
+                },
+                {
                     "id": "channels",
                     "question": "Which customer support channels do you require?",
                     "options": [
@@ -2111,6 +2150,10 @@
                 "unit": "campaign"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Influencer Marketing project in detail?"
+                },
                 {
                     "id": "platforms",
                     "question": "Which platform do you want to run influencer campaigns on?",
@@ -2200,6 +2243,10 @@
             },
             "questions": [
                 {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this UGC (User-Generated Content) Marketing project in detail?"
+                },
+                {
                     "id": "purpose",
                     "question": "What is the main purpose of UGC content for your brand?",
                     "options": [
@@ -2287,6 +2334,10 @@
                 "unit": "project"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this AI Automation project in detail?"
+                },
                 {
                     "id": "purpose",
                     "question": "What is the primary purpose of automation in your business?",
@@ -2376,6 +2427,10 @@
             },
             "questions": [
                 {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this WhatsApp Chatbot project in detail?"
+                },
+                {
                     "id": "purpose",
                     "question": "What is the primary purpose of the WhatsApp chatbot?",
                     "options": [
@@ -2455,10 +2510,17 @@
             "id": "creative_design",
             "name": "Creative & Design",
             "budget": {
-                "min_required_amount": 10000,
-                "unit": "project_or_monthly"
+                "min_required_amount": 500,
+                "unit": "per_deliverable",
+                "pricing_model": "per_deliverable",
+                "quantity_question_id": "deliverable_count",
+                "quantity_unit_label": "deliverables"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Creative & Design project in detail?"
+                },
                 {
                     "id": "work_type",
                     "question": "What type of creative work do you require?",
@@ -2504,22 +2566,11 @@
                     ]
                 },
                 {
-                    "id": "monthly_volume",
-                    "question": "How much design work do you need each month?",
-                    "options": [
-                        {
-                            "value": "low",
-                            "label": "Low volume"
-                        },
-                        {
-                            "value": "medium",
-                            "label": "Medium volume"
-                        },
-                        {
-                            "value": "high",
-                            "label": "High volume"
-                        }
-                    ]
+                    "id": "deliverable_count",
+                    "type": "quantity",
+                    "question": "How many creative/design deliverables do you need per month or project?",
+                    "min": 1,
+                    "unit_label": "deliverables"
                 },
                 {
                     "id": "engagement_model",
@@ -2538,7 +2589,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget for creative/design (minimum ₹10,000)?"
+                    "question": "What is your budget per deliverable (minimum ₹500)?"
                 }
             ]
         },
@@ -2551,6 +2602,10 @@
                 "unit": "per_model"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this 3D Modeling project in detail?"
+                },
                 {
                     "id": "purpose",
                     "question": "What is the primary purpose of the 3D models you require?",
@@ -2640,9 +2695,16 @@
             "name": "CGI Video Services",
             "budget": {
                 "min_required_amount": 15000,
-                "unit": "project"
+                "unit": "per_cgi_video",
+                "pricing_model": "per_deliverable",
+                "quantity_question_id": "deliverable_count",
+                "quantity_unit_label": "cgi videos"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this CGI Video Services project in detail?"
+                },
                 {
                     "id": "purpose",
                     "question": "What is the main purpose of the CGI video you want to create?",
@@ -2720,9 +2782,16 @@
                     ]
                 },
                 {
+                    "id": "deliverable_count",
+                    "type": "quantity",
+                    "question": "How many CGI videos do you need for this project?",
+                    "min": 1,
+                    "unit_label": "cgi videos"
+                },
+                {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget for CGI video services (minimum ₹15,000)?"
+                    "question": "What is your budget per CGI video (minimum ₹15,000/video)?"
                 }
             ]
         },
@@ -2735,6 +2804,10 @@
                 "unit": "pricing_level"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this CRM & ERP Integrated Solutions project in detail?"
+                },
                 {
                     "id": "main_goal",
                     "question": "What is the main goal you want to achieve by implementing a combined CRM and ERP system?",
@@ -2826,6 +2899,10 @@
                 "unit": "pricing_level"
             },
             "questions": [
+                {
+                    "id": "project_requirements_detail",
+                    "question": "What are your requirements for this Voice Agent (AI Voice Bot / Call Automation) project in detail?"
+                },
                 {
                     "id": "purpose",
                     "question": "What is the main purpose of the voice agent you want to implement?",
