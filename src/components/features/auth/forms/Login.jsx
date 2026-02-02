@@ -54,9 +54,16 @@ function Login({ className, ...props }) {
     setIsSubmitting(true);
 
     try {
+      const requestedRole =
+        searchParams.get("role")?.toUpperCase() ||
+        (typeof location.state?.role === "string"
+          ? location.state.role.toUpperCase()
+          : undefined);
+
       const authPayload = await login({
         email: formData.email.trim().toLowerCase(),
-        password: formData.password
+        password: formData.password,
+        role: requestedRole
       });
 
       // Handle unverified user - redirect to verification
@@ -77,8 +84,22 @@ function Login({ className, ...props }) {
       setFormData(initialFormState);
       const nextRole = authPayload?.user?.role?.toUpperCase();
       const redirectTo = location?.state?.redirectTo;
+      const requestedRole =
+        searchParams.get("role")?.toUpperCase() ||
+        (typeof location.state?.role === "string"
+          ? location.state.role.toUpperCase()
+          : null);
+      const normalizedRequestedRole =
+        requestedRole === "CLIENT" || requestedRole === "FREELANCER"
+          ? requestedRole
+          : null;
+
       if (redirectTo) {
         navigate(redirectTo, { replace: true });
+      } else if (normalizedRequestedRole === "CLIENT") {
+        navigate("/client", { replace: true });
+      } else if (normalizedRequestedRole === "FREELANCER") {
+        navigate("/freelancer", { replace: true });
       } else if (nextRole === "CLIENT") {
         navigate("/client", { replace: true });
       } else if (nextRole === "PROJECT_MANAGER") {
@@ -100,7 +121,8 @@ function Login({ className, ...props }) {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     setFormError("");
-    const selectedRole = searchParams.get("role")?.toUpperCase() || location.state?.role;
+    const selectedRole =
+      searchParams.get("role")?.toUpperCase() || location.state?.role;
     try {
       const { signInWithGoogle } = await import("@/shared/lib/firebase");
       // Sign in with Firebase Google
@@ -115,8 +137,23 @@ function Login({ className, ...props }) {
 
       const nextRole = authPayload?.user?.role?.toUpperCase();
       const redirectTo = location?.state?.redirectTo;
+      const requestedRole =
+        typeof selectedRole === "string"
+          ? selectedRole.toUpperCase()
+          : (typeof location.state?.role === "string"
+            ? location.state.role.toUpperCase()
+            : null);
+      const normalizedRequestedRole =
+        requestedRole === "CLIENT" || requestedRole === "FREELANCER"
+          ? requestedRole
+          : null;
+
       if (redirectTo) {
         navigate(redirectTo, { replace: true });
+      } else if (normalizedRequestedRole === "CLIENT") {
+        navigate("/client", { replace: true });
+      } else if (normalizedRequestedRole === "FREELANCER") {
+        navigate("/freelancer", { replace: true });
       } else if (nextRole === "CLIENT") {
         navigate("/client", { replace: true });
       } else if (nextRole === "PROJECT_MANAGER") {

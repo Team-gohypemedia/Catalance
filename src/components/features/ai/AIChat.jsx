@@ -359,6 +359,31 @@ const parseBudgetValue = (text = "") => {
 };
 
 const BUDGET_QUESTION_REGEX = /budget|investment|price|cost|spend/i;
+const BUDGET_WARNING_REGEX =
+  /budget.*below|below.*minimum|required.*minimum|minimum requirement|minimum required/i;
+
+const formatInr = (value) => {
+  if (!Number.isFinite(value)) return "";
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
+};
+
+const buildBudgetWarningOverride = ({
+  assistantText = "",
+  userText = "",
+  minBudgetInfo,
+}) => {
+  if (!assistantText || !BUDGET_WARNING_REGEX.test(assistantText)) return null;
+  if (!minBudgetInfo?.minBudget || !Number.isFinite(minBudgetInfo.minBudget)) {
+    return null;
+  }
+
+  const userBudget = parseBudgetValue(userText);
+  if (!Number.isFinite(userBudget)) return null;
+  if (userBudget < minBudgetInfo.minBudget) return null;
+
+  const formattedBudget = formatInr(userBudget);
+  return `Thanks! ${formattedBudget} meets the minimum for this service. Would you like to proceed?`;
+};
 
 const getStoredJson = (key, fallback) => {
   if (typeof window === "undefined") return fallback;
@@ -1021,6 +1046,19 @@ const formatMissingFieldsMessage = (missing) => {
   return buildMissingFieldPrompt(missing[0]);
 };
 
+const isProposalApprovalPrompt = (assistantText = "") => {
+  if (typeof assistantText !== "string") return false;
+  const hasGenerate =
+    /\b(generate|generating|create|creating|make|making|build|building|draft|drafting|prepare|preparing|write|writing)\b\s+(?:a|your|the)?\s*proposal\b/i.test(
+      assistantText,
+    );
+  const hasPromptCue =
+    /(confirm|ready|proceed|say|type|approve|would you like|do you want|shall i)/i.test(
+      assistantText,
+    );
+  return hasGenerate && hasPromptCue;
+};
+
 const isProposalConfirmation = (text, assistantText) => {
   const trimmed = text.trim();
   if (!trimmed) return false;
@@ -1040,25 +1078,16 @@ const isProposalConfirmation = (text, assistantText) => {
     trimmed,
   );
   const prompted =
-    /ready to (see|view|generate).*proposal|generate (a |your |the )?proposal|proposal ready|confirm below|would you like me to generate a proposal|prepare a proposal/i.test(
+    isProposalApprovalPrompt(assistantText || "") ||
+    /project summary|if everything looks good|finalize and send|ready to (see|view|generate).*proposal|generate (a |your |the )?proposal|proposal ready|confirm below|would you like me to generate a proposal|prepare a proposal|proceed with (generating|creating|preparing).*\bproposal/i.test(
       assistantText || "",
     );
 
   return simpleYes && prompted;
 };
 
-const isProposalApprovalPrompt = (assistantText = "") => {
-  if (typeof assistantText !== "string") return false;
-  const hasGenerate =
-    /\b(generate|create|make|build|draft|prepare|write)\b\s+(?:a|your|the)?\s*proposal\b/i.test(
-      assistantText,
-    );
-  const hasPromptCue =
-    /(confirm|ready|proceed|say|type|approve|would you like|do you want|shall i)/i.test(
-      assistantText,
-    );
-  return hasGenerate && hasPromptCue;
-};
+const isSimpleYes = (text = "") =>
+  /^(yes|y|yeah|yep|sure|ok|okay|ready|proceed)\b/i.test(text.trim());
 
 const getProposalPromptMessage = (missingFields) =>
   formatMissingFieldsMessage(missingFields || []);
@@ -2143,6 +2172,20 @@ function AIChat({
     const shouldGenerateProposal =
       !skipUserAppend && isProposalConfirmation(text, lastAssistantMessage);
 
+    if (
+      !skipUserAppend &&
+      missingFieldsNow.length === 0 &&
+      isSimpleYes(text) &&
+      /(proposal|summary|finalize|generate|prepare)/i.test(
+        lastAssistantMessage || "",
+      )
+    ) {
+      const storedContext = getStoredJson(activeProposalContextKey, nextContext);
+      const storedHistory = getStoredJson(activeChatHistoryKey, nextHistory);
+      requestProposalApproval(storedContext, storedHistory);
+      return;
+    }
+
     if (shouldGenerateProposal) {
       const storedContext = getStoredJson(
         activeProposalContextKey,
@@ -2188,6 +2231,18 @@ function AIChat({
 
       if (data?.success && data.message) {
         const assistantText = sanitizeAssistantContent(data.message);
+        const minBudgetInfo = getServiceMinimumBudget(
+          services,
+          serviceName,
+          serviceId,
+          nextHistory,
+        );
+        const budgetOverride = buildBudgetWarningOverride({
+          assistantText,
+          userText: text,
+          minBudgetInfo,
+        });
+        const finalAssistantText = budgetOverride || assistantText;
         const storedContext = getStoredJson(
           activeProposalContextKey,
           proposalContextRef.current,
@@ -2197,7 +2252,12 @@ function AIChat({
           buildConversationHistory(messages),
         );
 
-        if (isProposalApprovalPrompt(assistantText)) {
+        const isApprovalPrompt = isProposalApprovalPrompt(finalAssistantText);
+        const isSummaryPrompt =
+          /project summary|if everything looks good|finalize and send|would you like me to proceed|all the details.*proposal|i'?ll proceed with generating|please hold on|prepare (it|the proposal)|proposal (is|will be) (now )?(finalized|ready)/i.test(
+            finalAssistantText,
+          );
+        if (isApprovalPrompt || isSummaryPrompt) {
           const missingFields = getMissingProposalFields(
             storedContext,
             serviceName,
@@ -2222,7 +2282,7 @@ function AIChat({
         } else {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: assistantText },
+            { role: "assistant", content: finalAssistantText },
           ]);
         }
       } else {
