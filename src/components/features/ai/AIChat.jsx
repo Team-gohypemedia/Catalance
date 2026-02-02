@@ -16,9 +16,13 @@ import Brain from "lucide-react/dist/esm/icons/brain";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Mic from "lucide-react/dist/esm/icons/mic";
-import MicOff from "lucide-react/dist/esm/icons/mic-off";
 import { ProposalSidebar } from "@/components/features/ai/elements/proposal-sidebar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import X from "lucide-react/dist/esm/icons/x";
 import { toast } from "sonner";
 import {
@@ -28,12 +32,12 @@ import {
   ConfirmationActions,
   ConfirmationRejected,
   ConfirmationRequest,
-  ConfirmationTitle
+  ConfirmationTitle,
 } from "@/components/ai-elements/confirmation";
 import {
   Message,
   MessageContent,
-  MessageResponse
+  MessageResponse,
 } from "@/components/ai-elements/message";
 import {
   Plan,
@@ -41,9 +45,8 @@ import {
   PlanContent,
   PlanHeader,
   PlanTitle,
-  PlanTrigger
+  PlanTrigger,
 } from "@/components/ai-elements/plan";
-
 
 const DEFAULT_API_BASE = "http://localhost:5000/api";
 const API_ROOT = API_BASE_URL || DEFAULT_API_BASE;
@@ -56,12 +59,15 @@ const PROPOSAL_APPROVAL_MESSAGE =
 const PROPOSAL_MISSING_CONTEXT_MESSAGE =
   "I can generate the proposal once I have one more detail.";
 
-const WEBSITE_REQUIREMENT_OPTIONS = ["New website", "Revamping existing website"];
+const WEBSITE_REQUIREMENT_OPTIONS = [
+  "New website",
+  "Revamping existing website",
+];
 const WEBSITE_OBJECTIVE_OPTIONS = [
   "Generating leads",
   "Selling products or services online",
   "Building brand credibility",
-  "Showcasing work or portfolio"
+  "Showcasing work or portfolio",
 ];
 const WEBSITE_TYPE_OPTIONS = [
   "E-commerce",
@@ -77,12 +83,12 @@ const WEBSITE_TYPE_OPTIONS = [
   "Nonprofit / NGO",
   "Community Forum / Membership",
   "Marketplace / Multi-vendor",
-  "Booking (Hotel / Salon / Travel)"
+  "Booking (Hotel / Salon / Travel)",
 ];
 const DESIGN_EXPERIENCE_OPTIONS = [
   "Clean and simple design",
   "Premium and modern UI",
-  "Interactive or 3D-based design"
+  "Interactive or 3D-based design",
 ];
 const BUILD_TYPE_OPTIONS = ["Platform-based website", "Coded website"];
 const PLATFORM_OPTIONS = [
@@ -96,7 +102,7 @@ const PLATFORM_OPTIONS = [
   "Magento / Adobe Commerce",
   "BigCommerce",
   "Bubble (No-code)",
-  "Other (Specify)"
+  "Other (Specify)",
 ];
 const FRONTEND_FRAMEWORK_OPTIONS = [
   "Next.js (React)",
@@ -110,7 +116,7 @@ const FRONTEND_FRAMEWORK_OPTIONS = [
   "Astro",
   "Qwik",
   "SolidJS",
-  "HTML/CSS/JS (Custom)"
+  "HTML/CSS/JS (Custom)",
 ];
 const BACKEND_TECHNOLOGY_OPTIONS = [
   "Node.js (Express)",
@@ -126,7 +132,7 @@ const BACKEND_TECHNOLOGY_OPTIONS = [
   "Phoenix (Elixir)",
   "Rust (Actix)",
   "Serverless Functions",
-  "No custom backend (Frontend + APIs only)"
+  "No custom backend (Frontend + APIs only)",
 ];
 const DATABASE_OPTIONS = [
   "PostgreSQL",
@@ -139,7 +145,7 @@ const DATABASE_OPTIONS = [
   "Redis",
   "DynamoDB",
   "CockroachDB",
-  "No database needed"
+  "No database needed",
 ];
 const HOSTING_OPTIONS = [
   "Vercel",
@@ -155,7 +161,7 @@ const HOSTING_OPTIONS = [
   "Google Cloud",
   "Azure",
   "Cloudflare Pages",
-  "Other (Specify)"
+  "Other (Specify)",
 ];
 const PAGE_COUNT_OPTIONS = ["1-5 pages", "6-10 pages", "More than 10 pages"];
 
@@ -173,13 +179,13 @@ const sanitizeAssistantContent = (content = "") => {
   const lines = content
     .split("\n")
     .map((line) =>
-      line.replace(/^\s*(?:-|\*)?\s*(?:your\s+)?options are\s*:?\s*/i, "")
+      line.replace(/^\s*(?:-|\*)?\s*(?:your\s+)?options are\s*:?\s*/i, ""),
     )
     .filter(
       (line) =>
         !/^\s*(?:-|\*)?\s*if you don't see what you need, kindly type it below\.?\s*$/i.test(
-          line
-        )
+          line,
+        ),
     );
 
   return lines.join("\n").trim();
@@ -191,14 +197,19 @@ const buildConversationHistory = (history) =>
     .map(({ role, content }) => ({ role, content }));
 
 const normalizeServiceLabel = (value = "") =>
-  value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
 const tokenizeServiceLabel = (value = "") =>
-  normalizeServiceLabel(value)
-    .split(/\s+/)
-    .filter(Boolean);
+  normalizeServiceLabel(value).split(/\s+/).filter(Boolean);
 
-const findMatchingService = (services = [], serviceName = "", serviceId = "") => {
+const findMatchingService = (
+  services = [],
+  serviceName = "",
+  serviceId = "",
+) => {
   if (!Array.isArray(services) || services.length === 0) return null;
   const lookup = [serviceName, serviceId].filter(Boolean).join(" ").trim();
   if (!lookup) return null;
@@ -212,19 +223,24 @@ const findMatchingService = (services = [], serviceName = "", serviceId = "") =>
     const idNormalized = normalizeServiceLabel(service?.id || "");
     let score = 0;
 
-    if (nameNormalized === normalized || idNormalized === normalized) score += 5;
+    if (nameNormalized === normalized || idNormalized === normalized)
+      score += 5;
     if (
       nameNormalized &&
-      (nameNormalized.includes(normalized) || normalized.includes(nameNormalized))
+      (nameNormalized.includes(normalized) ||
+        normalized.includes(nameNormalized))
     ) {
       score += 3;
     }
-    if (idNormalized && (idNormalized.includes(normalized) || normalized.includes(idNormalized))) {
+    if (
+      idNormalized &&
+      (idNormalized.includes(normalized) || normalized.includes(idNormalized))
+    ) {
       score += 2;
     }
 
     const candidateTokens = new Set(
-      tokenizeServiceLabel(`${service?.name || ""} ${service?.id || ""}`)
+      tokenizeServiceLabel(`${service?.name || ""} ${service?.id || ""}`),
     );
     tokenizeServiceLabel(lookup).forEach((token) => {
       if (candidateTokens.has(token)) score += 1;
@@ -239,14 +255,18 @@ const findMatchingService = (services = [], serviceName = "", serviceId = "") =>
   return bestScore > 0 ? bestMatch : null;
 };
 
-const getServiceMinimumBudget = (services = [], serviceName = "", serviceId = "") => {
+const getServiceMinimumBudget = (
+  services = [],
+  serviceName = "",
+  serviceId = "",
+) => {
   const match = findMatchingService(services, serviceName, serviceId);
   const rawMinBudget = match?.budget?.min_required_amount;
   const minBudget = Number(rawMinBudget);
   if (!Number.isFinite(minBudget) || minBudget <= 0) return null;
   return {
     minBudget,
-    serviceLabel: match?.name || serviceName || serviceId || "this service"
+    serviceLabel: match?.name || serviceName || serviceId || "this service",
   };
 };
 
@@ -317,7 +337,7 @@ const createEmptyProposalContext = (serviceName = "") => ({
   requirements: [],
   scope: {
     features: [],
-    deliverables: []
+    deliverables: [],
   },
   timeline: "",
   budget: "",
@@ -325,10 +345,10 @@ const createEmptyProposalContext = (serviceName = "") => ({
   preferences: [],
   contactInfo: {
     email: "",
-    phone: ""
+    phone: "",
   },
   notes: "",
-  serviceName: serviceName || ""
+  serviceName: serviceName || "",
 });
 
 const normalizeList = (items) =>
@@ -366,15 +386,30 @@ const mergeProposalContext = (baseContext, update) => {
     ...base,
     clientName: mergeText(base.clientName, next.clientName),
     companyName: mergeText(base.companyName, next.companyName),
-    companyBackground: mergeText(base.companyBackground, next.companyBackground),
-    websiteRequirement: mergeText(base.websiteRequirement, next.websiteRequirement),
+    companyBackground: mergeText(
+      base.companyBackground,
+      next.companyBackground,
+    ),
+    websiteRequirement: mergeText(
+      base.websiteRequirement,
+      next.websiteRequirement,
+    ),
     objectives: mergeLists(base.objectives, next.objectives),
     websiteType: mergeText(base.websiteType, next.websiteType),
     designExperience: mergeText(base.designExperience, next.designExperience),
     buildType: mergeText(base.buildType, next.buildType),
-    platformPreference: mergeText(base.platformPreference, next.platformPreference),
-    frontendFramework: mergeText(base.frontendFramework, next.frontendFramework),
-    backendTechnology: mergeText(base.backendTechnology, next.backendTechnology),
+    platformPreference: mergeText(
+      base.platformPreference,
+      next.platformPreference,
+    ),
+    frontendFramework: mergeText(
+      base.frontendFramework,
+      next.frontendFramework,
+    ),
+    backendTechnology: mergeText(
+      base.backendTechnology,
+      next.backendTechnology,
+    ),
     database: mergeText(base.database, next.database),
     hosting: mergeText(base.hosting, next.hosting),
     pageCount: mergeText(base.pageCount, next.pageCount),
@@ -387,12 +422,15 @@ const mergeProposalContext = (baseContext, update) => {
     serviceName: mergeText(base.serviceName, next.serviceName),
     scope: {
       features: mergeLists(base.scope?.features, next.scope?.features),
-      deliverables: mergeLists(base.scope?.deliverables, next.scope?.deliverables)
+      deliverables: mergeLists(
+        base.scope?.deliverables,
+        next.scope?.deliverables,
+      ),
     },
     contactInfo: {
       email: mergeText(base.contactInfo?.email, next.contactInfo?.email),
-      phone: mergeText(base.contactInfo?.phone, next.contactInfo?.phone)
-    }
+      phone: mergeText(base.contactInfo?.phone, next.contactInfo?.phone),
+    },
   };
 };
 
@@ -517,12 +555,14 @@ const extractPlanPayload = (content = "") => {
   return {
     title,
     items,
-    remainder: remainder.join("\n").trim()
+    remainder: remainder.join("\n").trim(),
   };
 };
 
 const extractTimeline = (text) => {
-  const match = text.match(/\b\d+\s*(?:-\s*\d+\s*)?(?:day|week|month|hour|year)s?\b/i);
+  const match = text.match(
+    /\b\d+\s*(?:-\s*\d+\s*)?(?:day|week|month|hour|year)s?\b/i,
+  );
   if (match) return match[0].replace(/\s+/g, " ").trim();
   if (/asap|urgent|immediately/i.test(text)) return "ASAP";
   if (/flexible|no rush|whenever/i.test(text)) return "Flexible";
@@ -546,10 +586,10 @@ const extractPreferenceStatements = (text) => {
     .filter(Boolean);
 
   const preferences = statements.filter((statement) =>
-    /\bprefer|would like|nice to have|should\b/i.test(statement)
+    /\bprefer|would like|nice to have|should\b/i.test(statement),
   );
   const constraints = statements.filter((statement) =>
-    /\bmust|must not|avoid|don't|do not|cannot|can't|no\b/i.test(statement)
+    /\bmust|must not|avoid|don't|do not|cannot|can't|no\b/i.test(statement),
   );
 
   return { preferences, constraints };
@@ -563,13 +603,13 @@ const createMissingField = ({
   label,
   question,
   options = [],
-  allowCustom = false
+  allowCustom = false,
 }) => ({
   id,
   label,
   question,
   options,
-  allowCustom
+  allowCustom,
 });
 
 const buildOptionsMap = (options = []) => {
@@ -602,7 +642,9 @@ const getMultiSelection = (text, options = []) => {
     ? parseSelectionsFromOptions(trimmed, options)
     : [];
   const combinedItems = extractCombinedItems(trimmed);
-  const customItems = combinedItems.filter((item) => !isNumericChoiceToken(item));
+  const customItems = combinedItems.filter(
+    (item) => !isNumericChoiceToken(item),
+  );
   const merged = mergeLists(selections, customItems);
   if (merged.length) return merged;
   return trimmed ? [trimmed] : [];
@@ -611,7 +653,8 @@ const getMultiSelection = (text, options = []) => {
 const appendSpeechTranscript = (baseText, finalText, interimText) => {
   const base = typeof baseText === "string" ? baseText : "";
   const finalValue = typeof finalText === "string" ? finalText.trim() : "";
-  const interimValue = typeof interimText === "string" ? interimText.trim() : "";
+  const interimValue =
+    typeof interimText === "string" ? interimText.trim() : "";
   const suffix = [finalValue, interimValue].filter(Boolean).join(" ").trim();
 
   if (!suffix) return base;
@@ -691,7 +734,11 @@ const buildMissingFieldPrompt = (field) => {
 
 const isWebsiteService = (serviceName = "", serviceId = "") => {
   const combined = `${serviceId} ${serviceName}`.toLowerCase();
-  return combined.includes("website") || combined.includes("web-development") || combined.includes("web ");
+  return (
+    combined.includes("website") ||
+    combined.includes("web-development") ||
+    combined.includes("web ")
+  );
 };
 
 const isPlatformBuild = (buildType = "") =>
@@ -704,12 +751,13 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
       createMissingField({
         id: "clientName",
         label: "Your name",
-        question: "May I know your name?"
-      })
+        question: "May I know your name?",
+      }),
     ];
   }
 
-  const hasText = (value) => typeof value === "string" && value.trim().length > 0;
+  const hasText = (value) =>
+    typeof value === "string" && value.trim().length > 0;
   const hasList = (value) => Array.isArray(value) && value.length > 0;
   const hasScope =
     hasList(context.scope?.features) ||
@@ -721,8 +769,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
       createMissingField({
         id: "clientName",
         label: "Your name",
-        question: "May I know your name?"
-      })
+        question: "May I know your name?",
+      }),
     );
   }
   if (!hasText(context.companyName)) {
@@ -730,8 +778,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
       createMissingField({
         id: "companyName",
         label: "Business name",
-        question: "What is your business or company name?"
-      })
+        question: "What is your business or company name?",
+      }),
     );
   }
   if (!hasText(context.companyBackground)) {
@@ -739,8 +787,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
       createMissingField({
         id: "companyBackground",
         label: "What the business does",
-        question: "Could you briefly tell me what your business does?"
-      })
+        question: "Could you briefly tell me what your business does?",
+      }),
     );
   }
 
@@ -752,8 +800,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
           label: "Website requirement",
           question: "What best describes your website requirement?",
           options: WEBSITE_REQUIREMENT_OPTIONS,
-          allowCustom: true
-        })
+          allowCustom: true,
+        }),
       );
     }
     if (!hasList(context.objectives)) {
@@ -761,10 +809,11 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
         createMissingField({
           id: "objectives",
           label: "Primary objectives",
-          question: "What is the primary objective of your website? (Select all that apply)",
+          question:
+            "What is the primary objective of your website? (Select all that apply)",
           options: WEBSITE_OBJECTIVE_OPTIONS,
-          allowCustom: true
-        })
+          allowCustom: true,
+        }),
       );
     }
     if (!hasText(context.websiteType)) {
@@ -774,8 +823,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
           label: "Website type",
           question: "What kind of website are you looking for?",
           options: WEBSITE_TYPE_OPTIONS,
-          allowCustom: true
-        })
+          allowCustom: true,
+        }),
       );
     }
     if (!hasText(context.designExperience)) {
@@ -785,8 +834,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
           label: "Design experience",
           question: "What type of design experience are you looking for?",
           options: DESIGN_EXPERIENCE_OPTIONS,
-          allowCustom: true
-        })
+          allowCustom: true,
+        }),
       );
     }
     if (!hasText(context.buildType)) {
@@ -796,8 +845,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
           label: "Build type",
           question: "How do you want the website built?",
           options: BUILD_TYPE_OPTIONS,
-          allowCustom: true
-        })
+          allowCustom: true,
+        }),
       );
     }
     const platformBuild = isPlatformBuild(context.buildType);
@@ -809,8 +858,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
             label: "Platform",
             question: "Which platform would you like to use?",
             options: PLATFORM_OPTIONS,
-            allowCustom: true
-          })
+            allowCustom: true,
+          }),
         );
       }
     } else {
@@ -821,8 +870,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
             label: "Frontend framework",
             question: "Which frontend framework do you prefer?",
             options: FRONTEND_FRAMEWORK_OPTIONS,
-            allowCustom: true
-          })
+            allowCustom: true,
+          }),
         );
       }
       if (!hasText(context.backendTechnology)) {
@@ -832,8 +881,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
             label: "Backend technology",
             question: "Which backend technology would you like to use?",
             options: BACKEND_TECHNOLOGY_OPTIONS,
-            allowCustom: true
-          })
+            allowCustom: true,
+          }),
         );
       }
       if (!hasText(context.database)) {
@@ -843,8 +892,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
             label: "Database",
             question: "Which database would you prefer?",
             options: DATABASE_OPTIONS,
-            allowCustom: true
-          })
+            allowCustom: true,
+          }),
         );
       }
       if (!hasText(context.hosting)) {
@@ -854,8 +903,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
             label: "Hosting",
             question: "Where would you like to host the website?",
             options: HOSTING_OPTIONS,
-            allowCustom: true
-          })
+            allowCustom: true,
+          }),
         );
       }
     }
@@ -865,8 +914,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
           id: "features",
           label: "Feature list",
           question:
-            "Which features do you want on your website? You can list all that apply."
-        })
+            "Which features do you want on your website? You can list all that apply.",
+        }),
       );
     }
   }
@@ -876,8 +925,9 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
       createMissingField({
         id: "requirements",
         label: "Project requirements or scope",
-        question: "What are the key requirements or scope you want us to cover?"
-      })
+        question:
+          "What are the key requirements or scope you want us to cover?",
+      }),
     );
   }
 
@@ -887,9 +937,13 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
         id: "timeline",
         label: "Launch timeline",
         question: "When would you like to launch the website?",
-        options: ["Within 2-4 weeks", "Within 1-2 months", "The timeline is flexible"],
-        allowCustom: true
-      })
+        options: [
+          "Within 2-4 weeks",
+          "Within 1-2 months",
+          "The timeline is flexible",
+        ],
+        allowCustom: true,
+      }),
     );
   }
 
@@ -898,8 +952,8 @@ const getMissingProposalFields = (context, serviceName, serviceId) => {
       createMissingField({
         id: "budget",
         label: "Budget",
-        question: "What is your budget for this project?"
-      })
+        question: "What is your budget for this project?",
+      }),
     );
   }
 
@@ -919,17 +973,19 @@ const isProposalConfirmation = (text, assistantText) => {
     /\b(generate|create|make|build|draft|update|revise|edit|regenerate)\b.*\bproposal\b/i,
     /\bproposal\b.*\b(generate|create|make|build|draft|update|revise|edit|regenerate)\b/i,
     /\bgo ahead\b/i,
-    /\bready\b.*\bproposal\b/i
+    /\bready\b.*\bproposal\b/i,
   ];
 
   if (explicitRequestPatterns.some((pattern) => pattern.test(trimmed))) {
     return true;
   }
 
-  const simpleYes = /^(yes|y|yeah|yep|sure|ok|okay|ready|proceed)\b/i.test(trimmed);
+  const simpleYes = /^(yes|y|yeah|yep|sure|ok|okay|ready|proceed)\b/i.test(
+    trimmed,
+  );
   const prompted =
     /ready to (see|view|generate).*proposal|generate (a |your |the )?proposal|proposal ready|confirm below|would you like me to generate a proposal|prepare a proposal/i.test(
-      assistantText || ""
+      assistantText || "",
     );
 
   return simpleYes && prompted;
@@ -939,11 +995,12 @@ const isProposalApprovalPrompt = (assistantText = "") => {
   if (typeof assistantText !== "string") return false;
   const hasGenerate =
     /\b(generate|create|make|build|draft|prepare|write)\b\s+(?:a|your|the)?\s*proposal\b/i.test(
-      assistantText
+      assistantText,
     );
-  const hasPromptCue = /(confirm|ready|proceed|say|type|approve|would you like|do you want|shall i)/i.test(
-    assistantText
-  );
+  const hasPromptCue =
+    /(confirm|ready|proceed|say|type|approve|would you like|do you want|shall i)/i.test(
+      assistantText,
+    );
   return hasGenerate && hasPromptCue;
 };
 
@@ -979,22 +1036,29 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
   const combinedItems = extractCombinedItems(trimmed);
   const mergedSelections = mergeLists(
     selections,
-    combinedItems.filter((item) => !isNumericChoiceToken(item))
+    combinedItems.filter((item) => !isNumericChoiceToken(item)),
   );
 
-  if (/name\?/i.test(assistantLower) && !/business|company/i.test(assistantLower)) {
+  if (
+    /name\?/i.test(assistantLower) &&
+    !/business|company/i.test(assistantLower)
+  ) {
     update.clientName = trimmed;
   } else if (/business|company name/i.test(assistantLower)) {
     update.companyName = trimmed;
   } else if (
     /what.*business|describe.*business|about your business|tell me.*business|about your company|tell me.*company|what.*company.*do|what.*do you do|what.*does.*do|what.*does/i.test(
-      assistantLower
+      assistantLower,
     )
   ) {
     update.companyBackground = trimmed;
   }
 
-  if (/website requirement|best describes.*website requirement/i.test(assistantLower)) {
+  if (
+    /website requirement|best describes.*website requirement/i.test(
+      assistantLower,
+    )
+  ) {
     update.websiteRequirement = selections.length ? selections[0] : trimmed;
   }
 
@@ -1011,11 +1075,15 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
     update.websiteType = selections.length ? selections[0] : trimmed;
   }
 
-  if (/design experience|design style|design preference/i.test(assistantLower)) {
+  if (
+    /design experience|design style|design preference/i.test(assistantLower)
+  ) {
     update.designExperience = selections.length ? selections[0] : trimmed;
   }
 
-  if (/how do you want the website built|build.*website/i.test(assistantLower)) {
+  if (
+    /how do you want the website built|build.*website/i.test(assistantLower)
+  ) {
     update.buildType = selections.length ? selections[0] : trimmed;
   }
 
@@ -1023,11 +1091,15 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
     update.platformPreference = selections.length ? selections[0] : trimmed;
   }
 
-  if (/frontend framework|frontend tech|frontend technology/i.test(assistantLower)) {
+  if (
+    /frontend framework|frontend tech|frontend technology/i.test(assistantLower)
+  ) {
     update.frontendFramework = selections.length ? selections[0] : trimmed;
   }
 
-  if (/backend technology|backend tech|backend framework/i.test(assistantLower)) {
+  if (
+    /backend technology|backend tech|backend framework/i.test(assistantLower)
+  ) {
     update.backendTechnology = selections.length ? selections[0] : trimmed;
   }
 
@@ -1035,20 +1107,27 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
     update.database = selections.length ? selections[0] : trimmed;
   }
 
-  if (/host the website|hosting platform|where would you like to host/i.test(assistantLower)) {
+  if (
+    /host the website|hosting platform|where would you like to host/i.test(
+      assistantLower,
+    )
+  ) {
     update.hosting = selections.length ? selections[0] : trimmed;
   }
 
-
-
-  if (/features|functionality|functionalities|modules|scope/i.test(assistantLower)) {
+  if (
+    /features|functionality|functionalities|modules|scope/i.test(assistantLower)
+  ) {
     const features = mergedSelections;
     if (features.length) {
       update.scope = { features };
     }
   }
 
-  if (!update.scope?.features?.length && /features|include|need|requirements/i.test(trimmed)) {
+  if (
+    !update.scope?.features?.length &&
+    /features|include|need|requirements/i.test(trimmed)
+  ) {
     const features = mergedSelections.length
       ? mergedSelections
       : combinedItems.length
@@ -1066,15 +1145,26 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
     }
   }
 
-  if (/timeline|deadline|launch|delivery|duration|how soon/i.test(assistantLower) || /timeline|deadline|launch/i.test(trimmed)) {
+  if (
+    /timeline|deadline|launch|delivery|duration|how soon/i.test(
+      assistantLower,
+    ) ||
+    /timeline|deadline|launch/i.test(trimmed)
+  ) {
     update.timeline = extractTimeline(trimmed) || trimmed;
   }
 
-  if (/budget|investment|cost|price/i.test(assistantLower) || /budget|cost|price/i.test(trimmed)) {
+  if (
+    /budget|investment|cost|price/i.test(assistantLower) ||
+    /budget|cost|price/i.test(trimmed)
+  ) {
     update.budget = trimmed;
   }
 
-  if (/need|looking for|require|goal|objective|pain|problem/i.test(trimmed) && !update.scope?.features?.length) {
+  if (
+    /need|looking for|require|goal|objective|pain|problem/i.test(trimmed) &&
+    !update.scope?.features?.length
+  ) {
     const requirements = combinedItems.length ? combinedItems : [trimmed];
     update.requirements = requirements;
   }
@@ -1088,7 +1178,7 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
   if (email || phone) {
     update.contactInfo = {
       email,
-      phone
+      phone,
     };
   }
 
@@ -1099,15 +1189,11 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
   return update;
 };
 
-
-
-
-import * as pdfjsLib from 'pdfjs-dist';
-import mammoth from 'mammoth';
-
+import * as pdfjsLib from "pdfjs-dist";
+import mammoth from "mammoth";
 
 // Initialize PDF.js worker
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 function AIChat({
@@ -1115,7 +1201,7 @@ function AIChat({
   embedded = false,
   serviceName: propServiceName,
   serviceId: propServiceId,
-  onProposalChange
+  onProposalChange,
 }) {
   const location = useLocation();
   const { user } = useAuth();
@@ -1149,7 +1235,7 @@ function AIChat({
 
       // Clean up legacy instruction text from saved history
       if (Array.isArray(saved)) {
-        saved.forEach(msg => {
+        saved.forEach((msg) => {
           if (msg.role === "assistant" && typeof msg.content === "string") {
             msg.content = sanitizeAssistantContent(msg.content);
           }
@@ -1163,9 +1249,12 @@ function AIChat({
     }
   });
 
-  const [activeChatHistoryKey, setActiveChatHistoryKey] = useState(chatHistoryKey);
-  const [activeProposalContextKey, setActiveProposalContextKey] = useState(proposalContextKey);
-  const [activeProposalContentKey, setActiveProposalContentKey] = useState(proposalContentKey);
+  const [activeChatHistoryKey, setActiveChatHistoryKey] =
+    useState(chatHistoryKey);
+  const [activeProposalContextKey, setActiveProposalContextKey] =
+    useState(proposalContextKey);
+  const [activeProposalContentKey, setActiveProposalContentKey] =
+    useState(proposalContentKey);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
   // Persist chat history to localStorage (scoped to the loaded service + user key).
@@ -1188,12 +1277,14 @@ function AIChat({
   const [pendingMissingField, setPendingMissingField] = useState(null);
   const [pendingProposal, setPendingProposal] = useState(null);
   const [proposalApproval, setProposalApproval] = useState(null);
-  const [proposalApprovalState, setProposalApprovalState] = useState("input-available");
+  const [proposalApprovalState, setProposalApprovalState] =
+    useState("input-available");
   const [hasRequestedProposal, setHasRequestedProposal] = useState(false);
 
   const [showProposal, setShowProposal] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isVoiceStarting, setIsVoiceStarting] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [isSecureContext, setIsSecureContext] = useState(true);
   const messagesEndRef = useRef(null);
@@ -1204,21 +1295,22 @@ function AIChat({
       ? lastMessage.content
       : "";
   const lastAssistantHasQuestion = lastAssistantContent
-    ? lastAssistantContent
-        .split("\n")
-        .some((line) => line.trim().endsWith("?"))
+    ? lastAssistantContent.split("\n").some((line) => line.trim().endsWith("?"))
     : false;
   const lastAssistantHasOptions = lastAssistantContent
     ? parseNumberedOptions(lastAssistantContent).size > 0 ||
-      extractListItems(lastAssistantContent).length > 0
+    extractListItems(lastAssistantContent).length > 0
     : false;
   const showServicePlaceholder =
     lastMessage?.role === "assistant" &&
     ((pendingMissingField &&
-      (pendingMissingField.allowCustom || pendingMissingField.options?.length)) ||
+      (pendingMissingField.allowCustom ||
+        pendingMissingField.options?.length)) ||
       (lastAssistantHasQuestion && lastAssistantHasOptions));
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
+  const voiceStartLockRef = useRef(false);
+  const voiceReleaseTimeoutRef = useRef(null);
   const speechBaseInputRef = useRef("");
   const speechFinalRef = useRef("");
   const proposalContextRef = useRef(proposalContext);
@@ -1235,7 +1327,7 @@ function AIChat({
       return;
     }
     // Fallback to querySelector
-    const textarea = document.querySelector('textarea[placeholder]');
+    const textarea = document.querySelector("textarea[placeholder]");
     if (textarea) {
       textarea.focus();
     }
@@ -1245,7 +1337,9 @@ function AIChat({
     if (typeof window === "undefined") return;
 
     const secureContext =
-      typeof window.isSecureContext === "boolean" ? window.isSecureContext : true;
+      typeof window.isSecureContext === "boolean"
+        ? window.isSecureContext
+        : true;
     setIsSecureContext(secureContext);
     if (!secureContext) {
       setIsSpeechSupported(false);
@@ -1264,6 +1358,11 @@ function AIChat({
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.lang = navigator.language || "en-US";
+
+    recognition.onstart = () => {
+      setIsVoiceStarting(false);
+      setIsRecording(true);
+    };
 
     recognition.onresult = (event) => {
       let interimTranscript = "";
@@ -1290,13 +1389,14 @@ function AIChat({
         appendSpeechTranscript(
           speechBaseInputRef.current,
           speechFinalRef.current,
-          interimTranscript
-        )
+          interimTranscript,
+        ),
       );
     };
 
     recognition.onerror = (event) => {
       setIsRecording(false);
+      setIsVoiceStarting(false);
       const error = event?.error;
       if (error === "not-allowed" || error === "service-not-allowed") {
         toast.error("Microphone access is blocked.");
@@ -1307,18 +1407,64 @@ function AIChat({
         return;
       }
       if (error === "network") {
-        toast.error("Voice input failed due to a network error.");
+        // Network errors can be transient - try to restart after a short delay
+        try {
+          recognition.abort();
+        } catch {
+          // Ignore abort errors
+        }
+        // Auto-retry once after a brief delay
+        if (!recognition._networkRetried) {
+          recognition._networkRetried = true;
+          voiceReleaseTimeoutRef.current = setTimeout(() => {
+            voiceStartLockRef.current = false;
+            setIsVoiceStarting(false);
+            setIsRecording(false);
+            // Attempt to restart voice input
+            try {
+              speechBaseInputRef.current = input;
+              speechFinalRef.current = "";
+              voiceStartLockRef.current = true;
+              setIsVoiceStarting(true);
+              recognition.start();
+            } catch {
+              toast.error("Voice input is not available. Please check your internet connection and try again.");
+              recognition._networkRetried = false;
+            }
+          }, 1000);
+          return;
+        }
+        recognition._networkRetried = false;
+        toast.error("Voice input is not available. Please check your internet connection and try again.");
       }
+      try {
+        recognition.abort();
+      } catch {
+        // Ignore abort errors to avoid masking the original issue.
+      }
+      if (voiceReleaseTimeoutRef.current) {
+        clearTimeout(voiceReleaseTimeoutRef.current);
+      }
+      voiceReleaseTimeoutRef.current = setTimeout(() => {
+        voiceStartLockRef.current = false;
+        setIsVoiceStarting(false);
+      }, 500);
     };
 
     recognition.onend = () => {
+      if (voiceReleaseTimeoutRef.current) {
+        clearTimeout(voiceReleaseTimeoutRef.current);
+        voiceReleaseTimeoutRef.current = null;
+      }
+      voiceStartLockRef.current = false;
       setIsRecording(false);
+      setIsVoiceStarting(false);
       setInput(
         appendSpeechTranscript(
           speechBaseInputRef.current,
           speechFinalRef.current,
-          ""
-        )
+          "",
+        ),
       );
     };
 
@@ -1326,15 +1472,18 @@ function AIChat({
     setIsSpeechSupported(true);
 
     return () => {
+      recognition.onstart = null;
       recognition.onresult = null;
       recognition.onerror = null;
       recognition.onend = null;
       recognition.stop();
       recognitionRef.current = null;
+      if (voiceReleaseTimeoutRef.current) {
+        clearTimeout(voiceReleaseTimeoutRef.current);
+        voiceReleaseTimeoutRef.current = null;
+      }
     };
   }, []);
-
-
 
   useEffect(() => {
     scrollToBottom();
@@ -1364,18 +1513,18 @@ function AIChat({
       const missingFields = getMissingProposalFields(
         nextContext,
         serviceName,
-        serviceId
+        serviceId,
       );
 
       const savedHistory = getStoredJson(chatHistoryKey, null);
       const missingFieldsForHistory = getMissingProposalFields(
         nextContext,
         serviceName,
-        serviceId
+        serviceId,
       );
       const normalizedHistory = normalizeProposalPromptMessages(
         savedHistory,
-        missingFieldsForHistory
+        missingFieldsForHistory,
       );
       const nextMessages =
         Array.isArray(normalizedHistory) && normalizedHistory.length > 0
@@ -1390,7 +1539,7 @@ function AIChat({
       setPendingMissingField(
         isMissingFieldPromptMessage(lastAssistant)
           ? missingFieldsForHistory[0] || null
-          : null
+          : null,
       );
       setActiveChatHistoryKey(chatHistoryKey);
       setActiveProposalContextKey(proposalContextKey);
@@ -1414,9 +1563,7 @@ function AIChat({
 
   useEffect(() => {
     if (!serviceName || isHistoryLoading) return;
-    setProposalContext((prev) =>
-      mergeProposalContext(prev, { serviceName })
-    );
+    setProposalContext((prev) => mergeProposalContext(prev, { serviceName }));
   }, [serviceName, isHistoryLoading]);
 
   // Notify parent when proposal visibility changes
@@ -1456,13 +1603,16 @@ function AIChat({
         const textContent = await page.getTextContent();
 
         // Filter out empty items
-        const items = textContent.items.filter(item => item.str.trim().length > 0);
+        const items = textContent.items.filter(
+          (item) => item.str.trim().length > 0,
+        );
 
         // Sort items by Y (descending) then X (ascending) to handle layout
         // PDF coordinates: (0,0) is bottom-left usually, so higher Y is higher up on page.
         items.sort((a, b) => {
           const yDiff = b.transform[5] - a.transform[5]; // Compare Y
-          if (Math.abs(yDiff) > 5) { // If Y difference is significant
+          if (Math.abs(yDiff) > 5) {
+            // If Y difference is significant
             return yDiff; // Sort by Y
           }
           return a.transform[4] - b.transform[4]; // Else sort by X
@@ -1523,8 +1673,9 @@ function AIChat({
         if (file.type === "application/pdf") {
           extractedText = await extractTextFromPdf(file);
         } else if (
-          file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-          file.name.endsWith('.docx')
+          file.type ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+          file.name.endsWith(".docx")
         ) {
           extractedText = await extractTextFromDocx(file);
         } else if (file.type === "text/plain") {
@@ -1541,14 +1692,18 @@ function AIChat({
             "---",
             extractedText.trim(),
             "---",
-            `\n(System Note: Please analyze the document content above and extract key details.)`
+            `\n(System Note: Please analyze the document content above and extract key details.)`,
           ].join("\n");
 
           newFiles.push({
             id: Date.now() + Math.random(),
             name: file.name,
-            type: file.type.includes('pdf') ? 'PDF' : file.type.includes('word') ? 'DOCX' : 'TXT',
-            content: structuredContent
+            type: file.type.includes("pdf")
+              ? "PDF"
+              : file.type.includes("word")
+                ? "DOCX"
+                : "TXT",
+            content: structuredContent,
           });
         } else {
           toast.warning(`Could not extract text from: ${file.name}`);
@@ -1560,7 +1715,7 @@ function AIChat({
     }
 
     if (newFiles.length > 0) {
-      setActiveFiles(prev => [...prev, ...newFiles]);
+      setActiveFiles((prev) => [...prev, ...newFiles]);
       toast.success(`${newFiles.length} document(s) attached`);
       setTimeout(focusInput, 100);
     }
@@ -1572,7 +1727,7 @@ function AIChat({
   };
 
   const removeFile = (fileId) => {
-    setActiveFiles(prev => prev.filter(f => f.id !== fileId));
+    setActiveFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
 
   const startVoiceInput = () => {
@@ -1581,21 +1736,39 @@ function AIChat({
       return;
     }
 
+    if (isRecording || isVoiceStarting || voiceStartLockRef.current) {
+      return;
+    }
+
     speechBaseInputRef.current = input;
     speechFinalRef.current = "";
 
     try {
+      voiceStartLockRef.current = true;
+      setIsVoiceStarting(true);
       recognitionRef.current.start();
-      setIsRecording(true);
     } catch (error) {
       console.error("Voice input start error:", error);
+      const isInvalidState =
+        error?.name === "InvalidStateError" ||
+        /already started/i.test(error?.message || "");
+      if (isInvalidState) {
+        try {
+          recognitionRef.current.abort();
+        } catch {
+          // Ignore abort errors to avoid masking the original issue.
+        }
+      }
       toast.error("Unable to start voice input.");
+      voiceStartLockRef.current = false;
       setIsRecording(false);
+      setIsVoiceStarting(false);
     }
   };
 
   const stopVoiceInput = () => {
     if (!recognitionRef.current) return;
+    setIsVoiceStarting(false);
     recognitionRef.current.stop();
     setIsRecording(false);
   };
@@ -1629,8 +1802,8 @@ function AIChat({
         {
           role: "assistant",
           content:
-            "I don't have your project details yet. Please share your requirements, timeline, budget, and any constraints, and I'll take it from there."
-        }
+            "I don't have your project details yet. Please share your requirements, timeline, budget, and any constraints, and I'll take it from there.",
+        },
       ]);
       return;
     }
@@ -1643,8 +1816,8 @@ function AIChat({
         body: JSON.stringify({
           proposalContext: context,
           chatHistory: history,
-          serviceName
-        })
+          serviceName,
+        }),
       });
 
       const data = await response.json();
@@ -1662,8 +1835,9 @@ function AIChat({
           ...prev,
           {
             role: "assistant",
-            content: "Your proposal is ready. Open the proposal panel to review it."
-          }
+            content:
+              "Your proposal is ready. Open the proposal panel to review it.",
+          },
         ]);
       } else {
         setMessages((prev) => [
@@ -1672,8 +1846,8 @@ function AIChat({
             role: "assistant",
             content: "I couldn't generate the proposal yet. Please try again.",
             isError: true,
-            retryText
-          }
+            retryText,
+          },
         ]);
       }
     } catch (error) {
@@ -1684,8 +1858,8 @@ function AIChat({
           role: "assistant",
           content: "Proposal generation failed. Please try again.",
           isError: true,
-          retryText
-        }
+          retryText,
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -1702,7 +1876,7 @@ function AIChat({
     await generateProposal(
       pendingProposal.context,
       pendingProposal.history,
-      "Generate proposal"
+      "Generate proposal",
     );
     setPendingProposal(null);
   };
@@ -1717,7 +1891,11 @@ function AIChat({
     setTimeout(() => {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "No problem! Let me know when you're ready to generate the proposal, or if you'd like to make any changes." }
+        {
+          role: "assistant",
+          content:
+            "No problem! Let me know when you're ready to generate the proposal, or if you'd like to make any changes.",
+        },
       ]);
       clearProposalApproval();
     }, 1500);
@@ -1752,7 +1930,7 @@ function AIChat({
       contextUpdate = extractProposalUpdate({
         userText: text,
         assistantText: lastAssistantMessage,
-        serviceName
+        serviceName,
       });
       parsedBudgetAmount = parseBudgetValue(text);
       hasBudgetSignal =
@@ -1770,7 +1948,10 @@ function AIChat({
       ) {
         contextUpdate = { ...contextUpdate, budget: text };
       }
-      nextContext = mergeProposalContext(proposalContextRef.current, contextUpdate);
+      nextContext = mergeProposalContext(
+        proposalContextRef.current,
+        contextUpdate,
+      );
       const pendingField = pendingMissingFieldRef.current;
       const pendingUpdate = pendingField
         ? applyMissingFieldAnswer(pendingField, text)
@@ -1790,7 +1971,7 @@ function AIChat({
     const missingFieldsNow = getMissingProposalFields(
       nextContext,
       serviceName,
-      serviceId
+      serviceId,
     );
 
     if (wasMissingPrompt) {
@@ -1800,8 +1981,8 @@ function AIChat({
           ...prev,
           {
             role: "assistant",
-            content: getProposalPromptMessage(missingFieldsNow)
-          }
+            content: getProposalPromptMessage(missingFieldsNow),
+          },
         ]);
         return;
       }
@@ -1815,12 +1996,15 @@ function AIChat({
       !skipUserAppend && isProposalConfirmation(text, lastAssistantMessage);
 
     if (shouldGenerateProposal) {
-      const storedContext = getStoredJson(activeProposalContextKey, nextContext);
+      const storedContext = getStoredJson(
+        activeProposalContextKey,
+        nextContext,
+      );
       const storedHistory = getStoredJson(activeChatHistoryKey, nextHistory);
       const missingFields = getMissingProposalFields(
         storedContext,
         serviceName,
-        serviceId
+        serviceId,
       );
 
       if (missingFields.length > 0 || storedHistory.length === 0) {
@@ -1829,8 +2013,8 @@ function AIChat({
           ...prev,
           {
             role: "assistant",
-            content: getProposalPromptMessage(missingFields)
-          }
+            content: getProposalPromptMessage(missingFields),
+          },
         ]);
         return;
       }
@@ -1846,7 +2030,11 @@ function AIChat({
       parsedBudgetAmount !== null &&
       missingFieldsNow.length === 0
     ) {
-      const budgetInfo = getServiceMinimumBudget(services, serviceName, serviceId);
+      const budgetInfo = getServiceMinimumBudget(
+        services,
+        serviceName,
+        serviceId,
+      );
       if (budgetInfo?.minBudget && parsedBudgetAmount < budgetInfo.minBudget) {
         const formattedMinBudget = formatBudgetValue(budgetInfo.minBudget);
         const formattedBudget = formatBudgetValue(parsedBudgetAmount);
@@ -1854,8 +2042,8 @@ function AIChat({
           ...prev,
           {
             role: "assistant",
-            content: `The budget of ${formattedBudget} is below the minimum required amount for ${budgetInfo.serviceLabel}. The minimum amount is ${formattedMinBudget}. We can continue with this price, but the service quality and output may not meet our standards. If you want quality work, please consider increasing the budget.`
-          }
+            content: `The budget of ${formattedBudget} is below the minimum required amount for ${budgetInfo.serviceLabel}. The minimum amount is ${formattedMinBudget}. We can continue with this price, but the service quality and output may not meet our standards. If you want quality work, please consider increasing the budget.`,
+          },
         ]);
         return;
       }
@@ -1872,8 +2060,8 @@ function AIChat({
         body: JSON.stringify({
           message: text,
           conversationHistory: buildConversationHistory(messages),
-          serviceName
-        })
+          serviceName,
+        }),
       });
 
       const data = await response.json();
@@ -1882,20 +2070,21 @@ function AIChat({
         const assistantText = sanitizeAssistantContent(data.message);
         const storedContext = getStoredJson(
           activeProposalContextKey,
-          proposalContextRef.current
+          proposalContextRef.current,
         );
         const storedHistory = getStoredJson(
           activeChatHistoryKey,
-          buildConversationHistory(messages)
+          buildConversationHistory(messages),
         );
 
         if (isProposalApprovalPrompt(assistantText)) {
           const missingFields = getMissingProposalFields(
             storedContext,
             serviceName,
-            serviceId
+            serviceId,
           );
-          const canApprove = missingFields.length === 0 && storedHistory.length > 0;
+          const canApprove =
+            missingFields.length === 0 && storedHistory.length > 0;
           if (canApprove) {
             setPendingMissingField(null);
             requestProposalApproval(storedContext, storedHistory);
@@ -1906,14 +2095,14 @@ function AIChat({
               ...prev,
               {
                 role: "assistant",
-                content: getProposalPromptMessage(missingFields)
-              }
+                content: getProposalPromptMessage(missingFields),
+              },
             ]);
           }
         } else {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: assistantText }
+            { role: "assistant", content: assistantText },
           ]);
         }
       } else {
@@ -1923,8 +2112,8 @@ function AIChat({
             role: "assistant",
             content: "Sorry, I encountered an error. Please try again.",
             isError: true,
-            retryText: text
-          }
+            retryText: text,
+          },
         ]);
       }
     } catch (error) {
@@ -1935,8 +2124,8 @@ function AIChat({
           role: "assistant",
           content: "Connection error. Please check if the server is running.",
           isError: true,
-          retryText: text
-        }
+          retryText: text,
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -2001,25 +2190,32 @@ function AIChat({
   const voiceButtonDisabled =
     !isSecureContext ||
     !isSpeechSupported ||
+    isVoiceStarting ||
     (!isRecording && (isProcessingFile || isHistoryLoading || isLoading));
   const voiceButtonLabel = !isSecureContext
     ? "Voice input requires HTTPS (secure context)"
     : !isSpeechSupported
       ? "Voice input isn't supported in this browser"
-      : isRecording
-        ? "Stop voice input"
-        : "Start voice input";
+      : isVoiceStarting
+        ? "Starting voice input..."
+        : isRecording
+          ? "Stop voice input"
+          : "Start voice input";
 
   return (
     <div className={`text-foreground ${embedded ? "h-full w-full" : ""}`}>
-      <div className={`flex ${embedded ? "h-full w-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}>
+      <div
+        className={`flex ${embedded ? "h-full w-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}
+      >
         {/* Main Chat Area */}
-        <main className={`flex flex-col transition-all duration-300 ${showProposal && embedded ? 'w-1/2' : 'flex-1'}`}>
+        <main
+          className={`flex flex-col transition-all duration-300 ${showProposal && embedded ? "w-1/2" : "flex-1"}`}
+        >
           {/* Modern Header */}
           <header
             className={cn(
               "relative px-6 py-4 border-b border-border/50 bg-background/80 backdrop-blur-xl flex justify-between items-center",
-              embedded && "pr-12 sm:pr-14"
+              embedded && "pr-12 sm:pr-14",
             )}
           >
             <div className="flex items-center gap-3">
@@ -2029,10 +2225,14 @@ function AIChat({
               <div>
                 <h1 className="text-lg font-semibold flex items-center gap-2">
                   CATA
-                  <span className="px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-full">AI</span>
+                  <span className="px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-full">
+                    AI
+                  </span>
                 </h1>
                 <p className="text-xs text-muted-foreground">
-                  {serviceName ? `Service: ${serviceName}` : "Your digital services consultant"}
+                  {serviceName
+                    ? `Service: ${serviceName}`
+                    : "Your digital services consultant"}
                 </p>
               </div>
             </div>
@@ -2074,9 +2274,12 @@ function AIChat({
               ) : (
                 <>
                   {messages.map((msg, index) => {
-                    const messageText = typeof msg.content === "string" ? msg.content : "";
+                    const messageText =
+                      typeof msg.content === "string" ? msg.content : "";
                     const planPayload =
-                      msg.role === "assistant" ? extractPlanPayload(messageText) : null;
+                      msg.role === "assistant"
+                        ? extractPlanPayload(messageText)
+                        : null;
                     const planRemainder = planPayload?.remainder || "";
                     const userLines = messageText.split("\n");
 
@@ -2095,14 +2298,16 @@ function AIChat({
                           className={cn(
                             "max-w-[85%] p-4 rounded-2xl leading-relaxed text-[15px]",
                             "group-[.is-assistant]:bg-card group-[.is-assistant]:border group-[.is-assistant]:border-border/50 group-[.is-assistant]:rounded-tl-md",
-                            "group-[.is-user]:bg-gradient-to-br group-[.is-user]:from-primary group-[.is-user]:to-primary/80 group-[.is-user]:text-primary-foreground group-[.is-user]:rounded-tr-md group-[.is-user]:shadow-lg group-[.is-user]:shadow-primary/20"
+                            "group-[.is-user]:bg-gradient-to-br group-[.is-user]:from-primary group-[.is-user]:to-primary/80 group-[.is-user]:text-primary-foreground group-[.is-user]:rounded-tr-md group-[.is-user]:shadow-lg group-[.is-user]:shadow-primary/20",
                           )}
                         >
                           {msg.role === "assistant" ? (
                             planPayload ? (
                               <div className="space-y-3">
                                 {planRemainder ? (
-                                  <MessageResponse>{planRemainder}</MessageResponse>
+                                  <MessageResponse>
+                                    {planRemainder}
+                                  </MessageResponse>
                                 ) : null}
                                 <Plan defaultOpen>
                                   <PlanHeader className="items-center">
@@ -2113,9 +2318,13 @@ function AIChat({
                                   </PlanHeader>
                                   <PlanContent>
                                     <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground">
-                                      {planPayload.items.map((item, itemIndex) => (
-                                        <li key={`${item}-${itemIndex}`}>{item}</li>
-                                      ))}
+                                      {planPayload.items.map(
+                                        (item, itemIndex) => (
+                                          <li key={`${item}-${itemIndex}`}>
+                                            {item}
+                                          </li>
+                                        ),
+                                      )}
                                     </ol>
                                   </PlanContent>
                                 </Plan>
@@ -2194,33 +2403,44 @@ function AIChat({
                   {/* Loading State */}
                   {(isLoading || isProcessingFile) && (
                     <div className="flex flex-col items-start animate-fade-in">
-                      <span className="text-xs font-medium mb-1.5 px-1 text-muted-foreground">CATA</span>
+                      <span className="text-xs font-medium mb-1.5 px-1 text-muted-foreground">
+                        CATA
+                      </span>
                       <div className="bg-card border border-border/50 rounded-2xl rounded-tl-md p-4">
                         <div className="relative flex items-center gap-2">
                           {isProcessingFile ? (
                             <>
                               <FileText className="size-4 animate-pulse text-primary" />
-                              <span className="text-sm font-medium">Reading document...</span>
+                              <span className="text-sm font-medium">
+                                Reading document...
+                              </span>
                             </>
                           ) : (
                             <>
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Brain className="size-4 animate-pulse" />
-                                <span className="text-sm font-medium">Thinking...</span>
+                                <span className="text-sm font-medium">
+                                  Thinking...
+                                </span>
                               </div>
                               <div
                                 className="absolute inset-0 flex items-center gap-2 text-primary"
                                 style={{
-                                  maskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
-                                  WebkitMaskImage: 'linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)',
-                                  maskSize: '250% 100%',
-                                  WebkitMaskSize: '250% 100%',
-                                  animation: 'mask-shimmer 2s linear infinite',
-                                  WebkitAnimation: 'mask-shimmer 2s linear infinite'
+                                  maskImage:
+                                    "linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)",
+                                  WebkitMaskImage:
+                                    "linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)",
+                                  maskSize: "250% 100%",
+                                  WebkitMaskSize: "250% 100%",
+                                  animation: "mask-shimmer 2s linear infinite",
+                                  WebkitAnimation:
+                                    "mask-shimmer 2s linear infinite",
                                 }}
                               >
                                 <Brain className="size-4" />
-                                <span className="text-sm font-medium">Thinking...</span>
+                                <span className="text-sm font-medium">
+                                  Thinking...
+                                </span>
                               </div>
                             </>
                           )}
@@ -2262,7 +2482,9 @@ function AIChat({
                         <FileText className="size-2.5" />
                       </div>
                       <div className="flex flex-col min-w-0 max-w-[120px]">
-                        <span className="text-[9px] font-semibold text-white/90 truncate uppercase tracking-widest leading-none pt-0.5">{file.name}</span>
+                        <span className="text-[9px] font-semibold text-white/90 truncate uppercase tracking-widest leading-none pt-0.5">
+                          {file.name}
+                        </span>
                       </div>
                       <button
                         onClick={() => removeFile(file.id)}
@@ -2308,12 +2530,17 @@ function AIChat({
                           type="button"
                           className="p-2 h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center text-white/40 hover:bg-white/5 hover:text-white transition-colors"
                           title="Add attachment"
-                          disabled={isLoading || isProcessingFile || isHistoryLoading}
+                          disabled={
+                            isLoading || isProcessingFile || isHistoryLoading
+                          }
                         >
                           <Plus className="size-5" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-[200px] bg-[#1a1a1a] border-white/10 text-white">
+                      <DropdownMenuContent
+                        align="start"
+                        className="w-[200px] bg-[#1a1a1a] border-white/10 text-white"
+                      >
                         <DropdownMenuItem
                           onClick={() => {
                             fileInputRef.current?.click();
@@ -2325,8 +2552,6 @@ function AIChat({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-
-
                   </PromptInputTools>
 
                   <div className="flex items-center gap-2">
@@ -2342,18 +2567,22 @@ function AIChat({
                         isRecording
                           ? "bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
                           : "text-white/40 hover:bg-white/5 hover:text-white",
-                        voiceButtonDisabled && "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/40"
+                        voiceButtonDisabled &&
+                        "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/40",
                       )}
                     >
-                      {isRecording ? (
-                        <MicOff className="size-5" />
-                      ) : (
-                        <Mic className="size-5" />
-                      )}
+                      <Mic className="size-5" />
                     </button>
                     <button
                       type="submit"
-                      disabled={(!isLoading && !input.trim() && activeFiles.length === 0) || isProcessingFile || isHistoryLoading || isRecording}
+                      disabled={
+                        (!isLoading &&
+                          !input.trim() &&
+                          activeFiles.length === 0) ||
+                        isProcessingFile ||
+                        isHistoryLoading ||
+                        isRecording
+                      }
                       className="h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
                     >
                       {isLoading ? (
@@ -2365,7 +2594,9 @@ function AIChat({
                   </div>
                 </PromptInputFooter>
               </PromptInput>
-              <p className="text-center text-xs text-muted-foreground/60 mt-3">CATA can make mistakes. Consider checking important information.</p>
+              <p className="text-center text-xs text-muted-foreground/60 mt-3">
+                CATA can make mistakes. Consider checking important information.
+              </p>
             </div>
           </div>
         </main>
