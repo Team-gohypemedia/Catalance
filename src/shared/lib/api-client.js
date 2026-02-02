@@ -181,10 +181,10 @@ export const resetPassword = ({ token, password }) => {
   });
 };
 
-export const loginWithGoogle = (token) => {
+export const loginWithGoogle = (token, role) => {
   return request("/auth/google-login", {
     method: "POST",
-    body: JSON.stringify({ token }) // Backend expects { token }
+    body: JSON.stringify({ token, role }) // Backend accepts optional role
   });
 };
 
