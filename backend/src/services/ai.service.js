@@ -7,16 +7,20 @@ import { AppError } from "../utils/app-error.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const rawServicesData = readFileSync(
+  join(__dirname, "../data/servicesComplete.json"),
+  "utf-8"
+);
+// Strip BOM/control chars and leading whitespace before JSON.parse
 const servicesData = JSON.parse(
-  readFileSync(join(__dirname, "../data/servicesComplete.json"), "utf-8")
+  rawServicesData.replace(/^[\u0000-\u001F\uFEFF]+/, "").trimStart()
 );
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
 const DEFAULT_REFERER = process.env.FRONTEND_URL || "http://localhost:5173";
 
-const stripMarkdownHeadings = (text = "") =>
-  text.replace(/^\s*#{1,6}\s+/gm, "");
+const stripMarkdownHeadings = (text = "") => text;
 
 const formatWebsiteTypeLabel = (value = "") =>
   value
@@ -437,10 +441,196 @@ const parseBudgetFromText = (text = "") => {
   return { amount: amount * multiplier, currency };
 };
 
+const BUDGET_QUESTION_REGEX = /budget|investment|price|cost|spend|how much/i;
+const hasBudgetSignal = (text = "") => {
+  if (!text) return false;
+  if (BUDGET_QUESTION_REGEX.test(text)) return true;
+  if (/(â‚¹|rs\.?|inr|\$|usd|â‚¬|eur|Â£|gbp)/i.test(text)) return true;
+  if (/\b(lakh|lac|thousand|k)\b/i.test(text)) return true;
+  return false;
+};
+
 const BUDGET_WARNING_REGEX =
   /budget.*below|below.*minimum|required.*minimum|minimum required/i;
-const BUDGET_PROCEED_REGEX =
-  /proceed|go ahead|continue|move forward|use current|current budget|same budget|stick with|okay with|fine with|works with|keep it/i;
+const BUDGET_CANNOT_INCREASE_REGEX =
+  /can't increase|cannot increase|can't go higher|cannot go higher|can't raise|cannot raise|can't stretch|cannot stretch|budget (is )?(fixed|tight|limited)|no (extra|more) budget|not possible to increase|can't exceed|cannot exceed|not flexible|no flexibility|can't add|cannot add/i;
+const BUDGET_NEGATIVE_ONLY_REGEX =
+  /^(no|nope|nah|not really|can't|cannot|unfortunately no)$/i;
+const BUDGET_INCREASE_REQUEST_REGEX =
+  /increase|raise|at least|minimum|below.*minimum|below the minimum/i;
+const DEFAULT_BUDGET_WARNING_MESSAGE =
+  "The budget you mentioned is below our minimum recommended amount for this service. If you continue with this amount, the quality of the work may vary.";
+
+const formatInr = (value) => {
+  if (!Number.isFinite(value)) return "";
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
+};
+
+const applyDynamicEmphasis = (text = "") => {
+  if (typeof text !== "string") return "";
+  if (/\*\*.+?\*\*/.test(text)) return text;
+
+  let updated = text;
+  updated = updated.replace(/(₹\s?[\d,]+(?:\.\d+)?)/g, "**$1**");
+  updated = updated.replace(/\b(\d+\s*(?:day|days|week|weeks|month|months|year|years))\b/gi, "**$1**");
+  updated = updated.replace(
+    /\b(Budget|Timeline|Requirements|Objectives|Deliverables|Features|Question|Next Steps|Summary)\b/gi,
+    "**$1**"
+  );
+
+  if (/\*\*.+?\*\*/.test(updated)) return updated;
+
+  const lines = updated.split("\n");
+  let emphasized = false;
+  const nextLines = lines.map((line) => {
+    if (emphasized) return line;
+    const headingMatch = line.match(/^(#{1,6}\s+)(.+)$/);
+    if (headingMatch) {
+      const [, prefix, content] = headingMatch;
+      const phraseMatch = content.match(/^([^.!?:\n]{1,40})([.!?:].*)?$/);
+      if (phraseMatch) {
+        const phrase = phraseMatch[1].trim();
+        const rest = phraseMatch[2] || content.slice(phrase.length);
+        emphasized = true;
+        return `${prefix}**${phrase}**${rest}`;
+      }
+      emphasized = true;
+      return `${prefix}**${content.trim()}**`;
+    }
+    return line;
+  });
+
+  if (emphasized) return nextLines.join("\n");
+
+  return updated.replace(
+    /^(\s*)([^.!?:\n]{1,40})([.!?:])?/m,
+    (_match, leading, phrase, punctuation = "") =>
+      `${leading}**${phrase.trim()}**${punctuation}`
+  );
+};
+
+const formatBudgetUnit = (unit = "") =>
+  unit ? unit.replace(/_/g, " ") : "";
+
+const isBudgetPromptText = (text = "") =>
+  BUDGET_QUESTION_REGEX.test(text) || BUDGET_WARNING_REGEX.test(text);
+
+const isBudgetValueText = (text = "", prevAssistantText = "") => {
+  const parsed = parseBudgetFromText(text || "");
+  if (!parsed?.amount) return false;
+  if (hasBudgetSignal(text || "")) return true;
+  if (prevAssistantText && isBudgetPromptText(prevAssistantText)) return true;
+  return false;
+};
+
+const getLatestUserBudgetFromHistory = (history = []) => {
+  let latest = null;
+  for (let i = 0; i < history.length; i++) {
+    const msg = history[i];
+    if (!msg || msg.role === "assistant") continue;
+    const parsed = parseBudgetFromText(msg.content || "");
+    if (!parsed?.amount) continue;
+
+    const prevMsg = history[i - 1];
+    const isBudgetReply =
+      prevMsg?.role === "assistant" && isBudgetPromptText(prevMsg.content || "");
+    if (!hasBudgetSignal(msg.content || "") && !isBudgetReply) {
+      continue;
+    }
+
+    latest = { ...parsed, index: i, text: msg.content || "" };
+  }
+  return latest;
+};
+
+const getLastAssistantMessage = (history = []) => {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (msg?.role === "assistant") return msg;
+  }
+  return null;
+};
+
+const userCannotIncreaseBudget = (text = "", history = []) => {
+  if (!text) return false;
+  if (BUDGET_CANNOT_INCREASE_REGEX.test(text)) return true;
+
+  if (BUDGET_NEGATIVE_ONLY_REGEX.test(text)) {
+    const lastAssistant = getLastAssistantMessage(history);
+    if (lastAssistant && BUDGET_INCREASE_REQUEST_REGEX.test(lastAssistant.content || "")) {
+      return true;
+    }
+  }
+
+  const lastAssistant = getLastAssistantMessage(history);
+  if (lastAssistant && BUDGET_INCREASE_REQUEST_REGEX.test(lastAssistant.content || "")) {
+    if (!isBudgetValueText(text, lastAssistant.content || "")) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const findBudgetWarningIndex = (history = []) => {
+  let warningIndex = -1;
+  history.forEach((msg, index) => {
+    if (msg?.role === "assistant" && BUDGET_WARNING_REGEX.test(msg.content || "")) {
+      warningIndex = index;
+    }
+  });
+  return warningIndex;
+};
+
+const findUserProceedAfterIndex = (history = [], startIndex = -1) => {
+  if (startIndex < 0) return -1;
+  const warningMsg = history[startIndex]?.content || "";
+  for (let i = startIndex + 1; i < history.length; i++) {
+    const msg = history[i];
+    if (msg?.role !== "user") continue;
+    const text = msg.content || "";
+    if (!isBudgetValueText(text, warningMsg)) {
+      return i;
+    }
+  }
+  return -1;
+};
+
+const buildBudgetOverrideMessage = ({
+  conversationHistory = [],
+  messages = [],
+  selectedServiceName = ""
+}) => {
+  const service = getServiceDefinition(selectedServiceName);
+  const minBudget = Number(service?.budget?.min_required_amount);
+  if (!Number.isFinite(minBudget) || minBudget <= 0) return null;
+
+  const history = [...conversationHistory, ...messages];
+  const latestBudget = getLatestUserBudgetFromHistory(history);
+  if (!latestBudget?.amount || !Number.isFinite(latestBudget.amount)) return null;
+
+  if (latestBudget.amount >= minBudget) return null;
+
+  const warningIndex = findBudgetWarningIndex(history);
+  const proceedIndex = findUserProceedAfterIndex(history, warningIndex);
+  if (proceedIndex >= 0 && latestBudget.index < proceedIndex) {
+    return null;
+  }
+
+  const latestUser = [...history].reverse().find((msg) => msg?.role !== "assistant");
+  const warningMessage =
+    servicesData?.global_rules?.budget_validation?.when_user_budget_below_minimum
+      ?.message || DEFAULT_BUDGET_WARNING_MESSAGE;
+
+  if (userCannotIncreaseBudget(latestUser?.content || "", history)) {
+    return `${warningMessage} Would you like to proceed with this budget?`;
+  }
+
+  const minFormatted = formatInr(minBudget);
+  const unitLabel = formatBudgetUnit(service?.budget?.unit || "");
+  const unitSuffix = unitLabel ? ` (${unitLabel})` : "";
+  return `That budget is below our minimum of ${minFormatted}${unitSuffix}. Could you increase your budget to at least ${minFormatted}?`;
+};
 const PROPOSAL_CONFIRMATION_QUESTION_REGEX =
   /ready to (see|view).*proposal|see (your )?personalized proposal|view (your )?personalized proposal|show (me|us) (the )?proposal/i;
 const PROPOSAL_CONFIRMATION_RESPONSE_REGEX =
@@ -457,89 +647,6 @@ const isProposalConfirmed = (conversationHistory = []) => {
     if (PROPOSAL_CONFIRMATION_RESPONSE_REGEX.test(response)) return true;
   }
   return false;
-};
-
-const extractLatestBudgetFromBudgetQuestions = (conversationHistory = []) => {
-  let latest = null;
-  const budgetQuestionRegex = /budget|investment|how much|price|cost/i;
-
-  for (let i = 0; i < conversationHistory.length - 1; i++) {
-    const msg = conversationHistory[i];
-    const nextMsg = conversationHistory[i + 1];
-    if (msg?.role !== "assistant" || !budgetQuestionRegex.test(msg.content || "")) {
-      continue;
-    }
-    if (nextMsg?.role !== "user") continue;
-    const parsed = parseBudgetFromText(nextMsg.content || "");
-    if (parsed?.amount) {
-      latest = parsed;
-    }
-  }
-
-  return latest;
-};
-
-const evaluateBudgetStatus = (conversationHistory, budgetAmount, minBudget) => {
-  const status = {
-    minBudget,
-    isBelowMinimum: false,
-    isConfirmed: false,
-    updatedBudget: null,
-    updatedCurrency: null
-  };
-
-  if (!minBudget || !Number.isFinite(minBudget)) {
-    status.isConfirmed = !!budgetAmount;
-    return status;
-  }
-
-  if (!budgetAmount || !Number.isFinite(budgetAmount)) {
-    return status;
-  }
-
-  if (budgetAmount >= minBudget) {
-    status.isConfirmed = true;
-    return status;
-  }
-
-  status.isBelowMinimum = true;
-
-  let warningIndex = -1;
-  conversationHistory.forEach((msg, index) => {
-    if (msg?.role === "assistant" && BUDGET_WARNING_REGEX.test(msg.content || "")) {
-      warningIndex = index;
-    }
-  });
-
-  if (warningIndex < 0) return status;
-
-  for (let i = warningIndex + 1; i < conversationHistory.length; i++) {
-    const msg = conversationHistory[i];
-    if (msg?.role !== "user") continue;
-    const text = msg.content || "";
-    const parsed = parseBudgetFromText(text);
-
-    if (parsed?.amount) {
-      if (parsed.amount >= minBudget) {
-        status.isConfirmed = true;
-        status.updatedBudget = parsed.amount;
-        status.updatedCurrency = parsed.currency;
-        status.isBelowMinimum = false;
-        return status;
-      }
-      if (BUDGET_PROCEED_REGEX.test(text)) {
-        status.isConfirmed = true;
-        status.updatedBudget = parsed.amount;
-        status.updatedCurrency = parsed.currency;
-        return status;
-      }
-    } else if (BUDGET_PROCEED_REGEX.test(text)) {
-      status.isConfirmed = true;
-      return status;
-    }
-  }
-
-  return status;
 };
 
 const findOptionLabelMatch = (options = [], userText = "", question = {}) => {
@@ -1167,6 +1274,15 @@ RESPONSE FORMATTING RULES:
 - Keep each response section short and scannable.
 - Maximum 10-12 items in any single list - show only the most common/relevant ones.
 - When presenting choices, use numbered format (1., 2., 3.) with each on its own line.
+- Use bold text for labels or key terms when it improves clarity.
+- Prefer short paragraphs followed by concise bullet points.
+- Every response should include at least one dynamic bold emphasis on important terms or values (e.g., budgets, timelines, key labels).
+- Every response MUST follow this heading hierarchy:
+  # Brief acknowledgment or confirmation of what the user just said
+  ## The current question (write the question itself as the heading)
+  ### Choices (only if there are options)
+- Leave a blank line between the H1, H2, and H3 sections for clarity.
+- If you are not asking a question, still use H1 + H2 (use H2 as "Next Step" or "Update").
 
 RESPONSE QUALITY RULES:
 - When the user provides information, acknowledge EXACTLY what they said - do not add, embellish, or infer additional details.
@@ -1185,6 +1301,7 @@ BUDGET HANDLING RULES (VERY IMPORTANT):
 6. If the user asks about the minimum, respond with the minimum for the selected service.
 7. If the user provides a budget:
    - If it is below the minimum: politely say it's below the minimum requirement and ask to increase.
+   - If the user cannot increase the budget: warn that you can proceed with this amount, but the quality of work may vary, and ask if they want to continue.
    - If it is equal to or above the minimum: acknowledge and continue.
 
 
@@ -1199,7 +1316,7 @@ CONVERSATION GUIDELINES:
 - Keep responses focused and actionable.
 - When asking questions, briefly explain why the information matters.
 - If the user seems overwhelmed, offer to simplify.
-- Do not use Markdown headings or bold. Avoid lines that start with # (including ##).
+- Use Markdown headings for structure. Always include H1/H2/H3 as specified above; avoid oversized headings beyond H1-H3.
 - Track conversation progress internally.
 - ALWAYS acknowledge what you've learned before asking more questions.
 - Acknowledge without repetitive gratitude; avoid "Thank you for..." on every turn.
@@ -1388,6 +1505,20 @@ export const chatWithAI = async (
     }))
     : [];
 
+  const budgetOverride = buildBudgetOverrideMessage({
+    conversationHistory: formattedHistory,
+    messages: formattedMessages,
+    selectedServiceName
+  });
+
+  if (budgetOverride) {
+    return {
+      success: true,
+      message: applyDynamicEmphasis(budgetOverride),
+      usage: null
+    };
+  }
+
   const response = await fetch(OPENROUTER_API_URL, {
     method: "POST",
     headers: {
@@ -1431,7 +1562,7 @@ export const chatWithAI = async (
 
   return {
     success: true,
-    message: stripMarkdownHeadings(content),
+    message: applyDynamicEmphasis(stripMarkdownHeadings(content)),
     usage: data.usage || null
   };
 };
@@ -1440,6 +1571,9 @@ export const getServiceInfo = (serviceId) =>
   servicesData.services.find((service) => service.id === serviceId);
 
 export const getAllServices = () => servicesData.services;
+
+
+
 
 
 

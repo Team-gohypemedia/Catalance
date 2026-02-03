@@ -16,6 +16,14 @@ import Check from "lucide-react/dist/esm/icons/check";
 import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/shared/context/AuthContext";
 
+const getProposalStorageKeys = (userId) => {
+  const suffix = userId ? `:${userId}` : "";
+  return {
+    listKey: `markify:savedProposals${suffix}`,
+    singleKey: `markify:savedProposal${suffix}`,
+    syncedKey: `markify:savedProposalSynced${suffix}`,
+  };
+};
 
 // --- Parser to extract structured data from markdown ---
 const parseProposalContent = (markdown) => {
@@ -130,18 +138,54 @@ const mapToProposalData = (extracted) => {
   };
 };
 
+const resolveProposalTitle = (data) =>
+  data?.projectType ||
+  data?.serviceType ||
+  data?.businessName ||
+  "Proposal";
+
+const normalizeServiceText = (value = "") =>
+  String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+const tokenizeServiceText = (value = "") =>
+  normalizeServiceText(value)
+    .split(/\s+/)
+    .filter(Boolean);
+
 const isTechnicalService = (data, services = []) => {
   if (!data?.serviceType || !Array.isArray(services) || services.length === 0) {
     return false;
   }
-  const normalized = data.serviceType.toLowerCase().trim();
-  const match = services.find((service) => {
-    if (!service?.name && !service?.id) return false;
-    const name = String(service.name || "").toLowerCase().trim();
-    const id = String(service.id || "").toLowerCase().trim();
-    return name === normalized || id === normalized;
+
+  const normalized = normalizeServiceText(data.serviceType);
+  const tokens = new Set(tokenizeServiceText(data.serviceType));
+  let bestMatch = null;
+  let bestScore = 0;
+
+  services.forEach((service) => {
+    if (!service?.name && !service?.id) return;
+    const name = normalizeServiceText(service.name || "");
+    const id = normalizeServiceText(service.id || "");
+    let score = 0;
+
+    if (name === normalized || id === normalized) score += 5;
+    if (name && (name.includes(normalized) || normalized.includes(name))) score += 3;
+    if (id && (id.includes(normalized) || normalized.includes(id))) score += 2;
+
+    const candidateTokens = new Set(
+      tokenizeServiceText(`${service.name || ""} ${service.id || ""}`),
+    );
+    tokens.forEach((token) => {
+      if (candidateTokens.has(token)) score += 1;
+    });
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = service;
+    }
   });
-  return Boolean(match?.show_techstack);
+
+  return Boolean(bestMatch?.show_techstack && bestScore > 0);
 };
 
 const parseBudgetNumber = (value = "") => {
@@ -370,7 +414,11 @@ const ProposalCard = ({ data, services = [] }) => {
           </AccordionSection>
         )}
 
-        <AccordionSection icon={ListChecks} title="Features & Deliverables" defaultOpen={true}>
+        <AccordionSection
+          icon={ListChecks}
+          title={isTechnicalService(data, services) ? "Features & Deliverables" : "Content & Deliverables"}
+          defaultOpen={true}
+        >
           <FeatureList items={data.features} />
         </AccordionSection>
 
@@ -429,26 +477,27 @@ export function ProposalSidebar({
     if (typeof window === "undefined" || !proposalData) return;
 
     const now = new Date().toISOString();
+    const { listKey, singleKey, syncedKey } = getProposalStorageKeys(user?.id);
     const proposalToSave = {
       id: `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      projectTitle: proposalData.serviceType || "Project Proposal",
+      projectTitle: resolveProposalTitle(proposalData),
       service: proposalData.serviceType || "General services",
       serviceKey: proposalData.serviceType || "",
       summary: proposal,
       content: proposal,
       budget: proposalData.budget || "",
       timeline: proposalData.timeline || "",
+      ownerId: user?.id || null,
+      syncedProjectId: null,
+      syncedAt: null,
       createdAt: now,
       updatedAt: now,
     };
 
     // Load existing proposals
-    const SAVED_PROPOSALS_KEY = "markify:savedProposals";
-    const SAVED_PROPOSAL_KEY = "markify:savedProposal";
-
     let existingProposals = [];
     try {
-      const stored = localStorage.getItem(SAVED_PROPOSALS_KEY);
+      const stored = localStorage.getItem(listKey);
       if (stored) {
         existingProposals = JSON.parse(stored);
       }
@@ -460,8 +509,11 @@ export function ProposalSidebar({
     existingProposals.push(proposalToSave);
 
     // Save to localStorage
-    localStorage.setItem(SAVED_PROPOSALS_KEY, JSON.stringify(existingProposals));
-    localStorage.setItem(SAVED_PROPOSAL_KEY, JSON.stringify(proposalToSave));
+    localStorage.setItem(listKey, JSON.stringify(existingProposals));
+    localStorage.setItem(singleKey, JSON.stringify(proposalToSave));
+    if (syncedKey) {
+      localStorage.removeItem(syncedKey);
+    }
 
     return proposalToSave;
   };
@@ -513,7 +565,9 @@ export function ProposalSidebar({
                 {new Date().toLocaleDateString()}
               </span>
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Project Proposal</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">
+              {resolveProposalTitle(proposalData)}
+            </h2>
             <p className="text-xs text-slate-400 mt-1">
               Generated by Catalance AI
             </p>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import { useLocation } from "react-router-dom";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -296,44 +296,6 @@ const findMatchingService = (
   return bestScore > 0 ? bestMatch : null;
 };
 
-const getServiceMinimumBudget = (
-  services = [],
-  serviceName = "",
-  serviceId = "",
-  conversationHistory = [],
-) => {
-  const match = findMatchingService(services, serviceName, serviceId);
-  const rawMinBudget = match?.budget?.min_required_amount;
-  const minPerUnit = Number(rawMinBudget);
-  if (!Number.isFinite(minPerUnit) || minPerUnit <= 0) return null;
-
-  let minBudget = minPerUnit;
-  let quantity = null;
-
-  if (match?.budget?.pricing_model === "per_deliverable") {
-    const quantityQuestionId = match?.budget?.quantity_question_id;
-    const quantityQuestion = Array.isArray(match?.questions)
-      ? match.questions.find((q) => q.id === quantityQuestionId)
-      : null;
-    const answerText = quantityQuestion?.question
-      ? findLatestAnswerForQuestion(conversationHistory, quantityQuestion.question)
-      : null;
-    const parsedQuantity = parseQuantityValue(answerText);
-    if (Number.isFinite(parsedQuantity) && parsedQuantity > 0) {
-      quantity = parsedQuantity;
-      minBudget = minPerUnit * parsedQuantity;
-    }
-  }
-
-  return {
-    minBudget,
-    serviceLabel: match?.name || serviceName || serviceId || "this service",
-    quantity,
-    unitLabel: match?.budget?.quantity_unit_label,
-    minPerUnit,
-  };
-};
-
 const parseBudgetValue = (text = "") => {
   if (typeof text !== "string") return null;
   const budgetRegex =
@@ -358,32 +320,6 @@ const parseBudgetValue = (text = "") => {
   return Math.max(...values);
 };
 
-const BUDGET_QUESTION_REGEX = /budget|investment|price|cost|spend/i;
-const BUDGET_WARNING_REGEX =
-  /budget.*below|below.*minimum|required.*minimum|minimum requirement|minimum required/i;
-
-const formatInr = (value) => {
-  if (!Number.isFinite(value)) return "";
-  return `₹${Math.round(value).toLocaleString("en-IN")}`;
-};
-
-const buildBudgetWarningOverride = ({
-  assistantText = "",
-  userText = "",
-  minBudgetInfo,
-}) => {
-  if (!assistantText || !BUDGET_WARNING_REGEX.test(assistantText)) return null;
-  if (!minBudgetInfo?.minBudget || !Number.isFinite(minBudgetInfo.minBudget)) {
-    return null;
-  }
-
-  const userBudget = parseBudgetValue(userText);
-  if (!Number.isFinite(userBudget)) return null;
-  if (userBudget < minBudgetInfo.minBudget) return null;
-
-  const formattedBudget = formatInr(userBudget);
-  return `Thanks! ${formattedBudget} meets the minimum for this service. Would you like to proceed?`;
-};
 
 const getStoredJson = (key, fallback) => {
   if (typeof window === "undefined") return fallback;
@@ -1089,6 +1025,13 @@ const isProposalConfirmation = (text, assistantText) => {
 const isSimpleYes = (text = "") =>
   /^(yes|y|yeah|yep|sure|ok|okay|ready|proceed)\b/i.test(text.trim());
 
+const isBudgetGateMessage = (text = "") => {
+  if (typeof text !== "string") return false;
+  return /what is your budget|budget.*below|below.*minimum|min(?:imum)? (?:budget|requirement)|increase your budget|could you increase your budget|quality of work may vary|proceed with this amount/i.test(
+    text,
+  );
+};
+
 const getProposalPromptMessage = (missingFields) =>
   formatMissingFieldsMessage(missingFields || []);
 
@@ -1364,6 +1307,7 @@ function AIChat({
   const [proposalApproval, setProposalApproval] = useState(null);
   const [proposalApprovalState, setProposalApprovalState] =
     useState("input-available");
+  const [proposalApprovalAnchor, setProposalApprovalAnchor] = useState(null);
   const [hasRequestedProposal, setHasRequestedProposal] = useState(false);
 
   const [showProposal, setShowProposal] = useState(false);
@@ -1963,13 +1907,19 @@ function AIChat({
     setPendingProposal(null);
     setProposalApproval(null);
     setProposalApprovalState("input-available");
+    setProposalApprovalAnchor(null);
   };
 
-  const requestProposalApproval = (context, history) => {
+  const requestProposalApproval = (context, history, anchorIndex = null) => {
     if (!context || !history?.length) return;
     setPendingProposal({ context, history });
     setProposalApproval({ id: `proposal-${Date.now()}` });
     setProposalApprovalState("approval-requested");
+    const resolvedAnchor =
+      typeof anchorIndex === "number"
+        ? anchorIndex
+        : Math.max(messages.length - 1, 0);
+    setProposalApprovalAnchor(Math.max(resolvedAnchor, 0));
     setHasRequestedProposal(true);
   };
 
@@ -2093,6 +2043,11 @@ function AIChat({
     }
 
     const lastAssistantMessage = getLastAssistantMessage(messages);
+    const baseAnchorIndex = Math.max(
+      skipUserAppend ? messages.length - 1 : messages.length,
+      0,
+    );
+    const budgetGateActive = isBudgetGateMessage(lastAssistantMessage);
     let nextContext = proposalContextRef.current;
     let nextHistory = buildConversationHistory(messages);
     let contextUpdate = {};
@@ -2174,6 +2129,7 @@ function AIChat({
 
     if (
       !skipUserAppend &&
+      !budgetGateActive &&
       missingFieldsNow.length === 0 &&
       isSimpleYes(text) &&
       /(proposal|summary|finalize|generate|prepare)/i.test(
@@ -2182,11 +2138,11 @@ function AIChat({
     ) {
       const storedContext = getStoredJson(activeProposalContextKey, nextContext);
       const storedHistory = getStoredJson(activeChatHistoryKey, nextHistory);
-      requestProposalApproval(storedContext, storedHistory);
+      requestProposalApproval(storedContext, storedHistory, baseAnchorIndex);
       return;
     }
 
-    if (shouldGenerateProposal) {
+    if (shouldGenerateProposal && !budgetGateActive) {
       const storedContext = getStoredJson(
         activeProposalContextKey,
         nextContext,
@@ -2211,7 +2167,7 @@ function AIChat({
       }
 
       setPendingMissingField(null);
-      requestProposalApproval(storedContext, storedHistory);
+      requestProposalApproval(storedContext, storedHistory, baseAnchorIndex);
       return;
     }
 
@@ -2231,18 +2187,8 @@ function AIChat({
 
       if (data?.success && data.message) {
         const assistantText = sanitizeAssistantContent(data.message);
-        const minBudgetInfo = getServiceMinimumBudget(
-          services,
-          serviceName,
-          serviceId,
-          nextHistory,
-        );
-        const budgetOverride = buildBudgetWarningOverride({
-          assistantText,
-          userText: text,
-          minBudgetInfo,
-        });
-        const finalAssistantText = budgetOverride || assistantText;
+        // NOTE: Budget validation is handled server-side (backend/ai.service.js).
+        // Do not add client-side budget overrides here.
         const storedContext = getStoredJson(
           activeProposalContextKey,
           proposalContextRef.current,
@@ -2252,10 +2198,19 @@ function AIChat({
           buildConversationHistory(messages),
         );
 
-        const isApprovalPrompt = isProposalApprovalPrompt(finalAssistantText);
+        if (isBudgetGateMessage(assistantText)) {
+          clearProposalApproval();
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: assistantText },
+          ]);
+          return;
+        }
+
+        const isApprovalPrompt = isProposalApprovalPrompt(assistantText);
         const isSummaryPrompt =
           /project summary|if everything looks good|finalize and send|would you like me to proceed|all the details.*proposal|i'?ll proceed with generating|please hold on|prepare (it|the proposal)|proposal (is|will be) (now )?(finalized|ready)/i.test(
-            finalAssistantText,
+            assistantText,
           );
         if (isApprovalPrompt || isSummaryPrompt) {
           const missingFields = getMissingProposalFields(
@@ -2267,7 +2222,11 @@ function AIChat({
             missingFields.length === 0 && storedHistory.length > 0;
           if (canApprove) {
             setPendingMissingField(null);
-            requestProposalApproval(storedContext, storedHistory);
+            requestProposalApproval(
+              storedContext,
+              storedHistory,
+              baseAnchorIndex,
+            );
             // Don't add any message - the Confirmation component handles the UI
           } else if (missingFields.length > 0) {
             setPendingMissingField(missingFields[0]);
@@ -2282,7 +2241,7 @@ function AIChat({
         } else {
           setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: finalAssistantText },
+            { role: "assistant", content: assistantText },
           ]);
         }
       } else {
@@ -2467,121 +2426,120 @@ function AIChat({
                     const userLines = messageText.split("\n");
 
                     return (
-                      <Message
-                        key={index}
-                        from={msg.role}
-                        className="animate-fade-in"
-                      >
-                        <span
-                          className={`text-xs font-medium px-1 ${msg.role === "user" ? "text-primary text-right" : "text-muted-foreground"}`}
-                        >
-                          {msg.role === "user" ? "You" : "CATA"}
-                        </span>
-                        <MessageContent
-                          className={cn(
-                            "max-w-[85%] p-4 rounded-2xl leading-relaxed text-[15px]",
-                            "group-[.is-assistant]:bg-card group-[.is-assistant]:border group-[.is-assistant]:border-border/50 group-[.is-assistant]:rounded-tl-md",
-                            "group-[.is-user]:bg-gradient-to-br group-[.is-user]:from-primary group-[.is-user]:to-primary/80 group-[.is-user]:text-primary-foreground group-[.is-user]:rounded-tr-md group-[.is-user]:shadow-lg group-[.is-user]:shadow-primary/20",
+                      <Fragment key={`msg-${index}`}>
+                        <Message from={msg.role} className="animate-fade-in">
+                          {msg.role !== "user" && (
+                            <span className="text-xs font-medium px-1 text-muted-foreground">
+                              CATA
+                            </span>
                           )}
-                        >
-                          {msg.role === "assistant" ? (
-                            planPayload ? (
-                              <div className="space-y-3">
-                                {planRemainder ? (
-                                  <MessageResponse>
-                                    {planRemainder}
-                                  </MessageResponse>
-                                ) : null}
-                                <Plan defaultOpen>
-                                  <PlanHeader className="items-center">
-                                    <PlanTitle>{planPayload.title}</PlanTitle>
-                                    <PlanAction>
-                                      <PlanTrigger />
-                                    </PlanAction>
-                                  </PlanHeader>
-                                  <PlanContent>
-                                    <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground">
-                                      {planPayload.items.map(
-                                        (item, itemIndex) => (
-                                          <li key={`${item}-${itemIndex}`}>
-                                            {item}
-                                          </li>
-                                        ),
-                                      )}
-                                    </ol>
-                                  </PlanContent>
-                                </Plan>
-                              </div>
+                          <MessageContent
+                            className={cn(
+                              "max-w-[85%] p-4 rounded-2xl leading-relaxed text-[15px]",
+                              "group-[.is-assistant]:bg-transparent group-[.is-assistant]:border-0 group-[.is-assistant]:p-0 group-[.is-assistant]:rounded-none group-[.is-assistant]:max-w-full",
+                              "group-[.is-user]:bg-gradient-to-br group-[.is-user]:from-primary group-[.is-user]:to-primary/80 group-[.is-user]:text-primary-foreground group-[.is-user]:rounded-2xl group-[.is-user]:rounded-tr-none group-[.is-user]:px-3 group-[.is-user]:py-2 group-[.is-user]:shadow-lg group-[.is-user]:shadow-primary/20",
+                            )}
+                          >
+                            {msg.role === "assistant" ? (
+                              planPayload ? (
+                                <div className="space-y-3">
+                                  {planRemainder ? (
+                                    <MessageResponse>
+                                      {planRemainder}
+                                    </MessageResponse>
+                                  ) : null}
+                                  <Plan defaultOpen>
+                                    <PlanHeader className="items-center">
+                                      <PlanTitle>{planPayload.title}</PlanTitle>
+                                      <PlanAction>
+                                        <PlanTrigger />
+                                      </PlanAction>
+                                    </PlanHeader>
+                                    <PlanContent>
+                                      <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground">
+                                        {planPayload.items.map(
+                                          (item, itemIndex) => (
+                                            <li key={`${item}-${itemIndex}`}>
+                                              {item}
+                                            </li>
+                                          ),
+                                        )}
+                                      </ol>
+                                    </PlanContent>
+                                  </Plan>
+                                </div>
+                              ) : (
+                                <MessageResponse>{messageText}</MessageResponse>
+                              )
                             ) : (
-                              <MessageResponse>{messageText}</MessageResponse>
-                            )
-                          ) : (
-                            userLines.map((line, lineIndex) => (
-                              <p
-                                key={lineIndex}
-                                className={`${line ? "mb-2 last:mb-0" : "h-2"}`}
+                              userLines.map((line, lineIndex) => (
+                                <p
+                                  key={lineIndex}
+                                  className={`${line ? "mb-2 last:mb-0" : "h-2"}`}
+                                >
+                                  {line}
+                                </p>
+                              ))
+                            )}
+                            {msg.isError && msg.retryText && (
+                              <div className="mt-3 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRetry(msg.retryText)}
+                                  disabled={isLoading || isHistoryLoading}
+                                  className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Retry
+                                </button>
+                              </div>
+                            )}
+                          </MessageContent>
+                        </Message>
+                        {proposalApproval &&
+                          proposalApprovalAnchor === index && (
+                            <div className="flex flex-col items-start animate-fade-in">
+                              <Confirmation
+                                approval={proposalApproval}
+                                state={proposalApprovalState}
+                                className="max-w-[85%] border-border/50 bg-card/70"
                               >
-                                {line}
-                              </p>
-                            ))
-                          )}
-                          {msg.isError && msg.retryText && (
-                            <div className="mt-3 flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => handleRetry(msg.retryText)}
-                                disabled={isLoading || isHistoryLoading}
-                                className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                Retry
-                              </button>
+                                <ConfirmationRequest>
+                                  <ConfirmationTitle>
+                                    Generate the proposal now?
+                                  </ConfirmationTitle>
+                                </ConfirmationRequest>
+                                <ConfirmationAccepted>
+                                  <ConfirmationTitle>
+                                    Approval received. Generating your
+                                    proposal...
+                                  </ConfirmationTitle>
+                                </ConfirmationAccepted>
+                                <ConfirmationRejected>
+                                  <ConfirmationTitle>
+                                    Proposal generation canceled.
+                                  </ConfirmationTitle>
+                                </ConfirmationRejected>
+                                <ConfirmationActions>
+                                  <ConfirmationAction
+                                    onClick={handleApproveProposal}
+                                    disabled={isLoading}
+                                  >
+                                    Generate
+                                  </ConfirmationAction>
+                                  <ConfirmationAction
+                                    variant="secondary"
+                                    onClick={handleRejectProposal}
+                                    disabled={isLoading}
+                                  >
+                                    Not yet
+                                  </ConfirmationAction>
+                                </ConfirmationActions>
+                              </Confirmation>
                             </div>
                           )}
-                        </MessageContent>
-                      </Message>
+                      </Fragment>
                     );
                   })}
-
-                  {proposalApproval && (
-                    <div className="flex flex-col items-start animate-fade-in">
-                      <Confirmation
-                        approval={proposalApproval}
-                        state={proposalApprovalState}
-                        className="max-w-[85%] border-border/50 bg-card/70"
-                      >
-                        <ConfirmationRequest>
-                          <ConfirmationTitle>
-                            Generate the proposal now?
-                          </ConfirmationTitle>
-                        </ConfirmationRequest>
-                        <ConfirmationAccepted>
-                          <ConfirmationTitle>
-                            Approval received. Generating your proposal...
-                          </ConfirmationTitle>
-                        </ConfirmationAccepted>
-                        <ConfirmationRejected>
-                          <ConfirmationTitle>
-                            Proposal generation canceled.
-                          </ConfirmationTitle>
-                        </ConfirmationRejected>
-                        <ConfirmationActions>
-                          <ConfirmationAction
-                            onClick={handleApproveProposal}
-                            disabled={isLoading}
-                          >
-                            Generate
-                          </ConfirmationAction>
-                          <ConfirmationAction
-                            variant="secondary"
-                            onClick={handleRejectProposal}
-                            disabled={isLoading}
-                          >
-                            Not yet
-                          </ConfirmationAction>
-                        </ConfirmationActions>
-                      </Confirmation>
-                    </div>
-                  )}
 
                   {/* Loading State */}
                   {((isLoading && showThinking) || isProcessingFile) && (
@@ -2589,7 +2547,7 @@ function AIChat({
                       <span className="text-xs font-medium mb-1.5 px-1 text-muted-foreground">
                         CATA
                       </span>
-                      <div className="bg-card border border-border/50 rounded-2xl rounded-tl-md p-4">
+                      <div className="bg-transparent border-0 rounded-none p-0">
                         <div className="relative flex items-center gap-2">
                           {isProcessingFile ? (
                             <>
@@ -2607,7 +2565,7 @@ function AIChat({
                                 </span>
                               </div>
                               <div
-                                className="absolute inset-0 flex items-center gap-2 text-primary"
+                                className="absolute inset-0 flex items-center gap-2 text-black"
                                 style={{
                                   maskImage:
                                     "linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)",
@@ -2814,3 +2772,4 @@ function AIChat({
 }
 
 export default AIChat;
+
