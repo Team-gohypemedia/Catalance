@@ -1,4 +1,4 @@
-{
+﻿{
     "schema_version": "1.0",
     "currency": "INR",
     "global_rules": {
@@ -13,15 +13,15 @@
         {
             "number": 1,
             "id": "branding",
-            "name": "Branding (Naming, Logo & Brand Identity)",
+            "name": "Branding Kit",
             "budget": {
-                "min_required_amount": 25000,
+                "min_required_amount": 10000,
                 "unit": "project"
             },
             "questions": [
                 {
                     "id": "project_requirements_detail",
-                    "question": "What are your requirements for this Branding (Naming, Logo & Brand Identity) project in detail?"
+                    "question": "What are your requirements for this Branding Kit project in detail?"
                 },
                 {
                     "id": "brand_stage",
@@ -244,27 +244,27 @@
                         },
                         {
                             "value": "within_3_4_weeks",
-                            "label": "Within 3–4 weeks"
+                            "label": "Within 3â€“4 weeks"
                         },
                         {
                             "value": "within_1_2_months",
-                            "label": "Within 1–2 months"
+                            "label": "Within 1â€“2 months"
                         }
                     ]
                 },
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget for this branding project (minimum ₹25,000)?"
+                    "question": "What is your budget for this branding project (minimum â‚¹10,000)?"
                 }
             ]
         },
         {
             "number": 2,
             "id": "website_uiux",
-            "name": "Website / UI–UX Design (2D / 3D)",
+            "name": "Website / UIâ€“UX Design (2D / 3D)",
             "budget": {
-                "min_required_amount": 25000,
+                "min_required_amount": 10000,
                 "unit": "project"
             },
             "website_types": [
@@ -539,7 +539,7 @@
             "questions": [
                 {
                     "id": "project_requirements_detail",
-                    "question": "What are your requirements for this Website / UI–UX Design (2D / 3D) project in detail?"
+                    "question": "What are your requirements for this Website / UIâ€“UX Design (2D / 3D) project in detail?"
                 },
                 {
                     "id": "requirement",
@@ -1163,11 +1163,11 @@
                     "options": [
                         {
                             "value": "within_2_4_weeks",
-                            "label": "Within 2–4 weeks"
+                            "label": "Within 2â€“4 weeks"
                         },
                         {
                             "value": "within_1_2_months",
-                            "label": "Within 1–2 months"
+                            "label": "Within 1â€“2 months"
                         },
                         {
                             "value": "flexible",
@@ -1178,7 +1178,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget for this website project (minimum ₹25,000)?"
+                    "question": "What is your budget for this website project (minimum ₹10,000)?"
                 }
             ],
             "show_techstack": true
@@ -1188,7 +1188,7 @@
             "id": "seo",
             "name": "SEO (Search Engine Optimisation)",
             "budget": {
-                "min_required_amount": 10000,
+                "min_required_amount": 7000,
                 "unit": "per_month"
             },
             "questions": [
@@ -1293,7 +1293,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your monthly budget for SEO (minimum ₹10,000/month)?"
+                    "question": "What is your monthly budget for SEO (minimum â‚¹7,000/month)?"
                 }
             ]
         },
@@ -1302,7 +1302,7 @@
             "id": "social_media_marketing_organic",
             "name": "Social Media Marketing (Organic)",
             "budget": {
-                "min_required_amount": 10000,
+                "min_required_amount": 8000,
                 "unit": "per_month"
             },
             "questions": [
@@ -1407,7 +1407,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your expected monthly investment (minimum ₹10,000/month)?"
+                    "question": "What is your expected monthly investment (minimum â‚¹8,000/month)?"
                 }
             ]
         },
@@ -1416,7 +1416,7 @@
             "id": "paid_advertising_performance",
             "name": "Paid Advertising / Performance Marketing",
             "budget": {
-                "min_required_amount": 25000,
+                "min_required_amount": 15000,
                 "unit": "per_month_ad_spend"
             },
             "questions": [
@@ -1513,7 +1513,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What monthly ad spend are you planning (minimum ₹25,000/month)?"
+                    "question": "What monthly ad spend are you planning (minimum â‚¹15,000/month)?"
                 }
             ]
         },
@@ -1522,7 +1522,7 @@
             "id": "app_development",
             "name": "App Development (Android / iOS / Cross-Platform)",
             "budget": {
-                "min_required_amount": 100000,
+                "min_required_amount": 80000,
                 "unit": "project"
             },
             "questions": [
@@ -1604,11 +1604,11 @@
                     "options": [
                         {
                             "value": "1_2_months",
-                            "label": "1–2 months"
+                            "label": "1â€“2 months"
                         },
                         {
                             "value": "3_4_months",
-                            "label": "3–4 months"
+                            "label": "3â€“4 months"
                         },
                         {
                             "value": "flexible",
@@ -1619,7 +1619,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What budget level best suits this project (minimum ₹1,00,000)?"
+                    "question": "What budget level best suits this project (minimum â‚¹80,000)?"
                 }
             ],
             "show_techstack": true
@@ -1629,7 +1629,7 @@
             "id": "software_development",
             "name": "Software Development (Web / SaaS / Custom Systems)",
             "budget": {
-                "min_required_amount": 100000,
+                "min_required_amount": 50000,
                 "unit": "project"
             },
             "questions": [
@@ -1711,11 +1711,11 @@
                     "options": [
                         {
                             "value": "1_2_months",
-                            "label": "1–2 months"
+                            "label": "1â€“2 months"
                         },
                         {
                             "value": "3_4_months",
-                            "label": "3–4 months"
+                            "label": "3â€“4 months"
                         },
                         {
                             "value": "flexible",
@@ -1726,7 +1726,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What budget range do you have in mind (minimum ₹1,00,000)?"
+                    "question": "What budget range do you have in mind (minimum â‚¹50,000)?"
                 }
             ],
             "show_techstack": true
@@ -1833,7 +1833,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your monthly budget for lead generation (minimum ₹15,000/month)?"
+                    "question": "What is your monthly budget for lead generation (minimum â‚¹15,000/mo)?"
                 }
             ]
         },
@@ -1895,15 +1895,15 @@
                     "options": [
                         {
                             "value": "short_15_30",
-                            "label": "Short (15–30 seconds)"
+                            "label": "Short (15â€“30 seconds)"
                         },
                         {
                             "value": "medium_30_60",
-                            "label": "Medium (30–60 seconds)"
+                            "label": "Medium (30â€“60 seconds)"
                         },
                         {
                             "value": "long_1_3",
-                            "label": "Long (1–3 minutes)"
+                            "label": "Long (1â€“3 minutes)"
                         }
                     ]
                 },
@@ -1935,7 +1935,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget per video (minimum ₹1,000/video)?"
+                    "question": "What is your budget per video (minimum â‚¹1,000/video)?"
                 }
             ]
         },
@@ -1944,8 +1944,8 @@
             "id": "writing_content",
             "name": "Writing & Content",
             "budget": {
-                "min_required_amount": 1000,
-                "unit": "per_piece"
+                "min_required_amount": 500,
+                "unit": "per_article"
             },
             "questions": [
                 {
@@ -2045,7 +2045,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget per content piece (minimum ₹1,000/piece)?"
+                    "question": "What is your budget per article (minimum â‚¹500/article)?"
                 }
             ]
         },
@@ -2054,7 +2054,7 @@
             "id": "customer_support",
             "name": "Customer Support",
             "budget": {
-                "min_required_amount": 15000,
+                "min_required_amount": 10000,
                 "unit": "per_month"
             },
             "questions": [
@@ -2137,7 +2137,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your monthly budget for customer support (minimum ₹15,000/month)?"
+                    "question": "What is your monthly budget for customer support (minimum â‚¹10,000/month)?"
                 }
             ]
         },
@@ -2146,7 +2146,7 @@
             "id": "influencer_marketing",
             "name": "Influencer Marketing",
             "budget": {
-                "min_required_amount": 10000,
+                "min_required_amount": 20000,
                 "unit": "campaign"
             },
             "questions": [
@@ -2178,11 +2178,11 @@
                     "options": [
                         {
                             "value": "nano",
-                            "label": "Nano Influencers (1K–10K followers)"
+                            "label": "Nano Influencers (1Kâ€“10K followers)"
                         },
                         {
                             "value": "micro",
-                            "label": "Micro Influencers (10K–100K followers)"
+                            "label": "Micro Influencers (10Kâ€“100K followers)"
                         },
                         {
                             "value": "macro",
@@ -2229,22 +2229,22 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your influencer campaign budget (minimum ₹10,000)?"
+                    "question": "What is your influencer campaign budget (minimum â‚¹20,000)?"
                 }
             ]
         },
         {
             "number": 13,
             "id": "ugc_marketing",
-            "name": "UGC (User-Generated Content) Marketing",
+            "name": "UGC Marketing",
             "budget": {
-                "min_required_amount": 2000,
-                "unit": "per_video"
+                "min_required_amount": 20000,
+                "unit": "campaign"
             },
             "questions": [
                 {
                     "id": "project_requirements_detail",
-                    "question": "What are your requirements for this UGC (User-Generated Content) Marketing project in detail?"
+                    "question": "What are your requirements for this UGC Marketing project in detail?"
                 },
                 {
                     "id": "purpose",
@@ -2321,7 +2321,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget per UGC video (minimum ₹2,000/video)?"
+                    "question": "What is your budget for this UGC Marketing campaign (minimum â‚¹20,000)?"
                 }
             ]
         },
@@ -2413,7 +2413,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget for AI automation (minimum ₹25,000)?"
+                    "question": "What is your budget for AI automation (minimum â‚¹25,000)?"
                 }
             ]
         },
@@ -2422,7 +2422,7 @@
             "id": "whatsapp_chatbot",
             "name": "WhatsApp Chatbot",
             "budget": {
-                "min_required_amount": 15000,
+                "min_required_amount": 10000,
                 "unit": "project"
             },
             "questions": [
@@ -2501,7 +2501,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget for the WhatsApp chatbot (minimum ₹15,000)?"
+                    "question": "What is your budget for the WhatsApp chatbot (minimum â‚¹10,000)?"
                 }
             ]
         },
@@ -2589,7 +2589,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget per deliverable (minimum ₹500)?"
+                    "question": "What is your budget per creative (minimum â‚¹500)?"
                 }
             ]
         },
@@ -2598,7 +2598,7 @@
             "id": "modeling_3d",
             "name": "3D Modeling",
             "budget": {
-                "min_required_amount": 5000,
+                "min_required_amount": 2000,
                 "unit": "per_model"
             },
             "questions": [
@@ -2656,7 +2656,7 @@
                         },
                         {
                             "value": "2_5",
-                            "label": "2–5 models"
+                            "label": "2â€“5 models"
                         },
                         {
                             "value": "more_than_5",
@@ -2685,7 +2685,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget per 3D model (minimum ₹5,000/model)?"
+                    "question": "What is your budget per 3D model (minimum â‚¹2,000/model)?"
                 }
             ]
         },
@@ -2694,7 +2694,7 @@
             "id": "cgi_video_services",
             "name": "CGI Video Services",
             "budget": {
-                "min_required_amount": 15000,
+                "min_required_amount": 10000,
                 "unit": "per_cgi_video",
                 "pricing_model": "per_deliverable",
                 "quantity_question_id": "deliverable_count",
@@ -2751,15 +2751,15 @@
                     "options": [
                         {
                             "value": "short_15_30",
-                            "label": "Short (15–30 seconds)"
+                            "label": "Short (15â€“30 seconds)"
                         },
                         {
                             "value": "medium_30_60",
-                            "label": "Medium (30–60 seconds)"
+                            "label": "Medium (30â€“60 seconds)"
                         },
                         {
                             "value": "long_1_2",
-                            "label": "Long (1–2 minutes)"
+                            "label": "Long (1â€“2 minutes)"
                         }
                     ]
                 },
@@ -2791,7 +2791,7 @@
                 {
                     "id": "user_budget",
                     "type": "number",
-                    "question": "What is your budget per CGI video (minimum ₹15,000/video)?"
+                    "question": "What is your budget per CGI video (minimum â‚¹10,000/video)?"
                 }
             ]
         },
@@ -2800,8 +2800,8 @@
             "id": "crm_erp_integrated_solutions",
             "name": "CRM & ERP Integrated Solutions",
             "budget": {
-                "min_required_amount": null,
-                "unit": "pricing_level"
+                "min_required_amount": 50000,
+                "unit": "project"
             },
             "questions": [
                 {
@@ -2871,32 +2871,19 @@
                     ]
                 },
                 {
-                    "id": "pricing_level",
-                    "question": "What budget level best matches your expectation for this integrated solution?",
-                    "options": [
-                        {
-                            "value": "entry",
-                            "label": "Entry level"
-                        },
-                        {
-                            "value": "growth",
-                            "label": "Growth level"
-                        },
-                        {
-                            "value": "enterprise",
-                            "label": "Enterprise level"
-                        }
-                    ]
+                    "id": "user_budget",
+                    "type": "number",
+                    "question": "What is your budget for this integrated solution?"
                 }
             ]
         },
         {
             "number": 20,
             "id": "voice_agent",
-            "name": "Voice Agent (AI Voice Bot / Call Automation)",
+            "name": "Voice Agent",
             "budget": {
-                "min_required_amount": null,
-                "unit": "pricing_level"
+                "min_required_amount": 50000,
+                "unit": "project"
             },
             "questions": [
                 {
@@ -2980,24 +2967,13 @@
                     ]
                 },
                 {
-                    "id": "pricing_level",
-                    "question": "What budget level best matches your voice agent requirement?",
-                    "options": [
-                        {
-                            "value": "entry",
-                            "label": "Entry level"
-                        },
-                        {
-                            "value": "growth",
-                            "label": "Growth level"
-                        },
-                        {
-                            "value": "premium",
-                            "label": "Premium level"
-                        }
-                    ]
+                    "id": "user_budget",
+                    "type": "number",
+                    "question": "What is your budget for this voice agent?"
                 }
             ]
         }
     ]
 }
+
+

@@ -117,7 +117,7 @@ const Services = () => {
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
                                 <h3 className="text-lg font-bold mb-2 text-center">Website Development</h3>
-                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹25,000</span></p>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹10,000</span></p>
                             </div>
                         </div>
 
@@ -132,7 +132,7 @@ const Services = () => {
                             </div>
                             <div className={`p-5 ${isDark ? "bg-[#1a1915]" : "bg-white"} border-t-4 border-[#ff5722]`}>
                                 <h3 className="text-lg font-bold mb-2 text-center">App Development</h3>
-                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹1,00,000</span></p>
+                                <p className={`text-center font-semibold ${isDark ? "text-[#ffc800]" : "text-[#d4a800]"}`}>Starts from <span className="text-xl font-bold">₹80,000</span></p>
                             </div>
                         </div>
 
