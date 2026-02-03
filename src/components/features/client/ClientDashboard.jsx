@@ -66,8 +66,14 @@ import {
 } from "@/components/ui/hover-card";
 
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
-const SAVED_PROPOSALS_KEY = "markify:savedProposals";
-const SAVED_PROPOSAL_KEY = "markify:savedProposal";
+const getProposalStorageKeys = (userId) => {
+  const suffix = userId ? `:${userId}` : "";
+  return {
+    listKey: `markify:savedProposals${suffix}`,
+    singleKey: `markify:savedProposal${suffix}`,
+    syncedKey: `markify:savedProposalSynced${suffix}`,
+  };
+};
 
 const buildLocalProposalId = () =>
   `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -122,6 +128,13 @@ const normalizeSavedProposal = (proposal = {}) => {
   return next;
 };
 
+const resolveProposalTitle = (proposal = {}) =>
+  proposal.projectTitle ||
+  proposal.title ||
+  proposal.service ||
+  proposal.serviceKey ||
+  "Proposal";
+
 const resolveActiveProposalId = (proposals, preferredId, fallbackId) => {
   if (!Array.isArray(proposals) || proposals.length === 0) return null;
   if (
@@ -155,11 +168,10 @@ const formatBudget = (budget) => {
   return `₹${finalValue.toLocaleString("en-IN")}`;
 };
 
-const loadSavedProposalsFromStorage = () => {
-  if (typeof window === "undefined") return { proposals: [], activeId: null };
+const readSavedProposalsFromKeys = (listKey, singleKey) => {
   let proposals = [];
-  const listRaw = window.localStorage.getItem(SAVED_PROPOSALS_KEY);
-  const singleRaw = window.localStorage.getItem(SAVED_PROPOSAL_KEY);
+  const listRaw = window.localStorage.getItem(listKey);
+  const singleRaw = window.localStorage.getItem(singleKey);
 
   if (listRaw) {
     try {
@@ -204,18 +216,69 @@ const loadSavedProposalsFromStorage = () => {
   return { proposals: normalized, activeId };
 };
 
-const persistSavedProposalsToStorage = (proposals, activeId) => {
+const mergeProposalsBySignature = (base = [], incoming = []) => {
+  const merged = [...base];
+  incoming.forEach((proposal) => {
+    const signature = getProposalSignature(proposal);
+    const exists = merged.some((item) => getProposalSignature(item) === signature);
+    if (!exists) {
+      merged.push(proposal);
+    }
+  });
+  return merged;
+};
+
+const loadSavedProposalsFromStorage = (userId) => {
+  if (typeof window === "undefined") return { proposals: [], activeId: null };
+
+  const storageKeys = getProposalStorageKeys(userId);
+  const legacyKeys = getProposalStorageKeys();
+
+  let { proposals, activeId } = readSavedProposalsFromKeys(
+    storageKeys.listKey,
+    storageKeys.singleKey
+  );
+
+  if (userId && legacyKeys.listKey !== storageKeys.listKey) {
+    const legacy = readSavedProposalsFromKeys(
+      legacyKeys.listKey,
+      legacyKeys.singleKey
+    );
+    if (legacy.proposals.length) {
+      const legacyWithOwner = legacy.proposals.map((proposal) => ({
+        ...proposal,
+        ownerId: userId,
+      }));
+      const merged = mergeProposalsBySignature(proposals, legacyWithOwner);
+      const nextActiveId = resolveActiveProposalId(
+        merged,
+        activeId,
+        legacy.activeId
+      );
+      persistSavedProposalsToStorage(merged, nextActiveId, storageKeys);
+      window.localStorage.removeItem(legacyKeys.listKey);
+      window.localStorage.removeItem(legacyKeys.singleKey);
+      proposals = merged;
+      activeId = nextActiveId;
+    }
+  }
+
+  return { proposals, activeId };
+};
+
+const persistSavedProposalsToStorage = (proposals, activeId, storageKeys) => {
   if (typeof window === "undefined") return;
+  const keys = storageKeys || getProposalStorageKeys();
   if (!Array.isArray(proposals) || proposals.length === 0) {
-    window.localStorage.removeItem(SAVED_PROPOSALS_KEY);
-    window.localStorage.removeItem(SAVED_PROPOSAL_KEY);
+    window.localStorage.removeItem(keys.listKey);
+    window.localStorage.removeItem(keys.singleKey);
     return;
   }
-  window.localStorage.setItem(SAVED_PROPOSALS_KEY, JSON.stringify(proposals));
+  window.localStorage.setItem(keys.listKey, JSON.stringify(proposals));
   const active =
     proposals.find((proposal) => proposal.id === activeId) || proposals[0];
   if (active) {
-    window.localStorage.setItem(SAVED_PROPOSAL_KEY, JSON.stringify(active));
+    window.localStorage.setItem(keys.singleKey, JSON.stringify(active));
   }
 };
 
@@ -387,6 +450,10 @@ const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const { authFetch } = useAuth();
   const navigate = useNavigate();
+  const storageKeys = useMemo(
+    () => getProposalStorageKeys(sessionUser?.id),
+    [sessionUser?.id]
+  );
   const [projects, setProjects] = useState([]);
   const [freelancers, setFreelancers] = useState([]); // Chat freelancers
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]); // All freelancers for suggestions
@@ -395,6 +462,7 @@ const ClientDashboardContent = () => {
   const [savedProposals, setSavedProposals] = useState([]);
   const [activeProposalId, setActiveProposalId] = useState(null);
   const [isSendingProposal, setIsSendingProposal] = useState(false);
+  const [isSyncingDrafts, setIsSyncingDrafts] = useState(false);
   const [dismissedProjectIds, setDismissedProjectIds] = useState(() => {
     try {
       const stored = localStorage.getItem("markify:dismissedExpiredProposals");
@@ -454,11 +522,13 @@ const ClientDashboardContent = () => {
 
   // Load saved proposal from localStorage
   useEffect(() => {
-    const { proposals, activeId } = loadSavedProposalsFromStorage();
+    const { proposals, activeId } = loadSavedProposalsFromStorage(
+      sessionUser?.id
+    );
     setSavedProposals(proposals);
     setActiveProposalId(activeId);
-    persistSavedProposalsToStorage(proposals, activeId);
-  }, []);
+    persistSavedProposalsToStorage(proposals, activeId, storageKeys);
+  }, [sessionUser?.id, storageKeys]);
 
   const persistSavedProposalState = (
     nextProposals,
@@ -474,9 +544,83 @@ const ClientDashboardContent = () => {
     );
     setSavedProposals(normalized);
     setActiveProposalId(resolvedActiveId);
-    persistSavedProposalsToStorage(normalized, resolvedActiveId);
+    persistSavedProposalsToStorage(normalized, resolvedActiveId, storageKeys);
     return resolvedActiveId;
   };
+
+  useEffect(() => {
+    if (!authFetch || !sessionUser?.id || sessionUser?.role !== "CLIENT") return;
+    if (isSyncingDrafts) return;
+
+    const unsynced = savedProposals.filter(
+      (proposal) => !proposal?.syncedProjectId
+    );
+    if (unsynced.length === 0) return;
+
+    const syncDrafts = async () => {
+      setIsSyncingDrafts(true);
+      const now = new Date().toISOString();
+      try {
+        const results = await Promise.all(
+          unsynced.map(async (proposal) => {
+            try {
+              const response = await authFetch("/projects", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: resolveProposalTitle(proposal),
+                  description: proposal.summary || proposal.content || "Proposal draft",
+                  budget:
+                    parseInt(
+                      String(proposal.budget || "0").replace(/[^0-9]/g, "")
+                    ) || 0,
+                  status: "DRAFT",
+                }),
+                suppressToast: true,
+              });
+
+              if (!response.ok) {
+                return { id: proposal.id, projectId: null };
+              }
+
+              const payload = await response.json().catch(() => null);
+              const projectId = payload?.data?.project?.id || null;
+              return { id: proposal.id, projectId };
+            } catch (error) {
+              console.error("Failed to sync proposal draft:", error);
+              return { id: proposal.id, projectId: null };
+            }
+          })
+        );
+
+        const updated = savedProposals.map((proposal) => {
+          const match = results.find((item) => item.id === proposal.id);
+          if (match?.projectId) {
+            return {
+              ...proposal,
+              ownerId: sessionUser.id,
+              syncedProjectId: match.projectId,
+              syncedAt: now,
+            };
+          }
+          return proposal;
+        });
+
+        persistSavedProposalState(updated, activeProposalId);
+      } finally {
+        setIsSyncingDrafts(false);
+      }
+    };
+
+    syncDrafts();
+  }, [
+    authFetch,
+    sessionUser?.id,
+    sessionUser?.role,
+    savedProposals,
+    activeProposalId,
+    isSyncingDrafts,
+  ]);
 
   // Load projects
   // Load projects function
@@ -683,7 +827,7 @@ const ClientDashboardContent = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: savedProposal.projectTitle || "New Project",
+          title: resolveProposalTitle(savedProposal),
           description: savedProposal.summary || savedProposal.content || "",
           budget:
             parseInt(
@@ -697,6 +841,20 @@ const ClientDashboardContent = () => {
       if (!projectRes.ok) throw new Error("Failed to create project");
       const projectData = await projectRes.json();
       const project = projectData.data.project;
+      if (project?.id && savedProposal?.id) {
+        const now = new Date().toISOString();
+        const updated = savedProposals.map((proposal) =>
+          proposal.id === savedProposal.id
+            ? {
+                ...proposal,
+                ownerId: sessionUser?.id || proposal.ownerId || null,
+                syncedProjectId: project.id,
+                syncedAt: proposal.syncedAt || now,
+              }
+            : proposal
+        );
+        persistSavedProposalState(updated, savedProposal.id);
+      }
 
       // Send proposal to freelancer
       const proposalRes = await authFetch("/proposals", {
@@ -990,7 +1148,8 @@ const ClientDashboardContent = () => {
                             setActiveProposalId(proposal.id);
                             persistSavedProposalsToStorage(
                               savedProposals,
-                              proposal.id
+                              proposal.id,
+                              storageKeys
                             );
                           }}
                         >
@@ -1046,7 +1205,9 @@ const ClientDashboardContent = () => {
                             onClick={(e) => {
                               e.stopPropagation();
                               e.preventDefault();
-                              localStorage.removeItem("markify:savedProposal");
+                              if (storageKeys?.singleKey) {
+                                localStorage.removeItem(storageKeys.singleKey);
+                              }
                               persistSavedProposalState([]);
                               toast.success("Proposal deleted");
                             }}
@@ -1059,7 +1220,7 @@ const ClientDashboardContent = () => {
                     <CardContent>
                       <div className="space-y-3">
                         <h4 className="font-semibold">
-                          {savedProposal.projectTitle || "New Project"}
+                          {resolveProposalTitle(savedProposal)}
                         </h4>
                         {/* Parsed proposal content */}
                         {(() => {
@@ -1349,7 +1510,7 @@ const ClientDashboardContent = () => {
                   </DialogHeader>
                   <div className="p-4 bg-muted rounded-lg">
                     <p className="font-semibold">
-                      {savedProposal?.projectTitle || "New Project"}
+                      {resolveProposalTitle(savedProposal)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Budget: {formatBudget(savedProposal?.budget)}
@@ -2177,7 +2338,7 @@ const ClientDashboardContent = () => {
                       <div className="p-2 bg-primary/10 rounded-lg">
                         <Eye className="w-6 h-6 text-primary" />
                       </div>
-                      {savedProposal?.projectTitle || "Proposal Details"}
+                      {resolveProposalTitle(savedProposal)}
                     </DialogTitle>
                   </DialogHeader>
 
