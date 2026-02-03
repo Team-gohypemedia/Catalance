@@ -21,10 +21,12 @@ import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 
-const STORAGE_KEYS = [
-  "markify:savedProposal",
-  "savedProposal",
-];
+const getDraftStorageKeys = (userId) => {
+  const suffix = userId ? `:${userId}` : "";
+  const primaryKey = `markify:savedProposal${suffix}`;
+  const legacyKeys = ["markify:savedProposal", "savedProposal"];
+  return { primaryKey, legacyKeys };
+};
 
 const parseDraftValue = (value) => {
   if (!value) return null;
@@ -39,27 +41,40 @@ const parseDraftValue = (value) => {
   return null;
 };
 
-const loadDrafts = () => {
+const loadDrafts = (storageKeys) => {
   if (typeof window === "undefined") return [];
   const bySignature = new Map();
+  const primaryKey = storageKeys?.primaryKey;
+  const legacyKeys = storageKeys?.legacyKeys || [
+    "markify:savedProposal",
+    "savedProposal",
+  ];
+  const hasPrimary = primaryKey
+    ? Boolean(window.localStorage.getItem(primaryKey))
+    : false;
+  const keysToRead = primaryKey
+    ? hasPrimary
+      ? [primaryKey]
+      : [primaryKey, ...legacyKeys]
+    : legacyKeys;
 
-  STORAGE_KEYS.forEach((key) => {
+  keysToRead.forEach((key) => {
     const raw = window.localStorage.getItem(key);
     if (!raw) return;
     const parsed = parseDraftValue(raw);
     if (!parsed?.content && !parsed?.summary) return;
-    
+
     // CRITICAL: Only show proposals that were explicitly saved
     // Must have BOTH savedAt AND isSavedDraft to be considered a valid draft
     // This prevents auto-generated proposals from appearing in drafts
     const isExplicitlySaved = Boolean(parsed.savedAt) && Boolean(parsed.isSavedDraft);
-    
+
     if (!isExplicitlySaved) {
       // Just skip showing it in drafts, but DO NOT delete it
       // It might be a pending proposal for the dashboard
       return;
     }
-    
+
     const content = (parsed.content || parsed.summary || "").trim();
     const title =
       parsed.projectTitle ||
@@ -188,12 +203,16 @@ const ProposalDraftsContent = () => {
 
   const totalDrafts = useMemo(() => drafts.length, [drafts]);
 
-  const { authFetch } = useAuth();
+  const { authFetch, user } = useAuth();
+  const storageKeys = useMemo(
+    () => getDraftStorageKeys(user?.id),
+    [user?.id]
+  );
 
   useEffect(() => {
     const fetchDrafts = async () => {
       // Load local drafts first
-      const local = loadDrafts();
+      const local = loadDrafts(storageKeys);
       
       if (!authFetch) {
         setDrafts(local);
@@ -229,7 +248,7 @@ const ProposalDraftsContent = () => {
       }
     };
     fetchDrafts();
-  }, [authFetch]);
+  }, [authFetch, storageKeys]);
 
   const handleEdit = (draft) => {
     setActiveDraft(draft);
@@ -241,7 +260,11 @@ const ProposalDraftsContent = () => {
     deleteDraftFromStorage(draft.storageKey);
     
     // Also delete from all known storage keys to ensure complete cleanup
-    STORAGE_KEYS.forEach((key) => {
+    const cleanupKeys = [
+      storageKeys?.primaryKey,
+      ...(storageKeys?.legacyKeys || []),
+    ].filter(Boolean);
+    cleanupKeys.forEach((key) => {
       const raw = window.localStorage.getItem(key);
       if (raw) {
         try {
@@ -275,7 +298,7 @@ const ProposalDraftsContent = () => {
     toast.success("Draft saved.");
   };
 
-const handleRestore = (draft, navigate) => {
+ const handleRestore = (draft, navigate) => {
   if (typeof window === "undefined") return;
   const payload = {
     ...draft.raw,
@@ -286,10 +309,10 @@ const handleRestore = (draft, navigate) => {
     savedAt: draft.raw?.savedAt || new Date().toISOString(),
     isSavedDraft: true,
   };
-  window.localStorage.setItem("markify:savedProposal", JSON.stringify(payload));
-  window.localStorage.setItem("savedProposal", JSON.stringify(payload));
+  const targetKey = storageKeys?.primaryKey || "markify:savedProposal";
+  window.localStorage.setItem(targetKey, JSON.stringify(payload));
   // notify dashboard listeners
-  window.dispatchEvent(new StorageEvent("storage", { key: "markify:savedProposal" }));
+  window.dispatchEvent(new StorageEvent("storage", { key: targetKey }));
   toast.success("Draft restored to dashboard.");
   if (navigate) navigate("/client");
 };

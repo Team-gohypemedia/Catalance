@@ -86,8 +86,14 @@ const normalizeBudgetText = (text = "") => {
   });
 };
 
-const SAVED_PROPOSALS_KEY = "markify:savedProposals";
-const SAVED_PROPOSAL_KEY = "markify:savedProposal";
+const getProposalStorageKeys = (userId) => {
+    const suffix = userId ? `:${userId}` : "";
+    return {
+        listKey: `markify:savedProposals${suffix}`,
+        singleKey: `markify:savedProposal${suffix}`,
+        syncedKey: `markify:savedProposalSynced${suffix}`,
+    };
+};
 
 const buildLocalProposalId = () =>
     `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -118,7 +124,7 @@ const parseProposalContent = (text = "", fallbackService = "") => {
     const projectTitle =
         serviceName && projectName
             ? `${serviceName}/${projectName}`
-            : projectName || serviceName || "Project Proposal";
+            : projectName || serviceName || "Proposal";
     const preparedFor = getValue("Prepared for") || getValue("For") || "Client";
 
     let rawBudget = getValue("Budget") || "";
@@ -169,10 +175,11 @@ const getProposalSignature = (proposal = {}) => {
     return `${title}::${service}`;
 };
 
-const loadSavedProposals = () => {
+const loadSavedProposals = (storageKeys) => {
     if (typeof window === "undefined") return [];
-    const listRaw = window.localStorage.getItem(SAVED_PROPOSALS_KEY);
-    const singleRaw = window.localStorage.getItem(SAVED_PROPOSAL_KEY);
+    const keys = storageKeys || getProposalStorageKeys();
+    const listRaw = window.localStorage.getItem(keys.listKey);
+    const singleRaw = window.localStorage.getItem(keys.singleKey);
     let proposals = [];
 
     if (listRaw) {
@@ -226,19 +233,20 @@ const upsertSavedProposals = (existing, incoming) => {
     return next;
 };
 
-const persistSavedProposals = (proposals, activeId) => {
+const persistSavedProposals = (proposals, activeId, storageKeys) => {
     if (typeof window === "undefined") return;
+    const keys = storageKeys || getProposalStorageKeys();
     if (!Array.isArray(proposals) || proposals.length === 0) {
-        window.localStorage.removeItem(SAVED_PROPOSALS_KEY);
-        window.localStorage.removeItem(SAVED_PROPOSAL_KEY);
+        window.localStorage.removeItem(keys.listKey);
+        window.localStorage.removeItem(keys.singleKey);
         return;
     }
 
-    window.localStorage.setItem(SAVED_PROPOSALS_KEY, JSON.stringify(proposals));
+    window.localStorage.setItem(keys.listKey, JSON.stringify(proposals));
     const active =
         proposals.find((proposal) => proposal.id === activeId) || proposals[0];
     if (active) {
-        window.localStorage.setItem(SAVED_PROPOSAL_KEY, JSON.stringify(active));
+        window.localStorage.setItem(keys.singleKey, JSON.stringify(active));
     }
 };
 
@@ -247,6 +255,10 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
 
     const navigate = useNavigate();
     const { user } = useAuth();
+    const storageKeys = useMemo(
+        () => getProposalStorageKeys(user?.id),
+        [user?.id]
+    );
 
     const cleanContent = useMemo(() => {
         return formatProposalContent(content);
@@ -287,6 +299,9 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
                     return {
                         ...parsedContent,
                         serviceKey,
+                        ownerId: user?.id || null,
+                        syncedProjectId: null,
+                        syncedAt: null,
                         createdAt: now,
                         updatedAt: now
                     };
@@ -296,12 +311,15 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
                 {
                     ...parsed,
                     serviceKey: activeServiceKey,
+                    ownerId: user?.id || null,
+                    syncedProjectId: null,
+                    syncedAt: null,
                     createdAt: now,
                     updatedAt: now
                 }
             ];
 
-        const existing = loadSavedProposals();
+        const existing = loadSavedProposals(storageKeys);
         const merged = upsertSavedProposals(existing, proposalsToSave);
         const activeTarget =
             proposalsToSave.find((proposal) => proposal.serviceKey === activeServiceKey) ||
@@ -311,8 +329,10 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
             ? merged.find((proposal) => getProposalSignature(proposal) === activeSignature)
             : merged[merged.length - 1];
 
-        persistSavedProposals(merged, activeMatch?.id);
-        window.localStorage.removeItem("markify:savedProposalSynced");
+        persistSavedProposals(merged, activeMatch?.id, storageKeys);
+        if (storageKeys?.syncedKey) {
+            window.localStorage.removeItem(storageKeys.syncedKey);
+        }
 
         toast.success(
             proposalsToSave.length > 1
