@@ -254,6 +254,14 @@ const getQuestionMatchScore = (assistantQuestion = "", questionText = "") => {
   return hits / questionTokens.length;
 };
 
+const findLastIndex = (items = [], predicate) => {
+  if (!Array.isArray(items)) return -1;
+  for (let i = items.length - 1; i >= 0; i -= 1) {
+    if (predicate(items[i], i)) return i;
+  }
+  return -1;
+};
+
 const findBestQuestionMatch = (assistantQuestion, questions, usedQuestionIds) => {
   let bestMatch = null;
   let bestScore = 0;
@@ -269,6 +277,113 @@ const findBestQuestionMatch = (assistantQuestion, questions, usedQuestionIds) =>
 
   return bestScore >= 0.6 ? bestMatch : null;
 };
+
+const isLowSignalText = (text = "", { minLength = 2 } = {}) => {
+  if (typeof text !== "string") return true;
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  const normalized = trimmed.replace(/\s+/g, "");
+  if (normalized.length < minLength) return true;
+  if (/^[^a-z0-9]+$/i.test(normalized)) return true;
+
+  const alnum = normalized.replace(/[^a-z0-9]/gi, "");
+  if (alnum.length >= 3) {
+    const uniqueChars = new Set(alnum.toLowerCase());
+    if (uniqueChars.size <= 1) return true;
+  }
+
+  return false;
+};
+
+const getMinimumAnswerLength = (question = {}, assistantQuestionLine = "") => {
+  const questionText = `${question?.question || ""} ${assistantQuestionLine || ""}`;
+  if (/name\??$/i.test(questionText.trim()) || /your name/i.test(questionText)) {
+    return 2;
+  }
+  if (/business|company/i.test(questionText) && /name/i.test(questionText)) {
+    return 2;
+  }
+  if (/describe|briefly|detail|requirements|about|tell me/i.test(questionText)) {
+    return 5;
+  }
+  return 3;
+};
+
+const getUsedQuestionIds = (conversationHistory = [], serviceDefinition) => {
+  if (!Array.isArray(serviceDefinition?.questions)) return new Set();
+  const used = new Set();
+  for (let i = 0; i < conversationHistory.length - 1; i += 1) {
+    const msg = conversationHistory[i];
+    const nextMsg = conversationHistory[i + 1];
+    if (msg?.role !== "assistant" || nextMsg?.role !== "user") continue;
+    const assistantQuestion = extractAssistantQuestionLine(msg.content || "");
+    if (!assistantQuestion) continue;
+    const matched = findBestQuestionMatch(
+      assistantQuestion,
+      serviceDefinition.questions,
+      used
+    );
+    if (matched?.id) used.add(matched.id);
+  }
+  return used;
+};
+
+const hasValidOptionSelection = (text = "", options = [], question = {}) => {
+  if (!Array.isArray(options) || options.length === 0) return false;
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return false;
+
+  const { numbers } = parseNumericSelections(trimmed, options.length);
+  if (numbers.length) return true;
+  if (findOptionLabelMatch(options, trimmed, question)) return true;
+
+  const items = splitMultiSelectItems(trimmed);
+  const labels = matchOptionLabelsFromItems(options, items).filter(
+    (item) => !isNumericChoiceToken(item)
+  );
+  return labels.length > 0;
+};
+
+const buildClarificationMessage = ({
+  questionText = "",
+  options = [],
+  isBudget = false
+}) => {
+  const resolvedQuestion = questionText || "Could you share that again?";
+  const lines = [];
+
+  if (isBudget) {
+    lines.push("No worries — a quick **budget** ballpark will help me continue 😊");
+  } else {
+    lines.push("Quick check — I want to make sure I get this right 😊");
+  }
+
+  lines.push("");
+  lines.push(`**${resolvedQuestion}**`);
+
+  if (options.length) {
+    lines.push("");
+    options.forEach((option, index) => {
+      const label = option?.label || "";
+      if (!label) return;
+      lines.push(`${index + 1}. ${label}`);
+    });
+    lines.push("");
+    lines.push("Pick any that fit — multiple is totally fine.");
+    lines.push("If none fit, just type your own.");
+  } else if (isBudget) {
+    lines.push("");
+    lines.push("A simple number works great (for example: 50,000).");
+  } else {
+    lines.push("");
+    lines.push("A few words is perfect.");
+  }
+
+  return lines.join("\n");
+};
+
+const hasNumberedOptionsInText = (text = "") =>
+  /(^|\n)\s*\d+\s*[\.)]\s+\S+/m.test(text || "");
 
 const extractBulletItems = (text = "") => {
   if (typeof text !== "string") return [];
@@ -630,6 +745,103 @@ const buildBudgetOverrideMessage = ({
   const unitLabel = formatBudgetUnit(service?.budget?.unit || "");
   const unitSuffix = unitLabel ? ` (${unitLabel})` : "";
   return `That budget is below our minimum of ${minFormatted}${unitSuffix}. Could you increase your budget to at least ${minFormatted}?`;
+};
+
+const deriveOptionsFromAssistant = (assistantText = "") => {
+  const items = extractBulletItems(assistantText);
+  if (!items.length) return [];
+  return items.map((label) => ({ label }));
+};
+
+const buildUserInputGuardMessage = ({
+  conversationHistory = [],
+  messages = [],
+  selectedServiceName = ""
+}) => {
+  const history = [...conversationHistory, ...messages];
+  const lastUserIndex = findLastIndex(
+    history,
+    (msg) => msg?.role === "user" && msg.content
+  );
+  if (lastUserIndex < 0) return null;
+
+  const lastAssistantIndex = findLastIndex(
+    history.slice(0, lastUserIndex),
+    (msg) => msg?.role === "assistant" && msg.content
+  );
+  if (lastAssistantIndex < 0) return null;
+
+  const lastAssistant = history[lastAssistantIndex];
+  const assistantText = lastAssistant?.content || "";
+  const assistantQuestionLine = extractAssistantQuestionLine(assistantText);
+  if (!assistantQuestionLine) return null;
+
+  const serviceDefinition = getServiceDefinition(selectedServiceName);
+  const usedQuestionIds = serviceDefinition
+    ? getUsedQuestionIds(history.slice(0, lastAssistantIndex + 1), serviceDefinition)
+    : new Set();
+  const matchedQuestion = serviceDefinition?.questions?.length
+    ? findBestQuestionMatch(
+      assistantQuestionLine,
+      serviceDefinition.questions,
+      usedQuestionIds
+    )
+    : null;
+
+  const questionText = matchedQuestion?.question || assistantQuestionLine;
+  const derivedOptions = matchedQuestion?.options?.length
+    ? matchedQuestion.options
+    : deriveOptionsFromAssistant(assistantText);
+  const options = Array.isArray(derivedOptions) ? derivedOptions : [];
+  const userText = history[lastUserIndex]?.content || "";
+  const hasNumberedOptions =
+    options.length > 0 || hasNumberedOptionsInText(assistantText);
+  const numericSelection =
+    parseNumericSelections(userText, options.length).numbers.length > 0 ||
+    isNumericChoiceToken(userText);
+
+  const isBudgetQuestion =
+    matchedQuestion?.id === "user_budget" ||
+    isBudgetPromptText(assistantText) ||
+    BUDGET_QUESTION_REGEX.test(questionText || "");
+
+  if (isBudgetQuestion) {
+    const parsed = parseBudgetFromText(userText);
+    if (!parsed?.amount) {
+      return buildClarificationMessage({
+        questionText: "What is your budget for this project?",
+        options: [],
+        isBudget: true
+      });
+    }
+    return null;
+  }
+
+  if (hasNumberedOptions && numericSelection) {
+    return null;
+  }
+
+  const minLength = getMinimumAnswerLength(matchedQuestion, assistantQuestionLine);
+  if (isLowSignalText(userText, { minLength })) {
+    return buildClarificationMessage({
+      questionText,
+      options,
+      isBudget: false
+    });
+  }
+
+  if (options.length) {
+    const hasSelection = hasValidOptionSelection(userText, options, matchedQuestion);
+    if (!hasSelection && userText.trim().length <= 4) {
+      return buildClarificationMessage({
+        questionText,
+        options,
+        isBudget: false
+      });
+    }
+  }
+
+  return null;
 };
 const PROPOSAL_CONFIRMATION_QUESTION_REGEX =
   /ready to (see|view).*proposal|see (your )?personalized proposal|view (your )?personalized proposal|show (me|us) (the )?proposal/i;
@@ -1311,7 +1523,8 @@ AVAILABLE SERVICES AND QUESTIONS:
 ${servicesWithQuestions}
 
 CONVERSATION GUIDELINES:
-- Be warm, professional, and consultative.
+- Be concise, warm, and lightly playful in EVERY response. Use short, clear sentences.
+- Avoid robotic phrasing or long acknowledgements. Add a small human touch (e.g., “Got it!”, “Nice!”, “Perfect.”) and move on.
 - Use INR for all pricing.
 - Keep responses focused and actionable.
 - When asking questions, briefly explain why the information matters.
@@ -1504,6 +1717,20 @@ export const chatWithAI = async (
       content: msg.content
     }))
     : [];
+
+  const inputGuardMessage = buildUserInputGuardMessage({
+    conversationHistory: formattedHistory,
+    messages: formattedMessages,
+    selectedServiceName
+  });
+
+  if (inputGuardMessage) {
+    return {
+      success: true,
+      message: applyDynamicEmphasis(inputGuardMessage),
+      usage: null
+    };
+  }
 
   const budgetOverride = buildBudgetOverrideMessage({
     conversationHistory: formattedHistory,

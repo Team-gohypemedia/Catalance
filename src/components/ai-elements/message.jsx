@@ -234,7 +234,7 @@ export const MessageResponse = memo(
         "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         "[&_p]:mb-3 [&_p:last-child]:mb-0",
         "[&_h1]:mb-2 [&_h1]:text-[17px] [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-white",
-        "[&_h2]:mt-3 [&_h2]:text-[16px] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-primary [&_h2]:border-l-2 [&_h2]:border-primary/60 [&_h2]:pl-3",
+        "[&_h2]:mt-3 [&_h2]:text-[16px] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-white [&_h2]:border-l-2 [&_h2]:border-white/40 [&_h2]:pl-3 [&_h2]:bg-white/5 [&_h2]:rounded-lg [&_h2]:py-2 [&_h2]:pr-3",
         "[&_h3]:mt-3 [&_h3]:text-[12px] [&_h3]:font-semibold [&_h3]:uppercase [&_h3]:tracking-[0.2em] [&_h3]:text-muted-foreground",
         "[&_strong]:font-semibold [&_strong]:text-white",
         "[&_ul]:mt-3 [&_ul]:pl-5 [&_ul]:list-disc",

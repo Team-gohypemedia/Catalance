@@ -1242,16 +1242,13 @@ function AIChat({
   const proposalContentKey = `${PROPOSAL_CONTENT_KEY}:${userKey}:${serviceKey}`;
 
   const getWelcomeMessage = (isNewChat = false) => {
-    const baseHola = "Hello! I am CATA, your assistant.";
-    const contextPart = serviceName
-      ? `I'm here to help you explore our ${serviceName} services and find the perfect solution.`
-      : "I'm here to help you explore our digital services and find the perfect solution.";
-
+    const workLabel = serviceName ? `${serviceName.toLowerCase()} work` : "project";
+    const intro = `Hello! I’m CATA, here to match you with the most suitable freelancer for your ${workLabel}.`;
     const nameQuestion = "May I know your name?";
 
     return isNewChat
-      ? [baseHola, "", contextPart + " " + nameQuestion].join("\n")
-      : `${baseHola} ${contextPart} ${nameQuestion}`;
+      ? [intro, nameQuestion].join("\n")
+      : `${intro}\n${nameQuestion}`;
   };
 
   const [messages, setMessages] = useState(() => {
