@@ -278,6 +278,29 @@ const findBestQuestionMatch = (assistantQuestion, questions, usedQuestionIds) =>
   return bestScore >= 0.6 ? bestMatch : null;
 };
 
+const KEYBOARD_MASH_PATTERNS = [
+  "qwertyuiop",
+  "poiuytrewq",
+  "asdfghjkl",
+  "lkjhgfdsa",
+  "zxcvbnm",
+  "mnbvcxz"
+];
+
+const isKeyboardMash = (text = "") => {
+  if (typeof text !== "string") return false;
+  const normalized = text.toLowerCase().replace(/[^a-z]/g, "");
+  if (normalized.length < 5) return false;
+
+  return KEYBOARD_MASH_PATTERNS.some((pattern) => {
+    for (let i = 0; i <= pattern.length - 5; i += 1) {
+      const slice = pattern.slice(i, i + 5);
+      if (normalized.includes(slice)) return true;
+    }
+    return false;
+  });
+};
+
 const isLowSignalText = (text = "", { minLength = 2 } = {}) => {
   if (typeof text !== "string") return true;
   const trimmed = text.trim();
@@ -285,11 +308,18 @@ const isLowSignalText = (text = "", { minLength = 2 } = {}) => {
   const normalized = trimmed.replace(/\s+/g, "");
   if (normalized.length < minLength) return true;
   if (/^[^a-z0-9]+$/i.test(normalized)) return true;
+  if (isKeyboardMash(trimmed)) return true;
 
   const alnum = normalized.replace(/[^a-z0-9]/gi, "");
   if (alnum.length >= 3) {
     const uniqueChars = new Set(alnum.toLowerCase());
     if (uniqueChars.size <= 1) return true;
+  }
+
+  const lettersOnly = normalized.replace(/[^a-z]/gi, "");
+  if (!/\s/.test(trimmed) && lettersOnly.length >= 10) {
+    const vowelCount = (lettersOnly.match(/[aeiou]/gi) || []).length;
+    if (vowelCount / lettersOnly.length < 0.2) return true;
   }
 
   return false;
@@ -353,9 +383,9 @@ const buildClarificationMessage = ({
   const lines = [];
 
   if (isBudget) {
-    lines.push("No worries — a quick **budget** ballpark will help me continue 😊");
+    lines.push("No worries - a quick **budget** ballpark will help me continue.");
   } else {
-    lines.push("Quick check — I want to make sure I get this right 😊");
+    lines.push("Quick check - I want to make sure I get this right.");
   }
 
   lines.push("");
@@ -369,7 +399,7 @@ const buildClarificationMessage = ({
       lines.push(`${index + 1}. ${label}`);
     });
     lines.push("");
-    lines.push("Pick any that fit — multiple is totally fine.");
+    lines.push("Pick any that fit - multiple is fine.");
     lines.push("If none fit, just type your own.");
   } else if (isBudget) {
     lines.push("");
@@ -560,7 +590,7 @@ const BUDGET_QUESTION_REGEX = /budget|investment|price|cost|spend|how much/i;
 const hasBudgetSignal = (text = "") => {
   if (!text) return false;
   if (BUDGET_QUESTION_REGEX.test(text)) return true;
-  if (/(â‚¹|rs\.?|inr|\$|usd|â‚¬|eur|Â£|gbp)/i.test(text)) return true;
+  if (/(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)/i.test(text)) return true;
   if (/\b(lakh|lac|thousand|k)\b/i.test(text)) return true;
   return false;
 };
@@ -572,10 +602,7 @@ const BUDGET_CANNOT_INCREASE_REGEX =
 const BUDGET_NEGATIVE_ONLY_REGEX =
   /^(no|nope|nah|not really|can't|cannot|unfortunately no)$/i;
 const BUDGET_INCREASE_REQUEST_REGEX =
-  /increase|raise|at least|minimum|below.*minimum|below the minimum/i;
-const DEFAULT_BUDGET_WARNING_MESSAGE =
-  "The budget you mentioned is below our minimum recommended amount for this service. If you continue with this amount, the quality of the work may vary.";
-
+  /increase|raise|at least|minimum|below.*minimum|below the minimum|start(?:ing)?(?: line| budget)?|start(?:ing)? at|stretch|nudge|doable|can you (?:nudge|stretch)|would that be doable/i;
 const formatInr = (value) => {
   if (!Number.isFinite(value)) return "";
   return `₹${Math.round(value).toLocaleString("en-IN")}`;
@@ -627,8 +654,82 @@ const applyDynamicEmphasis = (text = "") => {
 const formatBudgetUnit = (unit = "") =>
   unit ? unit.replace(/_/g, " ") : "";
 
+const formatBudgetUnitLabel = (unit = "") => {
+  const cleaned = formatBudgetUnit(unit);
+  if (!cleaned) return "";
+  if (/month/i.test(cleaned)) return "per month";
+  if (/week/i.test(cleaned)) return "per week";
+  if (/year/i.test(cleaned)) return "per year";
+  if (/project/i.test(cleaned)) return "per project";
+  return `per ${cleaned}`;
+};
+
+const getServiceLabel = (service) => {
+  const name = service?.name || "";
+  if (!name) return "this service";
+  const cleaned = name.split("(")[0].trim();
+  return cleaned || name.trim() || "this service";
+};
+
+const hashStringToIndex = (value = "", modulo = 1) => {
+  if (!modulo || modulo <= 1) return 0;
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) % modulo;
+  }
+  return hash % modulo;
+};
+
+const buildBudgetBelowMinimumMessage = (service, minFormatted, unitLabel) => {
+  const serviceLabel = getServiceLabel(service);
+  const unitSuffix = unitLabel ? ` ${unitLabel}` : "";
+  const templates = [
+    `Quick budget check - for **${serviceLabel}**, our usual starting budget is **${minFormatted}${unitSuffix}**. Can you nudge it up to that?`,
+    `Tiny heads-up - **${serviceLabel}** projects typically start at a **${minFormatted}${unitSuffix}** budget. Would that be doable for you?`,
+    `Just so we're aligned: **${serviceLabel}** work usually begins at **${minFormatted}${unitSuffix}**. Can we stretch the budget to that?`
+  ];
+  const index = hashStringToIndex(service?.id || serviceLabel, templates.length);
+  return templates[index];
+};
+
+const buildBudgetIncreaseFollowupMessage = (service) => {
+  const serviceLabel = getServiceLabel(service);
+  return [
+    `Great - what budget would you like to move forward with for **${serviceLabel}**?`,
+    "",
+    "A simple number works great (for example: 50,000)."
+  ].join("\n");
+};
+
+const buildBudgetProceedMessage = (service, budgetFormatted, unitLabel) => {
+  const serviceLabel = getServiceLabel(service);
+  const unitSuffix = unitLabel ? ` ${unitLabel}` : "";
+  return `We can still move forward with **${budgetFormatted}${unitSuffix}** for **${serviceLabel}**, but the quality may vary a bit at this level. Want to continue?`;
+};
+
+const buildBudgetAcceptedMessage = (service, budgetFormatted, unitLabel) => {
+  const serviceLabel = getServiceLabel(service);
+  const unitSuffix = unitLabel ? ` ${unitLabel}` : "";
+  const templates = [
+    `Lovely — I’ve noted **${budgetFormatted}${unitSuffix}** for **${serviceLabel}**.`,
+    `Great, budget locked at **${budgetFormatted}${unitSuffix}** for **${serviceLabel}**.`,
+    `All set — **${budgetFormatted}${unitSuffix}** for **${serviceLabel}** is noted.`
+  ];
+  const index = hashStringToIndex(`${service?.id || serviceLabel}-${budgetFormatted}`, templates.length);
+  return templates[index];
+};
+
 const isBudgetPromptText = (text = "") =>
-  BUDGET_QUESTION_REGEX.test(text) || BUDGET_WARNING_REGEX.test(text);
+  BUDGET_QUESTION_REGEX.test(text) ||
+  BUDGET_WARNING_REGEX.test(text) ||
+  BUDGET_INCREASE_REQUEST_REGEX.test(text) ||
+  /starting budget|start at|stretch the budget|nudge it/i.test(text);
+
+const AFFIRMATIVE_ONLY_REGEX =
+  /^(yes|y|yeah|yep|sure|ok|okay|yup|alright|all right|can do|doable|works|sounds good|please do|go ahead)$/i;
+
+const isAffirmativeResponse = (text = "") =>
+  AFFIRMATIVE_ONLY_REGEX.test((text || "").trim());
 
 const isBudgetValueText = (text = "", prevAssistantText = "") => {
   const parsed = parseBudgetFromText(text || "");
@@ -668,6 +769,7 @@ const getLastAssistantMessage = (history = []) => {
 
 const userCannotIncreaseBudget = (text = "", history = []) => {
   if (!text) return false;
+  if (isAffirmativeResponse(text)) return false;
   if (BUDGET_CANNOT_INCREASE_REGEX.test(text)) return true;
 
   if (BUDGET_NEGATIVE_ONLY_REGEX.test(text)) {
@@ -733,18 +835,53 @@ const buildBudgetOverrideMessage = ({
   }
 
   const latestUser = [...history].reverse().find((msg) => msg?.role !== "assistant");
-  const warningMessage =
-    servicesData?.global_rules?.budget_validation?.when_user_budget_below_minimum
-      ?.message || DEFAULT_BUDGET_WARNING_MESSAGE;
+  const lastAssistant = getLastAssistantMessage(history);
+  const unitLabel = formatBudgetUnitLabel(service?.budget?.unit || "");
+
+  if (
+    lastAssistant &&
+    isBudgetPromptText(lastAssistant.content || "") &&
+    isAffirmativeResponse(latestUser?.content || "") &&
+    !isBudgetValueText(latestUser?.content || "", lastAssistant.content || "")
+  ) {
+    return buildBudgetIncreaseFollowupMessage(service);
+  }
 
   if (userCannotIncreaseBudget(latestUser?.content || "", history)) {
-    return `${warningMessage} Would you like to proceed with this budget?`;
+    const budgetFormatted = formatInr(latestBudget.amount);
+    return buildBudgetProceedMessage(service, budgetFormatted, unitLabel);
   }
 
   const minFormatted = formatInr(minBudget);
-  const unitLabel = formatBudgetUnit(service?.budget?.unit || "");
-  const unitSuffix = unitLabel ? ` (${unitLabel})` : "";
-  return `That budget is below our minimum of ${minFormatted}${unitSuffix}. Could you increase your budget to at least ${minFormatted}?`;
+  return buildBudgetBelowMinimumMessage(service, minFormatted, unitLabel);
+};
+
+const sanitizeBudgetHallucination = ({
+  assistantText = "",
+  conversationHistory = [],
+  messages = [],
+  selectedServiceName = ""
+}) => {
+  if (!assistantText) return assistantText;
+  const service = getServiceDefinition(selectedServiceName);
+  const minBudget = Number(service?.budget?.min_required_amount);
+  if (!Number.isFinite(minBudget) || minBudget <= 0) return assistantText;
+
+  const history = [...conversationHistory, ...messages];
+  const latestBudget = getLatestUserBudgetFromHistory(history);
+  if (!latestBudget?.amount || latestBudget.amount < minBudget) return assistantText;
+
+  const hasWarning =
+    /\bbelow\b/i.test(assistantText) ||
+    BUDGET_INCREASE_REQUEST_REGEX.test(assistantText) ||
+    /quality.*vary|can(?:not|'?t) proceed|minimum.*(?:budget|requirement)/i.test(
+      assistantText
+    );
+  if (!hasWarning) return assistantText;
+
+  const unitLabel = formatBudgetUnitLabel(service?.budget?.unit || "");
+  const formatted = formatInr(latestBudget.amount);
+  return buildBudgetAcceptedMessage(service, formatted, unitLabel);
 };
 
 const deriveOptionsFromAssistant = (assistantText = "") => {
@@ -1523,8 +1660,14 @@ AVAILABLE SERVICES AND QUESTIONS:
 ${servicesWithQuestions}
 
 CONVERSATION GUIDELINES:
-- Be concise, warm, and lightly playful in EVERY response. Use short, clear sentences.
+- Be concise, warm, and playful in EVERY response. Use short, clear sentences.
 - Avoid robotic phrasing or long acknowledgements. Add a small human touch (e.g., “Got it!”, “Nice!”, “Perfect.”) and move on.
+- Use a friendly, conversational tone that feels like a helpful teammate.
+- Rephrase questions to feel more natural and welcoming, without changing their meaning.
+- Keep the options exactly as provided; do NOT reword option labels.
+- Do not add extra lines that could be mistaken for options.
+- Do not use emojis.
+- Use **bold** for 1–3 key phrases (important numbers, key requirements, or the main question).
 - Use INR for all pricing.
 - Keep responses focused and actionable.
 - When asking questions, briefly explain why the information matters.
@@ -1543,10 +1686,10 @@ CONVERSATION GUIDELINES:
 
 PROPOSAL HANDOFF:
 - Never output a full proposal document in the chat.
-- If the user asks for a proposal, say you can generate it and ask if they want you to proceed.
-- Never ask the user to type or say "generate proposal" (or any magic phrase). Do not require keywords; ask for a simple confirmation instead.
-- Never output a proposal summary or list of proposal fields in chat; keep it to a short proceed question.
-- Once all required questions have been answered, immediately offer to generate the proposal. Do not ask extra questions.
+- If the user asks for a proposal, confirm you can prepare it and keep the response short.
+- Never ask the user to type or say "generate proposal" (or any magic phrase). Do not require keywords.
+- Never output a proposal summary or list of proposal fields in chat.
+- Once all required questions have been answered, give a brief friendly confirmation that you have everything you need. Do NOT ask to generate the proposal; the UI handles that step.
 
 REMEMBER: Your #1 job is to make the client feel HEARD. Never make them repeat themselves, and NEVER assume information they did not provide!`;
 };
@@ -1786,10 +1929,16 @@ export const chatWithAI = async (
   }
 
   const content = data.choices?.[0]?.message?.content || "";
+  const safeContent = sanitizeBudgetHallucination({
+    assistantText: content,
+    conversationHistory: formattedHistory,
+    messages: formattedMessages,
+    selectedServiceName
+  });
 
   return {
     success: true,
-    message: applyDynamicEmphasis(stripMarkdownHeadings(content)),
+    message: applyDynamicEmphasis(stripMarkdownHeadings(safeContent)),
     usage: data.usage || null
   };
 };
