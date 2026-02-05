@@ -38,7 +38,13 @@ import {
   Message,
   MessageContent,
   MessageResponse,
+  MessageResponseTyping,
 } from "@/components/ai-elements/message";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
 import {
   Plan,
   PlanAction,
@@ -672,6 +678,204 @@ const getMultiSelection = (text, options = []) => {
   return trimmed ? [trimmed] : [];
 };
 
+const KEYBOARD_MASH_PATTERNS = [
+  "qwertyuiop",
+  "poiuytrewq",
+  "asdfghjkl",
+  "lkjhgfdsa",
+  "zxcvbnm",
+  "mnbvcxz",
+];
+
+const isKeyboardMash = (text = "") => {
+  if (typeof text !== "string") return false;
+  const normalized = text.toLowerCase().replace(/[^a-z]/g, "");
+  if (normalized.length < 5) return false;
+
+  return KEYBOARD_MASH_PATTERNS.some((pattern) => {
+    for (let i = 0; i <= pattern.length - 5; i += 1) {
+      const slice = pattern.slice(i, i + 5);
+      if (normalized.includes(slice)) return true;
+    }
+    return false;
+  });
+};
+
+const isLowSignalText = (text = "", { minLength = 2 } = {}) => {
+  if (typeof text !== "string") return true;
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  const normalized = trimmed.replace(/\s+/g, "");
+  if (normalized.length < minLength) return true;
+  if (/^[^a-z0-9]+$/i.test(normalized)) return true;
+  if (isKeyboardMash(trimmed)) return true;
+
+  const alnum = normalized.replace(/[^a-z0-9]/gi, "");
+  if (alnum.length >= 3) {
+    const uniqueChars = new Set(alnum.toLowerCase());
+    if (uniqueChars.size <= 1) return true;
+  }
+
+  const lettersOnly = normalized.replace(/[^a-z]/gi, "");
+  if (!/\s/.test(trimmed) && lettersOnly.length >= 10) {
+    const vowelCount = (lettersOnly.match(/[aeiou]/gi) || []).length;
+    if (vowelCount / lettersOnly.length < 0.2) return true;
+  }
+
+  return false;
+};
+
+const isValidPersonName = (value = "") => {
+  const trimmed = value.trim();
+  if (trimmed.length < 2) return false;
+  if (/\d/.test(trimmed)) return false;
+  if (!/[\p{L}]/u.test(trimmed)) return false;
+  if (/[^'\-\s.\p{L}]/u.test(trimmed)) return false;
+  return true;
+};
+
+const isValidCompanyName = (value = "") => {
+  const trimmed = value.trim();
+  if (trimmed.length < 2) return false;
+  if (!/[\p{L}]/u.test(trimmed)) return false;
+  if (/[^'&\-\s.,\/\p{L}0-9]/u.test(trimmed)) return false;
+  return true;
+};
+
+const getMinimumAnswerLength = (field) => {
+  const questionText = `${field?.question || ""}`.toLowerCase();
+  if (field?.id === "clientName" || /your name\??$/.test(questionText)) {
+    return 2;
+  }
+  if (
+    (field?.id === "companyName" || /company|business/.test(questionText)) &&
+    /name/.test(questionText)
+  ) {
+    return 2;
+  }
+  if (/briefly|detail|requirements|about|tell me|describe/.test(questionText)) {
+    return 5;
+  }
+  return 3;
+};
+
+const buildClarificationMessage = (field, { isBudget = false } = {}) => {
+  const questionText = field?.question || "Could you share that again?";
+  const lines = [];
+
+  if (isBudget) {
+    lines.push("No worries - a quick budget ballpark will help me continue.");
+  } else {
+    lines.push("Quick check - I want to make sure I get this right.");
+  }
+
+  lines.push("");
+  lines.push(questionText);
+
+  if (field?.options?.length) {
+    lines.push("");
+    lines.push(toNumberedList(field.options));
+    lines.push("");
+    lines.push("Pick any that fit - multiple is fine.");
+    if (field.allowCustom) {
+      lines.push("If none fit, just type your own.");
+    }
+    return lines.join("\n");
+  }
+
+  lines.push("");
+  if (isBudget) {
+    lines.push("A simple number works great (for example: 50,000).");
+  } else {
+    lines.push("A few words is perfect.");
+  }
+
+  return lines.join("\n");
+};
+
+const validateMissingFieldAnswer = (field, text) => {
+  if (!field || typeof text !== "string") return { valid: true };
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { valid: false, message: buildClarificationMessage(field) };
+  }
+
+  if (field.id === "clientName") {
+    if (!isValidPersonName(trimmed)) {
+      return { valid: false, message: buildClarificationMessage(field) };
+    }
+    return { valid: true };
+  }
+
+  if (field.id === "companyName") {
+    if (!isValidCompanyName(trimmed)) {
+      return { valid: false, message: buildClarificationMessage(field) };
+    }
+    return { valid: true };
+  }
+
+  if (field.id === "companyBackground") {
+    const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+    if (
+      (wordCount < 2 && trimmed.length < 10) ||
+      isLowSignalText(trimmed, { minLength: 5 })
+    ) {
+      return { valid: false, message: buildClarificationMessage(field) };
+    }
+    return { valid: true };
+  }
+
+  if (field.id === "budget") {
+    if (!parseBudgetValue(trimmed)) {
+      return {
+        valid: false,
+        message: buildClarificationMessage(field, { isBudget: true }),
+      };
+    }
+    return { valid: true };
+  }
+
+  const minLength = getMinimumAnswerLength(field);
+
+  if (field.options?.length) {
+    const selections = parseSelectionsFromOptions(trimmed, field.options);
+    if (selections.length) return { valid: true };
+
+    if (
+      field.allowCustom &&
+      !isLowSignalText(trimmed, { minLength })
+    ) {
+      return { valid: true };
+    }
+
+    return { valid: false, message: buildClarificationMessage(field) };
+  }
+
+  if (field.id === "objectives") {
+    const selections = getMultiSelection(trimmed, field.options || []);
+    const validSelections = selections.filter(
+      (item) => !isLowSignalText(item, { minLength: 3 }),
+    );
+    if (validSelections.length) return { valid: true };
+    return { valid: false, message: buildClarificationMessage(field) };
+  }
+
+  if (field.id === "features" || field.id === "requirements") {
+    const selections = getMultiSelection(trimmed);
+    const validSelections = selections.filter(
+      (item) => !isLowSignalText(item, { minLength: 3 }),
+    );
+    if (validSelections.length) return { valid: true };
+    return { valid: false, message: buildClarificationMessage(field) };
+  }
+
+  if (isLowSignalText(trimmed, { minLength })) {
+    return { valid: false, message: buildClarificationMessage(field) };
+  }
+
+  return { valid: true };
+};
+
 const appendSpeechTranscript = (baseText, finalText, interimText) => {
   const base = typeof baseText === "string" ? baseText : "";
   const finalValue = typeof finalText === "string" ? finalText.trim() : "";
@@ -1032,6 +1236,13 @@ const isBudgetGateMessage = (text = "") => {
   );
 };
 
+const isBudgetQuestionPrompt = (text = "") => {
+  if (typeof text !== "string") return false;
+  return /what is your budget|budget for this project|monthly budget|budget do you have in mind/i.test(
+    text,
+  );
+};
+
 const getProposalPromptMessage = (missingFields) =>
   formatMissingFieldsMessage(missingFields || []);
 
@@ -1315,8 +1526,9 @@ function AIChat({
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [isSecureContext, setIsSecureContext] = useState(true);
   const [showThinking, setShowThinking] = useState(false);
-  const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const animatedMessagesRef = useRef(new Set());
+  const initialHistoryCountRef = useRef(0);
   const lastMessage = messages[messages.length - 1];
   const lastAssistantContent =
     lastMessage?.role === "assistant" && typeof lastMessage.content === "string"
@@ -1345,10 +1557,6 @@ function AIChat({
   const thinkingStartRef = useRef(0);
   const proposalContextRef = useRef(proposalContext);
   const pendingMissingFieldRef = useRef(pendingMissingField);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   const focusInput = () => {
     // Try using ref first
@@ -1600,10 +1808,6 @@ function AIChat({
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
-
-  useEffect(() => {
     proposalContextRef.current = proposalContext;
     setStoredJson(activeProposalContextKey, proposalContext);
   }, [proposalContext, activeProposalContextKey]);
@@ -1649,6 +1853,8 @@ function AIChat({
 
       setProposalContext(nextContext);
       setMessages(nextMessages);
+      initialHistoryCountRef.current = nextMessages.length;
+      animatedMessagesRef.current = new Set();
       const lastAssistant = getLastAssistantMessage(nextMessages);
       setPendingMissingField(
         isMissingFieldPromptMessage(lastAssistant, missingFieldsForHistory)
@@ -2040,8 +2246,13 @@ function AIChat({
     }
 
     const lastAssistantMessage = getLastAssistantMessage(messages);
+    const askedBudget = isBudgetQuestionPrompt(lastAssistantMessage);
     const baseAnchorIndex = Math.max(
       skipUserAppend ? messages.length - 1 : messages.length,
+      0,
+    );
+    const assistantAnchorIndex = Math.max(
+      messages.length + (skipUserAppend ? 0 : 1),
       0,
     );
     const budgetGateActive = isBudgetGateMessage(lastAssistantMessage);
@@ -2056,6 +2267,26 @@ function AIChat({
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
       setActiveFiles([]); // Clear all active files after sending
+
+      const pendingField = pendingMissingFieldRef.current;
+      if (pendingField) {
+        const validation = validateMissingFieldAnswer(pendingField, text);
+        if (!validation.valid) {
+          const nextHistoryLocal = [
+            ...buildConversationHistory(messages),
+            userMessage,
+          ];
+          setStoredJson(activeChatHistoryKey, nextHistoryLocal);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: validation.message || buildMissingFieldPrompt(pendingField),
+            },
+          ]);
+          return;
+        }
+      }
 
       contextUpdate = extractProposalUpdate({
         userText: text,
@@ -2082,7 +2313,6 @@ function AIChat({
         proposalContextRef.current,
         contextUpdate,
       );
-      const pendingField = pendingMissingFieldRef.current;
       const pendingUpdate = pendingField
         ? applyMissingFieldAnswer(pendingField, text)
         : {};
@@ -2240,6 +2470,19 @@ function AIChat({
             ...prev,
             { role: "assistant", content: assistantText },
           ]);
+
+          if (
+            askedBudget &&
+            missingFieldsNow.length === 0 &&
+            !hasRequestedProposal &&
+            !proposalApproval
+          ) {
+            requestProposalApproval(
+              storedContext,
+              storedHistory,
+              assistantAnchorIndex,
+            );
+          }
         }
       } else {
         setMessages((prev) => [
@@ -2299,6 +2542,8 @@ function AIChat({
 
     if (resetMessages) {
       setMessages([{ role: "assistant", content: getWelcomeMessage(true) }]);
+      initialHistoryCountRef.current = 1;
+      animatedMessagesRef.current = new Set();
     }
 
     if (typeof window !== "undefined") {
@@ -2401,8 +2646,8 @@ function AIChat({
           </header>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:var(--primary)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-transparent">
-            <div className="px-6 py-8 flex flex-col gap-6">
+          <Conversation className="flex-1 [scrollbar-width:thin] [scrollbar-color:var(--primary)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-transparent">
+            <ConversationContent className="px-6 py-8 flex flex-col gap-6">
               {isHistoryLoading ? (
                 <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                   <span className="loading loading-spinner text-primary" />
@@ -2421,6 +2666,16 @@ function AIChat({
                         : null;
                     const planRemainder = planPayload?.remainder || "";
                     const userLines = messageText.split("\n");
+                    const messageSignature = `${msg.role}-${index}-${messageText}`;
+                    const shouldAnimate =
+                      msg.role === "assistant" &&
+                      index === messages.length - 1 &&
+                      index >= initialHistoryCountRef.current &&
+                      !animatedMessagesRef.current.has(messageSignature) &&
+                      !isHistoryLoading;
+                    const handleTypingComplete = () => {
+                      animatedMessagesRef.current.add(messageSignature);
+                    };
 
                     return (
                       <Fragment key={`msg-${index}`}>
@@ -2441,9 +2696,12 @@ function AIChat({
                               planPayload ? (
                                 <div className="space-y-3">
                                   {planRemainder ? (
-                                    <MessageResponse>
+                                    <MessageResponseTyping
+                                      isEnabled={shouldAnimate}
+                                      onComplete={handleTypingComplete}
+                                    >
                                       {planRemainder}
-                                    </MessageResponse>
+                                    </MessageResponseTyping>
                                   ) : null}
                                   <Plan defaultOpen>
                                     <PlanHeader className="items-center">
@@ -2466,7 +2724,12 @@ function AIChat({
                                   </Plan>
                                 </div>
                               ) : (
-                                <MessageResponse>{messageText}</MessageResponse>
+                                <MessageResponseTyping
+                                  isEnabled={shouldAnimate}
+                                  onComplete={handleTypingComplete}
+                                >
+                                  {messageText}
+                                </MessageResponseTyping>
                               )
                             ) : (
                               userLines.map((line, lineIndex) => (
@@ -2588,10 +2851,9 @@ function AIChat({
                   )}
                 </>
               )}
-
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
 
           {/* Input Area */}
           <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
