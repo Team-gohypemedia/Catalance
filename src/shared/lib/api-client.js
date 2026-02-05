@@ -118,34 +118,26 @@ export const signup = ({
   email,
   password,
   role = "FREELANCER",
-  freelancerProfile = null
+  freelancerProfile = null,
+  bio = ""
 }) => {
   const payload = {
     fullName,
     email,
     password,
     role,
-    skills: []
+    skills: [],
+    bio
   };
 
   if (role === "FREELANCER") {
     const normalizedProfile = freelancerProfile ?? {};
-    const portfolio = normalizedProfile?.portfolio ?? {};
     const skills = Array.isArray(normalizedProfile?.skills)
       ? normalizedProfile.skills
       : [];
 
     payload.skills = skills;
-    payload.freelancerProfile = {
-      category: normalizedProfile?.category ?? "",
-      specialty: normalizedProfile?.specialty ?? "",
-      experience: normalizedProfile?.experience ?? "",
-      portfolio: {
-        portfolioUrl: portfolio?.portfolioUrl ?? "",
-        linkedinUrl: portfolio?.linkedinUrl ?? ""
-      },
-      acceptedTerms: Boolean(normalizedProfile?.acceptedTerms)
-    };
+    payload.freelancerProfile = normalizedProfile;
   }
 
   return request("/auth/signup", {
