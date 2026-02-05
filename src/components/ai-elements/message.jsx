@@ -1,6 +1,14 @@
 "use client";
 
-import { memo, useContext, useEffect, useState, createContext } from "react";
+import {
+  memo,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  createContext,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
 import {
@@ -230,16 +238,16 @@ export const MessageResponse = memo(
   ({ className, ...props }) => (
     <Streamdown
       className={cn(
-        "size-full text-[15px] leading-relaxed text-foreground",
+        "size-full text-[16px] leading-7 text-foreground",
         "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        "[&_p]:mb-3 [&_p:last-child]:mb-0",
-        "[&_h1]:mb-2 [&_h1]:text-[17px] [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-white",
-        "[&_h2]:mt-3 [&_h2]:text-[16px] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-primary [&_h2]:border-l-2 [&_h2]:border-primary/60 [&_h2]:pl-3",
-        "[&_h3]:mt-3 [&_h3]:text-[12px] [&_h3]:font-semibold [&_h3]:uppercase [&_h3]:tracking-[0.2em] [&_h3]:text-muted-foreground",
+        "[&_p]:mb-4 [&_p:last-child]:mb-0",
+        "[&_h1]:mb-3 [&_h1]:text-[20px] [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-white",
+        "[&_h2]:mt-4 [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-white [&_h2]:border-l-2 [&_h2]:border-white/40 [&_h2]:pl-3 [&_h2]:bg-white/5 [&_h2]:rounded-lg [&_h2]:py-2 [&_h2]:pr-3",
+        "[&_h3]:mt-4 [&_h3]:text-[13px] [&_h3]:font-semibold [&_h3]:uppercase [&_h3]:tracking-[0.22em] [&_h3]:text-muted-foreground",
         "[&_strong]:font-semibold [&_strong]:text-white",
         "[&_ul]:mt-3 [&_ul]:pl-5 [&_ul]:list-disc",
         "[&_ol]:mt-3 [&_ol]:pl-5 [&_ol]:list-decimal",
-        "[&_li]:mb-2 [&_li:last-child]:mb-0",
+        "[&_li]:mb-3 [&_li:last-child]:mb-0",
         className
       )}
       plugins={{ code, mermaid, math, cjk }}
@@ -250,6 +258,85 @@ export const MessageResponse = memo(
 );
 
 MessageResponse.displayName = "MessageResponse";
+
+const CARET = "▋";
+
+export const MessageResponseTyping = memo(
+  ({
+    children,
+    className,
+    isEnabled = false,
+    speed = 28,
+    onComplete,
+    ...props
+  }) => {
+    const text = typeof children === "string" ? children : "";
+    const prefersReducedMotion = useMemo(() => {
+      if (typeof window === "undefined") return false;
+      return window.matchMedia?.("(prefers-reduced-motion: reduce)")
+        ?.matches;
+    }, []);
+    const tokens = useMemo(() => {
+      if (!text) return [];
+      return text.split(/(\s+)/);
+    }, [text]);
+    const [visibleText, setVisibleText] = useState(
+      isEnabled ? "" : text,
+    );
+    const [isDone, setIsDone] = useState(!isEnabled);
+    const timeoutRef = useRef(null);
+    const doneRef = useRef(false);
+
+    useEffect(() => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      doneRef.current = false;
+      if (!isEnabled || prefersReducedMotion || tokens.length === 0) {
+        setVisibleText(text);
+        setIsDone(true);
+        return;
+      }
+
+      let index = 0;
+      setVisibleText("");
+      setIsDone(false);
+
+      const step = () => {
+        index += 1;
+        setVisibleText(tokens.slice(0, index).join(""));
+        if (index < tokens.length) {
+          timeoutRef.current = setTimeout(step, speed);
+        } else {
+          setIsDone(true);
+          if (!doneRef.current) {
+            doneRef.current = true;
+            if (onComplete) onComplete();
+          }
+        }
+      };
+
+      timeoutRef.current = setTimeout(step, speed);
+
+      return () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      };
+    }, [isEnabled, prefersReducedMotion, speed, text, tokens, onComplete]);
+
+    const output = isEnabled && !isDone ? `${visibleText}${CARET}` : text;
+
+    return (
+      <MessageResponse className={className} {...props}>
+        {output}
+      </MessageResponse>
+    );
+  },
+  (prevProps, nextProps) =>
+    prevProps.children === nextProps.children &&
+    prevProps.isEnabled === nextProps.isEnabled,
+);
+
+MessageResponseTyping.displayName = "MessageResponseTyping";
 
 export const MessageToolbar = ({ className, children, ...props }) => (
   <div
