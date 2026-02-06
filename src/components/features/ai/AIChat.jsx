@@ -192,7 +192,11 @@ const sanitizeAssistantContent = (content = "") => {
         ),
     );
 
-  return lines.join("\n").trim();
+  return lines
+    .join("\n")
+    .replace(/\s*\[blocked\]\s*/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 };
 
 const buildConversationHistory = (history) =>
@@ -945,11 +949,39 @@ const isMissingFieldPromptMessage = (assistantText = "", missingFields = []) => 
   if (typeof assistantText !== "string") return false;
   const trimmed = assistantText.trim();
   if (!trimmed) return false;
+  const lines = trimmed
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
   return (missingFields || []).some((field) => {
-    const question = typeof field?.question === "string" ? field.question.trim() : "";
-    return question && trimmed.startsWith(question);
+    const question =
+      typeof field?.question === "string" ? field.question.trim() : "";
+    if (!question) return false;
+    return lines.some(
+      (line) => line === question || line.startsWith(question),
+    );
   });
 };
+
+const LLM_HANDLED_FIELD_IDS = new Set(["clientName", "companyName"]);
+
+const isLocalMissingField = (field) =>
+  field && !LLM_HANDLED_FIELD_IDS.has(field.id);
+
+const hasLlmMissingFields = (missingFields = []) =>
+  (missingFields || []).some(
+    (field) => field && LLM_HANDLED_FIELD_IDS.has(field.id),
+  );
+
+const getNextLocalMissingField = (missingFields = []) => {
+  if (hasLlmMissingFields(missingFields)) return null;
+  return (missingFields || []).find(isLocalMissingField) || null;
+};
+
+const getPromptedMissingField = (assistantText = "", missingFields = []) =>
+  (missingFields || []).find((field) =>
+    isMissingFieldPromptMessage(assistantText, [field]),
+  ) || null;
 
 const buildMissingFieldPrompt = (field) => {
   if (!field) return PROPOSAL_APPROVAL_MESSAGE;
@@ -1856,9 +1888,13 @@ function AIChat({
       initialHistoryCountRef.current = nextMessages.length;
       animatedMessagesRef.current = new Set();
       const lastAssistant = getLastAssistantMessage(nextMessages);
+      const promptedField = getPromptedMissingField(
+        lastAssistant,
+        missingFieldsForHistory,
+      );
       setPendingMissingField(
-        isMissingFieldPromptMessage(lastAssistant, missingFieldsForHistory)
-          ? missingFieldsForHistory[0] || null
+        promptedField && isLocalMissingField(promptedField)
+          ? promptedField
           : null,
       );
       setActiveChatHistoryKey(chatHistoryKey);
@@ -2333,15 +2369,16 @@ function AIChat({
       serviceName,
       serviceId,
     );
+    const nextLocalMissingField = getNextLocalMissingField(missingFieldsNow);
 
     if (wasMissingPrompt) {
-      if (missingFieldsNow.length > 0) {
-        setPendingMissingField(missingFieldsNow[0]);
+      if (nextLocalMissingField) {
+        setPendingMissingField(nextLocalMissingField);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: getProposalPromptMessage(missingFieldsNow),
+            content: getProposalPromptMessage([nextLocalMissingField]),
           },
         ]);
         return;
@@ -2381,15 +2418,19 @@ function AIChat({
         serviceId,
       );
 
-      if (missingFields.length > 0 || storedHistory.length === 0) {
-        setPendingMissingField(missingFields[0] || null);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: getProposalPromptMessage(missingFields),
-          },
-        ]);
+      const nextLocalMissing = getNextLocalMissingField(missingFields);
+      if (nextLocalMissing || storedHistory.length === 0) {
+        if (nextLocalMissing) {
+          setPendingMissingField(nextLocalMissing);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: getProposalPromptMessage([nextLocalMissing]),
+            },
+          ]);
+          return;
+        }
         return;
       }
 
@@ -2456,14 +2497,17 @@ function AIChat({
             );
             // Don't add any message - the Confirmation component handles the UI
           } else if (missingFields.length > 0) {
-            setPendingMissingField(missingFields[0]);
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "assistant",
-                content: getProposalPromptMessage(missingFields),
-              },
-            ]);
+            const nextLocalMissing = getNextLocalMissingField(missingFields);
+            if (nextLocalMissing) {
+              setPendingMissingField(nextLocalMissing);
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: getProposalPromptMessage([nextLocalMissing]),
+                },
+              ]);
+            }
           }
         } else {
           setMessages((prev) => [

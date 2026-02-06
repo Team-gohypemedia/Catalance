@@ -119,6 +119,8 @@ export const signup = ({
   password,
   role = "FREELANCER",
   freelancerProfile = null,
+  portfolio,
+  linkedin,
   bio = ""
 }) => {
   const payload = {
@@ -129,6 +131,14 @@ export const signup = ({
     skills: [],
     bio
   };
+
+  if (portfolio) {
+    payload.portfolio = portfolio;
+  }
+
+  if (linkedin) {
+    payload.linkedin = linkedin;
+  }
 
   if (role === "FREELANCER") {
     const normalizedProfile = freelancerProfile ?? {};
