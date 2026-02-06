@@ -22,6 +22,14 @@ const DEFAULT_REFERER = process.env.FRONTEND_URL || "http://localhost:5173";
 
 const stripMarkdownHeadings = (text = "") => text;
 
+const stripBlockedMarker = (text = "") => {
+  if (typeof text !== "string") return text;
+  return text
+    .replace(/[ \t]*\[blocked\][ \t]*/gi, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
 const formatWebsiteTypeLabel = (value = "") =>
   value
     .split("_")
@@ -954,6 +962,10 @@ const buildUserInputGuardMessage = ({
     return null;
   }
 
+  if (/\bname\b/i.test(questionText || "")) {
+    return null;
+  }
+
   if (hasNumberedOptions && numericSelection) {
     return null;
   }
@@ -1538,6 +1550,17 @@ CRITICAL RULES FOR PHASE 0:
 - Do NOT proceed to service identification until you have ALL THREE pieces of information.
 - If they provide multiple pieces of info at once (e.g., "I'm John from ABC Corp"), acknowledge what they gave and ask for the remaining info.
 
+NAME & BUSINESS NAME VALIDATION (MANDATORY):
+- Do NOT accept gibberish, random characters, keyboard mashing, or placeholder strings as a name.
+- Do NOT accept answers that are mostly numbers/symbols.
+- Never treat "yes/no/ok" as a name.
+- Accept single-word names (some people only have one name).
+- Do NOT ask for a "legal" or "full" name.
+- If the name is invalid, re-ask with a short warning:
+  - Person: "Please share your real name so I can continue."
+  - Business: "Please share your business name so I can continue."
+- Do NOT move to the next step until a plausible name/business name is provided.
+
 Example flow:
 1. "May I know your name?" → User: "John"
 2. "Nice to meet you, John! What is your business or company name?" → User: "ABC Corp"
@@ -1810,7 +1833,7 @@ export const generateProposalMarkdown = async (
 
     if (isAuthError) {
       throw new AppError(
-        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in your .env.",
+        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in backend/.env or the project root .env.",
         502
       );
     }
@@ -1916,7 +1939,7 @@ export const chatWithAI = async (
 
     if (isAuthError) {
       throw new AppError(
-        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in your .env.",
+        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in backend/.env or the project root .env.",
         502
       );
     }
@@ -1938,7 +1961,9 @@ export const chatWithAI = async (
 
   return {
     success: true,
-    message: applyDynamicEmphasis(stripMarkdownHeadings(safeContent)),
+    message: applyDynamicEmphasis(
+      stripMarkdownHeadings(stripBlockedMarker(safeContent))
+    ),
     usage: data.usage || null
   };
 };

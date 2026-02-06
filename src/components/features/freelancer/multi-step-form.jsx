@@ -29,7 +29,6 @@ import {
   Loader2,
   Sparkles,
   Mic,
-  Plus,
   X,
   Upload,
 } from "lucide-react";
@@ -48,8 +47,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { signup, verifyOtp, updateProfile } from "@/shared/lib/api-client";
+import { signup, verifyOtp, updateProfile, listFreelancers } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
+import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 
 // ============================================================================
 // CONSTANTS & OPTIONS
@@ -71,14 +71,14 @@ const SERVICE_OPTIONS = [
   { value: "branding", label: "Branding", icon: Sparkles },
   { value: "website_ui_ux", label: "Website Development", icon: Globe },
   { value: "seo", label: "SEO", icon: Search },
-  { value: "social_media_marketing", label: "Social Media Marketing", icon: Share2 },
-  { value: "paid_advertising", label: "Paid Advertising / Performance Marketing", icon: TrendingUp },
+  { value: "social_media_marketing", label: "Social Media Management", icon: Share2 },
+  { value: "paid_advertising", label: "Performance Marketing / Paid Ads", icon: TrendingUp },
   { value: "app_development", label: "App Development", icon: Smartphone },
   { value: "software_development", label: "Software Development", icon: Code },
   { value: "lead_generation", label: "Lead Generation", icon: Target },
   { value: "video_services", label: "Video Services", icon: Video },
   { value: "writing_content", label: "Writing & Content", icon: PenTool },
-  { value: "customer_support", label: "Customer Support", icon: MessageCircle },
+  { value: "customer_support", label: "Customer Support Services", icon: MessageCircle },
   { value: "influencer_marketing", label: "Influencer Marketing", icon: Star },
   { value: "ugc_marketing", label: "UGC Marketing", icon: Video },
   { value: "ai_automation", label: "AI Automation", icon: Bot },
@@ -86,20 +86,20 @@ const SERVICE_OPTIONS = [
   { value: "creative_design", label: "Creative & Design", icon: Palette },
   { value: "3d_modeling", label: "3D Modeling", icon: Box },
   { value: "cgi_videos", label: "CGI Video Services", icon: Film },
-  { value: "crm_erp", label: "CRM & ERP Integrated Solutions", icon: BarChart3 },
-  { value: "voice_agent", label: "Voice Agent", icon: Mic },
+  { value: "crm_erp", label: "CRM & ERP Solutions", icon: BarChart3 },
+  { value: "voice_agent", label: "Voice Agent / AI Calling", icon: Mic },
 ];
 const EXPERIENCE_YEARS_OPTIONS = [
-  { value: "less_than_1", label: "< 1 year" },
-  { value: "1_3", label: "1-3" },
-  { value: "3_5", label: "3-5" },
-  { value: "5_plus", label: "5+" },
+  { value: "less_than_1", label: "Less than 1 year" },
+  { value: "1_3", label: "1–3 years" },
+  { value: "3_5", label: "3–5 years" },
+  { value: "5_plus", label: "5+ years" },
 ];
 
 const WORKING_LEVEL_OPTIONS = [
-  { value: "beginner", label: "Beginner" },
-  { value: "intermediate", label: "Intermediate" },
-  { value: "advanced", label: "Advanced" },
+  { value: "beginner", label: "Beginner (Assisted work only)" },
+  { value: "intermediate", label: "Intermediate (Independent delivery)" },
+  { value: "advanced", label: "Advanced (Complex & scalable projects)" },
 ];
 
 const YES_NO_OPTIONS = [
@@ -113,53 +113,629 @@ const YES_NO_OPEN_OPTIONS = [
   { value: "open", label: "Open to All" },
 ];
 
-const TOOLS_BY_SERVICE = {
-  branding: ["Adobe Illustrator", "Adobe Photoshop", "Figma", "Canva", "Adobe InDesign", "Sketch"],
-  website_ui_ux: ["Next.js", "Wordpress", "Shopify", "Framer", "Figma", "Webflow"],
-  seo: ["Ahrefs", "SEMrush", "Google Search Console", "Moz", "Yoast SEO", "Ubersuggest"],
-  social_media_marketing: ["Hootsuite", "Buffer", "Canva", "Meta Business Suite", "Later", "Sprout Social"],
-  paid_advertising: ["Google Ads", "Facebook Ads Manager", "Google Analytics", "TikTok Ads", "LinkedIn Ads", "Hotjar"],
-  app_development: ["React Native", "Flutter", "Swift", "Kotlin", "Firebase", "Expo"],
-  software_development: ["Python", "JavaScript", "Node.js", "React", "AWS", "Docker"],
-  lead_generation: ["Apollo.io", "LinkedIn Sales Navigator", "HubSpot", "ZoomInfo", "Hunter.io", "Lusha"],
-  video_services: ["Adobe Premiere Pro", "Final Cut Pro", "DaVinci Resolve", "After Effects", "CapCut", "Filmora"],
-  writing_content: ["Google Docs", "Grammarly", "Notion", "WordPress", "ChatGPT", "Jasper AI"],
-  customer_support: ["Zendesk", "Freshdesk", "Intercom", "HubSpot", "LiveChat", "Crisp"],
-  influencer_marketing: ["Instagram", "TikTok", "YouTube Studio", "Upfluence", "CreatorIQ", "Grin"],
-  ugc_marketing: ["Instagram", "TikTok", "Canva", "CapCut", "YouTube Studio", "InShot"],
-  ai_automation: ["Zapier", "Make (Integromat)", "ChatGPT API", "Python", "n8n", "LangChain"],
-  whatsapp_chatbot: ["WhatsApp Business API", "ManyChat", "Twilio", "Wati", "Respond.io", "Chatfuel"],
-  creative_design: ["Figma", "Adobe Photoshop", "Adobe Illustrator", "Canva", "Procreate", "Sketch"],
-  "3d_modeling": ["Blender", "Maya", "Cinema 4D", "3ds Max", "SketchUp", "ZBrush"],
-  cgi_videos: ["Blender", "After Effects", "Cinema 4D", "Unreal Engine", "DaVinci Resolve", "Houdini"],
-  crm_erp: ["Salesforce", "HubSpot", "Zoho CRM", "Pipedrive", "Microsoft Dynamics", "Freshsales"],
-  voice_agent: ["Twilio", "Dialogflow", "VoiceFlow", "VAPI", "Amazon Connect", "Retell AI"],
+const LANGUAGE_OPTIONS = [
+  { value: "English", label: "English" },
+  { value: "Hindi", label: "Hindi" },
+  { value: "Spanish", label: "Spanish" },
+  { value: "Arabic", label: "Arabic" },
+  { value: "Other", label: "Other (Custom)" },
+];
+
+const COUNTRY_OPTIONS = Array.from(
+  new Set((COUNTRY_CODES || []).map((country) => country.name).filter(Boolean)),
+).sort((a, b) => a.localeCompare(b));
+
+const ROLE_IN_PROJECT_OPTIONS = [
+  { value: "full_execution", label: "Full execution" },
+  { value: "partial_contribution", label: "Partial contribution" },
+  { value: "team_project", label: "Team project" },
+];
+
+const PROJECT_TIMELINE_OPTIONS = [
+  { value: "less_than_2_weeks", label: "Less than 2 weeks" },
+  { value: "2_4_weeks", label: "2–4 weeks" },
+  { value: "1_3_months", label: "1–3 months" },
+  { value: "3_plus_months", label: "3+ months" },
+];
+
+const PREFERRED_PROJECT_BUDGET_OPTIONS = [
+  { value: "entry", label: "Entry level" },
+  { value: "mid", label: "Mid-range" },
+  { value: "premium", label: "Premium" },
+];
+
+const PRICING_FLEXIBILITY_OPTIONS = [
+  { value: "fixed", label: "Fixed pricing only" },
+  { value: "slightly", label: "Slightly negotiable" },
+  { value: "depends", label: "Depends on scope" },
+];
+
+const PROJECT_COMPLEXITY_OPTIONS = [
+  { value: "small", label: "Small tasks / Quick projects" },
+  { value: "medium", label: "Medium complexity projects" },
+  { value: "large", label: "Large / Enterprise level systems" },
+];
+
+const SERVICE_EXECUTION_OPTIONS = [
+  { value: "standard", label: "Standard checklist workflow" },
+  { value: "custom", label: "Custom strategy per client" },
+  { value: "client_provided", label: "Client-provided workflow" },
+];
+
+
+
+const SERVICE_GROUPS = {
+  website_ui_ux: [
+    {
+      id: "website_specialization",
+      label: "Which types of websites do you build?",
+      options: [
+        "Corporate / Business",
+        "E-commerce",
+        "SaaS Platforms",
+        "Marketplace Websites",
+        "Landing Pages",
+        "Portfolio Websites",
+      ],
+    },
+    {
+      id: "website_tech_stack",
+      label: "Which technologies do you actively use? (Min 3)",
+      options: [
+        "WordPress",
+        "Shopify",
+        "Webflow",
+        "React / Next.js",
+        "PHP / Laravel",
+        "Node.js",
+        "Custom CMS",
+      ],
+      min: 3,
+    },
+    {
+      id: "website_capability",
+      label: "Which development scope can you handle?",
+      options: [
+        "Template / Builder Based",
+        "Custom Frontend",
+        "Full Stack Development",
+        "Scalable Enterprise Systems",
+      ],
+    },
+    {
+      id: "website_performance",
+      label: "Which services do you provide?",
+      options: [
+        "Speed Optimization",
+        "SEO-Friendly Development",
+        "Security Setup",
+        "API Integrations",
+        "Maintenance Support",
+      ],
+    },
+  ],
+  software_development: [
+    {
+      id: "software_specialization",
+      label: "Which software solutions do you build?",
+      options: [
+        "Business Management Software",
+        "SaaS Platforms",
+        "Enterprise Software",
+        "Automation Tools",
+        "Custom Dashboards",
+      ],
+    },
+    {
+      id: "software_tech_stack",
+      label: "Which technologies do you actively use? (Min 3)",
+      options: [
+        "Java",
+        ".NET",
+        "Python",
+        "Node.js",
+        "PHP",
+        "Microservices Architecture",
+      ],
+      min: 3,
+    },
+    {
+      id: "software_capability",
+      label: "Which development scope can you handle?",
+      options: [
+        "Internal Business Tools",
+        "Cloud-Based SaaS",
+        "Enterprise Solutions",
+        "API / System Integration",
+      ],
+    },
+  ],
+  app_development: [
+    {
+      id: "app_platforms",
+      label: "Platform expertise",
+      options: [
+        "Android",
+        "iOS",
+        "Cross Platform (Flutter / React Native)",
+        "Progressive Web Apps",
+      ],
+    },
+    {
+      id: "app_types",
+      label: "App type",
+      options: [
+        "E-commerce Apps",
+        "Service Booking Apps",
+        "Marketplace Apps",
+        "Social Apps",
+        "SaaS Apps",
+      ],
+    },
+    {
+      id: "app_features",
+      label: "Features capability",
+      options: [
+        "Payment Gateway",
+        "Push Notifications",
+        "Chat / Messaging",
+        "Admin Dashboard",
+        "API Integration",
+      ],
+    },
+  ],
+  creative_design: [
+    {
+      id: "design_specialization",
+      label: "Specialization",
+      options: [
+        "UI / UX Design",
+        "Branding Design",
+        "Social Media Creatives",
+        "Ad Creatives",
+        "Packaging Design",
+        "Motion Graphics",
+      ],
+    },
+    {
+      id: "design_tools",
+      label: "Tools",
+      options: [
+        "Figma",
+        "Adobe XD",
+        "Photoshop",
+        "Illustrator",
+        "After Effects",
+        "Blender",
+      ],
+    },
+    {
+      id: "design_approach",
+      label: "Design approach",
+      options: [
+        "Research Based",
+        "Trend Based",
+        "Brand Guideline Based",
+      ],
+    },
+  ],
+  social_media_marketing: [
+    {
+      id: "social_platforms",
+      label: "Platform expertise",
+      options: [
+        "Instagram",
+        "Facebook",
+        "LinkedIn",
+        "Twitter / X",
+        "YouTube",
+        "Pinterest",
+      ],
+    },
+    {
+      id: "social_scope",
+      label: "Service scope",
+      options: [
+        "Content Planning",
+        "Post Design",
+        "Caption Writing",
+        "Community Management",
+        "Analytics & Reporting",
+      ],
+    },
+    {
+      id: "social_strategy",
+      label: "Strategy style",
+      options: [
+        "Brand Awareness Focus",
+        "Engagement Growth",
+        "Lead Generation",
+        "Sales Funnel Content",
+      ],
+    },
+  ],
+  seo: [
+    {
+      id: "seo_specialization",
+      label: "SEO specialization",
+      options: [
+        "On Page SEO",
+        "Technical SEO",
+        "Local SEO",
+        "E-commerce SEO",
+        "Content SEO",
+        "International SEO",
+      ],
+    },
+    {
+      id: "seo_tools",
+      label: "Tools",
+      options: [
+        "Ahrefs",
+        "SEMrush",
+        "GSC",
+        "Screaming Frog",
+        "Surfer SEO",
+      ],
+    },
+    {
+      id: "seo_deliverables",
+      label: "Deliverables",
+      options: [
+        "SEO Audit",
+        "Keyword Research",
+        "Backlink Strategy",
+        "Monthly Reports",
+        "Content Plan",
+      ],
+    },
+  ],
+  lead_generation: [
+    {
+      id: "lead_channels",
+      label: "Lead channels",
+      options: [
+        "Paid Ads Leads",
+        "Organic Leads",
+        "LinkedIn Lead Gen",
+        "Cold Email / Outreach",
+        "Landing Page Funnels",
+      ],
+    },
+    {
+      id: "lead_crm_tools",
+      label: "CRM / Tracking tools",
+      options: [
+        "HubSpot",
+        "Zoho",
+        "Salesforce",
+        "GoHighLevel",
+      ],
+    },
+    {
+      id: "lead_qualification",
+      label: "Lead qualification",
+      options: [
+        "Basic Leads",
+        "Qualified Leads",
+        "Sales Ready Leads",
+      ],
+    },
+  ],
+  voice_agent: [
+    {
+      id: "voice_use_case",
+      label: "Agent use case",
+      options: [
+        "Customer Support",
+        "Sales Calls",
+        "Appointment Booking",
+        "IVR Systems",
+      ],
+    },
+    {
+      id: "voice_platforms",
+      label: "Platforms",
+      options: [
+        "Twilio",
+        "ElevenLabs",
+        "VAPI",
+        "Custom AI Voice APIs",
+      ],
+    },
+    {
+      id: "voice_integration",
+      label: "Integration capability",
+      options: [
+        "CRM Integration",
+        "WhatsApp / SMS",
+        "Call Analytics",
+      ],
+    },
+  ],
+  branding: [
+    {
+      id: "branding_scope",
+      label: "Branding scope",
+      options: [
+        "Logo Design",
+        "Brand Identity",
+        "Brand Strategy",
+        "Packaging & Visual Systems",
+        "Brand Guidelines",
+      ],
+    },
+    {
+      id: "branding_approach",
+      label: "Branding approach",
+      options: [
+        "Market Research Driven",
+        "Storytelling Driven",
+        "Visual Identity Driven",
+      ],
+    },
+  ],
+  paid_advertising: [
+    {
+      id: "ads_platforms",
+      label: "Platform expertise",
+      options: [
+        "Meta Ads",
+        "Google Ads",
+        "LinkedIn Ads",
+        "YouTube Ads",
+        "TikTok Ads",
+      ],
+    },
+    {
+      id: "ads_campaign_types",
+      label: "Campaign types",
+      options: [
+        "Lead Generation",
+        "E-commerce Sales",
+        "Retargeting",
+        "App Installs",
+        "Brand Awareness",
+      ],
+    },
+    {
+      id: "ads_tracking_tools",
+      label: "Tracking tools",
+      options: [
+        "GTM",
+        "Meta Pixel",
+        "GA4",
+        "Conversion API",
+      ],
+    },
+  ],
+  video_services: [
+    {
+      id: "video_types",
+      label: "Video type",
+      options: [
+        "Social Media Reels",
+        "Corporate Videos",
+        "Explainer Videos",
+        "Ad Videos",
+        "YouTube Content",
+      ],
+    },
+    {
+      id: "video_tools",
+      label: "Tools",
+      options: [
+        "Premiere Pro",
+        "After Effects",
+        "DaVinci Resolve",
+        "CapCut",
+      ],
+    },
+  ],
+  customer_support: [
+    {
+      id: "support_channels",
+      label: "Support channels",
+      options: [
+        "Email Support",
+        "Live Chat",
+        "Phone Support",
+        "Social Media Support",
+        "WhatsApp Support",
+      ],
+    },
+    {
+      id: "support_crm",
+      label: "CRM tools",
+      options: [
+        "Zendesk",
+        "Freshdesk",
+        "Intercom",
+        "Zoho Desk",
+      ],
+    },
+  ],
+  ugc_marketing: [
+    {
+      id: "ugc_content",
+      label: "Content types",
+      options: [
+        "Product Reviews",
+        "Testimonial Videos",
+        "Lifestyle UGC",
+        "Social Proof Content",
+      ],
+    },
+    {
+      id: "ugc_platforms",
+      label: "Platform focus",
+      options: [
+        "Instagram",
+        "TikTok",
+        "YouTube Shorts",
+      ],
+    },
+  ],
+  influencer_marketing: [
+    {
+      id: "influencer_campaigns",
+      label: "Campaign type",
+      options: [
+        "Brand Collaborations",
+        "Product Seeding",
+        "Paid Influencer Campaigns",
+        "Affiliate Campaigns",
+      ],
+    },
+    {
+      id: "influencer_platforms",
+      label: "Platform expertise",
+      options: [
+        "Instagram",
+        "YouTube",
+        "TikTok",
+        "LinkedIn",
+      ],
+    },
+  ],
+  ai_automation: [
+    {
+      id: "automation_type",
+      label: "Automation type",
+      options: [
+        "Marketing Automation",
+        "CRM Automation",
+        "Workflow Automation",
+        "AI Chatbots",
+        "AI Agents",
+      ],
+    },
+    {
+      id: "automation_tools",
+      label: "Tools",
+      options: [
+        "Zapier",
+        "Make.com",
+        "OpenAI API",
+        "LangChain",
+        "ManyChat",
+      ],
+    },
+  ],
+  whatsapp_chatbot: [
+    {
+      id: "whatsapp_bot_type",
+      label: "Bot type",
+      options: [
+        "Customer Support Bot",
+        "Sales Funnel Bot",
+        "Lead Qualification Bot",
+        "Appointment Booking Bot",
+      ],
+    },
+    {
+      id: "whatsapp_platforms",
+      label: "Platforms",
+      options: [
+        "WhatsApp Business API",
+        "Twilio",
+        "WATI",
+        "Gupshup",
+      ],
+    },
+  ],
+  crm_erp: [
+    {
+      id: "crm_implementation",
+      label: "Implementation type",
+      options: [
+        "CRM Setup",
+        "ERP Integration",
+        "Sales Automation",
+        "Business Workflow Setup",
+      ],
+    },
+    {
+      id: "crm_platforms",
+      label: "Platforms",
+      options: [
+        "Salesforce",
+        "Zoho",
+        "HubSpot",
+        "Odoo",
+      ],
+    },
+  ],
+  "3d_modeling": [
+    {
+      id: "modeling_type",
+      label: "Modeling type",
+      options: [
+        "Product Modeling",
+        "Architecture Modeling",
+        "Character Modeling",
+        "Industrial Modeling",
+      ],
+    },
+    {
+      id: "modeling_tools",
+      label: "Tools",
+      options: [
+        "Blender",
+        "Maya",
+        "3ds Max",
+        "ZBrush",
+      ],
+    },
+  ],
+  cgi_videos: [
+    {
+      id: "cgi_type",
+      label: "CGI type",
+      options: [
+        "Product CGI Ads",
+        "Architectural Visualization",
+        "Animation Films",
+        "Motion CGI",
+      ],
+    },
+    {
+      id: "cgi_tools",
+      label: "Tools",
+      options: [
+        "Unreal Engine",
+        "Cinema4D",
+        "Blender",
+        "After Effects",
+      ],
+    },
+  ],
+  writing_content: [
+    {
+      id: "writing_content_type",
+      label: "Content type",
+      options: [
+        "Blog Writing",
+        "Website Content",
+        "SEO Content",
+        "Copywriting",
+        "Script Writing",
+        "Technical Writing",
+      ],
+    },
+    {
+      id: "writing_tools",
+      label: "Tools",
+      options: [
+        "Grammarly",
+        "Surfer SEO",
+        "Hemingway",
+        "AI Writing Tools",
+      ],
+    },
+  ],
 };
 
-const SPECIALIZATION_BY_SERVICE = {
-  branding: ["Brand Strategy", "Visual Identity", "Logo Design", "Brand Guidelines", "Rebranding"],
-  website_ui_ux: ["Landing Pages", "E-commerce", "Web Apps", "Portfolio Sites", "Performance Optimization", "Accessibility"],
-  seo: ["On Page SEO", "Off Page SEO", "Technical SEO", "Local SEO", "E-commerce SEO"],
-  social_media_marketing: ["Content Strategy", "Community Management", "Paid Social", "Influencer Outreach", "Analytics"],
-  paid_advertising: ["Search Ads", "Social Ads", "Display Ads", "Retargeting", "Conversion Optimization"],
-  app_development: ["iOS", "Android", "Cross-platform", "Backend Integration", "App Store Optimization"],
-  software_development: ["Web Apps", "APIs", "Integrations", "DevOps", "QA & Testing"],
-  lead_generation: ["Prospecting", "Email Outreach", "CRM Management", "Pipeline Optimization", "Data Enrichment"],
-  video_services: ["Video Editing", "Motion Graphics", "Storyboarding", "Color Grading", "Sound Design"],
-  writing_content: ["Blog Writing", "Copywriting", "Technical Writing", "Editing", "Content Strategy"],
-  customer_support: ["Live Chat", "Email Support", "Ticketing", "Knowledge Base", "QA & Training"],
-  influencer_marketing: ["Campaign Strategy", "Creator Outreach", "Contracting", "Reporting", "UGC Curation"],
-  ugc_marketing: ["UGC Scripting", "Creator Management", "Video Editing", "Ads Iteration", "Performance Testing"],
-  ai_automation: ["Workflow Automation", "Chatbots", "API Integrations", "Data Pipelines", "Prompt Engineering"],
-  whatsapp_chatbot: ["Bot Flow Design", "API Integrations", "CRM Sync", "Conversation Templates", "Testing"],
-  creative_design: ["Graphic Design", "UI Design", "Illustrations", "Presentation Design", "Marketing Collateral"],
-  "3d_modeling": ["Modeling", "Texturing", "Lighting", "Rendering", "Rigging"],
-  cgi_videos: ["Storyboarding", "Simulation", "Lighting", "Rendering", "Compositing"],
-  crm_erp: ["Requirements Mapping", "Implementation", "Data Migration", "Customization", "Training"],
-  voice_agent: ["Voice Flow Design", "NLU Tuning", "Integration", "Testing", "Monitoring"],
-};
-
-const DEFAULT_SPECIALIZATIONS = ["Strategy", "Implementation", "Optimization", "Audits", "Maintenance"];
 const INDUSTRY_NICHE_OPTIONS = [
   "Real Estate",
   "Healthcare",
@@ -173,6 +749,23 @@ const INDUSTRY_NICHE_OPTIONS = [
   "Local Businesses",
   "Startups",
   "Enterprise Businesses",
+  "Other",
+];
+
+const DEFAULT_TECH_STACK_OPTIONS = [
+  "Figma",
+  "Adobe XD",
+  "Photoshop",
+  "WordPress",
+  "Shopify",
+  "Webflow",
+  "React / Next.js",
+  "Node.js",
+  "Python",
+  "Java",
+  "Google Analytics",
+  "Zapier",
+  "HubSpot",
   "Other",
 ];
 
@@ -193,35 +786,25 @@ const HOURS_PER_WEEK_OPTIONS = [
   { value: "30_plus", label: "30+ hours" },
 ];
 
-const WORKING_MODE_OPTIONS = [
-  { value: "fixed_daily", label: "Fixed daily hours" },
-  { value: "flexible", label: "Flexible hours" },
-  { value: "on_demand", label: "On-demand (as needed)" },
-];
 
 const WORKING_SCHEDULE_OPTIONS = [
-  { value: "fixed", label: "Fixed Hours" },
-  { value: "flexible", label: "Flexible" },
-  { value: "on_demand", label: "On Demand" },
+  { value: "fixed", label: "Fixed daily hours" },
+  { value: "flexible", label: "Flexible schedule" },
+  { value: "on_demand", label: "On-demand availability" },
 ];
 
 const START_TIMELINE_OPTIONS = [
   { value: "immediately", label: "Immediately" },
-  { value: "within_3_5_days", label: "Within 3-5 days" },
-  { value: "after_1_week", label: "After 1 week" },
+  { value: "within_3_days", label: "Within 3 days" },
+  { value: "within_1_week", label: "Within 1 week" },
 ];
 
 const PROJECT_TYPE_OPTIONS = [
   { value: "short_term", label: "Short-term" },
   { value: "long_term", label: "Long-term" },
-  { value: "one_time", label: "One-time tasks" },
+  { value: "one_time", label: "One-time" },
 ];
 
-const EXECUTION_STYLE_OPTIONS = [
-  { value: "standard", label: "Standard workflow / checklist-based" },
-  { value: "custom", label: "Custom strategy per client" },
-  { value: "client_provided", label: "Client-provided strategy" },
-];
 
 const DEADLINE_HISTORY_OPTIONS = [
   { value: "never", label: "Never" },
@@ -247,75 +830,86 @@ const LONG_TERM_OPTIONS = [
 ];
 
 const CASE_STUDY_FIELDS = [
-  { key: "projectName", label: "Enter project name", placeholder: "Project name" },
-  { key: "industry", label: "Which industry was this project for?", placeholder: "Industry" },
-  { key: "goal", label: "What was the main project goal?", placeholder: "Primary goal" },
-  { key: "roleScope", label: "What was your role and scope?", placeholder: "Role and scope" },
-  { key: "techStack", label: "Which tech stack did you use?", placeholder: "Tech stack" },
-  { key: "timeline", label: "What was the project timeline?", placeholder: "e.g. 6 weeks" },
-  { key: "outcomes", label: "What results or outcomes did you achieve?", placeholder: "e.g. Increased conversions by 20%", multiline: true },
+  {
+    key: "projectTitle",
+    label: "Project Title",
+    placeholder: "Project title",
+    type: "text",
+  },
+  {
+    key: "industry",
+    label: "Industry / Niche of Project",
+    type: "select",
+    options: INDUSTRY_NICHE_OPTIONS,
+  },
+  {
+    key: "goal",
+    label: "Main Project Goal",
+    placeholder: "Primary goal",
+    type: "text",
+  },
+  {
+    key: "role",
+    label: "Your Role in This Project",
+    type: "select",
+    options: ROLE_IN_PROJECT_OPTIONS,
+  },
+  {
+    key: "techStack",
+    label: "Tech Stack / Tools Used (Min 3)",
+    type: "multiselect",
+    min: 3,
+  },
+  {
+    key: "timeline",
+    label: "Project Timeline",
+    type: "select",
+    options: PROJECT_TIMELINE_OPTIONS,
+  },
+  {
+    key: "budgetRange",
+    label: "Project Budget Range",
+    type: "select",
+    options: BUDGET_RANGE_OPTIONS,
+  },
+  {
+    key: "results",
+    label: "What measurable results did this project achieve?",
+    placeholder: "Share key outcomes or metrics",
+    type: "textarea",
+  },
 ];
-const ALL_TOOLS_SUGGESTIONS = [
-  ...new Set([
-    ...Object.values(TOOLS_BY_SERVICE).flat(),
-    "Jira", "Asana", "Trello", "Slack", "Microsoft Teams", "Discord",
-    "Zoom", "Google Meet", "Tableau", "Power BI", "Looker",
-    "Snowflake", "Databricks", "Redshift", "BigQuery",
-    "Kubernetes", "Terraform", "Ansible", "Jenkins", "CircleCI",
-    "GitLab", "GitHub", "Bitbucket", "Visual Studio Code", "IntelliJ IDEA",
-    "Sublime Text", "Atom", "Eclipse", "NetBeans", "Android Studio",
-    "Xcode", "Unity", "Unreal Engine", "Godot", "CryEngine",
-    "Blender", "Maya", "3ds Max", "Cinema 4D", "ZBrush",
-    "Houdini", "SketchUp", "Rhino", "SolidWorks", "AutoCAD",
-    "Revit", "Fusion 360", "Inventor", "ArchiCAD", "Vectorworks",
-    "Adobe Creative Cloud", "CorelDRAW", "Affinity Designer", "Affinity Photo", "GIMP",
-    "Inkscape", "DaVinci Resolve", "Final Cut Pro", "Adobe Premiere Pro", "After Effects",
-    "Audacity", "Adobe Audition", "Logic Pro", "Pro Tools", "FL Studio",
-    "Ableton Live", "GarageBand", "Cubase", "Nuendo", "Studio One",
-    "WordPress", "Shopify", "Wix", "Squarespace", "Webflow",
-    "Magento", "WooCommerce", "BigCommerce", "PrestaShop", "Joomla",
-    "Drupal", "Salesforce", "HubSpot", "Zoho", "Pipedrive",
-    "Mailchimp", "Constant Contact", "Sendinblue", "ConvertKit", "AWeber",
-    "Google Analytics", "Google Search Console", "SEMrush", "Ahrefs", "Moz",
-    "Yoast SEO", "Screaming Frog", "Ubersuggest", "SpyFu", "Majestic",
-    "Facebook Ads", "Google Ads", "LinkedIn Ads", "Twitter Ads", "Pinterest Ads",
-    "TikTok Ads", "Snapchat Ads", "Bing Ads", "AdRoll", "Taboola",
-    "Outbrain", "Criteo", "Amazon Advertising", "Walmart Connect", "eBay Ads",
-    "Python", "JavaScript", "Java", "C++", "C#",
-    "Ruby", "PHP", "Swift", "Kotlin", "Go",
-    "Rust", "TypeScript", "Scala", "Perl", "Lua",
-    "R", "Matlab", "SAS", "SPSS", "Stata",
-    "Excel", "Google Sheets", "Airtable", "Notion", "Coda",
-    "Zapier", "Make", "n8n", "IFTTT", "Power Automate"
-  ])
-].sort();
 
 const createServiceDetail = () => ({
   experienceYears: "",
   workingLevel: "",
   hasPreviousProjects: "",
   caseStudy: {
-    projectName: "",
+    projectTitle: "",
     industry: "",
+    industryOther: "",
     goal: "",
-    roleScope: "",
-    techStack: "",
+    role: "",
+    techStack: [],
+    techStackOther: "",
     timeline: "",
     budgetRange: "",
-    outcomes: "",
+    results: "",
   },
   hasSampleWork: "",
   sampleWork: null,
   averagePrice: "",
+  minimumProjectValue: "",
   preferredBudget: "",
-  specializations: [],
+  pricingFlexibility: "",
+  groups: {},
   industryFocus: "",
   niches: [],
   otherNiche: "",
   industryExperience: "",
   preferOnlyIndustries: "",
-  tools: [],
-  customTools: [],
+  projectComplexity: "",
+  executionStyle: "",
 });
 
 const getServiceLabel = (serviceKey) => {
@@ -325,8 +919,30 @@ const getServiceLabel = (serviceKey) => {
 
 const getServiceLimit = (role) => SERVICE_LIMITS[role] || 3;
 
-const getServiceSpecializations = (serviceKey) =>
-  SPECIALIZATION_BY_SERVICE[serviceKey] || DEFAULT_SPECIALIZATIONS;
+const getServiceGroups = (serviceKey) => SERVICE_GROUPS[serviceKey] || [];
+
+const getTechStackOptions = (serviceKey) => {
+  const groups = getServiceGroups(serviceKey);
+  const toolGroups = groups.filter((group) => /tech_stack|tools|platforms/i.test(group.id));
+  const baseOptions = toolGroups.length ? toolGroups.flatMap((group) => group.options) : [];
+  const options = baseOptions.length ? baseOptions : DEFAULT_TECH_STACK_OPTIONS;
+  const unique = Array.from(new Set(options));
+  return unique.includes("Other") ? unique : [...unique, "Other"];
+};
+
+const isValidUrl = (value = "") => {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    new URL(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const isValidUsername = (value = "") =>
+  /^[a-zA-Z0-9_]{3,20}$/.test(value.trim());
 
 // ============================================================================
 // SUB-COMPONENTS
@@ -432,19 +1048,27 @@ const FreelancerMultiStepForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [otp, setOtp] = useState("");
-  const [toolInputs, setToolInputs] = useState({});
+  const [usernameStatus, setUsernameStatus] = useState("idle");
+  const usernameCheckRef = useRef(0);
 
   const [formData, setFormData] = useState({
+    professionalTitle: "",
+    username: "",
+    country: "",
+    city: "",
+    profilePhoto: null,
+    languages: [],
+    otherLanguage: "",
+    linkedinUrl: "",
+    portfolioUrl: "",
     role: "",
     selectedServices: [],
     serviceDetails: {},
     deliveryPolicyAccepted: false,
     hoursPerWeek: "",
-    workingMode: "",
     workingSchedule: "",
     startTimeline: "",
     projectTypePreference: "",
-    executionStyle: "",
     missedDeadlines: "",
     delayHandling: "",
     currentAvailability: "",
@@ -461,6 +1085,15 @@ const FreelancerMultiStepForm = () => {
 
   const steps = useMemo(() => {
     const sequence = [];
+
+    sequence.push({ key: "professional-title", type: "professionalTitle" });
+    sequence.push({ key: "username", type: "username" });
+    sequence.push({ key: "country", type: "country" });
+    sequence.push({ key: "city", type: "city" });
+    sequence.push({ key: "profile-photo", type: "profilePhoto" });
+    sequence.push({ key: "languages", type: "languages" });
+    sequence.push({ key: "linkedin", type: "linkedin" });
+    sequence.push({ key: "portfolio", type: "portfolio" });
 
     sequence.push({ key: "role", type: "role" });
     sequence.push({ key: "services", type: "services" });
@@ -480,7 +1113,6 @@ const FreelancerMultiStepForm = () => {
             field,
           });
         });
-        sequence.push({ key: `svc-${serviceKey}-case-budget`, type: "serviceCaseBudget", serviceKey });
       }
 
       if (detail?.hasPreviousProjects === "no") {
@@ -490,9 +1122,20 @@ const FreelancerMultiStepForm = () => {
         }
       }
 
+      (SERVICE_GROUPS[serviceKey] || []).forEach((group) => {
+        sequence.push({
+          key: `svc-${serviceKey}-group-${group.id}`,
+          type: "serviceGroup",
+          serviceKey,
+          groupId: group.id,
+        });
+      });
+
       sequence.push({ key: `svc-${serviceKey}-avg-price`, type: "serviceAveragePrice", serviceKey });
+      sequence.push({ key: `svc-${serviceKey}-min-value`, type: "serviceMinimumValue", serviceKey });
       sequence.push({ key: `svc-${serviceKey}-preferred-budget`, type: "servicePreferredBudget", serviceKey });
-      sequence.push({ key: `svc-${serviceKey}-specializations`, type: "serviceSpecializations", serviceKey });
+      sequence.push({ key: `svc-${serviceKey}-pricing-flex`, type: "servicePricingFlex", serviceKey });
+
       sequence.push({ key: `svc-${serviceKey}-industry-focus`, type: "serviceIndustryFocus", serviceKey });
 
       if (detail?.industryFocus === "yes") {
@@ -501,17 +1144,16 @@ const FreelancerMultiStepForm = () => {
         sequence.push({ key: `svc-${serviceKey}-industry-only`, type: "serviceIndustryOnly", serviceKey });
       }
 
-      sequence.push({ key: `svc-${serviceKey}-tools`, type: "serviceTools", serviceKey });
+      sequence.push({ key: `svc-${serviceKey}-complexity`, type: "serviceComplexity", serviceKey });
+      sequence.push({ key: `svc-${serviceKey}-execution`, type: "serviceExecution", serviceKey });
     });
 
     sequence.push({ key: "delivery-policy", type: "deliveryPolicy" });
 
     sequence.push({ key: "hours", type: "hours" });
-    sequence.push({ key: "working-mode", type: "workingMode" });
     sequence.push({ key: "working-schedule", type: "workingSchedule" });
     sequence.push({ key: "start-timeline", type: "startTimeline" });
     sequence.push({ key: "project-type", type: "projectType" });
-    sequence.push({ key: "execution-style", type: "executionStyle" });
     sequence.push({ key: "missed-deadlines", type: "missedDeadlines" });
     sequence.push({ key: "delay-handling", type: "delayHandling" });
     sequence.push({ key: "current-availability", type: "currentAvailability" });
@@ -626,6 +1268,54 @@ const FreelancerMultiStepForm = () => {
     }, delay);
   };
 
+  const checkUsernameAvailability = async (value = formData.username) => {
+    const normalized = value.trim();
+    if (!isValidUsername(normalized)) {
+      setUsernameStatus("idle");
+      return;
+    }
+
+    const currentUsername =
+      (user?.profileDetails?.identity?.username ||
+        user?.profileDetails?.username ||
+        user?.username ||
+        "")
+        .trim()
+        .toLowerCase();
+
+    if (currentUsername && currentUsername === normalized.toLowerCase()) {
+      setUsernameStatus("available");
+      return;
+    }
+
+    const requestId = usernameCheckRef.current + 1;
+    usernameCheckRef.current = requestId;
+    setUsernameStatus("checking");
+
+    try {
+      const freelancers = await listFreelancers();
+      if (usernameCheckRef.current !== requestId) return;
+
+      const isTaken = Array.isArray(freelancers) && freelancers.some((freelancer) => {
+        const existing =
+          freelancer?.profileDetails?.identity?.username ||
+          freelancer?.profileDetails?.username ||
+          freelancer?.username ||
+          "";
+        return existing.trim().toLowerCase() === normalized.toLowerCase();
+      });
+
+      setUsernameStatus(isTaken ? "unavailable" : "available");
+      if (!isTaken && currentStep?.type === "username") {
+        queueAdvance(0);
+      }
+    } catch (error) {
+      if (usernameCheckRef.current !== requestId) return;
+      console.error("Failed to check username availability:", error);
+      setUsernameStatus("error");
+    }
+  };
+
   const handleBack = () => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
@@ -667,7 +1357,7 @@ const FreelancerMultiStepForm = () => {
           [serviceKey]: {
             ...details,
             caseStudy: {
-              ...details.caseStudy,
+              ...(details.caseStudy || {}),
               [field]: value,
             },
           },
@@ -676,19 +1366,6 @@ const FreelancerMultiStepForm = () => {
     });
     if (stepError) setStepError("");
     if (advanceDelay !== null) queueAdvance(advanceDelay);
-  };
-
-  const toggleServiceArrayField = (serviceKey, field, value, advanceDelay = 650) => {
-    const details = formData.serviceDetails?.[serviceKey] || createServiceDetail();
-    const current = Array.isArray(details[field]) ? details[field] : [];
-    const exists = current.includes(value);
-    const nextValues = exists ? current.filter((item) => item !== value) : [...current, value];
-
-    updateServiceField(serviceKey, field, nextValues, null);
-
-    if (nextValues.length > 0) {
-      queueAdvance(advanceDelay);
-    }
   };
 
   const toggleServiceSelection = (serviceKey) => {
@@ -706,9 +1383,6 @@ const FreelancerMultiStepForm = () => {
       : [...current, serviceKey];
 
     setFormData((prev) => ({ ...prev, selectedServices: next }));
-    if (next.length > 0) {
-      queueAdvance(700);
-    }
   };
 
   const validateStep = (step, data) => {
@@ -717,6 +1391,34 @@ const FreelancerMultiStepForm = () => {
     const detail = step.serviceKey ? data.serviceDetails?.[step.serviceKey] : null;
 
     switch (step.type) {
+      case "professionalTitle":
+        return data.professionalTitle.trim() ? "" : "Please enter your professional title.";
+      case "username":
+        if (!data.username.trim()) return "Please enter a username.";
+        if (!isValidUsername(data.username)) {
+          return "Username must be 3-20 characters and only letters, numbers, or underscores.";
+        }
+        if (usernameStatus === "checking") return "Checking username availability...";
+        if (usernameStatus === "unavailable") return "That username is already taken.";
+        if (usernameStatus === "error") return "Unable to verify username. Please try again.";
+        if (usernameStatus !== "available") return "Please check username availability.";
+        return "";
+      case "country":
+        return data.country ? "" : "Please select your country.";
+      case "city":
+        return data.city.trim() ? "" : "Please enter your city.";
+      case "profilePhoto":
+        return data.profilePhoto ? "" : "Please upload a profile photo.";
+      case "languages":
+        if (!data.languages.length) return "Please select at least one language.";
+        if (data.languages.includes("Other") && !data.otherLanguage.trim()) {
+          return "Please specify your other language.";
+        }
+        return "";
+      case "linkedin":
+        return isValidUrl(data.linkedinUrl) ? "" : "Please enter a valid LinkedIn profile URL.";
+      case "portfolio":
+        return isValidUrl(data.portfolioUrl) ? "" : "Please enter a valid portfolio or website URL.";
       case "role":
         return data.role ? "" : "Please select how you want to work on Catalance.";
       case "services":
@@ -728,21 +1430,49 @@ const FreelancerMultiStepForm = () => {
       case "serviceProjects":
         return detail?.hasPreviousProjects ? "" : "Please select an option.";
       case "serviceCaseField":
+        if (step.field.type === "multiselect") {
+          const selections = detail?.caseStudy?.[step.field.key] || [];
+          if (!selections.length) return "Please select at least one option.";
+          if (step.field.min && selections.length < step.field.min) {
+            return `Please select at least ${step.field.min} options.`;
+          }
+          if (step.field.key === "techStack" && selections.includes("Other") && !detail?.caseStudy?.techStackOther?.trim()) {
+            return "Please specify your other tools.";
+          }
+          return "";
+        }
+        if (step.field.type === "select") {
+          const value = detail?.caseStudy?.[step.field.key];
+          if (!value) return "Please select an option.";
+          if (step.field.key === "industry" && value === "Other" && !detail?.caseStudy?.industryOther?.trim()) {
+            return "Please specify the industry.";
+          }
+          return "";
+        }
         return detail?.caseStudy?.[step.field.key]?.trim()
           ? ""
           : "Please fill out this field.";
-      case "serviceCaseBudget":
-        return detail?.caseStudy?.budgetRange ? "" : "Please select a budget range.";
       case "serviceSampleWork":
         return detail?.hasSampleWork ? "" : "Please select an option.";
       case "serviceSampleUpload":
         return detail?.sampleWork ? "" : "Please upload a sample or practice work.";
       case "serviceAveragePrice":
         return detail?.averagePrice ? "" : "Please enter your average project price.";
+      case "serviceMinimumValue":
+        return detail?.minimumProjectValue ? "" : "Please enter your minimum project value.";
       case "servicePreferredBudget":
         return detail?.preferredBudget ? "" : "Please select a preferred budget range.";
-      case "serviceSpecializations":
-        return detail?.specializations?.length ? "" : "Please select at least one specialization.";
+      case "servicePricingFlex":
+        return detail?.pricingFlexibility ? "" : "Please select your pricing flexibility.";
+      case "serviceGroup": {
+        const groups = detail?.groups || {};
+        const selections = groups[step.groupId] || [];
+        const group = getServiceGroups(step.serviceKey).find((entry) => entry.id === step.groupId);
+        const minSelections = group?.min || 1;
+        return selections.length >= minSelections
+          ? ""
+          : `Please select at least ${minSelections} option${minSelections > 1 ? "s" : ""}.`;
+      }
       case "serviceIndustryFocus":
         return detail?.industryFocus ? "" : "Please select an option.";
       case "serviceNiches":
@@ -755,27 +1485,20 @@ const FreelancerMultiStepForm = () => {
         return detail?.industryExperience ? "" : "Please select your industry experience.";
       case "serviceIndustryOnly":
         return detail?.preferOnlyIndustries ? "" : "Please select an option.";
-      case "serviceTools": {
-        const tools = detail?.tools || [];
-        const custom = detail?.customTools || [];
-        return tools.length || custom.length
-          ? ""
-          : "Please select or add at least one tool.";
-      }
+      case "serviceComplexity":
+        return detail?.projectComplexity ? "" : "Please select a complexity level.";
+      case "serviceExecution":
+        return detail?.executionStyle ? "" : "Please select an execution style.";
       case "deliveryPolicy":
         return data.deliveryPolicyAccepted ? "" : "Please accept the delivery and revision policy.";
       case "hours":
         return data.hoursPerWeek ? "" : "Please select weekly availability.";
-      case "workingMode":
-        return data.workingMode ? "" : "Please select a working mode.";
       case "workingSchedule":
         return data.workingSchedule ? "" : "Please select a working schedule.";
       case "startTimeline":
         return data.startTimeline ? "" : "Please select when you can start.";
       case "projectType":
         return data.projectTypePreference ? "" : "Please select a project type.";
-      case "executionStyle":
-        return data.executionStyle ? "" : "Please select how you execute projects.";
       case "missedDeadlines":
         return data.missedDeadlines ? "" : "Please select your deadline history.";
       case "delayHandling":
@@ -807,18 +1530,29 @@ const FreelancerMultiStepForm = () => {
     setStepError("");
 
     try {
+      const identity = {
+        professionalTitle: formData.professionalTitle,
+        username: formData.username,
+        country: formData.country,
+        city: formData.city,
+        profilePhoto: formData.profilePhoto,
+        languages: formData.languages,
+        otherLanguage: formData.otherLanguage,
+        linkedinUrl: formData.linkedinUrl,
+        portfolioUrl: formData.portfolioUrl,
+      };
+
       const freelancerProfile = {
+        identity,
         role: formData.role,
         services: formData.selectedServices,
         serviceDetails: formData.serviceDetails,
         deliveryPolicyAccepted: formData.deliveryPolicyAccepted,
         availability: {
           hoursPerWeek: formData.hoursPerWeek,
-          workingMode: formData.workingMode,
           workingSchedule: formData.workingSchedule,
           startTimeline: formData.startTimeline,
           projectTypePreference: formData.projectTypePreference,
-          executionStyle: formData.executionStyle,
           missedDeadlines: formData.missedDeadlines,
           delayHandling: formData.delayHandling,
           currentAvailability: formData.currentAvailability,
@@ -832,6 +1566,8 @@ const FreelancerMultiStepForm = () => {
         await updateProfile({
           profileDetails: freelancerProfile,
           bio: formData.professionalBio,
+          linkedin: formData.linkedinUrl,
+          portfolio: formData.portfolioUrl,
           onboardingComplete: true,
         });
 
@@ -856,6 +1592,8 @@ const FreelancerMultiStepForm = () => {
         password: formData.password,
         role: "FREELANCER",
         freelancerProfile,
+        portfolio: formData.portfolioUrl,
+        linkedin: formData.linkedinUrl,
         bio: formData.professionalBio,
       });
 
@@ -912,6 +1650,29 @@ const FreelancerMultiStepForm = () => {
     return `Service ${index + 1} of ${formData.selectedServices.length}: ${label}`;
   };
 
+  const renderContinueButton = (step = currentStep) => {
+    const validation = validateStep(step, formData);
+    const disabled = Boolean(validation);
+
+    return (
+      <div className="pt-6 flex justify-center">
+        <button
+          type="button"
+          onClick={() => queueAdvance(0)}
+          disabled={disabled}
+          className={cn(
+            "px-6 py-3 rounded-xl font-semibold transition-all",
+            disabled
+              ? "bg-white/10 text-white/40 cursor-not-allowed"
+              : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
+          )}
+        >
+          Continue
+        </button>
+      </div>
+    );
+  };
+
   const renderSingleSelectStep = ({ title, subtitle, options, value, onSelect, compact = false, columns = 1 }) => (
     <div className="space-y-4">
       <StepHeader title={title} subtitle={subtitle} />
@@ -947,6 +1708,279 @@ const FreelancerMultiStepForm = () => {
           />
         ))}
       </div>
+      {renderContinueButton()}
+    </div>
+  );
+
+  const renderProfessionalTitleStep = () => (
+    <div className="space-y-6">
+      <StepHeader
+        title="What is your professional title?"
+        subtitle="Example: Full-Stack Developer"
+      />
+      <Input
+        value={formData.professionalTitle}
+        onChange={(e) => updateFormField("professionalTitle", e.target.value)}
+        onBlur={() => formData.professionalTitle.trim() && queueAdvance(0)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && formData.professionalTitle.trim()) {
+            e.preventDefault();
+            queueAdvance(0);
+          }
+        }}
+        placeholder="Your professional title"
+        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+      />
+    </div>
+  );
+
+  const renderUsernameStep = () => {
+    const helperText = {
+      idle: "Use 3-20 characters: letters, numbers, or underscores.",
+      checking: "Checking availability...",
+      available: "Username is available.",
+      unavailable: "That username is already taken.",
+      error: "Unable to check username right now.",
+    };
+
+    const canCheck = isValidUsername(formData.username);
+
+    return (
+      <div className="space-y-6">
+        <StepHeader
+          title="Choose a username"
+          subtitle="This will appear on your public profile"
+        />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Input
+            value={formData.username}
+            onChange={(e) => {
+              updateFormField("username", e.target.value);
+              setUsernameStatus("idle");
+            }}
+            onBlur={() => {
+              if (isValidUsername(formData.username)) {
+                checkUsernameAvailability();
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && isValidUsername(formData.username)) {
+                e.preventDefault();
+                checkUsernameAvailability();
+              }
+            }}
+            placeholder="username"
+            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 flex-1"
+          />
+          <button
+            type="button"
+            onClick={() => checkUsernameAvailability()}
+            disabled={!canCheck || usernameStatus === "checking"}
+            className={cn(
+              "px-4 py-2 rounded-xl font-semibold transition-all",
+              !canCheck || usernameStatus === "checking"
+                ? "bg-white/10 text-white/40 cursor-not-allowed"
+                : "bg-white/10 text-white hover:bg-white/20"
+            )}
+          >
+            {usernameStatus === "checking" ? "Checking..." : "Check"}
+          </button>
+        </div>
+        <p
+          className={cn(
+            "text-sm",
+            usernameStatus === "available" && "text-green-400",
+            usernameStatus === "unavailable" && "text-red-400",
+            (usernameStatus === "idle" || usernameStatus === "checking") && "text-white/50",
+            usernameStatus === "error" && "text-yellow-400"
+          )}
+        >
+          {helperText[usernameStatus] || helperText.idle}
+        </p>
+      </div>
+    );
+  };
+
+  const renderCountryStep = () => (
+    <div className="space-y-6">
+      <StepHeader title="Which country are you based in?" />
+      <Select
+        value={formData.country || ""}
+        onValueChange={(value) => updateFormField("country", value, 0)}
+      >
+        <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+          <SelectValue placeholder="Select your country" />
+        </SelectTrigger>
+        <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
+          {COUNTRY_OPTIONS.map((country) => (
+            <SelectItem key={country} value={country} className="focus:bg-white/10 focus:text-white cursor-pointer">
+              {country}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  const renderCityStep = () => (
+    <div className="space-y-6">
+      <StepHeader title="Which city are you based in?" />
+      <Input
+        value={formData.city}
+        onChange={(e) => updateFormField("city", e.target.value)}
+        onBlur={() => formData.city.trim() && queueAdvance(0)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && formData.city.trim()) {
+            e.preventDefault();
+            queueAdvance(0);
+          }
+        }}
+        placeholder="City"
+        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+      />
+    </div>
+  );
+
+  const renderProfilePhotoStep = () => {
+    const photo = formData.profilePhoto;
+
+    return (
+      <div className="space-y-6">
+        <StepHeader
+          title="Upload a profile photo"
+          subtitle="Clear headshots work best"
+        />
+        <div className="space-y-4">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            id="profile-photo-upload"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const nextPhoto = { name: file.name, url: URL.createObjectURL(file) };
+                updateFormField("profilePhoto", nextPhoto, 0);
+              }
+            }}
+          />
+          <label
+            htmlFor="profile-photo-upload"
+            className="flex items-center gap-4 px-4 py-4 rounded-xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all"
+          >
+            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+              {photo?.url ? (
+                <img src={photo.url} alt="Profile preview" className="w-full h-full object-cover" />
+              ) : (
+                <Upload className="w-5 h-5 text-white/70" />
+              )}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <span className="block text-sm text-white/80 truncate">
+                {photo?.name || "Upload photo (PNG, JPG)"}
+              </span>
+            </div>
+            {photo && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  updateFormField("profilePhoto", null);
+                }}
+                className="p-1 hover:bg-white/10 rounded-full"
+              >
+                <X className="w-4 h-4 text-white/50" />
+              </button>
+            )}
+          </label>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLanguagesStep = () => {
+    const values = formData.languages || [];
+    const otherSelected = values.includes("Other");
+
+    const toggleLanguage = (value) => {
+      const exists = values.includes(value);
+      const nextValues = exists ? values.filter((item) => item !== value) : [...values, value];
+      updateFormField("languages", nextValues);
+      if (!nextValues.includes("Other") && formData.otherLanguage) {
+        updateFormField("otherLanguage", "");
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <StepHeader title="Languages you can work professionally in" />
+        <div className="grid grid-cols-2 gap-3">
+          {LANGUAGE_OPTIONS.map((option) => (
+            <OptionCard
+              key={option.value}
+              compact
+              selected={values.includes(option.value)}
+              onClick={() => toggleLanguage(option.value)}
+              label={option.label}
+              className="justify-center"
+            />
+          ))}
+        </div>
+
+        {otherSelected && (
+          <div className="space-y-2">
+            <Label className="text-white/70 text-xs">Other language</Label>
+            <Input
+              value={formData.otherLanguage}
+              onChange={(e) => updateFormField("otherLanguage", e.target.value)}
+              placeholder="Type your language"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            />
+          </div>
+        )}
+
+        {renderContinueButton()}
+      </div>
+    );
+  };
+
+  const renderLinkedinStep = () => (
+    <div className="space-y-6">
+      <StepHeader title="LinkedIn profile URL" />
+      <Input
+        type="url"
+        value={formData.linkedinUrl}
+        onChange={(e) => updateFormField("linkedinUrl", e.target.value)}
+        onBlur={() => formData.linkedinUrl.trim() && queueAdvance(0)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && formData.linkedinUrl.trim()) {
+            e.preventDefault();
+            queueAdvance(0);
+          }
+        }}
+        placeholder="https://www.linkedin.com/in/your-profile"
+        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+      />
+    </div>
+  );
+
+  const renderPortfolioStep = () => (
+    <div className="space-y-6">
+      <StepHeader title="Portfolio or website link" />
+      <Input
+        type="url"
+        value={formData.portfolioUrl}
+        onChange={(e) => updateFormField("portfolioUrl", e.target.value)}
+        onBlur={() => formData.portfolioUrl.trim() && queueAdvance(0)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && formData.portfolioUrl.trim()) {
+            e.preventDefault();
+            queueAdvance(0);
+          }
+        }}
+        placeholder="https://your-portfolio.com"
+        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+      />
     </div>
   );
 
@@ -1018,6 +2052,7 @@ const FreelancerMultiStepForm = () => {
             );
           })}
         </div>
+        {renderContinueButton()}
       </div>
     );
   };
@@ -1080,11 +2115,122 @@ const FreelancerMultiStepForm = () => {
   );
 
   const renderServiceCaseField = (serviceKey, field) => {
-    const value = formData.serviceDetails?.[serviceKey]?.caseStudy?.[field.key] || "";
+    const caseStudy = formData.serviceDetails?.[serviceKey]?.caseStudy || {};
+
+    if (field.type === "select") {
+      const value = caseStudy[field.key] || "";
+      return (
+        <div className="space-y-6">
+          <StepHeader title={field.label} subtitle={renderServiceMeta(serviceKey)} />
+          <Select
+            value={value}
+            onValueChange={(next) => {
+              updateServiceCaseField(
+                serviceKey,
+                field.key,
+                next,
+                next === "Other" ? null : 0
+              );
+              if (field.key === "industry" && next !== "Other" && caseStudy.industryOther) {
+                updateServiceCaseField(serviceKey, "industryOther", "");
+              }
+            }}
+          >
+            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+              <SelectValue placeholder="Select an option" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
+              {(field.options || []).map((option) => (
+                <SelectItem key={option.value || option} value={option.value || option} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                  {option.label || option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {field.key === "industry" && value === "Other" && (
+            <div className="space-y-2">
+              <Label className="text-white/70 text-xs">Other industry</Label>
+              <Input
+                value={caseStudy.industryOther || ""}
+                onChange={(e) => updateServiceCaseField(serviceKey, "industryOther", e.target.value)}
+                onBlur={() => caseStudy.industryOther?.trim() && queueAdvance(0)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && caseStudy.industryOther?.trim()) {
+                    e.preventDefault();
+                    queueAdvance(0);
+                  }
+                }}
+                placeholder="Type the industry"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (field.type === "multiselect") {
+      const selections = Array.isArray(caseStudy[field.key]) ? caseStudy[field.key] : [];
+      const options =
+        field.key === "techStack"
+          ? getTechStackOptions(serviceKey)
+          : field.options || [];
+
+      const toggleValue = (option) => {
+        const exists = selections.includes(option);
+        const nextValues = exists
+          ? selections.filter((item) => item !== option)
+          : [...selections, option];
+        updateServiceCaseField(serviceKey, field.key, nextValues);
+        if (field.key === "techStack" && !nextValues.includes("Other") && caseStudy.techStackOther) {
+          updateServiceCaseField(serviceKey, "techStackOther", "");
+        }
+      };
+
+      return (
+        <div className="space-y-6">
+          <StepHeader title={field.label} subtitle={renderServiceMeta(serviceKey)} />
+          <div className="grid grid-cols-2 gap-3">
+            {options.map((option) => (
+              <OptionCard
+                key={option.value || option}
+                compact
+                selected={selections.includes(option.value || option)}
+                onClick={() => toggleValue(option.value || option)}
+                label={option.label || option}
+                className="justify-center"
+              />
+            ))}
+          </div>
+          {field.min && (
+            <p className="text-xs text-white/50 text-center">Select at least {field.min} options.</p>
+          )}
+
+          {field.key === "techStack" && selections.includes("Other") && (
+            <div className="space-y-2">
+              <Label className="text-white/70 text-xs">Other tools</Label>
+              <Input
+                value={caseStudy.techStackOther || ""}
+                onChange={(e) => updateServiceCaseField(serviceKey, "techStackOther", e.target.value)}
+                placeholder="Type the tool(s)"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              />
+            </div>
+          )}
+
+          {renderContinueButton()}
+        </div>
+      );
+    }
+
+    const value = caseStudy[field.key] || "";
+    const isTextarea = field.type === "textarea";
+
     return (
       <div className="space-y-6">
         <StepHeader title={field.label} subtitle={renderServiceMeta(serviceKey)} />
-        {field.multiline ? (
+        {isTextarea ? (
           <Textarea
             value={value}
             onChange={(e) => updateServiceCaseField(serviceKey, field.key, e.target.value)}
@@ -1110,30 +2256,6 @@ const FreelancerMultiStepForm = () => {
       </div>
     );
   };
-
-  const renderServiceCaseBudget = (serviceKey) => (
-    <div className="space-y-6">
-      <StepHeader
-        title="What was the project budget range?"
-        subtitle={renderServiceMeta(serviceKey)}
-      />
-      <Select
-        value={formData.serviceDetails?.[serviceKey]?.caseStudy?.budgetRange || ""}
-        onValueChange={(value) => updateServiceCaseField(serviceKey, "budgetRange", value, 0)}
-      >
-        <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
-          <SelectValue placeholder="Select budget range" />
-        </SelectTrigger>
-        <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
-          {BUDGET_RANGE_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
 
   const renderServiceSampleWork = (serviceKey) => (
     <div className="space-y-4">
@@ -1211,7 +2333,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceAveragePrice = (serviceKey) => (
     <div className="space-y-6">
       <StepHeader
-        title={`What is your average project price for ${getServiceLabel(serviceKey)}?`}
+        title={`Average project price you usually charge for ${getServiceLabel(serviceKey)}`}
         subtitle={renderServiceMeta(serviceKey)}
       />
       <Input
@@ -1224,7 +2346,29 @@ const FreelancerMultiStepForm = () => {
           }
         }}
         onBlur={(e) => e.target.value.trim() && queueAdvance(0)}
-        placeholder="e.g. INR 50,000"
+        placeholder="e.g. $2,000"
+        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+      />
+    </div>
+  );
+
+  const renderServiceMinimumValue = (serviceKey) => (
+    <div className="space-y-6">
+      <StepHeader
+        title="Minimum project value you accept"
+        subtitle={renderServiceMeta(serviceKey)}
+      />
+      <Input
+        value={formData.serviceDetails?.[serviceKey]?.minimumProjectValue || ""}
+        onChange={(e) => updateServiceField(serviceKey, "minimumProjectValue", e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && e.currentTarget.value.trim()) {
+            e.preventDefault();
+            queueAdvance(0);
+          }
+        }}
+        onBlur={(e) => e.target.value.trim() && queueAdvance(0)}
+        placeholder="e.g. $500"
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
       />
     </div>
@@ -1233,7 +2377,7 @@ const FreelancerMultiStepForm = () => {
   const renderServicePreferredBudget = (serviceKey) => (
     <div className="space-y-6">
       <StepHeader
-        title="What budget projects do you prefer to work on next?"
+        title="Preferred project budget range you want to work on next"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <Select
@@ -1244,7 +2388,7 @@ const FreelancerMultiStepForm = () => {
           <SelectValue placeholder="Select preferred budget range" />
         </SelectTrigger>
         <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
-          {BUDGET_RANGE_OPTIONS.map((opt) => (
+          {PREFERRED_PROJECT_BUDGET_OPTIONS.map((opt) => (
             <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
               {opt.label}
             </SelectItem>
@@ -1254,18 +2398,68 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderServiceSpecializations = (serviceKey) => {
-    const options = getServiceSpecializations(serviceKey).map((item) => ({ value: item, label: item }));
-    const values = formData.serviceDetails?.[serviceKey]?.specializations || [];
+  const renderServicePricingFlex = (serviceKey) => (
+    <div className="space-y-4">
+      <StepHeader
+        title="How flexible are you with pricing?"
+        subtitle={renderServiceMeta(serviceKey)}
+      />
+      <div className="space-y-3">
+        {PRICING_FLEXIBILITY_OPTIONS.map((option) => (
+          <OptionCard
+            key={option.value}
+            selected={formData.serviceDetails?.[serviceKey]?.pricingFlexibility === option.value}
+            onClick={() => updateServiceField(serviceKey, "pricingFlexibility", option.value, 0)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
 
-    return renderMultiSelectStep({
-      title: `Which areas of ${getServiceLabel(serviceKey)} do you specialize in?`,
-      subtitle: renderServiceMeta(serviceKey),
-      options,
-      values,
-      onToggle: (value) => toggleServiceArrayField(serviceKey, "specializations", value, 650),
-      columns: 2,
-    });
+  const renderServiceGroup = (serviceKey, groupId) => {
+    const group = getServiceGroups(serviceKey).find((entry) => entry.id === groupId);
+    const details = formData.serviceDetails?.[serviceKey] || createServiceDetail();
+    const existingGroups = details.groups || {};
+    const selections = existingGroups[groupId] || [];
+    const minSelections = group?.min || 1;
+
+    if (!group) return null;
+
+    const toggleValue = (option) => {
+      const exists = selections.includes(option);
+      const nextValues = exists
+        ? selections.filter((item) => item !== option)
+        : [...selections, option];
+      updateServiceField(serviceKey, "groups", {
+        ...existingGroups,
+        [groupId]: nextValues,
+      });
+    };
+
+    return (
+      <div className="space-y-6">
+        <StepHeader title={group.label} subtitle={renderServiceMeta(serviceKey)} />
+        <div className="grid grid-cols-2 gap-3">
+          {group.options.map((option) => (
+            <OptionCard
+              key={option}
+              compact
+              selected={selections.includes(option)}
+              onClick={() => toggleValue(option)}
+              label={option}
+              className="justify-center"
+            />
+          ))}
+        </div>
+        {minSelections > 1 && (
+          <p className="text-xs text-white/50 text-center">
+            Select at least {minSelections} options.
+          </p>
+        )}
+        {renderContinueButton()}
+      </div>
+    );
   };
 
   const renderServiceIndustryFocus = (serviceKey) => (
@@ -1296,11 +2490,8 @@ const FreelancerMultiStepForm = () => {
       const exists = current.includes(option);
       const nextValues = exists ? current.filter((item) => item !== option) : [...current, option];
       updateServiceField(serviceKey, "niches", nextValues, null);
-
-      const hasOther = nextValues.includes("Other");
-      const hasOtherValue = details.otherNiche?.trim();
-      if (nextValues.length > 0 && (!hasOther || hasOtherValue)) {
-        queueAdvance(650);
+      if (!nextValues.includes("Other") && details.otherNiche) {
+        updateServiceField(serviceKey, "otherNiche", "");
       }
     };
 
@@ -1329,12 +2520,13 @@ const FreelancerMultiStepForm = () => {
             <Input
               value={otherValue}
               onChange={(e) => updateServiceField(serviceKey, "otherNiche", e.target.value)}
-              onBlur={() => otherValue.trim() && queueAdvance(0)}
               placeholder="Type your niche"
               className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
             />
           </div>
         )}
+
+        {renderContinueButton()}
       </div>
     );
   };
@@ -1369,7 +2561,7 @@ const FreelancerMultiStepForm = () => {
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
-        {YES_NO_OPEN_OPTIONS.map((option) => (
+        {YES_NO_OPTIONS.map((option) => (
           <OptionCard
             key={option.value}
             selected={formData.serviceDetails?.[serviceKey]?.preferOnlyIndustries === option.value}
@@ -1381,145 +2573,43 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderServiceTools = (serviceKey) => {
-    const tools = TOOLS_BY_SERVICE[serviceKey] || [];
-    const selected = formData.serviceDetails?.[serviceKey]?.tools || [];
-    const custom = formData.serviceDetails?.[serviceKey]?.customTools || [];
-    const inputValue = toolInputs[serviceKey] || "";
-
-    return (
-      <div className="space-y-6">
-        <StepHeader
-          title={`Which tools do you actively use for ${getServiceLabel(serviceKey)}?`}
-          subtitle={renderServiceMeta(serviceKey)}
-        />
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {tools.map((tool) => {
-            const isSelected = selected.includes(tool);
-            return (
-              <motion.button
-                layout
-                key={tool}
-                type="button"
-                onClick={() => {
-                  const nextValues = isSelected
-                    ? selected.filter((item) => item !== tool)
-                    : [...selected, tool];
-                  updateServiceField(serviceKey, "tools", nextValues);
-                  if (nextValues.length || custom.length) {
-                    queueAdvance(650);
-                  }
-                }}
-                className={cn(
-                  "group flex items-center justify-between px-4 py-4 rounded-xl border transition-all duration-200",
-                  isSelected
-                    ? "border-primary/50 bg-primary/5 text-primary shadow-sm shadow-primary/10"
-                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/20 hover:text-white"
-                )}
-              >
-                <span className="text-sm font-medium text-left truncate">{tool}</span>
-                {isSelected && <Check className="w-4 h-4 text-primary shrink-0 ml-2" />}
-              </motion.button>
-            );
-          })}
-        </div>
-
-        <div className="mt-6 pt-4 border-t border-white/10">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
-              <Plus className="w-3.5 h-3.5 text-white/60" />
-            </div>
-            <span className="text-white/80 text-sm font-medium">Add your own tools</span>
-          </div>
-          <div className="relative group/input">
-            <Input
-              type="text"
-              placeholder="Type a tool name and press Enter"
-              value={inputValue}
-              onChange={(e) =>
-                setToolInputs((prev) => ({
-                  ...prev,
-                  [serviceKey]: e.target.value,
-                }))
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && inputValue.trim()) {
-                  e.preventDefault();
-                  const val = inputValue.trim();
-                  if (!custom.includes(val)) {
-                    updateServiceField(serviceKey, "customTools", [...custom, val]);
-                  }
-                  setToolInputs((prev) => ({ ...prev, [serviceKey]: "" }));
-                  queueAdvance(650);
-                }
-              }}
-              className="bg-white/5 border-white/20 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 pr-20"
-            />
-            {inputValue && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40 pointer-events-none">
-                Press Enter
-              </span>
-            )}
-
-            {inputValue && (
-              <div className="absolute z-10 w-full mt-1 max-h-48 overflow-y-auto bg-[#1A1A1A] border border-white/10 rounded-lg shadow-xl">
-                {ALL_TOOLS_SUGGESTIONS.filter(
-                  (tool) =>
-                    tool.toLowerCase().includes(inputValue.toLowerCase()) &&
-                    !custom.includes(tool)
-                )
-                  .slice(0, 5)
-                  .map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => {
-                        if (!custom.includes(suggestion)) {
-                          updateServiceField(serviceKey, "customTools", [...custom, suggestion]);
-                        }
-                        setToolInputs((prev) => ({ ...prev, [serviceKey]: "" }));
-                        queueAdvance(650);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-white/80 hover:bg-white/5 hover:text-primary transition-colors flex items-center gap-2"
-                    >
-                      <Sparkles className="w-3 h-3 opacity-50" />
-                      {suggestion}
-                    </button>
-                  ))}
-              </div>
-            )}
-          </div>
-          {(custom || []).length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {custom.map((tool) => (
-                <motion.div
-                  key={tool}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="group flex items-center gap-1.5 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg text-sm text-primary hover:bg-primary/10 hover:border-primary/40 transition-all"
-                >
-                  <span className="font-medium">{tool}</span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateServiceField(
-                        serviceKey,
-                        "customTools",
-                        custom.filter((item) => item !== tool)
-                      )
-                    }
-                    className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center text-primary/60 hover:bg-primary/20 hover:text-primary transition-colors ml-1"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
+  const renderServiceComplexity = (serviceKey) => (
+    <div className="space-y-4">
+      <StepHeader
+        title="What level of project complexity are you comfortable handling?"
+        subtitle={renderServiceMeta(serviceKey)}
+      />
+      <div className="space-y-3">
+        {PROJECT_COMPLEXITY_OPTIONS.map((option) => (
+          <OptionCard
+            key={option.value}
+            selected={formData.serviceDetails?.[serviceKey]?.projectComplexity === option.value}
+            onClick={() => updateServiceField(serviceKey, "projectComplexity", option.value, 0)}
+            label={option.label}
+          />
+        ))}
       </div>
-    );
-  };
+    </div>
+  );
+
+  const renderServiceExecution = (serviceKey) => (
+    <div className="space-y-4">
+      <StepHeader
+        title="How do you typically execute projects for this service?"
+        subtitle={renderServiceMeta(serviceKey)}
+      />
+      <div className="space-y-3">
+        {SERVICE_EXECUTION_OPTIONS.map((option) => (
+          <OptionCard
+            key={option.value}
+            selected={formData.serviceDetails?.[serviceKey]?.executionStyle === option.value}
+            onClick={() => updateServiceField(serviceKey, "executionStyle", option.value, 0)}
+            label={option.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
 
   const renderDeliveryPolicy = () => (
     <div className="space-y-6">
@@ -1631,6 +2721,22 @@ const FreelancerMultiStepForm = () => {
     if (!currentStep) return null;
 
     switch (currentStep.type) {
+      case "professionalTitle":
+        return renderProfessionalTitleStep();
+      case "username":
+        return renderUsernameStep();
+      case "country":
+        return renderCountryStep();
+      case "city":
+        return renderCityStep();
+      case "profilePhoto":
+        return renderProfilePhotoStep();
+      case "languages":
+        return renderLanguagesStep();
+      case "linkedin":
+        return renderLinkedinStep();
+      case "portfolio":
+        return renderPortfolioStep();
       case "role":
         return renderRoleStep();
       case "services":
@@ -1643,18 +2749,20 @@ const FreelancerMultiStepForm = () => {
         return renderServiceProjects(currentStep.serviceKey);
       case "serviceCaseField":
         return renderServiceCaseField(currentStep.serviceKey, currentStep.field);
-      case "serviceCaseBudget":
-        return renderServiceCaseBudget(currentStep.serviceKey);
       case "serviceSampleWork":
         return renderServiceSampleWork(currentStep.serviceKey);
       case "serviceSampleUpload":
         return renderServiceSampleUpload(currentStep.serviceKey);
+      case "serviceGroup":
+        return renderServiceGroup(currentStep.serviceKey, currentStep.groupId);
       case "serviceAveragePrice":
         return renderServiceAveragePrice(currentStep.serviceKey);
+      case "serviceMinimumValue":
+        return renderServiceMinimumValue(currentStep.serviceKey);
       case "servicePreferredBudget":
         return renderServicePreferredBudget(currentStep.serviceKey);
-      case "serviceSpecializations":
-        return renderServiceSpecializations(currentStep.serviceKey);
+      case "servicePricingFlex":
+        return renderServicePricingFlex(currentStep.serviceKey);
       case "serviceIndustryFocus":
         return renderServiceIndustryFocus(currentStep.serviceKey);
       case "serviceNiches":
@@ -1663,8 +2771,10 @@ const FreelancerMultiStepForm = () => {
         return renderServiceIndustryExperience(currentStep.serviceKey);
       case "serviceIndustryOnly":
         return renderServiceIndustryOnly(currentStep.serviceKey);
-      case "serviceTools":
-        return renderServiceTools(currentStep.serviceKey);
+      case "serviceComplexity":
+        return renderServiceComplexity(currentStep.serviceKey);
+      case "serviceExecution":
+        return renderServiceExecution(currentStep.serviceKey);
       case "deliveryPolicy":
         return renderDeliveryPolicy();
       case "hours":
@@ -1673,13 +2783,6 @@ const FreelancerMultiStepForm = () => {
           options: HOURS_PER_WEEK_OPTIONS,
           value: formData.hoursPerWeek,
           onSelect: (value) => updateFormField("hoursPerWeek", value, 0),
-        });
-      case "workingMode":
-        return renderSingleSelectStep({
-          title: "What is your preferred working mode?",
-          options: WORKING_MODE_OPTIONS,
-          value: formData.workingMode,
-          onSelect: (value) => updateFormField("workingMode", value, 0),
         });
       case "workingSchedule":
         return renderSingleSelectStep({
@@ -1702,13 +2805,6 @@ const FreelancerMultiStepForm = () => {
           value: formData.projectTypePreference,
           onSelect: (value) => updateFormField("projectTypePreference", value, 0),
         });
-      case "executionStyle":
-        return renderSingleSelectStep({
-          title: "How do you typically execute projects?",
-          options: EXECUTION_STYLE_OPTIONS,
-          value: formData.executionStyle,
-          onSelect: (value) => updateFormField("executionStyle", value, 0),
-        });
       case "missedDeadlines":
         return renderSingleSelectStep({
           title: "Have you ever missed a project deadline?",
@@ -1725,7 +2821,7 @@ const FreelancerMultiStepForm = () => {
         });
       case "currentAvailability":
         return renderSingleSelectStep({
-          title: "Current availability?",
+          title: "Current availability status",
           options: CURRENT_AVAILABILITY_OPTIONS,
           value: formData.currentAvailability,
           onSelect: (value) => updateFormField("currentAvailability", value, 0),
@@ -1800,3 +2896,6 @@ const FreelancerMultiStepForm = () => {
 };
 
 export default FreelancerMultiStepForm;
+
+
+

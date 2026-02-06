@@ -5,14 +5,24 @@ import { fileURLToPath } from "url";
 import { z } from "zod";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = resolve(__dirname, "../../");
+const backendRoot = resolve(__dirname, "../../");
+const workspaceRoot = resolve(__dirname, "../../../");
 const envFileName = process.env.NODE_ENV === "test" ? ".env.test" : ".env";
-const candidatePath = resolve(projectRoot, envFileName);
+const envPaths = [resolve(backendRoot, envFileName), resolve(workspaceRoot, envFileName)]
+  .filter((filePath, index, allPaths) => allPaths.indexOf(filePath) === index);
 
-if (existsSync(candidatePath)) {
-  console.log("Loading .env from:", candidatePath);
-  config({ path: candidatePath });
-} else {
+let loadedAnyEnvFile = false;
+for (const envPath of envPaths) {
+  if (!existsSync(envPath)) {
+    continue;
+  }
+
+  console.log("Loading .env from:", envPath);
+  config({ path: envPath, override: true });
+  loadedAnyEnvFile = true;
+}
+
+if (!loadedAnyEnvFile) {
   console.log("Loading default .env");
   config();
 }
