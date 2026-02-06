@@ -25,8 +25,8 @@ const stripMarkdownHeadings = (text = "") => text;
 const stripBlockedMarker = (text = "") => {
   if (typeof text !== "string") return text;
   return text
-    .replace(/\s*\[blocked\]\s*/gi, " ")
-    .replace(/\s{2,}/g, " ")
+    .replace(/[ \t]*\[blocked\][ \t]*/gi, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 };
 
@@ -1833,7 +1833,7 @@ export const generateProposalMarkdown = async (
 
     if (isAuthError) {
       throw new AppError(
-        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in your .env.",
+        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in backend/.env or the project root .env.",
         502
       );
     }
@@ -1939,7 +1939,7 @@ export const chatWithAI = async (
 
     if (isAuthError) {
       throw new AppError(
-        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in your .env.",
+        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in backend/.env or the project root .env.",
         502
       );
     }

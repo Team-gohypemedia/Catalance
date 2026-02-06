@@ -194,8 +194,8 @@ const sanitizeAssistantContent = (content = "") => {
 
   return lines
     .join("\n")
-    .replace(/\s*\[blocked\]\s*/gi, " ")
-    .replace(/\s{2,}/g, " ")
+    .replace(/[ \t]*\[blocked\][ \t]*/gi, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 };
 
