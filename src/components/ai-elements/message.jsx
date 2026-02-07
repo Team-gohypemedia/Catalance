@@ -243,7 +243,7 @@ export const MessageResponse = memo(
         "[&_p]:mb-4 [&_p:last-child]:mb-0",
         "[&_h1]:mb-3 [&_h1]:text-[20px] [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-white",
         "[&_h2]:mt-4 [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-white [&_h2]:border-l-2 [&_h2]:border-white/40 [&_h2]:pl-3 [&_h2]:bg-white/5 [&_h2]:rounded-lg [&_h2]:py-2 [&_h2]:pr-3",
-        "[&_h3]:mt-4 [&_h3]:text-[13px] [&_h3]:font-semibold [&_h3]:uppercase [&_h3]:tracking-[0.22em] [&_h3]:text-muted-foreground",
+        "[&_h3]:mt-4 [&_h3]:text-[18px] [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:text-white [&_h3]:border-l-2 [&_h3]:border-white/40 [&_h3]:pl-3 [&_h3]:bg-white/5 [&_h3]:rounded-lg [&_h3]:py-2 [&_h3]:pr-3",
         "[&_strong]:font-semibold [&_strong]:text-white",
         "[&_ul]:mt-3 [&_ul]:pl-5 [&_ul]:list-disc",
         "[&_ol]:mt-3 [&_ol]:pl-5 [&_ol]:list-decimal",
