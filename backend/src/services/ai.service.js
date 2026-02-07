@@ -17,8 +17,19 @@ const servicesData = JSON.parse(
 );
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
-const DEFAULT_REFERER = process.env.FRONTEND_URL || "http://localhost:5173";
+const DEFAULT_MODEL =
+  env.OPENROUTER_MODEL || process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+const FALLBACK_MODEL =
+  env.OPENROUTER_MODEL_FALLBACK ||
+  process.env.OPENROUTER_MODEL_FALLBACK ||
+  "";
+const DEFAULT_REFERER =
+  process.env.FRONTEND_URL || env.CORS_ORIGIN || "http://localhost:5173";
+
+const OPENROUTER_AUTH_ERROR_REGEX =
+  /user not found|invalid api key|unauthorized|forbidden|invalid token/i;
+const OPENROUTER_FALLBACK_ERROR_REGEX =
+  /model|quota|credit|payment|insufficient|not available|unavailable|not found|unsupported|overloaded|rate limit/i;
 
 const stripMarkdownHeadings = (text = "") => text;
 
@@ -28,6 +39,108 @@ const stripBlockedMarker = (text = "") => {
     .replace(/[ \t]*\[blocked\][ \t]*/gi, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+};
+
+const buildOpenRouterAuthError = (providerStatus, model) =>
+  new AppError(
+    "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in your deployment environment (e.g. Vercel Project Settings -> Environment Variables).",
+    502,
+    {
+      provider: "openrouter",
+      providerStatus,
+      model
+    }
+  );
+
+const shouldRetryWithFallbackModel = (statusCode, errorMessage = "") =>
+  statusCode === 402 ||
+  statusCode === 404 ||
+  statusCode === 429 ||
+  statusCode >= 500 ||
+  OPENROUTER_FALLBACK_ERROR_REGEX.test(errorMessage);
+
+const requestOpenRouterCompletion = async ({
+  apiKey,
+  title,
+  messages,
+  temperature,
+  maxTokens
+}) => {
+  const modelsToTry = [DEFAULT_MODEL];
+  if (FALLBACK_MODEL && !modelsToTry.includes(FALLBACK_MODEL)) {
+    modelsToTry.push(FALLBACK_MODEL);
+  }
+
+  for (let index = 0; index < modelsToTry.length; index += 1) {
+    const model = modelsToTry[index];
+    const hasFallback = index < modelsToTry.length - 1;
+    let response;
+
+    try {
+      response = await fetch(OPENROUTER_API_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": DEFAULT_REFERER,
+          "X-Title": title
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature,
+          max_tokens: maxTokens
+        })
+      });
+    } catch (error) {
+      throw new AppError("AI provider network error. Please try again.", 502, {
+        provider: "openrouter",
+        model,
+        cause: error?.message || "Network request failed"
+      });
+    }
+
+    const data = await response.json().catch(() => null);
+
+    if (response.ok) {
+      if (!data) {
+        throw new AppError("AI API returned an invalid response", 502, {
+          provider: "openrouter",
+          model
+        });
+      }
+
+      return { data, model };
+    }
+
+    const errorMessage = data?.error?.message || "AI API request failed";
+    const isAuthError =
+      response.status === 401 ||
+      response.status === 403 ||
+      OPENROUTER_AUTH_ERROR_REGEX.test(errorMessage);
+
+    if (isAuthError) {
+      throw buildOpenRouterAuthError(response.status, model);
+    }
+
+    if (hasFallback && shouldRetryWithFallbackModel(response.status, errorMessage)) {
+      const fallbackModel = modelsToTry[index + 1];
+      console.warn(
+        `[AI] OpenRouter request failed for model "${model}" with status ${response.status}: ${errorMessage}. Retrying with fallback model "${fallbackModel}".`
+      );
+      continue;
+    }
+
+    throw new AppError(errorMessage, 502, {
+      provider: "openrouter",
+      providerStatus: response.status,
+      model
+    });
+  }
+
+  throw new AppError("AI API request failed", 502, {
+    provider: "openrouter"
+  });
 };
 
 const formatWebsiteTypeLabel = (value = "") =>
@@ -62,7 +175,7 @@ const buildWebsiteTypeReference = () => {
     : "";
 
   return [
-    "WEBSITE TYPE REFERENCE (use only for Website / UI-UX service):",
+    "WEBSITE TYPE REFERENCE (use only for Web Development service):",
     ...typeLines,
     universalLine
   ]
@@ -387,14 +500,14 @@ const buildClarificationMessage = ({
   options = [],
   isBudget = false
 }) => {
+  if (isBudget) {
+    return "What is your budget for this project?";
+  }
+
   const resolvedQuestion = questionText || "Could you share that again?";
   const lines = [];
 
-  if (isBudget) {
-    lines.push("No worries - a quick **budget** ballpark will help me continue.");
-  } else {
-    lines.push("Quick check - I want to make sure I get this right.");
-  }
+  lines.push("Quick check - I want to make sure I get this right.");
 
   lines.push("");
   lines.push(`**${resolvedQuestion}**`);
@@ -409,9 +522,6 @@ const buildClarificationMessage = ({
     lines.push("");
     lines.push("Pick any that fit - multiple is fine.");
     lines.push("If none fit, just type your own.");
-  } else if (isBudget) {
-    lines.push("");
-    lines.push("A simple number works great (for example: 50,000).");
   } else {
     lines.push("");
     lines.push("A few words is perfect.");
@@ -519,6 +629,23 @@ const matchOptionLabelsFromItems = (options = [], items = []) => {
 const isNumericChoiceToken = (value = "") =>
   /^\d+(?:\s*(?:-|to)\s*\d+)?$/i.test(String(value).trim());
 
+const isLikelyOptionSelectionReply = (value = "") => {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return false;
+
+  // Common menu-style numeric replies: "1", "2.", "1,3", "2 and 4", "1-3"
+  if (/^\d{1,2}(?:\s*[.)])?$/.test(trimmed)) return true;
+  if (
+    /^\d{1,2}(?:\s*(?:,|\/|&|and|or|-|to)\s*\d{1,2})+(?:\s*[.)])?$/i.test(
+      trimmed
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
 const parseNumericSelections = (text = "", optionsLength = 0) => {
   const trimmed = text.trim();
   if (!trimmed) return { numbers: [], ambiguous: false };
@@ -611,13 +738,39 @@ const BUDGET_NEGATIVE_ONLY_REGEX =
   /^(no|nope|nah|not really|can't|cannot|unfortunately no)$/i;
 const BUDGET_INCREASE_REQUEST_REGEX =
   /increase|raise|at least|minimum|below.*minimum|below the minimum|start(?:ing)?(?: line| budget)?|start(?:ing)? at|stretch|nudge|doable|can you (?:nudge|stretch)|would that be doable/i;
+const BUDGET_CANONICAL_QUESTION = "What is your budget for this project?";
+const BUDGET_PROMPT_HELPER_REGEX =
+  /quick\s+\*{0,2}budget|budget ballpark|simple number works|for example:\s*\d[\d,]*/i;
+const BUDGET_PROMPT_WARNING_REGEX =
+  /minimum|required|below|increase|quality|continue with this budget|not able to increase/i;
 const formatInr = (value) => {
   if (!Number.isFinite(value)) return "";
   return `₹${Math.round(value).toLocaleString("en-IN")}`;
 };
 
+const normalizeBudgetPromptMessage = (text = "") => {
+  if (typeof text !== "string") return "";
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  if (trimmed === BUDGET_CANONICAL_QUESTION) return trimmed;
+
+  const hasBudgetQuestion = /budget/i.test(trimmed) && /\?/.test(trimmed);
+  if (!hasBudgetQuestion) return trimmed;
+  if (BUDGET_PROMPT_WARNING_REGEX.test(trimmed)) return trimmed;
+
+  if (
+    BUDGET_PROMPT_HELPER_REGEX.test(trimmed) ||
+    /\b(what(?:'s| is)\s+your\s+budget|share\s+your\s+budget)\b/i.test(trimmed)
+  ) {
+    return BUDGET_CANONICAL_QUESTION;
+  }
+
+  return trimmed;
+};
+
 const applyDynamicEmphasis = (text = "") => {
   if (typeof text !== "string") return "";
+  if (text.trim() === BUDGET_CANONICAL_QUESTION) return BUDGET_CANONICAL_QUESTION;
   if (/\*\*.+?\*\*/.test(text)) return text;
 
   let updated = text;
@@ -673,6 +826,11 @@ const formatBudgetUnitLabel = (unit = "") => {
 };
 
 const getServiceLabel = (service) => {
+  const id = `${service?.id || ""}`.toLowerCase();
+  if (id === "website_uiux" || id === "website_ui_ux") {
+    return "Web Development";
+  }
+
   const name = service?.name || "";
   if (!name) return "this service";
   const cleaned = name.split("(")[0].trim();
@@ -688,31 +846,33 @@ const hashStringToIndex = (value = "", modulo = 1) => {
   return hash % modulo;
 };
 
-const buildBudgetBelowMinimumMessage = (service, minFormatted, unitLabel) => {
+const buildBudgetBelowMinimumMessage = (
+  service,
+  enteredBudgetFormatted,
+  minFormatted,
+  unitLabel
+) => {
   const serviceLabel = getServiceLabel(service);
   const unitSuffix = unitLabel ? ` ${unitLabel}` : "";
-  const templates = [
-    `Quick budget check - for **${serviceLabel}**, our usual starting budget is **${minFormatted}${unitSuffix}**. Can you nudge it up to that?`,
-    `Tiny heads-up - **${serviceLabel}** projects typically start at a **${minFormatted}${unitSuffix}** budget. Would that be doable for you?`,
-    `Just so we're aligned: **${serviceLabel}** work usually begins at **${minFormatted}${unitSuffix}**. Can we stretch the budget to that?`
-  ];
-  const index = hashStringToIndex(service?.id || serviceLabel, templates.length);
-  return templates[index];
+  return [
+    `The amount you provided (**${enteredBudgetFormatted}${unitSuffix}**) is below our minimum required price for **${serviceLabel}**.`,
+    `The minimum required amount is **${minFormatted}${unitSuffix}**.`,
+    `Could you increase your budget to at least **${minFormatted}${unitSuffix}**?`
+  ].join("\n");
 };
 
-const buildBudgetIncreaseFollowupMessage = (service) => {
-  const serviceLabel = getServiceLabel(service);
-  return [
-    `Great - what budget would you like to move forward with for **${serviceLabel}**?`,
-    "",
-    "A simple number works great (for example: 50,000)."
-  ].join("\n");
+const buildBudgetIncreaseFollowupMessage = () => {
+  return "What is your budget for this project?";
 };
 
 const buildBudgetProceedMessage = (service, budgetFormatted, unitLabel) => {
   const serviceLabel = getServiceLabel(service);
   const unitSuffix = unitLabel ? ` ${unitLabel}` : "";
-  return `We can still move forward with **${budgetFormatted}${unitSuffix}** for **${serviceLabel}**, but the quality may vary a bit at this level. Want to continue?`;
+  return [
+    `If you're not able to increase the budget, we can continue with **${budgetFormatted}${unitSuffix}** for **${serviceLabel}**,`,
+    "but the quality of work may vary and may not be as per the standards.",
+    "Would you like to continue with this budget?"
+  ].join("\n");
 };
 
 const buildBudgetAcceptedMessage = (service, budgetFormatted, unitLabel) => {
@@ -747,9 +907,10 @@ const isBudgetValueText = (text = "", prevAssistantText = "") => {
   return false;
 };
 
-const getLatestUserBudgetFromHistory = (history = []) => {
+const getLatestUserBudgetFromHistory = (history = [], { startIndex = 0 } = {}) => {
   let latest = null;
-  for (let i = 0; i < history.length; i++) {
+  const start = Math.max(0, startIndex);
+  for (let i = start; i < history.length; i++) {
     const msg = history[i];
     if (!msg || msg.role === "assistant") continue;
     const parsed = parseBudgetFromText(msg.content || "");
@@ -758,13 +919,27 @@ const getLatestUserBudgetFromHistory = (history = []) => {
     const prevMsg = history[i - 1];
     const isBudgetReply =
       prevMsg?.role === "assistant" && isBudgetPromptText(prevMsg.content || "");
-    if (!hasBudgetSignal(msg.content || "") && !isBudgetReply) {
+    const budgetSignal = hasBudgetSignal(msg.content || "");
+    if (isLikelyOptionSelectionReply(msg.content || "") && !budgetSignal) {
+      continue;
+    }
+    if (!budgetSignal && !isBudgetReply) {
       continue;
     }
 
     latest = { ...parsed, index: i, text: msg.content || "" };
   }
   return latest;
+};
+
+const findLatestBudgetPromptIndex = (history = []) => {
+  let index = -1;
+  history.forEach((msg, i) => {
+    if (msg?.role === "assistant" && isBudgetPromptText(msg.content || "")) {
+      index = i;
+    }
+  });
+  return index;
 };
 
 const getLastAssistantMessage = (history = []) => {
@@ -831,7 +1006,12 @@ const buildBudgetOverrideMessage = ({
   if (!Number.isFinite(minBudget) || minBudget <= 0) return null;
 
   const history = [...conversationHistory, ...messages];
-  const latestBudget = getLatestUserBudgetFromHistory(history);
+  const latestBudgetPromptIndex = findLatestBudgetPromptIndex(history);
+  if (latestBudgetPromptIndex < 0) return null;
+
+  const latestBudget = getLatestUserBudgetFromHistory(history, {
+    startIndex: latestBudgetPromptIndex + 1
+  });
   if (!latestBudget?.amount || !Number.isFinite(latestBudget.amount)) return null;
 
   if (latestBudget.amount >= minBudget) return null;
@@ -860,8 +1040,14 @@ const buildBudgetOverrideMessage = ({
     return buildBudgetProceedMessage(service, budgetFormatted, unitLabel);
   }
 
+  const enteredBudgetFormatted = formatInr(latestBudget.amount);
   const minFormatted = formatInr(minBudget);
-  return buildBudgetBelowMinimumMessage(service, minFormatted, unitLabel);
+  return buildBudgetBelowMinimumMessage(
+    service,
+    enteredBudgetFormatted,
+    minFormatted,
+    unitLabel
+  );
 };
 
 const sanitizeBudgetHallucination = ({
@@ -952,7 +1138,11 @@ const buildUserInputGuardMessage = ({
 
   if (isBudgetQuestion) {
     const parsed = parseBudgetFromText(userText);
-    if (!parsed?.amount) {
+    const budgetSignal = hasBudgetSignal(userText);
+    if (
+      !parsed?.amount ||
+      (!budgetSignal && isLikelyOptionSelectionReply(userText))
+    ) {
       return buildClarificationMessage({
         questionText: "What is your budget for this project?",
         options: [],
@@ -1405,17 +1595,7 @@ Treat this as confirmed and DO NOT ask which service they want.`
           .map((q, idx) => {
             // For budget questions, replace with generic question without minimum
             if (q.id === "user_budget" || q.type === "number") {
-              const quantityUnit = service?.budget?.quantity_unit_label || "";
-              const unitSingular = quantityUnit
-                ? quantityUnit.replace(/s$/i, "")
-                : "";
-              const isPerDeliverable =
-                service?.budget?.pricing_model === "per_deliverable";
-              const perUnitLabel = unitSingular || quantityUnit;
-              const budgetPrompt = isPerDeliverable && perUnitLabel
-                ? `What is your budget per ${perUnitLabel}?`
-                : "What is your budget for this project?";
-              return `Q${idx + 1} [ID: ${q.id}]: ${budgetPrompt}`;
+              return `Q${idx + 1} [ID: ${q.id}]: What is your budget for this project?`;
             }
 
             let questionText = `Q${idx + 1} [ID: ${q.id}]: ${q.question}`;
@@ -1484,7 +1664,7 @@ Treat this as confirmed and DO NOT ask which service they want.`
       }
 
       return [
-        `SERVICE ${service.number}: ${service.name}`,
+        `SERVICE ${service.number}: ${getServiceLabel(service)}`,
         `ID: ${service.id}`,
         ...(budgetLines.length ? budgetLines : []),
         `TOTAL QUESTIONS: ${questionCount} (You MUST ask ALL of these)`,
@@ -1738,7 +1918,7 @@ Output requirements:
   Launch Timeline: ...
   Budget: ...
 
-For WEBSITE/UI-UX services, also include:
+For WEB DEVELOPMENT services, also include:
   Website Type: ...
   Design Style: ...
   Website Build Type: ...
@@ -1790,7 +1970,10 @@ export const generateProposalMarkdown = async (
 ) => {
   const apiKey = env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
-    throw new AppError("OpenRouter API key not configured", 500);
+    throw new AppError(
+      "OpenRouter API key not configured. Set OPENROUTER_API_KEY in your deployment environment.",
+      500
+    );
   }
 
   const contextPayload =
@@ -1803,47 +1986,19 @@ export const generateProposalMarkdown = async (
 
   const historyPayload = Array.isArray(chatHistory) ? chatHistory : [];
 
-  const response = await fetch(OPENROUTER_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": DEFAULT_REFERER,
-      "X-Title": "Catalance AI Proposal Generator"
-    },
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      messages: [
-        { role: "system", content: buildProposalSystemPrompt() },
-        { role: "user", content: buildProposalUserPrompt(contextPayload, historyPayload) }
-      ],
-      temperature: 0.4,
-      max_tokens: 2200
-    })
+  const { data } = await requestOpenRouterCompletion({
+    apiKey,
+    title: "Catalance AI Proposal Generator",
+    messages: [
+      { role: "system", content: buildProposalSystemPrompt() },
+      {
+        role: "user",
+        content: buildProposalUserPrompt(contextPayload, historyPayload)
+      }
+    ],
+    temperature: 0.4,
+    maxTokens: 2200
   });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const errorMessage = data?.error?.message || "AI API request failed";
-    const isAuthError =
-      response.status === 401 ||
-      response.status === 403 ||
-      /user not found|invalid api key|unauthorized/i.test(errorMessage);
-
-    if (isAuthError) {
-      throw new AppError(
-        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in backend/.env or the project root .env.",
-        502
-      );
-    }
-
-    throw new AppError(errorMessage, 502);
-  }
-
-  if (!data) {
-    throw new AppError("AI API returned an invalid response", 502);
-  }
 
   const content = data.choices?.[0]?.message?.content || "";
   if (!content.trim()) {
@@ -1860,7 +2015,10 @@ export const chatWithAI = async (
 ) => {
   const apiKey = env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
-    throw new AppError("OpenRouter API key not configured", 500);
+    throw new AppError(
+      "OpenRouter API key not configured. Set OPENROUTER_API_KEY in your deployment environment.",
+      500
+    );
   }
 
   const systemMessage = {
@@ -1891,9 +2049,13 @@ export const chatWithAI = async (
   });
 
   if (inputGuardMessage) {
+    const normalized = normalizeBudgetPromptMessage(inputGuardMessage);
     return {
       success: true,
-      message: applyDynamicEmphasis(inputGuardMessage),
+      message:
+        normalized === BUDGET_CANONICAL_QUESTION
+          ? normalized
+          : applyDynamicEmphasis(normalized),
       usage: null
     };
   }
@@ -1905,51 +2067,24 @@ export const chatWithAI = async (
   });
 
   if (budgetOverride) {
+    const normalized = normalizeBudgetPromptMessage(budgetOverride);
     return {
       success: true,
-      message: applyDynamicEmphasis(budgetOverride),
+      message:
+        normalized === BUDGET_CANONICAL_QUESTION
+          ? normalized
+          : applyDynamicEmphasis(normalized),
       usage: null
     };
   }
 
-  const response = await fetch(OPENROUTER_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": DEFAULT_REFERER,
-      "X-Title": "Catalance AI Assistant"
-    },
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      messages: [systemMessage, ...formattedHistory, ...formattedMessages],
-      temperature: 0.7,
-      max_tokens: 2000
-    })
+  const { data } = await requestOpenRouterCompletion({
+    apiKey,
+    title: "Catalance AI Assistant",
+    messages: [systemMessage, ...formattedHistory, ...formattedMessages],
+    temperature: 0.7,
+    maxTokens: 2000
   });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const errorMessage = data?.error?.message || "AI API request failed";
-    const isAuthError =
-      response.status === 401 ||
-      response.status === 403 ||
-      /user not found|invalid api key|unauthorized/i.test(errorMessage);
-
-    if (isAuthError) {
-      throw new AppError(
-        "OpenRouter authentication failed. Verify OPENROUTER_API_KEY in backend/.env or the project root .env.",
-        502
-      );
-    }
-
-    throw new AppError(errorMessage, 502);
-  }
-
-  if (!data) {
-    throw new AppError("AI API returned an invalid response", 502);
-  }
 
   const content = data.choices?.[0]?.message?.content || "";
   const safeContent = sanitizeBudgetHallucination({
@@ -1958,12 +2093,16 @@ export const chatWithAI = async (
     messages: formattedMessages,
     selectedServiceName
   });
+  const normalizedSafeContent = normalizeBudgetPromptMessage(safeContent);
 
   return {
     success: true,
-    message: applyDynamicEmphasis(
-      stripMarkdownHeadings(stripBlockedMarker(safeContent))
-    ),
+    message:
+      normalizedSafeContent.trim() === BUDGET_CANONICAL_QUESTION
+        ? BUDGET_CANONICAL_QUESTION
+        : applyDynamicEmphasis(
+          stripMarkdownHeadings(stripBlockedMarker(normalizedSafeContent))
+        ),
     usage: data.usage || null
   };
 };
