@@ -189,11 +189,25 @@ const sanitizeAssistantContent = (content = "") => {
       (line) =>
         !/^\s*(?:-|\*)?\s*if you don't see what you need, kindly type it below\.?\s*$/i.test(
           line,
-        ),
+      ),
     );
+
+  const normalized = lines.join("\n").trim();
+  const budgetPromptWithHelper =
+    /budget/i.test(normalized) &&
+    /\?/.test(normalized) &&
+    /simple number works|budget ballpark|for example:\s*\d[\d,]*/i.test(normalized) &&
+    !/minimum|required|below|increase|quality|continue with this budget/i.test(
+      normalized,
+    );
+  if (budgetPromptWithHelper) {
+    return "What is your budget for this project?";
+  }
 
   return lines
     .join("\n")
+    // Keep question cards visually consistent by normalizing deeper headings.
+    .replace(/^\s*#{3,6}\s+/gm, "## ")
     .replace(/[ \t]*\[blocked\][ \t]*/gi, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -308,9 +322,25 @@ const findMatchingService = (
 
 const parseBudgetValue = (text = "") => {
   if (typeof text !== "string") return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  // Ignore menu-style replies like "1", "2.", "1,3", "2 and 4" unless a real budget signal exists.
+  const isLikelyOptionSelectionReply =
+    /^\d{1,2}(?:\s*[.)])?$/.test(trimmed) ||
+    /^\d{1,2}(?:\s*(?:,|\/|&|and|or|-|to)\s*\d{1,2})+(?:\s*[.)])?$/i.test(trimmed);
+  const hasExplicitBudgetSignal =
+    /(?:\u20B9|rs\.?|inr|\$|usd|eur|gbp)/i.test(trimmed) ||
+    /\b(lakh|lac|k|thousand)\b/i.test(trimmed) ||
+    /\b\d{1,3}(?:,\d{3})+\b/.test(trimmed) ||
+    /\b\d{4,}\b/.test(trimmed);
+  if (isLikelyOptionSelectionReply && !hasExplicitBudgetSignal) {
+    return null;
+  }
+
   const budgetRegex =
     /(?:\u20B9|rs\.?|inr|\$|usd|eur|gbp)?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|l|k|thousand)?/gi;
-  const matches = Array.from(text.matchAll(budgetRegex));
+  const matches = Array.from(trimmed.matchAll(budgetRegex));
   if (!matches.length) return null;
 
   const values = matches
@@ -765,13 +795,12 @@ const getMinimumAnswerLength = (field) => {
 
 const buildClarificationMessage = (field, { isBudget = false } = {}) => {
   const questionText = field?.question || "Could you share that again?";
+  if (isBudget) {
+    return "What is your budget for this project?";
+  }
   const lines = [];
 
-  if (isBudget) {
-    lines.push("No worries - a quick budget ballpark will help me continue.");
-  } else {
-    lines.push("Quick check - I want to make sure I get this right.");
-  }
+  lines.push("Quick check - I want to make sure I get this right.");
 
   lines.push("");
   lines.push(questionText);
@@ -788,11 +817,7 @@ const buildClarificationMessage = (field, { isBudget = false } = {}) => {
   }
 
   lines.push("");
-  if (isBudget) {
-    lines.push("A simple number works great (for example: 50,000).");
-  } else {
-    lines.push("A few words is perfect.");
-  }
+  lines.push("A few words is perfect.");
 
   return lines.join("\n");
 };
@@ -2305,7 +2330,10 @@ function AIChat({
       setActiveFiles([]); // Clear all active files after sending
 
       const pendingField = pendingMissingFieldRef.current;
-      if (pendingField) {
+      const shouldValidatePendingField =
+        pendingField &&
+        isMissingFieldPromptMessage(lastAssistantMessage || "", [pendingField]);
+      if (shouldValidatePendingField) {
         const validation = validateMissingFieldAnswer(pendingField, text);
         if (!validation.valid) {
           const nextHistoryLocal = [
@@ -2349,7 +2377,7 @@ function AIChat({
         proposalContextRef.current,
         contextUpdate,
       );
-      const pendingUpdate = pendingField
+      const pendingUpdate = shouldValidatePendingField
         ? applyMissingFieldAnswer(pendingField, text)
         : {};
       if (Object.keys(pendingUpdate).length > 0) {
@@ -2451,9 +2479,15 @@ function AIChat({
         }),
       });
 
-      const data = await response.json();
+      const rawResponse = await response.text();
+      let data = null;
+      try {
+        data = rawResponse ? JSON.parse(rawResponse) : null;
+      } catch {
+        data = null;
+      }
 
-      if (data?.success && data.message) {
+      if (response.ok && data?.success && data.message) {
         const assistantText = sanitizeAssistantContent(data.message);
         // NOTE: Budget validation is handled server-side (backend/ai.service.js).
         // Do not add client-side budget overrides here.
@@ -2529,11 +2563,28 @@ function AIChat({
           }
         }
       } else {
+        const details = data?.details;
+        const detailText =
+          details?.providerStatus || details?.model
+            ? ` (${[
+              details?.providerStatus
+                ? `status ${details.providerStatus}`
+                : null,
+              details?.model ? `model ${details.model}` : null,
+            ]
+              .filter(Boolean)
+              .join(", ")})`
+            : "";
+        const serverMessage =
+          typeof data?.message === "string" && data.message.trim()
+            ? data.message.trim()
+            : `Request failed with status ${response.status}.`;
+
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "Sorry, I encountered an error. Please try again.",
+            content: `${serverMessage}${detailText}`,
             isError: true,
             retryText: text,
           },

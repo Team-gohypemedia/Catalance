@@ -33,11 +33,15 @@ aiRouter.post("/chat", async (req, res) => {
     const statusCode = Number.isInteger(error?.statusCode)
       ? error.statusCode
       : 500;
-    res.status(statusCode).json({
+    const payload = {
       success: false,
       error: "Failed to process AI request",
       message: error.message
-    });
+    };
+    if (error?.details) {
+      payload.details = error.details;
+    }
+    res.status(statusCode).json(payload);
   }
 });
 
@@ -65,11 +69,15 @@ aiRouter.post("/proposal", async (req, res) => {
     const statusCode = Number.isInteger(error?.statusCode)
       ? error.statusCode
       : 500;
-    res.status(statusCode).json({
+    const payload = {
       success: false,
       error: "Failed to generate proposal",
       message: error.message
-    });
+    };
+    if (error?.details) {
+      payload.details = error.details;
+    }
+    res.status(statusCode).json(payload);
   }
 });
 

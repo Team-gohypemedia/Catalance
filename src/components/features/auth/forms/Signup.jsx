@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { signup, login, loginWithGoogle, verifyOtp, resendOtp } from "@/shared/lib/api-client";
+import { signup, loginWithGoogle, verifyOtp, resendOtp } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
@@ -58,24 +58,50 @@ function Signup({ className, ...props }) {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const navigate = useNavigate();
-  const { login: setAuthSession, logout, isAuthenticated } = useAuth();
+  const { login: setAuthSession, isAuthenticated, user } = useAuth();
 
   const isFromProposal = Boolean(location.state?.fromProposal);
-  const initialAuthStateRef = useRef(isAuthenticated);
-
-  // Clear existing session only if user was already authenticated on first render.
   useEffect(() => {
-    if (!initialAuthStateRef.current) return;
-    logout({ redirect: false, showToast: false });
-  }, [logout]);
+    if (!isAuthenticated || !user) return;
+
+    const role = user.role?.toUpperCase();
+
+    if (role === FREELANCER_ROLE && !user.onboardingComplete) {
+      navigate("/freelancer/onboarding", { replace: true });
+      return;
+    }
+
+    if (role === CLIENT_ROLE) {
+      navigate("/client", { replace: true });
+      return;
+    }
+
+    if (role === FREELANCER_ROLE) {
+      navigate("/freelancer", { replace: true });
+      return;
+    }
+
+    if (role === "PROJECT_MANAGER") {
+      navigate("/project-manager", { replace: true });
+      return;
+    }
+
+    if (role === "ADMIN") {
+      navigate("/admin", { replace: true });
+      return;
+    }
+
+    navigate("/client", { replace: true });
+  }, [isAuthenticated, user, navigate]);
 
   // Redirect clients to service selection if not coming from proposal
   useEffect(() => {
+    if (isAuthenticated) return;
     const role = searchParams.get("role")?.toUpperCase();
     if (role === CLIENT_ROLE && !isFromProposal) {
       navigate("/service", { replace: true });
     }
-  }, [searchParams, isFromProposal, navigate]);
+  }, [searchParams, isFromProposal, navigate, isAuthenticated]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;

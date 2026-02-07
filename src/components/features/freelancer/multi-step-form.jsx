@@ -168,7 +168,7 @@ const SERVICE_GROUPS = {
   website_ui_ux: [
     {
       id: "website_specialization",
-      label: "Which types of websites do you build?",
+      label: "Which Types Of Websites Do You Build?",
       options: [
         "Corporate / Business",
         "E-commerce",
@@ -180,7 +180,7 @@ const SERVICE_GROUPS = {
     },
     {
       id: "website_tech_stack",
-      label: "Which technologies do you actively use? (Min 3)",
+      label: "Which Technologies Do You Actively Use? (Min 3)",
       options: [
         "WordPress",
         "Shopify",
@@ -194,7 +194,7 @@ const SERVICE_GROUPS = {
     },
     {
       id: "website_capability",
-      label: "Which development scope can you handle?",
+      label: "Which Development Scope Can You Handle?",
       options: [
         "Template / Builder Based",
         "Custom Frontend",
@@ -204,7 +204,7 @@ const SERVICE_GROUPS = {
     },
     {
       id: "website_performance",
-      label: "Which services do you provide?",
+      label: "Which Services Do You Provide?",
       options: [
         "Speed Optimization",
         "SEO-Friendly Development",
@@ -217,7 +217,7 @@ const SERVICE_GROUPS = {
   software_development: [
     {
       id: "software_specialization",
-      label: "Which software solutions do you build?",
+      label: "Which Software Solutions Do You Build?",
       options: [
         "Business Management Software",
         "SaaS Platforms",
@@ -228,7 +228,7 @@ const SERVICE_GROUPS = {
     },
     {
       id: "software_tech_stack",
-      label: "Which technologies do you actively use? (Min 3)",
+      label: "Which Technologies Do You Actively Use? (Min 3)",
       options: [
         "Java",
         ".NET",
@@ -241,7 +241,7 @@ const SERVICE_GROUPS = {
     },
     {
       id: "software_capability",
-      label: "Which development scope can you handle?",
+      label: "Which Development Scope Can You Handle?",
       options: [
         "Internal Business Tools",
         "Cloud-Based SaaS",
@@ -874,7 +874,7 @@ const CASE_STUDY_FIELDS = [
   },
   {
     key: "results",
-    label: "What measurable results did this project achieve?",
+    label: "What Measurable Results Did This Project Achieve?",
     placeholder: "Share key outcomes or metrics",
     type: "textarea",
   },
@@ -1306,9 +1306,6 @@ const FreelancerMultiStepForm = () => {
       });
 
       setUsernameStatus(isTaken ? "unavailable" : "available");
-      if (!isTaken && currentStep?.type === "username") {
-        queueAdvance(0);
-      }
     } catch (error) {
       if (usernameCheckRef.current !== requestId) return;
       console.error("Failed to check username availability:", error);
@@ -1392,7 +1389,7 @@ const FreelancerMultiStepForm = () => {
 
     switch (step.type) {
       case "professionalTitle":
-        return data.professionalTitle.trim() ? "" : "Please enter your professional title.";
+        return data.professionalTitle.trim() ? "" : "Please enter your profession title.";
       case "username":
         if (!data.username.trim()) return "Please enter a username.";
         if (!isValidUsername(data.username)) {
@@ -1715,22 +1712,22 @@ const FreelancerMultiStepForm = () => {
   const renderProfessionalTitleStep = () => (
     <div className="space-y-6">
       <StepHeader
-        title="What is your professional title?"
-        subtitle="Example: Full-Stack Developer"
+        title="What Is Your Profession Title?"
+        subtitle="Example: Consultant"
       />
       <Input
         value={formData.professionalTitle}
         onChange={(e) => updateFormField("professionalTitle", e.target.value)}
-        onBlur={() => formData.professionalTitle.trim() && queueAdvance(0)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && formData.professionalTitle.trim()) {
             e.preventDefault();
             queueAdvance(0);
           }
         }}
-        placeholder="Your professional title"
+        placeholder="Your profession title"
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
       />
+      {renderContinueButton()}
     </div>
   );
 
@@ -1757,11 +1754,6 @@ const FreelancerMultiStepForm = () => {
             onChange={(e) => {
               updateFormField("username", e.target.value);
               setUsernameStatus("idle");
-            }}
-            onBlur={() => {
-              if (isValidUsername(formData.username)) {
-                checkUsernameAvailability();
-              }
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && isValidUsername(formData.username)) {
@@ -1797,13 +1789,14 @@ const FreelancerMultiStepForm = () => {
         >
           {helperText[usernameStatus] || helperText.idle}
         </p>
+        {renderContinueButton()}
       </div>
     );
   };
 
   const renderCountryStep = () => (
     <div className="space-y-6">
-      <StepHeader title="Which country are you based in?" />
+      <StepHeader title="Which Country Are You Based In?" />
       <Select
         value={formData.country || ""}
         onValueChange={(value) => updateFormField("country", value, 0)}
@@ -1824,11 +1817,10 @@ const FreelancerMultiStepForm = () => {
 
   const renderCityStep = () => (
     <div className="space-y-6">
-      <StepHeader title="Which city are you based in?" />
+      <StepHeader title="Which City Are You Based In?" />
       <Input
         value={formData.city}
         onChange={(e) => updateFormField("city", e.target.value)}
-        onBlur={() => formData.city.trim() && queueAdvance(0)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && formData.city.trim()) {
             e.preventDefault();
@@ -1838,6 +1830,7 @@ const FreelancerMultiStepForm = () => {
         placeholder="City"
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
       />
+      {renderContinueButton()}
     </div>
   );
 
@@ -1913,7 +1906,7 @@ const FreelancerMultiStepForm = () => {
 
     return (
       <div className="space-y-6">
-        <StepHeader title="Languages you can work professionally in" />
+        <StepHeader title="Languages You Can Work Professionally In" />
         <div className="grid grid-cols-2 gap-3">
           {LANGUAGE_OPTIONS.map((option) => (
             <OptionCard
@@ -1946,12 +1939,11 @@ const FreelancerMultiStepForm = () => {
 
   const renderLinkedinStep = () => (
     <div className="space-y-6">
-      <StepHeader title="LinkedIn profile URL" />
+      <StepHeader title="LinkedIn Profile URL" />
       <Input
         type="url"
         value={formData.linkedinUrl}
         onChange={(e) => updateFormField("linkedinUrl", e.target.value)}
-        onBlur={() => formData.linkedinUrl.trim() && queueAdvance(0)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && formData.linkedinUrl.trim()) {
             e.preventDefault();
@@ -1961,17 +1953,17 @@ const FreelancerMultiStepForm = () => {
         placeholder="https://www.linkedin.com/in/your-profile"
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
       />
+      {renderContinueButton()}
     </div>
   );
 
   const renderPortfolioStep = () => (
     <div className="space-y-6">
-      <StepHeader title="Portfolio or website link" />
+      <StepHeader title="Portfolio Or Website Link" />
       <Input
         type="url"
         value={formData.portfolioUrl}
         onChange={(e) => updateFormField("portfolioUrl", e.target.value)}
-        onBlur={() => formData.portfolioUrl.trim() && queueAdvance(0)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && formData.portfolioUrl.trim()) {
             e.preventDefault();
@@ -1981,12 +1973,13 @@ const FreelancerMultiStepForm = () => {
         placeholder="https://your-portfolio.com"
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
       />
+      {renderContinueButton()}
     </div>
   );
 
   const renderRoleStep = () => (
     <div className="space-y-4">
-      <StepHeader title="How do you want to work on Catalance?" />
+      <StepHeader title="How Do You Want To Work On Catalance?" />
       <div className="space-y-3">
         {ROLE_OPTIONS.map((option) => (
           <OptionCard
@@ -2007,7 +2000,7 @@ const FreelancerMultiStepForm = () => {
     return (
       <div className="space-y-6">
         <StepHeader
-          title="Which services do you want to offer?"
+          title="Which Services Do You Want To Offer?"
           subtitle={`Select up to ${limit} services`}
         />
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -2060,7 +2053,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceExperience = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title={`Years of experience in ${getServiceLabel(serviceKey)}?`}
+        title={`Years Of Experience In ${getServiceLabel(serviceKey)}?`}
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2079,7 +2072,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceLevel = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title={`Working level for ${getServiceLabel(serviceKey)}?`}
+        title={`Working Level For ${getServiceLabel(serviceKey)}?`}
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2098,7 +2091,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceProjects = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title={`Do you have previous projects in ${getServiceLabel(serviceKey)}?`}
+        title={`Do You Have Previous Projects In ${getServiceLabel(serviceKey)}?`}
         subtitle="Case study is mandatory if yes"
       />
       <div className="space-y-3">
@@ -2154,7 +2147,6 @@ const FreelancerMultiStepForm = () => {
               <Input
                 value={caseStudy.industryOther || ""}
                 onChange={(e) => updateServiceCaseField(serviceKey, "industryOther", e.target.value)}
-                onBlur={() => caseStudy.industryOther?.trim() && queueAdvance(0)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && caseStudy.industryOther?.trim()) {
                     e.preventDefault();
@@ -2166,6 +2158,7 @@ const FreelancerMultiStepForm = () => {
               />
             </div>
           )}
+          {renderContinueButton()}
         </div>
       );
     }
@@ -2234,7 +2227,6 @@ const FreelancerMultiStepForm = () => {
           <Textarea
             value={value}
             onChange={(e) => updateServiceCaseField(serviceKey, field.key, e.target.value)}
-            onBlur={() => value.trim() && queueAdvance(0)}
             placeholder={field.placeholder}
             className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[140px] rounded-xl p-4"
           />
@@ -2248,11 +2240,11 @@ const FreelancerMultiStepForm = () => {
                 queueAdvance(0);
               }
             }}
-            onBlur={() => value.trim() && queueAdvance(0)}
             placeholder={field.placeholder}
             className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
           />
         )}
+        {renderContinueButton()}
       </div>
     );
   };
@@ -2260,7 +2252,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceSampleWork = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title="Do you have sample or practice work to showcase?"
+        title="Do You Have Sample Or Practice Work To Showcase?"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2287,7 +2279,7 @@ const FreelancerMultiStepForm = () => {
     const sample = formData.serviceDetails?.[serviceKey]?.sampleWork;
     return (
       <div className="space-y-6">
-        <StepHeader title="Upload your sample or practice work" subtitle={renderServiceMeta(serviceKey)} />
+        <StepHeader title="Upload Your Sample Or Practice Work" subtitle={renderServiceMeta(serviceKey)} />
         <div className="space-y-3">
           <input
             type="file"
@@ -2345,10 +2337,10 @@ const FreelancerMultiStepForm = () => {
             queueAdvance(0);
           }
         }}
-        onBlur={(e) => e.target.value.trim() && queueAdvance(0)}
         placeholder="e.g. $2,000"
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
       />
+      {renderContinueButton()}
     </div>
   );
 
@@ -2367,10 +2359,10 @@ const FreelancerMultiStepForm = () => {
             queueAdvance(0);
           }
         }}
-        onBlur={(e) => e.target.value.trim() && queueAdvance(0)}
         placeholder="e.g. $500"
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
       />
+      {renderContinueButton()}
     </div>
   );
 
@@ -2401,7 +2393,7 @@ const FreelancerMultiStepForm = () => {
   const renderServicePricingFlex = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title="How flexible are you with pricing?"
+        title="How Flexible Are You With Pricing?"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2465,7 +2457,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceIndustryFocus = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title={`Do you specialize in specific industries for ${getServiceLabel(serviceKey)}?`}
+        title={`Do You Specialize In Specific Industries For ${getServiceLabel(serviceKey)}?`}
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2498,7 +2490,7 @@ const FreelancerMultiStepForm = () => {
     return (
       <div className="space-y-6">
         <StepHeader
-          title="Which niches do you specialize in?"
+          title="Which Niches Do You Specialize In?"
           subtitle={renderServiceMeta(serviceKey)}
         />
         <div className="grid grid-cols-2 gap-3">
@@ -2534,7 +2526,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceIndustryExperience = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title="How experienced are you in your selected industries?"
+        title="How Experienced Are You In Your Selected Industries?"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2557,7 +2549,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceIndustryOnly = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title="Do you prefer working ONLY in these industries?"
+        title="Do You Prefer Working ONLY In These Industries?"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2576,7 +2568,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceComplexity = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title="What level of project complexity are you comfortable handling?"
+        title="What Level Of Project Complexity Are You Comfortable Handling?"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2595,7 +2587,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceExecution = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title="How do you typically execute projects for this service?"
+        title="How Do You Typically Execute Projects For This Service?"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2680,7 +2672,6 @@ const FreelancerMultiStepForm = () => {
       <Textarea
         value={formData.professionalBio}
         onChange={(e) => updateFormField("professionalBio", e.target.value)}
-        onBlur={() => formData.professionalBio.trim() && queueAdvance(0)}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && formData.professionalBio.trim()) {
             e.preventDefault();
@@ -2690,13 +2681,14 @@ const FreelancerMultiStepForm = () => {
         placeholder="Write 2-4 sentences about your experience, specialties, and the value you bring."
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[160px] rounded-xl p-4"
       />
-      <p className="text-xs text-white/50 text-center">Tip: Press Ctrl+Enter or click outside to continue.</p>
+      <p className="text-xs text-white/50 text-center">Tip: Press Ctrl+Enter or use Continue.</p>
+      {renderContinueButton()}
     </div>
   );
 
   const renderOtpVerification = () => (
     <div className="space-y-6">
-      <StepHeader title="Verify your email" subtitle={`We sent a code to ${formData.email}`} />
+      <StepHeader title="Verify Your Email" subtitle={`We sent a code to ${formData.email}`} />
       <div>
         <Label className="text-white/70 text-sm">Verification Code</Label>
         <Input
@@ -2779,49 +2771,49 @@ const FreelancerMultiStepForm = () => {
         return renderDeliveryPolicy();
       case "hours":
         return renderSingleSelectStep({
-          title: "How many hours can you dedicate per week?",
+          title: "How Many Hours Can You Dedicate Per Week?",
           options: HOURS_PER_WEEK_OPTIONS,
           value: formData.hoursPerWeek,
           onSelect: (value) => updateFormField("hoursPerWeek", value, 0),
         });
       case "workingSchedule":
         return renderSingleSelectStep({
-          title: "What is your preferred working schedule?",
+          title: "What Is Your Preferred Working Schedule?",
           options: WORKING_SCHEDULE_OPTIONS,
           value: formData.workingSchedule,
           onSelect: (value) => updateFormField("workingSchedule", value, 0),
         });
       case "startTimeline":
         return renderSingleSelectStep({
-          title: "When can you usually start a new project?",
+          title: "When Can You Usually Start A New Project?",
           options: START_TIMELINE_OPTIONS,
           value: formData.startTimeline,
           onSelect: (value) => updateFormField("startTimeline", value, 0),
         });
       case "projectType":
         return renderSingleSelectStep({
-          title: "What type of projects do you prefer?",
+          title: "What Type Of Projects Do You Prefer?",
           options: PROJECT_TYPE_OPTIONS,
           value: formData.projectTypePreference,
           onSelect: (value) => updateFormField("projectTypePreference", value, 0),
         });
       case "missedDeadlines":
         return renderSingleSelectStep({
-          title: "Have you ever missed a project deadline?",
+          title: "Have You Ever Missed A Project Deadline?",
           options: DEADLINE_HISTORY_OPTIONS,
           value: formData.missedDeadlines,
           onSelect: (value) => updateFormField("missedDeadlines", value, 0),
         });
       case "delayHandling":
         return renderSingleSelectStep({
-          title: "How do you handle project delays or blockers?",
+          title: "How Do You Handle Project Delays Or Blockers?",
           options: DELAY_HANDLING_OPTIONS,
           value: formData.delayHandling,
           onSelect: (value) => updateFormField("delayHandling", value, 0),
         });
       case "currentAvailability":
         return renderSingleSelectStep({
-          title: "Current availability status",
+          title: "Current Availability Status",
           options: CURRENT_AVAILABILITY_OPTIONS,
           value: formData.currentAvailability,
           onSelect: (value) => updateFormField("currentAvailability", value, 0),
@@ -2830,7 +2822,7 @@ const FreelancerMultiStepForm = () => {
         return renderCommunicationPolicy();
       case "openLongTerm":
         return renderSingleSelectStep({
-          title: "Are you open to long-term or retainer-based work?",
+          title: "Are You Open To Long-Term Or Retainer-Based Work?",
           options: LONG_TERM_OPTIONS,
           value: formData.openToLongTerm,
           onSelect: (value) => updateFormField("openToLongTerm", value, 0),
