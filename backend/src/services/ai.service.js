@@ -813,16 +813,34 @@ const applyDynamicEmphasis = (text = "") => {
 };
 
 const formatBudgetUnit = (unit = "") =>
-  unit ? unit.replace(/_/g, " ") : "";
+  unit ? unit.replace(/_/g, " ").trim() : "";
 
-const formatBudgetUnitLabel = (unit = "") => {
-  const cleaned = formatBudgetUnit(unit);
+const formatBudgetUnitLabel = (service = null) => {
+  const budget = service?.budget || {};
+  const cleaned = formatBudgetUnit(budget.unit || "");
   if (!cleaned) return "";
+
+  // Project-scoped services should use plain "project budget" wording.
+  if (/^project$/i.test(cleaned) || /^per\s+project$/i.test(cleaned)) {
+    return "";
+  }
+
   if (/month/i.test(cleaned)) return "per month";
   if (/week/i.test(cleaned)) return "per week";
   if (/year/i.test(cleaned)) return "per year";
-  if (/project/i.test(cleaned)) return "per project";
-  return `per ${cleaned}`;
+
+  if (budget.pricing_model === "per_deliverable") {
+    const quantityLabel = formatBudgetUnit(budget.quantity_unit_label || "");
+    if (quantityLabel) {
+      return `per ${quantityLabel.toLowerCase()}`;
+    }
+  }
+
+  if (/^per\s+/i.test(cleaned)) {
+    return cleaned.toLowerCase();
+  }
+
+  return `per ${cleaned.toLowerCase()}`;
 };
 
 const getServiceLabel = (service) => {
@@ -879,9 +897,9 @@ const buildBudgetAcceptedMessage = (service, budgetFormatted, unitLabel) => {
   const serviceLabel = getServiceLabel(service);
   const unitSuffix = unitLabel ? ` ${unitLabel}` : "";
   const templates = [
-    `Lovely — I’ve noted **${budgetFormatted}${unitSuffix}** for **${serviceLabel}**.`,
+    `Lovely - I've noted **${budgetFormatted}${unitSuffix}** for **${serviceLabel}**.`,
     `Great, budget locked at **${budgetFormatted}${unitSuffix}** for **${serviceLabel}**.`,
-    `All set — **${budgetFormatted}${unitSuffix}** for **${serviceLabel}** is noted.`
+    `All set - **${budgetFormatted}${unitSuffix}** for **${serviceLabel}** is noted.`
   ];
   const index = hashStringToIndex(`${service?.id || serviceLabel}-${budgetFormatted}`, templates.length);
   return templates[index];
@@ -1024,7 +1042,7 @@ const buildBudgetOverrideMessage = ({
 
   const latestUser = [...history].reverse().find((msg) => msg?.role !== "assistant");
   const lastAssistant = getLastAssistantMessage(history);
-  const unitLabel = formatBudgetUnitLabel(service?.budget?.unit || "");
+  const unitLabel = formatBudgetUnitLabel(service);
 
   if (
     lastAssistant &&
@@ -1073,7 +1091,7 @@ const sanitizeBudgetHallucination = ({
     );
   if (!hasWarning) return assistantText;
 
-  const unitLabel = formatBudgetUnitLabel(service?.budget?.unit || "");
+  const unitLabel = formatBudgetUnitLabel(service);
   const formatted = formatInr(latestBudget.amount);
   return buildBudgetAcceptedMessage(service, formatted, unitLabel);
 };
@@ -2111,9 +2129,4 @@ export const getServiceInfo = (serviceId) =>
   servicesData.services.find((service) => service.id === serviceId);
 
 export const getAllServices = () => servicesData.services;
-
-
-
-
-
 
