@@ -60,9 +60,43 @@ function Signup({ className, ...props }) {
   const navigate = useNavigate();
   const { login: setAuthSession, isAuthenticated, user } = useAuth();
 
+  const roleFromQuery = searchParams.get("role")?.toUpperCase();
+  const roleFromState =
+    typeof location.state?.role === "string"
+      ? location.state.role.toUpperCase()
+      : null;
+  const requestedRole =
+    roleFromQuery === CLIENT_ROLE || roleFromQuery === FREELANCER_ROLE
+      ? roleFromQuery
+      : roleFromState === CLIENT_ROLE || roleFromState === FREELANCER_ROLE
+        ? roleFromState
+        : null;
+  const requestedRedirectTo =
+    typeof location.state?.redirectTo === "string"
+      ? location.state.redirectTo
+      : null;
   const isFromProposal = Boolean(location.state?.fromProposal);
+
   useEffect(() => {
     if (!isAuthenticated || !user) return;
+
+    if (requestedRedirectTo) {
+      navigate(requestedRedirectTo, { replace: true });
+      return;
+    }
+
+    if (requestedRole === CLIENT_ROLE) {
+      navigate("/client", { replace: true });
+      return;
+    }
+
+    if (requestedRole === FREELANCER_ROLE) {
+      navigate(
+        user.onboardingComplete ? "/freelancer" : "/freelancer/onboarding",
+        { replace: true },
+      );
+      return;
+    }
 
     const role = user.role?.toUpperCase();
 
@@ -92,7 +126,7 @@ function Signup({ className, ...props }) {
     }
 
     navigate("/client", { replace: true });
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, navigate, requestedRedirectTo, requestedRole, user]);
 
   // Redirect clients to service selection if not coming from proposal
   useEffect(() => {
@@ -140,8 +174,24 @@ function Signup({ className, ...props }) {
         toast.info("Account already exists. Redirecting to login...");
         const roleParam = searchParams.get("role");
         const loginPath = roleParam ? `/login?role=${roleParam}` : "/login";
+        const normalizedRoleParam =
+          typeof roleParam === "string" ? roleParam.toUpperCase() : null;
+        const redirectTo =
+          normalizedRoleParam === CLIENT_ROLE
+            ? "/client"
+            : normalizedRoleParam === FREELANCER_ROLE
+              ? "/freelancer"
+              : null;
         setTimeout(
-          () => navigate(loginPath, { state: { email: formData.email, role: roleParam } }),
+          () =>
+            navigate(loginPath, {
+              state: {
+                email: formData.email,
+                role: roleParam,
+                fromProposal: isFromProposal,
+                ...(redirectTo ? { redirectTo } : {}),
+              },
+            }),
           1000
         );
         return;

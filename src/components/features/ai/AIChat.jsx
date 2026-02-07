@@ -621,6 +621,208 @@ const extractPlanPayload = (content = "") => {
   };
 };
 
+const CHAT_MESSAGE_TYPES = {
+  ASSISTANT: "assistant_message",
+  QUESTION: "question",
+  USER: "user_message",
+};
+
+const removeMarkdownDecorators = (value = "") =>
+  value
+    .replace(/^\s*#{1,6}\s*/, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
+
+const parseQuestionCardContent = (content = "") => {
+  if (typeof content !== "string") {
+    return { questionTitle: "", helperLines: [], options: [] };
+  }
+
+  const options = [];
+  const bodyLines = [];
+
+  content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      if (/^if you don't see what you need/i.test(line)) return;
+      const optionMatch = line.match(/^\d+\s*[.)]\s*(.+)$/);
+      if (optionMatch) {
+        const optionLabel = removeMarkdownDecorators(optionMatch[1]);
+        if (optionLabel) options.push(optionLabel);
+        return;
+      }
+      const normalizedLine = removeMarkdownDecorators(line);
+      if (normalizedLine) bodyLines.push(normalizedLine);
+    });
+
+  const filteredBodyLines = bodyLines.filter(
+    (line) =>
+      !/^(quick check - i want to make sure i get this right\.?|pick any that fit|a few words is perfect\.)$/i.test(
+        line,
+      ),
+  );
+  const questionTitle =
+    filteredBodyLines.find((line) => line.endsWith("?")) ||
+    filteredBodyLines[0] ||
+    "";
+  const helperLines = filteredBodyLines.filter((line) => line !== questionTitle);
+
+  return {
+    questionTitle,
+    helperLines,
+    options,
+  };
+};
+
+const isQuestionCardMessage = (content = "") => {
+  const payload = parseQuestionCardContent(content);
+  return Boolean(payload.questionTitle) && payload.options.length > 0;
+};
+
+const resolveMessageType = (message = {}) => {
+  if (message?.type) return message.type;
+  if (message?.role === "user") return CHAT_MESSAGE_TYPES.USER;
+  if (message?.role !== "assistant") return CHAT_MESSAGE_TYPES.ASSISTANT;
+  if (extractPlanPayload(message?.content || "")) {
+    return CHAT_MESSAGE_TYPES.ASSISTANT;
+  }
+  return isQuestionCardMessage(message?.content || "")
+    ? CHAT_MESSAGE_TYPES.QUESTION
+    : CHAT_MESSAGE_TYPES.ASSISTANT;
+};
+
+const normalizeAssistantBubbleContent = (content = "") => {
+  if (typeof content !== "string") return "";
+  return content
+    .split("\n")
+    .map((line) => line.replace(/^\s*#{1,6}\s*/, "").trimEnd())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
+const UserMessageBubble = ({ messageText = "" }) => {
+  const userLines = messageText.split("\n");
+  return (
+    <Message from="user" className="animate-fade-in chat-message-row chat-message-row--user">
+      <MessageContent className="chat-bubble chat-bubble--user max-w-[85%] rounded-2xl rounded-tr-none bg-gradient-to-br from-primary to-primary/80 px-3 py-2 text-[15px] leading-relaxed text-primary-foreground shadow-lg shadow-primary/20">
+        {userLines.map((line, lineIndex) => (
+          <p key={lineIndex} className={`${line ? "mb-2 last:mb-0" : "h-2"}`}>
+            {line}
+          </p>
+        ))}
+      </MessageContent>
+    </Message>
+  );
+};
+
+const AssistantMessageBubble = ({
+  messageText = "",
+  shouldAnimate = false,
+  onTypingComplete,
+  isError = false,
+  retryText = "",
+  onRetry,
+  retryDisabled = false,
+}) => (
+  <Message
+    from="assistant"
+    className="animate-fade-in chat-message-row chat-message-row--assistant"
+  >
+    <span className="text-xs font-medium px-1 text-muted-foreground">CATA</span>
+    <MessageContent className="chat-bubble chat-bubble--assistant max-w-[85%] rounded-2xl border border-border/60 bg-card/90 p-4 text-[15px] leading-relaxed shadow-sm backdrop-blur">
+      <MessageResponseTyping
+        className="chat-bubble--assistant-content text-foreground"
+        isEnabled={shouldAnimate}
+        onComplete={onTypingComplete}
+      >
+        {normalizeAssistantBubbleContent(messageText)}
+      </MessageResponseTyping>
+      {isError && retryText ? (
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => onRetry?.(retryText)}
+            disabled={retryDisabled}
+            className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+    </MessageContent>
+  </Message>
+);
+
+const QuestionCard = ({
+  messageText = "",
+  shouldAnimate = false,
+  onTypingComplete,
+  isError = false,
+  retryText = "",
+  onRetry,
+  retryDisabled = false,
+}) => {
+  const payload = parseQuestionCardContent(messageText);
+  const questionTitle = payload.questionTitle || "Please choose an option:";
+
+  useEffect(() => {
+    if (shouldAnimate && onTypingComplete) {
+      onTypingComplete();
+    }
+  }, [onTypingComplete, shouldAnimate]);
+
+  return (
+    <Message
+      from="assistant"
+      className="animate-fade-in chat-message-row chat-message-row--assistant"
+    >
+      <span className="text-xs font-medium px-1 text-muted-foreground">CATA</span>
+      <div className="chat-question-card max-w-[85%] rounded-2xl border border-primary/30 bg-primary/5 p-4">
+        <p className="chat-question-card__title question-title text-[15px] font-semibold leading-relaxed text-foreground">
+          {questionTitle}
+        </p>
+        {payload.helperLines.map((line, index) => (
+          <p
+            key={`${line}-${index}`}
+            className="chat-question-card__helper mt-2 text-sm text-primary/80 italic"
+          >
+            {line}
+          </p>
+        ))}
+        {payload.options.length > 0 ? (
+          <ol className="chat-question-card__options mt-3 space-y-2">
+            {payload.options.map((option, optionIndex) => (
+              <li
+                key={`${option}-${optionIndex}`}
+                className="rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-foreground"
+              >
+                <span className="font-medium text-primary">{optionIndex + 1}.</span>{" "}
+                {option}
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {isError && retryText ? (
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => onRetry?.(retryText)}
+              disabled={retryDisabled}
+              className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </Message>
+  );
+};
+
 const extractTimeline = (text) => {
   const match = text.match(
     /\b\d+\s*(?:-\s*\d+\s*)?(?:day|week|month|hour|year)s?\b/i,
@@ -855,12 +1057,8 @@ const validateMissingFieldAnswer = (field, text) => {
   }
 
   if (field.id === "budget") {
-    if (!parseBudgetValue(trimmed)) {
-      return {
-        valid: false,
-        message: buildClarificationMessage(field, { isBudget: true }),
-      };
-    }
+    // Keep budget handling flexible: accept any non-empty reply and let
+    // backend budget logic validate/clarify the amount.
     return { valid: true };
   }
 
@@ -1296,6 +1494,14 @@ const isBudgetGateMessage = (text = "") => {
 const isBudgetQuestionPrompt = (text = "") => {
   if (typeof text !== "string") return false;
   return /what is your budget|budget for this project|monthly budget|budget do you have in mind/i.test(
+    text,
+  );
+};
+
+const isBudgetAcknowledgedMessage = (text = "") => {
+  if (typeof text !== "string") return false;
+  if (isBudgetGateMessage(text)) return false;
+  return /all set|is noted|budget.*noted|budget.*recorded|budget.*captured|budget.*confirmed|thanks.*budget|great.*budget|noted\./i.test(
     text,
   );
 };
@@ -2172,6 +2378,7 @@ function AIChat({
     setProposalApproval(null);
     setProposalApprovalState("input-available");
     setProposalApprovalAnchor(null);
+    setHasRequestedProposal(false);
   };
 
   const requestProposalApproval = (context, history, anchorIndex = null) => {
@@ -2397,6 +2604,7 @@ function AIChat({
       serviceName,
       serviceId,
     );
+    const hasMissingFieldsNow = missingFieldsNow.length > 0;
     const nextLocalMissingField = getNextLocalMissingField(missingFieldsNow);
 
     if (wasMissingPrompt) {
@@ -2422,7 +2630,7 @@ function AIChat({
     if (
       !skipUserAppend &&
       !budgetGateActive &&
-      missingFieldsNow.length === 0 &&
+      !hasMissingFieldsNow &&
       isSimpleYes(text) &&
       /(proposal|summary|finalize|generate|prepare)/i.test(
         lastAssistantMessage || "",
@@ -2445,9 +2653,9 @@ function AIChat({
         serviceName,
         serviceId,
       );
-
+      const hasMissingFields = missingFields.length > 0;
       const nextLocalMissing = getNextLocalMissingField(missingFields);
-      if (nextLocalMissing || storedHistory.length === 0) {
+      if (hasMissingFields || storedHistory.length === 0) {
         if (nextLocalMissing) {
           setPendingMissingField(nextLocalMissing);
           setMessages((prev) => [
@@ -2520,8 +2728,9 @@ function AIChat({
             serviceName,
             serviceId,
           );
-          const canApprove =
-            missingFields.length === 0 && storedHistory.length > 0;
+          const hasMissingFields = missingFields.length > 0;
+          const nextLocalMissing = getNextLocalMissingField(missingFields);
+          const canApprove = !hasMissingFields && storedHistory.length > 0;
           if (canApprove) {
             setPendingMissingField(null);
             requestProposalApproval(
@@ -2530,18 +2739,15 @@ function AIChat({
               baseAnchorIndex,
             );
             // Don't add any message - the Confirmation component handles the UI
-          } else if (missingFields.length > 0) {
-            const nextLocalMissing = getNextLocalMissingField(missingFields);
-            if (nextLocalMissing) {
-              setPendingMissingField(nextLocalMissing);
-              setMessages((prev) => [
-                ...prev,
-                {
-                  role: "assistant",
-                  content: getProposalPromptMessage([nextLocalMissing]),
-                },
-              ]);
-            }
+          } else if (nextLocalMissing) {
+            setPendingMissingField(nextLocalMissing);
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: getProposalPromptMessage([nextLocalMissing]),
+              },
+            ]);
           }
         } else {
           setMessages((prev) => [
@@ -2549,14 +2755,16 @@ function AIChat({
             { role: "assistant", content: assistantText },
           ]);
 
+          const budgetAcknowledgedByAssistant =
+            budgetGateActive && isBudgetAcknowledgedMessage(assistantText);
           const budgetJustResolved =
             budgetGateActive &&
             hasBudgetSignal &&
             parsedBudgetAmount !== null;
 
           if (
-            (askedBudget || budgetJustResolved) &&
-            missingFieldsNow.length === 0 &&
+            (askedBudget || budgetJustResolved || budgetAcknowledgedByAssistant) &&
+            !hasMissingFieldsNow &&
             !hasRequestedProposal &&
             !proposalApproval
           ) {

@@ -262,7 +262,7 @@
         {
             "number": 2,
             "id": "website_uiux",
-            "name": "Website / UI–UX Design (2D / 3D)",
+            "name": "Web Development",
             "budget": {
                 "min_required_amount": 10000,
                 "unit": "project"
@@ -539,7 +539,7 @@
             "questions": [
                 {
                     "id": "project_requirements_detail",
-                    "question": "What are your requirements for this Website / UI–UX Design (2D / 3D) project in detail?"
+                    "question": "What are your requirements for this Web Development project in detail?"
                 },
                 {
                     "id": "requirement",
@@ -2975,6 +2975,3 @@
         }
     ]
 }
-
-
-

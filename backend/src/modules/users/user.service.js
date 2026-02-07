@@ -357,9 +357,10 @@ export const authenticateUser = async ({ email, password, role }) => {
   const activeRole = requestedRole && roles.includes(requestedRole)
     ? requestedRole
     : normalizeRoleValue(updatedUser?.role) || "FREELANCER";
+  const sessionUser = sanitizeUser({ ...updatedUser, role: activeRole });
 
   return {
-    user: sanitizeUser(updatedUser),
+    user: sessionUser,
     accessToken: issueAccessToken(updatedUser, activeRole)
   };
 };
@@ -428,9 +429,10 @@ export const authenticateWithGoogle = async ({ token, role }) => {
   const activeRole = requestedRole && roles.includes(requestedRole)
     ? requestedRole
     : normalizeRoleValue(user?.role) || "FREELANCER";
+  const sessionUser = sanitizeUser({ ...user, role: activeRole });
 
   return {
-    user: sanitizeUser(user),
+    user: sessionUser,
     accessToken: issueAccessToken(user, activeRole)
   };
 };

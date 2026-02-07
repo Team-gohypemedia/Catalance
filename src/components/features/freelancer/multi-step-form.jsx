@@ -138,28 +138,16 @@ const PROJECT_TIMELINE_OPTIONS = [
   { value: "3_plus_months", label: "3+ months" },
 ];
 
-const PREFERRED_PROJECT_BUDGET_OPTIONS = [
-  { value: "entry", label: "Entry level" },
-  { value: "mid", label: "Mid-range" },
-  { value: "premium", label: "Premium" },
-];
-
-const PRICING_FLEXIBILITY_OPTIONS = [
-  { value: "fixed", label: "Fixed pricing only" },
-  { value: "slightly", label: "Slightly negotiable" },
-  { value: "depends", label: "Depends on scope" },
-];
-
 const PROJECT_COMPLEXITY_OPTIONS = [
   { value: "small", label: "Small tasks / Quick projects" },
   { value: "medium", label: "Medium complexity projects" },
   { value: "large", label: "Large / Enterprise level systems" },
+  { value: "all_types", label: "All Types Of Projects" },
 ];
 
-const SERVICE_EXECUTION_OPTIONS = [
-  { value: "standard", label: "Standard checklist workflow" },
-  { value: "custom", label: "Custom strategy per client" },
-  { value: "client_provided", label: "Client-provided workflow" },
+const IN_PROGRESS_PROJECT_OPTIONS = [
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
 ];
 
 
@@ -799,13 +787,6 @@ const START_TIMELINE_OPTIONS = [
   { value: "within_1_week", label: "Within 1 week" },
 ];
 
-const PROJECT_TYPE_OPTIONS = [
-  { value: "short_term", label: "Short-term" },
-  { value: "long_term", label: "Long-term" },
-  { value: "one_time", label: "One-time" },
-];
-
-
 const DEADLINE_HISTORY_OPTIONS = [
   { value: "never", label: "Never" },
   { value: "rarely", label: "Rarely" },
@@ -816,17 +797,6 @@ const DELAY_HANDLING_OPTIONS = [
   { value: "inform_client", label: "Inform client early and adjust timeline" },
   { value: "increase_effort", label: "Increase effort/resources" },
   { value: "renegotiate_scope", label: "Renegotiate scope" },
-];
-
-const CURRENT_AVAILABILITY_OPTIONS = [
-  { value: "full_time", label: "Full-time" },
-  { value: "part_time", label: "Part-time" },
-  { value: "project_based", label: "Project-based" },
-];
-
-const LONG_TERM_OPTIONS = [
-  { value: "yes", label: "Yes" },
-  { value: "no", label: "No" },
 ];
 
 const CASE_STUDY_FIELDS = [
@@ -899,17 +869,12 @@ const createServiceDetail = () => ({
   hasSampleWork: "",
   sampleWork: null,
   averagePrice: "",
-  minimumProjectValue: "",
-  preferredBudget: "",
-  pricingFlexibility: "",
   groups: {},
   industryFocus: "",
   niches: [],
   otherNiche: "",
-  industryExperience: "",
   preferOnlyIndustries: "",
   projectComplexity: "",
-  executionStyle: "",
 });
 
 const getServiceLabel = (serviceKey) => {
@@ -944,6 +909,17 @@ const isValidUrl = (value = "") => {
 const isValidUsername = (value = "") =>
   /^[a-zA-Z0-9_]{3,20}$/.test(value.trim());
 
+const toQuestionTitle = (value = "") =>
+  value
+    .split(" ")
+    .map((word) => {
+      if (!word) return word;
+      const letters = word.replace(/[^A-Za-z]/g, "");
+      if (letters.length > 1 && letters.toUpperCase() === letters) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+
 // ============================================================================
 // SUB-COMPONENTS
 // ============================================================================
@@ -951,7 +927,7 @@ const isValidUsername = (value = "") =>
 const StepHeader = ({ title, subtitle }) => (
   <div className="mb-8 text-center px-4">
     <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">
-      {title}
+      {toQuestionTitle(title)}
     </h1>
     {subtitle && <p className="text-white/60 text-sm">{subtitle}</p>}
   </div>
@@ -1068,12 +1044,11 @@ const FreelancerMultiStepForm = () => {
     hoursPerWeek: "",
     workingSchedule: "",
     startTimeline: "",
-    projectTypePreference: "",
     missedDeadlines: "",
     delayHandling: "",
-    currentAvailability: "",
     communicationPolicyAccepted: false,
-    openToLongTerm: "",
+    acceptInProgressProjects: "",
+    termsAccepted: false,
     professionalBio: "",
     fullName: "",
     email: "",
@@ -1081,6 +1056,7 @@ const FreelancerMultiStepForm = () => {
   });
 
   const advanceTimerRef = useRef(null);
+  const queuedStepKeyRef = useRef("");
   const [pendingAdvance, setPendingAdvance] = useState(false);
 
   const steps = useMemo(() => {
@@ -1132,35 +1108,24 @@ const FreelancerMultiStepForm = () => {
       });
 
       sequence.push({ key: `svc-${serviceKey}-avg-price`, type: "serviceAveragePrice", serviceKey });
-      sequence.push({ key: `svc-${serviceKey}-min-value`, type: "serviceMinimumValue", serviceKey });
-      sequence.push({ key: `svc-${serviceKey}-preferred-budget`, type: "servicePreferredBudget", serviceKey });
-      sequence.push({ key: `svc-${serviceKey}-pricing-flex`, type: "servicePricingFlex", serviceKey });
-
       sequence.push({ key: `svc-${serviceKey}-industry-focus`, type: "serviceIndustryFocus", serviceKey });
 
       if (detail?.industryFocus === "yes") {
         sequence.push({ key: `svc-${serviceKey}-niches`, type: "serviceNiches", serviceKey });
-        sequence.push({ key: `svc-${serviceKey}-industry-exp`, type: "serviceIndustryExperience", serviceKey });
         sequence.push({ key: `svc-${serviceKey}-industry-only`, type: "serviceIndustryOnly", serviceKey });
       }
 
       sequence.push({ key: `svc-${serviceKey}-complexity`, type: "serviceComplexity", serviceKey });
-      sequence.push({ key: `svc-${serviceKey}-execution`, type: "serviceExecution", serviceKey });
     });
-
-    sequence.push({ key: "delivery-policy", type: "deliveryPolicy" });
 
     sequence.push({ key: "hours", type: "hours" });
     sequence.push({ key: "working-schedule", type: "workingSchedule" });
     sequence.push({ key: "start-timeline", type: "startTimeline" });
-    sequence.push({ key: "project-type", type: "projectType" });
     sequence.push({ key: "missed-deadlines", type: "missedDeadlines" });
     sequence.push({ key: "delay-handling", type: "delayHandling" });
-    sequence.push({ key: "current-availability", type: "currentAvailability" });
-
+    sequence.push({ key: "delivery-policy", type: "deliveryPolicy" });
     sequence.push({ key: "communication-policy", type: "communicationPolicy" });
-
-    sequence.push({ key: "open-long-term", type: "openLongTerm" });
+    sequence.push({ key: "accept-in-progress", type: "acceptInProgressProjects" });
     sequence.push({ key: "bio", type: "bio" });
 
     return sequence;
@@ -1196,6 +1161,38 @@ const FreelancerMultiStepForm = () => {
       setCurrentStepIndex(steps.length - 1);
     }
   }, [steps.length, currentStepIndex]);
+
+  // Handle browser back button - intercept and navigate to previous step instead
+  useEffect(() => {
+    // Push initial state when component mounts
+    if (currentStepIndex === 0) {
+      window.history.replaceState({ step: 0 }, "");
+    }
+
+    const handlePopState = (event) => {
+      // If we have step state and we're not at step 0, go back a step
+      if (currentStepIndex > 0) {
+        event.preventDefault();
+        // Push state again to prevent actually going back in browser history
+        window.history.pushState({ step: currentStepIndex - 1 }, "");
+        setCurrentStepIndex((prev) => Math.max(0, prev - 1));
+        setStepError("");
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [currentStepIndex]);
+
+  // Push history state when step changes (so back button works)
+  useEffect(() => {
+    if (currentStepIndex > 0) {
+      window.history.pushState({ step: currentStepIndex }, "");
+    }
+  }, [currentStepIndex]);
 
   useEffect(() => {
     if (!formData.role) return;
@@ -1237,6 +1234,10 @@ const FreelancerMultiStepForm = () => {
     setPendingAdvance(false);
 
     if (!currentStep) return;
+    if (queuedStepKeyRef.current && queuedStepKeyRef.current !== currentStep.key) {
+      return;
+    }
+    queuedStepKeyRef.current = "";
     const validation = validateStep(currentStep, formData);
     if (validation) {
       setStepError(validation);
@@ -1263,6 +1264,7 @@ const FreelancerMultiStepForm = () => {
     if (advanceTimerRef.current) {
       clearTimeout(advanceTimerRef.current);
     }
+    queuedStepKeyRef.current = currentStep?.key || "";
     advanceTimerRef.current = setTimeout(() => {
       setPendingAdvance(true);
     }, delay);
@@ -1314,6 +1316,10 @@ const FreelancerMultiStepForm = () => {
   };
 
   const handleBack = () => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+    }
+    queuedStepKeyRef.current = "";
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
       setStepError("");
@@ -1453,14 +1459,12 @@ const FreelancerMultiStepForm = () => {
         return detail?.hasSampleWork ? "" : "Please select an option.";
       case "serviceSampleUpload":
         return detail?.sampleWork ? "" : "Please upload a sample or practice work.";
-      case "serviceAveragePrice":
-        return detail?.averagePrice ? "" : "Please enter your average project price.";
-      case "serviceMinimumValue":
-        return detail?.minimumProjectValue ? "" : "Please enter your minimum project value.";
-      case "servicePreferredBudget":
-        return detail?.preferredBudget ? "" : "Please select a preferred budget range.";
-      case "servicePricingFlex":
-        return detail?.pricingFlexibility ? "" : "Please select your pricing flexibility.";
+      case "serviceAveragePrice": {
+        const minPrice = detail?.averagePriceMin;
+        const maxPrice = detail?.averagePriceMax;
+        if (!minPrice || !maxPrice) return "Please enter both minimum and maximum price.";
+        return "";
+      }
       case "serviceGroup": {
         const groups = detail?.groups || {};
         const selections = groups[step.groupId] || [];
@@ -1478,14 +1482,10 @@ const FreelancerMultiStepForm = () => {
           return "Please specify your other niche.";
         }
         return "";
-      case "serviceIndustryExperience":
-        return detail?.industryExperience ? "" : "Please select your industry experience.";
       case "serviceIndustryOnly":
         return detail?.preferOnlyIndustries ? "" : "Please select an option.";
       case "serviceComplexity":
         return detail?.projectComplexity ? "" : "Please select a complexity level.";
-      case "serviceExecution":
-        return detail?.executionStyle ? "" : "Please select an execution style.";
       case "deliveryPolicy":
         return data.deliveryPolicyAccepted ? "" : "Please accept the delivery and revision policy.";
       case "hours":
@@ -1494,20 +1494,17 @@ const FreelancerMultiStepForm = () => {
         return data.workingSchedule ? "" : "Please select a working schedule.";
       case "startTimeline":
         return data.startTimeline ? "" : "Please select when you can start.";
-      case "projectType":
-        return data.projectTypePreference ? "" : "Please select a project type.";
       case "missedDeadlines":
         return data.missedDeadlines ? "" : "Please select your deadline history.";
       case "delayHandling":
         return data.delayHandling ? "" : "Please select how you handle delays.";
-      case "currentAvailability":
-        return data.currentAvailability ? "" : "Please select your current availability.";
       case "communicationPolicy":
         return data.communicationPolicyAccepted ? "" : "Please accept the communication policy.";
-      case "openLongTerm":
-        return data.openToLongTerm ? "" : "Please select an option.";
+      case "acceptInProgressProjects":
+        return data.acceptInProgressProjects ? "" : "Please select an option.";
       case "bio":
-        return data.professionalBio.trim() ? "" : "Please write a short professional bio.";
+        if (!data.professionalBio.trim()) return "Please write a short professional bio.";
+        return data.termsAccepted ? "" : "Please agree to the terms and conditions.";
       default:
         return "";
     }
@@ -1544,18 +1541,19 @@ const FreelancerMultiStepForm = () => {
         role: formData.role,
         services: formData.selectedServices,
         serviceDetails: formData.serviceDetails,
-        deliveryPolicyAccepted: formData.deliveryPolicyAccepted,
         availability: {
           hoursPerWeek: formData.hoursPerWeek,
           workingSchedule: formData.workingSchedule,
           startTimeline: formData.startTimeline,
-          projectTypePreference: formData.projectTypePreference,
+        },
+        reliability: {
           missedDeadlines: formData.missedDeadlines,
           delayHandling: formData.delayHandling,
-          currentAvailability: formData.currentAvailability,
         },
+        deliveryPolicyAccepted: formData.deliveryPolicyAccepted,
         communicationPolicyAccepted: formData.communicationPolicyAccepted,
-        openToLongTerm: formData.openToLongTerm,
+        acceptInProgressProjects: formData.acceptInProgressProjects,
+        termsAccepted: formData.termsAccepted,
         professionalBio: formData.professionalBio,
       };
 
@@ -1679,7 +1677,7 @@ const FreelancerMultiStepForm = () => {
   const renderSingleSelectStep = ({ title, subtitle, options, value, onSelect, compact = false, columns = 1 }) => (
     <div className="space-y-4">
       <StepHeader title={title} subtitle={subtitle} />
-      <div className={cn(columns > 1 ? "grid gap-3" : "space-y-3", columns === 2 && "grid-cols-2", columns === 3 && "grid-cols-3")}> 
+      <div className={cn(columns > 1 ? "grid gap-3" : "space-y-3", columns === 2 && "grid-cols-2", columns === 3 && "grid-cols-3")}>
         {options.map((option) => (
           <OptionCard
             key={option.value}
@@ -1699,7 +1697,7 @@ const FreelancerMultiStepForm = () => {
   const renderMultiSelectStep = ({ title, subtitle, options, values, onToggle, columns = 2 }) => (
     <div className="space-y-4">
       <StepHeader title={title} subtitle={subtitle} />
-      <div className={cn("grid gap-3", columns === 2 && "grid-cols-2", columns === 3 && "grid-cols-3")}> 
+      <div className={cn("grid gap-3", columns === 2 && "grid-cols-2", columns === 3 && "grid-cols-3")}>
         {options.map((option) => (
           <OptionCard
             key={option.value || option}
@@ -1859,7 +1857,7 @@ const FreelancerMultiStepForm = () => {
               const file = e.target.files?.[0];
               if (file) {
                 const nextPhoto = { name: file.name, url: URL.createObjectURL(file) };
-                updateFormField("profilePhoto", nextPhoto, 0);
+                updateFormField("profilePhoto", nextPhoto);
               }
             }}
           />
@@ -1893,6 +1891,7 @@ const FreelancerMultiStepForm = () => {
             )}
           </label>
         </div>
+        {renderContinueButton()}
       </div>
     );
   };
@@ -2324,99 +2323,64 @@ const FreelancerMultiStepForm = () => {
             )}
           </label>
         </div>
+        {renderContinueButton()}
       </div>
     );
   };
 
-  const renderServiceAveragePrice = (serviceKey) => (
-    <div className="space-y-6">
-      <StepHeader
-        title={`Average project price you usually charge for ${getServiceLabel(serviceKey)}`}
-        subtitle={renderServiceMeta(serviceKey)}
-      />
-      <Input
-        value={formData.serviceDetails?.[serviceKey]?.averagePrice || ""}
-        onChange={(e) => updateServiceField(serviceKey, "averagePrice", e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && e.currentTarget.value.trim()) {
-            e.preventDefault();
-            queueAdvance(0);
-          }
-        }}
-        placeholder="e.g. $2,000"
-        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-      />
-      {renderContinueButton()}
-    </div>
-  );
+  const renderServiceAveragePrice = (serviceKey) => {
+    const detail = formData.serviceDetails?.[serviceKey];
+    const minPrice = detail?.averagePriceMin || "";
+    const maxPrice = detail?.averagePriceMax || "";
 
-  const renderServiceMinimumValue = (serviceKey) => (
-    <div className="space-y-6">
-      <StepHeader
-        title="Minimum project value you accept"
-        subtitle={renderServiceMeta(serviceKey)}
-      />
-      <Input
-        value={formData.serviceDetails?.[serviceKey]?.minimumProjectValue || ""}
-        onChange={(e) => updateServiceField(serviceKey, "minimumProjectValue", e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && e.currentTarget.value.trim()) {
-            e.preventDefault();
-            queueAdvance(0);
-          }
-        }}
-        placeholder="e.g. $500"
-        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-      />
-      {renderContinueButton()}
-    </div>
-  );
-
-  const renderServicePreferredBudget = (serviceKey) => (
-    <div className="space-y-6">
-      <StepHeader
-        title="Preferred project budget range you want to work on next"
-        subtitle={renderServiceMeta(serviceKey)}
-      />
-      <Select
-        value={formData.serviceDetails?.[serviceKey]?.preferredBudget || ""}
-        onValueChange={(value) => updateServiceField(serviceKey, "preferredBudget", value, 0)}
-      >
-        <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
-          <SelectValue placeholder="Select preferred budget range" />
-        </SelectTrigger>
-        <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
-          {PREFERRED_PROJECT_BUDGET_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-
-  const renderServicePricingFlex = (serviceKey) => (
-    <div className="space-y-4">
-      <StepHeader
-        title="How Flexible Are You With Pricing?"
-        subtitle={renderServiceMeta(serviceKey)}
-      />
-      <div className="space-y-3">
-        {PRICING_FLEXIBILITY_OPTIONS.map((option) => (
-          <OptionCard
-            key={option.value}
-            selected={formData.serviceDetails?.[serviceKey]?.pricingFlexibility === option.value}
-            onClick={() => updateServiceField(serviceKey, "pricingFlexibility", option.value, 0)}
-            label={option.label}
-          />
-        ))}
+    return (
+      <div className="space-y-6">
+        <StepHeader
+          title={`What Is Your Average Project Price Range For ${getServiceLabel(serviceKey)}?`}
+          subtitle={renderServiceMeta(serviceKey)}
+        />
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <label className="block text-xs text-white/60 mb-2">Minimum Price</label>
+            <Input
+              value={minPrice}
+              onChange={(e) => updateServiceField(serviceKey, "averagePriceMin", e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && minPrice && maxPrice) {
+                  e.preventDefault();
+                  queueAdvance(0);
+                }
+              }}
+              placeholder="e.g. 25,000"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            />
+          </div>
+          <div className="flex items-end pb-2 text-white/40">to</div>
+          <div className="flex-1">
+            <label className="block text-xs text-white/60 mb-2">Maximum Price</label>
+            <Input
+              value={maxPrice}
+              onChange={(e) => updateServiceField(serviceKey, "averagePriceMax", e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && minPrice && maxPrice) {
+                  e.preventDefault();
+                  queueAdvance(0);
+                }
+              }}
+              placeholder="e.g. 75,000"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            />
+          </div>
+        </div>
+        {renderContinueButton()}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderServiceGroup = (serviceKey, groupId) => {
-    const group = getServiceGroups(serviceKey).find((entry) => entry.id === groupId);
+    const serviceGroups = getServiceGroups(serviceKey);
+    const group = serviceGroups.find((entry) => entry.id === groupId);
+    const isFirstGroup = serviceGroups[0]?.id === groupId;
     const details = formData.serviceDetails?.[serviceKey] || createServiceDetail();
     const existingGroups = details.groups || {};
     const selections = existingGroups[groupId] || [];
@@ -2437,7 +2401,10 @@ const FreelancerMultiStepForm = () => {
 
     return (
       <div className="space-y-6">
-        <StepHeader title={group.label} subtitle={renderServiceMeta(serviceKey)} />
+        <StepHeader
+          title={isFirstGroup ? `Which Areas Of ${getServiceLabel(serviceKey)} Do You Specialize In?` : group.label}
+          subtitle={renderServiceMeta(serviceKey)}
+        />
         <div className="grid grid-cols-2 gap-3">
           {group.options.map((option) => (
             <OptionCard
@@ -2496,7 +2463,7 @@ const FreelancerMultiStepForm = () => {
     return (
       <div className="space-y-6">
         <StepHeader
-          title="Which Niches Do You Specialize In?"
+          title="Select Industries You Specialize In"
           subtitle={renderServiceMeta(serviceKey)}
         />
         <div className="grid grid-cols-2 gap-3">
@@ -2529,33 +2496,10 @@ const FreelancerMultiStepForm = () => {
     );
   };
 
-  const renderServiceIndustryExperience = (serviceKey) => (
-    <div className="space-y-4">
-      <StepHeader
-        title="How Experienced Are You In Your Selected Industries?"
-        subtitle={renderServiceMeta(serviceKey)}
-      />
-      <div className="space-y-3">
-        {[
-          { value: "beginner", label: "Beginner" },
-          { value: "experienced", label: "Experienced" },
-          { value: "specialist", label: "Specialist" },
-        ].map((option) => (
-          <OptionCard
-            key={option.value}
-            selected={formData.serviceDetails?.[serviceKey]?.industryExperience === option.value}
-            onClick={() => updateServiceField(serviceKey, "industryExperience", option.value, 0)}
-            label={option.label}
-          />
-        ))}
-      </div>
-    </div>
-  );
-
   const renderServiceIndustryOnly = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title="Do You Prefer Working ONLY In These Industries?"
+        title="Do You Prefer Working Only In These Industries?"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
@@ -2590,30 +2534,11 @@ const FreelancerMultiStepForm = () => {
     </div>
   );
 
-  const renderServiceExecution = (serviceKey) => (
-    <div className="space-y-4">
-      <StepHeader
-        title="How Do You Typically Execute Projects For This Service?"
-        subtitle={renderServiceMeta(serviceKey)}
-      />
-      <div className="space-y-3">
-        {SERVICE_EXECUTION_OPTIONS.map((option) => (
-          <OptionCard
-            key={option.value}
-            selected={formData.serviceDetails?.[serviceKey]?.executionStyle === option.value}
-            onClick={() => updateServiceField(serviceKey, "executionStyle", option.value, 0)}
-            label={option.label}
-          />
-        ))}
-      </div>
-    </div>
-  );
-
   const renderDeliveryPolicy = () => (
     <div className="space-y-6">
       <StepHeader
-        title="Delivery & Revision Policy"
-        subtitle="Please review and accept the standard policy"
+        title="Do You Agree To Catalance Delivery & Revision SOP?"
+        subtitle="Required To Continue"
       />
       <div className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-4">
         <p className="text-white/70 text-sm">
@@ -2634,7 +2559,7 @@ const FreelancerMultiStepForm = () => {
           onChange={(e) => updateFormField("deliveryPolicyAccepted", e.target.checked, 0)}
           className="h-5 w-5 rounded border-white/20 bg-white/10 text-primary focus:ring-primary/40"
         />
-        <span>I accept the delivery and revision policy</span>
+        <span>Yes (Required)</span>
       </label>
     </div>
   );
@@ -2642,8 +2567,8 @@ const FreelancerMultiStepForm = () => {
   const renderCommunicationPolicy = () => (
     <div className="space-y-6">
       <StepHeader
-        title="Communication Policy"
-        subtitle="Mandatory platform governance"
+        title="Do You Agree To Catalance Communication Policy?"
+        subtitle="Required To Continue"
       />
       <div className="rounded-xl border border-white/10 bg-white/5 p-6 space-y-4">
         <p className="text-white/70 text-sm">
@@ -2664,16 +2589,32 @@ const FreelancerMultiStepForm = () => {
           onChange={(e) => updateFormField("communicationPolicyAccepted", e.target.checked, 0)}
           className="h-5 w-5 rounded border-white/20 bg-white/10 text-primary focus:ring-primary/40"
         />
-        <span>I accept the communication policy</span>
+        <span>Yes (Required)</span>
       </label>
+    </div>
+  );
+
+  const renderAcceptInProgressProjects = () => (
+    <div className="space-y-4">
+      <StepHeader title="Do You Accept Projects That Are Already In Progress Or Partially Completed?" />
+      <div className="space-y-3">
+        {IN_PROGRESS_PROJECT_OPTIONS.map((option) => (
+          <OptionCard
+            key={option.value}
+            selected={formData.acceptInProgressProjects === option.value}
+            onClick={() => updateFormField("acceptInProgressProjects", option.value, 0)}
+            label={option.label}
+          />
+        ))}
+      </div>
     </div>
   );
 
   const renderBioStep = () => (
     <div className="space-y-6">
       <StepHeader
-        title="Write a short professional bio about yourself"
-        subtitle="Keep it concise and professional"
+        title="Write A Short Professional Bio"
+        subtitle="Keep It Concise And Professional"
       />
       <Textarea
         value={formData.professionalBio}
@@ -2687,6 +2628,15 @@ const FreelancerMultiStepForm = () => {
         placeholder="Write 2-4 sentences about your experience, specialties, and the value you bring."
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[160px] rounded-xl p-4"
       />
+      <label className="flex items-start gap-3 text-white/70 text-sm cursor-pointer rounded-xl border border-white/10 bg-white/5 p-4">
+        <input
+          type="checkbox"
+          checked={formData.termsAccepted}
+          onChange={(e) => updateFormField("termsAccepted", e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/10 text-primary focus:ring-primary/40"
+        />
+        <span>Agree To The Terms & Conditions</span>
+      </label>
       <p className="text-xs text-white/50 text-center">Tip: Press Ctrl+Enter or use Continue.</p>
       {renderContinueButton()}
     </div>
@@ -2755,36 +2705,26 @@ const FreelancerMultiStepForm = () => {
         return renderServiceGroup(currentStep.serviceKey, currentStep.groupId);
       case "serviceAveragePrice":
         return renderServiceAveragePrice(currentStep.serviceKey);
-      case "serviceMinimumValue":
-        return renderServiceMinimumValue(currentStep.serviceKey);
-      case "servicePreferredBudget":
-        return renderServicePreferredBudget(currentStep.serviceKey);
-      case "servicePricingFlex":
-        return renderServicePricingFlex(currentStep.serviceKey);
       case "serviceIndustryFocus":
         return renderServiceIndustryFocus(currentStep.serviceKey);
       case "serviceNiches":
         return renderServiceNiches(currentStep.serviceKey);
-      case "serviceIndustryExperience":
-        return renderServiceIndustryExperience(currentStep.serviceKey);
       case "serviceIndustryOnly":
         return renderServiceIndustryOnly(currentStep.serviceKey);
       case "serviceComplexity":
         return renderServiceComplexity(currentStep.serviceKey);
-      case "serviceExecution":
-        return renderServiceExecution(currentStep.serviceKey);
       case "deliveryPolicy":
         return renderDeliveryPolicy();
       case "hours":
         return renderSingleSelectStep({
-          title: "How Many Hours Can You Dedicate Per Week?",
+          title: "How Many Hours Can You Dedicate Weekly?",
           options: HOURS_PER_WEEK_OPTIONS,
           value: formData.hoursPerWeek,
           onSelect: (value) => updateFormField("hoursPerWeek", value, 0),
         });
       case "workingSchedule":
         return renderSingleSelectStep({
-          title: "What Is Your Preferred Working Schedule?",
+          title: "Preferred Working Schedule",
           options: WORKING_SCHEDULE_OPTIONS,
           value: formData.workingSchedule,
           onSelect: (value) => updateFormField("workingSchedule", value, 0),
@@ -2795,13 +2735,6 @@ const FreelancerMultiStepForm = () => {
           options: START_TIMELINE_OPTIONS,
           value: formData.startTimeline,
           onSelect: (value) => updateFormField("startTimeline", value, 0),
-        });
-      case "projectType":
-        return renderSingleSelectStep({
-          title: "What Type Of Projects Do You Prefer?",
-          options: PROJECT_TYPE_OPTIONS,
-          value: formData.projectTypePreference,
-          onSelect: (value) => updateFormField("projectTypePreference", value, 0),
         });
       case "missedDeadlines":
         return renderSingleSelectStep({
@@ -2817,22 +2750,10 @@ const FreelancerMultiStepForm = () => {
           value: formData.delayHandling,
           onSelect: (value) => updateFormField("delayHandling", value, 0),
         });
-      case "currentAvailability":
-        return renderSingleSelectStep({
-          title: "Current Availability Status",
-          options: CURRENT_AVAILABILITY_OPTIONS,
-          value: formData.currentAvailability,
-          onSelect: (value) => updateFormField("currentAvailability", value, 0),
-        });
       case "communicationPolicy":
         return renderCommunicationPolicy();
-      case "openLongTerm":
-        return renderSingleSelectStep({
-          title: "Are You Open To Long-Term Or Retainer-Based Work?",
-          options: LONG_TERM_OPTIONS,
-          value: formData.openToLongTerm,
-          onSelect: (value) => updateFormField("openToLongTerm", value, 0),
-        });
+      case "acceptInProgressProjects":
+        return renderAcceptInProgressProjects();
       case "bio":
         return renderBioStep();
       default:
