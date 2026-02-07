@@ -1597,7 +1597,13 @@ const FreelancerMultiStepForm = () => {
       if (!authPayload?.accessToken) {
         setIsVerifying(true);
         setIsSubmitting(false);
-        toast.success("Verification code sent to your email!");
+        if (authPayload?.emailDelivery === "not_sent") {
+          toast.warning(
+            "Verification email could not be delivered. Use the OTP from backend logs in development."
+          );
+        } else {
+          toast.success("Verification code sent to your email!");
+        }
         return;
       }
 

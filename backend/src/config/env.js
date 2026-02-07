@@ -50,7 +50,8 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().default("openai/gpt-4o"),
-  OPENROUTER_MODEL_FALLBACK: z.string().default("meta-llama/llama-3.2-3b-instruct:free")
+  OPENROUTER_MODEL_FALLBACK: z.string().default("meta-llama/llama-3.2-3b-instruct:free"),
+  FRONTEND_URL: z.string().optional()
 });
 
 let env;
@@ -95,7 +96,8 @@ try {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     OPENROUTER_MODEL: process.env.OPENROUTER_MODEL || "openai/gpt-4o",
-    OPENROUTER_MODEL_FALLBACK: process.env.OPENROUTER_MODEL_FALLBACK || "meta-llama/llama-3.2-3b-instruct:free"
+    OPENROUTER_MODEL_FALLBACK: process.env.OPENROUTER_MODEL_FALLBACK || "meta-llama/llama-3.2-3b-instruct:free",
+    FRONTEND_URL: process.env.FRONTEND_URL
   };
 
   env = fallbackEnv;
