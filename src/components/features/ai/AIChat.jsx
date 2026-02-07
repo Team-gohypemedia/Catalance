@@ -2549,8 +2549,13 @@ function AIChat({
             { role: "assistant", content: assistantText },
           ]);
 
+          const budgetJustResolved =
+            budgetGateActive &&
+            hasBudgetSignal &&
+            parsedBudgetAmount !== null;
+
           if (
-            askedBudget &&
+            (askedBudget || budgetJustResolved) &&
             missingFieldsNow.length === 0 &&
             !hasRequestedProposal &&
             !proposalApproval
