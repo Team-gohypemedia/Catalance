@@ -3,7 +3,7 @@
   "version": "1.0",
   "services_catalog_as_provided": [
     "Branding (Naming, Logo & Brand Identity)",
-    "Website / UI–UX Design (2D / 3D)",
+    "Web Development",
     "SEO (Search Engine Optimisation)",
     "Social Media Marketing (Organic)",
     "Paid Advertising / Performance Marketing",
@@ -805,7 +805,6 @@
         }
       ]
     },
-
     {
       "service_key": "branding",
       "service_name": "Branding (Naming, Logo & Brand Identity)",
@@ -858,7 +857,7 @@
     },
     {
       "service_key": "website_ui_ux_design_2d_3d",
-      "service_name": "Website / UI–UX Design (2D / 3D)",
+      "service_name": "Web Development",
       "flow_name": "4 STAGE FLOW",
       "stages": [
         {
