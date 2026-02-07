@@ -12,8 +12,86 @@ import {
   generatePasswordResetTextEmail
 } from "../../lib/email-templates/password-reset.template.js";
 
+const OTP_TTL_MINUTES = 15;
+const OTP_EMAIL_RETRY_ATTEMPTS = 2;
+
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toUpperCase() : null;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const buildOtpEmailContent = ({ otpCode, isResend = false }) => ({
+  subject: isResend
+    ? "Your New Verification Code - Catalance"
+    : "Verify Your Email - Catalance",
+  html: `<p>Your ${isResend ? "new " : ""}verification code is: <strong>${otpCode}</strong></p><p>This code expires in ${OTP_TTL_MINUTES} minutes.</p>`
+});
+
+const sendOtpEmail = async ({ email, otpCode, isResend = false }) => {
+  const hasResendConfig = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
+
+  if (!hasResendConfig) {
+    const message =
+      "Email service is not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL).";
+    if (env.NODE_ENV === "production") {
+      throw new AppError(message, 500, {
+        provider: "resend",
+        reason: "missing_config"
+      });
+    }
+
+    console.warn(`[OTP Email] ${message}`);
+    console.log(`[DEV] OTP for ${email}: ${otpCode}`);
+    return { delivered: false, reason: "missing_config" };
+  }
+
+  const resend = ensureResendClient();
+  const { subject, html } = buildOtpEmailContent({ otpCode, isResend });
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= OTP_EMAIL_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      const result = await resend.emails.send({
+        from: env.RESEND_FROM_EMAIL,
+        to: email,
+        subject,
+        html
+      });
+
+      if (result?.error) {
+        throw new Error(
+          typeof result.error === "string"
+            ? result.error
+            : result.error?.message || JSON.stringify(result.error)
+        );
+      }
+
+      console.log(
+        `[OTP Email] Sent to ${email}. Subject: ${subject}. ID: ${result?.data?.id || "n/a"}`
+      );
+      return { delivered: true, id: result?.data?.id || null };
+    } catch (error) {
+      lastError = error;
+      console.error(
+        `[OTP Email] Attempt ${attempt}/${OTP_EMAIL_RETRY_ATTEMPTS} failed:`,
+        error?.message || error
+      );
+      if (attempt < OTP_EMAIL_RETRY_ATTEMPTS) {
+        await wait(400);
+      }
+    }
+  }
+
+  throw new AppError(
+    "We could not deliver the verification code email. Please try again in a moment.",
+    502,
+    {
+      provider: "resend",
+      reason: "delivery_failed",
+      cause: lastError?.message || "unknown_error"
+    }
+  );
+};
 
 const ensureUserRoles = async (user, requestedRole) => {
   if (!user) return user;
@@ -101,53 +179,36 @@ export const createUser = async (payload) => {
 
 export const registerUser = async (payload) => {
   const otpCode = crypto.randomInt(100000, 999999).toString();
-  const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  const otpExpires = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
   const user = await createUserRecord({ ...payload, otpCode, otpExpires });
-
-  // Send OTP Email
-  if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
-    try {
-      const resend = ensureResendClient();
-      console.log(`[OTP Email] Attempting to send OTP to: ${user.email}`);
-      console.log(`[OTP Email] From: ${env.RESEND_FROM_EMAIL}`);
-
-      const result = await resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
-        to: user.email,
-        subject: "Verify Your Email - Catalance",
-        html: `<p>Your verification code is: <strong>${otpCode}</strong></p><p>This code expires in 15 minutes.</p>`
-      });
-
-      console.log(`[OTP Email] Resend API Response:`, JSON.stringify(result, null, 2));
-
-      if (result.error) {
-        console.error(`[OTP Email] Resend returned error:`, result.error);
-        console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
-      } else {
-        console.log(`[OTP Email] ✅ Successfully sent to ${user.email}, ID: ${result.data?.id}`);
-      }
-    } catch (error) {
-      console.error("[OTP Email] Failed to send OTP email:", error?.message || error);
-      console.error("[OTP Email] Full error:", error);
-      // In dev, log the OTP so we can proceed
-      console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
-    }
-  } else {
-    console.warn(`[OTP Email] Resend not configured. RESEND_API_KEY: ${!!env.RESEND_API_KEY}, RESEND_FROM_EMAIL: ${!!env.RESEND_FROM_EMAIL}`);
-    console.log(`[DEV] OTP for ${user.email}: ${otpCode}`);
+  let otpEmail;
+  try {
+    otpEmail = await sendOtpEmail({ email: user.email, otpCode });
+  } catch (error) {
+    await prisma.user.delete({ where: { id: user.id } }).catch((cleanupError) => {
+      console.warn(
+        `[OTP Email] Failed to cleanup unsent signup user ${user.id}:`,
+        cleanupError?.message || cleanupError
+      );
+    });
+    throw error;
   }
 
   return {
-    message: "Verification code sent to your email",
+    message: otpEmail?.delivered
+      ? "Verification code sent to your email"
+      : "Account created. In development mode, use the OTP printed in backend logs.",
     email: user.email,
-    userId: user.id
+    userId: user.id,
+    emailDelivery: otpEmail?.delivered ? "sent" : "not_sent"
   };
 };
 
 export const verifyUserOtp = async ({ email, otp }) => {
+  const normalizedEmail = String(email || "").toLowerCase().trim();
   const user = await prisma.user.findUnique({
-    where: { email }
+    where: { email: normalizedEmail }
   });
 
   if (!user) {
@@ -194,8 +255,9 @@ export const verifyUserOtp = async ({ email, otp }) => {
 };
 
 export const resendOtp = async (email) => {
+  const normalizedEmail = String(email || "").toLowerCase().trim();
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase().trim() }
+    where: { email: normalizedEmail }
   });
 
   if (!user) {
@@ -208,7 +270,7 @@ export const resendOtp = async (email) => {
 
   // Generate new OTP
   const otpCode = crypto.randomInt(100000, 999999).toString();
-  const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  const otpExpires = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
   // Update user with new OTP
   await prisma.user.update({
@@ -219,30 +281,24 @@ export const resendOtp = async (email) => {
     }
   });
 
-  // Send OTP Email
-  if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
-    try {
-      const resend = ensureResendClient();
-      await resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
-        to: user.email,
-        subject: "Your New Verification Code - Catalance",
-        html: `<p>Your new verification code is: <strong>${otpCode}</strong></p><p>This code expires in 15 minutes.</p>`
-      });
-    } catch (error) {
-      console.error("Failed to send OTP email:", error);
-    }
-  } else {
-  }
+  const otpEmail = await sendOtpEmail({
+    email: user.email,
+    otpCode,
+    isResend: true
+  });
 
   return {
-    message: "New verification code sent to your email"
+    message: otpEmail?.delivered
+      ? "New verification code sent to your email"
+      : "In development mode, use the OTP printed in backend logs.",
+    emailDelivery: otpEmail?.delivered ? "sent" : "not_sent"
   };
 };
 
 export const authenticateUser = async ({ email, password, role }) => {
+  const normalizedEmail = String(email || "").toLowerCase().trim();
   const user = await prisma.user.findUnique({
-    where: { email }
+    where: { email: normalizedEmail }
   });
 
   let isValid =
@@ -270,7 +326,7 @@ export const authenticateUser = async ({ email, password, role }) => {
   if (!user.isVerified) {
     // Resend OTP for unverified users
     const otpCode = crypto.randomInt(100000, 999999).toString();
-    const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const otpExpires = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
     await prisma.user.update({
       where: { id: user.id },
@@ -280,27 +336,16 @@ export const authenticateUser = async ({ email, password, role }) => {
       }
     });
 
-    // Send OTP Email
-    if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
-      try {
-        const resend = ensureResendClient();
-        await resend.emails.send({
-          from: env.RESEND_FROM_EMAIL,
-          to: user.email,
-          subject: "Verify Your Email - Catalance",
-          html: `<p>Your verification code is: <strong>${otpCode}</strong></p><p>This code expires in 15 minutes.</p>`
-        });
-      } catch (error) {
-        console.error("Failed to send OTP email:", error);
-      }
-    } else {
-    }
+    const otpEmail = await sendOtpEmail({ email: user.email, otpCode });
 
     // Return special response indicating verification is needed
     return {
       requiresVerification: true,
       email: user.email,
-      message: "Please verify your email. A new verification code has been sent."
+      message: otpEmail?.delivered
+        ? "Please verify your email. A new verification code has been sent."
+        : "Please verify your email. In development mode, use the OTP printed in backend logs.",
+      emailDelivery: otpEmail?.delivered ? "sent" : "not_sent"
     };
   }
 
@@ -404,13 +449,14 @@ export const getUserById = async (id) => {
 
 const createUserRecord = async (payload) => {
   try {
+    const normalizedEmail = String(payload.email || "").toLowerCase().trim();
     const normalizedRole = (payload.role || "FREELANCER").toUpperCase();
     const roles = Array.isArray(payload.roles) && payload.roles.length
       ? Array.from(new Set(payload.roles.map((role) => String(role).toUpperCase())))
       : [normalizedRole];
     const user = await prisma.user.create({
       data: {
-        email: payload.email,
+        email: normalizedEmail,
         fullName: payload.fullName,
         passwordHash: await hashUserPassword(payload.password),
         role: normalizedRole,
@@ -424,7 +470,6 @@ const createUserRecord = async (payload) => {
         status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
         portfolio: payload.portfolio,
         linkedin: payload.linkedin,
-        github: payload.github,
         github: payload.github,
         portfolioProjects: payload.portfolioProjects ?? [],
         profileDetails: payload.freelancerProfile ?? {}

@@ -117,7 +117,7 @@ function Signup({ className, ...props }) {
 
     setIsSubmitting(true);
     try {
-      await signup({
+      const signupResult = await signup({
         fullName: formData.fullName.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
@@ -125,7 +125,13 @@ function Signup({ className, ...props }) {
       });
 
       // Instead of logging in, switch to verification mode
-      toast.success("Verification code sent! Please check your email.");
+      if (signupResult?.emailDelivery === "not_sent") {
+        toast.warning(
+          "Verification email could not be delivered. Use Resend Code or check backend logs in development."
+        );
+      } else {
+        toast.success("Verification code sent! Please check your email.");
+      }
       setIsVerifying(true);
     } catch (error) {
       const message = error?.message || "Unable to create your account right now.";
