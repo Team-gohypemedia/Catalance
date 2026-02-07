@@ -8,13 +8,21 @@ import {
   useEffect,
   useMemo,
   useState,
-  useRef
+  useRef,
 } from "react";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
-import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED, request as apiClient } from "@/shared/lib/api-client";
-import { requestNotificationPermission, onForegroundMessage } from "@/shared/lib/firebase";
+import {
+  SOCKET_IO_URL,
+  SOCKET_OPTIONS,
+  SOCKET_ENABLED,
+  request as apiClient,
+} from "@/shared/lib/api-client";
+import {
+  requestNotificationPermission,
+  onForegroundMessage,
+} from "@/shared/lib/firebase";
 
 const NotificationContext = createContext(null);
 NotificationContext.displayName = "NotificationContext";
@@ -23,7 +31,7 @@ NotificationContext.displayName = "NotificationContext";
 const MAX_NOTIFICATIONS = 50;
 
 export const NotificationProvider = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
@@ -37,18 +45,20 @@ export const NotificationProvider = ({ children }) => {
   // Add a new notification
   const addNotification = useCallback((notification) => {
     const newNotification = {
-      id: notification.id || `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id:
+        notification.id ||
+        `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       type: notification.type || "general",
       title: notification.title || "Notification",
       message: notification.message || "",
       read: false,
       createdAt: notification.createdAt || new Date().toISOString(),
-      data: notification.data || {}
+      data: notification.data || {},
     };
 
     setNotifications((prev) => {
       // Deduplicate: If we already have a notification with this ID, ignore it
-      if (newNotification.id && prev.some(n => n.id === newNotification.id)) {
+      if (newNotification.id && prev.some((n) => n.id === newNotification.id)) {
         return prev;
       }
       const updated = [newNotification, ...prev].slice(0, MAX_NOTIFICATIONS);
@@ -70,24 +80,26 @@ export const NotificationProvider = ({ children }) => {
     // Optimistically remove from UI and update counters
     setNotifications((prev) => {
       const target = prev.find((n) => n.id === notificationId);
-      
+
       if (target) {
         setUnreadCount((prevCount) => Math.max(0, prevCount - 1));
-        
+
         if (target.type === "chat") {
           setChatUnreadCount((prevCount) => Math.max(0, prevCount - 1));
         }
         if (target.type === "proposal") {
           setProposalUnreadCount((prevCount) => Math.max(0, prevCount - 1));
         }
-        
+
         return prev.filter((n) => n.id !== notificationId);
       }
       return prev;
     });
 
     try {
-      await apiClient(`/notifications/${notificationId}/read`, { method: "PATCH" });
+      await apiClient(`/notifications/${notificationId}/read`, {
+        method: "PATCH",
+      });
     } catch (error) {
       console.error("Failed to mark notification as read", error);
     }
@@ -124,36 +136,40 @@ export const NotificationProvider = ({ children }) => {
         setFcmToken(token);
         setPushEnabled(true);
         console.log("[Notification] FCM token obtained:", token);
-        
+
         // Save token to backend for push notifications
         try {
           await apiClient("/profile/fcm-token", {
             method: "POST",
-            body: JSON.stringify({ fcmToken: token })
+            body: JSON.stringify({ fcmToken: token }),
           });
           console.log("[Notification] FCM token saved to backend");
-          
+
           // Show local confirmation
           addNotification({
             type: "system",
             title: "Notifications Enabled",
             message: "You will now receive updates on this device.",
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
           });
           toast.success("Notifications enabled successfully");
         } catch (saveError) {
-          console.error("[Notification] Failed to save FCM token to backend:", saveError);
+          console.error(
+            "[Notification] Failed to save FCM token to backend:",
+            saveError,
+          );
         }
-        
+
         return token;
       } else {
         // Token null means permission denied or error
-        if (Notification.permission === 'denied') {
+        if (Notification.permission === "denied") {
           toast.error("Notifications are blocked", {
-            description: "Please enable notifications for this site in your browser settings (click the lock icon in address bar)."
+            description:
+              "Please enable notifications for this site in your browser settings (click the lock icon in address bar).",
           });
         } else {
-           toast.error("Could not enable notifications");
+          toast.error("Could not enable notifications");
         }
         return null;
       }
@@ -170,16 +186,16 @@ export const NotificationProvider = ({ children }) => {
 
     fcmListenerRef.current = onForegroundMessage((payload) => {
       console.log("[Notification] FCM foreground message:", payload);
-      
+
       if (payload.notification) {
         // Extract type from data payload if available, otherwise default to "push"
         const notificationType = payload.data?.type || "push";
-        
+
         addNotification({
           type: notificationType,
           title: payload.notification.title,
           message: payload.notification.body,
-          data: payload.data || {}
+          data: payload.data || {},
         });
       }
     });
@@ -191,32 +207,42 @@ export const NotificationProvider = ({ children }) => {
 
   // Check initial push permission state
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPushEnabled(Notification.permission === 'granted');
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPushEnabled(Notification.permission === "granted");
     }
   }, []);
 
   // Fetch initial notifications
   useEffect(() => {
-    if (!isAuthenticated) return;
+    // Wait for auth to finish loading before fetching notifications
+    // This prevents 401 errors when the token is being verified
+    if (!isAuthenticated || isLoading) return;
 
-      const fetchNotifications = async () => {
+    const fetchNotifications = async () => {
       try {
         const data = await apiClient("/notifications");
-        
+
         // User wants notifications to be "one time" (removed when read)
         // So we only filter unread ones
-        setNotifications((data.notifications || []).filter(n => !n.read));
+        setNotifications((data.notifications || []).filter((n) => !n.read));
         setUnreadCount(data.unreadCount || 0);
         setChatUnreadCount(data.chatUnreadCount || 0);
         setProposalUnreadCount(data.proposalUnreadCount || 0);
       } catch (error) {
+        // Silently ignore 401 errors - user is not authenticated or session expired
+        if (
+          error.message?.includes("401") ||
+          error.message?.includes("expired") ||
+          error.message?.includes("Invalid")
+        ) {
+          return;
+        }
         console.error("[Notification] Failed to fetch notifications:", error);
       }
     };
 
     fetchNotifications();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isLoading]);
 
   // Connect to socket.io for real-time notifications
   useEffect(() => {
@@ -224,11 +250,13 @@ export const NotificationProvider = ({ children }) => {
       SOCKET_ENABLED,
       SOCKET_IO_URL,
       isAuthenticated,
-      userId: user?.id
+      userId: user?.id,
     });
 
     if (!SOCKET_ENABLED || !SOCKET_IO_URL || !isAuthenticated || !user?.id) {
-      console.log("[Notification] Prerequisites not met, skipping socket connection");
+      console.log(
+        "[Notification] Prerequisites not met, skipping socket connection",
+      );
       return;
     }
 
@@ -238,25 +266,37 @@ export const NotificationProvider = ({ children }) => {
       return;
     }
 
-    console.log("[Notification] Connecting to:", SOCKET_IO_URL, "with userId:", user.id, "type:", typeof user.id);
-    
+    console.log(
+      "[Notification] Connecting to:",
+      SOCKET_IO_URL,
+      "with userId:",
+      user.id,
+      "type:",
+      typeof user.id,
+    );
+
     const newSocket = io(SOCKET_IO_URL, {
       ...SOCKET_OPTIONS,
-      query: { userId: user.id }
+      query: { userId: user.id },
     });
 
     setSocket(newSocket);
     connectedRef.current = true;
 
     newSocket.on("connect", () => {
-      console.log("[Notification] ✅ Socket connected! Socket ID:", newSocket.id);
+      console.log(
+        "[Notification] ✅ Socket connected! Socket ID:",
+        newSocket.id,
+      );
       // Removed notification:join since we use Firebase Cloud Messaging now
     });
 
     // Listen for room join confirmation
     newSocket.on("notification:joined", ({ room, userId }) => {
       // Legacy - kept to prevent errors if server still emits it
-      console.log(`[Notification] 🎉 Successfully joined room: ${room} for user: ${userId}`);
+      console.log(
+        `[Notification] 🎉 Successfully joined room: ${room} for user: ${userId}`,
+      );
     });
 
     newSocket.on("disconnect", () => {
@@ -265,13 +305,15 @@ export const NotificationProvider = ({ children }) => {
     });
 
     newSocket.on("notification:new", (notification) => {
-      console.log("[Notification] 📨 Socket notification received:", notification);
+      console.log(
+        "[Notification] 📨 Socket notification received:",
+        notification,
+      );
       addNotification(notification);
     });
-    
-    // NOTE: chat:message listener REMOVED from here - chat messages are handled by Chat components 
-    // and notifications for new messages come via Firebase Push Notifications
 
+    // NOTE: chat:message listener REMOVED from here - chat messages are handled by Chat components
+    // and notifications for new messages come via Firebase Push Notifications
 
     newSocket.on("connect_error", (error) => {
       console.error("[Notification] Connection error:", error.message);
@@ -309,9 +351,24 @@ export const NotificationProvider = ({ children }) => {
       markChatAsRead,
       markProposalsAsRead,
       clearAll,
-      requestPushPermission
+      requestPushPermission,
     }),
-    [notifications, unreadCount, chatUnreadCount, proposalUnreadCount, socket, fcmToken, pushEnabled, addNotification, markAsRead, markAllAsRead, markChatAsRead, markProposalsAsRead, clearAll, requestPushPermission]
+    [
+      notifications,
+      unreadCount,
+      chatUnreadCount,
+      proposalUnreadCount,
+      socket,
+      fcmToken,
+      pushEnabled,
+      addNotification,
+      markAsRead,
+      markAllAsRead,
+      markChatAsRead,
+      markProposalsAsRead,
+      clearAll,
+      requestPushPermission,
+    ],
   );
 
   return (
@@ -322,18 +379,19 @@ export const NotificationProvider = ({ children }) => {
 };
 
 NotificationProvider.propTypes = {
-  children: PropTypes.node.isRequired
+  children: PropTypes.node.isRequired,
 };
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
 
   if (!context) {
-    throw new Error("useNotifications must be used within a NotificationProvider");
+    throw new Error(
+      "useNotifications must be used within a NotificationProvider",
+    );
   }
 
   return context;
 };
 
 export { NotificationContext };
-
