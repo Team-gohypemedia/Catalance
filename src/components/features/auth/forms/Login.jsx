@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
@@ -11,7 +16,7 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator
+  FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { login, loginWithGoogle } from "@/shared/lib/api-client";
@@ -22,7 +27,7 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 
 const initialFormState = {
   email: "",
-  password: ""
+  password: "",
 };
 
 function Login({ className, ...props }) {
@@ -30,7 +35,7 @@ function Login({ className, ...props }) {
   const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: location.state?.email || "",
-    password: ""
+    password: "",
   });
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,7 +49,7 @@ function Login({ className, ...props }) {
     const { name, value } = event.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -63,7 +68,7 @@ function Login({ className, ...props }) {
       const authPayload = await login({
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        role: requestedRole
+        role: requestedRole,
       });
 
       // Handle unverified user - redirect to verification
@@ -72,9 +77,9 @@ function Login({ className, ...props }) {
         navigate("/signup", {
           state: {
             verifyEmail: authPayload.email,
-            showVerification: true
+            showVerification: true,
           },
-          replace: true
+          replace: true,
         });
         return;
       }
@@ -128,16 +133,16 @@ function Login({ className, ...props }) {
       const authPayload = await loginWithGoogle(idToken, selectedRole);
 
       setAuthSession(authPayload?.user, authPayload?.accessToken);
-      toast.success(`Welcome, ${authPayload?.user?.fullName || 'User'}!`);
+      toast.success(`Welcome, ${authPayload?.user?.fullName || "User"}!`);
 
       const nextRole = authPayload?.user?.role?.toUpperCase();
       const redirectTo = location?.state?.redirectTo;
       const requestedRole =
         typeof selectedRole === "string"
           ? selectedRole.toUpperCase()
-          : (typeof location.state?.role === "string"
+          : typeof location.state?.role === "string"
             ? location.state.role.toUpperCase()
-            : null);
+            : null;
       const normalizedRequestedRole =
         requestedRole === "CLIENT" || requestedRole === "FREELANCER"
           ? requestedRole
@@ -174,11 +179,7 @@ function Login({ className, ...props }) {
         <div className={cn("flex flex-col gap-6", className)} {...props}>
           <Card className="overflow-hidden p-0">
             <CardContent className="grid p-0 md:grid-cols-2">
-              <form
-                className="p-8 md:p-12"
-                onSubmit={handleSubmit}
-                noValidate
-              >
+              <form className="p-8 md:p-12" onSubmit={handleSubmit} noValidate>
                 <FieldGroup>
                   <div className="flex flex-col items-center gap-2 text-center">
                     <h1 className="text-2xl font-bold">
@@ -225,7 +226,6 @@ function Login({ className, ...props }) {
                           <Eye className="h-4 w-4" />
                         )}
                       </div>
-
                     </div>
                     <FieldDescription>
                       Must be at least 8 characters long.
@@ -273,21 +273,20 @@ function Login({ className, ...props }) {
                         />
                       )}
                       <span className="font-medium">
-                        {isGoogleLoading ? "Signing in..." : "Continue with Google"}
+                        {isGoogleLoading
+                          ? "Signing in..."
+                          : "Continue with Google"}
                       </span>
                     </Button>
                   </Field>
                   <div className="text-center text-sm text-muted-foreground space-y-1">
                     <p>
                       Don&apos;t have an account?{" "}
-                      <Link to="/signup?role=freelancer" className="underline hover:text-primary">
-                        Sign up as Freelancer
-                      </Link>
-                    </p>
-                    <p>
-                      Don&apos;t have an account?{" "}
-                      <Link to="/service" className="underline hover:text-primary">
-                        Sign up as Client
+                      <Link
+                        to="/get-started"
+                        className="underline hover:text-primary"
+                      >
+                        Sign up
                       </Link>
                     </p>
                   </div>
@@ -304,16 +303,23 @@ function Login({ className, ...props }) {
           </Card>
           <FieldDescription className="px-6 text-center">
             By clicking continue, you agree to our{" "}
-            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+            <Link to="/terms" className="underline hover:text-primary">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="underline hover:text-primary">
+              Privacy Policy
+            </Link>
+            .
           </FieldDescription>
         </div>
       </div>
-    </div >
+    </div>
   );
 }
 
 export default Login;
 
 Login.propTypes = {
-  className: PropTypes.string
+  className: PropTypes.string,
 };

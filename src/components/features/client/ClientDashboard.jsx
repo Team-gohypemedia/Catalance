@@ -114,7 +114,7 @@ const normalizeSavedProposal = (proposal = {}) => {
   if (text) {
     // Match budget with optional 'k' suffix for thousands
     const budgetMatch = text.match(
-      /Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹|ƒ,1)?\s*([\d,]+)\s*(k)?/i
+      /Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹|ƒ,1)?\s*([\d,]+)\s*(k)?/i,
     );
     if (budgetMatch) {
       let budgetValue = parseFloat(budgetMatch[1].replace(/,/g, ""));
@@ -128,12 +128,16 @@ const normalizeSavedProposal = (proposal = {}) => {
   return next;
 };
 
-const resolveProposalTitle = (proposal = {}) =>
-  proposal.projectTitle ||
-  proposal.title ||
-  proposal.service ||
-  proposal.serviceKey ||
-  "Proposal";
+const resolveProposalTitle = (proposal) => {
+  if (!proposal) return "Proposal";
+  return (
+    proposal.projectTitle ||
+    proposal.title ||
+    proposal.service ||
+    proposal.serviceKey ||
+    "Proposal"
+  );
+};
 
 const resolveActiveProposalId = (proposals, preferredId, fallbackId) => {
   if (!Array.isArray(proposals) || proposals.length === 0) return null;
@@ -188,7 +192,7 @@ const readSavedProposalsFromKeys = (listKey, singleKey) => {
       if (parsed && (parsed.content || parsed.summary || parsed.projectTitle)) {
         const signature = getProposalSignature(parsed);
         const exists = proposals.some(
-          (item) => getProposalSignature(item) === signature
+          (item) => getProposalSignature(item) === signature,
         );
         if (!exists) proposals = [...proposals, parsed];
       }
@@ -220,7 +224,9 @@ const mergeProposalsBySignature = (base = [], incoming = []) => {
   const merged = [...base];
   incoming.forEach((proposal) => {
     const signature = getProposalSignature(proposal);
-    const exists = merged.some((item) => getProposalSignature(item) === signature);
+    const exists = merged.some(
+      (item) => getProposalSignature(item) === signature,
+    );
     if (!exists) {
       merged.push(proposal);
     }
@@ -236,13 +242,13 @@ const loadSavedProposalsFromStorage = (userId) => {
 
   let { proposals, activeId } = readSavedProposalsFromKeys(
     storageKeys.listKey,
-    storageKeys.singleKey
+    storageKeys.singleKey,
   );
 
   if (userId && legacyKeys.listKey !== storageKeys.listKey) {
     const legacy = readSavedProposalsFromKeys(
       legacyKeys.listKey,
-      legacyKeys.singleKey
+      legacyKeys.singleKey,
     );
     if (legacy.proposals.length) {
       const legacyWithOwner = legacy.proposals.map((proposal) => ({
@@ -253,7 +259,7 @@ const loadSavedProposalsFromStorage = (userId) => {
       const nextActiveId = resolveActiveProposalId(
         merged,
         activeId,
-        legacy.activeId
+        legacy.activeId,
       );
       persistSavedProposalsToStorage(merged, nextActiveId, storageKeys);
       window.localStorage.removeItem(legacyKeys.listKey);
@@ -326,12 +332,13 @@ const StatsCard = ({
         <h3 className="text-3xl tracking-tight">{value}</h3>
         {trend && (
           <p
-            className={`text-xs mt-2 flex items-center font-bold ${trendType === "up"
-              ? "text-green-600"
-              : trendType === "warning"
-                ? "text-orange-600"
-                : "text-muted-foreground"
-              }`}
+            className={`text-xs mt-2 flex items-center font-bold ${
+              trendType === "up"
+                ? "text-green-600"
+                : trendType === "warning"
+                  ? "text-orange-600"
+                  : "text-muted-foreground"
+            }`}
           >
             {trendType === "up" && <TrendingUp className="w-3.5 h-3.5 mr-1" />}
             {trendType === "warning" && (
@@ -452,7 +459,7 @@ const ClientDashboardContent = () => {
   const navigate = useNavigate();
   const storageKeys = useMemo(
     () => getProposalStorageKeys(sessionUser?.id),
-    [sessionUser?.id]
+    [sessionUser?.id],
   );
   const [projects, setProjects] = useState([]);
   const [freelancers, setFreelancers] = useState([]); // Chat freelancers
@@ -523,7 +530,7 @@ const ClientDashboardContent = () => {
   // Load saved proposal from localStorage
   useEffect(() => {
     const { proposals, activeId } = loadSavedProposalsFromStorage(
-      sessionUser?.id
+      sessionUser?.id,
     );
     setSavedProposals(proposals);
     setActiveProposalId(activeId);
@@ -532,7 +539,7 @@ const ClientDashboardContent = () => {
 
   const persistSavedProposalState = (
     nextProposals,
-    preferredActiveId = null
+    preferredActiveId = null,
   ) => {
     const normalized = Array.isArray(nextProposals)
       ? nextProposals.map(normalizeSavedProposal)
@@ -540,7 +547,7 @@ const ClientDashboardContent = () => {
     const resolvedActiveId = resolveActiveProposalId(
       normalized,
       preferredActiveId,
-      activeProposalId
+      activeProposalId,
     );
     setSavedProposals(normalized);
     setActiveProposalId(resolvedActiveId);
@@ -549,11 +556,12 @@ const ClientDashboardContent = () => {
   };
 
   useEffect(() => {
-    if (!authFetch || !sessionUser?.id || sessionUser?.role !== "CLIENT") return;
+    if (!authFetch || !sessionUser?.id || sessionUser?.role !== "CLIENT")
+      return;
     if (isSyncingDrafts) return;
 
     const unsynced = savedProposals.filter(
-      (proposal) => !proposal?.syncedProjectId
+      (proposal) => !proposal?.syncedProjectId,
     );
     if (unsynced.length === 0) return;
 
@@ -569,10 +577,11 @@ const ClientDashboardContent = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   title: resolveProposalTitle(proposal),
-                  description: proposal.summary || proposal.content || "Proposal draft",
+                  description:
+                    proposal.summary || proposal.content || "Proposal draft",
                   budget:
                     parseInt(
-                      String(proposal.budget || "0").replace(/[^0-9]/g, "")
+                      String(proposal.budget || "0").replace(/[^0-9]/g, ""),
                     ) || 0,
                   status: "DRAFT",
                 }),
@@ -590,7 +599,7 @@ const ClientDashboardContent = () => {
               console.error("Failed to sync proposal draft:", error);
               return { id: proposal.id, projectId: null };
             }
-          })
+          }),
         );
 
         const updated = savedProposals.map((proposal) => {
@@ -638,10 +647,10 @@ const ClientDashboardContent = () => {
       const projectsWithOldPending = fetchedProjects.filter((p) => {
         if (p.status !== "OPEN") return false;
         const pendingProposals = (p.proposals || []).filter(
-          (prop) => (prop.status || "").toUpperCase() === "PENDING"
+          (prop) => (prop.status || "").toUpperCase() === "PENDING",
         );
         return pendingProposals.some(
-          (prop) => new Date(prop.createdAt).getTime() < twentyFourHoursAgo
+          (prop) => new Date(prop.createdAt).getTime() < twentyFourHoursAgo,
         );
       });
 
@@ -658,13 +667,13 @@ const ClientDashboardContent = () => {
 
       // Check for projects awaiting payment (Auto-show popup)
       const pendingPaymentProject = fetchedProjects.find(
-        (p) => p.status === "AWAITING_PAYMENT"
+        (p) => p.status === "AWAITING_PAYMENT",
       );
       if (pendingPaymentProject) {
         setProjectToPay(pendingPaymentProject);
         // Only show if not already dismissed in this session
         const hasDismissedPayment = sessionStorage.getItem(
-          `dismissedPayment_${pendingPaymentProject.id}`
+          `dismissedPayment_${pendingPaymentProject.id}`,
         );
         if (!hasDismissedPayment) {
           setShowPaymentConfirm(true);
@@ -739,7 +748,7 @@ const ClientDashboardContent = () => {
   // Sort projects by date (most recent first)
   const uniqueProjects = useMemo(() => {
     return [...projects].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
   }, [projects]);
 
@@ -747,8 +756,8 @@ const ClientDashboardContent = () => {
   const metrics = useMemo(() => {
     const projectsWithAccepted = uniqueProjects.filter((p) =>
       (p.proposals || []).some(
-        (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
-      )
+        (pr) => (pr.status || "").toUpperCase() === "ACCEPTED",
+      ),
     );
 
     // Use actual spent amount from projects, not full budget
@@ -772,7 +781,7 @@ const ClientDashboardContent = () => {
       .filter((p) => {
         const status = (p.status || "").toUpperCase();
         const hasAcceptedProposal = (p.proposals || []).some(
-          (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+          (pr) => (pr.status || "").toUpperCase() === "ACCEPTED",
         );
 
         // Only count budget for projects that are actually active/committed
@@ -831,7 +840,7 @@ const ClientDashboardContent = () => {
           description: savedProposal.summary || savedProposal.content || "",
           budget:
             parseInt(
-              String(savedProposal.budget || "0").replace(/[^0-9]/g, "")
+              String(savedProposal.budget || "0").replace(/[^0-9]/g, ""),
             ) || 0,
           timeline: savedProposal.timeline || "1 month",
           status: "OPEN",
@@ -851,7 +860,7 @@ const ClientDashboardContent = () => {
                 syncedProjectId: project.id,
                 syncedAt: proposal.syncedAt || now,
               }
-            : proposal
+            : proposal,
         );
         persistSavedProposalState(updated, savedProposal.id);
       }
@@ -865,7 +874,7 @@ const ClientDashboardContent = () => {
           freelancerId: freelancer.id,
           amount:
             parseInt(
-              String(savedProposal.budget || "0").replace(/[^0-9]/g, "")
+              String(savedProposal.budget || "0").replace(/[^0-9]/g, ""),
             ) || 0,
           coverLetter: savedProposal.summary || savedProposal.content || "",
         }),
@@ -964,15 +973,15 @@ const ClientDashboardContent = () => {
       // Check if any pending proposals are older than 48 hours
       const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
       const pendingProposals = (budgetProject.proposals || []).filter(
-        (p) => (p.status || "").toUpperCase() === "PENDING"
+        (p) => (p.status || "").toUpperCase() === "PENDING",
       );
 
       // Separate old (>48hrs) and recent (<48hrs) proposals
       const oldProposals = pendingProposals.filter(
-        (p) => new Date(p.createdAt).getTime() < fortyEightHoursAgo
+        (p) => new Date(p.createdAt).getTime() < fortyEightHoursAgo,
       );
       const recentProposals = pendingProposals.filter(
-        (p) => new Date(p.createdAt).getTime() >= fortyEightHoursAgo
+        (p) => new Date(p.createdAt).getTime() >= fortyEightHoursAgo,
       );
 
       let rejectedCount = 0;
@@ -1038,12 +1047,12 @@ const ClientDashboardContent = () => {
       // Show appropriate message based on whether proposals were rejected
       if (rejectedCount > 0) {
         toast.success(
-          `Budget updated to ₹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`
+          `Budget updated to ₹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`,
         );
       } else {
         // Just updated budget (proposals are still pending, under 48hrs)
         toast.success(
-          `Budget updated to ₹${budgetValue.toLocaleString()}! Freelancers will see the new amount.`
+          `Budget updated to ₹${budgetValue.toLocaleString()}! Freelancers will see the new amount.`,
         );
       }
 
@@ -1149,7 +1158,7 @@ const ClientDashboardContent = () => {
                             persistSavedProposalsToStorage(
                               savedProposals,
                               proposal.id,
-                              storageKeys
+                              storageKeys,
                             );
                           }}
                         >
@@ -1224,59 +1233,121 @@ const ClientDashboardContent = () => {
                         </h4>
                         {/* Parsed proposal content */}
                         {(() => {
-                          const rawContent = savedProposal.summary || savedProposal.content || "";
-                          let cleanContent = rawContent.replace(/```markdown\n?/gi, '').replace(/```\n?/g, '').trim();
+                          const rawContent =
+                            savedProposal.summary ||
+                            savedProposal.content ||
+                            "";
+                          let cleanContent = rawContent
+                            .replace(/```markdown\n?/gi, "")
+                            .replace(/```\n?/g, "")
+                            .trim();
                           let overview = "";
                           const objectives = [];
                           const features = [];
-                          const lines = cleanContent.split('\n');
+                          const lines = cleanContent.split("\n");
                           let currentSection = null;
                           lines.forEach((line) => {
                             const trimmed = line.trim();
                             if (!trimmed) return;
                             const lowerLine = trimmed.toLowerCase();
-                            if (lowerLine.includes('project overview:')) {
-                              currentSection = 'overview';
-                              const value = trimmed.split(':').slice(1).join(':').trim();
+                            if (lowerLine.includes("project overview:")) {
+                              currentSection = "overview";
+                              const value = trimmed
+                                .split(":")
+                                .slice(1)
+                                .join(":")
+                                .trim();
                               if (value) overview = value;
-                            } else if (lowerLine.includes('primary objectives:') || lowerLine.includes('objectives:')) {
-                              currentSection = 'objectives';
-                            } else if (lowerLine.includes('features') || lowerLine.includes('deliverables')) {
-                              currentSection = 'features';
-                            } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-                              const item = trimmed.replace(/^[-*]\s+/, '');
-                              if (currentSection === 'objectives') objectives.push(item);
-                              else if (currentSection === 'features') features.push(item);
-                            } else if (currentSection === 'overview' && !overview) {
+                            } else if (
+                              lowerLine.includes("primary objectives:") ||
+                              lowerLine.includes("objectives:")
+                            ) {
+                              currentSection = "objectives";
+                            } else if (
+                              lowerLine.includes("features") ||
+                              lowerLine.includes("deliverables")
+                            ) {
+                              currentSection = "features";
+                            } else if (
+                              trimmed.startsWith("- ") ||
+                              trimmed.startsWith("* ")
+                            ) {
+                              const item = trimmed.replace(/^[-*]\s+/, "");
+                              if (currentSection === "objectives")
+                                objectives.push(item);
+                              else if (currentSection === "features")
+                                features.push(item);
+                            } else if (
+                              currentSection === "overview" &&
+                              !overview
+                            ) {
                               overview = trimmed;
                             }
                           });
                           return (
                             <div className="space-y-3">
-                              {overview && <p className="text-sm text-muted-foreground">{overview.length > 200 ? overview.slice(0, 200) + '...' : overview}</p>}
+                              {overview && (
+                                <p className="text-sm text-muted-foreground">
+                                  {overview.length > 200
+                                    ? overview.slice(0, 200) + "..."
+                                    : overview}
+                                </p>
+                              )}
                               {objectives.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Objectives</p>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                                    Objectives
+                                  </p>
                                   <div className="flex flex-wrap gap-1.5">
                                     {objectives.slice(0, 3).map((obj, i) => (
-                                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">{obj}</span>
+                                      <span
+                                        key={i}
+                                        className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium"
+                                      >
+                                        {obj}
+                                      </span>
                                     ))}
-                                    {objectives.length > 3 && <span className="text-xs text-muted-foreground">+{objectives.length - 3} more</span>}
+                                    {objectives.length > 3 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        +{objectives.length - 3} more
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               )}
                               {features.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Key Features</p>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                                    Key Features
+                                  </p>
                                   <ul className="text-sm text-muted-foreground space-y-0.5">
                                     {features.slice(0, 3).map((feat, i) => (
-                                      <li key={i} className="flex items-start gap-1.5"><span className="text-primary mt-1"></span><span className="line-clamp-1">{feat}</span></li>
+                                      <li
+                                        key={i}
+                                        className="flex items-start gap-1.5"
+                                      >
+                                        <span className="text-primary mt-1"></span>
+                                        <span className="line-clamp-1">
+                                          {feat}
+                                        </span>
+                                      </li>
                                     ))}
-                                    {features.length > 3 && <li className="text-xs text-muted-foreground pl-4">+{features.length - 3} more</li>}
+                                    {features.length > 3 && (
+                                      <li className="text-xs text-muted-foreground pl-4">
+                                        +{features.length - 3} more
+                                      </li>
+                                    )}
                                   </ul>
                                 </div>
                               )}
-                              {!overview && objectives.length === 0 && features.length === 0 && <p className="text-sm text-muted-foreground line-clamp-2">{cleanContent.slice(0, 150) || "No description"}</p>}
+                              {!overview &&
+                                objectives.length === 0 &&
+                                features.length === 0 && (
+                                  <p className="text-sm text-muted-foreground line-clamp-2">
+                                    {cleanContent.slice(0, 150) ||
+                                      "No description"}
+                                  </p>
+                                )}
                             </div>
                           );
                         })()}
@@ -1313,8 +1384,8 @@ const ClientDashboardContent = () => {
                     // All proposals are rejected (none pending or accepted)
                     return !proposals.some((prop) =>
                       ["PENDING", "ACCEPTED"].includes(
-                        (prop.status || "").toUpperCase()
-                      )
+                        (prop.status || "").toUpperCase(),
+                      ),
                     );
                   })
                   .filter((p) => !dismissedProjectIds.includes(p.id));
@@ -1327,12 +1398,12 @@ const ClientDashboardContent = () => {
                     if (
                       !currentStored ||
                       new Date(project.createdAt) >
-                      new Date(currentStored.createdAt)
+                        new Date(currentStored.createdAt)
                     ) {
                       acc[project.title] = project;
                     }
                     return acc;
-                  }, {})
+                  }, {}),
                 ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by newest first
 
                 if (latestProjectsNeedingResend.length === 0 || savedProposal)
@@ -1373,12 +1444,12 @@ const ClientDashboardContent = () => {
                                           body: JSON.stringify({
                                             status: "ARCHIVED",
                                           }),
-                                        }
+                                        },
                                       );
                                     } catch (err) {
                                       console.error(
                                         `Failed to archive project ${projectId}:`,
-                                        err
+                                        err,
                                       );
                                     }
                                   }
@@ -1391,14 +1462,14 @@ const ClientDashboardContent = () => {
                                   setDismissedProjectIds(newDismissed);
                                   localStorage.setItem(
                                     "markify:dismissedExpiredProposals",
-                                    JSON.stringify(newDismissed)
+                                    JSON.stringify(newDismissed),
                                   );
 
                                   // Refresh projects list
                                   loadProjects();
 
                                   toast.success(
-                                    "Expired proposal removed permanently"
+                                    "Expired proposal removed permanently",
                                   );
                                 }}
                               >
@@ -1452,7 +1523,7 @@ const ClientDashboardContent = () => {
                                       savedProposals.findIndex(
                                         (proposal) =>
                                           getProposalSignature(proposal) ===
-                                          signature
+                                          signature,
                                       );
                                     let nextProposals = [];
                                     let nextActiveId = normalized.id;
@@ -1461,11 +1532,11 @@ const ClientDashboardContent = () => {
                                         (proposal, idx) =>
                                           idx === existingIndex
                                             ? {
-                                              ...proposal,
-                                              ...normalized,
-                                              id: proposal.id,
-                                            }
-                                            : proposal
+                                                ...proposal,
+                                                ...normalized,
+                                                id: proposal.id,
+                                              }
+                                            : proposal,
                                       );
                                       nextActiveId =
                                         savedProposals[existingIndex]?.id ||
@@ -1478,7 +1549,7 @@ const ClientDashboardContent = () => {
                                     }
                                     persistSavedProposalState(
                                       nextProposals,
-                                      nextActiveId
+                                      nextActiveId,
                                     );
                                     // Open increase budget dialog
                                     handleIncreaseBudgetClick(project);
@@ -1599,7 +1670,7 @@ const ClientDashboardContent = () => {
                         if (projectToPay) {
                           sessionStorage.setItem(
                             `dismissedPayment_${projectToPay.id}`,
-                            "true"
+                            "true",
                           );
                         }
                       }}
@@ -1822,7 +1893,7 @@ const ClientDashboardContent = () => {
 
                         const availableFreelancers =
                           suggestedFreelancers.filter(
-                            (f) => !alreadyInvitedIds.has(f.id)
+                            (f) => !alreadyInvitedIds.has(f.id),
                           );
 
                         if (
@@ -1880,10 +1951,10 @@ const ClientDashboardContent = () => {
                                   parsed.profileSummary ||
                                   parsed.shortDescription ||
                                   (Array.isArray(parsed.services) &&
-                                    parsed.services.length > 0
+                                  parsed.services.length > 0
                                     ? `Experienced in ${parsed.services.join(
-                                      ", "
-                                    )}`
+                                        ", ",
+                                      )}`
                                     : null) ||
                                   "No bio available.";
                               } catch (e) {
@@ -1910,7 +1981,7 @@ const ClientDashboardContent = () => {
                                   className="w-full h-32 flex items-center justify-center transition-all duration-500"
                                   style={{
                                     background: generateGradient(
-                                      freelancer.id || freelancer.name
+                                      freelancer.id || freelancer.name,
                                     ),
                                   }}
                                 ></div>
@@ -1946,7 +2017,7 @@ const ClientDashboardContent = () => {
                                   {/* Skills Row */}
                                   <div className="flex flex-wrap justify-center gap-2 mb-4 px-2 min-h-[40px]">
                                     {Array.isArray(freelancer.skills) &&
-                                      freelancer.skills.length > 0 ? (
+                                    freelancer.skills.length > 0 ? (
                                       freelancer.skills
                                         .slice(0, 3)
                                         .map((skill, idx) => (
@@ -1979,28 +2050,28 @@ const ClientDashboardContent = () => {
                                     let project = null;
                                     if (
                                       Array.isArray(
-                                        freelancer.portfolioProjects
+                                        freelancer.portfolioProjects,
                                       ) &&
                                       freelancer.portfolioProjects.length > 0
                                     ) {
                                       project =
                                         freelancer.portfolioProjects.find(
-                                          (p) => p.link || p.url
+                                          (p) => p.link || p.url,
                                         );
                                     } else if (
                                       typeof freelancer.portfolio ===
-                                      "string" &&
+                                        "string" &&
                                       freelancer.portfolio.startsWith("[")
                                     ) {
                                       try {
                                         const parsed = JSON.parse(
-                                          freelancer.portfolio
+                                          freelancer.portfolio,
                                         );
                                         if (Array.isArray(parsed))
                                           project = parsed.find(
-                                            (p) => p.link || p.url
+                                            (p) => p.link || p.url,
                                           );
-                                      } catch (e) { }
+                                      } catch (e) {}
                                     }
 
                                     if (
@@ -2037,8 +2108,8 @@ const ClientDashboardContent = () => {
                                               align="center"
                                             >
                                               {project.image ||
-                                                project.imageUrl ||
-                                                project.thumbnail ? (
+                                              project.imageUrl ||
+                                              project.thumbnail ? (
                                                 <div className="w-full aspect-video bg-muted relative">
                                                   <img
                                                     src={
@@ -2238,7 +2309,7 @@ const ClientDashboardContent = () => {
                           let projects = [];
                           if (
                             Array.isArray(
-                              viewingFreelancer.portfolioProjects
+                              viewingFreelancer.portfolioProjects,
                             ) &&
                             viewingFreelancer.portfolioProjects.length > 0
                           ) {
@@ -2249,9 +2320,9 @@ const ClientDashboardContent = () => {
                           ) {
                             try {
                               projects = JSON.parse(
-                                viewingFreelancer.portfolio
+                                viewingFreelancer.portfolio,
                               );
-                            } catch (e) { }
+                            } catch (e) {}
                           } else if (
                             Array.isArray(viewingFreelancer.portfolio)
                           ) {
@@ -2276,8 +2347,8 @@ const ClientDashboardContent = () => {
                                     >
                                       <Card className="overflow-hidden border-border/50 hover:border-primary/20 transition-all h-full relative">
                                         {project.image ||
-                                          project.imageUrl ||
-                                          project.thumbnail ? (
+                                        project.imageUrl ||
+                                        project.thumbnail ? (
                                           <div className="w-full aspect-video bg-muted relative overflow-hidden">
                                             <img
                                               src={
@@ -2350,7 +2421,9 @@ const ClientDashboardContent = () => {
                           <div className="p-2 bg-green-500/10 rounded-lg">
                             <DollarSign className="w-4 h-4 text-green-500" />
                           </div>
-                          <p className="text-sm font-medium text-muted-foreground">Estimate Budget</p>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Estimate Budget
+                          </p>
                         </div>
                         <p className="text-xl font-bold text-foreground pl-1">
                           {formatBudget(savedProposal?.budget)}
@@ -2362,7 +2435,9 @@ const ClientDashboardContent = () => {
                           <div className="p-2 bg-blue-500/10 rounded-lg">
                             <Calendar className="w-4 h-4 text-blue-500" />
                           </div>
-                          <p className="text-sm font-medium text-muted-foreground">Timeline</p>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Timeline
+                          </p>
                         </div>
                         <p className="text-xl font-bold text-foreground pl-1">
                           {savedProposal?.timeline || "Not specified"}
@@ -2374,43 +2449,70 @@ const ClientDashboardContent = () => {
                           <div className="p-2 bg-purple-500/10 rounded-lg">
                             <Briefcase className="w-4 h-4 text-purple-500" />
                           </div>
-                          <p className="text-sm font-medium text-muted-foreground">Service Type</p>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Service Type
+                          </p>
                         </div>
                         <p className="text-xl font-bold text-foreground pl-1 truncate">
-                          {savedProposal?.service || savedProposal?.serviceKey || "General"}
+                          {savedProposal?.service ||
+                            savedProposal?.serviceKey ||
+                            "General"}
                         </p>
                       </div>
                     </div>
 
                     {/* Parsed Content Sections */}
                     {(() => {
-                      const rawContent = savedProposal?.summary || savedProposal?.content || "";
+                      const rawContent =
+                        savedProposal?.summary || savedProposal?.content || "";
 
                       // Clean up markdown code block markers
                       let cleanContent = rawContent
-                        .replace(/```markdown\n?/gi, '')
-                        .replace(/```\n?/g, '')
+                        .replace(/```markdown\n?/gi, "")
+                        .replace(/```\n?/g, "")
                         .trim();
 
                       // Parse sections from the content
                       const sections = [];
-                      const lines = cleanContent.split('\n');
-                      let currentSection = { title: 'Overview', items: [], content: '' };
+                      const lines = cleanContent.split("\n");
+                      let currentSection = {
+                        title: "Overview",
+                        items: [],
+                        content: "",
+                      };
 
                       lines.forEach((line) => {
                         const trimmed = line.trim();
                         if (!trimmed) return;
 
                         // Check for section headers (various patterns)
-                        const headerMatch = trimmed.match(/^(?:\*{1,2})?([^:*]+?)(?:\*{1,2})?:\s*(.*)$/);
-                        const isListItem = trimmed.startsWith('- ') || trimmed.startsWith('* ');
+                        const headerMatch = trimmed.match(
+                          /^(?:\*{1,2})?([^:*]+?)(?:\*{1,2})?:\s*(.*)$/,
+                        );
+                        const isListItem =
+                          trimmed.startsWith("- ") || trimmed.startsWith("* ");
 
                         // Known section headers
                         const sectionHeaders = [
-                          'project overview', 'primary objectives', 'features', 'deliverables',
-                          'tech stack', 'technology', 'timeline', 'budget', 'scope', 'preferences',
-                          'client name', 'business name', 'service type', 'platform', 'design',
-                          'payment', 'milestones', 'requirements', 'additional notes'
+                          "project overview",
+                          "primary objectives",
+                          "features",
+                          "deliverables",
+                          "tech stack",
+                          "technology",
+                          "timeline",
+                          "budget",
+                          "scope",
+                          "preferences",
+                          "client name",
+                          "business name",
+                          "service type",
+                          "platform",
+                          "design",
+                          "payment",
+                          "milestones",
+                          "requirements",
+                          "additional notes",
                         ];
 
                         if (headerMatch && !isListItem) {
@@ -2418,23 +2520,42 @@ const ClientDashboardContent = () => {
                           const value = headerMatch[2].trim();
 
                           // Skip if it's a known metadata field we display separately
-                          if (['client name', 'business name', 'service type'].includes(key)) {
+                          if (
+                            [
+                              "client name",
+                              "business name",
+                              "service type",
+                            ].includes(key)
+                          ) {
                             return;
                           }
 
-                          if (sectionHeaders.some(h => key.includes(h))) {
-                            if (currentSection.title !== 'Overview' || currentSection.items.length > 0 || currentSection.content) {
+                          if (sectionHeaders.some((h) => key.includes(h))) {
+                            if (
+                              currentSection.title !== "Overview" ||
+                              currentSection.items.length > 0 ||
+                              currentSection.content
+                            ) {
                               sections.push({ ...currentSection });
                             }
-                            currentSection = { title: headerMatch[1].trim(), items: [], content: value };
+                            currentSection = {
+                              title: headerMatch[1].trim(),
+                              items: [],
+                              content: value,
+                            };
                           } else if (value) {
-                            currentSection.items.push({ key: headerMatch[1].trim(), value });
+                            currentSection.items.push({
+                              key: headerMatch[1].trim(),
+                              value,
+                            });
                           }
                         } else if (isListItem) {
-                          currentSection.items.push({ value: trimmed.replace(/^[-*]\s+/, '') });
+                          currentSection.items.push({
+                            value: trimmed.replace(/^[-*]\s+/, ""),
+                          });
                         } else {
                           if (currentSection.content) {
-                            currentSection.content += ' ' + trimmed;
+                            currentSection.content += " " + trimmed;
                           } else {
                             currentSection.content = trimmed;
                           }
@@ -2442,7 +2563,10 @@ const ClientDashboardContent = () => {
                       });
 
                       // Push last section
-                      if (currentSection.items.length > 0 || currentSection.content) {
+                      if (
+                        currentSection.items.length > 0 ||
+                        currentSection.content
+                      ) {
                         sections.push(currentSection);
                       }
 
@@ -2459,10 +2583,15 @@ const ClientDashboardContent = () => {
                       return (
                         <div className="space-y-6">
                           {sections.map((section, idx) => (
-                            <div key={idx} className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm">
+                            <div
+                              key={idx}
+                              className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm"
+                            >
                               <div className="px-6 py-3 bg-muted/30 border-b border-border/50 flex items-center gap-2">
                                 <div className="h-2 w-2 rounded-full bg-primary/50" />
-                                <h4 className="font-semibold text-lg tracking-tight">{section.title}</h4>
+                                <h4 className="font-semibold text-lg tracking-tight">
+                                  {section.title}
+                                </h4>
                               </div>
                               <div className="p-6">
                                 {section.content && (
@@ -2473,16 +2602,27 @@ const ClientDashboardContent = () => {
                                 {section.items.length > 0 && (
                                   <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {section.items.map((item, i) => (
-                                      <li key={i} className="flex items-start gap-2 text-sm bg-muted/20 p-2 rounded-md">
+                                      <li
+                                        key={i}
+                                        className="flex items-start gap-2 text-sm bg-muted/20 p-2 rounded-md"
+                                      >
                                         {item.key ? (
                                           <>
-                                            <span className="font-medium text-foreground min-w-[120px]">{item.key}:</span>
-                                            <span className="text-muted-foreground">{item.value}</span>
+                                            <span className="font-medium text-foreground min-w-[120px]">
+                                              {item.key}:
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                              {item.value}
+                                            </span>
                                           </>
                                         ) : (
                                           <>
-                                            <span className="text-primary mt-1.5">•</span>
-                                            <span className="text-muted-foreground leading-relaxed">{item.value}</span>
+                                            <span className="text-primary mt-1.5">
+                                              •
+                                            </span>
+                                            <span className="text-muted-foreground leading-relaxed">
+                                              {item.value}
+                                            </span>
                                           </>
                                         )}
                                       </li>
@@ -2512,7 +2652,10 @@ const ClientDashboardContent = () => {
                         setShowViewProposal(false);
                         setEditForm({
                           title: savedProposal?.projectTitle || "",
-                          summary: savedProposal?.summary || savedProposal?.content || "",
+                          summary:
+                            savedProposal?.summary ||
+                            savedProposal?.content ||
+                            "",
                           budget: savedProposal?.budget || "",
                           timeline: savedProposal?.timeline || "",
                         });
@@ -2625,14 +2768,14 @@ const ClientDashboardContent = () => {
                         const nextProposals = savedProposals.map((proposal) =>
                           proposal.id === savedProposal.id
                             ? normalizeSavedProposal({
-                              ...proposal,
-                              ...updated,
-                            })
-                            : proposal
+                                ...proposal,
+                                ...updated,
+                              })
+                            : proposal,
                         );
                         persistSavedProposalState(
                           nextProposals,
-                          savedProposal.id
+                          savedProposal.id,
                         );
                         setShowEditProposal(false);
                         toast.success("Proposal updated!");
@@ -2701,7 +2844,7 @@ const ClientDashboardContent = () => {
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {Array.isArray(viewFreelancer?.skills) &&
-                          viewFreelancer.skills.length > 0 ? (
+                        viewFreelancer.skills.length > 0 ? (
                           viewFreelancer.skills.map((skill, idx) => (
                             <Badge
                               key={idx}
@@ -2808,7 +2951,7 @@ const ClientDashboardContent = () => {
                                     </p>
                                   </div>
                                 </a>
-                              )
+                              ),
                             )}
                           </div>
                         </div>
@@ -2825,8 +2968,8 @@ const ClientDashboardContent = () => {
                     p.status === "IN_PROGRESS" ||
                     (p.status === "AWAITING_PAYMENT" &&
                       (p.proposals || []).some(
-                        (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
-                      ))
+                        (pr) => (pr.status || "").toUpperCase() === "ACCEPTED",
+                      )),
                 );
 
                 if (activeProjectsList.length === 0) return null;
@@ -2872,7 +3015,7 @@ const ClientDashboardContent = () => {
                               project.proposals || []
                             ).find(
                               (p) =>
-                                (p.status || "").toUpperCase() === "ACCEPTED"
+                                (p.status || "").toUpperCase() === "ACCEPTED",
                             );
                             return (
                               <TableRow
@@ -2885,7 +3028,7 @@ const ClientDashboardContent = () => {
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     {new Date(
-                                      project.createdAt
+                                      project.createdAt,
                                     ).toLocaleDateString()}
                                   </div>
                                 </TableCell>
@@ -2911,13 +3054,13 @@ const ClientDashboardContent = () => {
                                       <Avatar className="w-6 h-6">
                                         <AvatarFallback className="text-xs">
                                           {acceptedProposal.freelancer.fullName?.charAt(
-                                            0
+                                            0,
                                           ) || "F"}
                                         </AvatarFallback>
                                       </Avatar>
                                       <span className="text-sm">
                                         {acceptedProposal.freelancer.fullName?.split(
-                                          " "
+                                          " ",
                                         )[0] || "Freelancer"}
                                       </span>
                                     </div>
@@ -2953,7 +3096,7 @@ const ClientDashboardContent = () => {
                                       className="text-muted-foreground hover:text-primary"
                                       onClick={() =>
                                         navigate(
-                                          `/client/project/${project.id}`
+                                          `/client/project/${project.id}`,
                                         )
                                       }
                                     >
@@ -2979,8 +3122,8 @@ const ClientDashboardContent = () => {
                   return (p.proposals || []).some(
                     (prop) =>
                       ["PENDING", "ACCEPTED"].includes(
-                        (prop.status || "").toUpperCase()
-                      ) && !prop.deletedAt
+                        (prop.status || "").toUpperCase(),
+                      ) && !prop.deletedAt,
                   );
                 });
 
@@ -3034,7 +3177,7 @@ const ClientDashboardContent = () => {
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     {new Date(
-                                      project.createdAt
+                                      project.createdAt,
                                     ).toLocaleDateString()}
                                   </div>
                                 </TableCell>
@@ -3054,12 +3197,12 @@ const ClientDashboardContent = () => {
                                       .filter(
                                         (p) =>
                                           (p.status || "").toUpperCase() ===
-                                          "PENDING"
+                                          "PENDING",
                                       )
                                       .sort(
                                         (a, b) =>
                                           new Date(b.createdAt) -
-                                          new Date(a.createdAt)
+                                          new Date(a.createdAt),
                                       );
 
                                     // If multiple freelancers invited, show count
@@ -3076,7 +3219,7 @@ const ClientDashboardContent = () => {
                                                 >
                                                   <AvatarFallback className="text-xs">
                                                     {p.freelancer?.fullName?.charAt(
-                                                      0
+                                                      0,
                                                     ) || "F"}
                                                   </AvatarFallback>
                                                 </Avatar>
@@ -3096,7 +3239,7 @@ const ClientDashboardContent = () => {
                                           <Avatar className="w-6 h-6 grayscale">
                                             <AvatarFallback className="text-xs">
                                               {pendingProposal.freelancer.fullName?.charAt(
-                                                0
+                                                0,
                                               ) || "F"}
                                             </AvatarFallback>
                                           </Avatar>
@@ -3104,7 +3247,7 @@ const ClientDashboardContent = () => {
                                             Invited:{" "}
                                             {
                                               pendingProposal.freelancer.fullName?.split(
-                                                " "
+                                                " ",
                                               )[0]
                                             }
                                           </span>
@@ -3131,7 +3274,7 @@ const ClientDashboardContent = () => {
                                     ).filter(
                                       (p) =>
                                         (p.status || "").toUpperCase() ===
-                                        "PENDING"
+                                        "PENDING",
                                     );
                                     const twentyFourHoursAgo =
                                       Date.now() - 24 * 60 * 60 * 1000;
@@ -3139,7 +3282,7 @@ const ClientDashboardContent = () => {
                                       pendingProposals.some(
                                         (p) =>
                                           new Date(p.createdAt).getTime() <
-                                          twentyFourHoursAgo
+                                          twentyFourHoursAgo,
                                       );
 
                                     // Only show Budget button if proposal is pending >24hrs, otherwise show nothing
@@ -3249,7 +3392,7 @@ const ClientDashboardContent = () => {
                           }
                           onClick={() =>
                             navigate(
-                              `/client/messages?projectId=${f.projectId}`
+                              `/client/messages?projectId=${f.projectId}`,
                             )
                           }
                         />
@@ -3276,8 +3419,8 @@ const ClientDashboardContent = () => {
                       {projects
                         .filter((p) =>
                           ["IN_PROGRESS", "COMPLETED"].includes(
-                            (p.status || "").toUpperCase()
-                          )
+                            (p.status || "").toUpperCase(),
+                          ),
                         )
                         .slice(0, 2)
                         .map((project, idx) => (
@@ -3289,15 +3432,16 @@ const ClientDashboardContent = () => {
                             }
                           >
                             <div
-                              className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${idx === 0
-                                ? "bg-primary"
-                                : "bg-muted-foreground/50"
-                                }`}
+                              className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
+                                idx === 0
+                                  ? "bg-primary"
+                                  : "bg-muted-foreground/50"
+                              }`}
                             />
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
                               <span className="text-xs font-bold text-muted-foreground w-16 flex-shrink-0">
                                 {new Date(
-                                  project.updatedAt || project.createdAt
+                                  project.updatedAt || project.createdAt,
                                 ).toLocaleTimeString([], {
                                   hour: "2-digit",
                                   minute: "2-digit",
