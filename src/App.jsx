@@ -13,79 +13,120 @@ const About = lazy(() => import("@/components/sections/home/About.jsx"));
 const Services = lazy(() => import("@/components/sections/home/Services.jsx"));
 const Contact = lazy(() => import("@/components/sections/home/Contact.jsx"));
 const Client = lazy(() => import("@/components/features/client/Client.jsx"));
-const ClientDashboard = lazy(() => import("@/components/features/client/ClientDashboard.jsx"));
-const ClientProposal = lazy(() => import("@/components/features/client/ClientProposal.jsx"));
-const ProposalDrafts = lazy(() => import("@/components/features/client/ProposalDrafts.jsx"));
-const ClientProjects = lazy(() => import("@/components/features/client/ClientProjects.jsx"));
-const ClientProjectDetail = lazy(() => import("@/components/features/client/ClientProjectDetail.jsx"));
-const ClientChat = lazy(() => import("@/components/features/client/ClientChat.jsx"));
+const ClientDashboard = lazy(
+  () => import("@/components/features/client/ClientDashboard.jsx"),
+);
+const ClientProposal = lazy(
+  () => import("@/components/features/client/ClientProposal.jsx"),
+);
+const ProposalDrafts = lazy(
+  () => import("@/components/features/client/ProposalDrafts.jsx"),
+);
+const ClientProjects = lazy(
+  () => import("@/components/features/client/ClientProjects.jsx"),
+);
+const ClientProjectDetail = lazy(
+  () => import("@/components/features/client/ClientProjectDetail.jsx"),
+);
+const ClientChat = lazy(
+  () => import("@/components/features/client/ClientChat.jsx"),
+);
 const AIChat = lazy(() => import("@/components/features/ai/AIChat.jsx"));
-const ClientProfile = lazy(() => import("@/components/features/client/ClientProfile.jsx"));
-const ProjectManagerDashboard = lazy(() =>
-  import("@/components/features/project-manager/ProjectManagerDashboard")
+const ClientProfile = lazy(
+  () => import("@/components/features/client/ClientProfile.jsx"),
 );
-const ManagerAvailability = lazy(() =>
-  import("@/components/features/project-manager/ManagerAvailability")
+const ProjectManagerDashboard = lazy(
+  () => import("@/components/features/project-manager/ProjectManagerDashboard"),
 );
-const ManagerAppointments = lazy(() =>
-  import("@/components/features/project-manager/ManagerAppointments")
+const ManagerAvailability = lazy(
+  () => import("@/components/features/project-manager/ManagerAvailability"),
 );
-const ManagerProjects = lazy(() =>
-  import("@/components/features/project-manager/ManagerProjects")
+const ManagerAppointments = lazy(
+  () => import("@/components/features/project-manager/ManagerAppointments"),
 );
-const ManagerProjectDetail = lazy(() =>
-  import("@/components/features/project-manager/ManagerProjectDetail")
+const ManagerProjects = lazy(
+  () => import("@/components/features/project-manager/ManagerProjects"),
 );
-const ManagerChat = lazy(() => import("@/components/features/project-manager/ManagerChat"));
-const ManagerProfile = lazy(() =>
-  import("@/components/features/project-manager/ManagerProfile")
+const ManagerProjectDetail = lazy(
+  () => import("@/components/features/project-manager/ManagerProjectDetail"),
 );
-const SignupPage = lazy(() => import("@/components/features/auth/forms/Signup"));
+const ManagerChat = lazy(
+  () => import("@/components/features/project-manager/ManagerChat"),
+);
+const ManagerProfile = lazy(
+  () => import("@/components/features/project-manager/ManagerProfile"),
+);
+const SignupPage = lazy(
+  () => import("@/components/features/auth/forms/Signup"),
+);
 const LoginPage = lazy(() => import("@/components/features/auth/forms/Login"));
-const ForgotPasswordPage = lazy(() =>
-  import("@/components/features/auth/forms/ForgotPassword")
+const ForgotPasswordPage = lazy(
+  () => import("@/components/features/auth/forms/ForgotPassword"),
 );
-const ResetPasswordPage = lazy(() =>
-  import("@/components/features/auth/forms/ResetPassword")
+const ResetPasswordPage = lazy(
+  () => import("@/components/features/auth/forms/ResetPassword"),
 );
-const PMLogin = lazy(() => import("@/components/features/project-manager/PMLogin"));
-const FreelancerDashboard = lazy(() =>
-  import("@/components/features/freelancer/FreelancerDashboard")
+const PMLogin = lazy(
+  () => import("@/components/features/project-manager/PMLogin"),
 );
-const FreelancerProposal = lazy(() =>
-  import("@/components/features/freelancer/FreelancerProposal")
+const FreelancerDashboard = lazy(
+  () => import("@/components/features/freelancer/FreelancerDashboard"),
 );
-const FreelancerProfile = lazy(() =>
-  import("@/components/features/freelancer/FreelancerProfile")
+const FreelancerProposal = lazy(
+  () => import("@/components/features/freelancer/FreelancerProposal"),
 );
-const FreelancerProjects = lazy(() =>
-  import("@/components/features/freelancer/FreelancerProjects")
+const FreelancerProfile = lazy(
+  () => import("@/components/features/freelancer/FreelancerProfile"),
 );
-const FreelancerProjectDetail = lazy(() =>
-  import("@/components/features/freelancer/FreelancerProjectDetail")
+const FreelancerProjects = lazy(
+  () => import("@/components/features/freelancer/FreelancerProjects"),
 );
-const FreelancerChat = lazy(() => import("@/components/features/freelancer/FreelancerChat"));
-const FreelancerMultiStepForm = lazy(() =>
-  import("@/components/features/freelancer/multi-step-form")
+const FreelancerProjectDetail = lazy(
+  () => import("@/components/features/freelancer/FreelancerProjectDetail"),
 );
-const VerificationPending = lazy(() =>
-  import("@/components/features/freelancer/VerificationPending")
+const FreelancerChat = lazy(
+  () => import("@/components/features/freelancer/FreelancerChat"),
+);
+const FreelancerMultiStepForm = lazy(
+  () => import("@/components/features/freelancer/multi-step-form"),
+);
+const VerificationPending = lazy(
+  () => import("@/components/features/freelancer/VerificationPending"),
 );
 const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
-const AdminDashboard = lazy(() => import("@/components/features/admin/AdminDashboard"));
-const AdminUsers = lazy(() => import("@/components/features/admin/AdminUsers"));
-const AdminProjects = lazy(() => import("@/components/features/admin/AdminProjects"));
-const AdminProjectDetail = lazy(() =>
-  import("@/components/features/admin/AdminProjectDetail")
+const AdminDashboard = lazy(
+  () => import("@/components/features/admin/AdminDashboard"),
 );
-const AdminDisputes = lazy(() => import("@/components/features/admin/AdminDisputes"));
+const AdminUsers = lazy(() => import("@/components/features/admin/AdminUsers"));
+const AdminProjects = lazy(
+  () => import("@/components/features/admin/AdminProjects"),
+);
+const AdminProjectDetail = lazy(
+  () => import("@/components/features/admin/AdminProjectDetail"),
+);
+const AdminDisputes = lazy(
+  () => import("@/components/features/admin/AdminDisputes"),
+);
 const AdminLogin = lazy(() => import("@/components/features/admin/AdminLogin"));
-const AdminApprovals = lazy(() => import("@/components/features/admin/AdminApprovals"));
-const AdminUserDetails = lazy(() => import("@/components/features/admin/AdminUserDetails"));
+const AdminApprovals = lazy(
+  () => import("@/components/features/admin/AdminApprovals"),
+);
+const AdminUserDetails = lazy(
+  () => import("@/components/features/admin/AdminUserDetails"),
+);
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
-const TermsConditions = lazy(() => import("@/components/pages/TermsConditions"));
-
-
+const TermsConditions = lazy(
+  () => import("@/components/pages/TermsConditions"),
+);
+const Careers = lazy(() => import("@/components/pages/Careers"));
+const BrowseTalent = lazy(() => import("@/components/pages/BrowseTalent"));
+const EnterpriseSolutions = lazy(
+  () => import("@/components/pages/EnterpriseSolutions"),
+);
+const Blog = lazy(() => import("@/components/pages/Blog"));
+const HelpCenter = lazy(() => import("@/components/pages/HelpCenter"));
+const TermsOfService = lazy(() => import("@/components/pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("@/components/pages/PrivacyPolicy"));
 
 const RouteFallback = () => (
   <div className="flex min-h-screen items-center justify-center">
@@ -122,6 +163,62 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <TermsConditions />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/careers"
+              element={
+                <LayoutWithNavbar>
+                  <Careers />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/talent"
+              element={
+                <LayoutWithNavbar>
+                  <BrowseTalent />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/enterprise"
+              element={
+                <LayoutWithNavbar>
+                  <EnterpriseSolutions />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/blog"
+              element={
+                <LayoutWithNavbar>
+                  <Blog />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/help"
+              element={
+                <LayoutWithNavbar>
+                  <HelpCenter />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/terms"
+              element={
+                <LayoutWithNavbar>
+                  <TermsOfService />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/privacy"
+              element={
+                <LayoutWithNavbar>
+                  <PrivacyPolicy />
                 </LayoutWithNavbar>
               }
             />
@@ -481,14 +578,24 @@ const ProtectedRoute = ({ children, loginPath = "/login" }) => {
   }
 
   // Check for freelancer onboarding
-  if (user?.role === "FREELANCER" && !user?.onboardingComplete && location.pathname.startsWith("/freelancer") && !location.pathname.includes("/onboarding")) {
+  if (
+    user?.role === "FREELANCER" &&
+    !user?.onboardingComplete &&
+    location.pathname.startsWith("/freelancer") &&
+    !location.pathname.includes("/onboarding")
+  ) {
     return <Navigate to="/freelancer/onboarding" replace />;
   }
 
   // Check for freelancer verification status
   if (user?.role === "FREELANCER" && user?.status === "PENDING_APPROVAL") {
-    const allowedPaths = ["/freelancer/verification-pending", "/freelancer/profile"];
-    const isAllowed = allowedPaths.some(path => location.pathname.startsWith(path));
+    const allowedPaths = [
+      "/freelancer/verification-pending",
+      "/freelancer/profile",
+    ];
+    const isAllowed = allowedPaths.some((path) =>
+      location.pathname.startsWith(path),
+    );
 
     if (!isAllowed && location.pathname.startsWith("/freelancer")) {
       return <Navigate to="/freelancer/verification-pending" replace />;
