@@ -81,9 +81,9 @@ aiRouter.post("/proposal", async (req, res) => {
   }
 });
 
-aiRouter.get("/services", (_req, res) => {
+aiRouter.get("/services", async (_req, res) => {
   try {
-    const services = getAllServices();
+    const services = await getAllServices();
     res.json({ success: true, services });
   } catch (error) {
     console.error("AI Services Error:", error);
@@ -91,9 +91,9 @@ aiRouter.get("/services", (_req, res) => {
   }
 });
 
-aiRouter.get("/services/:serviceId", (req, res) => {
+aiRouter.get("/services/:serviceId", async (req, res) => {
   try {
-    const service = getServiceInfo(req.params.serviceId);
+    const service = await getServiceInfo(req.params.serviceId);
     if (!service) {
       res.status(404).json({ error: "Service not found" });
       return;
