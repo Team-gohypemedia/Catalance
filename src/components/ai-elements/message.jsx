@@ -144,7 +144,10 @@ export const MessageBranch = ({
 
 export const MessageBranchContent = ({ children, ...props }) => {
   const { currentBranch, setBranches, branches } = useMessageBranch();
-  const childrenArray = Array.isArray(children) ? children : [children];
+  const childrenArray = useMemo(
+    () => (Array.isArray(children) ? children : [children]),
+    [children]
+  );
 
   useEffect(() => {
     if (branches.length !== childrenArray.length) {
@@ -175,7 +178,10 @@ export const MessageBranchSelector = ({ className, ...props }) => {
 
   return (
     <ButtonGroup
-      className="[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md"
+      className={cn(
+        "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md",
+        className
+      )}
       orientation="horizontal"
       {...props}
     />
@@ -211,6 +217,7 @@ export const MessageBranchNext = ({ children, className, ...props }) => {
       size="icon-sm"
       type="button"
       variant="ghost"
+      className={className}
       {...props}
     >
       {children ?? <ChevronRightIcon size={14} />}
@@ -238,16 +245,23 @@ export const MessageResponse = memo(
   ({ className, ...props }) => (
     <Streamdown
       className={cn(
-        "size-full text-[16px] leading-7 text-foreground",
+        "size-full text-[14px] leading-6 text-foreground",
         "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        "[&_p]:mb-4 [&_p:last-child]:mb-0",
-        "[&_h1]:mb-3 [&_h1]:text-[20px] [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-white",
-        "[&_h2]:mt-4 [&_h2]:text-[18px] [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-white [&_h2]:border-l-2 [&_h2]:border-white/40 [&_h2]:pl-3 [&_h2]:bg-white/5 [&_h2]:rounded-lg [&_h2]:py-2 [&_h2]:pr-3",
-        "[&_h3]:mt-4 [&_h3]:text-[18px] [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:text-white [&_h3]:border-l-2 [&_h3]:border-white/40 [&_h3]:pl-3 [&_h3]:bg-white/5 [&_h3]:rounded-lg [&_h3]:py-2 [&_h3]:pr-3",
-        "[&_strong]:font-semibold [&_strong]:text-white",
-        "[&_ul]:mt-3 [&_ul]:pl-5 [&_ul]:list-disc",
-        "[&_ol]:mt-3 [&_ol]:pl-5 [&_ol]:list-decimal",
-        "[&_li]:mb-3 [&_li:last-child]:mb-0",
+        "[&_p]:mb-3 [&_p:last-child]:mb-0",
+        "[&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-foreground",
+        "[&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-foreground",
+        "[&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:text-foreground",
+        "[&_strong]:font-semibold [&_strong]:text-foreground",
+        "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-4",
+        "[&_code]:rounded-md [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.85em]",
+        "[&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-muted/50 [&_pre]:p-3",
+        "[&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5",
+        "[&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5",
+        "[&_li]:mb-2 [&_li:last-child]:mb-0",
+        "[&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
+        "[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm",
+        "[&_th]:border [&_th]:border-border [&_th]:bg-muted/60 [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-medium",
+        "[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1.5",
         className
       )}
       plugins={{ code, mermaid, math, cjk }}
@@ -259,7 +273,7 @@ export const MessageResponse = memo(
 
 MessageResponse.displayName = "MessageResponse";
 
-const CARET = "▋";
+const CARET = "|";
 
 export const MessageResponseTyping = memo(
   ({

@@ -175,6 +175,17 @@ model Profile {
   updatedAt      DateTime @updatedAt
 }
 
+model ServiceCatalog {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  schemaVersion String?
+  currency      String?
+  payload       Json
+  sourceFile    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 model ChatConversation {
   id          String        @id @default(cuid())
   service     String?

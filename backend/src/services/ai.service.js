@@ -2,19 +2,128 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { env } from "../config/env.js";
+import { prisma, prismaInitError } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const FILE_SERVICE_CATALOG_PATH = join(__dirname, "../data/servicesComplete.json");
+const SERVICE_CATALOG_KEY = "services_complete_nested";
+const SERVICE_CATALOG_CACHE_TTL_MS = 60 * 1000;
+let servicesCatalogLastSyncAt = 0;
+let servicesCatalogSyncPromise = null;
+let servicesCatalogLoadWarned = false;
 
 const rawServicesData = readFileSync(
-  join(__dirname, "../data/servicesComplete.json"),
+  FILE_SERVICE_CATALOG_PATH,
   "utf-8"
 );
 // Strip BOM/control chars and leading whitespace before JSON.parse
-const servicesData = JSON.parse(
+const fileServicesData = JSON.parse(
   rawServicesData.replace(/^[\u0000-\u001F\uFEFF]+/, "").trimStart()
 );
+let servicesData = fileServicesData;
+
+const denormalizeCollection = (node) => {
+  if (Array.isArray(node)) return node;
+  if (!node || typeof node !== "object") return [];
+
+  const byId = node.byId && typeof node.byId === "object" ? node.byId : {};
+  const allIds = Array.isArray(node.allIds) ? node.allIds : Object.keys(byId);
+  return allIds
+    .map((id) => byId[id])
+    .filter(Boolean);
+};
+
+const normalizeServiceShape = (service = {}) => ({
+  ...service,
+  questions: denormalizeCollection(service.questions).map((question = {}) => ({
+    ...question,
+    options: denormalizeCollection(question.options)
+  }))
+});
+
+const normalizeCatalogPayload = (payload, schemaVersion, currency) => {
+  if (!payload || typeof payload !== "object") return null;
+
+  const rawServices = denormalizeCollection(payload.services);
+  const services = rawServices.map((service) => normalizeServiceShape(service));
+  if (services.length === 0) return null;
+
+  return {
+    schema_version:
+      payload?.meta?.schemaVersion ||
+      payload?.schema_version ||
+      schemaVersion ||
+      null,
+    currency: payload?.meta?.currency || payload?.currency || currency || null,
+    global_rules: payload?.globalRules || payload?.global_rules || {},
+    services
+  };
+};
+
+const loadServiceCatalogFromDb = async () => {
+  if (!prisma || prismaInitError) return null;
+
+  try {
+    const catalog = await prisma.serviceCatalog.findUnique({
+      where: { key: SERVICE_CATALOG_KEY },
+      select: {
+        schemaVersion: true,
+        currency: true,
+        payload: true
+      }
+    });
+
+    if (!catalog?.payload) return null;
+
+    return normalizeCatalogPayload(
+      catalog.payload,
+      catalog.schemaVersion,
+      catalog.currency
+    );
+  } catch (error) {
+    if (!servicesCatalogLoadWarned) {
+      console.warn(
+        `[AI] Failed to load service catalog from DB. Falling back to file: ${error?.message || error}`
+      );
+      servicesCatalogLoadWarned = true;
+    }
+    return null;
+  }
+};
+
+const ensureServicesCatalogLoaded = async (force = false) => {
+  const now = Date.now();
+  if (
+    !force &&
+    servicesCatalogLastSyncAt > 0 &&
+    now - servicesCatalogLastSyncAt < SERVICE_CATALOG_CACHE_TTL_MS
+  ) {
+    return servicesData;
+  }
+
+  if (servicesCatalogSyncPromise) {
+    return servicesCatalogSyncPromise;
+  }
+
+  servicesCatalogSyncPromise = (async () => {
+    const dbCatalog = await loadServiceCatalogFromDb();
+    if (dbCatalog?.services?.length) {
+      servicesData = dbCatalog;
+    }
+    servicesCatalogLastSyncAt = Date.now();
+    return servicesData;
+  })();
+
+  try {
+    return await servicesCatalogSyncPromise;
+  } finally {
+    servicesCatalogSyncPromise = null;
+  }
+};
+
+void ensureServicesCatalogLoaded(true);
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL =
@@ -1624,13 +1733,14 @@ Treat this as confirmed and DO NOT ask which service they want.`
               questionText += `\n   INSTRUCTIONS FOR THIS QUESTION:`;
               questionText += `\n   1. Look up the user's previous answer to "${q.template_source.match_question}"`;
               questionText += `\n   2. Find the matching website type in the website_types array`;
-              questionText += `\n   3. Display ALL pages from that template as a numbered list`;
-              questionText += `\n   4. After showing the template, ask: "${q.additional_pages_question}"`;
+              questionText += `\n   3. Display ALL pages from that template as a numbered list under "Essential template pages"`;
+              questionText += `\n   4. After showing the template, ask this as a separate question line: "${q.additional_pages_question}"`;
               if (Array.isArray(q.additional_pages_options)) {
                 const addOptions = q.additional_pages_options.map(o => o.label).join(" | ");
-                questionText += `\n   5. Present these options: ${addOptions}`;
+                questionText += `\n   5. Present ONLY these answer choices as a separate numbered list restarted at 1: ${addOptions}`;
               }
-              questionText += `\n   6. If user wants additional pages, collect the page names or count`;
+              questionText += `\n   6. Never continue the page-template numbering into the answer choices`;
+              questionText += `\n   7. If user wants additional pages, collect the page names or count`;
               return questionText;
             }
 
@@ -1986,6 +2096,8 @@ export const generateProposalMarkdown = async (
   chatHistory = [],
   selectedServiceName = ""
 ) => {
+  await ensureServicesCatalogLoaded();
+
   const apiKey = env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
     throw new AppError(
@@ -2031,6 +2143,8 @@ export const chatWithAI = async (
   conversationHistory = [],
   selectedServiceName = ""
 ) => {
+  await ensureServicesCatalogLoaded();
+
   const apiKey = env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
     throw new AppError(
@@ -2125,8 +2239,13 @@ export const chatWithAI = async (
   };
 };
 
-export const getServiceInfo = (serviceId) =>
-  servicesData.services.find((service) => service.id === serviceId);
+export const getServiceInfo = async (serviceId) => {
+  await ensureServicesCatalogLoaded();
+  return servicesData.services.find((service) => service.id === serviceId);
+};
 
-export const getAllServices = () => servicesData.services;
+export const getAllServices = async () => {
+  await ensureServicesCatalogLoaded();
+  return servicesData.services;
+};
 

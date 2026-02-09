@@ -37,7 +37,6 @@ import {
 import {
   Message,
   MessageContent,
-  MessageResponse,
   MessageResponseTyping,
 } from "@/components/ai-elements/message";
 import {
@@ -634,12 +633,23 @@ const removeMarkdownDecorators = (value = "") =>
     .replace(/`([^`]+)`/g, "$1")
     .trim();
 
+const MULTI_SELECT_QUESTION_REGEX =
+  /\b(select all|all that apply|multiple|pick any|one or more|as many|more than one)\b/i;
+const TEMPLATE_ADDITIONAL_PAGES_CONTEXT_REGEX = /\badditional pages?\b/i;
+const TEMPLATE_ADDITIONAL_PAGES_CHOICE_REGEX = /^(?:yes\b|no\b)/i;
+
 const parseQuestionCardContent = (content = "") => {
   if (typeof content !== "string") {
-    return { questionTitle: "", helperLines: [], options: [] };
+    return {
+      questionTitle: "",
+      helperLines: [],
+      options: [],
+      nonInteractiveOptions: [],
+      allowMultiSelect: false,
+    };
   }
 
-  const options = [];
+  const numberedLines = [];
   const bodyLines = [];
 
   content
@@ -648,10 +658,18 @@ const parseQuestionCardContent = (content = "") => {
     .filter(Boolean)
     .forEach((line) => {
       if (/^if you don't see what you need/i.test(line)) return;
-      const optionMatch = line.match(/^\d+\s*[.)]\s*(.+)$/);
+      const optionMatch = line.match(/^(\d+)\s*[.)]\s*(.+)$/);
       if (optionMatch) {
-        const optionLabel = removeMarkdownDecorators(optionMatch[1]);
-        if (optionLabel) options.push(optionLabel);
+        const optionLabel = removeMarkdownDecorators(optionMatch[2]);
+        const optionNumber = Number.parseInt(optionMatch[1], 10);
+        if (optionLabel) {
+          numberedLines.push({
+            number: Number.isFinite(optionNumber)
+              ? optionNumber
+              : numberedLines.length + 1,
+            label: optionLabel,
+          });
+        }
         return;
       }
       const normalizedLine = removeMarkdownDecorators(line);
@@ -669,11 +687,40 @@ const parseQuestionCardContent = (content = "") => {
     filteredBodyLines[0] ||
     "";
   const helperLines = filteredBodyLines.filter((line) => line !== questionTitle);
+  let options = numberedLines.map((item) => item.label);
+  let nonInteractiveOptions = [];
+
+  const shouldSplitTemplateAdditionalPages =
+    TEMPLATE_ADDITIONAL_PAGES_CONTEXT_REGEX.test(
+      [questionTitle, ...helperLines].join(" "),
+    ) && /\b(template|essential pages?)\b/i.test(content);
+
+  if (shouldSplitTemplateAdditionalPages && numberedLines.length > 0) {
+    const additionalChoices = numberedLines.filter((item) =>
+      TEMPLATE_ADDITIONAL_PAGES_CHOICE_REGEX.test(item.label),
+    );
+
+    if (additionalChoices.length >= 2) {
+      const additionalChoiceKeys = new Set(
+        additionalChoices.map((item) => `${item.number}:${item.label}`),
+      );
+      options = additionalChoices.map((item) => item.label);
+      nonInteractiveOptions = numberedLines.filter(
+        (item) => !additionalChoiceKeys.has(`${item.number}:${item.label}`),
+      );
+    }
+  }
+
+  const allowMultiSelect = MULTI_SELECT_QUESTION_REGEX.test(
+    [questionTitle, ...helperLines].join(" "),
+  );
 
   return {
     questionTitle,
     helperLines,
     options,
+    nonInteractiveOptions,
+    allowMultiSelect,
   };
 };
 
@@ -704,13 +751,20 @@ const normalizeAssistantBubbleContent = (content = "") => {
     .trim();
 };
 
+const ASSISTANT_LABEL_CLASSES =
+  "px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground";
+const ASSISTANT_BUBBLE_CLASSES =
+  "chat-bubble chat-bubble--assistant max-w-[84%] !border-0 !bg-transparent !px-0 !py-0 text-[14px] leading-6 text-foreground !shadow-none";
+const RETRY_BUTTON_CLASSES =
+  "inline-flex items-center rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60";
+
 const UserMessageBubble = ({ messageText = "" }) => {
   const userLines = messageText.split("\n");
   return (
     <Message from="user" className="animate-fade-in chat-message-row chat-message-row--user">
-      <MessageContent className="chat-bubble chat-bubble--user max-w-[85%] rounded-2xl rounded-tr-none bg-gradient-to-br from-primary to-primary/80 px-3 py-2 text-[15px] leading-relaxed text-primary-foreground shadow-lg shadow-primary/20">
+      <MessageContent className="chat-bubble chat-bubble--user max-w-[80%] !rounded-2xl !rounded-tr-md !border !border-primary/35 !bg-primary !px-4 !py-3 text-[14px] leading-6 !text-primary-foreground !shadow-sm">
         {userLines.map((line, lineIndex) => (
-          <p key={lineIndex} className={`${line ? "mb-2 last:mb-0" : "h-2"}`}>
+          <p key={lineIndex} className={`${line ? "mb-1.5 last:mb-0" : "h-2"}`}>
             {line}
           </p>
         ))}
@@ -732,8 +786,10 @@ const AssistantMessageBubble = ({
     from="assistant"
     className="animate-fade-in chat-message-row chat-message-row--assistant"
   >
-    <span className="text-xs font-medium px-1 text-muted-foreground">CATA</span>
-    <MessageContent className="chat-bubble chat-bubble--assistant max-w-[85%] rounded-2xl border border-border/60 bg-card/90 p-4 text-[15px] leading-relaxed shadow-sm backdrop-blur">
+    <span className={ASSISTANT_LABEL_CLASSES}>
+      CATA
+    </span>
+    <MessageContent className={ASSISTANT_BUBBLE_CLASSES}>
       <MessageResponseTyping
         className="chat-bubble--assistant-content text-foreground"
         isEnabled={shouldAnimate}
@@ -747,7 +803,7 @@ const AssistantMessageBubble = ({
             type="button"
             onClick={() => onRetry?.(retryText)}
             disabled={retryDisabled}
-            className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            className={RETRY_BUTTON_CLASSES}
           >
             Retry
           </button>
@@ -765,6 +821,12 @@ const QuestionCard = ({
   retryText = "",
   onRetry,
   retryDisabled = false,
+  questionKey = "",
+  selectedOptions = [],
+  onOptionToggle,
+  onSubmitSelection,
+  onClearSelection,
+  isInteractive = false,
 }) => {
   const payload = parseQuestionCardContent(messageText);
   const questionTitle = payload.questionTitle || "Please choose an option:";
@@ -780,31 +842,107 @@ const QuestionCard = ({
       from="assistant"
       className="animate-fade-in chat-message-row chat-message-row--assistant"
     >
-      <span className="text-xs font-medium px-1 text-muted-foreground">CATA</span>
-      <div className="chat-question-card max-w-[85%] rounded-2xl border border-primary/30 bg-primary/5 p-4">
-        <p className="chat-question-card__title question-title text-[15px] font-semibold leading-relaxed text-foreground">
+      <span className={ASSISTANT_LABEL_CLASSES}>
+        CATA
+      </span>
+      <div className="chat-question-card max-w-[84%] border-0 bg-transparent px-0 py-0 shadow-none">
+        <h1 className="chat-question-card__title question-title text-[26px] font-semibold leading-tight tracking-tight text-foreground">
           {questionTitle}
-        </p>
+        </h1>
         {payload.helperLines.map((line, index) => (
           <p
             key={`${line}-${index}`}
-            className="chat-question-card__helper mt-2 text-sm text-primary/80 italic"
+            className="chat-question-card__helper mt-1.5 text-sm text-muted-foreground"
           >
             {line}
           </p>
         ))}
-        {payload.options.length > 0 ? (
-          <ol className="chat-question-card__options mt-3 space-y-2">
-            {payload.options.map((option, optionIndex) => (
+        {payload.nonInteractiveOptions.length > 0 ? (
+          <ol className="chat-question-card__non-interactive-options mt-3 space-y-2.5">
+            {payload.nonInteractiveOptions.map((item) => (
               <li
-                key={`${option}-${optionIndex}`}
-                className="rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-foreground"
+                key={`${item.number}-${item.label}`}
+                className="flex items-start gap-2.5 text-sm text-foreground"
               >
-                <span className="font-medium text-primary">{optionIndex + 1}.</span>{" "}
-                {option}
+                <span className="mt-0.5 inline-flex min-w-5 items-center justify-center text-[12px] font-semibold text-primary">
+                  {item.number}.
+                </span>
+                <span className="leading-5">{item.label}</span>
               </li>
             ))}
           </ol>
+        ) : null}
+        {payload.options.length > 0 ? (
+          <ol
+            className={cn(
+              "chat-question-card__options space-y-2.5",
+              payload.nonInteractiveOptions.length > 0 ? "mt-4" : "mt-3",
+            )}
+          >
+            {payload.options.map((option, optionIndex) => (
+              <li
+                key={`${option}-${optionIndex}`}
+                className="text-sm text-foreground"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isInteractive) return;
+                    if (payload.allowMultiSelect) {
+                      onOptionToggle?.({
+                        questionKey,
+                        option,
+                        allowMultiSelect: true,
+                      });
+                      return;
+                    }
+                    onSubmitSelection?.({
+                      questionKey,
+                      options: [option],
+                      allowMultiSelect: false,
+                    });
+                  }}
+                  disabled={!isInteractive}
+                  className={cn(
+                    "flex w-full items-start gap-2.5 rounded-md text-left transition-colors",
+                    isInteractive ? "hover:bg-accent/35" : "cursor-default opacity-70",
+                    selectedOptions.includes(option) && "text-primary font-semibold",
+                  )}
+                >
+                  <span className="mt-0.5 inline-flex min-w-5 items-center justify-center text-[12px] font-semibold text-primary">
+                    {optionIndex + 1}.
+                  </span>
+                  <span className="leading-5">{option}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {payload.allowMultiSelect && payload.options.length > 0 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                onSubmitSelection?.({
+                  questionKey,
+                  options: selectedOptions,
+                  allowMultiSelect: true,
+                })
+              }
+              disabled={!isInteractive || selectedOptions.length === 0}
+              className="inline-flex items-center rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Use Selected ({selectedOptions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => onClearSelection?.(questionKey)}
+              disabled={!isInteractive || selectedOptions.length === 0}
+              className="inline-flex items-center rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Clear
+            </button>
+          </div>
         ) : null}
         {isError && retryText ? (
           <div className="mt-3 flex justify-end">
@@ -812,7 +950,7 @@ const QuestionCard = ({
               type="button"
               onClick={() => onRetry?.(retryText)}
               disabled={retryDisabled}
-              className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              className={RETRY_BUTTON_CLASSES}
             >
               Retry
             </button>
@@ -1763,6 +1901,7 @@ function AIChat({
   }, [messages, activeChatHistoryKey, isHistoryLoading]);
 
   const [input, setInput] = useState("");
+  const [questionSelections, setQuestionSelections] = useState({});
   const [activeFiles, setActiveFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState([]);
@@ -2116,6 +2255,7 @@ function AIChat({
 
       setProposalContext(nextContext);
       setMessages(nextMessages);
+      setQuestionSelections({});
       initialHistoryCountRef.current = nextMessages.length;
       animatedMessagesRef.current = new Set();
       const lastAssistant = getLastAssistantMessage(nextMessages);
@@ -2823,6 +2963,57 @@ function AIChat({
     }
   };
 
+  const handleQuestionOptionToggle = ({
+    questionKey,
+    option,
+    allowMultiSelect,
+  }) => {
+    if (!questionKey || !option) return;
+    setQuestionSelections((prev) => {
+      const current = Array.isArray(prev[questionKey]) ? prev[questionKey] : [];
+      let nextSelected = [];
+
+      if (allowMultiSelect) {
+        nextSelected = current.includes(option)
+          ? current.filter((item) => item !== option)
+          : [...current, option];
+      } else {
+        nextSelected = current.includes(option) ? [] : [option];
+      }
+
+      return {
+        ...prev,
+        [questionKey]: nextSelected,
+      };
+    });
+  };
+
+  const handleClearQuestionSelection = (questionKey) => {
+    if (!questionKey) return;
+    setQuestionSelections((prev) => {
+      if (!(questionKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[questionKey];
+      return next;
+    });
+  };
+
+  const handleSubmitQuestionSelection = ({
+    questionKey,
+    options,
+    allowMultiSelect,
+  }) => {
+    if (isLoading || isHistoryLoading) return;
+    const selected = Array.isArray(options)
+      ? options.filter((option) => typeof option === "string" && option.trim())
+      : [];
+    if (!selected.length) return;
+
+    const responseText = allowMultiSelect ? selected.join(", ") : selected[0];
+    handleClearQuestionSelection(questionKey);
+    sendMessage(responseText);
+  };
+
   const handleQuickAction = (action) => {
     setInput(action);
     setTimeout(() => focusInput(), 50);
@@ -2844,6 +3035,7 @@ function AIChat({
     setPendingMissingField(null);
     setHasRequestedProposal(false);
     setProposalContext(emptyContext);
+    setQuestionSelections({});
     proposalContextRef.current = emptyContext;
     setInput("");
     setActiveFiles([]);
@@ -2876,6 +3068,19 @@ function AIChat({
     sendMessage(text);
   };
 
+  const latestQuestionMessageIndex = (() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const message = messages[i];
+      if (
+        message?.role === "assistant" &&
+        resolveMessageType(message) === CHAT_MESSAGE_TYPES.QUESTION
+      ) {
+        return i;
+      }
+    }
+    return -1;
+  })();
+
   const voiceButtonDisabled =
     !isSecureContext ||
     isBraveBrowser ||
@@ -2906,18 +3111,18 @@ function AIChat({
           {/* Modern Header */}
           <header
             className={cn(
-              "relative px-6 py-4 border-b border-border/50 bg-background/80 backdrop-blur-xl flex justify-between items-center",
+              "relative flex items-center justify-between border-b border-border/60 bg-background/90 px-6 py-4 backdrop-blur",
               embedded && "pr-12 sm:pr-14",
             )}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
-                <Bot className="size-5 text-primary-foreground" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-primary shadow-sm">
+                <Bot className="size-5" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold flex items-center gap-2">
+                <h1 className="flex items-center gap-2 text-base font-semibold sm:text-lg">
                   CATA
-                  <span className="px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-full">
+                  <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-primary">
                     AI
                   </span>
                 </h1>
@@ -2933,7 +3138,8 @@ function AIChat({
               {proposal && !showProposal && (
                 <button
                   onClick={() => setShowProposal(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm font-medium transition-colors border border-primary/20"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-primary/25 bg-primary/10 px-3 text-sm font-medium text-foreground transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  aria-label="Open proposal panel"
                 >
                   <FileText className="size-4" />
                   <span className="hidden sm:inline">View Proposal</span>
@@ -2943,8 +3149,9 @@ function AIChat({
               {/* New Chat button */}
               <button
                 onClick={startNewChat}
-                className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-lg text-sm font-medium transition-colors border border-zinc-700"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
                 title="Start a new conversation"
+                aria-label="Start a new conversation"
               >
                 <Plus className="size-4" />
                 <span className="hidden sm:inline">New Chat</span>
@@ -2954,11 +3161,11 @@ function AIChat({
           </header>
 
           {/* Messages Area */}
-          <Conversation className="flex-1 [scrollbar-width:thin] [scrollbar-color:var(--primary)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-track]:bg-transparent">
-            <ConversationContent className="px-6 py-8 flex flex-col gap-6">
+          <Conversation className="flex-1 [scrollbar-width:thin] [scrollbar-color:var(--scrollbar-thumb)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
+            <ConversationContent className="flex flex-col gap-5 px-6 py-6 sm:px-8">
               {isHistoryLoading ? (
                 <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                  <span className="loading loading-spinner text-primary" />
+                  <Brain className="size-4 animate-pulse text-primary" />
                   <span>
                     Loading {serviceName ? `${serviceName} chat` : "chat"}...
                   </span>
@@ -2973,7 +3180,7 @@ function AIChat({
                         ? extractPlanPayload(messageText)
                         : null;
                     const planRemainder = planPayload?.remainder || "";
-                    const userLines = messageText.split("\n");
+                    const messageType = resolveMessageType(msg);
                     const messageSignature = `${msg.role}-${index}-${messageText}`;
                     const shouldAnimate =
                       msg.role === "assistant" &&
@@ -2987,82 +3194,91 @@ function AIChat({
 
                     return (
                       <Fragment key={`msg-${index}`}>
-                        <Message from={msg.role} className="animate-fade-in">
-                          {msg.role !== "user" && (
-                            <span className="text-xs font-medium px-1 text-muted-foreground">
+                        {msg.role === "user" ? (
+                          <UserMessageBubble messageText={messageText} />
+                        ) : planPayload ? (
+                          <Message
+                            from="assistant"
+                            className="animate-fade-in chat-message-row chat-message-row--assistant"
+                          >
+                            <span className={ASSISTANT_LABEL_CLASSES}>
                               CATA
                             </span>
-                          )}
-                          <MessageContent
-                            className={cn(
-                              "max-w-[85%] p-4 rounded-2xl leading-relaxed text-[15px]",
-                              "group-[.is-assistant]:bg-transparent group-[.is-assistant]:border-0 group-[.is-assistant]:p-0 group-[.is-assistant]:rounded-none group-[.is-assistant]:max-w-full",
-                              "group-[.is-user]:bg-gradient-to-br group-[.is-user]:from-primary group-[.is-user]:to-primary/80 group-[.is-user]:text-primary-foreground group-[.is-user]:rounded-2xl group-[.is-user]:rounded-tr-none group-[.is-user]:px-3 group-[.is-user]:py-2 group-[.is-user]:shadow-lg group-[.is-user]:shadow-primary/20",
-                            )}
-                          >
-                            {msg.role === "assistant" ? (
-                              planPayload ? (
-                                <div className="space-y-3">
-                                  {planRemainder ? (
-                                    <MessageResponseTyping
-                                      isEnabled={shouldAnimate}
-                                      onComplete={handleTypingComplete}
-                                    >
-                                      {planRemainder}
-                                    </MessageResponseTyping>
-                                  ) : null}
-                                  <Plan defaultOpen>
-                                    <PlanHeader className="items-center">
-                                      <PlanTitle>{planPayload.title}</PlanTitle>
-                                      <PlanAction>
-                                        <PlanTrigger />
-                                      </PlanAction>
-                                    </PlanHeader>
-                                    <PlanContent>
-                                      <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground">
-                                        {planPayload.items.map(
-                                          (item, itemIndex) => (
-                                            <li key={`${item}-${itemIndex}`}>
-                                              {item}
-                                            </li>
-                                          ),
-                                        )}
-                                      </ol>
-                                    </PlanContent>
-                                  </Plan>
-                                </div>
-                              ) : (
-                                <MessageResponseTyping
-                                  isEnabled={shouldAnimate}
-                                  onComplete={handleTypingComplete}
-                                >
-                                  {messageText}
-                                </MessageResponseTyping>
-                              )
-                            ) : (
-                              userLines.map((line, lineIndex) => (
-                                <p
-                                  key={lineIndex}
-                                  className={`${line ? "mb-2 last:mb-0" : "h-2"}`}
-                                >
-                                  {line}
-                                </p>
-                              ))
-                            )}
-                            {msg.isError && msg.retryText && (
-                              <div className="mt-3 flex justify-end">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRetry(msg.retryText)}
-                                  disabled={isLoading || isHistoryLoading}
-                                  className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-primary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  Retry
-                                </button>
+                            <MessageContent className={ASSISTANT_BUBBLE_CLASSES}>
+                              <div className="space-y-3">
+                                {planRemainder ? (
+                                  <MessageResponseTyping
+                                    isEnabled={shouldAnimate}
+                                    onComplete={handleTypingComplete}
+                                  >
+                                    {planRemainder}
+                                  </MessageResponseTyping>
+                                ) : null}
+                                <Plan defaultOpen>
+                                  <PlanHeader className="items-center">
+                                    <PlanTitle>{planPayload.title}</PlanTitle>
+                                    <PlanAction>
+                                      <PlanTrigger />
+                                    </PlanAction>
+                                  </PlanHeader>
+                                  <PlanContent>
+                                    <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground">
+                                      {planPayload.items.map((item, itemIndex) => (
+                                        <li key={`${item}-${itemIndex}`}>
+                                          {item}
+                                        </li>
+                                      ))}
+                                    </ol>
+                                  </PlanContent>
+                                </Plan>
                               </div>
-                            )}
-                          </MessageContent>
-                        </Message>
+                              {msg.isError && msg.retryText ? (
+                                <div className="mt-3 flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRetry(msg.retryText)}
+                                    disabled={isLoading || isHistoryLoading}
+                                    className={RETRY_BUTTON_CLASSES}
+                                  >
+                                    Retry
+                                  </button>
+                                </div>
+                              ) : null}
+                            </MessageContent>
+                          </Message>
+                        ) : messageType === CHAT_MESSAGE_TYPES.QUESTION ? (
+                          <QuestionCard
+                            messageText={messageText}
+                            shouldAnimate={shouldAnimate}
+                            onTypingComplete={handleTypingComplete}
+                            isError={Boolean(msg.isError)}
+                            retryText={msg.retryText || ""}
+                            onRetry={handleRetry}
+                            retryDisabled={isLoading || isHistoryLoading}
+                            questionKey={messageSignature}
+                            selectedOptions={questionSelections[messageSignature] || []}
+                            onOptionToggle={handleQuestionOptionToggle}
+                            onSubmitSelection={handleSubmitQuestionSelection}
+                            onClearSelection={handleClearQuestionSelection}
+                            isInteractive={
+                              index === latestQuestionMessageIndex &&
+                              !isLoading &&
+                              !isHistoryLoading &&
+                              !isProcessingFile &&
+                              !isRecording
+                            }
+                          />
+                        ) : (
+                          <AssistantMessageBubble
+                            messageText={messageText}
+                            shouldAnimate={shouldAnimate}
+                            onTypingComplete={handleTypingComplete}
+                            isError={Boolean(msg.isError)}
+                            retryText={msg.retryText || ""}
+                            onRetry={handleRetry}
+                            retryDisabled={isLoading || isHistoryLoading}
+                          />
+                        )}
                         {proposalApproval &&
                           proposalApprovalAnchor === index && (
                             <div className="flex flex-col items-start animate-fade-in">
@@ -3112,48 +3328,21 @@ function AIChat({
                   {/* Loading State */}
                   {((isLoading && showThinking) || isProcessingFile) && (
                     <div className="flex flex-col items-start animate-fade-in">
-                      <span className="text-xs font-medium mb-1.5 px-1 text-muted-foreground">
+                      <span className={cn("mb-1.5", ASSISTANT_LABEL_CLASSES)}>
                         CATA
                       </span>
-                      <div className="bg-transparent border-0 rounded-none p-0">
-                        <div className="relative flex items-center gap-2">
-                          {isProcessingFile ? (
-                            <>
-                              <FileText className="size-4 animate-pulse text-primary" />
-                              <span className="text-sm font-medium">
-                                Reading document...
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Brain className="size-4 animate-pulse" />
-                                <span className="text-sm font-medium">
-                                  Thinking...
-                                </span>
-                              </div>
-                              <div
-                                className="absolute inset-0 flex items-center gap-2 text-black"
-                                style={{
-                                  maskImage:
-                                    "linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)",
-                                  WebkitMaskImage:
-                                    "linear-gradient(110deg, transparent 30%, white 45%, white 55%, transparent 70%)",
-                                  maskSize: "250% 100%",
-                                  WebkitMaskSize: "250% 100%",
-                                  animation: "mask-shimmer 2s linear infinite",
-                                  WebkitAnimation:
-                                    "mask-shimmer 2s linear infinite",
-                                }}
-                              >
-                                <Brain className="size-4" />
-                                <span className="text-sm font-medium">
-                                  Thinking...
-                                </span>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                      <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm">
+                        {isProcessingFile ? (
+                          <>
+                            <FileText className="size-4 animate-pulse text-primary" />
+                            <span className="font-medium">Reading document...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Brain className="size-4 animate-pulse text-primary" />
+                            <span className="font-medium">Thinking...</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -3164,7 +3353,7 @@ function AIChat({
           </Conversation>
 
           {/* Input Area */}
-          <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
+          <div className="border-t border-border/60 bg-background/90 backdrop-blur">
             {/* Hidden Input for File Upload - Moved outside PromptInput to avoid conflicts */}
             <input
               type="file"
@@ -3184,19 +3373,21 @@ function AIChat({
                   {activeFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="py-1 px-2 rounded-md bg-[#252525] border border-white/5 flex items-center gap-1.5 group animate-in slide-in-from-bottom-2 fade-in duration-300"
+                      className="group flex items-center gap-2 rounded-lg border border-border/80 bg-card px-2.5 py-1.5 shadow-sm animate-in slide-in-from-bottom-2 fade-in duration-300"
                     >
-                      <div className="h-4 w-4 rounded-[3px] bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-500 shrink-0">
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border border-primary/25 bg-primary/10 text-primary">
                         <FileText className="size-2.5" />
                       </div>
                       <div className="flex flex-col min-w-0 max-w-[120px]">
-                        <span className="text-[9px] font-semibold text-white/90 truncate uppercase tracking-widest leading-none pt-0.5">
+                        <span className="pt-0.5 text-[11px] font-medium leading-none text-foreground truncate">
                           {file.name}
                         </span>
                       </div>
                       <button
+                        type="button"
                         onClick={() => removeFile(file.id)}
-                        className="ml-0.5 p-0.5 rounded-sm hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                        className="ml-0.5 rounded-sm p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                        aria-label={`Remove ${file.name}`}
                       >
                         <X className="size-2.5" />
                       </button>
@@ -3207,7 +3398,7 @@ function AIChat({
 
               <PromptInput
                 onSubmit={handleSubmit}
-                className="relative border border-white/10 rounded-2xl bg-[#1a1a1a] shadow-lg focus-within:border-primary transition-all duration-300 overflow-hidden [&>[data-slot=input-group]]:!border-none"
+                className="relative overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 [&>[data-slot=input-group]]:!border-none"
               >
                 <PromptInputTextarea
                   ref={textareaRef}
@@ -3222,22 +3413,23 @@ function AIChat({
                   placeholder={
                     showServicePlaceholder
                       ? "If you don't see what you need, kindly type it below."
-                      : "Ask anything"
+                      : "Describe your project or ask a question"
                   }
                   disabled={isLoading || isProcessingFile || isHistoryLoading}
                   readOnly={isRecording}
                   autoFocus
-                  className="w-full !bg-transparent !border-none !text-white text-base !px-4 !py-3 !min-h-[50px] !max-h-[200px] resize-none !box-border !break-all !whitespace-pre-wrap !overflow-x-hidden [field-sizing:content] focus:!ring-0 placeholder:!text-white/20 font-light"
+                  className="w-full !bg-transparent !border-none !text-foreground text-[15px] !px-4 !py-3 !min-h-[52px] !max-h-[200px] resize-none !box-border !break-all !whitespace-pre-wrap !overflow-x-hidden [field-sizing:content] focus:!ring-0 placeholder:!text-muted-foreground/75"
                 />
 
-                <PromptInputFooter className="px-3 pb-3 flex items-center justify-between">
+                <PromptInputFooter className="flex items-center justify-between border-t border-border/60 px-3 pb-3 pt-2">
                   <PromptInputTools className="flex items-center gap-1">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="p-2 h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center text-white/40 hover:bg-white/5 hover:text-white transition-colors"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
                           title="Add attachment"
+                          aria-label="Add attachment"
                           disabled={
                             isLoading || isProcessingFile || isHistoryLoading
                           }
@@ -3247,15 +3439,15 @@ function AIChat({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="start"
-                        className="w-[200px] bg-[#1a1a1a] border-white/10 text-white"
+                        className="w-[200px] border-border bg-popover text-popover-foreground"
                       >
                         <DropdownMenuItem
                           onClick={() => {
                             fileInputRef.current?.click();
                           }}
-                          className="cursor-pointer hover:bg-white/5 focus:bg-white/5 focus:text-white"
+                          className="cursor-pointer focus:bg-accent focus:text-accent-foreground"
                         >
-                          <FileText className="mr-2 size-4 text-white/60" />
+                          <FileText className="mr-2 size-4 text-muted-foreground" />
                           <span>Upload Document</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -3271,18 +3463,20 @@ function AIChat({
                       aria-label={voiceButtonLabel}
                       aria-pressed={isRecording}
                       className={cn(
-                        "h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center transition-all",
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
                         isRecording
-                          ? "bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
-                          : "text-white/40 hover:bg-white/5 hover:text-white",
+                          ? "bg-rose-500/15 text-rose-600 hover:bg-rose-500/25 dark:text-rose-300"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground",
                         voiceButtonDisabled &&
-                        "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/40",
+                        "opacity-40 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground",
                       )}
                     >
                       <Mic className="size-5" />
                     </button>
                     <button
                       type="submit"
+                      aria-label={isLoading ? "Stop response" : "Send message"}
+                      title={isLoading ? "Stop response" : "Send message"}
                       disabled={
                         (!isLoading &&
                           !input.trim() &&
@@ -3291,7 +3485,7 @@ function AIChat({
                         isHistoryLoading ||
                         isRecording
                       }
-                      className="h-9 w-9 shrink-0 rounded-lg border-none cursor-pointer flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       {isLoading ? (
                         <Square className="size-3.5 fill-current" />
@@ -3311,7 +3505,7 @@ function AIChat({
 
         {/* Proposal Panel - Side by side with chat when embedded */}
         {embedded && showProposal && (
-          <div className="w-1/2 h-full border-l border-white/10 bg-zinc-950 flex flex-col animate-in slide-in-from-right duration-300">
+          <div className="flex h-full w-1/2 flex-col border-l border-border bg-background animate-in slide-in-from-right duration-300">
             <ProposalSidebar
               proposal={proposal}
               isOpen={true}
