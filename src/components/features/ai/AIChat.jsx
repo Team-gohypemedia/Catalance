@@ -10,6 +10,7 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import ArrowUp from "lucide-react/dist/esm/icons/arrow-up";
+import Check from "lucide-react/dist/esm/icons/check";
 import Square from "lucide-react/dist/esm/icons/square";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Brain from "lucide-react/dist/esm/icons/brain";
@@ -637,6 +638,8 @@ const MULTI_SELECT_QUESTION_REGEX =
   /\b(select all|all that apply|multiple|pick any|one or more|as many|more than one)\b/i;
 const TEMPLATE_ADDITIONAL_PAGES_CONTEXT_REGEX = /\badditional pages?\b/i;
 const TEMPLATE_ADDITIONAL_PAGES_CHOICE_REGEX = /^(?:yes\b|no\b)/i;
+const ACKNOWLEDGEMENT_LINE_REGEX =
+  /^(?:got it!?|understood!?|noted!?|sounds good!?|great!?|perfect!?|thanks!?|thank you!?|awesome!?|all right!?|alright!?)/i;
 
 const parseQuestionCardContent = (content = "") => {
   if (typeof content !== "string") {
@@ -830,6 +833,18 @@ const QuestionCard = ({
 }) => {
   const payload = parseQuestionCardContent(messageText);
   const questionTitle = payload.questionTitle || "Please choose an option:";
+  const useTwoColumnOptions = payload.options.length >= 4;
+  const [acknowledgementLines, helperLines] = payload.helperLines.reduce(
+    (groups, line) => {
+      if (ACKNOWLEDGEMENT_LINE_REGEX.test(line)) {
+        groups[0].push(line);
+      } else {
+        groups[1].push(line);
+      }
+      return groups;
+    },
+    [[], []],
+  );
 
   useEffect(() => {
     if (shouldAnimate && onTypingComplete) {
@@ -840,23 +855,39 @@ const QuestionCard = ({
   return (
     <Message
       from="assistant"
-      className="animate-fade-in chat-message-row chat-message-row--assistant"
+      className="animate-fade-in chat-message-row chat-message-row--assistant max-w-full"
     >
       <span className={ASSISTANT_LABEL_CLASSES}>
         CATA
       </span>
-      <div className="chat-question-card max-w-[84%] border-0 bg-transparent px-0 py-0 shadow-none">
+      <div className="chat-question-card w-full max-w-full border-0 bg-transparent px-0 py-0 shadow-none">
+        {acknowledgementLines.length > 0 ? (
+          <div className="chat-question-card__ack mb-2 space-y-1.5">
+            {acknowledgementLines.map((line, index) => (
+              <p
+                key={`${line}-${index}`}
+                className="text-sm text-muted-foreground"
+              >
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : null}
+        {helperLines.length > 0 ? (
+          <div className="chat-question-card__helper-group mb-2 space-y-1.5">
+            {helperLines.map((line, index) => (
+              <p
+                key={`${line}-${index}`}
+                className="chat-question-card__helper text-sm text-muted-foreground"
+              >
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : null}
         <h1 className="chat-question-card__title question-title text-[26px] font-semibold leading-tight tracking-tight text-foreground">
           {questionTitle}
         </h1>
-        {payload.helperLines.map((line, index) => (
-          <p
-            key={`${line}-${index}`}
-            className="chat-question-card__helper mt-1.5 text-sm text-muted-foreground"
-          >
-            {line}
-          </p>
-        ))}
         {payload.nonInteractiveOptions.length > 0 ? (
           <ol className="chat-question-card__non-interactive-options mt-3 space-y-2.5">
             {payload.nonInteractiveOptions.map((item) => (
@@ -875,47 +906,83 @@ const QuestionCard = ({
         {payload.options.length > 0 ? (
           <ol
             className={cn(
-              "chat-question-card__options space-y-2.5",
+              "chat-question-card__options gap-1.5",
               payload.nonInteractiveOptions.length > 0 ? "mt-4" : "mt-3",
+              useTwoColumnOptions
+                ? "grid grid-cols-1 min-[720px]:grid-cols-2"
+                : "space-y-1.5",
             )}
           >
-            {payload.options.map((option, optionIndex) => (
-              <li
-                key={`${option}-${optionIndex}`}
-                className="text-sm text-foreground"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isInteractive) return;
-                    if (payload.allowMultiSelect) {
-                      onOptionToggle?.({
-                        questionKey,
-                        option,
-                        allowMultiSelect: true,
-                      });
-                      return;
-                    }
-                    onSubmitSelection?.({
-                      questionKey,
-                      options: [option],
-                      allowMultiSelect: false,
-                    });
-                  }}
-                  disabled={!isInteractive}
-                  className={cn(
-                    "flex w-full items-start gap-2.5 rounded-md text-left transition-colors",
-                    isInteractive ? "hover:bg-accent/35" : "cursor-default opacity-70",
-                    selectedOptions.includes(option) && "text-primary font-semibold",
-                  )}
+            {payload.options.map((option, optionIndex) => {
+              const isSelected = selectedOptions.includes(option);
+              const showSelectionControl = payload.allowMultiSelect;
+              return (
+                <li
+                  key={`${option}-${optionIndex}`}
+                  className={cn("text-sm", useTwoColumnOptions && "h-full")}
                 >
-                  <span className="mt-0.5 inline-flex min-w-5 items-center justify-center text-[12px] font-semibold text-primary">
-                    {optionIndex + 1}.
-                  </span>
-                  <span className="leading-5">{option}</span>
-                </button>
-              </li>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isInteractive) return;
+                      if (payload.allowMultiSelect) {
+                        onOptionToggle?.({
+                          questionKey,
+                          option,
+                          allowMultiSelect: true,
+                        });
+                        return;
+                      }
+                      onSubmitSelection?.({
+                        questionKey,
+                        options: [option],
+                        allowMultiSelect: false,
+                      });
+                    }}
+                    disabled={!isInteractive}
+                    aria-pressed={isSelected}
+                    className={cn(
+                      "group flex w-full items-start rounded-lg border px-3 py-2 text-left transition-colors duration-150",
+                      showSelectionControl ? "gap-2.5" : "gap-0",
+                      useTwoColumnOptions && "h-full",
+                      isInteractive
+                        ? "border-border/70 bg-card/30 hover:border-primary/45 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        : "cursor-default border-transparent bg-transparent opacity-70",
+                      isSelected &&
+                        "border-primary/60 bg-primary/10 text-foreground",
+                    )}
+                  >
+                    {showSelectionControl ? (
+                      <span
+                        className={cn(
+                          "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border transition-colors duration-150",
+                          isSelected
+                            ? "border-primary bg-primary/12 text-primary"
+                            : "border-border/70 bg-transparent text-transparent group-hover:border-primary/45",
+                        )}
+                      >
+                        <Check
+                          className={cn(
+                            "h-3 w-3 transition-opacity",
+                            isSelected ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                      </span>
+                    ) : null}
+                    <span
+                      className={cn(
+                        "leading-5 transition-colors",
+                        isSelected
+                          ? "font-semibold text-foreground"
+                          : "text-foreground",
+                      )}
+                    >
+                      {option}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ol>
         ) : null}
         {payload.allowMultiSelect && payload.options.length > 0 ? (
@@ -1798,7 +1865,16 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
     /budget|investment|cost|price/i.test(assistantLower) ||
     /budget|cost|price/i.test(trimmed)
   ) {
-    update.budget = trimmed;
+    const parsedBudget = parseBudgetValue(trimmed);
+    const hasBudgetValueSignal =
+      parsedBudget !== null ||
+      /(₹|\$|inr|usd|eur|gbp)/i.test(trimmed) ||
+      /\b(lakh|lac|thousand|k)\b/i.test(trimmed) ||
+      /\b\d{4,}\b/.test(trimmed) ||
+      /\b\d{1,3}(?:,\d{3})+\b/.test(trimmed);
+    if (hasBudgetValueSignal) {
+      update.budget = trimmed;
+    }
   }
 
   if (
@@ -3010,7 +3086,20 @@ function AIChat({
     if (!selected.length) return;
 
     const responseText = allowMultiSelect ? selected.join(", ") : selected[0];
-    handleClearQuestionSelection(questionKey);
+    if (questionKey) {
+      setQuestionSelections((prev) => {
+        if (allowMultiSelect) {
+          return {
+            ...prev,
+            [questionKey]: selected,
+          };
+        }
+        if (!(questionKey in prev)) return prev;
+        const next = { ...prev };
+        delete next[questionKey];
+        return next;
+      });
+    }
     sendMessage(responseText);
   };
 

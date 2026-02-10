@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
+    "test:budget": "node --test src/services/__tests__/ai.budget.test.mjs",
     "build": "prisma generate",
     "vercel-build": "prisma generate",
     "postinstall": "prisma generate",
