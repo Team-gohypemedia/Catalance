@@ -267,6 +267,18 @@ export const listFreelancers = (params = {}) => {
   });
 };
 
+export const fetchStatesByCountry = (country) => {
+  const normalizedCountry = String(country || "").trim();
+  if (!normalizedCountry) {
+    return Promise.resolve({ country: "", states: [] });
+  }
+
+  const query = new URLSearchParams({ country: normalizedCountry }).toString();
+  return request(`/utils/states?${query}`, {
+    method: "GET"
+  });
+};
+
 export const apiClient = {
   signup,
   login,

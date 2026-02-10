@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useMemo, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
@@ -38,6 +39,7 @@ import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -47,7 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { signup, verifyOtp, updateProfile, listFreelancers } from "@/shared/lib/api-client";
+import { signup, verifyOtp, updateProfile, listFreelancers, fetchStatesByCountry } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 
@@ -97,9 +99,9 @@ const EXPERIENCE_YEARS_OPTIONS = [
 ];
 
 const WORKING_LEVEL_OPTIONS = [
-  { value: "beginner", label: "Beginner (Assisted work only)" },
-  { value: "intermediate", label: "Intermediate (Independent delivery)" },
-  { value: "advanced", label: "Advanced (Complex & scalable projects)" },
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
 ];
 
 const YES_NO_OPTIONS = [
@@ -107,23 +109,22 @@ const YES_NO_OPTIONS = [
   { value: "no", label: "No" },
 ];
 
-const YES_NO_OPEN_OPTIONS = [
-  { value: "yes", label: "Yes" },
-  { value: "no", label: "No" },
-  { value: "open", label: "Open to All" },
+const UPCOMING_NICHE_OPTIONS = [
+  { value: "yes", label: "Yes, same niche" },
+  { value: "open", label: "Open to all" },
 ];
 
 const LANGUAGE_OPTIONS = [
   { value: "English", label: "English" },
   { value: "Hindi", label: "Hindi" },
-  { value: "Spanish", label: "Spanish" },
-  { value: "Arabic", label: "Arabic" },
   { value: "Other", label: "Other (Custom)" },
 ];
 
 const COUNTRY_OPTIONS = Array.from(
   new Set((COUNTRY_CODES || []).map((country) => country.name).filter(Boolean)),
 ).sort((a, b) => a.localeCompare(b));
+
+const STATE_OPTIONS_CACHE = new Map();
 
 const ROLE_IN_PROJECT_OPTIONS = [
   { value: "full_execution", label: "Full execution" },
@@ -149,6 +150,10 @@ const IN_PROGRESS_PROJECT_OPTIONS = [
   { value: "yes", label: "Yes" },
   { value: "no", label: "No" },
 ];
+
+const PRICE_RANGE_MIN = 1000;
+const PRICE_RANGE_MAX = 1000000;
+const PRICE_RANGE_STEP = 1000;
 
 
 
@@ -870,6 +875,7 @@ const createServiceDetail = () => ({
   sampleWork: null,
   averagePrice: "",
   groups: {},
+  groupOther: {},
   industryFocus: "",
   niches: [],
   otherNiche: "",
@@ -884,7 +890,52 @@ const getServiceLabel = (serviceKey) => {
 
 const getServiceLimit = (role) => SERVICE_LIMITS[role] || 3;
 
-const getServiceGroups = (serviceKey) => SERVICE_GROUPS[serviceKey] || [];
+const REMOVED_SERVICE_GROUP_QUESTIONS = new Set([
+  "which services do you provide?",
+]);
+
+const shouldIncludeServiceGroup = (group) => {
+  const normalizedLabel = String(group?.label || "").trim().toLowerCase();
+  return !REMOVED_SERVICE_GROUP_QUESTIONS.has(normalizedLabel);
+};
+
+const isOtherServiceGroupOption = (option) => {
+  if (typeof option === "string") {
+    return option.trim().toLowerCase() === "other";
+  }
+  if (!option || typeof option !== "object") return false;
+  const valueOrLabel = option.value ?? option.label ?? "";
+  return String(valueOrLabel).trim().toLowerCase() === "other";
+};
+
+const appendOtherServiceGroupOption = (options = []) => {
+  if (!Array.isArray(options)) return [];
+  if (options.some(isOtherServiceGroupOption)) return options;
+  const hasObjectOptions = options.some((option) => option && typeof option === "object");
+  return [...options, hasObjectOptions ? { value: "Other", label: "Other" } : "Other"];
+};
+
+const shouldAddOtherToServiceGroup = (group) => {
+  const normalizedId = String(group?.id || "").trim().toLowerCase();
+  const normalizedLabel = String(group?.label || "").trim().toLowerCase();
+  return (
+    normalizedId.includes("tech_stack") ||
+    normalizedLabel.includes("which technologies do you actively use")
+  );
+};
+
+const normalizeServiceGroup = (group) => {
+  if (!group || !shouldAddOtherToServiceGroup(group)) return group;
+  return {
+    ...group,
+    options: appendOtherServiceGroupOption(group.options),
+  };
+};
+
+const getServiceGroups = (serviceKey) =>
+  (SERVICE_GROUPS[serviceKey] || [])
+    .filter(shouldIncludeServiceGroup)
+    .map(normalizeServiceGroup);
 
 const getTechStackOptions = (serviceKey) => {
   const groups = getServiceGroups(serviceKey);
@@ -894,6 +945,19 @@ const getTechStackOptions = (serviceKey) => {
   const unique = Array.from(new Set(options));
   return unique.includes("Other") ? unique : [...unique, "Other"];
 };
+
+const parsePriceValue = (value) => {
+  const digits = String(value ?? "")
+    .replace(/[^\d]/g, "")
+    .trim();
+  if (!digits) return NaN;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : NaN;
+};
+
+const clampPriceValue = (value) => Math.min(PRICE_RANGE_MAX, Math.max(PRICE_RANGE_MIN, value));
+
+const formatPriceLabel = (value) => Number(value).toLocaleString("en-IN");
 
 const isValidUrl = (value = "") => {
   const trimmed = value.trim();
@@ -1026,6 +1090,10 @@ const FreelancerMultiStepForm = () => {
   const [otp, setOtp] = useState("");
   const [usernameStatus, setUsernameStatus] = useState("idle");
   const usernameCheckRef = useRef(0);
+  const [techStackOtherDrafts, setTechStackOtherDrafts] = useState({});
+  const [groupOtherDrafts, setGroupOtherDrafts] = useState({});
+  const [stateOptions, setStateOptions] = useState([]);
+  const [isStateOptionsLoading, setIsStateOptionsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     professionalTitle: "",
@@ -1062,14 +1130,7 @@ const FreelancerMultiStepForm = () => {
   const steps = useMemo(() => {
     const sequence = [];
 
-    sequence.push({ key: "professional-title", type: "professionalTitle" });
-    sequence.push({ key: "username", type: "username" });
-    sequence.push({ key: "country", type: "country" });
-    sequence.push({ key: "city", type: "city" });
-    sequence.push({ key: "profile-photo", type: "profilePhoto" });
-    sequence.push({ key: "languages", type: "languages" });
-    sequence.push({ key: "linkedin", type: "linkedin" });
-    sequence.push({ key: "portfolio", type: "portfolio" });
+    sequence.push({ key: "profile-basics", type: "profileBasics" });
 
     sequence.push({ key: "role", type: "role" });
     sequence.push({ key: "services", type: "services" });
@@ -1098,7 +1159,9 @@ const FreelancerMultiStepForm = () => {
         }
       }
 
-      (SERVICE_GROUPS[serviceKey] || []).forEach((group) => {
+      sequence.push({ key: `svc-${serviceKey}-industry-focus`, type: "serviceIndustryFocus", serviceKey });
+
+      getServiceGroups(serviceKey).forEach((group) => {
         sequence.push({
           key: `svc-${serviceKey}-group-${group.id}`,
           type: "serviceGroup",
@@ -1108,12 +1171,6 @@ const FreelancerMultiStepForm = () => {
       });
 
       sequence.push({ key: `svc-${serviceKey}-avg-price`, type: "serviceAveragePrice", serviceKey });
-      sequence.push({ key: `svc-${serviceKey}-industry-focus`, type: "serviceIndustryFocus", serviceKey });
-
-      if (detail?.industryFocus === "yes") {
-        sequence.push({ key: `svc-${serviceKey}-niches`, type: "serviceNiches", serviceKey });
-        sequence.push({ key: `svc-${serviceKey}-industry-only`, type: "serviceIndustryOnly", serviceKey });
-      }
 
       sequence.push({ key: `svc-${serviceKey}-complexity`, type: "serviceComplexity", serviceKey });
     });
@@ -1221,6 +1278,58 @@ const FreelancerMultiStepForm = () => {
       return changed ? { ...prev, serviceDetails: nextDetails } : prev;
     });
   }, [formData.selectedServices]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const countryName = String(formData.country || "").trim();
+
+    if (!countryName) {
+      setStateOptions([]);
+      setIsStateOptionsLoading(false);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    const cachedStates = STATE_OPTIONS_CACHE.get(countryName);
+    if (STATE_OPTIONS_CACHE.has(countryName)) {
+      setStateOptions(cachedStates);
+      setIsStateOptionsLoading(false);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    setIsStateOptionsLoading(true);
+
+    void fetchStatesByCountry(countryName)
+      .then((response) => {
+        const nextStates = Array.isArray(response?.states)
+          ? response.states
+              .map((state) => String(state || "").trim())
+              .filter(Boolean)
+              .sort((a, b) => a.localeCompare(b))
+          : [];
+
+        STATE_OPTIONS_CACHE.set(countryName, nextStates);
+
+        if (isCancelled) return;
+        setStateOptions(nextStates);
+      })
+      .catch((error) => {
+        console.error("Failed to load state options:", error);
+        if (isCancelled) return;
+        setStateOptions([]);
+      })
+      .finally(() => {
+        if (isCancelled) return;
+        setIsStateOptionsLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [formData.country]);
 
   useEffect(() => {
     if (!isVerifying) return;
@@ -1332,6 +1441,19 @@ const FreelancerMultiStepForm = () => {
     if (advanceDelay !== null) queueAdvance(advanceDelay);
   };
 
+  const handleCountryChange = (country, advanceDelay = null) => {
+    setFormData((prev) => {
+      if (prev.country === country) return prev;
+      return {
+        ...prev,
+        country,
+        city: "",
+      };
+    });
+    if (stepError) setStepError("");
+    if (advanceDelay !== null) queueAdvance(advanceDelay);
+  };
+
   const updateServiceField = (serviceKey, field, value, advanceDelay = null) => {
     setFormData((prev) => {
       const details = prev.serviceDetails?.[serviceKey] || createServiceDetail();
@@ -1371,6 +1493,30 @@ const FreelancerMultiStepForm = () => {
     if (advanceDelay !== null) queueAdvance(advanceDelay);
   };
 
+  const hasMultipleChoices = (options = []) => Array.isArray(options) && options.length > 1;
+  const hasSingleChoice = (options = []) => Array.isArray(options) && options.length === 1;
+  const parseCustomTools = (value = "") =>
+    String(value)
+      .split(/[,\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const normalizeCustomTools = (items = []) => {
+    const seen = new Set();
+    const next = [];
+
+    items.forEach((item) => {
+      const trimmed = String(item || "").trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      next.push(trimmed);
+    });
+
+    return next;
+  };
+
   const toggleServiceSelection = (serviceKey) => {
     const current = formData.selectedServices;
     const exists = current.includes(serviceKey);
@@ -1386,6 +1532,10 @@ const FreelancerMultiStepForm = () => {
       : [...current, serviceKey];
 
     setFormData((prev) => ({ ...prev, selectedServices: next }));
+
+    if (hasSingleChoice(SERVICE_OPTIONS) && !exists && next.length > 0) {
+      queueAdvance(0);
+    }
   };
 
   const validateStep = (step, data) => {
@@ -1394,6 +1544,26 @@ const FreelancerMultiStepForm = () => {
     const detail = step.serviceKey ? data.serviceDetails?.[step.serviceKey] : null;
 
     switch (step.type) {
+      case "profileBasics":
+        if (!data.professionalTitle.trim()) return "Please enter your profession title.";
+        if (!data.username.trim()) return "Please enter a username.";
+        if (!isValidUsername(data.username)) {
+          return "Username must be 3-20 characters and only letters, numbers, or underscores.";
+        }
+        if (usernameStatus === "checking") return "Checking username availability...";
+        if (usernameStatus === "unavailable") return "That username is already taken.";
+        if (usernameStatus === "error") return "Unable to verify username. Please try again.";
+        if (usernameStatus !== "available") return "Please check username availability.";
+        if (!data.country) return "Please select your country.";
+        if (!data.city.trim()) return "Please select your state.";
+        if (!data.profilePhoto) return "Please upload a profile photo.";
+        if (!data.languages.length) return "Please select at least one language.";
+        if (data.languages.includes("Other") && !data.otherLanguage.trim()) {
+          return "Please specify your other language.";
+        }
+        if (!isValidUrl(data.linkedinUrl)) return "Please enter a valid LinkedIn profile URL.";
+        if (!isValidUrl(data.portfolioUrl)) return "Please enter a valid portfolio or website URL.";
+        return "";
       case "professionalTitle":
         return data.professionalTitle.trim() ? "" : "Please enter your profession title.";
       case "username":
@@ -1409,7 +1579,7 @@ const FreelancerMultiStepForm = () => {
       case "country":
         return data.country ? "" : "Please select your country.";
       case "city":
-        return data.city.trim() ? "" : "Please enter your city.";
+        return data.city.trim() ? "" : "Please select your state.";
       case "profilePhoto":
         return data.profilePhoto ? "" : "Please upload a profile photo.";
       case "languages":
@@ -1436,11 +1606,22 @@ const FreelancerMultiStepForm = () => {
         if (step.field.type === "multiselect") {
           const selections = detail?.caseStudy?.[step.field.key] || [];
           if (!selections.length) return "Please select at least one option.";
+          if (step.field.key === "techStack") {
+            const customTools = parseCustomTools(detail?.caseStudy?.techStackOther);
+            const otherSelected = selections.includes("Other");
+            const selectedPredefinedTools = selections.filter((item) => item !== "Other").length;
+            const totalSelectedTools = selectedPredefinedTools + (otherSelected ? customTools.length : 0);
+
+            if (step.field.min && totalSelectedTools < step.field.min) {
+              return `Please select at least ${step.field.min} tools.`;
+            }
+            if (otherSelected && customTools.length === 0) {
+              return "Please add at least one custom tool.";
+            }
+            return "";
+          }
           if (step.field.min && selections.length < step.field.min) {
             return `Please select at least ${step.field.min} options.`;
-          }
-          if (step.field.key === "techStack" && selections.includes("Other") && !detail?.caseStudy?.techStackOther?.trim()) {
-            return "Please specify your other tools.";
           }
           return "";
         }
@@ -1460,17 +1641,46 @@ const FreelancerMultiStepForm = () => {
       case "serviceSampleUpload":
         return detail?.sampleWork ? "" : "Please upload a sample or practice work.";
       case "serviceAveragePrice": {
-        const minPrice = detail?.averagePriceMin;
-        const maxPrice = detail?.averagePriceMax;
-        if (!minPrice || !maxPrice) return "Please enter both minimum and maximum price.";
+        const minPrice = parsePriceValue(detail?.averagePriceMin);
+        const maxPrice = parsePriceValue(detail?.averagePriceMax);
+        if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) {
+          return "Please set both minimum and maximum price.";
+        }
+        if (maxPrice < minPrice) return "Maximum price must be greater than or equal to minimum price.";
         return "";
       }
       case "serviceGroup": {
         const groups = detail?.groups || {};
-        const selections = groups[step.groupId] || [];
+        const selections = Array.isArray(groups[step.groupId]) ? groups[step.groupId] : [];
         const group = getServiceGroups(step.serviceKey).find((entry) => entry.id === step.groupId);
         const minSelections = group?.min || 1;
-        return selections.length >= minSelections
+        const optionValues = Array.isArray(group?.options)
+          ? group.options
+              .map((option) => {
+                if (typeof option === "string") return option;
+                const value = option?.value ?? option?.label;
+                return typeof value === "string" ? value : "";
+              })
+              .map((value) => value.trim())
+              .filter(Boolean)
+          : [];
+
+        const otherOptionValue = optionValues.find((value) => value.toLowerCase() === "other") || null;
+        const otherSelected = Boolean(otherOptionValue && selections.includes(otherOptionValue));
+        const customValues = otherSelected
+          ? normalizeCustomTools(parseCustomTools(detail?.groupOther?.[step.groupId] || ""))
+          : [];
+
+        if (otherSelected && customValues.length === 0) {
+          return "Please add at least one custom option.";
+        }
+
+        const selectedWithoutOther = otherOptionValue
+          ? selections.filter((value) => value !== otherOptionValue)
+          : selections;
+        const totalSelections = selectedWithoutOther.length + customValues.length;
+
+        return totalSelections >= minSelections
           ? ""
           : `Please select at least ${minSelections} option${minSelections > 1 ? "s" : ""}.`;
       }
@@ -1646,23 +1856,32 @@ const FreelancerMultiStepForm = () => {
   };
 
   const renderServiceMeta = (serviceKey) => {
+    const totalServices = formData.selectedServices.length;
+    if (totalServices <= 1) return "";
+
     const index = formData.selectedServices.indexOf(serviceKey);
+    if (index === -1) return "";
+
     const label = getServiceLabel(serviceKey);
-    return `Service ${index + 1} of ${formData.selectedServices.length}: ${label}`;
+    return `Service ${index + 1} of ${totalServices}: ${label}`;
   };
 
-  const renderContinueButton = (step = currentStep) => {
+  const renderContinueButton = (step = currentStep, { show = true } = {}) => {
+    if (!show) return null;
     const validation = validateStep(step, formData);
     const disabled = Boolean(validation);
 
-    return (
-      <div className="pt-6 flex justify-center">
+    const footer = (
+      <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
+        <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-zinc-950/95 to-transparent" />
+        <div className="relative mx-auto max-w-4xl px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 flex justify-center">
         <button
           type="button"
           onClick={() => queueAdvance(0)}
           disabled={disabled}
           className={cn(
-            "px-6 py-3 rounded-xl font-semibold transition-all",
+            "pointer-events-auto min-w-[180px] px-8 py-3 rounded-xl font-semibold transition-all",
             disabled
               ? "bg-white/10 text-white/40 cursor-not-allowed"
               : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
@@ -1670,6 +1889,290 @@ const FreelancerMultiStepForm = () => {
         >
           Continue
         </button>
+        </div>
+      </div>
+    );
+
+    if (typeof document === "undefined") return footer;
+    return createPortal(footer, document.body);
+  };
+
+  const renderProfileBasicsStep = () => {
+    const helperText = {
+      idle: "Use 3-20 characters: letters, numbers, or underscores.",
+      checking: "Checking availability...",
+      available: "Username is available.",
+      unavailable: "That username is already taken.",
+      error: "Unable to check username right now.",
+    };
+    const canCheck = isValidUsername(formData.username);
+    const values = formData.languages || [];
+    const otherSelected = values.includes("Other");
+    const photo = formData.profilePhoto;
+
+    const toggleLanguage = (value) => {
+      const exists = values.includes(value);
+      const nextValues = exists ? values.filter((item) => item !== value) : [...values, value];
+      updateFormField("languages", nextValues);
+      if (!nextValues.includes("Other") && formData.otherLanguage) {
+        updateFormField("otherLanguage", "");
+      }
+    };
+
+    return (
+      <div className="space-y-5">
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl md:text-[2rem] font-bold text-white leading-tight">
+            Complete Your Basic Profile
+          </h1>
+          <p className="text-white/60 text-sm">Answer these details to continue</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-[11px]">Profession Title</Label>
+            <Input
+              value={formData.professionalTitle}
+              onChange={(e) => updateFormField("professionalTitle", e.target.value)}
+              placeholder="Example: Consultant"
+              className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-[11px]">Username</Label>
+            <div className="flex gap-2">
+              <Input
+                value={formData.username}
+                onChange={(e) => {
+                  updateFormField("username", e.target.value);
+                  setUsernameStatus("idle");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canCheck) {
+                    e.preventDefault();
+                    checkUsernameAvailability();
+                  }
+                }}
+                placeholder="username"
+                className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => checkUsernameAvailability()}
+                disabled={!canCheck || usernameStatus === "checking"}
+                className={cn(
+                  "px-4 h-10 rounded-lg text-sm font-semibold transition-all",
+                  !canCheck || usernameStatus === "checking"
+                    ? "bg-white/10 text-white/40 cursor-not-allowed"
+                    : "bg-white/10 text-white hover:bg-white/20"
+                )}
+              >
+                {usernameStatus === "checking" ? "Checking..." : "Check"}
+              </button>
+            </div>
+            <p
+              className={cn(
+                "text-xs min-h-4",
+                usernameStatus === "available" && "text-green-400",
+                usernameStatus === "unavailable" && "text-red-400",
+                (usernameStatus === "idle" || usernameStatus === "checking") && "text-white/50",
+                usernameStatus === "error" && "text-yellow-400"
+              )}
+            >
+              {helperText[usernameStatus] || helperText.idle}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-[11px]">Country</Label>
+            <Select
+              value={formData.country || ""}
+              onValueChange={(value) => handleCountryChange(value)}
+            >
+              <SelectTrigger className="w-full h-10 bg-white/5 border-white/10 text-white px-3 rounded-lg">
+                <SelectValue placeholder="Select your country" />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                align="start"
+                side="bottom"
+                sideOffset={4}
+                className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
+              >
+                {COUNTRY_OPTIONS.map((country) => (
+                  <SelectItem key={country} value={country} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                    {country}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-[11px]">State / Province</Label>
+            <Select
+              value={formData.city || ""}
+              onValueChange={(value) => updateFormField("city", value)}
+              disabled={!formData.country || isStateOptionsLoading || stateOptions.length === 0}
+            >
+              <SelectTrigger className="w-full h-10 bg-white/5 border-white/10 text-white px-3 rounded-lg">
+                <SelectValue
+                  placeholder={
+                    !formData.country
+                      ? "Select country first"
+                      : isStateOptionsLoading
+                        ? "Loading states..."
+                        : stateOptions.length > 0
+                          ? "Select your state"
+                          : "No state list found"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                align="start"
+                side="bottom"
+                sideOffset={4}
+                className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
+              >
+                {stateOptions.length > 0 ? (
+                  stateOptions.map((state) => (
+                    <SelectItem key={state} value={state} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                      {state}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="__state_unavailable__" disabled>
+                    No state list found for selected country
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            {!isStateOptionsLoading && formData.country && stateOptions.length === 0 && (
+              <Input
+                value={formData.city}
+                onChange={(e) => updateFormField("city", e.target.value)}
+                placeholder="Type your state"
+                className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              />
+            )}
+          </div>
+
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label className="text-white/70 text-[11px]">Profile Photo</Label>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              id="profile-photo-upload"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const nextPhoto = { name: file.name, url: URL.createObjectURL(file) };
+                  updateFormField("profilePhoto", nextPhoto);
+                }
+              }}
+            />
+            <label
+              htmlFor="profile-photo-upload"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all"
+            >
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                {photo?.url ? (
+                  <img src={photo.url} alt="Profile preview" className="w-full h-full object-cover" />
+                ) : (
+                  <Upload className="w-4 h-4 text-white/70" />
+                )}
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <span className="block text-sm text-white/80 truncate">
+                  {photo?.name || "Upload photo (PNG, JPG)"}
+                </span>
+              </div>
+              {photo && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    updateFormField("profilePhoto", null);
+                  }}
+                  className="p-1 hover:bg-white/10 rounded-full"
+                >
+                  <X className="w-4 h-4 text-white/50" />
+                </button>
+              )}
+            </label>
+          </div>
+
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label className="text-white/70 text-[11px]">Languages</Label>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+              {LANGUAGE_OPTIONS.map((option) => {
+                const isSelected = values.includes(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => toggleLanguage(option.value)}
+                    className={cn(
+                      "h-10 px-3 rounded-lg border flex items-center justify-between text-sm font-medium transition-all",
+                      isSelected
+                        ? "border-primary/50 bg-primary/5 text-primary"
+                        : "border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20"
+                    )}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    <span
+                      className={cn(
+                        "w-5 h-5 rounded-full flex items-center justify-center shrink-0",
+                        isSelected ? "bg-primary text-primary-foreground" : "bg-white/10 text-transparent"
+                      )}
+                    >
+                      <Check className="w-3 h-3" />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {otherSelected && (
+            <div className="space-y-1.5 lg:col-span-2">
+              <Label className="text-white/70 text-[11px]">Other language</Label>
+              <Input
+                value={formData.otherLanguage}
+                onChange={(e) => updateFormField("otherLanguage", e.target.value)}
+                placeholder="Type your language"
+                className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-[11px]">LinkedIn Profile URL</Label>
+            <Input
+              type="url"
+              value={formData.linkedinUrl}
+              onChange={(e) => updateFormField("linkedinUrl", e.target.value)}
+              placeholder="https://www.linkedin.com/in/your-profile"
+              className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-white/70 text-[11px]">Portfolio Or Website Link</Label>
+            <Input
+              type="url"
+              value={formData.portfolioUrl}
+              onChange={(e) => updateFormField("portfolioUrl", e.target.value)}
+              placeholder="https://your-portfolio.com"
+              className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            />
+          </div>
+        </div>
+
+        {renderContinueButton()}
       </div>
     );
   };
@@ -1691,25 +2194,6 @@ const FreelancerMultiStepForm = () => {
           />
         ))}
       </div>
-    </div>
-  );
-
-  const renderMultiSelectStep = ({ title, subtitle, options, values, onToggle, columns = 2 }) => (
-    <div className="space-y-4">
-      <StepHeader title={title} subtitle={subtitle} />
-      <div className={cn("grid gap-3", columns === 2 && "grid-cols-2", columns === 3 && "grid-cols-3")}>
-        {options.map((option) => (
-          <OptionCard
-            key={option.value || option}
-            compact
-            selected={values.includes(option.value || option)}
-            onClick={() => onToggle(option.value || option)}
-            label={option.label || option}
-            className="justify-center"
-          />
-        ))}
-      </div>
-      {renderContinueButton()}
     </div>
   );
 
@@ -1803,12 +2287,18 @@ const FreelancerMultiStepForm = () => {
       <StepHeader title="Which Country Are You Based In?" />
       <Select
         value={formData.country || ""}
-        onValueChange={(value) => updateFormField("country", value, 0)}
+        onValueChange={(value) => handleCountryChange(value, 0)}
       >
         <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
           <SelectValue placeholder="Select your country" />
         </SelectTrigger>
-        <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
+        <SelectContent
+          position="popper"
+          align="start"
+          side="bottom"
+          sideOffset={4}
+          className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
+        >
           {COUNTRY_OPTIONS.map((country) => (
             <SelectItem key={country} value={country} className="focus:bg-white/10 focus:text-white cursor-pointer">
               {country}
@@ -1821,19 +2311,59 @@ const FreelancerMultiStepForm = () => {
 
   const renderCityStep = () => (
     <div className="space-y-6">
-      <StepHeader title="Which City Are You Based In?" />
-      <Input
-        value={formData.city}
-        onChange={(e) => updateFormField("city", e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && formData.city.trim()) {
-            e.preventDefault();
-            queueAdvance(0);
-          }
-        }}
-        placeholder="City"
-        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-      />
+      <StepHeader title="Which State Are You Based In?" />
+      <Select
+        value={formData.city || ""}
+        onValueChange={(value) => updateFormField("city", value, 0)}
+        disabled={!formData.country || isStateOptionsLoading || stateOptions.length === 0}
+      >
+        <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+          <SelectValue
+            placeholder={
+              !formData.country
+                ? "Select country first"
+                : isStateOptionsLoading
+                  ? "Loading states..."
+                  : stateOptions.length > 0
+                    ? "Select your state"
+                    : "No state list found"
+            }
+          />
+        </SelectTrigger>
+        <SelectContent
+          position="popper"
+          align="start"
+          side="bottom"
+          sideOffset={4}
+          className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
+        >
+          {stateOptions.length > 0 ? (
+            stateOptions.map((state) => (
+              <SelectItem key={state} value={state} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                {state}
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="__state_unavailable__" disabled>
+              No state list found for selected country
+            </SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+      {!isStateOptionsLoading && formData.country && stateOptions.length === 0 && (
+        <Input
+          value={formData.city}
+          onChange={(e) => updateFormField("city", e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && formData.city.trim()) {
+              e.preventDefault();
+              queueAdvance(0);
+            }
+          }}
+          placeholder="Type your state"
+          className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+        />
+      )}
       {renderContinueButton()}
     </div>
   );
@@ -1907,6 +2437,9 @@ const FreelancerMultiStepForm = () => {
       if (!nextValues.includes("Other") && formData.otherLanguage) {
         updateFormField("otherLanguage", "");
       }
+      if (hasSingleChoice(LANGUAGE_OPTIONS) && !exists && nextValues.length > 0) {
+        queueAdvance(0);
+      }
     };
 
     return (
@@ -1937,7 +2470,7 @@ const FreelancerMultiStepForm = () => {
           </div>
         )}
 
-        {renderContinueButton()}
+        {renderContinueButton(currentStep, { show: hasMultipleChoices(LANGUAGE_OPTIONS) })}
       </div>
     );
   };
@@ -2002,6 +2535,7 @@ const FreelancerMultiStepForm = () => {
 
   const renderServicesStep = () => {
     const limit = getServiceLimit(formData.role);
+    const showContinue = hasMultipleChoices(SERVICE_OPTIONS);
     return (
       <div className="space-y-6">
         <StepHeader
@@ -2050,7 +2584,7 @@ const FreelancerMultiStepForm = () => {
             );
           })}
         </div>
-        {renderContinueButton()}
+        {renderContinueButton(currentStep, { show: showContinue })}
       </div>
     );
   };
@@ -2116,6 +2650,7 @@ const FreelancerMultiStepForm = () => {
     const caseStudy = formData.serviceDetails?.[serviceKey]?.caseStudy || {};
 
     if (field.type === "select") {
+      const options = Array.isArray(field.options) ? field.options : [];
       const value = caseStudy[field.key] || "";
       return (
         <div className="space-y-6">
@@ -2138,7 +2673,7 @@ const FreelancerMultiStepForm = () => {
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
-              {(field.options || []).map((option) => (
+              {options.map((option) => (
                 <SelectItem key={option.value || option} value={option.value || option} className="focus:bg-white/10 focus:text-white cursor-pointer">
                   {option.label || option}
                 </SelectItem>
@@ -2163,7 +2698,9 @@ const FreelancerMultiStepForm = () => {
               />
             </div>
           )}
-          {renderContinueButton()}
+          {renderContinueButton(currentStep, {
+            show: hasMultipleChoices(options) && field.key === "industry" && value === "Other",
+          })}
         </div>
       );
     }
@@ -2174,6 +2711,9 @@ const FreelancerMultiStepForm = () => {
         field.key === "techStack"
           ? getTechStackOptions(serviceKey)
           : field.options || [];
+      const showContinue = hasMultipleChoices(options);
+      const customTools = field.key === "techStack" ? parseCustomTools(caseStudy.techStackOther) : [];
+      const draftOtherTools = techStackOtherDrafts[serviceKey] || "";
 
       const toggleValue = (option) => {
         const exists = selections.includes(option);
@@ -2181,9 +2721,33 @@ const FreelancerMultiStepForm = () => {
           ? selections.filter((item) => item !== option)
           : [...selections, option];
         updateServiceCaseField(serviceKey, field.key, nextValues);
-        if (field.key === "techStack" && !nextValues.includes("Other") && caseStudy.techStackOther) {
-          updateServiceCaseField(serviceKey, "techStackOther", "");
+        if (field.key === "techStack" && !nextValues.includes("Other")) {
+          if (caseStudy.techStackOther) {
+            updateServiceCaseField(serviceKey, "techStackOther", "");
+          }
+          setTechStackOtherDrafts((prev) => {
+            if (!prev[serviceKey]) return prev;
+            const nextDrafts = { ...prev };
+            delete nextDrafts[serviceKey];
+            return nextDrafts;
+          });
         }
+        if (hasSingleChoice(options) && !exists && nextValues.length > 0) {
+          queueAdvance(0);
+        }
+      };
+
+      const addCustomTools = () => {
+        const parsedInput = parseCustomTools(draftOtherTools);
+        if (!parsedInput.length) return;
+        const nextTools = normalizeCustomTools([...customTools, ...parsedInput]);
+        updateServiceCaseField(serviceKey, "techStackOther", nextTools.join(", "));
+        setTechStackOtherDrafts((prev) => ({ ...prev, [serviceKey]: "" }));
+      };
+
+      const removeCustomTool = (toolToRemove) => {
+        const nextTools = customTools.filter((tool) => tool.toLowerCase() !== toolToRemove.toLowerCase());
+        updateServiceCaseField(serviceKey, "techStackOther", nextTools.join(", "));
       };
 
       return (
@@ -2202,22 +2766,68 @@ const FreelancerMultiStepForm = () => {
             ))}
           </div>
           {field.min && (
-            <p className="text-xs text-white/50 text-center">Select at least {field.min} options.</p>
+            <p className="text-xs text-white/50 text-center">
+              {field.key === "techStack" ? `Select at least ${field.min} tools.` : `Select at least ${field.min} options.`}
+            </p>
           )}
 
           {field.key === "techStack" && selections.includes("Other") && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label className="text-white/70 text-xs">Other tools</Label>
-              <Input
-                value={caseStudy.techStackOther || ""}
-                onChange={(e) => updateServiceCaseField(serviceKey, "techStackOther", e.target.value)}
-                placeholder="Type the tool(s)"
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={draftOtherTools}
+                  onChange={(e) => setTechStackOtherDrafts((prev) => ({ ...prev, [serviceKey]: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCustomTools();
+                    }
+                  }}
+                  placeholder="Type tools, e.g. Next.js, Tailwind, Prisma"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                />
+                <button
+                  type="button"
+                  onClick={addCustomTools}
+                  disabled={!draftOtherTools.trim()}
+                  className={cn(
+                    "px-4 py-2 rounded-xl font-semibold transition-all",
+                    draftOtherTools.trim()
+                      ? "bg-white/10 text-white hover:bg-white/20"
+                      : "bg-white/5 text-white/40 cursor-not-allowed"
+                  )}
+                >
+                  Add
+                </button>
+              </div>
+
+              {customTools.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {customTools.map((tool) => (
+                    <span
+                      key={tool}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-xs text-white/90"
+                    >
+                      {tool}
+                      <button
+                        type="button"
+                        onClick={() => removeCustomTool(tool)}
+                        className="text-white/60 hover:text-white transition-colors"
+                        aria-label={`Remove ${tool}`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-white/45">Press Enter or click Add to include each tool.</p>
             </div>
           )}
 
-          {renderContinueButton()}
+          {renderContinueButton(currentStep, { show: showContinue })}
         </div>
       );
     }
@@ -2332,6 +2942,19 @@ const FreelancerMultiStepForm = () => {
     const detail = formData.serviceDetails?.[serviceKey];
     const minPrice = detail?.averagePriceMin || "";
     const maxPrice = detail?.averagePriceMax || "";
+    const parsedMinPrice = parsePriceValue(minPrice);
+    const parsedMaxPrice = parsePriceValue(maxPrice);
+    const sliderMin = Number.isFinite(parsedMinPrice) ? clampPriceValue(parsedMinPrice) : PRICE_RANGE_MIN;
+    const sliderMax = Number.isFinite(parsedMaxPrice)
+      ? clampPriceValue(Math.max(parsedMaxPrice, sliderMin))
+      : Math.max(sliderMin, PRICE_RANGE_MIN * 5);
+
+    const updatePriceRange = (nextMin, nextMax) => {
+      const clampedMin = clampPriceValue(nextMin);
+      const clampedMax = clampPriceValue(Math.max(nextMax, clampedMin));
+      updateServiceField(serviceKey, "averagePriceMin", String(clampedMin));
+      updateServiceField(serviceKey, "averagePriceMax", String(clampedMax));
+    };
 
     return (
       <div className="space-y-6">
@@ -2339,19 +2962,60 @@ const FreelancerMultiStepForm = () => {
           title={`What Is Your Average Project Price Range For ${getServiceLabel(serviceKey)}?`}
           subtitle={renderServiceMeta(serviceKey)}
         />
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+          <div className="flex justify-between text-sm text-white/80">
+            <span>{formatPriceLabel(sliderMin)}</span>
+            <span>{formatPriceLabel(sliderMax)}</span>
+          </div>
+          <Slider
+            min={PRICE_RANGE_MIN}
+            max={PRICE_RANGE_MAX}
+            step={PRICE_RANGE_STEP}
+            value={[sliderMin, sliderMax]}
+            onValueChange={(values) => {
+              if (!Array.isArray(values) || values.length < 2) return;
+              updatePriceRange(values[0], values[1]);
+            }}
+          />
+          <div className="flex justify-between text-xs text-white/45">
+            <span>{formatPriceLabel(PRICE_RANGE_MIN)}</span>
+            <span>{formatPriceLabel(PRICE_RANGE_MAX)}</span>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label className="block text-xs text-white/60 mb-2">Minimum Price</label>
             <Input
+              type="number"
               value={minPrice}
-              onChange={(e) => updateServiceField(serviceKey, "averagePriceMin", e.target.value)}
+              onChange={(e) => {
+                const rawValue = e.target.value;
+                if (!rawValue) {
+                  updateServiceField(serviceKey, "averagePriceMin", "");
+                  return;
+                }
+
+                const nextMin = parsePriceValue(rawValue);
+                if (!Number.isFinite(nextMin)) return;
+
+                const safeMin = clampPriceValue(nextMin);
+                const currentMax = Number.isFinite(parsedMaxPrice)
+                  ? clampPriceValue(parsedMaxPrice)
+                  : safeMin;
+
+                updatePriceRange(safeMin, Math.max(currentMax, safeMin));
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && minPrice && maxPrice) {
                   e.preventDefault();
                   queueAdvance(0);
                 }
               }}
-              placeholder="e.g. 25,000"
+              min={PRICE_RANGE_MIN}
+              max={PRICE_RANGE_MAX}
+              step={PRICE_RANGE_STEP}
+              placeholder="e.g. 25000"
               className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
             />
           </div>
@@ -2359,15 +3023,35 @@ const FreelancerMultiStepForm = () => {
           <div className="flex-1">
             <label className="block text-xs text-white/60 mb-2">Maximum Price</label>
             <Input
+              type="number"
               value={maxPrice}
-              onChange={(e) => updateServiceField(serviceKey, "averagePriceMax", e.target.value)}
+              onChange={(e) => {
+                const rawValue = e.target.value;
+                if (!rawValue) {
+                  updateServiceField(serviceKey, "averagePriceMax", "");
+                  return;
+                }
+
+                const nextMax = parsePriceValue(rawValue);
+                if (!Number.isFinite(nextMax)) return;
+
+                const safeMax = clampPriceValue(nextMax);
+                const currentMin = Number.isFinite(parsedMinPrice)
+                  ? clampPriceValue(parsedMinPrice)
+                  : PRICE_RANGE_MIN;
+
+                updatePriceRange(Math.min(currentMin, safeMax), safeMax);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && minPrice && maxPrice) {
                   e.preventDefault();
                   queueAdvance(0);
                 }
               }}
-              placeholder="e.g. 75,000"
+              min={PRICE_RANGE_MIN}
+              max={PRICE_RANGE_MAX}
+              step={PRICE_RANGE_STEP}
+              placeholder="e.g. 75000"
               className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
             />
           </div>
@@ -2383,10 +3067,44 @@ const FreelancerMultiStepForm = () => {
     const isFirstGroup = serviceGroups[0]?.id === groupId;
     const details = formData.serviceDetails?.[serviceKey] || createServiceDetail();
     const existingGroups = details.groups || {};
-    const selections = existingGroups[groupId] || [];
+    const selections = Array.isArray(existingGroups[groupId]) ? existingGroups[groupId] : [];
     const minSelections = group?.min || 1;
+    const optionEntries = Array.isArray(group?.options)
+      ? group.options
+          .map((option) => {
+            if (typeof option === "string") {
+              return { value: option, label: option };
+            }
+            if (!option || typeof option !== "object") return null;
+            const value = String(option.value ?? option.label ?? "").trim();
+            const label = String(option.label ?? option.value ?? "").trim();
+            if (!value) return null;
+            return { value, label: label || value };
+          })
+          .filter(Boolean)
+      : [];
+    const optionValues = optionEntries.map((option) => option.value);
+    const otherOptionValue = optionValues.find((value) => value.toLowerCase() === "other") || null;
+    const otherSelected = Boolean(otherOptionValue && selections.includes(otherOptionValue));
+    const groupOtherKey = `${serviceKey}:${groupId}`;
+    const groupOtherDraft = groupOtherDrafts[groupOtherKey] || "";
+    const customGroupValues = otherSelected
+      ? normalizeCustomTools(parseCustomTools(details?.groupOther?.[groupId] || ""))
+      : [];
+    const showContinue = hasMultipleChoices(optionEntries);
 
     if (!group) return null;
+
+    const updateGroupOtherValues = (nextValues) => {
+      const normalizedValues = normalizeCustomTools(nextValues);
+      const nextGroupOther = { ...(details.groupOther || {}) };
+      if (normalizedValues.length > 0) {
+        nextGroupOther[groupId] = normalizedValues.join(", ");
+      } else {
+        delete nextGroupOther[groupId];
+      }
+      updateServiceField(serviceKey, "groupOther", nextGroupOther);
+    };
 
     const toggleValue = (option) => {
       const exists = selections.includes(option);
@@ -2397,6 +3115,48 @@ const FreelancerMultiStepForm = () => {
         ...existingGroups,
         [groupId]: nextValues,
       });
+
+      if (otherOptionValue && option === otherOptionValue && exists) {
+        if ((details.groupOther || {})[groupId]) {
+          const nextGroupOther = { ...(details.groupOther || {}) };
+          delete nextGroupOther[groupId];
+          updateServiceField(serviceKey, "groupOther", nextGroupOther);
+        }
+        setGroupOtherDrafts((prev) => {
+          if (!prev[groupOtherKey]) return prev;
+          const nextDrafts = { ...prev };
+          delete nextDrafts[groupOtherKey];
+          return nextDrafts;
+        });
+      }
+
+      if (hasSingleChoice(optionEntries) && nextValues.length >= minSelections) {
+        const onlyOption = optionEntries[0]?.value;
+        if (onlyOption !== otherOptionValue) {
+          queueAdvance(0);
+          return;
+        }
+
+        const existingCustomValues = normalizeCustomTools(parseCustomTools(details?.groupOther?.[groupId] || ""));
+        if (existingCustomValues.length > 0) {
+          queueAdvance(0);
+        }
+      }
+    };
+
+    const addCustomGroupValues = () => {
+      const parsedInput = parseCustomTools(groupOtherDraft);
+      if (!parsedInput.length) return;
+      const nextCustomValues = normalizeCustomTools([...customGroupValues, ...parsedInput]);
+      updateGroupOtherValues(nextCustomValues);
+      setGroupOtherDrafts((prev) => ({ ...prev, [groupOtherKey]: "" }));
+    };
+
+    const removeCustomGroupValue = (valueToRemove) => {
+      const nextCustomValues = customGroupValues.filter(
+        (item) => item.toLowerCase() !== valueToRemove.toLowerCase()
+      );
+      updateGroupOtherValues(nextCustomValues);
     };
 
     return (
@@ -2406,13 +3166,13 @@ const FreelancerMultiStepForm = () => {
           subtitle={renderServiceMeta(serviceKey)}
         />
         <div className="grid grid-cols-2 gap-3">
-          {group.options.map((option) => (
+          {optionEntries.map((option) => (
             <OptionCard
-              key={option}
+              key={option.value}
               compact
-              selected={selections.includes(option)}
-              onClick={() => toggleValue(option)}
-              label={option}
+              selected={selections.includes(option.value)}
+              onClick={() => toggleValue(option.value)}
+              label={option.label}
               className="justify-center"
             />
           ))}
@@ -2422,7 +3182,63 @@ const FreelancerMultiStepForm = () => {
             Select at least {minSelections} options.
           </p>
         )}
-        {renderContinueButton()}
+
+        {otherSelected && (
+          <div className="space-y-3">
+            <Label className="text-white/70 text-xs">Other options</Label>
+            <div className="flex gap-2">
+              <Input
+                value={groupOtherDraft}
+                onChange={(e) => setGroupOtherDrafts((prev) => ({ ...prev, [groupOtherKey]: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCustomGroupValues();
+                  }
+                }}
+                placeholder="Type options, e.g. Strapi, Supabase, Firebase"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              />
+              <button
+                type="button"
+                onClick={addCustomGroupValues}
+                disabled={!groupOtherDraft.trim()}
+                className={cn(
+                  "px-4 py-2 rounded-xl font-semibold transition-all",
+                  groupOtherDraft.trim()
+                    ? "bg-white/10 text-white hover:bg-white/20"
+                    : "bg-white/5 text-white/40 cursor-not-allowed"
+                )}
+              >
+                Add
+              </button>
+            </div>
+
+            {customGroupValues.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {customGroupValues.map((item) => (
+                  <span
+                    key={item}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-xs text-white/90"
+                  >
+                    {item}
+                    <button
+                      type="button"
+                      onClick={() => removeCustomGroupValue(item)}
+                      className="text-white/60 hover:text-white transition-colors"
+                      aria-label={`Remove ${item}`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <p className="text-xs text-white/45">Press Enter or click Add to include each option.</p>
+          </div>
+        )}
+        {renderContinueButton(currentStep, { show: showContinue })}
       </div>
     );
   };
@@ -2430,11 +3246,11 @@ const FreelancerMultiStepForm = () => {
   const renderServiceIndustryFocus = (serviceKey) => (
     <div className="space-y-4">
       <StepHeader
-        title={`Do You Specialize In Specific Industries For ${getServiceLabel(serviceKey)}?`}
+        title="For Upcoming Projects, Would You Like To Continue With The Same Niche?"
         subtitle={renderServiceMeta(serviceKey)}
       />
       <div className="space-y-3">
-        {YES_NO_OPEN_OPTIONS.map((option) => (
+        {UPCOMING_NICHE_OPTIONS.map((option) => (
           <OptionCard
             key={option.value}
             selected={formData.serviceDetails?.[serviceKey]?.industryFocus === option.value}
@@ -2449,6 +3265,7 @@ const FreelancerMultiStepForm = () => {
   const renderServiceNiches = (serviceKey) => {
     const values = formData.serviceDetails?.[serviceKey]?.niches || [];
     const otherValue = formData.serviceDetails?.[serviceKey]?.otherNiche || "";
+    const showContinue = hasMultipleChoices(INDUSTRY_NICHE_OPTIONS);
     const handleNicheToggle = (option) => {
       const details = formData.serviceDetails?.[serviceKey] || createServiceDetail();
       const current = Array.isArray(details.niches) ? details.niches : [];
@@ -2457,6 +3274,9 @@ const FreelancerMultiStepForm = () => {
       updateServiceField(serviceKey, "niches", nextValues, null);
       if (!nextValues.includes("Other") && details.otherNiche) {
         updateServiceField(serviceKey, "otherNiche", "");
+      }
+      if (hasSingleChoice(INDUSTRY_NICHE_OPTIONS) && !exists && nextValues.length > 0) {
+        queueAdvance(0);
       }
     };
 
@@ -2491,7 +3311,7 @@ const FreelancerMultiStepForm = () => {
           </div>
         )}
 
-        {renderContinueButton()}
+        {renderContinueButton(currentStep, { show: showContinue })}
       </div>
     );
   };
@@ -2669,6 +3489,8 @@ const FreelancerMultiStepForm = () => {
     if (!currentStep) return null;
 
     switch (currentStep.type) {
+      case "profileBasics":
+        return renderProfileBasicsStep();
       case "professionalTitle":
         return renderProfessionalTitleStep();
       case "username":
@@ -2794,7 +3616,7 @@ const FreelancerMultiStepForm = () => {
         </div>
 
         <div className="relative h-full overflow-y-auto w-full custom-scrollbar">
-          <div className="max-w-6xl mx-auto px-6 py-24 min-h-full flex flex-col">
+          <div className="max-w-4xl mx-auto px-6 pt-24 pb-36 min-h-full flex flex-col">
             <AnimatePresence mode="wait">
               <motion.div
                 key={isVerifying ? "verify" : currentStep?.key}
@@ -2815,6 +3637,3 @@ const FreelancerMultiStepForm = () => {
 };
 
 export default FreelancerMultiStepForm;
-
-
-
