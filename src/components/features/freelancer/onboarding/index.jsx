@@ -201,7 +201,6 @@ const FreelancerMultiStepForm = () => {
         }
         sequence.push({ key: "delivery-policy", type: "deliveryPolicy" });
         sequence.push({ key: "communication-policy", type: "communicationPolicy" });
-        sequence.push({ key: "bio", type: "bio" });
 
         return sequence;
     }, [formData]);

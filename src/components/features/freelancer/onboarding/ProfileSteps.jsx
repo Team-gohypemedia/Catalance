@@ -3,6 +3,8 @@ import { Check, Upload, X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -133,6 +135,62 @@ export const ProfileBasicsStep = ({
                 </div>
 
                 <div className="space-y-1.5">
+                    <Label className="text-white/70 text-[11px]">Professional Bio</Label>
+                    <Textarea
+                        value={formData.professionalBio}
+                        onChange={(e) => updateFormField("professionalBio", e.target.value)}
+                        placeholder="Write 2-4 sentences about your experience, specialties, and the value you bring."
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-[100px] resize-none"
+                    />
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label className="text-white/70 text-[11px]">Profile Photo</Label>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        id="profile-photo-upload"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                const nextPhoto = { name: file.name, url: URL.createObjectURL(file) };
+                                updateFormField("profilePhoto", nextPhoto);
+                            }
+                        }}
+                    />
+                    <label
+                        htmlFor="profile-photo-upload"
+                        className="flex items-center gap-3 px-3 h-[100px] rounded-lg border border-dashed border-white/10 bg-white/5 hover:border-primary/50 hover:bg-white/10 cursor-pointer transition-all"
+                    >
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                            {photo?.url ? (
+                                <img src={photo.url} alt="Profile preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <Upload className="w-4 h-4 text-white/70" />
+                            )}
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <span className="block text-sm text-white/80 truncate">
+                                {photo?.name || "Upload photo (PNG, JPG)"}
+                            </span>
+                        </div>
+                        {photo && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    updateFormField("profilePhoto", null);
+                                }}
+                                className="p-1 hover:bg-white/10 rounded-full"
+                            >
+                                <X className="w-4 h-4 text-white/50" />
+                            </button>
+                        )}
+                    </label>
+                </div>
+
+                <div className="space-y-1.5">
                     <Label className="text-white/70 text-[11px]">Country</Label>
                     <Select
                         value={formData.country || ""}
@@ -207,81 +265,68 @@ export const ProfileBasicsStep = ({
                     )}
                 </div>
 
-                <div className="space-y-1.5 lg:col-span-2">
-                    <Label className="text-white/70 text-[11px]">Profile Photo</Label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        id="profile-photo-upload"
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                                const nextPhoto = { name: file.name, url: URL.createObjectURL(file) };
-                                updateFormField("profilePhoto", nextPhoto);
-                            }
-                        }}
-                    />
-                    <label
-                        htmlFor="profile-photo-upload"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all"
-                    >
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-                            {photo?.url ? (
-                                <img src={photo.url} alt="Profile preview" className="w-full h-full object-cover" />
-                            ) : (
-                                <Upload className="w-4 h-4 text-white/70" />
-                            )}
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <span className="block text-sm text-white/80 truncate">
-                                {photo?.name || "Upload photo (PNG, JPG)"}
-                            </span>
-                        </div>
-                        {photo && (
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    updateFormField("profilePhoto", null);
-                                }}
-                                className="p-1 hover:bg-white/10 rounded-full"
-                            >
-                                <X className="w-4 h-4 text-white/50" />
-                            </button>
-                        )}
-                    </label>
-                </div>
+
 
                 <div className="space-y-1.5 lg:col-span-2">
                     <Label className="text-white/70 text-[11px]">Languages</Label>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                        {LANGUAGE_OPTIONS.map((option) => {
-                            const isSelected = values.includes(option.value);
-                            return (
-                                <button
-                                    key={option.value}
-                                    type="button"
-                                    onClick={() => toggleLanguage(option.value)}
-                                    className={cn(
-                                        "h-10 px-3 rounded-lg border flex items-center justify-between text-sm font-medium transition-all",
-                                        isSelected
-                                            ? "border-primary/50 bg-primary/5 text-primary"
-                                            : "border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20"
-                                    )}
-                                >
-                                    <span className="truncate">{option.label}</span>
-                                    <span
-                                        className={cn(
-                                            "w-5 h-5 rounded-full flex items-center justify-center shrink-0",
-                                            isSelected ? "bg-primary text-primary-foreground" : "bg-white/10 text-transparent"
-                                        )}
+                    <div className="space-y-3">
+                        <Select
+                            value=""
+                            onValueChange={(value) => {
+                                if (value) {
+                                    toggleLanguage(value);
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="w-full h-10 bg-white/5 border-white/10 text-white px-3 rounded-lg">
+                                <SelectValue placeholder="Select languages..." />
+                            </SelectTrigger>
+                            <SelectContent
+                                className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[300px]"
+                                position="popper"
+                                sideOffset={5}
+                            >
+                                {LANGUAGE_OPTIONS.map((option) => (
+                                    <SelectItem
+                                        key={option.value}
+                                        value={option.value}
+                                        className="focus:bg-white/10 focus:text-white cursor-pointer pl-2"
                                     >
-                                        <Check className="w-3 h-3" />
-                                    </span>
-                                </button>
-                            );
-                        })}
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                checked={values.includes(option.value)}
+                                                className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                                            />
+                                            <span>{option.label}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Selected Languages Tags */}
+                        {values.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {values.map((lang) => {
+                                    const label = LANGUAGE_OPTIONS.find(l => l.value === lang)?.label || lang;
+                                    return (
+                                        <div
+                                            key={lang}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary font-medium group hover:bg-primary/20 transition-colors"
+                                        >
+                                            <span>{label}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleLanguage(lang)}
+                                                className="hover:text-primary/80 focus:outline-none"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -630,17 +675,63 @@ export const LanguagesStep = ({
     return (
         <div className="space-y-6">
             <StepHeader title="Languages You Can Work Professionally In" />
-            <div className="grid grid-cols-2 gap-3">
-                {LANGUAGE_OPTIONS.map((option) => (
-                    <OptionCard
-                        key={option.value}
-                        compact
-                        selected={values.includes(option.value)}
-                        onClick={() => toggleLanguage(option.value)}
-                        label={option.label}
-                        className="justify-center"
-                    />
-                ))}
+            <div className="space-y-3">
+                <Select
+                    value=""
+                    onValueChange={(value) => {
+                        if (value) {
+                            toggleLanguage(value);
+                        }
+                    }}
+                >
+                    <SelectTrigger className="w-full h-10 bg-white/5 border-white/10 text-white px-3 rounded-lg">
+                        <SelectValue placeholder="Select languages..." />
+                    </SelectTrigger>
+                    <SelectContent
+                        className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[300px]"
+                        position="popper"
+                        sideOffset={5}
+                    >
+                        {LANGUAGE_OPTIONS.map((option) => (
+                            <SelectItem
+                                key={option.value}
+                                value={option.value}
+                                className="focus:bg-white/10 focus:text-white cursor-pointer pl-2"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        checked={values.includes(option.value)}
+                                        className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                                    />
+                                    <span>{option.label}</span>
+                                </div>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+
+                {values.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {values.map((lang) => {
+                            const label = LANGUAGE_OPTIONS.find(l => l.value === lang)?.label || lang;
+                            return (
+                                <div
+                                    key={lang}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary font-medium group hover:bg-primary/20 transition-colors"
+                                >
+                                    <span>{label}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleLanguage(lang)}
+                                        className="hover:text-primary/80 focus:outline-none"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {otherSelected && (

@@ -89,8 +89,30 @@ export const UPCOMING_NICHE_OPTIONS = [
 export const LANGUAGE_OPTIONS = [
     { value: "English", label: "English" },
     { value: "Hindi", label: "Hindi" },
+    { value: "Spanish", label: "Spanish" },
+    { value: "French", label: "French" },
+    { value: "German", label: "German" },
+    { value: "Chinese", label: "Mandarin Chinese" },
+    { value: "Arabic", label: "Arabic" },
+    { value: "Bengali", label: "Bengali" },
+    { value: "Portuguese", label: "Portuguese" },
+    { value: "Russian", label: "Russian" },
+    { value: "Japanese", label: "Japanese" },
+    { value: "Punjabi", label: "Punjabi" },
+    { value: "Telugu", label: "Telugu" },
+    { value: "Marathi", label: "Marathi" },
+    { value: "Tamil", label: "Tamil" },
+    { value: "Urdu", label: "Urdu" },
+    { value: "Gujarati", label: "Gujarati" },
+    { value: "Kannada", label: "Kannada" },
+    { value: "Malayalam", label: "Malayalam" },
+    { value: "Italian", label: "Italian" },
     { value: "Other", label: "Other (Custom)" },
-];
+].sort((a, b) => {
+    if (a.value === "Other") return 1;
+    if (b.value === "Other") return -1;
+    return a.label.localeCompare(b.label);
+});
 
 export const COUNTRY_OPTIONS = Array.from(
     new Set((COUNTRY_CODES || []).map((country) => country.name).filter(Boolean)),
