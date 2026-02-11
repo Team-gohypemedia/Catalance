@@ -88,7 +88,7 @@ const FreelancerChat = lazy(
   () => import("@/components/features/freelancer/FreelancerChat"),
 );
 const FreelancerMultiStepForm = lazy(
-  () => import("@/components/features/freelancer/multi-step-form"),
+  () => import("@/components/features/freelancer/onboarding"),
 );
 const VerificationPending = lazy(
   () => import("@/components/features/freelancer/VerificationPending"),
