@@ -25,10 +25,12 @@ import X from "lucide-react/dist/esm/icons/x";
 import Gavel from "lucide-react/dist/esm/icons/gavel";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import Video from "lucide-react/dist/esm/icons/video";
+import CircleAlert from "lucide-react/dist/esm/icons/circle-alert";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { getSession } from "@/shared/lib/auth-storage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
@@ -45,7 +47,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 
 export const DashboardContent = ({ roleOverride }) => {
   const [sessionUser, setSessionUser] = useState(null);
-  const { authFetch } = useAuth();
+  const { authFetch, user } = useAuth();
   const [metrics, setMetrics] = useState({
     activeProjects: 0,
     proposalsReceived: 0,
@@ -64,6 +66,8 @@ export const DashboardContent = ({ roleOverride }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useNotifications();
   const { toggleSidebar } = useSidebar();
+  const showOnboardingAlert =
+    user?.role === "FREELANCER" && !user?.onboardingComplete;
 
   useEffect(() => {
     const session = getSession();
@@ -378,6 +382,33 @@ export const DashboardContent = ({ roleOverride }) => {
                   </Badge>
                 </div>
               </div>
+
+              {showOnboardingAlert ? (
+                <Alert
+                  variant="info"
+                  size="lg"
+                  layout="stack"
+                  icon={<CircleAlert className="h-4 w-4" />}
+                  action={
+                    <Button
+                      size="sm"
+                      onClick={() => navigate("/freelancer/onboarding")}
+                    >
+                      Start onboarding
+                    </Button>
+                  }
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold">
+                      Complete your onboarding to start getting projects.
+                    </p>
+                    <p className="text-xs">
+                      Add your profile details and services so clients can
+                      discover and hire you.
+                    </p>
+                  </div>
+                </Alert>
+              ) : null}
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

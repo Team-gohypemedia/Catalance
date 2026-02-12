@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Plus, Trash2, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
     SERVICE_OPTIONS,
@@ -26,6 +39,10 @@ import {
     PRICE_RANGE_MAX,
     PRICE_RANGE_STEP,
     AVERAGE_PROJECT_PRICE_OPTIONS,
+    ROLE_IN_PROJECT_OPTIONS,
+    PROJECT_TIMELINE_OPTIONS,
+    BUDGET_RANGE_OPTIONS,
+    DEFAULT_TECH_STACK_OPTIONS,
 } from "./constants";
 import {
     getServiceLabel,
@@ -752,6 +769,85 @@ export const ServiceGroupStep = ({
 // SERVICE INDUSTRY FOCUS STEP
 // ============================================================================
 
+// ============================================================================
+// GLOBAL NICHE STEP
+// ============================================================================
+
+export const GlobalNicheStep = ({
+    formData,
+    updateFormField,
+    renderContinueButton,
+    currentStep,
+    hasMultipleChoices,
+    hasSingleChoice,
+    queueAdvance,
+}) => {
+    const selections = Array.isArray(formData.globalIndustryFocus) ? formData.globalIndustryFocus : [];
+    const otherValue = formData.globalIndustryOther || "";
+    const showContinue = hasMultipleChoices(INDUSTRY_NICHE_OPTIONS);
+
+    const toggleNiche = (option) => {
+        const exists = selections.includes(option);
+        const nextValues = exists
+            ? selections.filter((item) => item !== option)
+            : [...selections, option];
+
+        updateFormField("globalIndustryFocus", nextValues, null);
+
+        if (!nextValues.includes("Other") && otherValue) {
+            updateFormField("globalIndustryOther", "");
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <StepHeader
+                title="Which Industries Or Niches Do You Work In?"
+                subtitle="Select all that apply"
+            />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
+                {INDUSTRY_NICHE_OPTIONS.map((option) => (
+                    <OptionCard
+                        key={option}
+                        compact
+                        selected={selections.includes(option)}
+                        onClick={() => toggleNiche(option)}
+                        label={option}
+                        className={cn("justify-center", option === "Other" && "col-span-2 md:col-span-3 lg:col-span-5 xl:col-span-5")}
+                    />
+                ))}
+            </div>
+
+            {selections.includes("Other") && (
+                <div className="space-y-2">
+                    <Label className="text-white/70 text-xs">Other niche</Label>
+                    <Input
+                        value={otherValue}
+                        onChange={(e) => updateFormField("globalIndustryOther", e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && otherValue.trim()) {
+                                e.preventDefault();
+                                queueAdvance(0);
+                            }
+                        }}
+                        placeholder="Type your niche"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    />
+                </div>
+            )}
+
+            {renderContinueButton(currentStep, {
+                show: selections.length > 0 &&
+                    (!selections.includes("Other") || otherValue.trim().length > 0)
+            })}
+        </div>
+    );
+};
+
+// ============================================================================
+// SERVICE INDUSTRY FOCUS STEP
+// ============================================================================
+
 export const ServiceIndustryFocusStep = ({ formData, updateServiceField, renderServiceMeta, serviceKey }) => (
     <div className="space-y-4">
         <StepHeader
@@ -884,3 +980,249 @@ export const ServiceComplexityStep = ({ formData, updateServiceField, renderServ
         </div>
     </div>
 );
+
+// ============================================================================
+// SERVICE PROJECT DETAILS STEP
+// ============================================================================
+
+export const ServiceProjectDetailsStep = ({
+    formData,
+    updateServiceField,
+    renderServiceMeta,
+    serviceKey,
+    renderContinueButton,
+    currentStep,
+}) => {
+    const projects = formData.serviceDetails?.[serviceKey]?.projects;
+    // Initialize with one empty project if undefined or empty
+    React.useEffect(() => {
+        if (!projects || projects.length === 0) {
+            updateServiceField(serviceKey, "projects", [{}]);
+        }
+    }, [projects, serviceKey]);
+
+    const projectList = projects || [{}];
+
+    const updateProject = (index, field, value) => {
+        const newProjects = [...projectList];
+        newProjects[index] = { ...newProjects[index], [field]: value };
+        updateServiceField(serviceKey, "projects", newProjects);
+    };
+
+    const addProject = () => {
+        updateServiceField(serviceKey, "projects", [...projectList, {}]);
+    };
+
+    const removeProject = (index) => {
+        if (projectList.length <= 1) return; // Prevent deleting the last one? Or allow and show empty state?
+        const newProjects = projectList.filter((_, i) => i !== index);
+        updateServiceField(serviceKey, "projects", newProjects);
+    };
+
+    const isValid = projectList.every(p =>
+        p.title?.trim() &&
+        p.description?.trim() &&
+        p.role &&
+        p.timeline &&
+        p.techStack?.length > 0 &&
+        p.budget
+    );
+
+    return (
+        <div className="space-y-8">
+            <StepHeader
+                title="Tell Us About Your Best Projects"
+                subtitle={renderServiceMeta(serviceKey)}
+            />
+
+            <div className="space-y-8">
+                {projectList.map((project, index) => (
+                    <div key={index} className="space-y-5 p-5 rounded-xl bg-white/5 border border-white/10 relative">
+                        {projectList.length > 1 && (
+                            <button
+                                onClick={() => removeProject(index)}
+                                className="absolute top-4 right-4 text-white/40 hover:text-red-400 transition-colors"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                        )}
+
+                        <h3 className="text-lg font-medium text-white">Project {index + 1}</h3>
+
+                        {/* Project Title */}
+                        <div className="space-y-1.5">
+                            <Label className="text-white/70 text-[11px]">Project Title</Label>
+                            <Input
+                                value={project.title || ""}
+                                onChange={(e) => updateProject(index, "title", e.target.value)}
+                                placeholder="e.g. E-commerce Platform Redesign"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                            />
+                        </div>
+
+                        {/* Description */}
+                        <div className="space-y-1.5">
+                            <Label className="text-white/70 text-[11px]">Project Description</Label>
+                            <Textarea
+                                value={project.description || ""}
+                                onChange={(e) => updateProject(index, "description", e.target.value)}
+                                placeholder="Briefly describe the project and its goals..."
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[100px]"
+                            />
+                        </div>
+
+                        {/* Role & Timeline Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-white/70 text-[11px]">Your Role</Label>
+                                <Select
+                                    value={project.role || ""}
+                                    onValueChange={(value) => updateProject(index, "role", value)}
+                                >
+                                    <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
+                                        <SelectValue placeholder="Select role" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
+                                        {ROLE_IN_PROJECT_OPTIONS.map((opt) => (
+                                            <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-white/70 text-[11px]">Timeline</Label>
+                                <Select
+                                    value={project.timeline || ""}
+                                    onValueChange={(value) => updateProject(index, "timeline", value)}
+                                >
+                                    <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
+                                        <SelectValue placeholder="Select duration" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
+                                        {PROJECT_TIMELINE_OPTIONS.map((opt) => (
+                                            <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Tech Stack */}
+                        <div className="space-y-1.5">
+                            <Label className="text-white/70 text-[11px]">Tech Stack / Tools</Label>
+                            <TechStackSelect
+                                value={project.techStack || []}
+                                onChange={(val) => updateProject(index, "techStack", val)}
+                            />
+                        </div>
+
+                        {/* Budget */}
+                        <div className="space-y-1.5">
+                            <Label className="text-white/70 text-[11px]">Budget</Label>
+                            <Select
+                                value={project.budget || ""}
+                                onValueChange={(value) => updateProject(index, "budget", value)}
+                            >
+                                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
+                                    <SelectValue placeholder="Select budget range" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
+                                    {BUDGET_RANGE_OPTIONS.map((opt) => (
+                                        <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <button
+                onClick={addProject}
+                className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors text-sm font-medium"
+            >
+                <Plus className="w-4 h-4" />
+                Add Another Project
+            </button>
+
+            {renderContinueButton(currentStep, { show: isValid })}
+        </div>
+    );
+};
+
+// Helper component for Tech Stack Multi-select
+const TechStackSelect = ({ value, onChange }) => {
+    const [open, setOpen] = React.useState(false);
+
+    const handleSelect = (optionValue) => {
+        const next = value.includes(optionValue)
+            ? value.filter((v) => v !== optionValue)
+            : [...value, optionValue];
+        onChange(next);
+    };
+
+    return (
+        <div className="space-y-2">
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <button
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full justify-between flex items-center h-10 px-3 rounded-md bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors"
+                    >
+                        <span className="text-sm text-white/70">
+                            {value.length > 0 ? `${value.length} selected` : "Select technologies..."}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0 bg-[#1A1A1A] border-white/10 text-white" align="start">
+                    <Command className="bg-transparent">
+                        <CommandInput placeholder="Search tech stack..." className="h-9 text-white placeholder:text-white/30" />
+                        <CommandEmpty>No framework found.</CommandEmpty>
+                        <CommandList>
+                            <CommandGroup className="max-h-[200px] overflow-y-auto">
+                                {DEFAULT_TECH_STACK_OPTIONS.map((tech) => (
+                                    <CommandItem
+                                        key={tech}
+                                        value={tech}
+                                        onSelect={() => handleSelect(tech)}
+                                        className="text-white hover:bg-white/10 aria-selected:bg-white/10 cursor-pointer"
+                                    >
+                                        <div className={cn(
+                                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                            value.includes(tech) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                                        )}>
+                                            <Check className={cn("h-4 w-4")} />
+                                        </div>
+                                        {tech}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+
+            {value.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    {value.map((tech) => (
+                        <div key={tech} className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded text-xs text-white">
+                            {tech}
+                            <button onClick={() => handleSelect(tech)} className="hover:text-red-400 ml-1">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};

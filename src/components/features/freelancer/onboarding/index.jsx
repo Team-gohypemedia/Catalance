@@ -49,6 +49,7 @@ import {
     LinkedinStep,
     PortfolioStep,
     RoleStep,
+    WelcomeStep,
 } from "./ProfileSteps";
 
 import {
@@ -65,6 +66,8 @@ import {
     ServiceNichesStep,
     ServiceIndustryOnlyStep,
     ServiceComplexityStep,
+    ServiceProjectDetailsStep,
+    GlobalNicheStep,
 } from "./ServiceSteps";
 
 import {
@@ -108,6 +111,8 @@ const FreelancerMultiStepForm = () => {
         linkedinUrl: "",
         portfolioUrl: "",
         role: "",
+        globalIndustryFocus: [],
+        globalIndustryOther: "",
         selectedServices: [],
         serviceDetails: {},
         deliveryPolicyAccepted: false,
@@ -135,38 +140,14 @@ const FreelancerMultiStepForm = () => {
         // DEBUG LOG TO TRACE STATE
         // console.log("Generating steps with formData:", JSON.stringify(formData.serviceDetails, null, 2));
 
-        sequence.push({ key: "profile-basics", type: "profileBasics" });
-
+        sequence.push({ key: "welcome", type: "welcome" });
         sequence.push({ key: "role", type: "role" });
+        sequence.push({ key: "profile-basics", type: "profileBasics" });
         sequence.push({ key: "services", type: "services" });
+        sequence.push({ key: "niche-preference", type: "nichePreference" });
 
         formData.selectedServices.forEach((serviceKey) => {
             sequence.push({ key: `svc-${serviceKey}-experience`, type: "serviceExperience", serviceKey });
-            sequence.push({ key: `svc-${serviceKey}-level`, type: "serviceLevel", serviceKey });
-            sequence.push({ key: `svc-${serviceKey}-projects`, type: "serviceProjects", serviceKey });
-
-            const detail = formData.serviceDetails?.[serviceKey];
-            if (detail?.hasPreviousProjects === "yes") {
-                CASE_STUDY_FIELDS.forEach((field) => {
-                    sequence.push({
-                        key: `svc-${serviceKey}-case-${field.key}`,
-                        type: "serviceCaseField",
-                        serviceKey,
-                        field,
-                    });
-                });
-            }
-
-            if (detail?.hasPreviousProjects === "no") {
-                sequence.push({ key: `svc-${serviceKey}-sample-work`, type: "serviceSampleWork", serviceKey });
-                if (detail?.hasSampleWork === "yes") {
-                    sequence.push({ key: `svc-${serviceKey}-sample-upload`, type: "serviceSampleUpload", serviceKey });
-                }
-            }
-
-            if (detail?.hasPreviousProjects === "yes") {
-                sequence.push({ key: `svc-${serviceKey}-industry-focus`, type: "serviceIndustryFocus", serviceKey });
-            }
 
             getServiceGroups(serviceKey).forEach((group) => {
                 sequence.push({
@@ -178,27 +159,42 @@ const FreelancerMultiStepForm = () => {
             });
 
             sequence.push({ key: `svc-${serviceKey}-avg-price`, type: "serviceAveragePrice", serviceKey });
+            sequence.push({ key: `svc-${serviceKey}-complexity`, type: "serviceComplexity", serviceKey });
+
+            sequence.push({ key: `svc-${serviceKey}-projects`, type: "serviceProjects", serviceKey });
+
+            const detail = formData.serviceDetails?.[serviceKey];
+            if (detail?.hasPreviousProjects === "yes") {
+                sequence.push({
+                    key: `svc-${serviceKey}-project-details`,
+                    type: "serviceProjectDetails",
+                    serviceKey,
+                });
+            }
+
+            if (detail?.hasPreviousProjects === "no") {
+                sequence.push({ key: `svc-${serviceKey}-sample-work`, type: "serviceSampleWork", serviceKey });
+                if (detail?.hasSampleWork === "yes") {
+                    sequence.push({ key: `svc-${serviceKey}-sample-upload`, type: "serviceSampleUpload", serviceKey });
+                }
+            }
+
+
+
+
+
+
 
             // Verify state for debugging
             // console.log(`Service: ${serviceKey}, hasPreviousProjects: ${detail?.hasPreviousProjects}`);
 
-            if (String(detail?.hasPreviousProjects).toLowerCase() === "yes") {
-                sequence.push({ key: `svc-${serviceKey}-complexity`, type: "serviceComplexity", serviceKey });
-            }
+
         });
 
         sequence.push({ key: "hours", type: "hours" });
-        sequence.push({ key: "working-schedule", type: "workingSchedule" });
+
         sequence.push({ key: "start-timeline", type: "startTimeline" });
-        if (
-            formData.selectedServices.some(
-                (key) => formData.serviceDetails?.[key]?.hasPreviousProjects === "yes"
-            )
-        ) {
-            sequence.push({ key: "missed-deadlines", type: "missedDeadlines" });
-            sequence.push({ key: "delay-handling", type: "delayHandling" });
-            sequence.push({ key: "accept-in-progress", type: "acceptInProgressProjects" });
-        }
+        sequence.push({ key: "accept-in-progress", type: "acceptInProgressProjects" });
         sequence.push({ key: "delivery-policy", type: "deliveryPolicy" });
         sequence.push({ key: "communication-policy", type: "communicationPolicy" });
 
@@ -623,6 +619,12 @@ const FreelancerMultiStepForm = () => {
                 return isValidUrl(data.portfolioUrl) ? "" : "Please enter a valid portfolio or website URL.";
             case "role":
                 return data.role ? "" : "Please select how you want to work on Catalance.";
+            case "nichePreference":
+                if (!data.globalIndustryFocus.length) return "Please select at least one industry/niche.";
+                if (data.globalIndustryFocus.includes("Other") && !data.globalIndustryOther.trim()) {
+                    return "Please specify your other niche.";
+                }
+                return "";
             case "services":
                 return data.selectedServices.length > 0 ? "" : "Please select at least one service.";
             case "serviceExperience":
@@ -888,7 +890,7 @@ const FreelancerMultiStepForm = () => {
         if (index === -1) return "";
 
         const label = getServiceLabel(serviceKey);
-        return `Service ${index + 1} of ${totalServices}: ${label}`;
+        return `${index + 1} of ${totalServices}: ${label}`;
     };
 
     const renderContinueButton = (step = currentStep, { show = true } = {}) => {
@@ -899,7 +901,7 @@ const FreelancerMultiStepForm = () => {
         const footer = (
             <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
                 <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-zinc-950/95 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-zinc-950/95 to-transparent" />
                 <div className="relative mx-auto max-w-4xl px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 flex justify-center">
                     <button
                         type="button"
@@ -944,6 +946,8 @@ const FreelancerMultiStepForm = () => {
         if (!currentStep) return null;
 
         switch (currentStep.type) {
+            case "welcome":
+                return <WelcomeStep {...sharedProps} />;
             case "profileBasics":
                 return (
                     <ProfileBasicsStep
@@ -989,6 +993,18 @@ const FreelancerMultiStepForm = () => {
                 return <PortfolioStep {...sharedProps} />;
             case "role":
                 return <RoleStep formData={formData} updateFormField={updateFormField} />;
+            case "nichePreference":
+                return (
+                    <GlobalNicheStep
+                        formData={formData}
+                        updateFormField={updateFormField}
+                        renderContinueButton={renderContinueButton}
+                        currentStep={currentStep}
+                        hasMultipleChoices={hasMultipleChoices}
+                        hasSingleChoice={hasSingleChoice}
+                        queueAdvance={queueAdvance}
+                    />
+                );
             case "services":
                 return (
                     <ServicesStep
@@ -998,20 +1014,10 @@ const FreelancerMultiStepForm = () => {
                 );
             case "serviceExperience":
                 return <ServiceExperienceStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
-            case "serviceLevel":
-                return <ServiceLevelStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceProjects":
                 return <ServiceProjectsStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
-            case "serviceCaseField":
-                return (
-                    <ServiceCaseFieldStep
-                        {...sharedProps}
-                        serviceKey={currentStep.serviceKey}
-                        field={currentStep.field}
-                        techStackOtherDrafts={techStackOtherDrafts}
-                        setTechStackOtherDrafts={setTechStackOtherDrafts}
-                    />
-                );
+            case "serviceProjectDetails":
+                return <ServiceProjectDetailsStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceSampleWork":
                 return <ServiceSampleWorkStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceSampleUpload":
@@ -1128,7 +1134,10 @@ const FreelancerMultiStepForm = () => {
                 </div>
 
                 <div className="relative h-full overflow-y-auto w-full custom-scrollbar">
-                    <div className="max-w-4xl mx-auto px-6 pt-24 pb-36 min-h-full flex flex-col">
+                    <div className={cn(
+                        "mx-auto px-6 pt-24 pb-36 min-h-full flex flex-col",
+                        currentStep?.key === "niche-preference" ? "max-w-7xl" : "max-w-4xl"
+                    )}>
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={isVerifying ? "verify" : currentStep?.key}
