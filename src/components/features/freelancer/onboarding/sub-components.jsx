@@ -35,30 +35,28 @@ export const OptionCard = ({
         type="button"
         onClick={onClick}
         className={cn(
-            "group relative w-full h-full flex items-start justify-between rounded-xl border transition-all duration-300 overflow-hidden",
+            "group relative w-full h-full flex items-center justify-center rounded-xl border transition-all duration-300 overflow-hidden",
             compact ? "px-4 py-3" : "px-6 py-5",
             selected
-                ? "border-primary bg-primary/5 shadow-lg shadow-primary/5"
-                : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20",
+                ? "border-primary bg-transparent shadow-lg shadow-primary/5"
+                : "border-white/10 bg-transparent hover:bg-white/5 hover:border-white/20",
             className
         )}
     >
-        {selected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
-
-        <div className="flex items-center gap-5 w-full">
+        <div className="relative w-full flex items-center justify-center">
             {Icon && (
                 <div
                     className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300",
+                        "absolute left-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border",
                         selected
-                            ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-110"
-                            : "bg-white/10 text-white/60 group-hover:bg-white/20 group-hover:text-white"
+                            ? "bg-transparent border-primary text-primary shadow-md shadow-primary/20 scale-110"
+                            : "bg-transparent border-white/10 text-white/60 group-hover:border-white/20 group-hover:text-white"
                     )}
                 >
                     <Icon className="w-5 h-5" />
                 </div>
             )}
-            <div className="text-center w-full">
+            <div className="text-center w-full px-12">
                 <p
                     className={cn(
                         compact

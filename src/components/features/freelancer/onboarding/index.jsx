@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { signup, verifyOtp, updateProfile, listFreelancers, fetchStatesByCountry } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
+import { GradientBackground } from "@/components/paper-design-shader-background";
 
 // ── Local module imports ──────────────────────────────────────────────
 import {
@@ -165,10 +166,16 @@ const FreelancerMultiStepForm = () => {
 
             const detail = formData.serviceDetails?.[serviceKey];
             if (detail?.hasPreviousProjects === "yes") {
-                sequence.push({
-                    key: `svc-${serviceKey}-project-details`,
-                    type: "serviceProjectDetails",
-                    serviceKey,
+                // Ensure at least one project exists to generate the step
+                const projects = detail.projects && detail.projects.length > 0 ? detail.projects : [{}];
+                projects.forEach((_, pIndex) => {
+                    sequence.push({
+                        key: `svc-${serviceKey}-project-${pIndex}`,
+                        type: "serviceProjectDetails",
+                        serviceKey,
+                        projectIndex: pIndex,
+                        totalProjects: projects.length
+                    });
                 });
             }
 
@@ -633,40 +640,20 @@ const FreelancerMultiStepForm = () => {
                 return detail?.workingLevel ? "" : "Please select your working level.";
             case "serviceProjects":
                 return detail?.hasPreviousProjects ? "" : "Please select an option.";
-            case "serviceCaseField":
-                if (step.field.type === "multiselect") {
-                    const selections = detail?.caseStudy?.[step.field.key] || [];
-                    if (!selections.length) return "Please select at least one option.";
-                    if (step.field.key === "techStack") {
-                        const customTools = parseCustomTools(detail?.caseStudy?.techStackOther);
-                        const otherSelected = selections.includes("Other");
-                        const selectedPredefinedTools = selections.filter((item) => item !== "Other").length;
-                        const totalSelectedTools = selectedPredefinedTools + (otherSelected ? customTools.length : 0);
+            case "serviceProjectDetails": {
+                const projects = detail?.projects || [];
+                const project = projects[step.projectIndex];
+                if (!project) return "Please fill out project details.";
 
-                        if (step.field.min && totalSelectedTools < step.field.min) {
-                            return `Please select at least ${step.field.min} tools.`;
-                        }
-                        if (otherSelected && customTools.length === 0) {
-                            return "Please add at least one custom tool.";
-                        }
-                        return "";
-                    }
-                    if (step.field.min && selections.length < step.field.min) {
-                        return `Please select at least ${step.field.min} options.`;
-                    }
-                    return "";
-                }
-                if (step.field.type === "select") {
-                    const value = detail?.caseStudy?.[step.field.key];
-                    if (!value) return "Please select an option.";
-                    if (step.field.key === "industry" && value === "Other" && !detail?.caseStudy?.industryOther?.trim()) {
-                        return "Please specify the industry.";
-                    }
-                    return "";
-                }
-                return detail?.caseStudy?.[step.field.key]?.trim()
-                    ? ""
-                    : "Please fill out this field.";
+                if (!project.title?.trim()) return "Please enter project title.";
+                if (!project.description?.trim()) return "Please enter project description.";
+                if (!project.role) return "Please select your role.";
+                if (!project.timeline) return "Please select timeline.";
+                if (!project.budget) return "Please select budget.";
+                if (!project.techStack?.length) return "Please select tech stack.";
+
+                return "";
+            }
             case "serviceSampleWork":
                 return detail?.hasSampleWork ? "" : "Please select an option.";
             case "serviceSampleUpload":
@@ -910,8 +897,8 @@ const FreelancerMultiStepForm = () => {
                         className={cn(
                             "pointer-events-auto min-w-[180px] px-8 py-3 rounded-xl font-semibold transition-all",
                             disabled
-                                ? "bg-white/10 text-white/40 cursor-not-allowed"
-                                : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
+                                ? "bg-transparent border border-white/10 text-white/40 cursor-not-allowed"
+                                : "bg-primary border border-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
                         )}
                     >
                         Continue
@@ -1017,7 +1004,14 @@ const FreelancerMultiStepForm = () => {
             case "serviceProjects":
                 return <ServiceProjectsStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceProjectDetails":
-                return <ServiceProjectDetailsStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
+                return (
+                    <ServiceProjectDetailsStep
+                        {...sharedProps}
+                        serviceKey={currentStep.serviceKey}
+                        projectIndex={currentStep.projectIndex}
+                        totalProjects={currentStep.totalProjects}
+                    />
+                );
             case "serviceSampleWork":
                 return <ServiceSampleWorkStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceSampleUpload":
@@ -1103,13 +1097,15 @@ const FreelancerMultiStepForm = () => {
     // ── Layout ──────────────────────────────────────────────────────────
     return (
         <div className="h-screen w-full bg-zinc-950 text-white relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: "4s" }} />
-                <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[150px] mix-blend-screen" />
+            <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                <div className="absolute inset-0 opacity-40 blur-3xl scale-110">
+                    <GradientBackground />
+                </div>
+                <div className="absolute inset-0 bg-black/30 z-[1]" />
             </div>
 
             <div className="relative z-10 flex flex-col h-full">
-                <div className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a] border-b border-white/5 shadow-2xl shadow-black/50">
+                <div className="fixed top-0 left-0 right-0 z-50 bg-transparent border-b border-white/5">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 w-full">
                         <div
                             className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_10px_rgba(253,224,71,0.5)]"
@@ -1121,7 +1117,7 @@ const FreelancerMultiStepForm = () => {
                         {currentStepIndex > 0 && (
                             <button
                                 onClick={handleBack}
-                                className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white transition-all backdrop-blur-md z-20 group"
+                                className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-transparent border border-white/10 hover:bg-white/5 text-white transition-all backdrop-blur-md z-20 group"
                             >
                                 <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
                             </button>

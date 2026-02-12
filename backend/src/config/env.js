@@ -48,6 +48,7 @@ const envSchema = z.object({
     .max(15, "Avoid extremely high salt rounds in this starter")
     .default(12),
   OPENAI_API_KEY: z.string().optional(),
+  STITCH_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().default("openai/gpt-5.1"),
   OPENROUTER_MODEL_FALLBACK: z.string().default("meta-llama/llama-3.2-3b-instruct:free"),
@@ -94,6 +95,7 @@ try {
     PASSWORD_PEPPER: process.env.PASSWORD_PEPPER || "",
     PASSWORD_SALT_ROUNDS: Number(process.env.PASSWORD_SALT_ROUNDS) || 12,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    STITCH_API_KEY: process.env.STITCH_API_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     OPENROUTER_MODEL: process.env.OPENROUTER_MODEL || "openai/gpt-4o",
     OPENROUTER_MODEL_FALLBACK: process.env.OPENROUTER_MODEL_FALLBACK || "meta-llama/llama-3.2-3b-instruct:free",
