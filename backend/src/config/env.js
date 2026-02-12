@@ -49,7 +49,7 @@ const envSchema = z.object({
     .default(12),
   OPENAI_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
-  OPENROUTER_MODEL: z.string().default("openai/gpt-4o"),
+  OPENROUTER_MODEL: z.string().default("openai/gpt-5.1"),
   OPENROUTER_MODEL_FALLBACK: z.string().default("meta-llama/llama-3.2-3b-instruct:free"),
   FRONTEND_URL: z.string().optional()
 });
