@@ -145,7 +145,7 @@ export const ProfileBasicsStep = ({
                                             }
                                         }}
                                         placeholder="Example: Consultant"
-                                        className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 pr-10"
+                                        className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 pr-10"
                                     />
                                 </div>
                             </PopoverAnchor>
@@ -160,7 +160,7 @@ export const ProfileBasicsStep = ({
                                     }
                                 }}
                             >
-                                <Command className="bg-transparent text-white">
+                                <Command className="bg-transparent dark:bg-transparent text-white">
                                     <CommandList>
                                         <CommandGroup className="max-h-[200px] overflow-y-auto">
                                             {filteredProfessions.map((title) => (
@@ -211,7 +211,7 @@ export const ProfileBasicsStep = ({
                             }}
                             placeholder="username"
                             className={cn(
-                                "h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 pr-10",
+                                "h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 pr-10",
                                 usernameStatus === "available" && "border-green-500/50",
                                 usernameStatus === "unavailable" && "border-red-500/50",
                                 (usernameStatus === "too_short" || usernameStatus === "invalid") && "border-amber-500/30"
@@ -253,7 +253,7 @@ export const ProfileBasicsStep = ({
                         value={formData.professionalBio}
                         onChange={(e) => updateFormField("professionalBio", e.target.value)}
                         placeholder="Write 2-4 sentences about your experience, specialties, and the value you bring."
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-[100px] resize-none"
+                        className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 h-[100px] resize-none"
                     />
                 </div>
 
@@ -274,7 +274,7 @@ export const ProfileBasicsStep = ({
                     />
                     <label
                         htmlFor="profile-photo-upload"
-                        className="flex items-center gap-3 px-3 h-[100px] rounded-lg border border-dashed border-white/10 bg-white/5 hover:border-primary/50 hover:bg-white/10 cursor-pointer transition-all"
+                        className="flex items-center gap-3 px-3 h-[100px] rounded-lg border border-dashed border-white/10 bg-transparent dark:bg-transparent hover:border-primary/50 hover:bg-white/10 cursor-pointer transition-all"
                     >
                         <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
                             {photo?.url ? (
@@ -309,7 +309,7 @@ export const ProfileBasicsStep = ({
                         value={formData.country || ""}
                         onValueChange={(value) => handleCountryChange(value)}
                     >
-                        <SelectTrigger className="w-full h-10 bg-white/5 border-white/10 text-white px-3 rounded-lg">
+                        <SelectTrigger className="w-full h-10 bg-transparent dark:bg-transparent border-white/10 text-white px-3 rounded-lg">
                             <SelectValue placeholder="Select your country" />
                         </SelectTrigger>
                         <SelectContent
@@ -335,7 +335,7 @@ export const ProfileBasicsStep = ({
                         onValueChange={(value) => updateFormField("city", value)}
                         disabled={!formData.country || isStateOptionsLoading || stateOptions.length === 0}
                     >
-                        <SelectTrigger className="w-full h-10 bg-white/5 border-white/10 text-white px-3 rounded-lg">
+                        <SelectTrigger className="w-full h-10 bg-transparent dark:bg-transparent border-white/10 text-white px-3 rounded-lg">
                             <SelectValue
                                 placeholder={
                                     !formData.country
@@ -373,7 +373,7 @@ export const ProfileBasicsStep = ({
                             value={formData.city}
                             onChange={(e) => updateFormField("city", e.target.value)}
                             placeholder="Type your state"
-                            className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                            className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                         />
                     )}
                 </div>
@@ -391,7 +391,7 @@ export const ProfileBasicsStep = ({
                                 }
                             }}
                         >
-                            <SelectTrigger className="w-full h-10 bg-white/5 border-white/10 text-white px-3 rounded-lg">
+                            <SelectTrigger className="w-full h-10 bg-transparent dark:bg-transparent border-white/10 text-white px-3 rounded-lg">
                                 <SelectValue placeholder="Select languages..." />
                             </SelectTrigger>
                             <SelectContent
@@ -450,7 +450,7 @@ export const ProfileBasicsStep = ({
                             value={formData.otherLanguage}
                             onChange={(e) => updateFormField("otherLanguage", e.target.value)}
                             placeholder="Type your language"
-                            className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                            className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                         />
                     </div>
                 )}
@@ -462,7 +462,7 @@ export const ProfileBasicsStep = ({
                         value={formData.linkedinUrl}
                         onChange={(e) => updateFormField("linkedinUrl", e.target.value)}
                         placeholder="https://www.linkedin.com/in/your-profile"
-                        className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                     />
                 </div>
 
@@ -473,7 +473,7 @@ export const ProfileBasicsStep = ({
                         value={formData.portfolioUrl}
                         onChange={(e) => updateFormField("portfolioUrl", e.target.value)}
                         placeholder="https://your-portfolio.com"
-                        className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                     />
                 </div>
             </div>
@@ -538,7 +538,7 @@ export const ProfessionalTitleStep = ({ formData, updateFormField, queueAdvance,
                                     }
                                 }}
                                 placeholder="Your profession title"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                                className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                             />
                         </div>
                     </PopoverAnchor>
@@ -553,7 +553,7 @@ export const ProfessionalTitleStep = ({ formData, updateFormField, queueAdvance,
                             }
                         }}
                     >
-                        <Command className="bg-transparent text-white">
+                        <Command className="bg-transparent dark:bg-transparent text-white">
                             <CommandList>
                                 <CommandGroup className="max-h-[200px] overflow-y-auto">
                                     {filteredProfessions.map((title) => (
@@ -629,7 +629,7 @@ export const UsernameStep = ({
                     }}
                     placeholder="username"
                     className={cn(
-                        "bg-white/5 border-white/10 text-white placeholder:text-white/30 pr-10",
+                        "bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 pr-10",
                         usernameStatus === "available" && "border-green-500/50",
                         usernameStatus === "unavailable" && "border-red-500/50",
                         (usernameStatus === "too_short" || usernameStatus === "invalid") && "border-amber-500/30"
@@ -679,7 +679,7 @@ export const CountryStep = ({ formData, handleCountryChange }) => (
             value={formData.country || ""}
             onValueChange={(value) => handleCountryChange(value, 0)}
         >
-            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+            <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
                 <SelectValue placeholder="Select your country" />
             </SelectTrigger>
             <SelectContent
@@ -718,7 +718,7 @@ export const CityStep = ({
             onValueChange={(value) => updateFormField("city", value, 0)}
             disabled={!formData.country || isStateOptionsLoading || stateOptions.length === 0}
         >
-            <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+            <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
                 <SelectValue
                     placeholder={
                         !formData.country
@@ -762,7 +762,7 @@ export const CityStep = ({
                     }
                 }}
                 placeholder="Type your state"
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
             />
         )}
         {renderContinueButton()}
@@ -871,7 +871,7 @@ export const LanguagesStep = ({
                         }
                     }}
                 >
-                    <SelectTrigger className="w-full h-10 bg-white/5 border-white/10 text-white px-3 rounded-lg">
+                    <SelectTrigger className="w-full h-10 bg-transparent dark:bg-transparent border-white/10 text-white px-3 rounded-lg">
                         <SelectValue placeholder="Select languages..." />
                     </SelectTrigger>
                     <SelectContent
@@ -928,7 +928,7 @@ export const LanguagesStep = ({
                         value={formData.otherLanguage}
                         onChange={(e) => updateFormField("otherLanguage", e.target.value)}
                         placeholder="Type your language"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                     />
                 </div>
             )}
@@ -956,7 +956,7 @@ export const LinkedinStep = ({ formData, updateFormField, queueAdvance, renderCo
                 }
             }}
             placeholder="https://www.linkedin.com/in/your-profile"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
         />
         {renderContinueButton()}
     </div>
@@ -980,7 +980,7 @@ export const PortfolioStep = ({ formData, updateFormField, queueAdvance, renderC
                 }
             }}
             placeholder="https://your-portfolio.com"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
         />
         {renderContinueButton()}
     </div>

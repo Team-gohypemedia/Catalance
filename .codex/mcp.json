@@ -1,13 +1,12 @@
 {
     "mcpServers": {
         "stitch": {
-            "command": "npx",
+            "command": "cmd.exe",
             "args": [
-                "-y",
-                "@_davideast/stitch-mcp",
-                "proxy",
-                "--transport",
-                "stdio"
+                "/d",
+                "/s",
+                "/c",
+                "cd /d \"d:\\DEV\\React Projects\\Catalance\" && set DOTENV_CONFIG_QUIET=true&& npx -y @_davideast/stitch-mcp proxy --transport stdio"
             ]
         }
     }

@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Upload, X, Plus, Trash2, Check, ChevronDown } from "lucide-react";
+import { Upload, X, Plus, Trash2, Check, ChevronDown, Link } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,17 +89,17 @@ export const ServicesStep = ({
                                 "group flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 relative overflow-hidden min-h-[120px]",
                                 isSelected
                                     ? "border-primary/50 bg-primary/5 shadow-md shadow-primary/5"
-                                    : "border-white/10 bg-white/5 hover:border-primary/30 hover:bg-white/10"
+                                    : "border-white/10 bg-transparent dark:bg-transparent hover:border-primary/30 hover:bg-white/10"
                             )}
                         >
-                            {isSelected && <div className="absolute inset-0 border-2 border-primary/50 rounded-xl" />}
+                            {isSelected && <div className="absolute inset-0 border border-primary/50 rounded-xl" />}
 
                             <div
                                 className={cn(
                                     "p-2.5 rounded-lg transition-colors mb-2",
                                     isSelected
-                                        ? "bg-primary text-primary-foreground"
-                                        : "bg-white/10 text-white/70 group-hover:bg-white/20 group-hover:text-white"
+                                        ? "bg-transparent text-primary"
+                                        : "bg-transparent text-white/70 group-hover:text-white"
                                 )}
                             >
                                 {option.icon && <option.icon className="w-5 h-5" />}
@@ -233,7 +233,7 @@ export const ServiceCaseFieldStep = ({
                         }
                     }}
                 >
-                    <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+                    <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
                         <SelectValue placeholder="Select an option" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
@@ -258,7 +258,7 @@ export const ServiceCaseFieldStep = ({
                                 }
                             }}
                             placeholder="Type the industry"
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                            className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                         />
                     </div>
                 )}
@@ -349,7 +349,7 @@ export const ServiceCaseFieldStep = ({
                                     }
                                 }}
                                 placeholder="Type tools, e.g. Next.js, Tailwind, Prisma"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                                className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                             />
                             <button
                                 type="button"
@@ -407,7 +407,7 @@ export const ServiceCaseFieldStep = ({
                     value={value}
                     onChange={(e) => updateServiceCaseField(serviceKey, field.key, e.target.value)}
                     placeholder={field.placeholder}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[140px] rounded-xl p-4"
+                    className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 min-h-[140px] rounded-xl p-4"
                 />
             ) : (
                 <Input
@@ -420,7 +420,7 @@ export const ServiceCaseFieldStep = ({
                         }
                     }}
                     placeholder={field.placeholder}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                 />
             )}
             {renderContinueButton()}
@@ -449,7 +449,7 @@ export const ServiceSampleWorkStep = ({ formData, updateServiceField, renderServ
             ))}
         </div>
         {formData.serviceDetails?.[serviceKey]?.hasSampleWork === "no" && (
-            <div className="mt-4 p-4 rounded-xl border border-white/10 bg-white/5">
+            <div className="mt-4 p-4 rounded-xl border border-white/10 bg-transparent dark:bg-transparent">
                 <p className="text-xs text-white/60 text-center">
                     If no sample work is provided, your profile remains visible only for entry-level, low-budget, and trial projects.
                 </p>
@@ -543,7 +543,7 @@ export const ServiceAveragePriceStep = ({
                     queueAdvance(0);
                 }}
             >
-                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white p-6 rounded-xl">
+                <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
                     <SelectValue placeholder="Select a price range" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
@@ -719,7 +719,7 @@ export const ServiceGroupStep = ({
                                 }
                             }}
                             placeholder="Type options, e.g. Strapi, Supabase, Firebase"
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                            className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                         />
                         <button
                             type="button"
@@ -1071,6 +1071,61 @@ export const ServiceProjectDetailsStep = ({
                             />
                         </div>
 
+                        {/* Project Link */}
+                        <div className="space-y-1.5">
+                            <Label className="text-white/70 text-[11px]">Project Link (Optional)</Label>
+                            <div className="relative">
+                                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                <Input
+                                    value={project.link || ""}
+                                    onChange={(e) => updateProject(index, "link", e.target.value)}
+                                    placeholder="https://..."
+                                    className="pl-9 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Project File */}
+                        <div className="space-y-1.5">
+                            <Label className="text-white/70 text-[11px]">Project File (Optional)</Label>
+                            <input
+                                type="file"
+                                className="hidden"
+                                id={`project-file-${serviceKey}-${index}`}
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        updateProject(index, "file", { name: file.name, url: URL.createObjectURL(file) });
+                                    }
+                                }}
+                            />
+                            <label
+                                htmlFor={`project-file-${serviceKey}-${index}`}
+                                className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                                    <Upload className="w-4 h-4 text-white/70" />
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    <span className="block text-sm text-white/80 truncate">
+                                        {project.file?.name || "Upload file (PDF, image, or doc)"}
+                                    </span>
+                                </div>
+                                {project.file && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            updateProject(index, "file", null);
+                                        }}
+                                        className="p-1 hover:bg-white/10 rounded-full"
+                                    >
+                                        <X className="w-4 h-4 text-white/50" />
+                                    </button>
+                                )}
+                            </label>
+                        </div>
+
                         {/* Role & Timeline Row */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
@@ -1184,7 +1239,7 @@ const TechStackSelect = ({ value, onChange }) => {
                     </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0 bg-[#1A1A1A] border-white/10 text-white" align="start">
-                    <Command className="bg-transparent">
+                    <Command className="bg-transparent dark:bg-transparent">
                         <CommandInput placeholder="Search tech stack..." className="h-9 text-white placeholder:text-white/30" />
                         <CommandEmpty>No framework found.</CommandEmpty>
                         <CommandList>
