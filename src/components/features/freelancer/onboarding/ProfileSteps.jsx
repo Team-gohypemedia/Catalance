@@ -14,12 +14,48 @@ import {
 } from "@/components/ui/select";
 
 import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+    PopoverAnchor,
+} from "@/components/ui/popover";
+import { StepHeader, OptionCard } from "./sub-components";
+import {
     ROLE_OPTIONS,
     LANGUAGE_OPTIONS,
     COUNTRY_OPTIONS,
+    PROFESSION_TITLE_OPTIONS,
 } from "./constants";
 import { isValidUsername } from "./utils";
-import { StepHeader, OptionCard } from "./sub-components";
+
+// ============================================================================
+// WELCOME STEP
+// ============================================================================
+
+export const WelcomeStep = ({ renderContinueButton, currentStep }) => (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6 animate-in fade-in zoom-in duration-500">
+        <div className="space-y-4">
+            <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">
+                Welcome to <span className="text-primary">Catalance</span>
+            </h1>
+            <p className="text-xl text-white/60 max-w-lg mx-auto leading-relaxed">
+                Join the exclusive network of top-tier freelancers. Let's verify your expertise and set up your profile.
+            </p>
+        </div>
+
+        <div className="pt-10 w-full flex justify-center">
+            {renderContinueButton(currentStep, { show: true })}
+        </div>
+    </div>
+);
 
 // ============================================================================
 // PROFILE BASICS STEP (combined form)
@@ -49,6 +85,19 @@ export const ProfileBasicsStep = ({
     const values = formData.languages || [];
     const otherSelected = values.includes("Other");
     const photo = formData.profilePhoto;
+    const [openProfession, setOpenProfession] = React.useState(false);
+    const inputRef = React.useRef(null);
+    const [popoverWidth, setPopoverWidth] = React.useState(0);
+
+    React.useEffect(() => {
+        if (inputRef.current) {
+            setPopoverWidth(inputRef.current.offsetWidth);
+        }
+    }, [inputRef.current, openProfession]);
+
+    const filteredProfessions = PROFESSION_TITLE_OPTIONS.filter((title) =>
+        title.toLowerCase().includes((formData.professionalTitle || "").toLowerCase())
+    );
 
     const toggleLanguage = (value) => {
         const exists = values.includes(value);
@@ -71,12 +120,76 @@ export const ProfileBasicsStep = ({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                     <Label className="text-white/70 text-[11px]">Profession Title</Label>
-                    <Input
-                        value={formData.professionalTitle}
-                        onChange={(e) => updateFormField("professionalTitle", e.target.value)}
-                        placeholder="Example: Consultant"
-                        className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                    />
+                    <div className="relative">
+                        <Popover open={openProfession && filteredProfessions.length > 0} onOpenChange={setOpenProfession}>
+                            <PopoverAnchor asChild>
+                                <div className="relative" ref={inputRef}>
+                                    <Input
+                                        value={formData.professionalTitle}
+                                        onChange={(e) => {
+                                            updateFormField("professionalTitle", e.target.value);
+                                            setOpenProfession(true);
+                                        }}
+                                        onClick={() => setOpenProfession(true)}
+                                        onFocus={() => setOpenProfession(true)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Tab" && openProfession && filteredProfessions.length > 0) {
+                                                e.preventDefault();
+                                                updateFormField("professionalTitle", filteredProfessions[0]);
+                                                setOpenProfession(false);
+                                            }
+                                            if (e.key === "Enter" && openProfession && filteredProfessions.length > 0) {
+                                                e.preventDefault();
+                                                updateFormField("professionalTitle", filteredProfessions[0]);
+                                                setOpenProfession(false);
+                                            }
+                                        }}
+                                        placeholder="Example: Consultant"
+                                        className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 pr-10"
+                                    />
+                                </div>
+                            </PopoverAnchor>
+                            <PopoverContent
+                                className="p-0 bg-[#1A1A1A] border-white/10 text-white"
+                                style={{ width: popoverWidth ? `${popoverWidth}px` : "auto" }}
+                                align="start"
+                                onOpenAutoFocus={(e) => e.preventDefault()}
+                                onPointerDownOutside={(e) => {
+                                    if (inputRef.current && inputRef.current.contains(e.target)) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                            >
+                                <Command className="bg-transparent text-white">
+                                    <CommandList>
+                                        <CommandGroup className="max-h-[200px] overflow-y-auto">
+                                            {filteredProfessions.map((title) => (
+                                                <CommandItem
+                                                    key={title}
+                                                    value={title}
+                                                    onSelect={(currentValue) => {
+                                                        const cleanValue = currentValue;
+                                                        // CommandItem might lower-case value, ensure we use original title from list if needed, 
+                                                        // but here title is directly mapped so it should be fine or we might get lowercased.
+                                                        // Actually CommandItem value prop is used for internal filtering, onSelect passes user value?
+                                                        // shadcn onSelect passes value which is usually lowercased by default cmdk unless we override.
+                                                        // Let's protect against casing issues by finding original from list if possible
+                                                        const original = PROFESSION_TITLE_OPTIONS.find(t => t.toLowerCase() === cleanValue.toLowerCase()) || cleanValue;
+
+                                                        updateFormField("professionalTitle", original);
+                                                        setOpenProfession(false);
+                                                    }}
+                                                    className="text-white hover:bg-white/10 aria-selected:bg-white/10 cursor-pointer"
+                                                >
+                                                    {title}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -374,27 +487,101 @@ export const ProfileBasicsStep = ({
 // PROFESSIONAL TITLE STEP
 // ============================================================================
 
-export const ProfessionalTitleStep = ({ formData, updateFormField, queueAdvance, renderContinueButton }) => (
-    <div className="space-y-6">
-        <StepHeader
-            title="What Is Your Profession Title?"
-            subtitle="Example: Consultant"
-        />
-        <Input
-            value={formData.professionalTitle}
-            onChange={(e) => updateFormField("professionalTitle", e.target.value)}
-            onKeyDown={(e) => {
-                if (e.key === "Enter" && formData.professionalTitle.trim()) {
-                    e.preventDefault();
-                    queueAdvance(0);
-                }
-            }}
-            placeholder="Your profession title"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-        />
-        {renderContinueButton()}
-    </div>
-);
+export const ProfessionalTitleStep = ({ formData, updateFormField, queueAdvance, renderContinueButton }) => {
+    const [openProfession, setOpenProfession] = React.useState(false);
+    const inputRef = React.useRef(null);
+    const [popoverWidth, setPopoverWidth] = React.useState(0);
+
+    React.useEffect(() => {
+        if (inputRef.current) {
+            setPopoverWidth(inputRef.current.offsetWidth);
+        }
+    }, [inputRef.current, openProfession]);
+
+    const filteredProfessions = PROFESSION_TITLE_OPTIONS.filter((title) =>
+        title.toLowerCase().includes((formData.professionalTitle || "").toLowerCase())
+    );
+
+    return (
+        <div className="space-y-6">
+            <StepHeader
+                title="What Is Your Profession Title?"
+                subtitle="Example: Consultant"
+            />
+            <div className="relative">
+                <Popover open={openProfession && filteredProfessions.length > 0} onOpenChange={setOpenProfession}>
+                    <PopoverAnchor asChild>
+                        <div className="relative" ref={inputRef}>
+                            <Input
+                                value={formData.professionalTitle}
+                                onChange={(e) => {
+                                    updateFormField("professionalTitle", e.target.value);
+                                    setOpenProfession(true);
+                                }}
+                                onClick={() => setOpenProfession(true)}
+                                onFocus={() => setOpenProfession(true)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Tab" && openProfession && filteredProfessions.length > 0) {
+                                        e.preventDefault();
+                                        updateFormField("professionalTitle", filteredProfessions[0]);
+                                        setOpenProfession(false);
+                                    }
+                                    if (e.key === "Enter") {
+                                        if (openProfession && filteredProfessions.length > 0) {
+                                            e.preventDefault();
+                                            updateFormField("professionalTitle", filteredProfessions[0]);
+                                            setOpenProfession(false);
+                                        } else if (formData.professionalTitle.trim()) {
+                                            e.preventDefault();
+                                            queueAdvance(0);
+                                        }
+                                    }
+                                }}
+                                placeholder="Your profession title"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                            />
+                        </div>
+                    </PopoverAnchor>
+                    <PopoverContent
+                        className="p-0 bg-[#1A1A1A] border-white/10 text-white"
+                        style={{ width: popoverWidth ? `${popoverWidth}px` : "auto" }}
+                        align="start"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                        onPointerDownOutside={(e) => {
+                            if (inputRef.current && inputRef.current.contains(e.target)) {
+                                e.preventDefault();
+                            }
+                        }}
+                    >
+                        <Command className="bg-transparent text-white">
+                            <CommandList>
+                                <CommandGroup className="max-h-[200px] overflow-y-auto">
+                                    {filteredProfessions.map((title) => (
+                                        <CommandItem
+                                            key={title}
+                                            value={title}
+                                            onSelect={(currentValue) => {
+                                                const original = PROFESSION_TITLE_OPTIONS.find(t => t.toLowerCase() === currentValue.toLowerCase()) || currentValue;
+                                                updateFormField("professionalTitle", original);
+                                                setOpenProfession(false);
+                                                // Should we auto-advance here if they select from list? Usually yes for single-step flow.
+                                                // queueAdvance(0); // Optional based on UX preference. Let's keep manual continue or Enter for consistency unless requested.
+                                            }}
+                                            className="text-white hover:bg-white/10 aria-selected:bg-white/10 cursor-pointer"
+                                        >
+                                            {title}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
+            </div>
+            {renderContinueButton()}
+        </div>
+    );
+};
 
 // ============================================================================
 // USERNAME STEP

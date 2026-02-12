@@ -90,9 +90,6 @@ const FreelancerChat = lazy(
 const FreelancerMultiStepForm = lazy(
   () => import("@/components/features/freelancer/onboarding"),
 );
-const VerificationPending = lazy(
-  () => import("@/components/features/freelancer/VerificationPending"),
-);
 const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
 const AdminDashboard = lazy(
   () => import("@/components/features/admin/AdminDashboard"),
@@ -455,7 +452,7 @@ const App = () => {
               path="/freelancer/verification-pending"
               element={
                 <ProtectedRoute>
-                  <VerificationPending />
+                  <Navigate to="/freelancer" replace />
                 </ProtectedRoute>
               }
             />
@@ -575,31 +572,6 @@ const ProtectedRoute = ({ children, loginPath = "/login" }) => {
 
   if (!isAuthenticated) {
     return <Navigate to={loginPath} replace />;
-  }
-
-  // Check for freelancer onboarding
-  if (
-    user?.role === "FREELANCER" &&
-    !user?.onboardingComplete &&
-    location.pathname.startsWith("/freelancer") &&
-    !location.pathname.includes("/onboarding")
-  ) {
-    return <Navigate to="/freelancer/onboarding" replace />;
-  }
-
-  // Check for freelancer verification status
-  if (user?.role === "FREELANCER" && user?.status === "PENDING_APPROVAL") {
-    const allowedPaths = [
-      "/freelancer/verification-pending",
-      "/freelancer/profile",
-    ];
-    const isAllowed = allowedPaths.some((path) =>
-      location.pathname.startsWith(path),
-    );
-
-    if (!isAllowed && location.pathname.startsWith("/freelancer")) {
-      return <Navigate to="/freelancer/verification-pending" replace />;
-    }
   }
 
   return children;

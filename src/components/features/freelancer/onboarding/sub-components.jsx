@@ -35,17 +35,17 @@ export const OptionCard = ({
         type="button"
         onClick={onClick}
         className={cn(
-            "group relative w-full flex items-center justify-between rounded-xl border transition-all duration-300 overflow-hidden",
+            "group relative w-full h-full flex items-start justify-between rounded-xl border transition-all duration-300 overflow-hidden",
             compact ? "px-4 py-3" : "px-6 py-5",
             selected
-                ? "border-primary/50 bg-primary/5 shadow-lg shadow-primary/5"
+                ? "border-primary bg-primary/5 shadow-lg shadow-primary/5"
                 : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20",
             className
         )}
     >
         {selected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-5 w-full">
             {Icon && (
                 <div
                     className={cn(
@@ -58,7 +58,7 @@ export const OptionCard = ({
                     <Icon className="w-5 h-5" />
                 </div>
             )}
-            <div className="text-left">
+            <div className="text-center w-full">
                 <p
                     className={cn(
                         compact
@@ -80,17 +80,6 @@ export const OptionCard = ({
                     </p>
                 )}
             </div>
-        </div>
-
-        <div
-            className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-4 transition-all duration-300",
-                selected
-                    ? "bg-primary text-primary-foreground scale-110"
-                    : "bg-white/10 text-transparent group-hover:bg-white/20"
-            )}
-        >
-            <Check className="w-3.5 h-3.5" />
         </div>
     </motion.button>
 );
