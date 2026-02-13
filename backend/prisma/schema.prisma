@@ -313,3 +313,43 @@ model Payment {
   @@index([freelancerId])
   @@index([projectId])
 }
+
+model Service {
+  id          String   @id @default(cuid()) 
+  slug        String   @unique // e.g. "branding", "web-dev"
+  name        String
+  description String?
+  icon        String?  // Optional icon name
+  active      Boolean  @default(true)
+  
+  minBudget   Int?     @default(0)
+  currency    String   @default("INR")
+
+  questions   ServiceQuestion[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ServiceQuestion {
+  id          String   @id @default(cuid())
+  
+  slug        String   // The 'id' from JSON (e.g., 'project_requirements')
+  
+  text        String   @db.Text
+  type        String   // 'input', 'single_option', 'multi_option'
+  
+  order       Int      @default(0)
+  
+  required    Boolean  @default(true)
+  
+  options     Json?    // [{ "label": "Red", "value": "red" }, ...]
+
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId   String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([serviceId, slug])
+}

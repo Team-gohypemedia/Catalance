@@ -66,22 +66,50 @@ const loadServiceCatalogFromDb = async () => {
   if (!prisma || prismaInitError) return null;
 
   try {
-    const catalog = await prisma.serviceCatalog.findUnique({
-      where: { key: SERVICE_CATALOG_KEY },
-      select: {
-        schemaVersion: true,
-        currency: true,
-        payload: true
+    // OLD: Fetch JSON blob
+    // const catalog = await prisma.serviceCatalog.findUnique({ ... });
+
+    // NEW: Fetch from Relational Tables
+    const services = await prisma.service.findMany({
+      where: { active: true },
+      include: {
+        questions: {
+          orderBy: { order: 'asc' }
+        }
       }
     });
 
-    if (!catalog?.payload) return null;
+    if (!services || services.length === 0) return null;
 
-    return normalizeCatalogPayload(
-      catalog.payload,
-      catalog.schemaVersion,
-      catalog.currency
-    );
+    // Transform to expected structure for AI logic
+    // The internal logic expects { services: [ { id, name, questions: [ { id, question, options } ] } ] }
+
+    // We assume currency/schemaVersion defaults for now or fetch from a config if needed.
+    // The previous JSON had currency in root, now it's on service level, but usually consistent.
+    const currency = services[0]?.currency || "INR";
+
+    const formattedServices = services.map(s => ({
+      id: s.slug,
+      name: s.name,
+      description: s.description,
+      min_budget: s.minBudget, // internal logic might use this
+      currency: s.currency,
+      questions: s.questions.map(q => ({
+        id: q.slug,
+        question: q.text,
+        type: q.type,
+        options: q.options || [],
+        required: q.required
+      }))
+    }));
+
+    return {
+      schema_version: "1.0",
+      currency: currency,
+      global_rules: {}, // global rules were in JSON, we might need to migrate them to a Config table later, for now empty or hardcoded if critical
+      services: formattedServices
+    };
+
   } catch (error) {
     if (!servicesCatalogLoadWarned) {
       console.warn(
@@ -111,6 +139,10 @@ const ensureServicesCatalogLoaded = async (force = false) => {
     const dbCatalog = await loadServiceCatalogFromDb();
     if (dbCatalog?.services?.length) {
       servicesData = dbCatalog;
+    } else {
+      // Fallback to file if DB fails or empty (though we migrated)
+      // We keep 'servicesData' as initialized from file at top of script
+      console.log("Using file-based catalog as fallback or initial state.");
     }
     servicesCatalogLastSyncAt = Date.now();
     return servicesData;
@@ -1251,9 +1283,9 @@ const buildBudgetOverrideMessage = ({
     Math.round(
       lowBudgetsAfterWarning[lowBudgetsAfterWarning.length - 1]?.amount || 0
     ) ===
-      Math.round(
-        lowBudgetsAfterWarning[lowBudgetsAfterWarning.length - 2]?.amount || 0
-      );
+    Math.round(
+      lowBudgetsAfterWarning[lowBudgetsAfterWarning.length - 2]?.amount || 0
+    );
 
   const shouldAcceptWithLimitations =
     userCannotIncreaseBudget(latestUser.content || "", history) ||

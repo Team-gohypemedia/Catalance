@@ -1,7 +1,20 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
+import { AppError } from "../utils/app-error.js";
+// Import fs to read the default file if needed
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { sendEmail } from "../lib/email-service.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const FILE_SERVICE_CATALOG_PATH = join(__dirname, "../data/servicesComplete.json");
+const SERVICE_CATALOG_KEY = "services_complete_nested";
+
+// Helper to get or initialize catalog - DEPRECATED
+// We now use relational tables Service and ServiceQuestion
 
 // Get dashboard stats
 export const getDashboardStats = asyncHandler(async (req, res) => {
@@ -14,7 +27,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     });
     const totalProjects = await prisma.project.count();
     const totalProposals = await prisma.proposal.count();
-    
+
     // Get revenue - sum of actual 'spent' amounts from all projects (actual payments made)
     let totalRevenue = 0;
     try {
@@ -111,7 +124,7 @@ export const getUsers = asyncHandler(async (req, res) => {
         role: { not: 'ADMIN' },
         OR: [
           { status: 'PENDING_APPROVAL' },
-          { 
+          {
             AND: [
               { role: 'FREELANCER' },
               { isVerified: false } // Catch unverified freelancers
@@ -147,7 +160,7 @@ export const getUsers = asyncHandler(async (req, res) => {
       skip: (page - 1) * limit,
       take: limit
     });
-    
+
     const paginatedUsers = users; // Already paginated via Prisma
 
     console.log("Returning", paginatedUsers.length, "users");
@@ -201,7 +214,7 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
 
   // Build update data
   const updateData = { status };
-  
+
   // Set or clear suspendedAt based on status
   if (status === "SUSPENDED") {
     updateData.suspendedAt = new Date();
@@ -217,44 +230,44 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
 
   // Notify user about status change
   try {
-      let title = "Account Status Updated";
-      let message = `Your account status has been updated to ${status}.`;
-      
-      if (status === "ACTIVE") {
-          title = "Account Activated! 🎉";
-          message = "Congratulations! Your account has been approved and is now active. You can now access all features.";
-      } else if (status === "SUSPENDED") {
-          title = "Account Suspended";
-          message = "Your account has been suspended. You have 90 days to verify your account, otherwise it will be permanently deleted. Please contact support for more information.";
-          
-          // Send suspension email
-          try {
-            await sendEmail({
-              to: updatedUser.email,
-              subject: "Account Suspended - Action Required",
-              title: "Your Account Has Been Suspended",
-              html: `
+    let title = "Account Status Updated";
+    let message = `Your account status has been updated to ${status}.`;
+
+    if (status === "ACTIVE") {
+      title = "Account Activated! 🎉";
+      message = "Congratulations! Your account has been approved and is now active. You can now access all features.";
+    } else if (status === "SUSPENDED") {
+      title = "Account Suspended";
+      message = "Your account has been suspended. You have 90 days to verify your account, otherwise it will be permanently deleted. Please contact support for more information.";
+
+      // Send suspension email
+      try {
+        await sendEmail({
+          to: updatedUser.email,
+          subject: "Account Suspended - Action Required",
+          title: "Your Account Has Been Suspended",
+          html: `
                 <p>Dear ${updatedUser.fullName},</p>
                 <p>Your Catalance account has been suspended.</p>
                 <p><strong>Important:</strong> You have <strong>90 days</strong> to verify your account. If you do not take action within this period, your account and all associated data will be permanently deleted.</p>
                 <p>If you believe this was a mistake or would like to appeal this decision, please contact our support team immediately.</p>
                 <p>Thank you,<br>The Catalance Team</p>
               `
-            });
-            console.log(`[Admin] Suspension email sent to ${updatedUser.email}`);
-          } catch (emailErr) {
-            console.error("[Admin] Failed to send suspension email:", emailErr);
-          }
+        });
+        console.log(`[Admin] Suspension email sent to ${updatedUser.email}`);
+      } catch (emailErr) {
+        console.error("[Admin] Failed to send suspension email:", emailErr);
       }
+    }
 
-      await sendNotificationToUser(userId, {
-          type: "system",
-          title,
-          message,
-          data: { status }
-      });
+    await sendNotificationToUser(userId, {
+      type: "system",
+      title,
+      message,
+      data: { status }
+    });
   } catch (e) {
-      console.error("Failed to notify user about status change:", e);
+    console.error("Failed to notify user about status change:", e);
   }
 
   res.json({ data: updatedUser });
@@ -397,7 +410,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
       const totalProjects = user.ownedProjects.length;
       const activeProjects = user.ownedProjects.filter(p => p.status === "IN_PROGRESS").length;
       const completedProjects = user.ownedProjects.filter(p => p.status === "COMPLETED").length;
-      
+
       // Calculate total spent from actual 'spent' field on each project
       const totalSpent = user.ownedProjects.reduce((sum, project) => sum + (project.spent || 0), 0);
 
@@ -414,11 +427,11 @@ export const getUserDetails = asyncHandler(async (req, res) => {
       const acceptedProposals = user.proposals.filter(p => p.status === "ACCEPTED");
       const pendingProposals = user.proposals.filter(p => p.status === "PENDING");
       const rejectedProposals = user.proposals.filter(p => p.status === "REJECTED");
-      
+
       // Platform fee - freelancer receives 70%
       const PLATFORM_FEE_PERCENTAGE = 0.30;
       const FREELANCER_SHARE = 1 - PLATFORM_FEE_PERCENTAGE;
-      
+
       // Calculate actual earnings from paid amounts (project.spent field)
       // This is the actual money paid to the freelancer
       let grossPaidAmount = 0;
@@ -427,7 +440,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         grossPaidAmount += projectSpent;
       });
       const totalEarnings = Math.round(grossPaidAmount * FREELANCER_SHARE);
-      
+
       // Calculate pending amount = (accepted proposal amounts - already paid amounts) * 70%
       // This is money from accepted proposals that hasn't been paid yet
       let grossAcceptedAmount = 0;
@@ -524,7 +537,7 @@ export const getProjectDetails = asyncHandler(async (req, res) => {
 
   // Determine accepted freelancer if any
   const acceptedProposal = project.proposals.find(p => p.status === 'ACCEPTED');
-  
+
   // Fetch conversation associated with the project
   const conversation = await prisma.chatConversation.findFirst({
     where: {
@@ -550,4 +563,217 @@ export const getProjectDetails = asyncHandler(async (req, res) => {
   };
 
   res.json({ data: { project: projectWithDetails } });
+});
+
+// --- Service Management ---
+
+export const getServices = asyncHandler(async (req, res) => {
+  const services = await prisma.service.findMany({
+    include: {
+      _count: {
+        select: { questions: true }
+      }
+    },
+    orderBy: { name: 'asc' }
+  });
+
+  // Return full list for the table/edit
+  const formatted = services.map(s => ({
+    id: s.slug,
+    name: s.name,
+    description: s.description,
+    icon: s.icon,
+    active: s.active,
+    minBudget: s.minBudget,
+    currency: s.currency,
+    questionCount: s._count.questions
+  }));
+
+  res.json({ data: formatted });
+});
+
+export const upsertService = asyncHandler(async (req, res) => {
+  const { id, name, description, icon, active, minBudget, currency } = req.body; // id here is the SLUG
+  if (!id || !name) {
+    throw new AppError("Service ID (slug) and Name are required", 400);
+  }
+
+  await prisma.service.upsert({
+    where: { slug: id },
+    update: {
+      name,
+      description,
+      icon,
+      active: active === undefined ? true : active,
+      minBudget: minBudget ? Number(minBudget) : 0,
+      currency: currency || "INR"
+    },
+    create: {
+      slug: id,
+      name,
+      description,
+      icon,
+      active: active === undefined ? true : active,
+      minBudget: minBudget ? Number(minBudget) : 0,
+      currency: currency || "INR"
+    }
+  });
+
+  res.json({ data: { success: true } });
+});
+
+export const getServiceQuestions = asyncHandler(async (req, res) => {
+  const { serviceId } = req.params; // This is the SLUG from the frontend URL
+
+  const service = await prisma.service.findUnique({
+    where: { slug: serviceId },
+    include: {
+      questions: {
+        orderBy: { order: 'asc' }
+      }
+    }
+  });
+
+  if (!service) {
+    throw new AppError("Service not found", 404);
+  }
+
+  // Transform to match frontend expectations + new fields
+  const questions = service.questions.map(q => ({
+    id: q.slug,
+    question: q.text,
+    type: q.type,
+    required: q.required,
+    options: q.options || []
+  }));
+
+  res.json({ data: questions });
+});
+
+export const upsertQuestion = asyncHandler(async (req, res) => {
+  const { serviceId } = req.params; // Service SLUG
+  const { id, type, question, options, existingId, required } = req.body; // id is question SLUG
+
+  if (!serviceId || !id || !type || !question) {
+    throw new AppError("Missing required fields", 400);
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { slug: serviceId }
+  });
+
+  if (!service) {
+    throw new AppError("Service not found", 404);
+  }
+
+  const isRequired = required === undefined ? true : required;
+
+  // If existingId is provided, we might be renaming the slug.
+  if (existingId && existingId !== id) {
+    // Check if new id already exists
+    const collision = await prisma.serviceQuestion.findUnique({
+      where: { serviceId_slug: { serviceId: service.id, slug: id } }
+    });
+    if (collision) {
+      throw new AppError("Question ID already exists", 400);
+    }
+
+    // Update with slug change
+    await prisma.serviceQuestion.update({
+      where: { serviceId_slug: { serviceId: service.id, slug: existingId } },
+      data: {
+        slug: id,
+        text: question,
+        type,
+        options: options || [],
+        required: isRequired
+      }
+    });
+  } else {
+    // Normal upsert
+    const lastQ = await prisma.serviceQuestion.findFirst({
+      where: { serviceId: service.id },
+      orderBy: { order: 'desc' }
+    });
+    const nextOrder = (lastQ?.order ?? -1) + 1;
+
+    await prisma.serviceQuestion.upsert({
+      where: {
+        serviceId_slug: { serviceId: service.id, slug: id }
+      },
+      update: {
+        text: question,
+        type,
+        options: options || [],
+        required: isRequired
+      },
+      create: {
+        serviceId: service.id,
+        slug: id,
+        text: question,
+        type,
+        options: options || [],
+        required: isRequired,
+        order: nextOrder
+      }
+    });
+  }
+
+  res.json({ data: { success: true } });
+});
+
+export const reorderQuestions = asyncHandler(async (req, res) => {
+  const { serviceId } = req.params;
+  const { orderedIds } = req.body;
+
+  if (!orderedIds || !Array.isArray(orderedIds)) {
+    throw new AppError("Invalid data", 400);
+  }
+
+  const service = await prisma.service.findUnique({
+    where: { slug: serviceId }
+  });
+
+  if (!service) {
+    throw new AppError("Service not found", 404);
+  }
+
+  await prisma.$transaction(
+    orderedIds.map((slug, index) =>
+      prisma.serviceQuestion.update({
+        where: {
+          serviceId_slug: {
+            serviceId: service.id,
+            slug: slug
+          }
+        },
+        data: { order: index }
+      })
+    )
+  );
+
+  res.json({ success: true });
+});
+
+export const deleteQuestion = asyncHandler(async (req, res) => {
+  const { serviceId, id } = req.params; // id is the question slug
+
+  const service = await prisma.service.findUnique({
+    where: { slug: serviceId }
+  });
+
+  if (!service) {
+    throw new AppError("Service not found", 404);
+  }
+
+  await prisma.serviceQuestion.delete({
+    where: {
+      serviceId_slug: {
+        serviceId: service.id,
+        slug: id
+      }
+    }
+  });
+
+  res.json({ success: true });
 });
