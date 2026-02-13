@@ -211,6 +211,8 @@ const FreelancerMultiStepForm = () => {
     const totalSteps = steps.length;
     const currentStep = steps[currentStepIndex];
 
+    const [isLoaded, setIsLoaded] = useState(false);
+
     // ── Persistence ─────────────────────────────────────────────────────
     useEffect(() => {
         const savedData = localStorage.getItem("freelancer_onboarding_data");
@@ -226,19 +228,23 @@ const FreelancerMultiStepForm = () => {
         if (savedStep) {
             setCurrentStepIndex(parseInt(savedStep, 10));
         }
+        setIsLoaded(true);
     }, []);
 
     useEffect(() => {
-        localStorage.setItem("freelancer_onboarding_data", JSON.stringify(formData));
-        localStorage.setItem("freelancer_onboarding_step", currentStepIndex.toString());
-    }, [formData, currentStepIndex]);
+        if (isLoaded) {
+            localStorage.setItem("freelancer_onboarding_data", JSON.stringify(formData));
+            localStorage.setItem("freelancer_onboarding_step", currentStepIndex.toString());
+        }
+    }, [formData, currentStepIndex, isLoaded]);
 
     useEffect(() => {
+        if (!isLoaded) return;
         if (!steps.length) return;
         if (currentStepIndex >= steps.length) {
             setCurrentStepIndex(steps.length - 1);
         }
-    }, [steps.length, currentStepIndex]);
+    }, [steps.length, currentStepIndex, isLoaded]);
 
     // ── Browser back button ─────────────────────────────────────────────
     useEffect(() => {
@@ -880,6 +886,8 @@ const FreelancerMultiStepForm = () => {
         return `${index + 1} of ${totalServices}: ${label}`;
     };
 
+
+
     const renderContinueButton = (step = currentStep, { show = true } = {}) => {
         if (!show) return null;
         const validation = validateStep(step, formData);
@@ -1095,18 +1103,20 @@ const FreelancerMultiStepForm = () => {
     };
 
     // ── Layout ──────────────────────────────────────────────────────────
+    if (!isLoaded) return null;
+
     return (
         <div className="h-screen w-full bg-zinc-950 text-white relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
             <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
                 <div className="absolute inset-0 opacity-40 blur-3xl scale-110">
                     <GradientBackground />
                 </div>
-                <div className="absolute inset-0 bg-black/30 z-[1]" />
+                <div className="absolute inset-0 bg-black/10 z-[1]" />
             </div>
 
             <div className="relative z-10 flex flex-col h-full">
-                <div className="fixed top-0 left-0 right-0 z-50 bg-transparent border-b border-white/5">
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 w-full">
+                <div className="relative z-50 bg-transparent border-b border-white/5 shrink-0">
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/5 w-full">
                         <div
                             className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_10px_rgba(253,224,71,0.5)]"
                             style={{ width: `${((currentStepIndex + 1) / totalSteps) * 100}%` }}
@@ -1129,9 +1139,9 @@ const FreelancerMultiStepForm = () => {
                     </div>
                 </div>
 
-                <div className="relative h-full overflow-y-auto w-full custom-scrollbar">
+                <div className="flex-1 overflow-y-auto w-full custom-scrollbar relative">
                     <div className={cn(
-                        "mx-auto px-6 pt-24 pb-36 min-h-full flex flex-col",
+                        "mx-auto px-6 py-8 pb-36 min-h-full flex flex-col",
                         currentStep?.key === "niche-preference" ? "max-w-7xl" : "max-w-4xl"
                     )}>
                         <AnimatePresence mode="wait">
@@ -1148,6 +1158,8 @@ const FreelancerMultiStepForm = () => {
                         </AnimatePresence>
                     </div>
                 </div>
+
+
             </div>
         </div>
     );

@@ -41,7 +41,6 @@ import {
     AVERAGE_PROJECT_PRICE_OPTIONS,
     ROLE_IN_PROJECT_OPTIONS,
     PROJECT_TIMELINE_OPTIONS,
-    BUDGET_RANGE_OPTIONS,
     DEFAULT_TECH_STACK_OPTIONS,
 } from "./constants";
 import {
@@ -236,7 +235,7 @@ export const ServiceCaseFieldStep = ({
                     <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
                         <SelectValue placeholder="Select an option" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
+                    <SelectContent className="bg-black/60 backdrop-blur-xl border-white/10 text-white max-h-[300px]">
                         {options.map((option) => (
                             <SelectItem key={option.value || option} value={option.value || option} className="focus:bg-white/10 focus:text-white cursor-pointer">
                                 {option.label || option}
@@ -546,7 +545,7 @@ export const ServiceAveragePriceStep = ({
                 <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
                     <SelectValue placeholder="Select a price range" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1A1A1A] border-white/10 text-white max-h-[300px]">
+                <SelectContent className="bg-black/60 backdrop-blur-xl border-white/10 text-white max-h-[300px]">
                     {AVERAGE_PROJECT_PRICE_OPTIONS.map((option) => (
                         <SelectItem
                             key={option.value}
@@ -1025,6 +1024,7 @@ export const ServiceProjectDetailsStep = ({
         p.role &&
         p.timeline &&
         p.techStack?.length > 0 &&
+        p.tags?.length > 0 &&
         p.budget
     );
 
@@ -1047,7 +1047,9 @@ export const ServiceProjectDetailsStep = ({
                             </button>
                         )}
 
-                        <h3 className="text-lg font-medium text-white">Project {index + 1}</h3>
+                        <h3 className="text-lg font-medium text-white">
+                            {project.title?.trim() ? project.title : `Project ${index + 1}`}
+                        </h3>
 
                         {/* Project Title */}
                         <div className="space-y-1.5">
@@ -1056,7 +1058,7 @@ export const ServiceProjectDetailsStep = ({
                                 value={project.title || ""}
                                 onChange={(e) => updateProject(index, "title", e.target.value)}
                                 placeholder="e.g. E-commerce Platform Redesign"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
                             />
                         </div>
 
@@ -1071,70 +1073,71 @@ export const ServiceProjectDetailsStep = ({
                             />
                         </div>
 
-                        {/* Project Link */}
-                        <div className="space-y-1.5">
-                            <Label className="text-white/70 text-[11px]">Project Link (Optional)</Label>
-                            <div className="relative">
-                                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                                <Input
-                                    value={project.link || ""}
-                                    onChange={(e) => updateProject(index, "link", e.target.value)}
-                                    placeholder="https://..."
-                                    className="pl-9 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
-                                />
+                        {/* Link, File & Role Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Project Link */}
+                            <div className="space-y-1.5">
+                                <Label className="text-white/70 text-[11px]">Project Link (Optional)</Label>
+                                <div className="relative">
+                                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                    <Input
+                                        value={project.link || ""}
+                                        onChange={(e) => updateProject(index, "link", e.target.value)}
+                                        placeholder="https://..."
+                                        className="pl-9 !h-[42px] bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Project File */}
-                        <div className="space-y-1.5">
-                            <Label className="text-white/70 text-[11px]">Project File (Optional)</Label>
-                            <input
-                                type="file"
-                                className="hidden"
-                                id={`project-file-${serviceKey}-${index}`}
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        updateProject(index, "file", { name: file.name, url: URL.createObjectURL(file) });
-                                    }
-                                }}
-                            />
-                            <label
-                                htmlFor={`project-file-${serviceKey}-${index}`}
-                                className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all"
-                            >
-                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                                    <Upload className="w-4 h-4 text-white/70" />
-                                </div>
-                                <div className="flex-1 overflow-hidden">
-                                    <span className="block text-sm text-white/80 truncate">
-                                        {project.file?.name || "Upload file (PDF, image, or doc)"}
-                                    </span>
-                                </div>
-                                {project.file && (
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            updateProject(index, "file", null);
-                                        }}
-                                        className="p-1 hover:bg-white/10 rounded-full"
-                                    >
-                                        <X className="w-4 h-4 text-white/50" />
-                                    </button>
-                                )}
-                            </label>
-                        </div>
+                            {/* Project File */}
+                            <div className="space-y-1.5">
+                                <Label className="text-white/70 text-[11px]">Project File (Optional)</Label>
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    id={`project-file-${serviceKey}-${index}`}
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            updateProject(index, "file", { name: file.name, url: URL.createObjectURL(file) });
+                                        }
+                                    }}
+                                />
+                                <label
+                                    htmlFor={`project-file-${serviceKey}-${index}`}
+                                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all h-[42px]"
+                                >
+                                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                                        <Upload className="w-3 h-3 text-white/70" />
+                                    </div>
+                                    <div className="flex-1 overflow-hidden">
+                                        <span className="block text-xs text-white/80 truncate">
+                                            {project.file?.name || "Upload file"}
+                                        </span>
+                                    </div>
+                                    {project.file && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                updateProject(index, "file", null);
+                                            }}
+                                            className="p-1 hover:bg-white/10 rounded-full"
+                                        >
+                                            <X className="w-3.5 h-3.5 text-white/50" />
+                                        </button>
+                                    )}
+                                </label>
+                            </div>
 
-                        {/* Role & Timeline Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Your Role */}
                             <div className="space-y-1.5">
                                 <Label className="text-white/70 text-[11px]">Your Role</Label>
                                 <Select
                                     value={project.role || ""}
                                     onValueChange={(value) => updateProject(index, "role", value)}
                                 >
-                                    <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
+                                    <SelectTrigger className="w-full !h-[42px] bg-white/5 border-white/10 text-white">
                                         <SelectValue placeholder="Select role" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
@@ -1146,14 +1149,18 @@ export const ServiceProjectDetailsStep = ({
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
 
+                        {/* Timeline & Budget Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Timeline */}
                             <div className="space-y-1.5">
                                 <Label className="text-white/70 text-[11px]">Timeline</Label>
                                 <Select
                                     value={project.timeline || ""}
                                     onValueChange={(value) => updateProject(index, "timeline", value)}
                                 >
-                                    <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
+                                    <SelectTrigger className="w-full !h-[42px] bg-white/5 border-white/10 text-white">
                                         <SelectValue placeholder="Select duration" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
@@ -1165,35 +1172,41 @@ export const ServiceProjectDetailsStep = ({
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {/* Budget */}
+                            <div className="space-y-1.5">
+                                <Label className="text-white/70 text-[11px]">Budget</Label>
+                                <Input
+                                    value={project.budget || ""}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/[^0-9]/g, "");
+                                        updateProject(index, "budget", value);
+                                    }}
+                                    placeholder="e.g. 5000"
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
+                                />
+                            </div>
                         </div>
 
-                        {/* Tech Stack */}
-                        <div className="space-y-1.5">
-                            <Label className="text-white/70 text-[11px]">Tech Stack / Tools</Label>
-                            <TechStackSelect
-                                value={project.techStack || []}
-                                onChange={(val) => updateProject(index, "techStack", val)}
-                            />
-                        </div>
+                        {/* Tags & Tech Stack Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Project Tags */}
+                            <div className="space-y-1.5">
+                                <Label className="text-white/70 text-[11px]">Tags</Label>
+                                <TagsInput
+                                    value={project.tags || []}
+                                    onChange={(val) => updateProject(index, "tags", val)}
+                                />
+                            </div>
 
-                        {/* Budget */}
-                        <div className="space-y-1.5">
-                            <Label className="text-white/70 text-[11px]">Budget</Label>
-                            <Select
-                                value={project.budget || ""}
-                                onValueChange={(value) => updateProject(index, "budget", value)}
-                            >
-                                <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
-                                    <SelectValue placeholder="Select budget range" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
-                                    {BUDGET_RANGE_OPTIONS.map((opt) => (
-                                        <SelectItem key={opt.value} value={opt.value} className="focus:bg-white/10 focus:text-white cursor-pointer">
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {/* Tech Stack */}
+                            <div className="space-y-1.5">
+                                <Label className="text-white/70 text-[11px]">Tech Stack / Tools</Label>
+                                <TechStackSelect
+                                    value={project.techStack || []}
+                                    onChange={(val) => updateProject(index, "techStack", val)}
+                                />
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -1212,72 +1225,213 @@ export const ServiceProjectDetailsStep = ({
     );
 };
 
-// Helper component for Tech Stack Multi-select
-const TechStackSelect = ({ value, onChange }) => {
-    const [open, setOpen] = React.useState(false);
+// Helper component for Tags Input
+const TagsInput = ({ value, onChange }) => {
+    const [inputValue, setInputValue] = React.useState("");
 
-    const handleSelect = (optionValue) => {
-        const next = value.includes(optionValue)
-            ? value.filter((v) => v !== optionValue)
-            : [...value, optionValue];
-        onChange(next);
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const trimmed = inputValue.trim();
+            if (trimmed && !value.includes(trimmed)) {
+                onChange([...value, trimmed]);
+                setInputValue("");
+            }
+        }
+    };
+
+    const removeTag = (tagToRemove) => {
+        onChange(value.filter((tag) => tag !== tagToRemove));
     };
 
     return (
-        <div className="space-y-2">
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <button
-                        role="combobox"
-                        aria-expanded={open}
-                        className="w-full justify-between flex items-center h-10 px-3 rounded-md bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors"
-                    >
-                        <span className="text-sm text-white/70">
-                            {value.length > 0 ? `${value.length} selected` : "Select technologies..."}
+        <div className="space-y-3">
+            <div className="flex gap-2">
+                <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a tag and press Enter..."
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
+                />
+                <button
+                    type="button"
+                    onClick={() => {
+                        const trimmed = inputValue.trim();
+                        if (trimmed && !value.includes(trimmed)) {
+                            onChange([...value, trimmed]);
+                            setInputValue("");
+                        }
+                    }}
+                    disabled={!inputValue.trim()}
+                    className={cn(
+                        "px-4 py-2 rounded-xl font-semibold transition-all h-[42px]",
+                        inputValue.trim()
+                            ? "bg-white/10 text-white hover:bg-white/20"
+                            : "bg-white/5 text-white/40 cursor-not-allowed"
+                    )}
+                >
+                    Add
+                </button>
+            </div>
+
+            {value.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    {value.map((tag, i) => (
+                        <span
+                            key={i}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-xs text-white/90"
+                        >
+                            {tag}
+                            <button
+                                type="button"
+                                onClick={() => removeTag(tag)}
+                                className="text-white/60 hover:text-white transition-colors"
+                                aria-label={`Remove ${tag}`}
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
                         </span>
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0 bg-[#1A1A1A] border-white/10 text-white" align="start">
-                    <Command className="bg-transparent dark:bg-transparent">
-                        <CommandInput placeholder="Search tech stack..." className="h-9 text-white placeholder:text-white/30" />
-                        <CommandEmpty>No framework found.</CommandEmpty>
-                        <CommandList>
-                            <CommandGroup className="max-h-[200px] overflow-y-auto">
-                                {DEFAULT_TECH_STACK_OPTIONS.map((tech) => (
-                                    <CommandItem
-                                        key={tech}
-                                        value={tech}
-                                        onSelect={() => handleSelect(tech)}
-                                        className="text-white hover:bg-white/10 aria-selected:bg-white/10 cursor-pointer"
+                    ))}
+                </div>
+            )}
+
+            <p className="text-[10px] text-white/40">Press Enter or click Add to include each tag.</p>
+        </div>
+    );
+};
+
+// Helper component for Tech Stack Multi-select
+const TechStackSelect = ({ value, onChange }) => {
+    const [inputValue, setInputValue] = React.useState("");
+    const [open, setOpen] = React.useState(false);
+    const wrapperRef = React.useRef(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleSelect = (optionValue) => {
+        if (!value.includes(optionValue)) {
+            onChange([...value, optionValue]);
+        }
+        setInputValue("");
+        setOpen(false);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const trimmed = inputValue.trim();
+            if (trimmed && !value.includes(trimmed)) {
+                onChange([...value, trimmed]);
+                setInputValue("");
+                setOpen(false);
+            }
+        }
+    };
+
+    const removeTech = (techToRemove) => {
+        onChange(value.filter((t) => t !== techToRemove));
+    };
+
+    const filteredOptions = DEFAULT_TECH_STACK_OPTIONS.filter((tech) =>
+        tech.toLowerCase().includes(inputValue.toLowerCase()) && !value.includes(tech)
+    );
+
+    return (
+        <div ref={wrapperRef} className="space-y-3 relative">
+            <div className="flex gap-2 relative z-50">
+                <div className="relative flex-1">
+                    <Input
+                        value={inputValue}
+                        onChange={(e) => {
+                            setInputValue(e.target.value);
+                            setOpen(true);
+                        }}
+                        onFocus={() => setOpen(true)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type to search or add technologies..."
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
+                    />
+
+                    {open && inputValue.trim() && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1A1A] border border-white/10 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                            <div className="max-h-[200px] overflow-y-auto">
+                                {filteredOptions.length > 0 ? (
+                                    filteredOptions.map((tech) => (
+                                        <button
+                                            key={tech}
+                                            onClick={() => handleSelect(tech)}
+                                            className="w-full text-left px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors flex items-center justify-between group"
+                                        >
+                                            {tech}
+                                            <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-white/50" />
+                                        </button>
+                                    ))
+                                ) : (
+                                    <button
+                                        onClick={() => handleSelect(inputValue)}
+                                        className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
                                     >
-                                        <div className={cn(
-                                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                            value.includes(tech) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
-                                        )}>
-                                            <Check className={cn("h-4 w-4")} />
-                                        </div>
-                                        {tech}
-                                    </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </PopoverContent>
-            </Popover>
+                                        <Plus className="w-4 h-4 text-primary" />
+                                        Add "{inputValue}"
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => {
+                        const trimmed = inputValue.trim();
+                        if (trimmed && !value.includes(trimmed)) {
+                            onChange([...value, trimmed]);
+                            setInputValue("");
+                            setOpen(false);
+                        }
+                    }}
+                    disabled={!inputValue.trim()}
+                    className={cn(
+                        "px-4 py-2 rounded-xl font-semibold transition-all shrink-0 h-[42px]",
+                        inputValue.trim()
+                            ? "bg-white/10 text-white hover:bg-white/20"
+                            : "bg-white/5 text-white/40 cursor-not-allowed"
+                    )}
+                >
+                    Add
+                </button>
+            </div>
 
             {value.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                     {value.map((tech) => (
-                        <div key={tech} className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded text-xs text-white">
+                        <span
+                            key={tech}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-xs text-white/90"
+                        >
                             {tech}
-                            <button onClick={() => handleSelect(tech)} className="hover:text-red-400 ml-1">
-                                <X className="w-3 h-3" />
+                            <button
+                                onClick={() => removeTech(tech)}
+                                className="text-white/60 hover:text-white transition-colors"
+                                aria-label={`Remove ${tech}`}
+                            >
+                                <X className="w-3.5 h-3.5" />
                             </button>
-                        </div>
+                        </span>
                     ))}
                 </div>
             )}
+
+            <p className="text-[10px] text-white/40">Press Enter or click Add to include.</p>
         </div>
     );
 };
