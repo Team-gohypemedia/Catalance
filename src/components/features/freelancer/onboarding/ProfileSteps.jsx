@@ -150,7 +150,7 @@ export const ProfileBasicsStep = ({
                                 </div>
                             </PopoverAnchor>
                             <PopoverContent
-                                className="p-0 bg-[#1A1A1A] border-white/10 text-white"
+                                className="p-0 bg-black/60 backdrop-blur-xl border-white/10 text-white"
                                 style={{ width: popoverWidth ? `${popoverWidth}px` : "auto" }}
                                 align="start"
                                 onOpenAutoFocus={(e) => e.preventDefault()}
@@ -317,7 +317,7 @@ export const ProfileBasicsStep = ({
                             align="start"
                             side="bottom"
                             sideOffset={4}
-                            className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
+                            className="bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
                         >
                             {COUNTRY_OPTIONS.map((country) => (
                                 <SelectItem key={country} value={country} className="focus:bg-white/10 focus:text-white cursor-pointer">
@@ -353,7 +353,7 @@ export const ProfileBasicsStep = ({
                             align="start"
                             side="bottom"
                             sideOffset={4}
-                            className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
+                            className="bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
                         >
                             {stateOptions.length > 0 ? (
                                 stateOptions.map((state) => (
@@ -395,7 +395,7 @@ export const ProfileBasicsStep = ({
                                 <SelectValue placeholder="Select languages..." />
                             </SelectTrigger>
                             <SelectContent
-                                className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[300px]"
+                                className="bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[300px]"
                                 position="popper"
                                 sideOffset={5}
                             >
@@ -543,7 +543,7 @@ export const ProfessionalTitleStep = ({ formData, updateFormField, queueAdvance,
                         </div>
                     </PopoverAnchor>
                     <PopoverContent
-                        className="p-0 bg-[#1A1A1A] border-white/10 text-white"
+                        className="p-0 bg-black/60 backdrop-blur-xl border-white/10 text-white"
                         style={{ width: popoverWidth ? `${popoverWidth}px` : "auto" }}
                         align="start"
                         onOpenAutoFocus={(e) => e.preventDefault()}
@@ -687,7 +687,7 @@ export const CountryStep = ({ formData, handleCountryChange }) => (
                 align="start"
                 side="bottom"
                 sideOffset={4}
-                className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
+                className="bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
             >
                 {COUNTRY_OPTIONS.map((country) => (
                     <SelectItem key={country} value={country} className="focus:bg-white/10 focus:text-white cursor-pointer">
@@ -736,7 +736,7 @@ export const CityStep = ({
                 align="start"
                 side="bottom"
                 sideOffset={4}
-                className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
+                className="bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[45vh]"
             >
                 {stateOptions.length > 0 ? (
                     stateOptions.map((state) => (
@@ -875,7 +875,7 @@ export const LanguagesStep = ({
                         <SelectValue placeholder="Select languages..." />
                     </SelectTrigger>
                     <SelectContent
-                        className="bg-[#1A1A1A] border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[300px]"
+                        className="bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[300px]"
                         position="popper"
                         sideOffset={5}
                     >
