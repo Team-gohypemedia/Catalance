@@ -111,6 +111,12 @@ const AdminApprovals = lazy(
 const AdminUserDetails = lazy(
   () => import("@/components/features/admin/AdminUserDetails"),
 );
+const AdminServices = lazy(
+  () => import("@/components/features/admin/AdminServices"),
+);
+const AdminServiceQuestions = lazy(
+  () => import("@/components/features/admin/AdminServiceQuestions"),
+);
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
 const TermsConditions = lazy(
   () => import("@/components/pages/TermsConditions"),
@@ -495,6 +501,22 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminDisputes />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/services"
+              element={
+                <AdminRoute>
+                  <AdminServices />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/service-questions"
+              element={
+                <AdminRoute>
+                  <AdminServiceQuestions />
                 </AdminRoute>
               }
             />

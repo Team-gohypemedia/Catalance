@@ -171,6 +171,18 @@ const navConfigs = {
       isActive: true,
     },
     {
+      title: "Services",
+      url: "/admin/services",
+      icon: Briefcase,
+      isActive: true,
+    },
+    {
+      title: "Service Questions",
+      url: "/admin/service-questions",
+      icon: MessageSquare,
+      isActive: true,
+    },
+    {
       title: "Clients",
       url: "/admin/clients",
       icon: Users,
