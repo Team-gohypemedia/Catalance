@@ -344,6 +344,7 @@ model ServiceQuestion {
   required    Boolean  @default(true)
   
   options     Json?    // [{ "label": "Red", "value": "red" }, ...]
+  logic       Json?    // [{ "condition": "equals", "value": "x", "nextQuestionSlug": "y" }]
 
   service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   serviceId   String
@@ -352,4 +353,23 @@ model ServiceQuestion {
   updatedAt   DateTime @updatedAt
 
   @@unique([serviceId, slug])
+}
+
+model AiGuestSession {
+  id          String           @id @default(cuid())
+  serviceId   String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  currentStep Int              @default(0)
+  answers     Json?            @default("{}")
+  messages    AiGuestMessage[]
+}
+
+model AiGuestMessage {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   AiGuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String // "user" or "assistant"
+  content   String         @db.Text
+  createdAt DateTime       @default(now())
 }
