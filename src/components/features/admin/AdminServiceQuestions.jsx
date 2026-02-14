@@ -16,12 +16,16 @@ import { toast } from "sonner";
 import { AnimatePresence, motion, Reorder } from "framer-motion";
 import * as LucideIcons from "lucide-react";
 
+import ServiceQuestionFlow from "./ServiceQuestionFlow";
+
 const AdminServiceQuestions = () => {
     const { authFetch } = useAuth();
     const [services, setServices] = useState([]);
     const [selectedServiceId, setSelectedServiceId] = useState("");
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadingServices, setLoadingServices] = useState(false);
+    const [viewMode, setViewMode] = useState("list"); // 'list' or 'flow'
 
     // Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -33,7 +37,8 @@ const AdminServiceQuestions = () => {
         type: "input",
         question: "",
         required: true,
-        options: []
+        options: [],
+        logic: []
     });
 
     useEffect(() => {
@@ -49,16 +54,30 @@ const AdminServiceQuestions = () => {
     }, [selectedServiceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchServices = async () => {
+        setLoadingServices(true);
         try {
+            console.log("Fetching services...");
             const res = await authFetch("/admin/services");
+            if (!res.ok) {
+                console.error("Failed to fetch services. Status:", res.status);
+                toast.error(`Failed to load services: ${res.statusText}`);
+                return;
+            }
             const data = await res.json();
+            console.log("Services fetched:", data);
+
             if (data?.data) {
                 setServices(data.data);
                 // Optional: Auto select first if none selected
                 // if (data.data.length > 0 && !selectedServiceId) setSelectedServiceId(data.data[0].id);
+            } else {
+                console.warn("No data property in services response:", data);
             }
         } catch (error) {
             console.error("Failed to load services:", error);
+            toast.error("Failed to load services");
+        } finally {
+            setLoadingServices(false);
         }
     };
 
@@ -126,7 +145,8 @@ const AdminServiceQuestions = () => {
                 type: question.type || "input",
                 question: question.question,
                 required: question.required !== undefined ? question.required : true,
-                options: question.options || []
+                options: question.options || [],
+                logic: question.logic || []
             });
         } else {
             setCurrentQuestion(null);
@@ -135,7 +155,8 @@ const AdminServiceQuestions = () => {
                 type: "input",
                 question: "",
                 required: true,
-                options: []
+                options: [],
+                logic: []
             });
         }
         setIsDialogOpen(true);
@@ -157,6 +178,25 @@ const AdminServiceQuestions = () => {
     const removeOption = (idx) => {
         const newOptions = formData.options.filter((_, i) => i !== idx);
         setFormData({ ...formData, options: newOptions });
+    };
+
+    // Logic Rules Handlers
+    const addLogicRule = () => {
+        setFormData({
+            ...formData,
+            logic: [...(formData.logic || []), { condition: "equals", value: "", nextQuestionSlug: "" }]
+        });
+    };
+
+    const updateLogicRule = (idx, field, value) => {
+        const newLogic = [...(formData.logic || [])];
+        newLogic[idx] = { ...newLogic[idx], [field]: value };
+        setFormData({ ...formData, logic: newLogic });
+    };
+
+    const removeLogicRule = (idx) => {
+        const newLogic = (formData.logic || []).filter((_, i) => i !== idx);
+        setFormData({ ...formData, logic: newLogic });
     };
 
     const handleSubmit = async (e) => {
@@ -204,29 +244,39 @@ const AdminServiceQuestions = () => {
                         <Separator />
                         <ScrollArea className="flex-1 -mr-3 pr-3 h-full">
                             <div className="flex flex-col gap-1 pr-1 pb-12">
-                                {services.map(s => {
-                                    const Icon = LucideIcons[s.icon] || LucideIcons.Layers;
-                                    const isSelected = selectedServiceId === s.id;
-                                    return (
-                                        <button
-                                            key={s.id}
-                                            onClick={() => setSelectedServiceId(s.id)}
-                                            className={`flex items-center gap-3 py-2 px-3 rounded-lg text-left transition-all ${isSelected
-                                                ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/50'
-                                                : 'hover:bg-muted text-foreground'
-                                                }`}
-                                        >
-                                            <Icon className={`h-5 w-5 shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-medium text-sm leading-tight line-clamp-2">{s.name}</div>
-                                                <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                                                    {s.questionCount} questions
+                                {loadingServices ? (
+                                    <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">
+                                        Loading services...
+                                    </div>
+                                ) : services.length === 0 ? (
+                                    <div className="p-4 text-center text-sm text-muted-foreground">
+                                        No services found.
+                                    </div>
+                                ) : (
+                                    services.map(s => {
+                                        const Icon = LucideIcons[s.icon] || LucideIcons.Layers;
+                                        const isSelected = selectedServiceId === s.id;
+                                        return (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => setSelectedServiceId(s.id)}
+                                                className={`flex items-center gap-3 py-2 px-3 rounded-lg text-left transition-all ${isSelected
+                                                    ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/50'
+                                                    : 'hover:bg-muted text-foreground'
+                                                    }`}
+                                            >
+                                                <Icon className={`h-5 w-5 shrink-0 ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-sm leading-tight line-clamp-2">{s.name}</div>
+                                                    <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                                                        {s.questionCount} questions
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            {isSelected && <LucideIcons.ChevronRight className="h-4 w-4 opacity-50 shrink-0" />}
-                                        </button>
-                                    );
-                                })}
+                                                {isSelected && <LucideIcons.ChevronRight className="h-4 w-4 opacity-50 shrink-0" />}
+                                            </button>
+                                        );
+                                    })
+                                )}
                             </div>
                         </ScrollArea>
                     </div>
@@ -246,114 +296,139 @@ const AdminServiceQuestions = () => {
                                         : "Select a service from the sidebar to begin."}
                                 </p>
                             </div>
-                            <Button
-                                onClick={() => handleOpenDialog()}
-                                disabled={!selectedServiceId}
-                                size="lg"
-                                className="shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
-                            >
-                                <LucideIcons.Plus className="mr-2 h-5 w-5" /> Add Question
-                            </Button>
+                            <div className="flex gap-2">
+                                <div className="flex bg-muted rounded-lg p-1 border">
+                                    <button
+                                        onClick={() => setViewMode("list")}
+                                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        <LucideIcons.List className="h-4 w-4 mr-2 inline" /> List
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode("flow")}
+                                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === 'flow' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        <LucideIcons.GitGraph className="h-4 w-4 mr-2 inline" /> Flow
+                                    </button>
+                                </div>
+                                <Button
+                                    onClick={() => handleOpenDialog()}
+                                    disabled={!selectedServiceId}
+                                    size="lg"
+                                    className="shadow hover:shadow-lg transition-transform hover:-translate-y-0.5"
+                                >
+                                    <LucideIcons.Plus className="mr-2 h-5 w-5" /> Add Question
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="flex-1 overflow-hidden bg-muted/20 rounded-xl border relative">
-                            <ScrollArea className="h-full p-6">
-                                {!selectedServiceId ? (
-                                    <div className="flex flex-col items-center justify-center h-[400px] text-center opacity-50">
-                                        <LucideIcons.MousePointer2 className="h-16 w-16 mb-4 text-muted-foreground" />
-                                        <h3 className="text-xl font-medium">No Service Selected</h3>
-                                        <p className="max-w-xs mt-2">Please select a service from the list on the left to view and edit its questions.</p>
-                                    </div>
-                                ) : loading ? (
-                                    <div className="flex flex-col gap-4">
-                                        {[1, 2, 3].map(i => (
-                                            <div key={i} className="h-32 rounded-lg bg-card border animate-pulse" />
-                                        ))}
-                                    </div>
-                                ) : questions.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center h-[400px] text-center">
-                                        <div className="p-4 rounded-full bg-background border shadow-sm mb-4">
-                                            <LucideIcons.FileQuestion className="h-10 w-10 text-muted-foreground" />
+                            {viewMode === 'flow' && selectedServiceId && questions.length > 0 ? (
+                                <div className="h-full w-full bg-white relative">
+                                    <ServiceQuestionFlow
+                                        questions={questions}
+                                        onEditQuestion={(q) => handleOpenDialog(q)}
+                                    />
+                                </div>
+                            ) : (
+                                <ScrollArea className="h-full p-6">
+                                    {!selectedServiceId ? (
+                                        <div className="flex flex-col items-center justify-center h-[400px] text-center opacity-50">
+                                            <LucideIcons.MousePointer2 className="h-16 w-16 mb-4 text-muted-foreground" />
+                                            <h3 className="text-xl font-medium">No Service Selected</h3>
+                                            <p className="max-w-xs mt-2">Please select a service from the list on the left to view and edit its questions.</p>
                                         </div>
-                                        <h3 className="text-lg font-medium">No questions defined</h3>
-                                        <p className="text-muted-foreground mt-2 mb-6 max-w-sm">
-                                            This service has no questions yet. The AI needs questions to understand client requirements.
-                                        </p>
-                                        <Button variant="outline" onClick={() => handleOpenDialog()}>
-                                            Create First Question
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <Reorder.Group axis="y" values={questions} onReorder={handleReorder} className="space-y-4">
-                                            {questions.map((q, idx) => (
-                                                <Reorder.Item
-                                                    key={q.id}
-                                                    value={q}
-                                                    onDragEnd={handleDragEnd}
-                                                    initial={{ opacity: 0, x: -20 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    transition={{ duration: 0.2 }}
-                                                >
-                                                    <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-md">
-                                                        <CardContent className="p-5 flex gap-5 items-start">
-                                                            <div className="mt-1 flex flex-col items-center gap-2 text-muted-foreground cursor-grab active:cursor-grabbing">
-                                                                <div className="bg-muted w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs font-bold border">
-                                                                    {idx + 1}
+                                    ) : loading ? (
+                                        <div className="flex flex-col gap-4">
+                                            {[1, 2, 3].map(i => (
+                                                <div key={i} className="h-32 rounded-lg bg-card border animate-pulse" />
+                                            ))}
+                                        </div>
+                                    ) : questions.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-[400px] text-center">
+                                            <div className="p-4 rounded-full bg-background border shadow-sm mb-4">
+                                                <LucideIcons.FileQuestion className="h-10 w-10 text-muted-foreground" />
+                                            </div>
+                                            <h3 className="text-lg font-medium">No questions defined</h3>
+                                            <p className="text-muted-foreground mt-2 mb-6 max-w-sm">
+                                                This service has no questions yet. The AI needs questions to understand client requirements.
+                                            </p>
+                                            <Button variant="outline" onClick={() => handleOpenDialog()}>
+                                                Create First Question
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <Reorder.Group axis="y" values={questions} onReorder={handleReorder} className="space-y-4">
+                                                {questions.map((q, idx) => (
+                                                    <Reorder.Item
+                                                        key={q.id}
+                                                        value={q}
+                                                        onDragEnd={handleDragEnd}
+                                                        initial={{ opacity: 0, x: -20 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-md">
+                                                            <CardContent className="p-5 flex gap-5 items-start">
+                                                                <div className="mt-1 flex flex-col items-center gap-2 text-muted-foreground cursor-grab active:cursor-grabbing">
+                                                                    <div className="bg-muted w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs font-bold border">
+                                                                        {idx + 1}
+                                                                    </div>
+                                                                    <LucideIcons.GripVertical className="h-4 w-4 opacity-0 group-hover:opacity-50 cursor-grab" />
                                                                 </div>
-                                                                <LucideIcons.GripVertical className="h-4 w-4 opacity-0 group-hover:opacity-50 cursor-grab" />
-                                                            </div>
 
-                                                            <div className="flex-1 space-y-3">
-                                                                <div className="flex items-center gap-2 flex-wrap">
-                                                                    <Badge variant="outline" className="font-mono text-xs text-muted-foreground">
-                                                                        {q.id}
-                                                                    </Badge>
-                                                                    <Badge className={
-                                                                        q.type === 'multi_option' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-200' :
-                                                                            q.type === 'single_option' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200' :
-                                                                                'bg-slate-100 text-slate-800 hover:bg-slate-200 border-slate-200'
-                                                                    }>
-                                                                        {q.type === 'multi_option' ? 'Multi Select' : q.type === 'single_option' ? 'Single Select' : 'Text Input'}
-                                                                    </Badge>
-                                                                    {!q.required && (
-                                                                        <Badge variant="secondary" className="text-muted-foreground">Optional</Badge>
+                                                                <div className="flex-1 space-y-3">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <Badge variant="outline" className="font-mono text-xs text-muted-foreground">
+                                                                            {q.id}
+                                                                        </Badge>
+                                                                        <Badge className={
+                                                                            q.type === 'multi_option' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-200' :
+                                                                                q.type === 'single_option' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200' :
+                                                                                    'bg-slate-100 text-slate-800 hover:bg-slate-200 border-slate-200'
+                                                                        }>
+                                                                            {q.type === 'multi_option' ? 'Multi Select' : q.type === 'single_option' ? 'Single Select' : 'Text Input'}
+                                                                        </Badge>
+                                                                        {!q.required && (
+                                                                            <Badge variant="secondary" className="text-muted-foreground">Optional</Badge>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <p className="text-lg font-medium text-foreground leading-snug">
+                                                                        {q.question}
+                                                                    </p>
+
+                                                                    {q.options && q.options.length > 0 && (
+                                                                        <div className="flex flex-wrap gap-2 pt-1">
+                                                                            {q.options.map((opt, i) => (
+                                                                                <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-xs font-medium border text-secondary-foreground hover:bg-secondary/70 transition-colors">
+                                                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                                                                                    {opt.label || opt}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
                                                                     )}
                                                                 </div>
 
-                                                                <p className="text-lg font-medium text-foreground leading-snug">
-                                                                    {q.question}
-                                                                </p>
-
-                                                                {q.options && q.options.length > 0 && (
-                                                                    <div className="flex flex-wrap gap-2 pt-1">
-                                                                        {q.options.map((opt, i) => (
-                                                                            <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-xs font-medium border text-secondary-foreground hover:bg-secondary/70 transition-colors">
-                                                                                <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
-                                                                                {opt.label || opt}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(q)}>
-                                                                    <LucideIcons.Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                                                </Button>
-                                                                <Button variant="ghost" size="icon" onClick={() => handleDelete(q)} className="hover:bg-destructive/10">
-                                                                    <LucideIcons.Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                                                                </Button>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                </Reorder.Item>
-                                            ))}
-                                        </Reorder.Group>
-                                        <div className="h-20" /> {/* Bottom Spacer */}
-                                    </div>
-                                )}
-                            </ScrollArea>
+                                                                <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(q)}>
+                                                                        <LucideIcons.Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(q)} className="hover:bg-destructive/10">
+                                                                        <LucideIcons.Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                                                    </Button>
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+                                                    </Reorder.Item>
+                                                ))}
+                                            </Reorder.Group>
+                                            <div className="h-20" /> {/* Bottom Spacer */}
+                                        </div>
+                                    )}
+                                </ScrollArea>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -480,6 +555,84 @@ const AdminServiceQuestions = () => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Logic Configuration Section */}
+                            <div className="space-y-4 border-t pt-4">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-base font-semibold">Branching Logic (Advanced)</Label>
+                                    <Button type="button" variant="outline" size="sm" onClick={addLogicRule}>
+                                        <LucideIcons.GitBranch className="h-3 w-3 mr-1" /> Add Rule
+                                    </Button>
+                                </div>
+
+                                {formData.logic && formData.logic.length > 0 ? (
+                                    <div className="space-y-3 bg-slate-50 p-3 rounded-lg border">
+                                        {formData.logic.map((rule, idx) => (
+                                            <div key={idx} className="flex flex-col gap-3 p-3 bg-white rounded-lg border shadow-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-slate-500 w-20">If Answer</span>
+                                                    <Select value={rule.condition} onValueChange={(val) => updateLogicRule(idx, 'condition', val)}>
+                                                        <SelectTrigger className="h-9 w-[130px]">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="equals">Equals</SelectItem>
+                                                            <SelectItem value="not_equals">Not Equals</SelectItem>
+                                                            <SelectItem value="contains">Contains</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+
+                                                    {formData.options && formData.options.length > 0 ? (
+                                                        <Select value={rule.value} onValueChange={(val) => updateLogicRule(idx, 'value', val)}>
+                                                            <SelectTrigger className="h-9 flex-1">
+                                                                <SelectValue placeholder="Select option" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {formData.options.map((opt, i) => (
+                                                                    <SelectItem key={i} value={opt.label || opt.value || opt}>{opt.label || opt}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    ) : (
+                                                        <Input
+                                                            value={rule.value}
+                                                            onChange={(e) => updateLogicRule(idx, 'value', e.target.value)}
+                                                            className="h-9 flex-1"
+                                                            placeholder="Value to match"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-slate-500 w-20">Jump to</span>
+                                                    <Select value={rule.nextQuestionSlug} onValueChange={(val) => updateLogicRule(idx, 'nextQuestionSlug', val)}>
+                                                        <SelectTrigger className="h-9 flex-1">
+                                                            <SelectValue placeholder="Select target question" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {questions
+                                                                .filter(q => q.id !== formData.id) // Don't jump to self
+                                                                .map((q) => (
+                                                                    <SelectItem key={q.id} value={q.slug || q.id}>
+                                                                        <span className="truncate block max-w-[200px]">{q.id} - {q.question.substring(0, 30)}...</span>
+                                                                    </SelectItem>
+                                                                ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeLogicRule(idx)} className="h-9 w-9 text-destructive hover:bg-destructive/10">
+                                                        <LucideIcons.Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-50/50 border border-dashed rounded-lg p-4 text-center">
+                                        <p className="text-sm text-muted-foreground">No branching rules defined.</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Flow will proceed to the next question in order.</p>
+                                    </div>
+                                )}
+                            </div>
 
                             <DialogFooter className="pt-4 border-t">
                                 <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>

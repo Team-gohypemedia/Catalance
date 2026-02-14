@@ -130,6 +130,7 @@ const Blog = lazy(() => import("@/components/pages/Blog"));
 const HelpCenter = lazy(() => import("@/components/pages/HelpCenter"));
 const TermsOfService = lazy(() => import("@/components/pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("@/components/pages/PrivacyPolicy"));
+const GuestAIDemo = lazy(() => import("@/components/pages/GuestAIDemo"));
 
 const RouteFallback = () => (
   <div className="flex min-h-screen items-center justify-center">
@@ -143,6 +144,7 @@ const App = () => {
       <ThemeProvider defaultTheme="dark" storageKey="freelancer-ui-theme-v1">
         <Suspense fallback={<RouteFallback />}>
           <Routes>
+            <Route path="/ai-demo" element={<GuestAIDemo />} />
             <Route
               path="/"
               element={

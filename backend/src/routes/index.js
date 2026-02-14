@@ -15,6 +15,7 @@ import utilsRoutes from "./utils.routes.js";
 import { uploadRouter } from "./upload.routes.js";
 import { imageRouter } from "./image.routes.js";
 import { paymentRouter } from "./payment.routes.js";
+import guestRouter from "./guest.routes.js";
 
 export const apiRouter = Router();
 
@@ -34,3 +35,5 @@ apiRouter.use("/utils", utilsRoutes);
 apiRouter.use("/upload", uploadRouter);
 apiRouter.use("/images", imageRouter);
 apiRouter.use("/payments", paymentRouter);
+apiRouter.use("/guest", guestRouter);
+

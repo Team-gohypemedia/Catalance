@@ -573,9 +573,11 @@ export const getServices = asyncHandler(async (req, res) => {
       _count: {
         select: { questions: true }
       }
-    },
-    orderBy: { name: 'asc' }
+    }
   });
+
+  // Sort case-insensitively in JS to ensure "test" (lowercase) appears with "T" (uppercase)
+  services.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
   // Return full list for the table/edit
   const formatted = services.map(s => ({
@@ -644,7 +646,8 @@ export const getServiceQuestions = asyncHandler(async (req, res) => {
     question: q.text,
     type: q.type,
     required: q.required,
-    options: q.options || []
+    options: q.options || [],
+    logic: q.logic || []
   }));
 
   res.json({ data: questions });
@@ -652,7 +655,7 @@ export const getServiceQuestions = asyncHandler(async (req, res) => {
 
 export const upsertQuestion = asyncHandler(async (req, res) => {
   const { serviceId } = req.params; // Service SLUG
-  const { id, type, question, options, existingId, required } = req.body; // id is question SLUG
+  const { id, type, question, options, logic, existingId, required } = req.body; // id is question SLUG
 
   if (!serviceId || !id || !type || !question) {
     throw new AppError("Missing required fields", 400);
@@ -686,6 +689,7 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         text: question,
         type,
         options: options || [],
+        logic: logic || [],
         required: isRequired
       }
     });
@@ -705,6 +709,7 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         text: question,
         type,
         options: options || [],
+        logic: logic || [],
         required: isRequired
       },
       create: {
@@ -713,6 +718,7 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         text: question,
         type,
         options: options || [],
+        logic: logic || [],
         required: isRequired,
         order: nextOrder
       }
