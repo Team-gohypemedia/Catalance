@@ -2,6 +2,10 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { extractBioText } from "../utils/bio-utils.js";
+import {
+  normalizeSkills,
+  extractSkillsFromProfileDetails
+} from "../utils/skill-utils.js";
 
 const parseExtras = (value) => {
   try {
@@ -24,6 +28,147 @@ const tryParseJSON = (str) => {
     return null;
   }
   return null;
+};
+
+const normalizeProjectLink = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+};
+
+const buildLocationFromIdentity = (identity = {}) => {
+  if (!identity || typeof identity !== "object") return "";
+
+  const city = String(identity.city || "").trim();
+  const country = String(identity.country || "").trim();
+  return [city, country].filter(Boolean).join(", ");
+};
+
+const buildJobTitleFromIdentity = (identity = {}) => {
+  if (!identity || typeof identity !== "object") return "";
+  return String(identity.professionalTitle || "").trim();
+};
+
+const extractAvatarUrl = (value) => {
+  if (!value) return "";
+
+  if (typeof value === "string") {
+    const url = value.trim();
+    if (!url || url.startsWith("blob:")) return "";
+    return url;
+  }
+
+  if (typeof value === "object") {
+    return extractAvatarUrl(
+      value.uploadedUrl || value.url || value.src || value.value || ""
+    );
+  }
+
+  return "";
+};
+
+const extractPortfolioProjectsFromProfileDetails = (profileDetails = {}) => {
+  const serviceDetails =
+    profileDetails && typeof profileDetails === "object"
+      ? profileDetails.serviceDetails
+      : null;
+
+  if (!serviceDetails || typeof serviceDetails !== "object") {
+    return [];
+  }
+
+  const projectMap = new Map();
+
+  Object.values(serviceDetails).forEach((detail) => {
+    const projects = Array.isArray(detail?.projects) ? detail.projects : [];
+    projects.forEach((project, index) => {
+      const title = String(project?.title || "").trim();
+      const link = normalizeProjectLink(project?.link || project?.url || "");
+      const description = String(project?.description || "").trim();
+
+      if (!title && !link && !description) return;
+
+      const key = link ? link.toLowerCase() : `${title.toLowerCase()}:${index}`;
+      if (projectMap.has(key)) return;
+
+      projectMap.set(key, {
+        title: title || "Project",
+        link,
+        image: null,
+        description
+      });
+    });
+  });
+
+  return Array.from(projectMap.values()).slice(0, 24);
+};
+
+const normalizeLabel = (value = "") =>
+  String(value || "")
+    .replace(/[_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const toTitleCaseLabel = (value = "") =>
+  normalizeLabel(value)
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const normalizeWorkExperienceEntries = (entries = []) =>
+  (Array.isArray(entries) ? entries : [])
+    .map((entry) => {
+      if (typeof entry === "string") {
+        const title = entry.trim();
+        return title ? { title, period: "", description: "" } : null;
+      }
+
+      if (!entry || typeof entry !== "object") return null;
+      const title = String(entry.title || "").trim();
+      const period = String(entry.period || "").trim();
+      const description = String(entry.description || "").trim();
+      if (!title && !period && !description) return null;
+      return { title, period, description };
+    })
+    .filter(Boolean);
+
+const extractWorkExperienceFromProfileDetails = (profileDetails = {}) => {
+  const explicit = normalizeWorkExperienceEntries(profileDetails?.workExperience);
+  if (explicit.length) return explicit;
+
+  const serviceDetails =
+    profileDetails && typeof profileDetails === "object"
+      ? profileDetails.serviceDetails
+      : null;
+  if (!serviceDetails || typeof serviceDetails !== "object") return [];
+
+  return Object.entries(serviceDetails)
+    .map(([serviceKey, detail]) => {
+      if (!detail || typeof detail !== "object") return null;
+
+      const experience = normalizeLabel(detail.experienceYears);
+      const level = normalizeLabel(detail.workingLevel);
+      const complexity = normalizeLabel(detail.projectComplexity);
+      const projectCount = Array.isArray(detail.projects) ? detail.projects.length : 0;
+
+      if (!experience && !level && !complexity && !projectCount) return null;
+
+      const meta = [];
+      if (level) meta.push(`Level: ${level}`);
+      if (complexity) meta.push(`Complexity: ${complexity}`);
+      if (projectCount) {
+        meta.push(`${projectCount} onboarding project${projectCount > 1 ? "s" : ""}`);
+      }
+
+      return {
+        title: `${toTitleCaseLabel(serviceKey) || "Service"} - Onboarding`,
+        period: experience || "Experience shared in onboarding",
+        description: meta.join(" | ")
+      };
+    })
+    .filter(Boolean);
 };
 
 // Migration: FORCE WIPE corrupted bio data
@@ -86,11 +231,74 @@ export const getProfile = asyncHandler(async (req, res) => {
   // We strictly treat bio as a string now. No more JSON parsing support.
   let bioText = user.bio || "";
   let expYears = user.experienceYears || 0;
-  let jobTitle = user.jobTitle || "";
-  let userLocation = user.location || "";
-  let userPhone = user.phone || "";
-  let userServices = user.services || [];
-  let userWorkExperience = user.workExperience || [];
+  const profileDetails =
+    user.profileDetails && typeof user.profileDetails === "object"
+      ? user.profileDetails
+      : {};
+  const identityJobTitle = buildJobTitleFromIdentity(profileDetails?.identity);
+  let jobTitle = identityJobTitle || user.jobTitle || user.headline || "";
+  const identityAvatar = extractAvatarUrl(profileDetails?.identity?.profilePhoto);
+  const identityLocation = buildLocationFromIdentity(profileDetails?.identity);
+
+  // Fix Location " 0" issue and fallback
+  let userLocation = identityLocation || user.location || "";
+  if (userLocation && userLocation.endsWith(" 0")) {
+    userLocation = userLocation.slice(0, -2);
+  }
+
+  let userPhone = user.phone || user.phoneNumber || "";
+  // Ensure userServices is an array
+  let userServices = Array.isArray(user.services) ? user.services : [];
+
+  // Ensure workExperience is an array of objects
+  let userWorkExperience = [];
+  try {
+    if (Array.isArray(user.workExperience)) {
+      userWorkExperience = user.workExperience;
+    } else if (typeof user.workExperience === 'string') {
+      // Try parsing if it's a JSON string
+      const parsed = JSON.parse(user.workExperience);
+      if (Array.isArray(parsed)) userWorkExperience = parsed;
+    }
+  } catch (e) {
+    userWorkExperience = [];
+  }
+  const profileWorkExperience = extractWorkExperienceFromProfileDetails(
+    profileDetails
+  );
+  if (!userWorkExperience.length && profileWorkExperience.length) {
+    userWorkExperience = profileWorkExperience;
+  }
+  const profileProjects = extractPortfolioProjectsFromProfileDetails(profileDetails);
+  const nativePortfolioProjects = Array.isArray(user.portfolioProjects)
+    ? user.portfolioProjects
+    : [];
+  const mergedPortfolioProjects = nativePortfolioProjects.length
+    ? nativePortfolioProjects
+    : profileProjects;
+  const profileSkills = Array.isArray(profileDetails?.skills)
+    ? profileDetails.skills
+    : [];
+  const nativeSkills = Array.isArray(user.skills) ? user.skills : [];
+  const strictProfileSkills = extractSkillsFromProfileDetails(profileDetails, {
+    strictTech: true,
+    max: 120
+  });
+  const strictNativeSkills = normalizeSkills(nativeSkills, {
+    strictTech: true,
+    max: 120
+  });
+  const mergedSkills = normalizeSkills(
+    [...strictNativeSkills, ...strictProfileSkills],
+    {
+      strictTech: true,
+      max: 120
+    }
+  );
+  const fallbackSkills = normalizeSkills([...nativeSkills, ...profileSkills], {
+    strictTech: false,
+    max: 120
+  });
 
   console.log("[getProfile] Bio (plain text):", bioText);
 
@@ -107,10 +315,10 @@ export const getProfile = asyncHandler(async (req, res) => {
         headline: jobTitle,
         bio: bioText,
         experienceYears: expYears,
-        avatar: user.avatar ?? "",
+        avatar: user.avatar || identityAvatar || "",
         available: user.status === "ACTIVE"
       },
-      skills: user.skills ?? [],
+      skills: mergedSkills.length ? mergedSkills : fallbackSkills,
       workExperience: userWorkExperience,
       services: userServices,
       portfolio: {
@@ -119,7 +327,8 @@ export const getProfile = asyncHandler(async (req, res) => {
         githubUrl: user.github ?? "",
         resume: user.resume ?? "",
       },
-      portfolioProjects: user.portfolioProjects ?? []
+      portfolioProjects: mergedPortfolioProjects,
+      profileDetails
     }
   });
 });
@@ -178,7 +387,10 @@ export const saveProfile = asyncHandler(async (req, res) => {
         })
         .filter(Boolean);
     }
-    updateData.skills = cleanSkills;
+    updateData.skills = normalizeSkills(cleanSkills, {
+      strictTech: true,
+      max: 120
+    });
   }
 
   if (hasOwn(payload, "services")) {

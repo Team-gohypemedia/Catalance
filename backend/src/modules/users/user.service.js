@@ -4,6 +4,10 @@ import crypto from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/app-error.js";
 import { extractBioText } from "../../utils/bio-utils.js";
+import {
+  normalizeSkills,
+  extractSkillsFromProfileDetails
+} from "../../utils/skill-utils.js";
 import { env } from "../../config/env.js";
 import { ensureResendClient } from "../../lib/resend.js";
 import { hashPassword, verifyPassword, verifyLegacyPassword } from "./password.utils.js";
@@ -17,6 +21,156 @@ const OTP_EMAIL_RETRY_ATTEMPTS = 2;
 
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toUpperCase() : null;
+
+const parseBooleanFilter = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return undefined;
+
+  const normalized = value.trim().toLowerCase();
+  if (["true", "1", "yes"].includes(normalized)) return true;
+  if (["false", "0", "no"].includes(normalized)) return false;
+
+  return undefined;
+};
+
+const normalizeProjectLink = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+};
+
+const normalizePortfolioProjects = (projects) => {
+  if (!Array.isArray(projects)) return [];
+
+  const projectMap = new Map();
+
+  projects.forEach((entry, index) => {
+    const project =
+      entry && typeof entry === "object" ? entry : { title: String(entry || "") };
+    const title = String(project.title || "").trim();
+    const link = normalizeProjectLink(project.link || project.url || "");
+    const image = String(project.image || "").trim() || null;
+
+    if (!title && !link) return;
+
+    const dedupKey = link
+      ? link.toLowerCase()
+      : `${title.toLowerCase()}:${index}`;
+    if (projectMap.has(dedupKey)) return;
+
+    projectMap.set(dedupKey, {
+      ...project,
+      title: title || "Project",
+      link,
+      image
+    });
+  });
+
+  return Array.from(projectMap.values()).slice(0, 24);
+};
+
+const buildLocationFromIdentity = (identity = {}) => {
+  if (!identity || typeof identity !== "object") return "";
+
+  const city = String(identity.city || "").trim();
+  const country = String(identity.country || "").trim();
+  return [city, country].filter(Boolean).join(", ");
+};
+
+const buildJobTitleFromIdentity = (identity = {}) => {
+  if (!identity || typeof identity !== "object") return "";
+  return String(identity.professionalTitle || "").trim();
+};
+
+const extractAvatarUrl = (value) => {
+  if (!value) return null;
+
+  if (typeof value === "string") {
+    const url = value.trim();
+    if (!url || url.startsWith("blob:")) return null;
+    return url;
+  }
+
+  if (typeof value === "object") {
+    return extractAvatarUrl(
+      value.uploadedUrl || value.url || value.src || value.value || null
+    );
+  }
+
+  return null;
+};
+
+const normalizeLabel = (value = "") =>
+  String(value || "")
+    .replace(/[_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const toTitleCaseLabel = (value = "") =>
+  normalizeLabel(value)
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const normalizeWorkExperienceEntries = (value) => {
+  const entries = Array.isArray(value) ? value : [];
+
+  return entries
+    .map((entry) => {
+      if (typeof entry === "string") {
+        const title = entry.trim();
+        return title ? { title, period: "", description: "" } : null;
+      }
+
+      if (!entry || typeof entry !== "object") return null;
+      const title = String(entry.title || "").trim();
+      const period = String(entry.period || "").trim();
+      const description = String(entry.description || "").trim();
+
+      if (!title && !period && !description) return null;
+      return { title, period, description };
+    })
+    .filter(Boolean);
+};
+
+const buildWorkExperienceFromProfileDetails = (profileDetails = {}) => {
+  const explicit = normalizeWorkExperienceEntries(profileDetails?.workExperience);
+  if (explicit.length) return explicit;
+
+  const serviceDetails =
+    profileDetails && typeof profileDetails === "object"
+      ? profileDetails.serviceDetails
+      : null;
+  if (!serviceDetails || typeof serviceDetails !== "object") return [];
+
+  return Object.entries(serviceDetails)
+    .map(([serviceKey, detail]) => {
+      if (!detail || typeof detail !== "object") return null;
+
+      const experience = normalizeLabel(detail.experienceYears);
+      const level = normalizeLabel(detail.workingLevel);
+      const complexity = normalizeLabel(detail.projectComplexity);
+      const projectCount = Array.isArray(detail.projects) ? detail.projects.length : 0;
+
+      if (!experience && !level && !complexity && !projectCount) return null;
+
+      const meta = [];
+      if (level) meta.push(`Level: ${level}`);
+      if (complexity) meta.push(`Complexity: ${complexity}`);
+      if (projectCount) {
+        meta.push(`${projectCount} onboarding project${projectCount > 1 ? "s" : ""}`);
+      }
+
+      return {
+        title: `${toTitleCaseLabel(serviceKey) || "Service"} - Onboarding`,
+        period: experience || "Experience shared in onboarding",
+        description: meta.join(" | ")
+      };
+    })
+    .filter(Boolean);
+};
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -136,11 +290,18 @@ const ensureUserRoles = async (user, requestedRole) => {
 };
 
 export const listUsers = async (filters = {}) => {
+  const onboardingComplete = parseBooleanFilter(filters.onboardingComplete);
+  const where = {
+    role: filters.role,
+    status: filters.status || "ACTIVE"
+  };
+
+  if (onboardingComplete !== undefined) {
+    where.onboardingComplete = onboardingComplete;
+  }
+
   const users = await prisma.user.findMany({
-    where: {
-      role: filters.role,
-      status: filters.status || 'ACTIVE'
-    },
+    where,
     orderBy: {
       createdAt: "desc"
     }
@@ -150,7 +311,20 @@ export const listUsers = async (filters = {}) => {
 };
 
 export const updateUserProfile = async (userId, updates) => {
-  const allowedUpdates = ["fullName", "phoneNumber", "bio", "portfolio", "linkedin", "github", "profileDetails", "onboardingComplete"];
+  const allowedUpdates = [
+    "fullName",
+    "phoneNumber",
+    "bio",
+    "portfolio",
+    "linkedin",
+    "github",
+    "avatar",
+    "profileDetails",
+    "onboardingComplete",
+    "skills",
+    "portfolioProjects",
+    "location"
+  ];
   const cleanUpdates = {};
 
   Object.keys(updates).forEach(key => {
@@ -158,11 +332,79 @@ export const updateUserProfile = async (userId, updates) => {
       // Sanitize bio to plain text even if JSON/object slips in.
       if (key === "bio") {
         cleanUpdates[key] = extractBioText(updates[key]);
+      } else if (key === "skills") {
+        cleanUpdates[key] = normalizeSkills(updates[key], {
+          strictTech: true,
+          max: 120
+        });
+      } else if (key === "avatar") {
+        cleanUpdates[key] = extractAvatarUrl(updates[key]);
+      } else if (key === "portfolioProjects") {
+        cleanUpdates[key] = normalizePortfolioProjects(updates[key]);
+      } else if (key === "location") {
+        cleanUpdates[key] = String(updates[key] || "").trim() || null;
+      } else if (key === "profileDetails") {
+        cleanUpdates[key] =
+          updates[key] && typeof updates[key] === "object" ? updates[key] : {};
       } else {
         cleanUpdates[key] = updates[key];
       }
     }
   });
+
+  if (cleanUpdates.profileDetails) {
+    const profileDerivedSkills = extractSkillsFromProfileDetails(
+      cleanUpdates.profileDetails,
+      { strictTech: true, max: 120 }
+    );
+
+    if (profileDerivedSkills.length) {
+      const mergedSkillCandidates = [
+        ...(Array.isArray(cleanUpdates.skills) ? cleanUpdates.skills : []),
+        ...profileDerivedSkills
+      ];
+      cleanUpdates.skills = normalizeSkills(mergedSkillCandidates, {
+        strictTech: true,
+        max: 120
+      });
+    }
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(cleanUpdates, "avatar") &&
+    cleanUpdates.profileDetails?.identity
+  ) {
+    const derivedAvatar = extractAvatarUrl(
+      cleanUpdates.profileDetails.identity.profilePhoto
+    );
+    if (derivedAvatar) {
+      cleanUpdates.avatar = derivedAvatar;
+    }
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(cleanUpdates, "location") &&
+    cleanUpdates.profileDetails?.identity
+  ) {
+    const derivedLocation = buildLocationFromIdentity(
+      cleanUpdates.profileDetails.identity
+    );
+    if (derivedLocation) {
+      cleanUpdates.location = derivedLocation;
+    }
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(cleanUpdates, "jobTitle") &&
+    cleanUpdates.profileDetails?.identity
+  ) {
+    const derivedJobTitle = buildJobTitleFromIdentity(
+      cleanUpdates.profileDetails.identity
+    );
+    if (derivedJobTitle) {
+      cleanUpdates.jobTitle = derivedJobTitle;
+    }
+  }
 
   const user = await prisma.user.update({
     where: { id: userId },
@@ -453,6 +695,31 @@ const createUserRecord = async (payload) => {
   try {
     const normalizedEmail = String(payload.email || "").toLowerCase().trim();
     const normalizedRole = (payload.role || "FREELANCER").toUpperCase();
+    const explicitLocation = String(payload.location || "").trim();
+    const identityLocation = buildLocationFromIdentity(
+      payload.freelancerProfile?.identity
+    );
+    const identityJobTitle = buildJobTitleFromIdentity(
+      payload.freelancerProfile?.identity
+    );
+    const explicitAvatar = extractAvatarUrl(payload.avatar);
+    const identityAvatar = extractAvatarUrl(
+      payload.freelancerProfile?.identity?.profilePhoto
+    );
+    const resolvedAvatar = explicitAvatar || identityAvatar || null;
+    const resolvedLocation = explicitLocation || identityLocation || null;
+    const explicitSkills = normalizeSkills(payload.skills, {
+      strictTech: true,
+      max: 120
+    });
+    const profileDerivedSkills = extractSkillsFromProfileDetails(
+      payload.freelancerProfile,
+      { strictTech: true, max: 120 }
+    );
+    const mergedSkills = normalizeSkills(
+      [...explicitSkills, ...profileDerivedSkills],
+      { strictTech: true, max: 120 }
+    );
     const roles = Array.isArray(payload.roles) && payload.roles.length
       ? Array.from(new Set(payload.roles.map((role) => String(role).toUpperCase())))
       : [normalizedRole];
@@ -464,16 +731,20 @@ const createUserRecord = async (payload) => {
         role: normalizedRole,
         roles,
         bio: extractBioText(payload.bio),
-        skills: payload.skills ?? [],
+        skills: mergedSkills,
         hourlyRate: payload.hourlyRate ?? null,
         otpCode: payload.otpCode,
         otpExpires: payload.otpExpires,
         isVerified: false,
         status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
+        onboardingComplete: payload.onboardingComplete === true,
         portfolio: payload.portfolio,
         linkedin: payload.linkedin,
         github: payload.github,
-        portfolioProjects: payload.portfolioProjects ?? [],
+        avatar: resolvedAvatar,
+        location: resolvedLocation,
+        jobTitle: identityJobTitle || payload.jobTitle || null,
+        portfolioProjects: normalizePortfolioProjects(payload.portfolioProjects),
         profileDetails: payload.freelancerProfile ?? {}
       }
     });
@@ -527,6 +798,11 @@ export const sanitizeUser = (user) => {
 
   // eslint-disable-next-line no-unused-vars
   const { passwordHash, ...safeUser } = user;
+  const identityAvatar = extractAvatarUrl(
+    safeUser?.profileDetails?.identity?.profilePhoto
+  );
+  const identityLocation = buildLocationFromIdentity(safeUser?.profileDetails?.identity);
+  const identityJobTitle = buildJobTitleFromIdentity(safeUser?.profileDetails?.identity);
   const normalizedRole = normalizeRoleValue(safeUser.role) || "FREELANCER";
   const roles = Array.isArray(safeUser.roles)
     ? safeUser.roles.map((role) => normalizeRoleValue(role)).filter(Boolean)
@@ -534,9 +810,43 @@ export const sanitizeUser = (user) => {
   const mergedRoles = roles.includes(normalizedRole)
     ? roles
     : [...roles, normalizedRole];
+  const normalizedSkills = normalizeSkills(safeUser.skills, {
+    strictTech: true,
+    max: 120
+  });
+  const profileDerivedSkills = extractSkillsFromProfileDetails(
+    safeUser?.profileDetails,
+    { strictTech: true, max: 120 }
+  );
+  const mergedSkills = normalizeSkills(
+    [...normalizedSkills, ...profileDerivedSkills],
+    { strictTech: true, max: 120 }
+  );
+  const profileSkillFallback = Array.isArray(safeUser?.profileDetails?.skills)
+    ? safeUser.profileDetails.skills
+    : [];
+  const fallbackSkills = normalizeSkills(
+    [...normalizedSkills, ...profileSkillFallback],
+    { strictTech: false, max: 120 }
+  );
+  const normalizedWorkExperience = normalizeWorkExperienceEntries(
+    safeUser.workExperience
+  );
+  const profileDerivedWorkExperience = buildWorkExperienceFromProfileDetails(
+    safeUser?.profileDetails
+  );
+  const mergedWorkExperience = normalizedWorkExperience.length
+    ? normalizedWorkExperience
+    : profileDerivedWorkExperience;
 
   return {
     ...safeUser,
+    skills: mergedSkills.length ? mergedSkills : fallbackSkills,
+    avatar: safeUser.avatar || identityAvatar || null,
+    location: identityLocation || safeUser.location || null,
+    jobTitle: identityJobTitle || safeUser.jobTitle || null,
+    headline: identityJobTitle || safeUser.headline || safeUser.jobTitle || null,
+    workExperience: mergedWorkExperience,
     roles: mergedRoles.length ? mergedRoles : [normalizedRole]
   };
 };

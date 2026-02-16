@@ -9,7 +9,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 import { cn } from "@/shared/lib/utils";
-import { signup, verifyOtp, updateProfile, listFreelancers, fetchStatesByCountry } from "@/shared/lib/api-client";
+import {
+    API_BASE_URL,
+    signup,
+    verifyOtp,
+    updateProfile,
+    listFreelancers,
+    fetchStatesByCountry,
+} from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import { GradientBackground } from "@/components/paper-design-shader-background";
 
@@ -51,6 +58,10 @@ import {
     PortfolioStep,
     RoleStep,
     WelcomeStep,
+    StatsStep,
+    PricingStrategyStep,
+    PortfolioImportanceStep,
+    ServiceTransitionStep,
 } from "./ProfileSteps";
 
 import {
@@ -80,13 +91,227 @@ import {
     OtpVerificationStep,
 } from "./PolicySteps";
 
+const ONBOARDING_SKILL_BLOCKLIST = new Set([
+    "yes",
+    "no",
+    "open",
+    "other",
+    "not set",
+    "individual",
+    "agency",
+    "part_time",
+    "part time",
+    "beginner",
+    "intermediate",
+    "advanced",
+    "small",
+    "medium",
+    "large",
+]);
+
+const TECH_GROUP_KEY_PATTERN =
+    /(tech|tool|stack|platform|framework|library|integration|crm|tracking|database)/i;
+
+const SKILL_ACRONYMS = new Set([
+    "ai",
+    "api",
+    "cms",
+    "crm",
+    "css",
+    "db",
+    "erp",
+    "gsc",
+    "ml",
+    "orm",
+    "seo",
+    "sql",
+    "ui",
+    "ux",
+]);
+
+const formatSkillLabel = (value) => {
+    const raw = String(value ?? "")
+        .replace(/[_/]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (!raw) return "";
+
+    return raw
+        .split(" ")
+        .map((token) => {
+            const normalized = token.toLowerCase();
+            if (SKILL_ACRONYMS.has(normalized)) {
+                return normalized.toUpperCase();
+            }
+            if (/^[a-z0-9]+$/i.test(token)) {
+                return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+            }
+            return token;
+        })
+        .join(" ");
+};
+
+const getSkillDedupKey = (value) =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
+
+const addSkillValue = (targetMap, value) => {
+    const label = formatSkillLabel(value);
+    if (!label) return;
+
+    const normalized = label.toLowerCase();
+    if (ONBOARDING_SKILL_BLOCKLIST.has(normalized)) return;
+    if (ONBOARDING_SKILL_BLOCKLIST.has(normalized.replace(/\s+/g, "_"))) return;
+
+    const key = getSkillDedupKey(label);
+    if (!key) return;
+    if (!targetMap.has(key)) {
+        targetMap.set(key, label);
+    }
+};
+
+const addSkillValues = (targetMap, values) => {
+    if (!Array.isArray(values)) return;
+    values.forEach((value) => addSkillValue(targetMap, value));
+};
+
+const collectTechGroupValues = (groups = {}) => {
+    return Object.entries(groups || {}).flatMap(([groupKey, entry]) => {
+        if (!TECH_GROUP_KEY_PATTERN.test(String(groupKey || ""))) {
+            return [];
+        }
+
+        if (Array.isArray(entry)) {
+            return entry;
+        }
+
+        if (typeof entry === "string") {
+            return parseCustomTools(entry);
+        }
+
+        return [];
+    });
+};
+
+const normalizeProjectLink = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+};
+
+const buildLocationLabel = ({ city, country }) =>
+    [String(city || "").trim(), String(country || "").trim()]
+        .filter(Boolean)
+        .join(", ");
+
+const extractProfilePhotoFile = (profilePhoto) => {
+    if (!profilePhoto || typeof profilePhoto !== "object") return null;
+    return typeof File !== "undefined" && profilePhoto.file instanceof File
+        ? profilePhoto.file
+        : null;
+};
+
+const extractProfilePhotoUrl = (profilePhoto) => {
+    if (!profilePhoto) return "";
+
+    if (typeof profilePhoto === "string") {
+        return profilePhoto.trim();
+    }
+
+    if (typeof profilePhoto === "object") {
+        const raw =
+            profilePhoto.uploadedUrl ||
+            profilePhoto.url ||
+            profilePhoto.src ||
+            profilePhoto.value ||
+            "";
+        return String(raw || "").trim();
+    }
+
+    return "";
+};
+
+const normalizeAvatarUrl = (value) => {
+    const url = String(value || "").trim();
+    if (!url || url.startsWith("blob:")) return "";
+    return url;
+};
+
+const buildPortfolioProjectsFromServiceDetails = (serviceDetails = {}) => {
+    const projectMap = new Map();
+
+    Object.entries(serviceDetails || {}).forEach(([serviceKey, detail]) => {
+        const projects = Array.isArray(detail?.projects) ? detail.projects : [];
+        const serviceLabel = getServiceLabel(serviceKey);
+
+        projects.forEach((project, index) => {
+            const title = String(project?.title || "").trim();
+            const description = String(project?.description || "").trim();
+            const link = normalizeProjectLink(project?.link || project?.url || "");
+
+            if (!title && !description && !link) return;
+
+            const dedupKey = link
+                ? link.toLowerCase()
+                : `${serviceKey}:${title.toLowerCase()}:${index}`;
+
+            if (projectMap.has(dedupKey)) return;
+
+            projectMap.set(dedupKey, {
+                title: title || `${serviceLabel} Project`,
+                link,
+                image: null,
+                description,
+                service: serviceLabel,
+                tags: Array.isArray(project?.tags) ? project.tags : [],
+                techStack: Array.isArray(project?.techStack) ? project.techStack : [],
+                timeline: project?.timeline || "",
+                budget: project?.budget || "",
+            });
+        });
+    });
+
+    return Array.from(projectMap.values()).slice(0, 24);
+};
+
+const buildOnboardingSkills = ({
+    identity,
+    serviceDetails,
+}) => {
+    const skills = new Map();
+
+    addSkillValue(skills, identity?.professionalTitle);
+
+    Object.values(serviceDetails || {}).forEach((detail) => {
+        if (!detail || typeof detail !== "object") return;
+
+        addSkillValues(skills, collectTechGroupValues(detail?.groups));
+        addSkillValues(skills, collectTechGroupValues(detail?.groupOther));
+
+        const caseStudy = detail?.caseStudy || {};
+        addSkillValues(skills, caseStudy.techStack);
+        addSkillValues(skills, parseCustomTools(caseStudy.techStackOther || ""));
+
+        const projects = Array.isArray(detail?.projects) ? detail.projects : [];
+        projects.forEach((project) => {
+            if (!project || typeof project !== "object") return;
+            addSkillValues(skills, project.techStack);
+        });
+    });
+
+    return Array.from(skills.values()).slice(0, 80);
+};
+
 // ======================================================================
 // MAIN ORCHESTRATOR
 // ======================================================================
 
 const FreelancerMultiStepForm = () => {
     const navigate = useNavigate();
-    const { login: setAuthSession, user, refreshUser } = useAuth();
+    const { login: setAuthSession, user, refreshUser, authFetch } = useAuth();
 
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [stepError, setStepError] = useState("");
@@ -135,6 +360,46 @@ const FreelancerMultiStepForm = () => {
     const queuedStepKeyRef = useRef("");
     const [pendingAdvance, setPendingAdvance] = useState(false);
 
+    const uploadOnboardingAvatar = useCallback(
+        async (file, accessToken = null) => {
+            if (typeof File === "undefined" || !(file instanceof File)) return "";
+
+            const uploadData = new FormData();
+            uploadData.append("file", file);
+
+            let response;
+            if (accessToken) {
+                response = await fetch(`${API_BASE_URL}/upload`, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: uploadData,
+                });
+            } else {
+                response = await authFetch("/upload", {
+                    method: "POST",
+                    body: uploadData,
+                });
+            }
+
+            if (!response.ok) {
+                let message = "Failed to upload profile image.";
+                try {
+                    const payload = await response.json();
+                    message = payload?.error?.message || payload?.message || message;
+                } catch {
+                    // keep default message
+                }
+                throw new Error(message);
+            }
+
+            const payload = await response.json().catch(() => ({}));
+            return String(payload?.data?.url || "").trim();
+        },
+        [authFetch],
+    );
+
     // ── Steps sequence ──────────────────────────────────────────────────
     const steps = useMemo(() => {
         const sequence = [];
@@ -143,11 +408,16 @@ const FreelancerMultiStepForm = () => {
 
         sequence.push({ key: "welcome", type: "welcome" });
         sequence.push({ key: "role", type: "role" });
+        sequence.push({ key: "stats", type: "stats" });
         sequence.push({ key: "profile-basics", type: "profileBasics" });
         sequence.push({ key: "services", type: "services" });
         sequence.push({ key: "niche-preference", type: "nichePreference" });
 
-        formData.selectedServices.forEach((serviceKey) => {
+        formData.selectedServices.forEach((serviceKey, index) => {
+            if (index > 0) {
+                sequence.push({ key: `svc-transition-${index}`, type: "serviceTransition" });
+            }
+
             sequence.push({ key: `svc-${serviceKey}-experience`, type: "serviceExperience", serviceKey });
 
             getServiceGroups(serviceKey).forEach((group) => {
@@ -159,8 +429,11 @@ const FreelancerMultiStepForm = () => {
                 });
             });
 
+            sequence.push({ key: `svc-${serviceKey}-pricing-strategy`, type: "pricingStrategy", serviceKey });
+
             sequence.push({ key: `svc-${serviceKey}-avg-price`, type: "serviceAveragePrice", serviceKey });
             sequence.push({ key: `svc-${serviceKey}-complexity`, type: "serviceComplexity", serviceKey });
+            sequence.push({ key: `svc-${serviceKey}-portfolio-importance`, type: "portfolioImportance", serviceKey });
 
             sequence.push({ key: `svc-${serviceKey}-projects`, type: "serviceProjects", serviceKey });
 
@@ -753,23 +1026,60 @@ const FreelancerMultiStepForm = () => {
         setStepError("");
 
         try {
+            const profilePhotoFile = extractProfilePhotoFile(formData.profilePhoto);
+            const profilePhotoPreviewUrl = extractProfilePhotoUrl(formData.profilePhoto);
+            const hasBlobOnlyProfilePhoto =
+                profilePhotoPreviewUrl.startsWith("blob:") && !profilePhotoFile;
+            if (hasBlobOnlyProfilePhoto) {
+                throw new Error("Please re-upload your profile photo before submitting.");
+            }
+            let resolvedAvatarUrl = normalizeAvatarUrl(profilePhotoPreviewUrl);
+
+            if (user && profilePhotoFile) {
+                const uploadedAvatarUrl = await uploadOnboardingAvatar(profilePhotoFile);
+                if (uploadedAvatarUrl) {
+                    resolvedAvatarUrl = uploadedAvatarUrl;
+                }
+            }
+
             const identity = {
                 professionalTitle: formData.professionalTitle,
                 username: formData.username,
                 country: formData.country,
                 city: formData.city,
-                profilePhoto: formData.profilePhoto,
+                profilePhoto: resolvedAvatarUrl || null,
                 languages: formData.languages,
                 otherLanguage: formData.otherLanguage,
                 linkedinUrl: formData.linkedinUrl,
                 portfolioUrl: formData.portfolioUrl,
             };
 
-            const freelancerProfile = {
+            const onboardingSkills = buildOnboardingSkills({
                 identity,
                 role: formData.role,
                 services: formData.selectedServices,
                 serviceDetails: formData.serviceDetails,
+                globalIndustryFocus: formData.globalIndustryFocus,
+                globalIndustryOther: formData.globalIndustryOther,
+                professionalBio: formData.professionalBio,
+            });
+            const onboardingPortfolioProjects = buildPortfolioProjectsFromServiceDetails(
+                formData.serviceDetails,
+            );
+            const onboardingLocation = buildLocationLabel({
+                city: formData.city,
+                country: formData.country,
+            });
+
+            const freelancerProfile = {
+                identity,
+                role: formData.role,
+                services: formData.selectedServices,
+                globalIndustryFocus: formData.globalIndustryFocus,
+                globalIndustryOther: formData.globalIndustryOther,
+                serviceDetails: formData.serviceDetails,
+                skills: onboardingSkills,
+                portfolioProjects: onboardingPortfolioProjects,
                 availability: {
                     hoursPerWeek: formData.hoursPerWeek,
                     workingSchedule: formData.workingSchedule,
@@ -787,13 +1097,22 @@ const FreelancerMultiStepForm = () => {
             };
 
             if (user) {
-                await updateProfile({
+                const updatePayload = {
                     profileDetails: freelancerProfile,
+                    skills: onboardingSkills,
+                    portfolioProjects: onboardingPortfolioProjects,
+                    location: onboardingLocation,
                     bio: formData.professionalBio,
                     linkedin: formData.linkedinUrl,
                     portfolio: formData.portfolioUrl,
                     onboardingComplete: true,
-                });
+                };
+
+                if (resolvedAvatarUrl) {
+                    updatePayload.avatar = resolvedAvatarUrl;
+                }
+
+                await updateProfile(updatePayload);
 
                 await refreshUser();
                 localStorage.removeItem("freelancer_onboarding_data");
@@ -816,9 +1135,14 @@ const FreelancerMultiStepForm = () => {
                 password: formData.password,
                 role: "FREELANCER",
                 freelancerProfile,
+                skills: onboardingSkills,
+                portfolioProjects: onboardingPortfolioProjects,
+                location: onboardingLocation,
+                onboardingComplete: true,
                 portfolio: formData.portfolioUrl,
                 linkedin: formData.linkedinUrl,
                 bio: formData.professionalBio,
+                avatar: resolvedAvatarUrl || undefined,
             });
 
             if (!authPayload?.accessToken) {
@@ -861,6 +1185,33 @@ const FreelancerMultiStepForm = () => {
             const authPayload = await verifyOtp({ email: normalizedEmail, otp });
 
             setAuthSession(authPayload?.user, authPayload?.accessToken);
+
+            const verifiedAccessToken = authPayload?.accessToken;
+            const profilePhotoFile = extractProfilePhotoFile(formData.profilePhoto);
+            if (verifiedAccessToken && profilePhotoFile) {
+                try {
+                    const uploadedAvatarUrl = await uploadOnboardingAvatar(
+                        profilePhotoFile,
+                        verifiedAccessToken,
+                    );
+                    if (uploadedAvatarUrl) {
+                        const saveAvatarResponse = await fetch(`${API_BASE_URL}/auth/profile`, {
+                            method: "PUT",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${verifiedAccessToken}`,
+                            },
+                            body: JSON.stringify({ avatar: uploadedAvatarUrl }),
+                        });
+                        if (!saveAvatarResponse.ok) {
+                            throw new Error("Profile image upload succeeded but profile update failed.");
+                        }
+                    }
+                } catch (uploadError) {
+                    console.error("Unable to persist onboarding profile image:", uploadError);
+                    toast.warning("Account verified, but profile image could not be saved.");
+                }
+            }
 
             localStorage.removeItem("freelancer_onboarding_data");
             localStorage.removeItem("freelancer_onboarding_step");
@@ -943,6 +1294,10 @@ const FreelancerMultiStepForm = () => {
         switch (currentStep.type) {
             case "welcome":
                 return <WelcomeStep {...sharedProps} />;
+            case "stats":
+                return <StatsStep {...sharedProps} />;
+            case "pricingStrategy":
+                return <PricingStrategyStep {...sharedProps} />;
             case "profileBasics":
                 return (
                     <ProfileBasicsStep
@@ -1044,6 +1399,10 @@ const FreelancerMultiStepForm = () => {
                 return <ServiceIndustryOnlyStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceComplexity":
                 return <ServiceComplexityStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
+            case "portfolioImportance":
+                return <PortfolioImportanceStep {...sharedProps} />;
+            case "serviceTransition":
+                return <ServiceTransitionStep {...sharedProps} />;
             case "deliveryPolicy":
                 return <DeliveryPolicyStep formData={formData} updateFormField={updateFormField} />;
             case "hours":

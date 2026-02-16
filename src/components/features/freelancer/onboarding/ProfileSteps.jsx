@@ -37,17 +37,51 @@ import {
 import { isValidUsername } from "./utils";
 
 // ============================================================================
+// STATS STEP
+// ============================================================================
+
+export const StatsStep = ({ renderContinueButton }) => {
+    return (
+        <div className="w-full max-w-8xl mx-auto animate-in fade-in zoom-in duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-24 items-center">
+                {/* Text Content */}
+                <div className="space-y-4 text-center md:text-left order-2 md:order-1">
+                    <h1 className="text-4xl md:text-6xl font-semibold text-white tracking-tighter leading-tight">
+                        <span className="text-primary">10,000+</span> freelancers are already earning on Catalance
+                    </h1>
+                    <p className="text-lg md:text-xl text-white/70 leading-relaxed font-light">
+                        Serious clients. Quality projects. Work that respects your craft.
+                    </p>
+                    <div className="pt-2 flex justify-center md:justify-start">
+                        {renderContinueButton(undefined, { show: true })}
+                    </div>
+                </div>
+
+                {/* Image Container */}
+                <div className="w-full aspect-square md:aspect-auto md:h-[500px] rounded-2xl relative group order-1 md:order-2">
+                    <img
+                        src="/assets/slides/slide1.png"
+                        alt="Freelancer Stats"
+                        className="w-full h-full object-contain scale-150 lg:scale-[1.75]"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
 // WELCOME STEP
 // ============================================================================
 
 export const WelcomeStep = ({ renderContinueButton, currentStep }) => (
     <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6 animate-in fade-in zoom-in duration-500">
         <div className="space-y-4">
-            <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">
-                Welcome to <span className="text-primary">Catalance</span>
+            <h1 className="text-4xl md:text-6xl font-medium text-white tracking-tight">
+                Time to <span className="text-primary">Show Off </span> a Little
             </h1>
-            <p className="text-xl text-white/60 max-w-lg mx-auto leading-relaxed">
-                Join the exclusive network of top-tier freelancers. Let's verify your expertise and set up your profile.
+            <p className="text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
+                Tell us what you're great at so we can match you with clients who'll actually appreciate it. No boring forms, we promise.
             </p>
         </div>
 
@@ -267,7 +301,11 @@ export const ProfileBasicsStep = ({
                         onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                                const nextPhoto = { name: file.name, url: URL.createObjectURL(file) };
+                                const nextPhoto = {
+                                    name: file.name,
+                                    url: URL.createObjectURL(file),
+                                    file,
+                                };
                                 updateFormField("profilePhoto", nextPhoto);
                             }
                         }}
@@ -791,7 +829,11 @@ export const ProfilePhotoStep = ({ formData, updateFormField, renderContinueButt
                     onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                            const nextPhoto = { name: file.name, url: URL.createObjectURL(file) };
+                            const nextPhoto = {
+                                name: file.name,
+                                url: URL.createObjectURL(file),
+                                file,
+                            };
                             updateFormField("profilePhoto", nextPhoto);
                         }
                     }}
@@ -1007,3 +1049,95 @@ export const RoleStep = ({ formData, updateFormField }) => (
         </div>
     </div>
 );
+
+// ============================================================================
+// PRICING STRATEGY STEP
+// ============================================================================
+
+export const PricingStrategyStep = ({ renderContinueButton }) => {
+    return (
+        <div className="w-full max-w-8xl mx-auto animate-in fade-in zoom-in duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-24 items-center">
+                {/* Text Content */}
+                <div className="space-y-4 text-center md:text-left order-2 md:order-1">
+                    <h1 className="text-4xl md:text-6xl font-semibold text-white tracking-tighter leading-tight">
+                        Smart pricing means <span className="text-primary">More opportunities</span>
+                    </h1>
+                    <p className="text-lg md:text-xl text-white/70 leading-relaxed font-light">
+                        Freelancers who start with lower pricing get hired 3x faster
+                    </p>
+                    <div className="pt-2 flex justify-center md:justify-start">
+                        {renderContinueButton(undefined, { show: true })}
+                    </div>
+                </div>
+
+                {/* Image Container */}
+                <div className="w-full aspect-square md:aspect-auto md:h-[500px] rounded-2xl relative group order-1 md:order-2">
+                    <img
+                        src="/assets/slides/slide2.png"
+                        alt="Smart Pricing"
+                        className="w-full h-full object-contain scale-150 lg:scale-[1.75]"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// PORTFOLIO IMPORTANCE STEP
+// ============================================================================
+
+export const PortfolioImportanceStep = ({ renderContinueButton }) => {
+    return (
+        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
+            <div className="text-center space-y-4">
+                <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+                    Profiles with <span className="text-primary">portfolios</span> get hired first
+                </h1>
+                <p className="text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
+                    Even one solid case study increases your chances of landing projects by 80%. Your work speaks louder than words.
+                </p>
+            </div>
+
+            {/* Empty Image Container */}
+            <div className="w-full max-w-4xl mx-auto aspect-video bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center relative overflow-hidden group">
+                <div className="absolute inset-0 bg-linear-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <p className="text-white/20 font-medium">Image Placeholder</p>
+            </div>
+
+            <div className="pt-4 w-full flex justify-center">
+                {renderContinueButton(undefined, { show: true })}
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// SERVICE TRANSITION STEP
+// ============================================================================
+
+export const ServiceTransitionStep = ({ renderContinueButton }) => {
+    return (
+        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
+            <div className="text-center space-y-4">
+                <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+                    You're almost <span className="text-primary">there</span>
+                </h1>
+                <p className="text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
+                    The average freelancer lands their first project in just 2 weeks. Finish your profile and join them.
+                </p>
+            </div>
+
+            {/* Empty Image Container */}
+            <div className="w-full max-w-4xl mx-auto aspect-video bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center relative overflow-hidden group">
+                <div className="absolute inset-0 bg-linear-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <p className="text-white/20 font-medium">Image Placeholder</p>
+            </div>
+
+            <div className="pt-4 w-full flex justify-center">
+                {renderContinueButton(undefined, { show: true })}
+            </div>
+        </div>
+    );
+};
