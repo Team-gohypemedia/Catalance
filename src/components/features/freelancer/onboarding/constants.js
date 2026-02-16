@@ -143,12 +143,6 @@ export const ROLE_OPTIONS = [
     { value: "part_time", label: "Part-Time Freelancer", icon: Clock, description: "Freelancing alongside other work" },
 ];
 
-export const SERVICE_LIMITS = {
-    individual: 3,
-    agency: 5,
-    part_time: 2,
-};
-
 export const SERVICE_OPTIONS = [
     { value: "branding", label: "Branding", icon: Sparkles },
     { value: "website_ui_ux", label: "Web Development", icon: Globe },

@@ -1,6 +1,13 @@
 import { Router } from "express";
 import multer from "multer";
-import { uploadImage, uploadChatFile, deleteChatAttachment } from "../controllers/upload.controller.js";
+import {
+  uploadImage,
+  uploadProjectImage,
+  createProjectPreview,
+  uploadChatFile,
+  deleteChatAttachment,
+  uploadResume
+} from "../controllers/upload.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 
 const router = Router();
@@ -24,6 +31,20 @@ const avatarUpload = multer({
       cb(new Error("Only images are allowed"), false);
     }
   },
+});
+
+const projectImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 8 * 1024 * 1024 // 8MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only images are allowed"), false);
+    }
+  }
 });
 
 // Chat file upload - any file type, 10MB limit
@@ -59,6 +80,17 @@ const chatUpload = multer({
 // Avatar upload endpoint
 router.post("/", requireAuth, avatarUpload.single("file"), uploadImage);
 
+// Project image upload endpoint
+router.post(
+  "/project-image",
+  requireAuth,
+  projectImageUpload.single("file"),
+  uploadProjectImage
+);
+
+// Auto-fetch project metadata and persist preview image to R2
+router.post("/project-preview", requireAuth, createProjectPreview);
+
 // Chat file upload endpoint
 router.post("/chat", requireAuth, chatUpload.single("file"), uploadChatFile);
 
@@ -84,7 +116,6 @@ const resumeUpload = multer({
   }
 });
 
-import { uploadResume } from "../controllers/upload.controller.js";
 router.post("/resume", requireAuth, resumeUpload.single("file"), uploadResume);
 
 export const uploadRouter = router;

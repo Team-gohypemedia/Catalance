@@ -1,6 +1,5 @@
 import {
     SERVICE_OPTIONS,
-    SERVICE_LIMITS,
     SERVICE_GROUPS,
     DEFAULT_TECH_STACK_OPTIONS,
     PRICE_RANGE_MIN,
@@ -48,8 +47,6 @@ export const getServiceLabel = (serviceKey) => {
     const match = SERVICE_OPTIONS.find((option) => option.value === serviceKey);
     return match ? match.label : serviceKey;
 };
-
-export const getServiceLimit = (role) => SERVICE_LIMITS[role] || 3;
 
 const REMOVED_SERVICE_GROUP_QUESTIONS = new Set([
     "which services do you provide?",
