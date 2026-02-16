@@ -89,9 +89,8 @@ const CatalanceHero = () => {
         {/* Grid Background */}
         <div
           aria-hidden
-          className={`absolute inset-0 z-[-28] ${
-            isDark ? "opacity-30" : "opacity-40"
-          }`}
+          className={`absolute inset-0 z-[-28] ${isDark ? "opacity-30" : "opacity-40"
+            }`}
           style={{
             backgroundImage: isDark
               ? `linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px),
@@ -117,21 +116,18 @@ const CatalanceHero = () => {
         <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-20 text-center">
           {/* Badge */}
           <div
-            className={`flex justify-center mb-4 mt-16 ${
-              isMounted ? "animate-fadeInUp" : "opacity-0"
-            }`}
+            className={`flex justify-center mb-4 mt-16 ${isMounted ? "animate-fadeInUp" : "opacity-0"
+              }`}
           >
             <Badge
-              className={`group [&>svg]:size-6 [&>svg]:pointer-events-auto ${
-                isDark
-                  ? "bg-transparent hover:bg-white/5 text-white border-white/20"
-                  : "bg-white/80 hover:bg-white text-gray-900 border-gray-200 shadow-sm"
-              } border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer`}
+              className={`group [&>svg]:size-6 [&>svg]:pointer-events-auto ${isDark
+                ? "bg-transparent hover:bg-white/5 text-white border-white/20"
+                : "bg-white/80 hover:bg-white text-gray-900 border-gray-200 shadow-sm"
+                } border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer`}
             >
               <SparklesIcon size={24} className="text-primary" />
-              Trusted by{" "}
               <span className="text-primary font-semibold">10,000+</span>{" "}
-              Freelancers & Clients
+              freelancers are already earning on Catalance
             </Badge>
           </div>
 
@@ -144,48 +140,42 @@ const CatalanceHero = () => {
               className={`font-medium tracking-tight leading-tight whitespace-nowrap mb-4 ${textColor}`}
               style={{ fontSize: "clamp(1.5rem, 4vw, 4rem)" }}
             >
-              Connecting <span className="text-primary">Ideas</span> with The
-              Right <span className="text-primary">Experts</span>.
+              Where <span className="text-primary">Great Work</span> Meets Great <span className="text-primary">Opportunities</span>.
             </h1>
           </div>
 
           {/* Subhead */}
           <p
-            className={`text-lg md:text-xl lg:text-2xl ${subTextColor} mx-auto mb-6 font-light leading-relaxed whitespace-nowrap ${
-              isMounted ? "animate-fadeInUp" : "opacity-0"
-            }`}
+            className={`text-lg md:text-xl lg:text-2xl ${subTextColor} mx-auto mb-6 font-light leading-relaxed whitespace-nowrap ${isMounted ? "animate-fadeInUp" : "opacity-0"
+              }`}
             style={{ animationDelay: "200ms" }}
           >
-            A platform that helps projects move from brief to delivery with
-            clarity and control.
+            For clients who need reliability. For freelancers who deserve respect.
           </p>
 
           {/* Cards Container */}
           <div
-            className={`relative max-w-3xl mx-auto mb-16 px-4 ${
-              isMounted ? "animate-fadeInUp" : "opacity-0"
-            }`}
+            className={`relative max-w-3xl mx-auto mb-16 px-4 ${isMounted ? "animate-fadeInUp" : "opacity-0"
+              }`}
             style={{ animationDelay: "300ms" }}
           >
             <div className="grid md:grid-cols-2 gap-15 relative">
               {/* OR Circle */}
               <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
                 <div
-                  className={`relative w-22 h-22 rounded-full ${
-                    isDark
-                      ? "bg-black border-primary/50"
-                      : "bg-white border-primary/50"
-                  } border-2 flex items-center justify-center shadow-[0_0_20px_var(--color-primary)] backdrop-blur-sm pointer-events-auto`}
+                  className={`relative w-22 h-22 rounded-full ${isDark
+                    ? "bg-black border-primary/50"
+                    : "bg-white border-primary/50"
+                    } border-2 flex items-center justify-center shadow-[0_0_20px_var(--color-primary)] backdrop-blur-sm pointer-events-auto`}
                 >
                   <span className="text-foreground font-medium text-2xl tracking-wider">
                     OR
                   </span>
                   <div
-                    className={`absolute inset-0 rounded-full ${
-                      isDark
-                        ? "bg-linear-to-r from-primary/20 via-primary/40 to-primary/20"
-                        : "bg-linear-to-r from-primary/10 via-primary/20 to-primary/10"
-                    } blur-xl animate-pulse -z-10`}
+                    className={`absolute inset-0 rounded-full ${isDark
+                      ? "bg-linear-to-r from-primary/20 via-primary/40 to-primary/20"
+                      : "bg-linear-to-r from-primary/10 via-primary/20 to-primary/10"
+                      } blur-xl animate-pulse -z-10`}
                   />
                 </div>
               </div>
@@ -202,14 +192,10 @@ const CatalanceHero = () => {
                     </span>
                   </div>
                   <h3 className="text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
-                    Hire Elite Talent
+                    Find Talent You Can Count On
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[40px]">
-                    Access our curated network of{" "}
-                    <span className="text-primary dark:text-primary font-semibold">
-                      world-class professionals
-                    </span>{" "}
-                    ready to transform your vision into reality.
+                  <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
+                    Work with pre-vetted professionals who deliver quality work, meet deadlines, and communicate clearly. <span className="text-primary dark:text-primary font-semibold">No surprises, no excuses.</span>
                   </p>
 
                   {/* Features */}
@@ -252,7 +238,7 @@ const CatalanceHero = () => {
                       size="lg"
                       className="w-full group/btn font-semibold px-6 py-6 text-base shadow-lg shadow-orange-500/20 transition-all duration-300 hover:shadow-orange-500/40"
                     >
-                      Explore Talent
+                      Hire Now
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                     </Button>
                   </div>
@@ -271,15 +257,13 @@ const CatalanceHero = () => {
                       For Freelancers
                     </span>
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight whitespace-nowrap">
-                    Launch Careers
+                  <h3 className="text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
+                    Find Clients Who Value Your Work
                   </h3>
                   <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
-                    Join an exclusive community and connect with{" "}
-                    <span className="text-primary-strong dark:text-primary font-semibold">
-                      premium opportunities
-                    </span>{" "}
-                    that match your ambitions.
+                    Join a platform where your skills are respected, payments are protected, and opportunities match your ambitions. <span className="text-primary-strong dark:text-primary font-semibold">
+                      No lowball offers, no payment delays.
+                    </span>
                   </p>
 
                   {/* Features */}
@@ -322,7 +306,7 @@ const CatalanceHero = () => {
                       size="lg"
                       className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-6 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/40"
                     >
-                      Start Your Career
+                      Get Hired Now
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                     </Button>
                   </div>

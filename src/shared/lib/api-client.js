@@ -119,9 +119,13 @@ export const signup = ({
   password,
   role = "FREELANCER",
   freelancerProfile = null,
+  portfolioProjects = [],
+  location,
+  avatar,
   portfolio,
   linkedin,
-  bio = ""
+  bio = "",
+  onboardingComplete = false
 }) => {
   const payload = {
     fullName,
@@ -148,6 +152,18 @@ export const signup = ({
 
     payload.skills = skills;
     payload.freelancerProfile = normalizedProfile;
+    payload.portfolioProjects = Array.isArray(portfolioProjects)
+      ? portfolioProjects
+      : [];
+    if (location) {
+      payload.location = location;
+    }
+    if (avatar) {
+      payload.avatar = avatar;
+    }
+    if (onboardingComplete) {
+      payload.onboardingComplete = true;
+    }
   }
 
   return request("/auth/signup", {

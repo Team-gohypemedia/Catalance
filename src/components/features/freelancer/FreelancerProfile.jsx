@@ -39,14 +39,7 @@ import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTop
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
-
-const serviceOptions = [
-  "Web development",
-  "App development",
-  "UI/UX design",
-  "Product strategy",
-  "AI/ML integration",
-];
+import { getServiceLabel } from "@/components/features/freelancer/onboarding/utils";
 
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 
@@ -107,6 +100,264 @@ const normalizeBioValue = (value) => {
   return String(value);
 };
 
+const TECH_TAG_ACRONYMS = new Set([
+  "ai",
+  "api",
+  "cms",
+  "crm",
+  "css",
+  "db",
+  "erp",
+  "gsc",
+  "ml",
+  "orm",
+  "seo",
+  "sql",
+  "ui",
+  "ux",
+]);
+
+const formatSkillLabel = (value) => {
+  const raw = String(value ?? "")
+    .replace(/[_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!raw) return "";
+
+  return raw
+    .split(" ")
+    .map((token) => {
+      const normalized = token.toLowerCase();
+      if (TECH_TAG_ACRONYMS.has(normalized)) {
+        return normalized.toUpperCase();
+      }
+      if (/^[a-z0-9]+$/i.test(token)) {
+        return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+      }
+      return token;
+    })
+    .join(" ");
+};
+
+const getSkillDedupKey = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+const SKILL_NOISE_VALUES = new Set([
+  "yes",
+  "no",
+  "open",
+  "other",
+  "not set",
+  "individual",
+  "agency",
+  "part time",
+  "part_time",
+  "beginner",
+  "intermediate",
+  "advanced",
+  "small",
+  "medium",
+  "large",
+  "english",
+  "hindi",
+  "spanish",
+  "french",
+  "german",
+  "chinese",
+  "arabic",
+  "bengali",
+  "portuguese",
+  "russian",
+  "japanese",
+  "punjabi",
+  "telugu",
+  "marathi",
+  "tamil",
+  "urdu",
+  "gujarati",
+  "kannada",
+  "malayalam",
+  "italian",
+  "hype",
+  "media",
+  "student",
+  "build",
+  "commerce",
+  "sites",
+  "portfolio",
+  "apps",
+  "powered",
+]);
+
+const SKILL_NOISE_PATTERNS = [
+  /\b(inr|usd|eur|lakh|lakhs|crore)\b/i,
+  /\b(under|over|within|less than|more than)\b/i,
+  /\b(hours?|weeks?|months?|years?)\b/i,
+  /\b(price|pricing|budget|timeline|cost)\b/i,
+  /^\d+(\s*-\s*\d+)?$/,
+  /^\d+\s+\d+$/,
+];
+
+const isNoisySkillTag = (value) => {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return true;
+  if (SKILL_NOISE_VALUES.has(normalized)) return true;
+  return SKILL_NOISE_PATTERNS.some((pattern) => pattern.test(normalized));
+};
+
+const toUniqueSkillNames = (rawSkills = []) => {
+  const deduped = new Map();
+
+  (Array.isArray(rawSkills) ? rawSkills : []).forEach((entry) => {
+    const source =
+      typeof entry === "string"
+        ? entry
+        : typeof entry?.name === "string"
+          ? entry.name
+          : String(entry ?? "");
+    const label = formatSkillLabel(source);
+    if (!label) return;
+
+    const key = getSkillDedupKey(label);
+    if (!key || deduped.has(key)) return;
+    deduped.set(key, label);
+  });
+
+  return Array.from(deduped.values());
+};
+
+const toUniqueSkillObjects = (rawSkills = []) =>
+  toUniqueSkillNames(rawSkills)
+    .filter((name) => !isNoisySkillTag(name))
+    .map((name) => ({ name }));
+
+const buildLocationFromIdentity = (identity = {}) => {
+  if (!identity || typeof identity !== "object") return "";
+
+  const city = String(identity.city || "").trim();
+  const country = String(identity.country || "").trim();
+  return [city, country].filter(Boolean).join(", ");
+};
+
+const resolveAvatarUrl = (value, { allowBlob = false } = {}) => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const url = value.trim();
+    if (!url) return "";
+    if (!allowBlob && url.startsWith("blob:")) return "";
+    return url;
+  }
+  if (typeof value === "object") {
+    return resolveAvatarUrl(
+      value.uploadedUrl || value.url || value.src || value.value || "",
+      { allowBlob }
+    );
+  }
+  return "";
+};
+
+const ONBOARDING_ROLE_LABELS = {
+  individual: "Individual Freelancer",
+  agency: "Agency / Studio",
+  part_time: "Part-Time Freelancer",
+};
+
+const normalizeValueLabel = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const normalized = raw.toLowerCase();
+  if (normalized === "yes") return "Yes";
+  if (normalized === "no") return "No";
+  if (normalized === "open") return "Open to all";
+
+  return formatSkillLabel(raw);
+};
+
+const parseDelimitedValues = (value = "") =>
+  String(value || "")
+    .split(/[,\n]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+const toUniqueLabels = (values = []) =>
+  toUniqueSkillNames(values.map((entry) => normalizeValueLabel(entry)));
+
+const collectServiceSpecializations = (detail = {}) => {
+  const collected = [];
+
+  const groups =
+    detail?.groups && typeof detail.groups === "object" ? detail.groups : {};
+  Object.values(groups).forEach((entry) => {
+    if (Array.isArray(entry)) {
+      collected.push(...entry);
+    }
+  });
+
+  const groupOther =
+    detail?.groupOther && typeof detail.groupOther === "object"
+      ? detail.groupOther
+      : {};
+  Object.values(groupOther).forEach((entry) => {
+    if (Array.isArray(entry)) {
+      collected.push(...entry);
+      return;
+    }
+    if (typeof entry === "string") {
+      collected.push(...parseDelimitedValues(entry));
+    }
+  });
+
+  return toUniqueLabels(collected);
+};
+
+const splitExperienceTitle = (title = "") => {
+  const raw = String(title || "");
+  const separators = [" · ", " • ", " Â· ", " - "];
+
+  for (const separator of separators) {
+    if (raw.includes(separator)) {
+      const [position, company] = raw.split(separator);
+      return [String(position || "").trim(), String(company || "").trim()];
+    }
+  }
+
+  return [raw.trim(), ""];
+};
+
+const splitExperiencePeriod = (period = "") => {
+  const raw = String(period || "");
+  const separators = [" – ", " â€“ ", " - "];
+
+  for (const separator of separators) {
+    if (raw.includes(separator)) {
+      const [from, to] = raw.split(separator);
+      return [String(from || "").trim(), String(to || "").trim()];
+    }
+  }
+
+  return [raw.trim(), ""];
+};
+
+const normalizeWorkExperienceEntries = (entries = []) =>
+  (Array.isArray(entries) ? entries : [])
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const title = String(entry.title || "").trim();
+      const period = String(entry.period || "").trim();
+      const description = String(entry.description || "").trim();
+      if (!title && !period && !description) return null;
+      return { title, period, description };
+    })
+    .filter(Boolean);
+
 const initialWorkForm = {
   company: "",
   position: "",
@@ -151,6 +402,7 @@ const FreelancerProfile = () => {
     resume: "",
   });
   const [portfolioProjects, setPortfolioProjects] = useState([]); // [{ link, image, title }]
+  const [profileDetails, setProfileDetails] = useState({});
   const [newProjectUrl, setNewProjectUrl] = useState("");
   const [newProjectLoading, setNewProjectLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -180,18 +432,56 @@ const FreelancerProfile = () => {
     let active = true;
 
     const normalizeProfileData = (payload = {}) => {
+      const identityAvatar = resolveAvatarUrl(
+        payload.profileDetails?.identity?.profilePhoto,
+        { allowBlob: true }
+      );
+      const normalizedProfileDetails =
+        payload.profileDetails && typeof payload.profileDetails === "object"
+          ? payload.profileDetails
+          : {};
+
       if (payload?.personal) {
         // Ensure portfolio object has resume even if API already structured data
         const existingPortfolio = payload.portfolio || {};
+        const identityLocation = buildLocationFromIdentity(
+          normalizedProfileDetails?.identity
+        );
+        const identityTitle = String(
+          normalizedProfileDetails?.identity?.professionalTitle || ""
+        ).trim();
+        const personalAvatar =
+          resolveAvatarUrl(payload.personal?.avatar) || identityAvatar;
+        let location = payload.personal?.location || "";
+        if (location && location.endsWith(" 0")) {
+          location = location.slice(0, -2);
+        }
+
         return {
           ...payload,
+          personal: {
+            ...payload.personal,
+            avatar: personalAvatar,
+            location: location || identityLocation,
+            headline: payload.personal?.headline || identityTitle || "",
+          },
           portfolio: {
             portfolioUrl: existingPortfolio.portfolioUrl || "",
             linkedinUrl: existingPortfolio.linkedinUrl || "",
             githubUrl: existingPortfolio.githubUrl || "",
             resume: existingPortfolio.resume || payload.resume || "",
           },
+          profileDetails: normalizedProfileDetails,
         };
+      }
+
+      const identityLocation = buildLocationFromIdentity(
+        payload.profileDetails?.identity
+      );
+
+      let rawLocation = payload.location ?? identityLocation ?? "";
+      if (rawLocation && rawLocation.endsWith(" 0")) {
+        rawLocation = rawLocation.slice(0, -2);
       }
 
       return {
@@ -199,16 +489,20 @@ const FreelancerProfile = () => {
           name: payload.fullName ?? payload.name ?? "",
           email: payload.email ?? "",
           phone: payload.phone ?? payload.phoneNumber ?? "",
-          location: payload.location ?? "",
-          headline: payload.jobTitle ?? payload.headline ?? "",
+          location: rawLocation,
+          headline:
+            payload.jobTitle ??
+            payload.headline ??
+            normalizedProfileDetails?.identity?.professionalTitle ??
+            "",
           bio: payload.bio ?? "",
           experienceYears: payload.experienceYears ?? "",
-          avatar: payload.avatar ?? "",
+          avatar: resolveAvatarUrl(payload.avatar) || identityAvatar,
           available:
             payload.status !== undefined ? payload.status === "ACTIVE" : true,
         },
         skills: Array.isArray(payload.skills) ? payload.skills : [],
-        workExperience: payload.workExperience ?? [],
+        workExperience: Array.isArray(payload.workExperience) ? payload.workExperience : [],
         services: Array.isArray(payload.services) ? payload.services : [],
         portfolio: {
           portfolioUrl: payload.portfolio ?? "",
@@ -217,6 +511,7 @@ const FreelancerProfile = () => {
           resume: payload.resume ?? "",
         },
         portfolioProjects: payload.portfolioProjects ?? [],
+        profileDetails: normalizedProfileDetails,
       };
     };
 
@@ -275,15 +570,36 @@ const FreelancerProfile = () => {
         );
 
         // Update state with API data
+        const loadedProfileDetails =
+          normalized.profileDetails &&
+            typeof normalized.profileDetails === "object"
+            ? normalized.profileDetails
+            : {};
+        const identityFallbackLocation = buildLocationFromIdentity(
+          loadedProfileDetails?.identity
+        );
+        const identityFallbackTitle = String(
+          loadedProfileDetails?.identity?.professionalTitle || ""
+        ).trim();
+        const identityFallbackAvatar = resolveAvatarUrl(
+          loadedProfileDetails?.identity?.profilePhoto,
+          { allowBlob: true }
+        );
+
         const loadedPersonal = {
           name: normalized.personal?.name ?? user?.fullName ?? user?.name ?? "",
           email: normalized.personal?.email ?? user?.email ?? "",
           phone: normalized.personal?.phone ?? "",
-          location: normalized.personal?.location ?? "",
-          headline: normalized.personal?.headline ?? "",
+          location:
+            normalized.personal?.location || identityFallbackLocation || "",
+          headline:
+            normalized.personal?.headline || identityFallbackTitle || "",
           bio: normalizeBioValue(normalized.personal?.bio || ""),
           experienceYears: normalized.personal?.experienceYears ?? "",
-          avatar: normalized.personal?.avatar ?? "",
+          avatar:
+            resolveAvatarUrl(normalized.personal?.avatar, { allowBlob: true }) ||
+            identityFallbackAvatar ||
+            "",
           available: normalized.personal?.available ?? true,
         };
 
@@ -294,28 +610,16 @@ const FreelancerProfile = () => {
           resume: normalized.portfolio?.resume || normalized.resume || "",
         };
 
-        const loadedSkills = (
+        const loadedSkills = toUniqueSkillObjects(
           Array.isArray(normalized.skills) ? normalized.skills : []
-        ).map((s) => {
-          if (
-            typeof s === "string" &&
-            s.trim().startsWith("{") &&
-            s.includes('"name"')
-          ) {
-            try {
-              return { name: JSON.parse(s).name };
-            } catch (e) { }
-          }
-          return typeof s === "string"
-            ? { name: s }
-            : { name: String(s?.name ?? "") };
-        });
+        );
 
         setPersonal((prev) => ({ ...prev, ...loadedPersonal }));
         setPortfolio(loadedPortfolio);
         setPortfolioProjects(normalized.portfolioProjects || []);
+        setProfileDetails(loadedProfileDetails);
         setSkills(loadedSkills);
-        setWorkExperience(normalized.workExperience ?? []);
+        setWorkExperience(normalizeWorkExperienceEntries(normalized.workExperience));
 
         const loadedServices = Array.isArray(normalized.services)
           ? normalized.services
@@ -326,7 +630,7 @@ const FreelancerProfile = () => {
           personal: loadedPersonal,
           portfolio: loadedPortfolio,
           skills: loadedSkills,
-          workExperience: normalized.workExperience ?? [],
+          workExperience: normalizeWorkExperienceEntries(normalized.workExperience),
           services: loadedServices,
           portfolioProjects: normalized.portfolioProjects || [],
         });
@@ -374,8 +678,28 @@ const FreelancerProfile = () => {
 
   // ----- Skills -----
   const addSkill = () => {
-    const name = skillForm.name.trim();
+    const name = formatSkillLabel(skillForm.name);
     if (!name) return;
+    if (isNoisySkillTag(name)) {
+      toast.error("Please add a specific skill or technology.");
+      return;
+    }
+
+    const nextKey = getSkillDedupKey(name);
+    if (!nextKey) return;
+
+    const exists = skills.some((entry) => {
+      const currentName =
+        typeof entry === "string" ? entry : entry?.name;
+      return getSkillDedupKey(currentName) === nextKey;
+    });
+    if (exists) {
+      toast.info("That skill is already in your tech stack.");
+      setSkillForm({ name: "" });
+      setModalType(null);
+      return;
+    }
+
     setSkills((prev) => [...prev, { name }]);
     setSkillForm({ name: "" });
     setModalType(null);
@@ -393,8 +717,8 @@ const FreelancerProfile = () => {
   };
 
   const openEditExperienceModal = (item, index) => {
-    const [position, company] = (item.title ?? "").split(" · ");
-    const [from, to] = (item.period ?? " – ").split(" – ");
+    const [position, company] = splitExperienceTitle(item.title);
+    const [from, to] = splitExperiencePeriod(item.period);
 
     setWorkForm({
       company: company ?? "",
@@ -456,13 +780,10 @@ const FreelancerProfile = () => {
     // const isDeveloper = services.some(s => ...);
     // if (isDeveloper && !portfolio.githubUrl?.trim()) ...
 
-    const skillsForApi = skills
-      .map((s) => (typeof s === "string" ? s : s.name))
-      .map((s) => s?.trim())
-      .filter(Boolean);
+    const skillsForApi = toUniqueSkillNames(skills);
 
     // Check if we need to upload an image first
-    let currentAvatarUrl = personal.avatar;
+    let currentAvatarUrl = resolveAvatarUrl(personal.avatar);
 
     if (selectedFile) {
       setUploadingImage(true);
@@ -666,8 +987,97 @@ const FreelancerProfile = () => {
     setPortfolioProjects((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Merge default options with any custom ones saved in the profile
-  const displayServices = Array.from(new Set([...serviceOptions, ...services]));
+  const onboardingIdentity =
+    profileDetails?.identity && typeof profileDetails.identity === "object"
+      ? profileDetails.identity
+      : {};
+  const onboardingRole = String(profileDetails?.role || "").trim();
+  const onboardingRoleLabel =
+    ONBOARDING_ROLE_LABELS[onboardingRole] ||
+    normalizeValueLabel(onboardingRole) ||
+    "Not set";
+  const onboardingServices = Array.from(
+    new Set([
+      ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
+      ...(Array.isArray(services) ? services : []),
+    ])
+  )
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const onboardingGlobalIndustry = toUniqueLabels([
+    ...(Array.isArray(profileDetails?.globalIndustryFocus)
+      ? profileDetails.globalIndustryFocus
+      : []),
+    profileDetails?.globalIndustryOther || "",
+  ]);
+  const onboardingLanguages = toUniqueLabels([
+    ...(Array.isArray(onboardingIdentity?.languages)
+      ? onboardingIdentity.languages
+      : []),
+    onboardingIdentity?.otherLanguage || "",
+  ]);
+  const onboardingAvailability =
+    profileDetails?.availability && typeof profileDetails.availability === "object"
+      ? profileDetails.availability
+      : {};
+  const onboardingReliability =
+    profileDetails?.reliability && typeof profileDetails.reliability === "object"
+      ? profileDetails.reliability
+      : {};
+  const onboardingServiceDetailMap =
+    profileDetails?.serviceDetails &&
+      typeof profileDetails.serviceDetails === "object"
+      ? profileDetails.serviceDetails
+      : {};
+  const onboardingServiceEntries = Array.from(
+    new Set([
+      ...onboardingServices,
+      ...Object.keys(onboardingServiceDetailMap),
+    ])
+  )
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .map((serviceKey) => ({
+      serviceKey,
+      detail: onboardingServiceDetailMap?.[serviceKey] || {},
+    }));
+  const onboardingIdentityLocation = buildLocationFromIdentity(onboardingIdentity);
+  const displayHeadline =
+    String(onboardingIdentity?.professionalTitle || "").trim() ||
+    personal.headline ||
+    "Senior Full Stack Developer";
+  const displayLocation = onboardingIdentityLocation || personal.location || "";
+  const experienceYearsLabel = String(personal.experienceYears ?? "").trim();
+  const showExperienceYears =
+    Boolean(experienceYearsLabel) && experienceYearsLabel !== "0";
+  const onboardingDerivedWorkExperience = normalizeWorkExperienceEntries(
+    onboardingServiceEntries.map(({ serviceKey, detail }) => {
+      const serviceTitle = getServiceLabel(serviceKey);
+      const experience = normalizeValueLabel(detail?.experienceYears);
+      const level = normalizeValueLabel(detail?.workingLevel);
+      const complexity = normalizeValueLabel(detail?.projectComplexity);
+      const projectCount = Array.isArray(detail?.projects) ? detail.projects.length : 0;
+
+      const meta = [
+        level ? `Level: ${level}` : "",
+        complexity ? `Complexity: ${complexity}` : "",
+        projectCount ? `${projectCount} onboarding project${projectCount > 1 ? "s" : ""}` : "",
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+      if (!experience && !meta) return null;
+
+      return {
+        title: `${serviceTitle} · Onboarding`,
+        period: experience || "Experience shared in onboarding",
+        description: meta,
+      };
+    })
+  );
+  const effectiveWorkExperience = workExperience.length
+    ? workExperience
+    : onboardingDerivedWorkExperience;
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -694,6 +1104,11 @@ const FreelancerProfile = () => {
                       src={personal.avatar}
                       alt={personal.name}
                       className="w-full h-full object-cover"
+                      onError={() =>
+                        setPersonal((prev) =>
+                          prev.avatar ? { ...prev, avatar: "" } : prev
+                        )
+                      }
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-secondary text-3xl font-bold text-secondary-foreground">
@@ -703,8 +1118,8 @@ const FreelancerProfile = () => {
                   {/* Upload Overlay */}
                   <div
                     className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${uploadingImage
-                        ? "opacity-100"
-                        : "opacity-0 group-hover/avatar:opacity-100"
+                      ? "opacity-100"
+                      : "opacity-0 group-hover/avatar:opacity-100"
                       }`}
                   >
                     {uploadingImage ? (
@@ -752,21 +1167,21 @@ const FreelancerProfile = () => {
                 </div>
 
                 <p className="text-lg text-gray-300 font-medium">
-                  {personal.headline || "Senior Full Stack Developer"}
+                  {displayHeadline}
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-400 mt-1">
-                  {personal.location && (
+                  {displayLocation && (
                     <div className="flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5" />
-                      <span>{personal.location}</span>
+                      <span>{displayLocation}</span>
                     </div>
                   )}
                   {/* Experience as a dot-separated item or just next to it? Image didn't show exp clearly but keeping it if needed. */}
-                  {personal.experienceYears && (
+                  {showExperienceYears && (
                     <>
                       <span className="hidden md:inline">•</span>
-                      <span>{personal.experienceYears} Years Exp.</span>
+                      <span>{experienceYearsLabel} Years Exp.</span>
                     </>
                   )}
                 </div>
@@ -854,18 +1269,15 @@ const FreelancerProfile = () => {
           </div>
         </div>
 
-        {/* 2 Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* About Me */}
-            <Card className="p-6 md:p-8 space-y-4 relative group">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-8 space-y-6">
+            <Card className="p-6 md:p-7 space-y-4 relative group">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
                   <span className="text-primary">
                     <User className="w-5 h-5" />
-                  </span>{" "}
-                  About Me
+                  </span>
+                  About And Intro
                 </h3>
                 <Button
                   variant="ghost"
@@ -876,20 +1288,222 @@ const FreelancerProfile = () => {
                   <Edit2 className="w-4 h-4" />
                 </Button>
               </div>
-              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {personal.bio ||
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {profileDetails?.professionalBio ||
+                  personal.bio ||
                   personal.headline ||
-                  "Tell us about yourself..."}
+                  "Complete onboarding to add your professional summary."}
               </p>
             </Card>
 
-            {/* Featured Projects */}
+            <Card className="p-6 md:p-7 space-y-5">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                <span className="text-primary">
+                  <Briefcase className="w-5 h-5" />
+                </span>
+                Onboarding Snapshot
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Work Model
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {onboardingRoleLabel}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Availability
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {normalizeValueLabel(onboardingAvailability.hoursPerWeek) ||
+                      "Not set"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {normalizeValueLabel(onboardingAvailability.workingSchedule) ||
+                      "Schedule not set"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Start Timeline
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {normalizeValueLabel(onboardingAvailability.startTimeline) ||
+                      "Not set"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Reliability
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {normalizeValueLabel(onboardingReliability.missedDeadlines) ||
+                      "Not set"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {normalizeValueLabel(onboardingReliability.delayHandling) ||
+                      "Delay handling not set"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50">
+                  Delivery Policy:{" "}
+                  {profileDetails?.deliveryPolicyAccepted ? "Accepted" : "Not set"}
+                </span>
+                <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50">
+                  Communication Policy:{" "}
+                  {profileDetails?.communicationPolicyAccepted
+                    ? "Accepted"
+                    : "Not set"}
+                </span>
+                <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50">
+                  Accept In-Progress Projects:{" "}
+                  {normalizeValueLabel(profileDetails?.acceptInProgressProjects) ||
+                    "Not set"}
+                </span>
+              </div>
+            </Card>
+
+            <Card className="p-6 md:p-7 space-y-4">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                <span className="text-primary">
+                  <Cpu className="w-5 h-5" />
+                </span>
+                Services From Onboarding
+              </h3>
+
+              {onboardingServiceEntries.length > 0 ? (
+                <div className="space-y-3">
+                  {onboardingServiceEntries.map(({ serviceKey, detail }) => {
+                    const serviceTitle = getServiceLabel(serviceKey);
+                    const specializationTags = collectServiceSpecializations(detail);
+                    const nicheTags = toUniqueLabels([
+                      ...(Array.isArray(detail?.niches) ? detail.niches : []),
+                      detail?.otherNiche || "",
+                    ]);
+                    const projectList = Array.isArray(detail?.projects)
+                      ? detail.projects
+                      : [];
+
+                    return (
+                      <div
+                        key={serviceKey}
+                        className="rounded-xl border border-border/70 bg-secondary/20 p-4 space-y-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="font-semibold text-foreground">
+                            {serviceTitle}
+                          </h4>
+                          <span className="text-xs text-muted-foreground">
+                            {normalizeValueLabel(detail?.experienceYears) ||
+                              "Experience not set"}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <p>
+                            Level:{" "}
+                            <span className="text-foreground">
+                              {normalizeValueLabel(detail?.workingLevel) ||
+                                "Not set"}
+                            </span>
+                          </p>
+                          <p>
+                            Complexity:{" "}
+                            <span className="text-foreground">
+                              {normalizeValueLabel(detail?.projectComplexity) ||
+                                "Not set"}
+                            </span>
+                          </p>
+                          <p>
+                            Avg Project Price:{" "}
+                            <span className="text-foreground">
+                              {normalizeValueLabel(detail?.averageProjectPrice) ||
+                                "Not set"}
+                            </span>
+                          </p>
+                          <p>
+                            Industry Focus:{" "}
+                            <span className="text-foreground">
+                              {normalizeValueLabel(detail?.industryFocus) ||
+                                "Not set"}
+                            </span>
+                          </p>
+                        </div>
+
+                        {nicheTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {nicheTags.map((tag) => (
+                              <span
+                                key={`${serviceKey}-niche-${tag}`}
+                                className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs text-foreground"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {specializationTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {specializationTags.map((tag) => (
+                              <span
+                                key={`${serviceKey}-spec-${tag}`}
+                                className="px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-xs text-primary"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {projectList.length > 0 && (
+                          <div className="rounded-lg border border-border/60 bg-background/70 p-3 space-y-2">
+                            <p className="text-xs font-medium text-foreground">
+                              Projects Added In Onboarding
+                            </p>
+                            <div className="space-y-1.5">
+                              {projectList.map((project, index) => (
+                                <div
+                                  key={`${serviceKey}-project-${index}`}
+                                  className="text-xs text-muted-foreground"
+                                >
+                                  <span className="text-foreground font-medium">
+                                    {project?.title || "Project"}
+                                  </span>
+                                  {project?.timeline
+                                    ? ` | ${normalizeValueLabel(project.timeline)}`
+                                    : ""}
+                                  {project?.budget
+                                    ? ` | ${normalizeValueLabel(project.budget)}`
+                                    : ""}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No service data from onboarding yet.
+                </p>
+              )}
+            </Card>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
                   <span className="text-primary">
                     <Rocket className="w-5 h-5" />
-                  </span>{" "}
+                  </span>
                   Featured Projects
                 </h3>
                 <div className="flex items-center gap-3">
@@ -911,7 +1525,6 @@ const FreelancerProfile = () => {
                 </div>
               </div>
 
-              {/* Carousel for Projects */}
               {portfolioProjects.length > 0 ? (
                 <div className="relative px-12">
                   <Carousel
@@ -934,18 +1547,24 @@ const FreelancerProfile = () => {
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-4xl bg-secondary/30">
-                                  💻
+                                  PRJ
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <a
-                                  href={project.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-2 bg-white rounded-full text-black hover:scale-110 transition-transform"
-                                >
-                                  <ExternalLink className="w-4 h-4" />
-                                </a>
+                                {project.link ? (
+                                  <a
+                                    href={project.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 bg-white rounded-full text-black hover:scale-110 transition-transform"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
+                                ) : (
+                                  <span className="p-2 bg-white/70 rounded-full text-black/60 cursor-not-allowed">
+                                    <ExternalLink className="w-4 h-4" />
+                                  </span>
+                                )}
                                 <button
                                   onClick={() => removeProject(idx)}
                                   className="p-2 bg-destructive text-white rounded-full hover:scale-110 transition-transform"
@@ -961,15 +1580,21 @@ const FreelancerProfile = () => {
                               >
                                 {project.title || "Project"}
                               </h4>
-                              <a
-                                href={project.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-center p-2 rounded-lg bg-secondary/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300"
-                                title="Visit Project"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
+                              {project.link ? (
+                                <a
+                                  href={project.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-center p-2 rounded-lg bg-secondary/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300"
+                                  title="Visit Project"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              ) : (
+                                <span className="flex items-center justify-center p-2 rounded-lg bg-secondary/40 text-muted-foreground/60 cursor-not-allowed">
+                                  <ExternalLink className="w-4 h-4" />
+                                </span>
+                              )}
                             </div>
                           </div>
                         </CarouselItem>
@@ -989,16 +1614,74 @@ const FreelancerProfile = () => {
             </div>
           </div>
 
-          {/* Right Column - Sidebar */}
-          <div className="space-y-8">
-            {/* Tech Stack */}
+          <div className="xl:col-span-4 space-y-6">
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                  <span className="text-primary">
+                    <MapPin className="w-5 h-5" />
+                  </span>
+                  Identity Details
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={openEditPersonalModal}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <p className="text-muted-foreground">
+                  Username:{" "}
+                  <span className="text-foreground">
+                    {onboardingIdentity?.username || "Not set"}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Professional Title:{" "}
+                  <span className="text-foreground">
+                    {onboardingIdentity?.professionalTitle ||
+                      personal.headline ||
+                      "Not set"}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Country:{" "}
+                  <span className="text-foreground">
+                    {onboardingIdentity?.country || "Not set"}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  State/City:{" "}
+                  <span className="text-foreground">
+                    {onboardingIdentity?.city || "Not set"}
+                  </span>
+                </p>
+              </div>
+
+              {onboardingLanguages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {onboardingLanguages.map((language) => (
+                    <span
+                      key={`language-${language}`}
+                      className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50"
+                    >
+                      {language}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Card>
+
             <Card className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
                   <span className="text-primary">
                     <Cpu className="w-5 h-5" />
-                  </span>{" "}
-                  Tech Stack
+                  </span>
+                  Skills And Tech Stack
                 </h3>
                 <Button
                   variant="ghost"
@@ -1029,14 +1712,63 @@ const FreelancerProfile = () => {
               </div>
             </Card>
 
-            {/* Experience */}
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                  <span className="text-primary">
+                    <Globe className="w-5 h-5" />
+                  </span>
+                  Industry And Presence
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setModalType("portfolio")}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {onboardingGlobalIndustry.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {onboardingGlobalIndustry.map((industry) => (
+                    <span
+                      key={`industry-${industry}`}
+                      className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs text-foreground"
+                    >
+                      {industry}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-2 text-sm">
+                <p className="text-muted-foreground">
+                  Portfolio:{" "}
+                  <span className="text-foreground break-all">
+                    {portfolio.portfolioUrl ||
+                      onboardingIdentity?.portfolioUrl ||
+                      "Not set"}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  LinkedIn:{" "}
+                  <span className="text-foreground break-all">
+                    {portfolio.linkedinUrl ||
+                      onboardingIdentity?.linkedinUrl ||
+                      "Not set"}
+                  </span>
+                </p>
+              </div>
+            </Card>
+
             <Card className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
                   <span className="text-primary">
                     <Briefcase className="w-5 h-5" />
-                  </span>{" "}
-                  Experience
+                  </span>
+                  Work Experience
                 </h3>
                 <Button
                   variant="ghost"
@@ -1048,18 +1780,20 @@ const FreelancerProfile = () => {
               </div>
 
               <div className="relative border-l border-border ml-3.5 space-y-8 py-2">
-                {workExperience.length > 0 ? (
-                  workExperience.map((exp, i) => {
-                    const [position, company] = (exp.title || "").split(" · ");
+                {effectiveWorkExperience.length > 0 ? (
+                  effectiveWorkExperience.map((exp, i) => {
+                    const [position, company] = splitExperienceTitle(exp.title);
                     return (
                       <div
                         key={i}
-                        className="relative pl-8 group cursor-pointer"
-                        onClick={() => openEditExperienceModal(exp, i)}
+                        className={`relative pl-8 group ${workExperience.length > 0 ? "cursor-pointer" : "cursor-default"}`}
+                        onClick={() => {
+                          if (workExperience.length > 0) {
+                            openEditExperienceModal(exp, i);
+                          }
+                        }}
                       >
-                        {/* Timeline Dot */}
                         <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-primary bg-background group-hover:bg-primary transition-colors" />
-
                         <span className="text-[10px] font-bold uppercase tracking-wider text-primary mb-0.5 block">
                           {exp.period || "Date N/A"}
                         </span>
@@ -1093,8 +1827,8 @@ const FreelancerProfile = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
           <div
             className={`w-full rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "viewAllProjects"
-                ? "max-w-[60%] h-[90vh] flex flex-col"
-                : "max-w-md"
+              ? "max-w-[60%] h-[90vh] flex flex-col"
+              : "max-w-md"
               }`}
           >
             {modalType === "skill" ? (
@@ -1257,16 +1991,23 @@ const FreelancerProfile = () => {
                             </p>
                           </div>
                           <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <a
-                              href={project.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors text-xs"
-                              title="Visit Project"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Visit
-                            </a>
+                            {project.link ? (
+                              <a
+                                href={project.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors text-xs"
+                                title="Visit Project"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Visit
+                              </a>
+                            ) : (
+                              <span className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-secondary/40 text-muted-foreground/60 text-xs cursor-not-allowed">
+                                <ExternalLink className="w-3 h-3" />
+                                No Link
+                              </span>
+                            )}
                             <button
                               onClick={() => removeProject(idx)}
                               className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-colors"

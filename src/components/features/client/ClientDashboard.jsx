@@ -172,6 +172,142 @@ const formatBudget = (budget) => {
   return `₹${finalValue.toLocaleString("en-IN")}`;
 };
 
+const MATCH_STOP_WORDS = new Set([
+  "and",
+  "the",
+  "with",
+  "for",
+  "from",
+  "that",
+  "this",
+  "your",
+  "you",
+  "our",
+  "are",
+  "was",
+  "were",
+  "have",
+  "has",
+  "had",
+  "will",
+  "can",
+  "yes",
+  "no",
+  "open",
+  "need",
+  "want",
+  "build",
+  "project",
+  "client",
+  "work",
+  "service",
+  "services",
+]);
+
+const normalizeTokenText = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[_/]/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .trim();
+
+const tokenizeText = (value) =>
+  normalizeTokenText(value)
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !MATCH_STOP_WORDS.has(token));
+
+const flattenTokenValues = (value) => {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) return value.flatMap((item) => flattenTokenValues(item));
+  if (typeof value === "object") {
+    return Object.values(value).flatMap((item) => flattenTokenValues(item));
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    return [String(value)];
+  }
+  return [];
+};
+
+const appendTokens = (target, value) => {
+  flattenTokenValues(value).forEach((entry) => {
+    tokenizeText(entry).forEach((token) => target.add(token));
+  });
+};
+
+const getProposalRequirementTokens = (proposal) => {
+  const tokens = new Set();
+  if (!proposal) return tokens;
+
+  appendTokens(tokens, proposal.projectTitle);
+  appendTokens(tokens, proposal.service);
+  appendTokens(tokens, proposal.serviceKey);
+  appendTokens(tokens, proposal.timeline);
+  appendTokens(tokens, proposal.summary || proposal.content || "");
+
+  return tokens;
+};
+
+const getFreelancerProfileTokens = (freelancer) => {
+  const tokens = new Set();
+  const profileDetails =
+    freelancer?.profileDetails && typeof freelancer.profileDetails === "object"
+      ? freelancer.profileDetails
+      : {};
+
+  appendTokens(tokens, freelancer?.skills);
+  appendTokens(tokens, freelancer?.bio);
+  appendTokens(tokens, freelancer?.jobTitle);
+  appendTokens(tokens, profileDetails?.services);
+  appendTokens(tokens, profileDetails?.globalIndustryFocus);
+  appendTokens(tokens, profileDetails?.globalIndustryOther);
+  appendTokens(tokens, profileDetails?.role);
+  appendTokens(tokens, profileDetails?.identity);
+  appendTokens(tokens, profileDetails?.serviceDetails);
+
+  return tokens;
+};
+
+const scoreFreelancerMatch = (freelancer, proposal, requirementTokens) => {
+  if (!proposal || requirementTokens.size === 0) {
+    return { score: 0, matchHighlights: [] };
+  }
+
+  const freelancerTokens = getFreelancerProfileTokens(freelancer);
+  const overlaps = [];
+
+  requirementTokens.forEach((token) => {
+    if (freelancerTokens.has(token)) {
+      overlaps.push(token);
+    }
+  });
+
+  const profileServices = Array.isArray(freelancer?.profileDetails?.services)
+    ? freelancer.profileDetails.services.map((service) => String(service || "").toLowerCase())
+    : [];
+  const requestedService = String(proposal?.serviceKey || proposal?.service || "")
+    .toLowerCase()
+    .trim();
+  const serviceMatch =
+    requestedService &&
+    profileServices.some(
+      (service) =>
+        service === requestedService ||
+        service.includes(requestedService) ||
+        requestedService.includes(service),
+    );
+
+  const score = overlaps.length * 3 + (serviceMatch ? 12 : 0);
+  return {
+    score,
+    matchHighlights: Array.from(new Set(overlaps)).slice(0, 4),
+  };
+};
+
+const parseRating = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const readSavedProposalsFromKeys = (listKey, singleKey) => {
   let proposals = [];
   const listRaw = window.localStorage.getItem(listKey);
@@ -517,6 +653,35 @@ const ClientDashboardContent = () => {
     );
   }, [savedProposals, activeProposalId]);
 
+  const rankedSuggestedFreelancers = useMemo(() => {
+    if (!Array.isArray(suggestedFreelancers) || suggestedFreelancers.length === 0) {
+      return [];
+    }
+
+    const requirementTokens = getProposalRequirementTokens(savedProposal);
+
+    return suggestedFreelancers
+      .map((freelancer) => {
+        const { score, matchHighlights } = scoreFreelancerMatch(
+          freelancer,
+          savedProposal,
+          requirementTokens,
+        );
+        return {
+          ...freelancer,
+          matchScore: score,
+          matchHighlights,
+        };
+      })
+      .sort((a, b) => {
+        if (b.matchScore !== a.matchScore) {
+          return b.matchScore - a.matchScore;
+        }
+
+        return parseRating(b.rating) - parseRating(a.rating);
+      });
+  }, [suggestedFreelancers, savedProposal]);
+
   // Load projects
   // Load session
   useEffect(() => {
@@ -734,10 +899,8 @@ const ClientDashboardContent = () => {
   useEffect(() => {
     const loadAllFreelancers = async () => {
       try {
-        const all = await listFreelancers();
-        // Filter out suspended or invalid ones if needed
-        // For now, just take top 6
-        setSuggestedFreelancers(Array.isArray(all) ? all.slice(0, 6) : []);
+        const all = await listFreelancers({ onboardingComplete: "true" });
+        setSuggestedFreelancers(Array.isArray(all) ? all : []);
       } catch (err) {
         console.error("Failed to load suggested freelancers:", err);
       }
@@ -1892,13 +2055,13 @@ const ClientDashboardContent = () => {
                         }
 
                         const availableFreelancers =
-                          suggestedFreelancers.filter(
+                          rankedSuggestedFreelancers.filter(
                             (f) => !alreadyInvitedIds.has(f.id),
                           );
 
                         if (
                           availableFreelancers.length === 0 &&
-                          suggestedFreelancers.length > 0
+                          rankedSuggestedFreelancers.length > 0
                         ) {
                           return (
                             <div className="col-span-full text-center py-8 text-muted-foreground">
@@ -2013,6 +2176,16 @@ const ClientDashboardContent = () => {
                                   <p className="text-sm text-muted-foreground font-medium mb-5">
                                     {freelancer.role || "Freelancer"}
                                   </p>
+
+                                  {Array.isArray(freelancer.matchHighlights) &&
+                                    freelancer.matchHighlights.length > 0 && (
+                                      <p className="text-[11px] text-primary font-medium mb-4">
+                                        Match:{" "}
+                                        {freelancer.matchHighlights
+                                          .slice(0, 2)
+                                          .join(", ")}
+                                      </p>
+                                    )}
 
                                   {/* Skills Row */}
                                   <div className="flex flex-wrap justify-center gap-2 mb-4 px-2 min-h-[40px]">
