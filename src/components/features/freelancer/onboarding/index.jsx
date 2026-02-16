@@ -37,7 +37,6 @@ import {
     isValidUsername,
     isValidUrl,
     getServiceLabel,
-    getServiceLimit,
     getServiceGroups,
     createServiceDetail,
     toQuestionTitle,
@@ -546,18 +545,6 @@ const FreelancerMultiStepForm = () => {
         }
     }, [currentStepIndex]);
 
-    // ── Service limit guard ─────────────────────────────────────────────
-    useEffect(() => {
-        if (!formData.role) return;
-        const limit = getServiceLimit(formData.role);
-        if (formData.selectedServices.length > limit) {
-            setFormData((prev) => ({
-                ...prev,
-                selectedServices: prev.selectedServices.slice(0, limit),
-            }));
-        }
-    }, [formData.role, formData.selectedServices.length]);
-
     // ── Auto-init service details ───────────────────────────────────────
     useEffect(() => {
         if (formData.selectedServices.length === 0) return;
@@ -826,12 +813,6 @@ const FreelancerMultiStepForm = () => {
     const toggleServiceSelection = (serviceKey) => {
         const current = formData.selectedServices;
         const exists = current.includes(serviceKey);
-        const limit = getServiceLimit(formData.role);
-
-        if (!exists && current.length >= limit) {
-            toast.error(`You can select up to ${limit} services.`);
-            return;
-        }
 
         const next = exists
             ? current.filter((item) => item !== serviceKey)

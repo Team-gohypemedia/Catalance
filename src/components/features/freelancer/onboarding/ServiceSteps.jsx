@@ -45,7 +45,6 @@ import {
 } from "./constants";
 import {
     getServiceLabel,
-    getServiceLimit,
     getServiceGroups,
     getTechStackOptions,
     createServiceDetail,
@@ -66,13 +65,12 @@ export const ServicesStep = ({
     currentStep,
     renderContinueButton,
 }) => {
-    const limit = getServiceLimit(formData.role);
     const showContinue = hasMultipleChoices(SERVICE_OPTIONS);
     return (
         <div className="space-y-6">
             <StepHeader
                 title="Which Services Do You Want To Offer?"
-                subtitle={`Select up to ${limit} services`}
+                subtitle="Select at least 1 service. You can choose as many as you want."
             />
             <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
                 {SERVICE_OPTIONS.map((option) => {

@@ -39,9 +39,11 @@ import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTop
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
-import { getServiceLabel } from "@/components/features/freelancer/onboarding/utils";
-
-const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
+import {
+  getServiceLabel,
+  createServiceDetail,
+} from "@/components/features/freelancer/onboarding/utils";
+import { useNavigate } from "react-router-dom";
 
 const getBioTextFromObject = (obj) => {
   if (!obj || typeof obj !== "object") return "";
@@ -269,11 +271,24 @@ const ONBOARDING_ROLE_LABELS = {
   part_time: "Part-Time Freelancer",
 };
 
+const EXPERIENCE_VALUE_LABELS = {
+  less_than_1: "Less than 1 year",
+  "1_3": "1-3 years",
+  "3_5": "3-5 years",
+  "5_plus": "5+ years",
+};
+
 const normalizeValueLabel = (value) => {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
 
   const normalized = raw.toLowerCase();
+  const canonical = normalized
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (EXPERIENCE_VALUE_LABELS[canonical]) {
+    return EXPERIENCE_VALUE_LABELS[canonical];
+  }
   if (normalized === "yes") return "Yes";
   if (normalized === "no") return "No";
   if (normalized === "open") return "Open to all";
@@ -378,6 +393,7 @@ const gradients = [
 ];
 
 const FreelancerProfile = () => {
+  const navigate = useNavigate();
   const { user, authFetch } = useAuth();
   const [modalType, setModalType] = useState(null);
   const [skills, setSkills] = useState([]); // [{ name }]
@@ -404,6 +420,10 @@ const FreelancerProfile = () => {
   const [portfolioProjects, setPortfolioProjects] = useState([]); // [{ link, image, title }]
   const [profileDetails, setProfileDetails] = useState({});
   const [newProjectUrl, setNewProjectUrl] = useState("");
+  const [newProjectImageFile, setNewProjectImageFile] = useState(null);
+  const [newProjectImagePreview, setNewProjectImagePreview] = useState("");
+  const [projectCoverUploadingIndex, setProjectCoverUploadingIndex] =
+    useState(null);
   const [newProjectLoading, setNewProjectLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -417,6 +437,14 @@ const FreelancerProfile = () => {
   const randomGradient = useMemo(() => {
     return gradients[Math.floor(Math.random() * gradients.length)];
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (newProjectImagePreview && newProjectImagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(newProjectImagePreview);
+      }
+    };
+  }, [newProjectImagePreview]);
 
   // Derive initials for avatar
   const initials =
@@ -927,57 +955,185 @@ const FreelancerProfile = () => {
   };
 
   // ----- Portfolio Projects Logic -----
+  const resetProjectDraft = () => {
+    setNewProjectUrl("");
+    setNewProjectImageFile(null);
+    setNewProjectImagePreview((prev) => {
+      if (prev && prev.startsWith("blob:")) {
+        URL.revokeObjectURL(prev);
+      }
+      return "";
+    });
+  };
+
+  const handleProjectImageChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Project image must be less than 8MB");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setNewProjectImageFile(file);
+    setNewProjectImagePreview((prev) => {
+      if (prev && prev.startsWith("blob:")) {
+        URL.revokeObjectURL(prev);
+      }
+      return objectUrl;
+    });
+  };
+
+  const uploadProjectCoverImage = async (index, file) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Project image must be less than 8MB");
+      return;
+    }
+
+    setProjectCoverUploadingIndex(index);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+
+      const uploadResponse = await authFetch("/upload/project-image", {
+        method: "POST",
+        body: uploadData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errPayload = await uploadResponse
+          .json()
+          .catch(() => ({ message: "Failed to upload project image" }));
+        throw new Error(errPayload?.message || "Failed to upload project image");
+      }
+
+      const uploadPayload = await uploadResponse.json();
+      const uploadedUrl = String(uploadPayload?.data?.url || "").trim();
+      if (!uploadedUrl) {
+        throw new Error("Invalid project image response");
+      }
+
+      setPortfolioProjects((prev) =>
+        prev.map((project, projectIndex) =>
+          projectIndex === index ? { ...project, image: uploadedUrl } : project
+        )
+      );
+      toast.success("Project cover updated");
+    } catch (error) {
+      console.error("Project cover upload failed:", error);
+      toast.error("Failed to upload project cover image");
+    } finally {
+      setProjectCoverUploadingIndex(null);
+    }
+  };
+
+  const handleProjectCoverInputChange = (index, event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    uploadProjectCoverImage(index, file);
+  };
+
   const handleUrlBlur = async () => {
-    if (!newProjectUrl) return;
-    if (portfolioProjects.some((p) => p.link === newProjectUrl)) {
+    const rawUrl = String(newProjectUrl || "").trim();
+    if (!rawUrl) return;
+
+    let normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    const hasDuplicate = portfolioProjects.some(
+      (project) =>
+        String(project?.link || "").trim().toLowerCase() ===
+        normalizedUrl.toLowerCase()
+    );
+
+    if (hasDuplicate) {
       toast.error("Project already added");
-      setNewProjectUrl("");
       return;
     }
 
     setNewProjectLoading(true);
-    try {
-      const res = await fetch(
-        buildUrl(`/utils/metadata?url=${encodeURIComponent(newProjectUrl)}`)
-      );
-      const data = await res.json();
 
-      if (data.success) {
-        setPortfolioProjects((prev) => [
-          ...prev,
-          {
-            link: newProjectUrl,
-            image: data.data.image,
-            title:
-              data.data.title ||
-              newProjectUrl.replace(/^https?:\/\//, "").split("/")[0],
-          },
-        ]);
-        setNewProjectUrl("");
-        toast.success("Project added!");
-      } else {
-        setPortfolioProjects((prev) => [
-          ...prev,
-          {
-            link: newProjectUrl,
-            image: null,
-            title: newProjectUrl,
-          },
-        ]);
-        setNewProjectUrl("");
+    try {
+      let previewTitle = "";
+      let previewImage = null;
+
+      try {
+        const previewResponse = await authFetch("/upload/project-preview", {
+          method: "POST",
+          body: JSON.stringify({ url: normalizedUrl }),
+        });
+
+        if (previewResponse.ok) {
+          const payload = await previewResponse.json();
+          if (payload?.success && payload?.data) {
+            normalizedUrl = payload.data.url || normalizedUrl;
+            previewTitle = payload.data.title || "";
+            previewImage = payload.data.image || null;
+          }
+        }
+      } catch (error) {
+        console.warn("Project metadata fetch failed:", error);
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Could not fetch preview, but link added.");
+
+      if (newProjectImageFile) {
+        try {
+          const uploadData = new FormData();
+          uploadData.append("file", newProjectImageFile);
+
+          const uploadResponse = await authFetch("/upload/project-image", {
+            method: "POST",
+            body: uploadData,
+          });
+
+          if (uploadResponse.ok) {
+            const uploadPayload = await uploadResponse.json();
+            if (uploadPayload?.data?.url) {
+              previewImage = uploadPayload.data.url;
+            }
+          } else {
+            const errPayload = await uploadResponse
+              .json()
+              .catch(() => ({ message: "Failed to upload project image" }));
+            throw new Error(
+              errPayload?.message || "Failed to upload project image"
+            );
+          }
+        } catch (error) {
+          console.error("Project image upload failed:", error);
+          toast.error("Failed to upload project image");
+        }
+      }
+
+      const fallbackTitle =
+        previewTitle ||
+        normalizedUrl.replace(/^https?:\/\//, "").split("/")[0] ||
+        "Project";
+
       setPortfolioProjects((prev) => [
         ...prev,
         {
-          link: newProjectUrl,
-          image: null,
-          title: newProjectUrl,
+          link: normalizedUrl,
+          image: previewImage,
+          title: fallbackTitle,
         },
       ]);
-      setNewProjectUrl("");
+
+      toast.success("Project added!");
+      resetProjectDraft();
+      setModalType(null);
     } finally {
       setNewProjectLoading(false);
     }
@@ -985,6 +1141,127 @@ const FreelancerProfile = () => {
 
   const removeProject = (index) => {
     setPortfolioProjects((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const openFullProfileEditor = () => {
+    const identity =
+      profileDetails?.identity && typeof profileDetails.identity === "object"
+        ? profileDetails.identity
+        : {};
+    const availability =
+      profileDetails?.availability && typeof profileDetails.availability === "object"
+        ? profileDetails.availability
+        : {};
+    const reliability =
+      profileDetails?.reliability && typeof profileDetails.reliability === "object"
+        ? profileDetails.reliability
+        : {};
+    const rawServiceDetails =
+      profileDetails?.serviceDetails &&
+      typeof profileDetails.serviceDetails === "object"
+        ? profileDetails.serviceDetails
+        : {};
+
+    const selectedServices = Array.from(
+      new Set([
+        ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
+        ...(Array.isArray(services) ? services : []),
+      ])
+    )
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+
+    const serviceDetailsDraft = selectedServices.reduce((acc, serviceKey) => {
+      const fallback = createServiceDetail();
+      const current =
+        rawServiceDetails?.[serviceKey] &&
+        typeof rawServiceDetails[serviceKey] === "object"
+          ? rawServiceDetails[serviceKey]
+          : {};
+
+      acc[serviceKey] = {
+        ...fallback,
+        ...current,
+        caseStudy: {
+          ...fallback.caseStudy,
+          ...(current?.caseStudy && typeof current.caseStudy === "object"
+            ? current.caseStudy
+            : {}),
+        },
+        groups:
+          current?.groups && typeof current.groups === "object"
+            ? current.groups
+            : {},
+        groupOther:
+          current?.groupOther && typeof current.groupOther === "object"
+            ? current.groupOther
+            : {},
+        projects: Array.isArray(current?.projects) ? current.projects : [],
+      };
+
+      return acc;
+    }, {});
+
+    const profilePhotoUrl =
+      resolveAvatarUrl(identity?.profilePhoto, { allowBlob: true }) ||
+      resolveAvatarUrl(personal.avatar, { allowBlob: true });
+
+    const onboardingDraft = {
+      professionalTitle: String(
+        identity?.professionalTitle || personal.headline || ""
+      ).trim(),
+      username: String(identity?.username || "").trim(),
+      country: String(identity?.country || "").trim(),
+      city: String(identity?.city || "").trim(),
+      profilePhoto: profilePhotoUrl
+        ? {
+            url: profilePhotoUrl,
+            uploadedUrl: profilePhotoUrl,
+            name: "profile-photo",
+          }
+        : null,
+      languages: Array.isArray(identity?.languages) ? identity.languages : [],
+      otherLanguage: String(identity?.otherLanguage || "").trim(),
+      linkedinUrl: String(
+        identity?.linkedinUrl || portfolio.linkedinUrl || ""
+      ).trim(),
+      portfolioUrl: String(
+        identity?.portfolioUrl || portfolio.portfolioUrl || ""
+      ).trim(),
+      role: String(profileDetails?.role || "").trim(),
+      globalIndustryFocus: Array.isArray(profileDetails?.globalIndustryFocus)
+        ? profileDetails.globalIndustryFocus
+        : [],
+      globalIndustryOther: String(profileDetails?.globalIndustryOther || "").trim(),
+      selectedServices,
+      serviceDetails: serviceDetailsDraft,
+      deliveryPolicyAccepted: Boolean(profileDetails?.deliveryPolicyAccepted),
+      hoursPerWeek: String(availability?.hoursPerWeek || "").trim(),
+      workingSchedule: String(availability?.workingSchedule || "").trim(),
+      startTimeline: String(availability?.startTimeline || "").trim(),
+      missedDeadlines: String(reliability?.missedDeadlines || "").trim(),
+      delayHandling: String(reliability?.delayHandling || "").trim(),
+      communicationPolicyAccepted: Boolean(
+        profileDetails?.communicationPolicyAccepted
+      ),
+      acceptInProgressProjects: String(
+        profileDetails?.acceptInProgressProjects || ""
+      ).trim(),
+      termsAccepted: Boolean(profileDetails?.termsAccepted),
+      professionalBio: String(
+        profileDetails?.professionalBio || personal.bio || ""
+      ).trim(),
+      fullName: String(personal.name || user?.fullName || "").trim(),
+      email: String(personal.email || user?.email || "").trim(),
+      password: "",
+    };
+
+    localStorage.setItem(
+      "freelancer_onboarding_data",
+      JSON.stringify(onboardingDraft)
+    );
+    localStorage.setItem("freelancer_onboarding_step", "0");
+    navigate("/freelancer/onboarding?mode=edit");
   };
 
   const onboardingIdentity =
@@ -1297,12 +1574,17 @@ const FreelancerProfile = () => {
             </Card>
 
             <Card className="p-6 md:p-7 space-y-5">
-              <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <span className="text-primary">
-                  <Briefcase className="w-5 h-5" />
-                </span>
-                Onboarding Snapshot
-              </h3>
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                  <span className="text-primary">
+                    <Briefcase className="w-5 h-5" />
+                  </span>
+                  Onboarding Snapshot
+                </h3>
+                <Button variant="outline" size="sm" onClick={openFullProfileEditor}>
+                  Edit All Details
+                </Button>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
@@ -1511,7 +1793,10 @@ const FreelancerProfile = () => {
                     variant="ghost"
                     size="sm"
                     className="text-primary flex items-center gap-1"
-                    onClick={() => setModalType("addProject")}
+                    onClick={() => {
+                      resetProjectDraft();
+                      setModalType("addProject");
+                    }}
                   >
                     <Plus className="w-4 h-4" />
                     Add Project
@@ -1565,6 +1850,26 @@ const FreelancerProfile = () => {
                                     <ExternalLink className="w-4 h-4" />
                                   </span>
                                 )}
+                                <label
+                                  htmlFor={`project-cover-main-${idx}`}
+                                  className="p-2 bg-white rounded-full text-black hover:scale-110 transition-transform cursor-pointer"
+                                  title="Upload cover image"
+                                >
+                                  {projectCoverUploadingIndex === idx ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Camera className="w-4 h-4" />
+                                  )}
+                                </label>
+                                <input
+                                  id={`project-cover-main-${idx}`}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(event) =>
+                                    handleProjectCoverInputChange(idx, event)
+                                  }
+                                />
                                 <button
                                   onClick={() => removeProject(idx)}
                                   className="p-2 bg-destructive text-white rounded-full hover:scale-110 transition-transform"
@@ -1914,16 +2219,34 @@ const FreelancerProfile = () => {
                   className="mt-4 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
+                      e.preventDefault();
                       handleUrlBlur();
-                      setModalType(null);
                     }
                   }}
                 />
+                <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                  Project Image (Optional)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="mt-2 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-xl file:border file:border-border file:bg-card file:px-3 file:py-1 file:text-xs file:font-semibold file:text-foreground"
+                  onChange={handleProjectImageChange}
+                />
+                {newProjectImagePreview ? (
+                  <div className="mt-3 overflow-hidden rounded-xl border border-border">
+                    <img
+                      src={newProjectImagePreview}
+                      alt="Project preview"
+                      className="h-36 w-full object-cover"
+                    />
+                  </div>
+                ) : null}
                 <div className="mt-5 flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => {
-                      setNewProjectUrl("");
+                      resetProjectDraft();
                       setModalType(null);
                     }}
                     className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
@@ -1932,10 +2255,7 @@ const FreelancerProfile = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      handleUrlBlur();
-                      setModalType(null);
-                    }}
+                    onClick={handleUrlBlur}
                     disabled={newProjectLoading || !newProjectUrl.trim()}
                     className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -2008,6 +2328,27 @@ const FreelancerProfile = () => {
                                 No Link
                               </span>
                             )}
+                            <label
+                              htmlFor={`project-cover-modal-${idx}`}
+                              className="flex items-center justify-center gap-1 p-1.5 rounded-lg bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors text-xs cursor-pointer"
+                              title="Upload cover image"
+                            >
+                              {projectCoverUploadingIndex === idx ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Camera className="w-3 h-3" />
+                              )}
+                              Cover
+                            </label>
+                            <input
+                              id={`project-cover-modal-${idx}`}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(event) =>
+                                handleProjectCoverInputChange(idx, event)
+                              }
+                            />
                             <button
                               onClick={() => removeProject(idx)}
                               className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-colors"
@@ -2024,7 +2365,10 @@ const FreelancerProfile = () => {
                       <p className="text-sm">No projects added yet.</p>
                       <button
                         className="mt-2 text-primary text-sm hover:underline"
-                        onClick={() => setModalType("addProject")}
+                        onClick={() => {
+                          resetProjectDraft();
+                          setModalType("addProject");
+                        }}
                       >
                         Add your first project
                       </button>
@@ -2036,7 +2380,10 @@ const FreelancerProfile = () => {
                     variant="ghost"
                     size="sm"
                     className="text-primary"
-                    onClick={() => setModalType("addProject")}
+                    onClick={() => {
+                      resetProjectDraft();
+                      setModalType("addProject");
+                    }}
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add Project
