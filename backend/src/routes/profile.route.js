@@ -10,7 +10,7 @@ profileRouter.use((req, res, next) => {
   next();
 });
 
-profileRouter.get("/", getProfile);
+profileRouter.get("/", requireAuth, getProfile);
 profileRouter.post("/", requireAuth, saveProfile);
 profileRouter.post("/resume", requireAuth, saveResume);
 profileRouter.post("/migrate-bio", migrateBioData); // One-time migration

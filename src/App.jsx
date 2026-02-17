@@ -454,7 +454,11 @@ const App = () => {
             />
             <Route
               path="/freelancer/onboarding"
-              element={<FreelancerMultiStepForm />}
+              element={
+                <ProtectedRoute loginPath="/signup?role=freelancer">
+                  <FreelancerMultiStepForm />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/freelancer/verification-pending"

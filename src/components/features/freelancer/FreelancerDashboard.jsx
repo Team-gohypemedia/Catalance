@@ -31,11 +31,20 @@ import { getSession } from "@/shared/lib/auth-storage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import { consumeFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -61,6 +70,7 @@ export const DashboardContent = ({ roleOverride }) => {
   const [upcomingMeeting, setUpcomingMeeting] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
@@ -77,6 +87,14 @@ export const DashboardContent = ({ roleOverride }) => {
       setShowSuspensionAlert(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== "FREELANCER") return;
+
+    if (consumeFreelancerWelcomePending()) {
+      setShowWelcomeDialog(true);
+    }
+  }, [user?.role]);
 
   useEffect(() => {
     const loadMetrics = async () => {
@@ -234,6 +252,36 @@ export const DashboardContent = ({ roleOverride }) => {
         onOpenChange={setShowSuspensionAlert}
         suspendedAt={sessionUser?.suspendedAt}
       />
+      <Dialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Welcome to Catalance
+            </DialogTitle>
+            <DialogDescription>
+              Your freelancer account is ready. You can explore the dashboard now
+              and start onboarding whenever you want.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowWelcomeDialog(false)}
+            >
+              Continue to Dashboard
+            </Button>
+            <Button
+              onClick={() => {
+                setShowWelcomeDialog(false);
+                navigate("/freelancer/onboarding");
+              }}
+            >
+              Start Onboarding
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Glass Header */}
       <header className="sticky top-0 z-40 px-6 py-4 flex items-center justify-between transition-colors duration-300 border-b border-border/40 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-zinc-900/60">

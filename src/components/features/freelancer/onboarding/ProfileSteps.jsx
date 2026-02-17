@@ -98,6 +98,8 @@ export const WelcomeStep = ({ renderContinueButton, currentStep }) => (
 export const ProfileBasicsStep = ({
     formData,
     updateFormField,
+    onProfilePhotoSelect,
+    clearProfilePhoto,
     handleCountryChange,
     usernameStatus,
     debouncedUsernameCheck,
@@ -301,12 +303,8 @@ export const ProfileBasicsStep = ({
                         onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                                const nextPhoto = {
-                                    name: file.name,
-                                    url: URL.createObjectURL(file),
-                                    file,
-                                };
-                                updateFormField("profilePhoto", nextPhoto);
+                                onProfilePhotoSelect(file);
+                                e.target.value = "";
                             }
                         }}
                     />
@@ -331,7 +329,7 @@ export const ProfileBasicsStep = ({
                                 type="button"
                                 onClick={(e) => {
                                     e.preventDefault();
-                                    updateFormField("profilePhoto", null);
+                                    clearProfilePhoto();
                                 }}
                                 className="p-1 hover:bg-white/10 rounded-full"
                             >
@@ -339,6 +337,9 @@ export const ProfileBasicsStep = ({
                             </button>
                         )}
                     </label>
+                    <p className="text-[11px] text-white/55">
+                        Crop is supported. Final image must be 5MB or smaller.
+                    </p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -494,7 +495,7 @@ export const ProfileBasicsStep = ({
                 )}
 
                 <div className="space-y-1.5">
-                    <Label className="text-white/70 text-[11px]">LinkedIn Profile URL</Label>
+                    <Label className="text-white/70 text-[11px]">LinkedIn Profile URL (Optional)</Label>
                     <Input
                         type="url"
                         value={formData.linkedinUrl}
@@ -505,7 +506,7 @@ export const ProfileBasicsStep = ({
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label className="text-white/70 text-[11px]">Portfolio Or Website Link</Label>
+                    <Label className="text-white/70 text-[11px]">Portfolio Or Website Link (Optional)</Label>
                     <Input
                         type="url"
                         value={formData.portfolioUrl}
@@ -811,7 +812,12 @@ export const CityStep = ({
 // PROFILE PHOTO STEP
 // ============================================================================
 
-export const ProfilePhotoStep = ({ formData, updateFormField, renderContinueButton }) => {
+export const ProfilePhotoStep = ({
+    formData,
+    onProfilePhotoSelect,
+    clearProfilePhoto,
+    renderContinueButton,
+}) => {
     const photo = formData.profilePhoto;
 
     return (
@@ -829,12 +835,8 @@ export const ProfilePhotoStep = ({ formData, updateFormField, renderContinueButt
                     onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                            const nextPhoto = {
-                                name: file.name,
-                                url: URL.createObjectURL(file),
-                                file,
-                            };
-                            updateFormField("profilePhoto", nextPhoto);
+                            onProfilePhotoSelect(file);
+                            e.target.value = "";
                         }
                     }}
                 />
@@ -859,7 +861,7 @@ export const ProfilePhotoStep = ({ formData, updateFormField, renderContinueButt
                             type="button"
                             onClick={(e) => {
                                 e.preventDefault();
-                                updateFormField("profilePhoto", null);
+                                clearProfilePhoto();
                             }}
                             className="p-1 hover:bg-white/10 rounded-full"
                         >
@@ -867,6 +869,9 @@ export const ProfilePhotoStep = ({ formData, updateFormField, renderContinueButt
                         </button>
                     )}
                 </label>
+                <p className="text-xs text-white/55">
+                    Crop and optimize before saving. Max upload size is 5MB.
+                </p>
             </div>
             {renderContinueButton()}
         </div>
@@ -986,13 +991,13 @@ export const LanguagesStep = ({
 
 export const LinkedinStep = ({ formData, updateFormField, queueAdvance, renderContinueButton }) => (
     <div className="space-y-6">
-        <StepHeader title="LinkedIn Profile URL" />
+        <StepHeader title="LinkedIn Profile URL (Optional)" />
         <Input
             type="url"
             value={formData.linkedinUrl}
             onChange={(e) => updateFormField("linkedinUrl", e.target.value)}
             onKeyDown={(e) => {
-                if (e.key === "Enter" && formData.linkedinUrl.trim()) {
+                if (e.key === "Enter") {
                     e.preventDefault();
                     queueAdvance(0);
                 }
@@ -1010,13 +1015,13 @@ export const LinkedinStep = ({ formData, updateFormField, queueAdvance, renderCo
 
 export const PortfolioStep = ({ formData, updateFormField, queueAdvance, renderContinueButton }) => (
     <div className="space-y-6">
-        <StepHeader title="Portfolio Or Website Link" />
+        <StepHeader title="Portfolio Or Website Link (Optional)" />
         <Input
             type="url"
             value={formData.portfolioUrl}
             onChange={(e) => updateFormField("portfolioUrl", e.target.value)}
             onKeyDown={(e) => {
-                if (e.key === "Enter" && formData.portfolioUrl.trim()) {
+                if (e.key === "Enter") {
                     e.preventDefault();
                     queueAdvance(0);
                 }

@@ -138,7 +138,7 @@ const Onboading = () => {
               Hire a professional <ArrowRight className="h-5 w-4" />
             </Button>
           </Link>
-          <Link to="/freelancer/onboarding" className="w-full sm:w-auto">
+          <Link to="/signup?role=freelancer" className="w-full sm:w-auto">
             <Button
               variant="outline"
               size="lg"

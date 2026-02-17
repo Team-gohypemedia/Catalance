@@ -33,7 +33,8 @@ import {
   SidebarMenuItem,
   useSidebar
 } from "@/components/ui/sidebar";
-import { getSession, clearSession } from "@/shared/lib/auth-storage";
+import { getSession } from "@/shared/lib/auth-storage";
+import { useAuth } from "@/shared/context/AuthContext";
 import { useTheme } from "@/components/providers/theme-provider";
 
 const getInitials = (value) => {
@@ -57,6 +58,7 @@ const getInitials = (value) => {
 export function NavUser({ user = null }) {
   const { isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
+  const { logout } = useAuth();
   const [sessionUser, setSessionUser] = useState(null);
   const navigate = useNavigate();
 
@@ -77,8 +79,7 @@ export function NavUser({ user = null }) {
   const initials = getInitials(displayName);
 
   const handleLogout = () => {
-    clearSession();
-    navigate("/login", { replace: true });
+    logout({ redirectTo: "/login" });
   };
 
   const handleAccountClick = () => {
