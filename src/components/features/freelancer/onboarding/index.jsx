@@ -43,6 +43,10 @@ import {
     normalizeCustomTools,
     parseCustomTools,
 } from "./utils";
+import {
+    getFreelancerOnboardingStorageKeys,
+    LEGACY_FREELANCER_ONBOARDING_STORAGE_KEYS,
+} from "./storage";
 
 // Step components
 import {
@@ -89,6 +93,7 @@ import {
     BioStep,
     OtpVerificationStep,
 } from "./PolicySteps";
+import ProfileImageCropDialog from "./ProfileImageCropDialog";
 
 const ONBOARDING_SKILL_BLOCKLIST = new Set([
     "yes",
@@ -239,6 +244,50 @@ const normalizeAvatarUrl = (value) => {
     return url;
 };
 
+const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
+
+const formatFileSize = (bytes) => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const exponent = Math.min(
+        Math.floor(Math.log(bytes) / Math.log(1024)),
+        units.length - 1,
+    );
+    const value = bytes / 1024 ** exponent;
+    return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+};
+
+const createInitialOnboardingFormData = () => ({
+    professionalTitle: "",
+    username: "",
+    country: "",
+    city: "",
+    profilePhoto: null,
+    languages: [],
+    otherLanguage: "",
+    linkedinUrl: "",
+    portfolioUrl: "",
+    role: "",
+    globalIndustryFocus: [],
+    globalIndustryOther: "",
+    selectedServices: [],
+    serviceDetails: {},
+    deliveryPolicyAccepted: false,
+    hoursPerWeek: "",
+    workingSchedule: "",
+    startTimeline: "",
+    missedDeadlines: "",
+    delayHandling: "",
+    communicationPolicyAccepted: false,
+    acceptInProgressProjects: "",
+    termsAccepted: false,
+    professionalBio: "",
+    fullName: "",
+    email: "",
+    password: "",
+});
+
 const buildPortfolioProjectsFromServiceDetails = (serviceDetails = {}) => {
     const projectMap = new Map();
 
@@ -322,38 +371,12 @@ const FreelancerMultiStepForm = () => {
     const usernameDebounceRef = useRef(null);
     const [techStackOtherDrafts, setTechStackOtherDrafts] = useState({});
     const [groupOtherDrafts, setGroupOtherDrafts] = useState({});
+    const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
+    const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
     const [stateOptions, setStateOptions] = useState([]);
     const [isStateOptionsLoading, setIsStateOptionsLoading] = useState(false);
 
-    const [formData, setFormData] = useState({
-        professionalTitle: "",
-        username: "",
-        country: "",
-        city: "",
-        profilePhoto: null,
-        languages: [],
-        otherLanguage: "",
-        linkedinUrl: "",
-        portfolioUrl: "",
-        role: "",
-        globalIndustryFocus: [],
-        globalIndustryOther: "",
-        selectedServices: [],
-        serviceDetails: {},
-        deliveryPolicyAccepted: false,
-        hoursPerWeek: "",
-        workingSchedule: "",
-        startTimeline: "",
-        missedDeadlines: "",
-        delayHandling: "",
-        communicationPolicyAccepted: false,
-        acceptInProgressProjects: "",
-        termsAccepted: false,
-        professionalBio: "",
-        fullName: "",
-        email: "",
-        password: "",
-    });
+    const [formData, setFormData] = useState(() => createInitialOnboardingFormData());
 
     const advanceTimerRef = useRef(null);
     const queuedStepKeyRef = useRef("");
@@ -482,33 +505,59 @@ const FreelancerMultiStepForm = () => {
 
     const totalSteps = steps.length;
     const currentStep = steps[currentStepIndex];
+    const onboardingStorageKeys = useMemo(
+        () => getFreelancerOnboardingStorageKeys(user),
+        [user?.id, user?.email],
+    );
 
     const [isLoaded, setIsLoaded] = useState(false);
 
     // ── Persistence ─────────────────────────────────────────────────────
     useEffect(() => {
-        const savedData = localStorage.getItem("freelancer_onboarding_data");
-        const savedStep = localStorage.getItem("freelancer_onboarding_step");
+        setIsLoaded(false);
+
+        const savedData = localStorage.getItem(onboardingStorageKeys.dataKey);
+        const savedStep = localStorage.getItem(onboardingStorageKeys.stepKey);
+
+        // Clear legacy global draft keys to prevent cross-account leakage.
+        localStorage.removeItem(LEGACY_FREELANCER_ONBOARDING_STORAGE_KEYS.dataKey);
+        localStorage.removeItem(LEGACY_FREELANCER_ONBOARDING_STORAGE_KEYS.stepKey);
+
+        let nextFormData = createInitialOnboardingFormData();
+        let nextStepIndex = 0;
 
         if (savedData) {
             try {
-                setFormData(JSON.parse(savedData));
+                const parsed = JSON.parse(savedData);
+                if (parsed && typeof parsed === "object") {
+                    nextFormData = {
+                        ...nextFormData,
+                        ...parsed,
+                    };
+                }
             } catch (e) {
                 console.error("Failed to parse saved form data", e);
             }
         }
+
         if (savedStep) {
-            setCurrentStepIndex(parseInt(savedStep, 10));
+            const parsedStep = parseInt(savedStep, 10);
+            if (Number.isFinite(parsedStep) && parsedStep >= 0) {
+                nextStepIndex = parsedStep;
+            }
         }
+
+        setFormData(nextFormData);
+        setCurrentStepIndex(nextStepIndex);
         setIsLoaded(true);
-    }, []);
+    }, [onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey]);
 
     useEffect(() => {
         if (isLoaded) {
-            localStorage.setItem("freelancer_onboarding_data", JSON.stringify(formData));
-            localStorage.setItem("freelancer_onboarding_step", currentStepIndex.toString());
+            localStorage.setItem(onboardingStorageKeys.dataKey, JSON.stringify(formData));
+            localStorage.setItem(onboardingStorageKeys.stepKey, currentStepIndex.toString());
         }
-    }, [formData, currentStepIndex, isLoaded]);
+    }, [formData, currentStepIndex, isLoaded, onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey]);
 
     useEffect(() => {
         if (!isLoaded) return;
@@ -755,6 +804,87 @@ const FreelancerMultiStepForm = () => {
         if (advanceDelay !== null) queueAdvance(advanceDelay);
     };
 
+    const setProfilePhoto = useCallback((nextPhoto) => {
+        setFormData((prev) => {
+            const previousUrl = extractProfilePhotoUrl(prev.profilePhoto);
+            const nextUrl = extractProfilePhotoUrl(nextPhoto);
+
+            if (
+                previousUrl.startsWith("blob:") &&
+                previousUrl &&
+                previousUrl !== nextUrl
+            ) {
+                URL.revokeObjectURL(previousUrl);
+            }
+
+            return {
+                ...prev,
+                profilePhoto: nextPhoto,
+            };
+        });
+
+        setStepError((previousError) => (previousError ? "" : previousError));
+    }, []);
+
+    const clearProfilePhoto = useCallback(() => {
+        setProfilePhoto(null);
+    }, [setProfilePhoto]);
+
+    const closeProfileCropDialog = useCallback(() => {
+        setIsProfileCropOpen(false);
+        setPendingProfilePhotoFile(null);
+    }, []);
+
+    const handleProfilePhotoSelect = useCallback((file) => {
+        if (!(typeof File !== "undefined" && file instanceof File)) {
+            return;
+        }
+
+        if (!String(file.type || "").startsWith("image/")) {
+            toast.error("Please select an image file.");
+            return;
+        }
+
+        if (file.size > PROFILE_PHOTO_PICK_MAX_BYTES) {
+            toast.error(
+                `Selected image is ${formatFileSize(file.size)}. Please choose an image under ${formatFileSize(
+                    PROFILE_PHOTO_PICK_MAX_BYTES,
+                )} before cropping.`,
+            );
+            return;
+        }
+
+        setPendingProfilePhotoFile(file);
+        setIsProfileCropOpen(true);
+    }, []);
+
+    const handleProfilePhotoCropped = useCallback((croppedFile) => {
+        if (!(typeof File !== "undefined" && croppedFile instanceof File)) {
+            toast.error("Unable to process profile image.");
+            return;
+        }
+
+        if (croppedFile.size > AVATAR_UPLOAD_MAX_BYTES) {
+            toast.error(
+                `Cropped image is ${formatFileSize(croppedFile.size)}. Please crop tighter and try again.`,
+            );
+            return;
+        }
+
+        const nextPhoto = {
+            name: croppedFile.name,
+            url: URL.createObjectURL(croppedFile),
+            file: croppedFile,
+        };
+        setProfilePhoto(nextPhoto);
+        closeProfileCropDialog();
+    }, [closeProfileCropDialog, setProfilePhoto]);
+
+    const clearOnboardingDraftStorage = useCallback(() => {
+        localStorage.removeItem(onboardingStorageKeys.dataKey);
+        localStorage.removeItem(onboardingStorageKeys.stepKey);
+    }, [onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey]);
+
     const handleCountryChange = (country, advanceDelay = null) => {
         setFormData((prev) => {
             if (prev.country === country) return prev;
@@ -847,12 +977,22 @@ const FreelancerMultiStepForm = () => {
                 if (!data.country) return "Please select your country.";
                 if (!data.city.trim()) return "Please select your state.";
                 if (!data.profilePhoto) return "Please upload a profile photo.";
+                if (
+                    extractProfilePhotoFile(data.profilePhoto)?.size >
+                    AVATAR_UPLOAD_MAX_BYTES
+                ) {
+                    return "Profile image must be 5MB or smaller. Please crop or choose another image.";
+                }
                 if (!data.languages.length) return "Please select at least one language.";
                 if (data.languages.includes("Other") && !data.otherLanguage.trim()) {
                     return "Please specify your other language.";
                 }
-                if (!isValidUrl(data.linkedinUrl)) return "Please enter a valid LinkedIn profile URL.";
-                if (!isValidUrl(data.portfolioUrl)) return "Please enter a valid portfolio or website URL.";
+                if (data.linkedinUrl.trim() && !isValidUrl(data.linkedinUrl.trim())) {
+                    return "Please enter a valid LinkedIn profile URL.";
+                }
+                if (data.portfolioUrl.trim() && !isValidUrl(data.portfolioUrl.trim())) {
+                    return "Please enter a valid portfolio or website URL.";
+                }
                 return "";
             case "professionalTitle":
                 return data.professionalTitle.trim() ? "" : "Please enter your profession title.";
@@ -873,7 +1013,14 @@ const FreelancerMultiStepForm = () => {
             case "city":
                 return data.city.trim() ? "" : "Please select your state.";
             case "profilePhoto":
-                return data.profilePhoto ? "" : "Please upload a profile photo.";
+                if (!data.profilePhoto) return "Please upload a profile photo.";
+                if (
+                    extractProfilePhotoFile(data.profilePhoto)?.size >
+                    AVATAR_UPLOAD_MAX_BYTES
+                ) {
+                    return "Profile image must be 5MB or smaller. Please crop or choose another image.";
+                }
+                return "";
             case "languages":
                 if (!data.languages.length) return "Please select at least one language.";
                 if (data.languages.includes("Other") && !data.otherLanguage.trim()) {
@@ -881,9 +1028,13 @@ const FreelancerMultiStepForm = () => {
                 }
                 return "";
             case "linkedin":
-                return isValidUrl(data.linkedinUrl) ? "" : "Please enter a valid LinkedIn profile URL.";
+                return data.linkedinUrl.trim() && !isValidUrl(data.linkedinUrl.trim())
+                    ? "Please enter a valid LinkedIn profile URL."
+                    : "";
             case "portfolio":
-                return isValidUrl(data.portfolioUrl) ? "" : "Please enter a valid portfolio or website URL.";
+                return data.portfolioUrl.trim() && !isValidUrl(data.portfolioUrl.trim())
+                    ? "Please enter a valid portfolio or website URL."
+                    : "";
             case "role":
                 return data.role ? "" : "Please select how you want to work on Catalance.";
             case "nichePreference":
@@ -1009,6 +1160,11 @@ const FreelancerMultiStepForm = () => {
         try {
             const profilePhotoFile = extractProfilePhotoFile(formData.profilePhoto);
             const profilePhotoPreviewUrl = extractProfilePhotoUrl(formData.profilePhoto);
+            if (profilePhotoFile && profilePhotoFile.size > AVATAR_UPLOAD_MAX_BYTES) {
+                throw new Error(
+                    "Profile image must be 5MB or smaller. Please crop or choose another image.",
+                );
+            }
             const hasBlobOnlyProfilePhoto =
                 profilePhotoPreviewUrl.startsWith("blob:") && !profilePhotoFile;
             if (hasBlobOnlyProfilePhoto) {
@@ -1096,8 +1252,7 @@ const FreelancerMultiStepForm = () => {
                 await updateProfile(updatePayload);
 
                 await refreshUser();
-                localStorage.removeItem("freelancer_onboarding_data");
-                localStorage.removeItem("freelancer_onboarding_step");
+                clearOnboardingDraftStorage();
 
                 toast.success("Profile completed successfully!");
                 navigate("/freelancer", { replace: true });
@@ -1140,8 +1295,7 @@ const FreelancerMultiStepForm = () => {
             }
 
             setAuthSession(authPayload?.user, authPayload?.accessToken);
-            localStorage.removeItem("freelancer_onboarding_data");
-            localStorage.removeItem("freelancer_onboarding_step");
+            clearOnboardingDraftStorage();
 
             toast.success("Your freelancer account has been created.");
             navigate("/freelancer", { replace: true });
@@ -1169,6 +1323,11 @@ const FreelancerMultiStepForm = () => {
 
             const verifiedAccessToken = authPayload?.accessToken;
             const profilePhotoFile = extractProfilePhotoFile(formData.profilePhoto);
+            if (profilePhotoFile && profilePhotoFile.size > AVATAR_UPLOAD_MAX_BYTES) {
+                throw new Error(
+                    "Profile image must be 5MB or smaller. Please crop or choose another image.",
+                );
+            }
             if (verifiedAccessToken && profilePhotoFile) {
                 try {
                     const uploadedAvatarUrl = await uploadOnboardingAvatar(
@@ -1194,8 +1353,7 @@ const FreelancerMultiStepForm = () => {
                 }
             }
 
-            localStorage.removeItem("freelancer_onboarding_data");
-            localStorage.removeItem("freelancer_onboarding_step");
+            clearOnboardingDraftStorage();
 
             toast.success("Account verified and created successfully!");
             navigate("/freelancer", { replace: true });
@@ -1283,6 +1441,8 @@ const FreelancerMultiStepForm = () => {
                 return (
                     <ProfileBasicsStep
                         {...sharedProps}
+                        onProfilePhotoSelect={handleProfilePhotoSelect}
+                        clearProfilePhoto={clearProfilePhoto}
                         handleCountryChange={handleCountryChange}
                         usernameStatus={usernameStatus}
                         debouncedUsernameCheck={debouncedUsernameCheck}
@@ -1315,7 +1475,13 @@ const FreelancerMultiStepForm = () => {
                     />
                 );
             case "profilePhoto":
-                return <ProfilePhotoStep {...sharedProps} />;
+                return (
+                    <ProfilePhotoStep
+                        {...sharedProps}
+                        onProfilePhotoSelect={handleProfilePhotoSelect}
+                        clearProfilePhoto={clearProfilePhoto}
+                    />
+                );
             case "languages":
                 return <LanguagesStep {...sharedProps} />;
             case "linkedin":
@@ -1501,6 +1667,13 @@ const FreelancerMultiStepForm = () => {
 
 
             </div>
+            <ProfileImageCropDialog
+                open={isProfileCropOpen}
+                file={pendingProfilePhotoFile}
+                maxUploadBytes={AVATAR_UPLOAD_MAX_BYTES}
+                onApply={handleProfilePhotoCropped}
+                onCancel={closeProfileCropDialog}
+            />
         </div>
     );
 };

@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { signup, loginWithGoogle, verifyOtp, resendOtp } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
+import { markFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -91,19 +92,11 @@ function Signup({ className, ...props }) {
     }
 
     if (requestedRole === FREELANCER_ROLE) {
-      navigate(
-        user.onboardingComplete ? "/freelancer" : "/freelancer/onboarding",
-        { replace: true },
-      );
+      navigate("/freelancer", { replace: true });
       return;
     }
 
     const role = user.role?.toUpperCase();
-
-    if (role === FREELANCER_ROLE && !user.onboardingComplete) {
-      navigate("/freelancer/onboarding", { replace: true });
-      return;
-    }
 
     if (role === CLIENT_ROLE) {
       navigate("/client", { replace: true });
@@ -227,14 +220,17 @@ function Signup({ className, ...props }) {
 
       const nextRole = authPayload?.user?.role?.toUpperCase() || CLIENT_ROLE;
       const requestedRole = searchParams.get("role")?.toUpperCase();
+      const shouldOpenFreelancerDashboard =
+        requestedRole === FREELANCER_ROLE || nextRole === FREELANCER_ROLE;
+
+      if (shouldOpenFreelancerDashboard) {
+        markFreelancerWelcomePending();
+      }
 
       if (requestedRole === CLIENT_ROLE) {
         navigate("/client", { replace: true });
-      } else if (requestedRole === FREELANCER_ROLE || nextRole === FREELANCER_ROLE) {
-        const hasCompletedOnboarding = Boolean(authPayload?.user?.onboardingComplete);
-        navigate(hasCompletedOnboarding ? "/freelancer" : "/freelancer/onboarding", {
-          replace: true,
-        });
+      } else if (shouldOpenFreelancerDashboard) {
+        navigate("/freelancer", { replace: true });
       } else {
         navigate(nextRole === "CLIENT" ? "/client" : "/freelancer", {
           replace: true,
@@ -296,14 +292,17 @@ function Signup({ className, ...props }) {
       toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);
       const nextRole = authPayload?.user?.role?.toUpperCase() || selectedRole;
       const requestedRole = selectedRole?.toUpperCase();
+      const shouldOpenFreelancerDashboard =
+        requestedRole === FREELANCER_ROLE || nextRole === FREELANCER_ROLE;
+
+      if (shouldOpenFreelancerDashboard) {
+        markFreelancerWelcomePending();
+      }
 
       if (requestedRole === CLIENT_ROLE) {
         navigate("/client", { replace: true });
-      } else if (requestedRole === FREELANCER_ROLE || nextRole === FREELANCER_ROLE) {
-        const hasCompletedOnboarding = Boolean(authPayload?.user?.onboardingComplete);
-        navigate(hasCompletedOnboarding ? "/freelancer" : "/freelancer/onboarding", {
-          replace: true,
-        });
+      } else if (shouldOpenFreelancerDashboard) {
+        navigate("/freelancer", { replace: true });
       } else {
         navigate(nextRole === CLIENT_ROLE ? "/client" : "/freelancer", {
           replace: true,

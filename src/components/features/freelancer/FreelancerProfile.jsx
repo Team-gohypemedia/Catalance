@@ -37,12 +37,12 @@ import { CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
-import { API_BASE_URL } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
   getServiceLabel,
   createServiceDetail,
 } from "@/components/features/freelancer/onboarding/utils";
+import { getFreelancerOnboardingStorageKeys } from "@/components/features/freelancer/onboarding/storage";
 import { useNavigate } from "react-router-dom";
 
 const getBioTextFromObject = (obj) => {
@@ -437,6 +437,10 @@ const FreelancerProfile = () => {
   const randomGradient = useMemo(() => {
     return gradients[Math.floor(Math.random() * gradients.length)];
   }, []);
+  const onboardingStorageKeys = useMemo(
+    () => getFreelancerOnboardingStorageKeys(user),
+    [user?.id, user?.email]
+  );
 
   useEffect(() => {
     return () => {
@@ -546,12 +550,43 @@ const FreelancerProfile = () => {
     const loadProfile = async () => {
       setProfileLoading(true);
 
+      if (!user) {
+        if (!active) return;
+
+        setPersonal({
+          name: "",
+          email: "",
+          phone: "",
+          location: "",
+          headline: "",
+          bio: "",
+          experienceYears: "",
+          avatar: "",
+          available: false,
+        });
+        setPortfolio({
+          portfolioUrl: "",
+          linkedinUrl: "",
+          githubUrl: "",
+          resume: "",
+        });
+        setPortfolioProjects([]);
+        setProfileDetails({});
+        setSkills([]);
+        setWorkExperience([]);
+        setServices([]);
+        setInitialData(null);
+        setIsDirty(false);
+        setProfileLoading(false);
+        return;
+      }
+
       try {
         let data = null;
 
         if (user?.email) {
           const response = await authFetch(
-            `/profile?email=${encodeURIComponent(user.email)}&_t=${Date.now()}`
+            `/profile?_t=${Date.now()}`
           );
 
           if (response.ok) {
@@ -566,18 +601,6 @@ const FreelancerProfile = () => {
           const fallbackResponse = await authFetch("/auth/profile");
           if (fallbackResponse.ok) {
             const payload = await fallbackResponse.json();
-            data = payload?.data ?? null;
-          }
-        }
-
-        if (!data && user?.email) {
-          const baseUrl = API_BASE_URL || "/api";
-          const url = `${baseUrl}/profile?email=${encodeURIComponent(
-            user.email
-          )}&_t=${Date.now()}`;
-          const response = await fetch(url);
-          if (response.ok) {
-            const payload = await response.json();
             data = payload?.data ?? null;
           }
         }
@@ -642,7 +665,7 @@ const FreelancerProfile = () => {
           Array.isArray(normalized.skills) ? normalized.skills : []
         );
 
-        setPersonal((prev) => ({ ...prev, ...loadedPersonal }));
+        setPersonal(loadedPersonal);
         setPortfolio(loadedPortfolio);
         setPortfolioProjects(normalized.portfolioProjects || []);
         setProfileDetails(loadedProfileDetails);
@@ -665,6 +688,42 @@ const FreelancerProfile = () => {
       } catch (error) {
         console.error("Unable to load profile", error);
         toast.error("Failed to load profile data");
+        if (active) {
+          const fallbackPersonal = {
+            name: user?.fullName ?? user?.name ?? "",
+            email: user?.email ?? "",
+            phone: "",
+            location: "",
+            headline: "",
+            bio: "",
+            experienceYears: "",
+            avatar: resolveAvatarUrl(user?.avatar, { allowBlob: true }) || "",
+            available: true,
+          };
+          const fallbackPortfolio = {
+            portfolioUrl: "",
+            linkedinUrl: "",
+            githubUrl: "",
+            resume: "",
+          };
+
+          setPersonal(fallbackPersonal);
+          setPortfolio(fallbackPortfolio);
+          setPortfolioProjects([]);
+          setProfileDetails({});
+          setSkills([]);
+          setWorkExperience([]);
+          setServices([]);
+          setInitialData({
+            personal: fallbackPersonal,
+            portfolio: fallbackPortfolio,
+            skills: [],
+            workExperience: [],
+            services: [],
+            portfolioProjects: [],
+          });
+          setIsDirty(false);
+        }
       } finally {
         if (active) setProfileLoading(false);
       }
@@ -675,7 +734,7 @@ const FreelancerProfile = () => {
     return () => {
       active = false;
     };
-  }, [user?.email, authFetch, user?.fullName, user?.name]);
+  }, [user?.id, user?.email, authFetch, user?.fullName, user?.name]);
 
   useEffect(() => {
     if (!initialData) return;
@@ -1257,10 +1316,10 @@ const FreelancerProfile = () => {
     };
 
     localStorage.setItem(
-      "freelancer_onboarding_data",
+      onboardingStorageKeys.dataKey,
       JSON.stringify(onboardingDraft)
     );
-    localStorage.setItem("freelancer_onboarding_step", "0");
+    localStorage.setItem(onboardingStorageKeys.stepKey, "0");
     navigate("/freelancer/onboarding?mode=edit");
   };
 
@@ -1355,6 +1414,22 @@ const FreelancerProfile = () => {
   const effectiveWorkExperience = workExperience.length
     ? workExperience
     : onboardingDerivedWorkExperience;
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground pb-20">
+        <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+          <FreelancerTopBar label="Profile" />
+          <div className="rounded-3xl border border-border/50 bg-card p-10">
+            <div className="flex items-center justify-center gap-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Loading your profile...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">

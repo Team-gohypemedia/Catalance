@@ -208,18 +208,30 @@ export const migrateBioData = asyncHandler(async (req, res) => {
 
 
 export const getProfile = asyncHandler(async (req, res) => {
-  const email = req.query.email;
-  console.log("[getProfile] Called with email:", email);
+  const tokenUserId = req.user?.sub;
+  const tokenEmail =
+    typeof req.user?.email === "string"
+      ? req.user.email.toLowerCase().trim()
+      : "";
+  const requestedEmail =
+    typeof req.query?.email === "string"
+      ? req.query.email.toLowerCase().trim()
+      : "";
+  console.log("[getProfile] Called for user:", tokenUserId || tokenEmail);
 
-  if (!email) {
-    throw new AppError("Email is required to fetch profile", 400);
+  if (!tokenUserId && !tokenEmail) {
+    throw new AppError("Authentication required to fetch profile", 401);
+  }
+
+  if (requestedEmail && tokenEmail && requestedEmail !== tokenEmail) {
+    throw new AppError("Forbidden profile access", 403);
   }
 
   // Prevent caching
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
   const user = await prisma.user.findUnique({
-    where: { email }
+    where: tokenUserId ? { id: tokenUserId } : { email: tokenEmail }
   });
   if (!user) {
     throw new AppError("User not found", 404);
