@@ -129,8 +129,14 @@ export const isValidUrl = (value = "") => {
     }
 };
 
+export const normalizeUsernameInput = (value = "") =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .slice(0, 20);
+
 export const isValidUsername = (value = "") =>
-    /^[a-zA-Z0-9_]{3,20}$/.test(value.trim());
+    /^[a-z0-9]{3,20}$/.test(String(value || "").trim());
 
 export const toQuestionTitle = (value = "") =>
     value

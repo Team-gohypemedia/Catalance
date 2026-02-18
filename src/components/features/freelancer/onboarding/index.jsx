@@ -36,6 +36,7 @@ import {
 import {
     isValidUsername,
     isValidUrl,
+    normalizeUsernameInput,
     getServiceLabel,
     getServiceGroups,
     createServiceDetail,
@@ -268,6 +269,7 @@ const createInitialOnboardingFormData = () => ({
     otherLanguage: "",
     linkedinUrl: "",
     portfolioUrl: "",
+    githubUrl: "",
     role: "",
     globalIndustryFocus: [],
     globalIndustryOther: "",
@@ -299,11 +301,16 @@ const buildPortfolioProjectsFromServiceDetails = (serviceDetails = {}) => {
             const title = String(project?.title || "").trim();
             const description = String(project?.description || "").trim();
             const link = normalizeProjectLink(project?.link || project?.url || "");
+            const readme = normalizeProjectLink(
+                project?.readme || project?.readmeUrl || project?.readmeLink || "",
+            );
 
-            if (!title && !description && !link) return;
+            if (!title && !description && !link && !readme) return;
 
             const dedupKey = link
                 ? link.toLowerCase()
+                : readme
+                    ? readme.toLowerCase()
                 : `${serviceKey}:${title.toLowerCase()}:${index}`;
 
             if (projectMap.has(dedupKey)) return;
@@ -311,6 +318,7 @@ const buildPortfolioProjectsFromServiceDetails = (serviceDetails = {}) => {
             projectMap.set(dedupKey, {
                 title: title || `${serviceLabel} Project`,
                 link,
+                readme,
                 image: null,
                 description,
                 service: serviceLabel,
@@ -540,6 +548,11 @@ const FreelancerMultiStepForm = () => {
             }
         }
 
+        nextFormData.username = normalizeUsernameInput(nextFormData.username);
+        nextFormData.languages = Array.isArray(nextFormData.languages)
+            ? nextFormData.languages.filter(Boolean)
+            : [];
+
         if (savedStep) {
             const parsedStep = parseInt(savedStep, 10);
             if (Number.isFinite(parsedStep) && parsedStep >= 0) {
@@ -717,7 +730,7 @@ const FreelancerMultiStepForm = () => {
     };
 
     const checkUsernameAvailability = async (value = formData.username) => {
-        const normalized = value.trim();
+        const normalized = normalizeUsernameInput(value);
 
         if (!normalized) {
             setUsernameStatus("idle");
@@ -799,7 +812,12 @@ const FreelancerMultiStepForm = () => {
     };
 
     const updateFormField = (field, value, advanceDelay = null) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
+        const nextValue = field === "username"
+            ? normalizeUsernameInput(value)
+            : field === "languages"
+                ? (Array.isArray(value) ? value : [])
+                : value;
+        setFormData((prev) => ({ ...prev, [field]: nextValue }));
         if (stepError) setStepError("");
         if (advanceDelay !== null) queueAdvance(advanceDelay);
     };
@@ -858,17 +876,37 @@ const FreelancerMultiStepForm = () => {
         setIsProfileCropOpen(true);
     }, []);
 
-    const handleProfilePhotoCropped = useCallback((croppedFile) => {
+    const handleProfilePhotoCropped = useCallback(async (croppedFile) => {
         if (!(typeof File !== "undefined" && croppedFile instanceof File)) {
             toast.error("Unable to process profile image.");
-            return;
+            return false;
         }
 
         if (croppedFile.size > AVATAR_UPLOAD_MAX_BYTES) {
             toast.error(
                 `Cropped image is ${formatFileSize(croppedFile.size)}. Please crop tighter and try again.`,
             );
-            return;
+            return false;
+        }
+
+        if (user) {
+            try {
+                const uploadedAvatarUrl = await uploadOnboardingAvatar(croppedFile);
+                if (uploadedAvatarUrl) {
+                    setProfilePhoto({
+                        name: croppedFile.name,
+                        url: uploadedAvatarUrl,
+                        uploadedUrl: uploadedAvatarUrl,
+                        file: null,
+                    });
+                    toast.success("Profile photo uploaded!");
+                    closeProfileCropDialog();
+                    return true;
+                }
+            } catch (uploadError) {
+                console.error("Failed to upload onboarding profile photo:", uploadError);
+                toast.warning("Photo saved locally. It will upload when you submit.");
+            }
         }
 
         const nextPhoto = {
@@ -878,7 +916,8 @@ const FreelancerMultiStepForm = () => {
         };
         setProfilePhoto(nextPhoto);
         closeProfileCropDialog();
-    }, [closeProfileCropDialog, setProfilePhoto]);
+        return true;
+    }, [closeProfileCropDialog, setProfilePhoto, uploadOnboardingAvatar, user]);
 
     const clearOnboardingDraftStorage = useCallback(() => {
         localStorage.removeItem(onboardingStorageKeys.dataKey);
@@ -966,12 +1005,12 @@ const FreelancerMultiStepForm = () => {
                 if (!data.professionalTitle.trim()) return "Please enter your profession title.";
                 if (!data.username.trim()) return "Please enter a username.";
                 if (!isValidUsername(data.username)) {
-                    return "Username must be 3-20 characters and only letters, numbers, or underscores.";
+                    return "Username must be 3-20 characters and only lowercase letters and numbers.";
                 }
                 if (usernameStatus === "checking") return "Checking username availability...";
                 if (usernameStatus === "unavailable") return "That username is already taken.";
                 if (usernameStatus === "too_short") return "Username must be at least 3 characters.";
-                if (usernameStatus === "invalid") return "Only letters, numbers, and underscores allowed.";
+                if (usernameStatus === "invalid") return "Only lowercase letters and numbers allowed.";
                 if (usernameStatus === "error") return "Unable to verify username. Please try again.";
                 if (usernameStatus !== "available") return "Please check username availability.";
                 if (!data.country) return "Please select your country.";
@@ -993,18 +1032,21 @@ const FreelancerMultiStepForm = () => {
                 if (data.portfolioUrl.trim() && !isValidUrl(data.portfolioUrl.trim())) {
                     return "Please enter a valid portfolio or website URL.";
                 }
+                if (data.githubUrl.trim() && !isValidUrl(data.githubUrl.trim())) {
+                    return "Please enter a valid GitHub profile URL.";
+                }
                 return "";
             case "professionalTitle":
                 return data.professionalTitle.trim() ? "" : "Please enter your profession title.";
             case "username":
                 if (!data.username.trim()) return "Please enter a username.";
                 if (!isValidUsername(data.username)) {
-                    return "Username must be 3-20 characters and only letters, numbers, or underscores.";
+                    return "Username must be 3-20 characters and only lowercase letters and numbers.";
                 }
                 if (usernameStatus === "checking") return "Checking username availability...";
                 if (usernameStatus === "unavailable") return "That username is already taken.";
                 if (usernameStatus === "too_short") return "Username must be at least 3 characters.";
-                if (usernameStatus === "invalid") return "Only letters, numbers, and underscores allowed.";
+                if (usernameStatus === "invalid") return "Only lowercase letters and numbers allowed.";
                 if (usernameStatus === "error") return "Unable to verify username. Please try again.";
                 if (usernameStatus !== "available") return "Please check username availability.";
                 return "";
@@ -1034,6 +1076,10 @@ const FreelancerMultiStepForm = () => {
             case "portfolio":
                 return data.portfolioUrl.trim() && !isValidUrl(data.portfolioUrl.trim())
                     ? "Please enter a valid portfolio or website URL."
+                    : "";
+            case "github":
+                return data.githubUrl.trim() && !isValidUrl(data.githubUrl.trim())
+                    ? "Please enter a valid GitHub profile URL."
                     : "";
             case "role":
                 return data.role ? "" : "Please select how you want to work on Catalance.";
@@ -1181,7 +1227,7 @@ const FreelancerMultiStepForm = () => {
 
             const identity = {
                 professionalTitle: formData.professionalTitle,
-                username: formData.username,
+                username: normalizeUsernameInput(formData.username),
                 country: formData.country,
                 city: formData.city,
                 profilePhoto: resolvedAvatarUrl || null,
@@ -1189,6 +1235,7 @@ const FreelancerMultiStepForm = () => {
                 otherLanguage: formData.otherLanguage,
                 linkedinUrl: formData.linkedinUrl,
                 portfolioUrl: formData.portfolioUrl,
+                githubUrl: formData.githubUrl,
             };
 
             const onboardingSkills = buildOnboardingSkills({
@@ -1242,6 +1289,7 @@ const FreelancerMultiStepForm = () => {
                     bio: formData.professionalBio,
                     linkedin: formData.linkedinUrl,
                     portfolio: formData.portfolioUrl,
+                    github: formData.githubUrl,
                     onboardingComplete: true,
                 };
 
@@ -1277,6 +1325,7 @@ const FreelancerMultiStepForm = () => {
                 onboardingComplete: true,
                 portfolio: formData.portfolioUrl,
                 linkedin: formData.linkedinUrl,
+                github: formData.githubUrl,
                 bio: formData.professionalBio,
                 avatar: resolvedAvatarUrl || undefined,
             });

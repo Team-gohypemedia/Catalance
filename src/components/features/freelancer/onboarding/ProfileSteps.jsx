@@ -34,7 +34,7 @@ import {
     COUNTRY_OPTIONS,
     PROFESSION_TITLE_OPTIONS,
 } from "./constants";
-import { isValidUsername } from "./utils";
+import { isValidUsername, normalizeUsernameInput } from "./utils";
 
 // ============================================================================
 // STATS STEP
@@ -110,18 +110,22 @@ export const ProfileBasicsStep = ({
     renderContinueButton,
 }) => {
     const helperText = {
-        idle: "Use 3-20 characters: letters, numbers, or underscores.",
+        idle: "Use 3-20 characters: lowercase letters and numbers only.",
         too_short: "Username must be at least 3 characters.",
-        invalid: "Only letters, numbers, and underscores allowed (3-20 chars).",
+        invalid: "Only lowercase letters and numbers allowed (3-20 chars).",
         checking: "Checking availability...",
         available: "✓ Username is available!",
         unavailable: "✗ That username is already taken.",
         error: "Unable to check username right now.",
     };
-    const values = formData.languages || [];
+    const values = Array.isArray(formData.languages) ? formData.languages : [];
     const otherSelected = values.includes("Other");
+    const selectedLanguageSummary = values
+        .map((lang) => LANGUAGE_OPTIONS.find((option) => option.value === lang)?.label || lang)
+        .join(", ");
     const photo = formData.profilePhoto;
     const [openProfession, setOpenProfession] = React.useState(false);
+    const [openLanguages, setOpenLanguages] = React.useState(false);
     const inputRef = React.useRef(null);
     const [popoverWidth, setPopoverWidth] = React.useState(0);
 
@@ -234,7 +238,7 @@ export const ProfileBasicsStep = ({
                         <Input
                             value={formData.username}
                             onChange={(e) => {
-                                const val = e.target.value;
+                                const val = normalizeUsernameInput(e.target.value);
                                 updateFormField("username", val);
                                 debouncedUsernameCheck(val);
                             }}
@@ -246,6 +250,11 @@ export const ProfileBasicsStep = ({
                                 }
                             }}
                             placeholder="username"
+                            maxLength={20}
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            pattern="[a-z0-9]*"
                             className={cn(
                                 "h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 pr-10",
                                 usernameStatus === "available" && "border-green-500/50",
@@ -422,39 +431,48 @@ export const ProfileBasicsStep = ({
                 <div className="space-y-1.5 lg:col-span-2">
                     <Label className="text-white/70 text-[11px]">Languages</Label>
                     <div className="space-y-3">
-                        <Select
-                            value=""
-                            onValueChange={(value) => {
-                                if (value) {
-                                    toggleLanguage(value);
-                                }
-                            }}
-                        >
-                            <SelectTrigger className="w-full h-10 bg-transparent dark:bg-transparent border-white/10 text-white px-3 rounded-lg">
-                                <SelectValue placeholder="Select languages..." />
-                            </SelectTrigger>
-                            <SelectContent
-                                className="bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[300px]"
-                                position="popper"
-                                sideOffset={5}
+                        <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
+                            <PopoverTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="w-full h-10 px-3 rounded-lg border border-white/10 bg-transparent text-left text-sm flex items-center justify-between hover:border-primary/40 transition-colors"
+                                >
+                                    <span className={cn("truncate", values.length ? "text-white" : "text-white/40")}>
+                                        {values.length ? selectedLanguageSummary : "Select languages..."}
+                                    </span>
+                                    <span className="text-[11px] text-white/50">{values.length} selected</span>
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                align="start"
+                                className="p-0 bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-popover-trigger-width)]"
                             >
-                                {LANGUAGE_OPTIONS.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        value={option.value}
-                                        className="focus:bg-white/10 focus:text-white cursor-pointer pl-2"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Checkbox
-                                                checked={values.includes(option.value)}
-                                                className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
-                                            />
-                                            <span>{option.label}</span>
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                                <Command className="bg-transparent text-white">
+                                    <CommandInput placeholder="Search languages..." className="text-white" />
+                                    <CommandList className="max-h-[260px]">
+                                        <CommandEmpty>No language found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {LANGUAGE_OPTIONS.map((option) => (
+                                                <CommandItem
+                                                    key={option.value}
+                                                    value={`${option.label} ${option.value}`}
+                                                    onSelect={() => toggleLanguage(option.value)}
+                                                    className="cursor-pointer text-white hover:bg-white/10 aria-selected:bg-white/10"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <Checkbox
+                                                            checked={values.includes(option.value)}
+                                                            className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                                                        />
+                                                        <span>{option.label}</span>
+                                                    </div>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
 
                         {/* Selected Languages Tags */}
                         {values.length > 0 && (
@@ -512,6 +530,17 @@ export const ProfileBasicsStep = ({
                         value={formData.portfolioUrl}
                         onChange={(e) => updateFormField("portfolioUrl", e.target.value)}
                         placeholder="https://your-portfolio.com"
+                        className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                    />
+                </div>
+
+                <div className="space-y-1.5 lg:col-span-2">
+                    <Label className="text-white/70 text-[11px]">GitHub Profile URL (Optional)</Label>
+                    <Input
+                        type="url"
+                        value={formData.githubUrl}
+                        onChange={(e) => updateFormField("githubUrl", e.target.value)}
+                        placeholder="https://github.com/your-username"
                         className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
                     />
                 </div>
@@ -636,9 +665,9 @@ export const UsernameStep = ({
     renderContinueButton,
 }) => {
     const helperText = {
-        idle: "Use 3-20 characters: letters, numbers, or underscores.",
+        idle: "Use 3-20 characters: lowercase letters and numbers only.",
         too_short: "Username must be at least 3 characters.",
-        invalid: "Only letters, numbers, and underscores allowed (3-20 chars).",
+        invalid: "Only lowercase letters and numbers allowed (3-20 chars).",
         checking: "Checking availability...",
         available: "✓ Username is available!",
         unavailable: "✗ That username is already taken.",
@@ -655,7 +684,7 @@ export const UsernameStep = ({
                 <Input
                     value={formData.username}
                     onChange={(e) => {
-                        const val = e.target.value;
+                        const val = normalizeUsernameInput(e.target.value);
                         updateFormField("username", val);
                         debouncedUsernameCheck(val);
                     }}
@@ -667,6 +696,11 @@ export const UsernameStep = ({
                         }
                     }}
                     placeholder="username"
+                    maxLength={20}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    pattern="[a-z0-9]*"
                     className={cn(
                         "bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 pr-10",
                         usernameStatus === "available" && "border-green-500/50",
@@ -891,8 +925,12 @@ export const LanguagesStep = ({
     currentStep,
     renderContinueButton,
 }) => {
-    const values = formData.languages || [];
+    const values = Array.isArray(formData.languages) ? formData.languages : [];
     const otherSelected = values.includes("Other");
+    const selectedLanguageSummary = values
+        .map((lang) => LANGUAGE_OPTIONS.find((option) => option.value === lang)?.label || lang)
+        .join(", ");
+    const [openLanguages, setOpenLanguages] = React.useState(false);
 
     const toggleLanguage = (value) => {
         const exists = values.includes(value);
@@ -910,39 +948,48 @@ export const LanguagesStep = ({
         <div className="space-y-6">
             <StepHeader title="Languages You Can Work Professionally In" />
             <div className="space-y-3">
-                <Select
-                    value=""
-                    onValueChange={(value) => {
-                        if (value) {
-                            toggleLanguage(value);
-                        }
-                    }}
-                >
-                    <SelectTrigger className="w-full h-10 bg-transparent dark:bg-transparent border-white/10 text-white px-3 rounded-lg">
-                        <SelectValue placeholder="Select languages..." />
-                    </SelectTrigger>
-                    <SelectContent
-                        className="bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-select-trigger-width)] max-h-[300px]"
-                        position="popper"
-                        sideOffset={5}
+                <Popover open={openLanguages} onOpenChange={setOpenLanguages}>
+                    <PopoverTrigger asChild>
+                        <button
+                            type="button"
+                            className="w-full h-10 px-3 rounded-lg border border-white/10 bg-transparent text-left text-sm flex items-center justify-between hover:border-primary/40 transition-colors"
+                        >
+                            <span className={cn("truncate", values.length ? "text-white" : "text-white/40")}>
+                                {values.length ? selectedLanguageSummary : "Select languages..."}
+                            </span>
+                            <span className="text-[11px] text-white/50">{values.length} selected</span>
+                        </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        align="start"
+                        className="p-0 bg-black/60 backdrop-blur-xl border-white/10 text-white w-[var(--radix-popover-trigger-width)]"
                     >
-                        {LANGUAGE_OPTIONS.map((option) => (
-                            <SelectItem
-                                key={option.value}
-                                value={option.value}
-                                className="focus:bg-white/10 focus:text-white cursor-pointer pl-2"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Checkbox
-                                        checked={values.includes(option.value)}
-                                        className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
-                                    />
-                                    <span>{option.label}</span>
-                                </div>
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                        <Command className="bg-transparent text-white">
+                            <CommandInput placeholder="Search languages..." className="text-white" />
+                            <CommandList className="max-h-[260px]">
+                                <CommandEmpty>No language found.</CommandEmpty>
+                                <CommandGroup>
+                                    {LANGUAGE_OPTIONS.map((option) => (
+                                        <CommandItem
+                                            key={option.value}
+                                            value={`${option.label} ${option.value}`}
+                                            onSelect={() => toggleLanguage(option.value)}
+                                            className="cursor-pointer text-white hover:bg-white/10 aria-selected:bg-white/10"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    checked={values.includes(option.value)}
+                                                    className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                                                />
+                                                <span>{option.label}</span>
+                                            </div>
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
 
                 {values.length > 0 && (
                     <div className="flex flex-wrap gap-2">
