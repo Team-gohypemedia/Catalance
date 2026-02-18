@@ -124,6 +124,7 @@ export const signup = ({
   avatar,
   portfolio,
   linkedin,
+  github,
   bio = "",
   onboardingComplete = false
 }) => {
@@ -142,6 +143,10 @@ export const signup = ({
 
   if (linkedin) {
     payload.linkedin = linkedin;
+  }
+
+  if (github) {
+    payload.github = github;
   }
 
   if (role === "FREELANCER") {

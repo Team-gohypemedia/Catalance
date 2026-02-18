@@ -50,12 +50,17 @@ const normalizePortfolioProjects = (projects) => {
       entry && typeof entry === "object" ? entry : { title: String(entry || "") };
     const title = String(project.title || "").trim();
     const link = normalizeProjectLink(project.link || project.url || "");
+    const readme = normalizeProjectLink(
+      project.readme || project.readmeUrl || project.readmeLink || ""
+    );
     const image = String(project.image || "").trim() || null;
 
-    if (!title && !link) return;
+    if (!title && !link && !readme) return;
 
     const dedupKey = link
       ? link.toLowerCase()
+      : readme
+        ? readme.toLowerCase()
       : `${title.toLowerCase()}:${index}`;
     if (projectMap.has(dedupKey)) return;
 
@@ -63,6 +68,7 @@ const normalizePortfolioProjects = (projects) => {
       ...project,
       title: title || "Project",
       link,
+      readme,
       image
     });
   });
@@ -101,6 +107,37 @@ const extractAvatarUrl = (value) => {
   return null;
 };
 
+const USERNAME_REGEX = /^[a-z0-9]{3,20}$/;
+
+const normalizeUsername = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const normalizeFreelancerProfileDetails = (profileDetails) => {
+  if (!profileDetails || typeof profileDetails !== "object") return {};
+
+  const nextProfileDetails = { ...profileDetails };
+  if (!nextProfileDetails.identity || typeof nextProfileDetails.identity !== "object") {
+    return nextProfileDetails;
+  }
+
+  const nextIdentity = { ...nextProfileDetails.identity };
+  if (Object.prototype.hasOwnProperty.call(nextIdentity, "username")) {
+    const normalizedUsername = normalizeUsername(nextIdentity.username);
+    if (normalizedUsername && !USERNAME_REGEX.test(normalizedUsername)) {
+      throw new AppError(
+        "Username must be 3-20 characters and contain only lowercase letters and numbers.",
+        400
+      );
+    }
+    nextIdentity.username = normalizedUsername;
+  }
+
+  nextProfileDetails.identity = nextIdentity;
+  return nextProfileDetails;
+};
+
 const normalizeLabel = (value = "") =>
   String(value || "")
     .replace(/[_/]+/g, " ")
@@ -113,6 +150,195 @@ const toTitleCaseLabel = (value = "") =>
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+
+const normalizeStringList = (value, { max = 32 } = {}) => {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(
+      value
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+    )
+  ).slice(0, max);
+};
+
+const normalizeOptionalProjectUrl = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw || raw.startsWith("blob:")) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^[a-z]+:\/\//i.test(raw)) return raw;
+  if (raw.startsWith("/")) return raw;
+  return `https://${raw}`;
+};
+
+const normalizeBudgetValue = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.round(value);
+  }
+
+  const raw = String(value).trim().toLowerCase();
+  if (!raw) return null;
+
+  let multiplier = 1;
+  let numericPart = raw;
+  if (raw.endsWith("k")) {
+    multiplier = 1000;
+    numericPart = raw.slice(0, -1);
+  } else if (raw.endsWith("m")) {
+    multiplier = 1000000;
+    numericPart = raw.slice(0, -1);
+  }
+
+  const normalized = numericPart.replace(/[^0-9.]+/g, "");
+  if (!normalized) return null;
+
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.round(parsed * multiplier);
+};
+
+const normalizeFreelancerProjectEntries = ({
+  entries,
+  serviceKey = null,
+  serviceName = null,
+  startSortOrder = 0
+}) => {
+  const projectMap = new Map();
+  let sortOrder = startSortOrder;
+
+  (Array.isArray(entries) ? entries : []).forEach((entry, index) => {
+    const project =
+      entry && typeof entry === "object" ? entry : { title: String(entry || "") };
+    const title = String(project.title || "").trim();
+    const description = String(project.description || "").trim() || null;
+    const link = normalizeOptionalProjectUrl(project.link || project.url || "");
+    const readme = normalizeOptionalProjectUrl(
+      project.readme || project.readmeUrl || project.readmeLink || ""
+    );
+    const fileName = String(project?.file?.name || project.fileName || "").trim() || null;
+    const fileUrl = normalizeOptionalProjectUrl(project?.file?.url || project.fileUrl || "");
+    const role = String(project.role || "").trim() || null;
+    const timeline = String(project.timeline || "").trim() || null;
+    const budget = normalizeBudgetValue(project.budget);
+    const tags = normalizeStringList(project.tags, { max: 24 });
+    const techStack = normalizeStringList(project.techStack, { max: 40 });
+
+    if (!title && !description && !link && !readme && !tags.length && !techStack.length) {
+      return;
+    }
+
+    const resolvedTitle =
+      title || `${serviceName || "Portfolio"} Project ${index + 1}`;
+    const dedupKey = link
+      ? `link:${link.toLowerCase()}`
+      : readme
+        ? `readme:${readme.toLowerCase()}`
+      : `${String(serviceKey || "general").toLowerCase()}:${resolvedTitle.toLowerCase()}:${index}`;
+
+    if (projectMap.has(dedupKey)) {
+      return;
+    }
+
+    projectMap.set(dedupKey, {
+      serviceKey: serviceKey || null,
+      serviceName: serviceName || null,
+      title: resolvedTitle,
+      description,
+      link,
+      readme,
+      fileName,
+      fileUrl,
+      role,
+      timeline,
+      budget,
+      tags,
+      techStack,
+      sortOrder
+    });
+
+    sortOrder += 1;
+  });
+
+  return {
+    projects: Array.from(projectMap.values()),
+    nextSortOrder: sortOrder
+  };
+};
+
+const extractFreelancerProjectsFromProfileDetails = (profileDetails = {}) => {
+  const serviceDetails =
+    profileDetails && typeof profileDetails === "object"
+      ? profileDetails.serviceDetails
+      : null;
+
+  if (!serviceDetails || typeof serviceDetails !== "object") {
+    return [];
+  }
+
+  const projects = [];
+  let sortOrder = 0;
+
+  Object.entries(serviceDetails).forEach(([serviceKey, detail]) => {
+    const entries = Array.isArray(detail?.projects) ? detail.projects : [];
+    if (!entries.length) return;
+
+    const normalizedServiceKey = String(serviceKey || "").trim() || null;
+    const serviceName = toTitleCaseLabel(normalizedServiceKey || "") || null;
+    const normalized = normalizeFreelancerProjectEntries({
+      entries,
+      serviceKey: normalizedServiceKey,
+      serviceName,
+      startSortOrder: sortOrder
+    });
+
+    projects.push(...normalized.projects);
+    sortOrder = normalized.nextSortOrder;
+  });
+
+  return projects.slice(0, 80);
+};
+
+const extractFreelancerProjectsFromPortfolio = (portfolioProjects = []) => {
+  const normalized = normalizeFreelancerProjectEntries({
+    entries: portfolioProjects,
+    startSortOrder: 0
+  });
+  return normalized.projects.slice(0, 80);
+};
+
+const deriveFreelancerProjects = ({
+  profileDetails,
+  portfolioProjects
+}) => {
+  const fromProfile = extractFreelancerProjectsFromProfileDetails(profileDetails);
+  if (fromProfile.length) return fromProfile;
+  return extractFreelancerProjectsFromPortfolio(portfolioProjects);
+};
+
+const replaceFreelancerProjects = async (freelancerId, projects = []) => {
+  if (!freelancerId) return;
+
+  const rows = Array.isArray(projects) ? projects : [];
+  await prisma.$transaction(async (tx) => {
+    await tx.freelancerProject.deleteMany({
+      where: { freelancerId }
+    });
+
+    if (!rows.length) {
+      return;
+    }
+
+    await tx.freelancerProject.createMany({
+      data: rows.map((project) => ({
+        freelancerId,
+        ...project
+      }))
+    });
+  });
+};
 
 const normalizeWorkExperienceEntries = (value) => {
   const entries = Array.isArray(value) ? value : [];
@@ -291,6 +517,7 @@ const ensureUserRoles = async (user, requestedRole) => {
 
 export const listUsers = async (filters = {}) => {
   const onboardingComplete = parseBooleanFilter(filters.onboardingComplete);
+  const normalizedRoleFilter = normalizeRoleValue(filters.role);
   const where = {
     role: filters.role,
     status: filters.status || "ACTIVE"
@@ -300,8 +527,18 @@ export const listUsers = async (filters = {}) => {
     where.onboardingComplete = onboardingComplete;
   }
 
+  const includeFreelancerProjects =
+    !normalizedRoleFilter || normalizedRoleFilter === "FREELANCER";
+
   const users = await prisma.user.findMany({
     where,
+    include: includeFreelancerProjects
+      ? {
+          freelancerProjects: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
+          }
+        }
+      : undefined,
     orderBy: {
       createdAt: "desc"
     }
@@ -344,8 +581,7 @@ export const updateUserProfile = async (userId, updates) => {
       } else if (key === "location") {
         cleanUpdates[key] = String(updates[key] || "").trim() || null;
       } else if (key === "profileDetails") {
-        cleanUpdates[key] =
-          updates[key] && typeof updates[key] === "object" ? updates[key] : {};
+        cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
       } else {
         cleanUpdates[key] = updates[key];
       }
@@ -410,6 +646,27 @@ export const updateUserProfile = async (userId, updates) => {
     where: { id: userId },
     data: cleanUpdates
   });
+
+  const shouldSyncFreelancerProjects =
+    normalizeRoleValue(user.role) === "FREELANCER" &&
+    (Object.prototype.hasOwnProperty.call(cleanUpdates, "profileDetails") ||
+      Object.prototype.hasOwnProperty.call(cleanUpdates, "portfolioProjects"));
+
+  if (shouldSyncFreelancerProjects) {
+    const normalizedProjects = deriveFreelancerProjects({
+      profileDetails: Object.prototype.hasOwnProperty.call(cleanUpdates, "profileDetails")
+        ? cleanUpdates.profileDetails
+        : user.profileDetails,
+      portfolioProjects: Object.prototype.hasOwnProperty.call(
+        cleanUpdates,
+        "portfolioProjects"
+      )
+        ? cleanUpdates.portfolioProjects
+        : user.portfolioProjects
+    });
+
+    await replaceFreelancerProjects(user.id, normalizedProjects);
+  }
 
   return sanitizeUser(user);
 };
@@ -695,16 +952,19 @@ const createUserRecord = async (payload) => {
   try {
     const normalizedEmail = String(payload.email || "").toLowerCase().trim();
     const normalizedRole = (payload.role || "FREELANCER").toUpperCase();
+    const normalizedFreelancerProfile = normalizeFreelancerProfileDetails(
+      payload.freelancerProfile
+    );
     const explicitLocation = String(payload.location || "").trim();
     const identityLocation = buildLocationFromIdentity(
-      payload.freelancerProfile?.identity
+      normalizedFreelancerProfile?.identity
     );
     const identityJobTitle = buildJobTitleFromIdentity(
-      payload.freelancerProfile?.identity
+      normalizedFreelancerProfile?.identity
     );
     const explicitAvatar = extractAvatarUrl(payload.avatar);
     const identityAvatar = extractAvatarUrl(
-      payload.freelancerProfile?.identity?.profilePhoto
+      normalizedFreelancerProfile?.identity?.profilePhoto
     );
     const resolvedAvatar = explicitAvatar || identityAvatar || null;
     const resolvedLocation = explicitLocation || identityLocation || null;
@@ -713,12 +973,15 @@ const createUserRecord = async (payload) => {
       max: 120
     });
     const profileDerivedSkills = extractSkillsFromProfileDetails(
-      payload.freelancerProfile,
+      normalizedFreelancerProfile,
       { strictTech: true, max: 120 }
     );
     const mergedSkills = normalizeSkills(
       [...explicitSkills, ...profileDerivedSkills],
       { strictTech: true, max: 120 }
+    );
+    const normalizedPortfolioProjects = normalizePortfolioProjects(
+      payload.portfolioProjects
     );
     const roles = Array.isArray(payload.roles) && payload.roles.length
       ? Array.from(new Set(payload.roles.map((role) => String(role).toUpperCase())))
@@ -744,10 +1007,18 @@ const createUserRecord = async (payload) => {
         avatar: resolvedAvatar,
         location: resolvedLocation,
         jobTitle: identityJobTitle || payload.jobTitle || null,
-        portfolioProjects: normalizePortfolioProjects(payload.portfolioProjects),
-        profileDetails: payload.freelancerProfile ?? {}
+        portfolioProjects: normalizedPortfolioProjects,
+        profileDetails: normalizedFreelancerProfile
       }
     });
+
+    if (normalizedRole === "FREELANCER") {
+      const normalizedProjects = deriveFreelancerProjects({
+        profileDetails: normalizedFreelancerProfile,
+        portfolioProjects: normalizedPortfolioProjects
+      });
+      await replaceFreelancerProjects(user.id, normalizedProjects);
+    }
 
     // Don't send welcome email yet, wait for verification
     // await maybeSendWelcomeEmail(user);

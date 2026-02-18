@@ -257,6 +257,8 @@ const getFreelancerProfileTokens = (freelancer) => {
   appendTokens(tokens, freelancer?.skills);
   appendTokens(tokens, freelancer?.bio);
   appendTokens(tokens, freelancer?.jobTitle);
+  appendTokens(tokens, freelancer?.portfolioProjects);
+  appendTokens(tokens, freelancer?.freelancerProjects);
   appendTokens(tokens, profileDetails?.services);
   appendTokens(tokens, profileDetails?.globalIndustryFocus);
   appendTokens(tokens, profileDetails?.globalIndustryOther);

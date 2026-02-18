@@ -67,7 +67,7 @@ export const ServicesStep = ({
 }) => {
     const showContinue = hasMultipleChoices(SERVICE_OPTIONS);
     return (
-        <div className="space-y-6">
+        <div className="mx-auto w-full max-w-6xl space-y-6">
             <StepHeader
                 title="Which Services Do You Want To Offer?"
                 subtitle="Select at least 1 service. You can choose as many as you want."
@@ -797,7 +797,7 @@ export const GlobalNicheStep = ({
     };
 
     return (
-        <div className="space-y-6">
+        <div className="mx-auto w-full max-w-6xl space-y-6">
             <StepHeader
                 title="Which Industries Or Niches Do You Work In?"
                 subtitle="Select all that apply"
@@ -810,7 +810,10 @@ export const GlobalNicheStep = ({
                         selected={selections.includes(option)}
                         onClick={() => toggleNiche(option)}
                         label={option}
-                        className={cn("justify-center", option === "Other" && "col-span-2 md:col-span-3 lg:col-span-5 xl:col-span-5")}
+                        className={cn(
+                            "justify-center text-center",
+                            option === "Other" && "col-span-2 md:col-span-3 lg:col-span-5 xl:col-span-5"
+                        )}
                     />
                 ))}
             </div>
@@ -1146,6 +1149,20 @@ export const ServiceProjectDetailsStep = ({
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                        </div>
+
+                        {/* Project README */}
+                        <div className="space-y-1.5">
+                            <Label className="text-white/70 text-[11px]">Project README URL (Optional)</Label>
+                            <div className="relative">
+                                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                <Input
+                                    value={project.readme || ""}
+                                    onChange={(e) => updateProject(index, "readme", e.target.value)}
+                                    placeholder="https://github.com/your-username/your-repo/blob/main/README.md"
+                                    className="pl-9 !h-[42px] bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                                />
                             </div>
                         </div>
 

@@ -236,7 +236,10 @@ export default function ProfileImageCropDialog({
         type: "image/jpeg",
       });
 
-      onApply(croppedFile);
+      const applyResult = await Promise.resolve(onApply(croppedFile));
+      if (applyResult === false) {
+        return;
+      }
     } catch (applyError) {
       setError(applyError?.message || "Failed to crop image.");
     } finally {
