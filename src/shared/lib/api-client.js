@@ -204,10 +204,10 @@ export const resetPassword = ({ token, password }) => {
   });
 };
 
-export const loginWithGoogle = (token, role) => {
+export const loginWithGoogle = (token, role, mode = "login") => {
   return request("/auth/google-login", {
     method: "POST",
-    body: JSON.stringify({ token, role }) // Backend accepts optional role
+    body: JSON.stringify({ token, role, mode })
   });
 };
 

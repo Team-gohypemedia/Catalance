@@ -127,6 +127,8 @@ model Project {
   externalLink    String?       // Project link (e.g. markify.io)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@map("OnGoingProjects")
 }
 
 model FreelancerProject {
@@ -135,6 +137,15 @@ model FreelancerProject {
   freelancer   User     @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
   serviceKey   String?
   serviceName  String?
+  professionalTitle          String?
+  languages                  String[] @default([])
+  industriesOrNiches         String[] @default([])
+  yearsOfExperienceInService String?
+  serviceSpecializations     String[] @default([])
+  activeTechnologies         String[] @default([])
+  averageProjectPriceRange   String?
+  projectComplexityLevel     String?
+  acceptInProgressProjects   String?
   title        String
   description  String?  @db.Text
   link         String?
@@ -152,7 +163,27 @@ model FreelancerProject {
 
   @@index([freelancerId])
   @@index([freelancerId, serviceKey])
-  @@map("projects")
+  @@map("Projects")
+}
+
+model CompletedProject {
+  id               String   @id @default(cuid())
+  ongoingProjectId String?
+  title            String
+  description      String?  @db.Text
+  budget           Int?
+  spent            Int      @default(0)
+  ownerId          String?
+  managerId        String?
+  completedAt      DateTime @default(now())
+  archivedData     Json?    @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([ongoingProjectId])
+  @@index([ownerId])
+  @@index([managerId])
+  @@map("CompletedProjects")
 }
 
 model Proposal {

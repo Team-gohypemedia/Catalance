@@ -22,6 +22,11 @@ const OTP_EMAIL_RETRY_ATTEMPTS = 2;
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toUpperCase() : null;
 
+const normalizeGoogleAuthMode = (value) => {
+  const normalized = typeof value === "string" ? value.toLowerCase().trim() : "";
+  return normalized === "signup" ? "signup" : "login";
+};
+
 const parseBooleanFilter = (value) => {
   if (typeof value === "boolean") return value;
   if (typeof value !== "string") return undefined;
@@ -200,10 +205,144 @@ const normalizeBudgetValue = (value) => {
   return Math.round(parsed * multiplier);
 };
 
+const TECH_GROUP_KEY_REGEX = /(tech_stack|tools|platforms|technology|tech)/i;
+
+const normalizeOptionalText = (value) => {
+  const normalized = String(value ?? "").trim();
+  return normalized || null;
+};
+
+const parseCommaSeparatedValues = (value = "") =>
+  String(value || "")
+    .split(/[,\n]/)
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+
+const removeOtherOption = (values = []) =>
+  values.filter((entry) => String(entry || "").trim().toLowerCase() !== "other");
+
+const collectGroupValues = (groupMap = {}, keyPattern = null) => {
+  if (!groupMap || typeof groupMap !== "object") return [];
+
+  const values = [];
+  Object.entries(groupMap).forEach(([groupKey, rawValue]) => {
+    if (keyPattern && !keyPattern.test(groupKey)) return;
+
+    if (Array.isArray(rawValue)) {
+      values.push(...rawValue);
+      return;
+    }
+
+    if (typeof rawValue === "string") {
+      values.push(...parseCommaSeparatedValues(rawValue));
+    }
+  });
+
+  return values;
+};
+
+const extractLanguagesFromIdentity = (identity = {}) => {
+  const selected = Array.isArray(identity?.languages) ? identity.languages : [];
+  const withoutOther = removeOtherOption(selected);
+  const otherLanguage = normalizeOptionalText(identity?.otherLanguage);
+
+  return normalizeStringList(
+    otherLanguage ? [...withoutOther, otherLanguage] : withoutOther,
+    { max: 24 }
+  );
+};
+
+const extractIndustriesOrNiches = (profileDetails = {}) => {
+  const selected = Array.isArray(profileDetails?.globalIndustryFocus)
+    ? profileDetails.globalIndustryFocus
+    : [];
+  const withoutOther = removeOtherOption(selected);
+  const otherIndustry = normalizeOptionalText(profileDetails?.globalIndustryOther);
+
+  return normalizeStringList(
+    otherIndustry ? [...withoutOther, otherIndustry] : withoutOther,
+    { max: 80 }
+  );
+};
+
+const extractServiceSpecializations = (detail = {}) => {
+  const groupSelections = collectGroupValues(detail?.groups);
+  const groupOtherSelections = collectGroupValues(detail?.groupOther);
+  const nicheSelections = Array.isArray(detail?.niches) ? detail.niches : [];
+  const otherNiche = normalizeOptionalText(detail?.otherNiche);
+
+  return normalizeStringList(
+    [
+      ...removeOtherOption(groupSelections),
+      ...groupOtherSelections,
+      ...removeOtherOption(nicheSelections),
+      ...(otherNiche ? [otherNiche] : [])
+    ],
+    { max: 120 }
+  );
+};
+
+const extractServiceTechnologies = (detail = {}) => {
+  const techFromGroups = collectGroupValues(detail?.groups, TECH_GROUP_KEY_REGEX);
+  const techFromGroupOther = collectGroupValues(
+    detail?.groupOther,
+    TECH_GROUP_KEY_REGEX
+  );
+  const techFromCaseStudy = Array.isArray(detail?.caseStudy?.techStack)
+    ? detail.caseStudy.techStack
+    : [];
+  const techFromCaseStudyOther = parseCommaSeparatedValues(
+    detail?.caseStudy?.techStackOther
+  );
+  const techFromProjects = Array.isArray(detail?.projects)
+    ? detail.projects.flatMap((project) =>
+        Array.isArray(project?.techStack) ? project.techStack : []
+      )
+    : [];
+
+  return normalizeStringList(
+    [
+      ...removeOtherOption(techFromGroups),
+      ...techFromGroupOther,
+      ...removeOtherOption(techFromCaseStudy),
+      ...techFromCaseStudyOther,
+      ...removeOtherOption(techFromProjects)
+    ],
+    { max: 120 }
+  );
+};
+
+const buildFreelancerProjectOnboardingSnapshot = ({
+  profileDetails = {},
+  detail = {}
+} = {}) => {
+  const identity =
+    profileDetails?.identity && typeof profileDetails.identity === "object"
+      ? profileDetails.identity
+      : {};
+
+  return {
+    professionalTitle: normalizeOptionalText(identity?.professionalTitle),
+    languages: extractLanguagesFromIdentity(identity),
+    industriesOrNiches: extractIndustriesOrNiches(profileDetails),
+    yearsOfExperienceInService: normalizeOptionalText(detail?.experienceYears),
+    serviceSpecializations: extractServiceSpecializations(detail),
+    activeTechnologies: extractServiceTechnologies(detail),
+    averageProjectPriceRange: normalizeOptionalText(
+      detail?.averageProjectPrice || detail?.averagePrice
+    ),
+    projectComplexityLevel: normalizeOptionalText(detail?.projectComplexity),
+    acceptInProgressProjects: normalizeOptionalText(
+      profileDetails?.acceptInProgressProjects
+    )
+  };
+};
+
 const normalizeFreelancerProjectEntries = ({
   entries,
   serviceKey = null,
   serviceName = null,
+  sharedFields = {},
   startSortOrder = 0
 }) => {
   const projectMap = new Map();
@@ -245,6 +384,7 @@ const normalizeFreelancerProjectEntries = ({
     projectMap.set(dedupKey, {
       serviceKey: serviceKey || null,
       serviceName: serviceName || null,
+      ...sharedFields,
       title: resolvedTitle,
       description,
       link,
@@ -287,10 +427,15 @@ const extractFreelancerProjectsFromProfileDetails = (profileDetails = {}) => {
 
     const normalizedServiceKey = String(serviceKey || "").trim() || null;
     const serviceName = toTitleCaseLabel(normalizedServiceKey || "") || null;
+    const sharedFields = buildFreelancerProjectOnboardingSnapshot({
+      profileDetails,
+      detail
+    });
     const normalized = normalizeFreelancerProjectEntries({
       entries,
       serviceKey: normalizedServiceKey,
       serviceName,
+      sharedFields,
       startSortOrder: sortOrder
     });
 
@@ -864,27 +1009,36 @@ export const authenticateUser = async ({ email, password, role }) => {
   };
 };
 
-export const authenticateWithGoogle = async ({ token, role }) => {
+export const authenticateWithGoogle = async ({ token, role, mode }) => {
   const { verifyFirebaseToken } = await import("../../lib/firebase-admin.js");
   const normalizedRole = typeof role === "string" ? role.toUpperCase() : null;
   const requestedRole = ["CLIENT", "FREELANCER"].includes(normalizedRole)
     ? normalizedRole
     : null;
+  const authMode = normalizeGoogleAuthMode(mode);
 
   // Verify token with Firebase
   const decodedToken = await verifyFirebaseToken(token);
-  const { email, name, picture, uid } = decodedToken;
+  const { email, name } = decodedToken;
 
   if (!email) {
     throw new AppError("Google account does not have an email address", 400);
   }
+  const normalizedEmail = String(email).toLowerCase().trim();
 
   // Check if user exists
   let user = await prisma.user.findUnique({
-    where: { email }
+    where: { email: normalizedEmail }
   });
 
   if (!user) {
+    if (authMode !== "signup") {
+      throw new AppError(
+        "No account found for this Google email. Please sign up first.",
+        404
+      );
+    }
+
     // Create new user
     // Generate a random password since they use Google auth
     const randomPassword = crypto.randomBytes(16).toString("hex");
@@ -892,7 +1046,7 @@ export const authenticateWithGoogle = async ({ token, role }) => {
 
     user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         fullName: name || email.split("@")[0],
         passwordHash: await hashUserPassword(randomPassword), // We still set a password to avoid null constraints if any
         role: initialRole, // Default to CLIENT if not specified in request

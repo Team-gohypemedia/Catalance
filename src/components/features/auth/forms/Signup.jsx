@@ -286,7 +286,7 @@ function Signup({ className, ...props }) {
       const idToken = await firebaseUser.getIdToken();
 
       // Authenticate via backend Google endpoint (creates user if needed)
-      const authPayload = await loginWithGoogle(idToken, selectedRole);
+      const authPayload = await loginWithGoogle(idToken, selectedRole, "signup");
 
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success(`Welcome, ${firebaseUser.displayName || 'User'}!`);

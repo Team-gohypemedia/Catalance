@@ -27,3 +27,11 @@ export const loginSchema = z.object({
     role: userRoleEnum.optional()
   })
 });
+
+export const googleLoginSchema = z.object({
+  body: z.object({
+    token: z.string().min(1),
+    role: userRoleEnum.optional(),
+    mode: z.enum(["login", "signup"]).optional()
+  })
+});

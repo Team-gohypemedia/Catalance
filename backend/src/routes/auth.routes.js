@@ -14,7 +14,8 @@ import {
 import { validateResource } from "../middlewares/validate-resource.js";
 import {
   createUserSchema,
-  loginSchema
+  loginSchema,
+  googleLoginSchema
 } from "../modules/users/user.schema.js";
 import {
   forgotPasswordSchema,
@@ -28,7 +29,7 @@ authRouter.post("/signup", validateResource(createUserSchema), signupHandler);
 authRouter.post("/verify-otp", verifyOtpHandler);
 authRouter.post("/resend-otp", resendOtpHandler);
 authRouter.post("/login", validateResource(loginSchema), loginHandler);
-authRouter.post("/google-login", googleLoginHandler);
+authRouter.post("/google-login", validateResource(googleLoginSchema), googleLoginHandler);
 authRouter.get("/profile", requireAuth, profileHandler);
 authRouter.put("/profile", requireAuth, updateProfileHandler);
 
