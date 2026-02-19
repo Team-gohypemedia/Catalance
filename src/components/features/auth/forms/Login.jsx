@@ -129,8 +129,8 @@ function Login({ className, ...props }) {
       const firebaseUser = await signInWithGoogle();
       const idToken = await firebaseUser.getIdToken();
 
-      // Perform backend login with Google token
-      const authPayload = await loginWithGoogle(idToken, selectedRole);
+      // Perform backend Google auth (auto-creates account when missing)
+      const authPayload = await loginWithGoogle(idToken, selectedRole, "signup");
 
       setAuthSession(authPayload?.user, authPayload?.accessToken);
       toast.success(`Welcome, ${authPayload?.user?.fullName || "User"}!`);
