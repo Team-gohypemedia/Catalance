@@ -1,7 +1,79 @@
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
-import { chatWithAI } from "../services/ai.service.js";
+import { chatWithAI, generateProposalMarkdown } from "../services/ai.service.js";
+
+const GREETING_ONLY_REGEX = /^(hi|hello|hey|yo|hola|good\s*(morning|afternoon|evening))[!.\s]*$/i;
+const NAME_QUESTION_REGEX = /\bname\b/i;
+const GREETING_SMALLTALK_REGEX =
+    /\b(hi|hello|hey|yo|hola|namaste|salam|how are you|what'?s up|kya\s*hal|kaise\s*ho)\b/i;
+const NAME_INTRO_REGEX = /\b(my name is|i am|i'm|this is)\b/i;
+
+const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
+    if (!NAME_QUESTION_REGEX.test(questionText || "")) return false;
+    const normalized = String(userText || "").toLowerCase().trim();
+    if (!normalized) return false;
+    if (!GREETING_SMALLTALK_REGEX.test(normalized)) return false;
+    if (NAME_INTRO_REGEX.test(normalized)) return false;
+    // Keep this fallback for short small-talk style replies.
+    const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+    return wordCount <= 8;
+};
+
+const parseValidationResponse = (rawMessage) => {
+    if (typeof rawMessage !== "string" || !rawMessage.trim()) {
+        return null;
+    }
+
+    const raw = rawMessage.trim();
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    const extracted = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+        ? raw.substring(firstBrace, lastBrace + 1)
+        : raw;
+
+    const candidates = [
+        extracted,
+        extracted.replace(/\*\*/g, ""),
+        extracted
+            .replace(/^\s*```(?:json)?\s*/i, "")
+            .replace(/\s*```\s*$/i, ""),
+        raw,
+        raw.replace(/\*\*/g, ""),
+    ];
+
+    for (const candidate of candidates) {
+        const normalized = candidate
+            .replace(/^\s*```(?:json)?\s*/i, "")
+            .replace(/\s*```\s*$/i, "")
+            .trim();
+
+        if (!normalized.startsWith("{") || !normalized.endsWith("}")) {
+            continue;
+        }
+
+        try {
+            const parsed = JSON.parse(normalized);
+            if (typeof parsed?.isValid === "boolean" && typeof parsed?.message === "string") {
+                return parsed;
+            }
+        } catch {
+            // Try next normalization candidate.
+        }
+    }
+
+    const fallback = raw.replace(/\*\*/g, "");
+    const isValidMatch = fallback.match(/"isValid"\s*:\s*(true|false)/i);
+    const messageMatch = fallback.match(/"message"\s*:\s*"([\s\S]*?)"/i);
+    if (!isValidMatch || !messageMatch) {
+        return null;
+    }
+
+    return {
+        isValid: isValidMatch[1].toLowerCase() === "true",
+        message: messageMatch[1].replace(/\\"/g, "\""),
+    };
+};
 
 // @desc    Start a new guest session with guided questions
 // @route   POST /api/guest/start
@@ -119,11 +191,21 @@ export const guestChat = asyncHandler(async (req, res) => {
     // We will save it, but we might not advance step if invalid.
 
     // --- VALIDATION STEP ---
-    let validationResult = { isValid: true };
+    let validationResult = null;
     let aiResponseContent = "";
 
     if (currentStep < questions.length) {
         const currentQuestionText = questions[currentStep].text;
+
+        if (isGreetingInsteadOfNameAnswer(currentQuestionText, safeMessageText)) {
+            validationResult = {
+                isValid: false,
+                status: "invalid_answer",
+                message: "I am doing well, thanks. Please share your name so I can continue."
+            };
+            aiResponseContent = validationResult.message;
+            console.log("[Validation Fallback]:", validationResult);
+        } else {
 
         // Prepare context for the NEXT question if it exists
         const nextStepIndex = currentStep + 1;
@@ -143,10 +225,13 @@ export const guestChat = asyncHandler(async (req, res) => {
             1. Validate the user's answer to the Current Question.
             - If it's a greeting (hi, hello) but the question expects details -> INVALID.
             - If it's irrelevant/gibberish -> INVALID.
+            - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
             - Otherwise -> VALID.
 
             2. Generate a Response Message:
             - If INVALID: Politely ask for clarification or the specific details needed.
+            - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
+            - If INFO_REQUEST: Give a brief helpful answer (1-2 short sentences), then ask the Current Question again so we can continue the flow.
             - If VALID: Acknowledge the answer briefly and enthusiastically, then ask the "Next Question in Script" naturally. 
               (Example: "That sounds great! Now, [Next Question]?")
               (If it's the final question, just say "Thanks! Let me put that together for you.")
@@ -154,8 +239,10 @@ export const guestChat = asyncHandler(async (req, res) => {
             Return ONLY a raw JSON object (double quotes only) with this structure:
             {
                 "isValid": boolean,
+                "status": "valid_answer" | "invalid_answer" | "info_request",
                 "message": string // The response to send to the user (error feedback OR next question transition)
             }
+            Do not use markdown formatting, code fences, or bold text.
         `;
 
         // We use a separate AI call for validation. 
@@ -167,27 +254,43 @@ export const guestChat = asyncHandler(async (req, res) => {
 
         if (validationResponse.success) {
             console.log(`[Validation Raw]:`, validationResponse.message);
-            try {
-                // Find JSON object within response
-                const startIndex = validationResponse.message.indexOf("{");
-                const endIndex = validationResponse.message.lastIndexOf("}");
-
-                if (startIndex !== -1 && endIndex !== -1) {
-                    const jsonString = validationResponse.message.substring(startIndex, endIndex + 1);
-                    validationResult = JSON.parse(jsonString);
-                    aiResponseContent = validationResult.message;
-                    console.log(`[Validation Parsed]:`, validationResult);
-                } else {
-                    console.warn("[Validation] No JSON found in response");
-                }
-            } catch (e) {
-                console.error("[Validation] JSON parse error:", e.message);
+            const parsedValidation = parseValidationResponse(validationResponse.message);
+            if (parsedValidation) {
+                validationResult = parsedValidation;
+                aiResponseContent = parsedValidation.message;
+                console.log(`[Validation Parsed]:`, parsedValidation);
+            } else {
+                console.warn("[Validation] Could not parse structured validator output");
             }
         } else {
             console.warn("[Validation] AI request failed");
         }
+        }
+
+        // If parsing fails, avoid advancing on obvious non-answers.
+        if (!validationResult && GREETING_ONLY_REGEX.test(safeMessageText)) {
+            validationResult = {
+                isValid: false,
+                message: "Please answer the question directly so I can continue.",
+            };
+        }
+
+        if (!validationResult) {
+            validationResult = { isValid: true, message: "" };
+        }
 
         if (!validationResult.isValid) {
+            if (validationResult.status === "info_request") {
+                const normalizedResponse = (aiResponseContent || "").toLowerCase();
+                const normalizedCurrentQuestion = (currentQuestionText || "").toLowerCase();
+                if (
+                    currentQuestionText &&
+                    !normalizedResponse.includes(normalizedCurrentQuestion)
+                ) {
+                    aiResponseContent = `${aiResponseContent}\n\n${currentQuestionText}`;
+                }
+            }
+
             // INVALID ANSWER FLOW
 
             // 1. Save User's (Invalid) Message
@@ -302,30 +405,23 @@ export const guestChat = asyncHandler(async (req, res) => {
         };
     } else {
         // CASE B: All questions answered -> Generate Proposal
-        const systemPrompt = `
-            You are an expert freelancer consultant for the service: "${service.name}".
-            The client has answered the following requirements questionnaire:
-            ${JSON.stringify(updatedAnswers, null, 2)}
+        try {
+            const proposalHistory = [
+                ...session.messages.map((m) => ({ role: m.role, content: m.content })),
+                { role: "user", content: safeMessageText }
+            ];
 
-            Based on these requirements, generate a professional project proposal.
-            Include:
-            - A summary of their needs.
-            - A proposed scope of work.
-            - Estimated timeline and budget range.
-            - A call to action to sign up for full details.
-            
-            Format using Markdown. Keep it concise but professional.
-        `;
-
-        const aiResponse = await chatWithAI(
-            [{ role: "user", content: "Generate proposal based on my answers." }],
-            [{ role: "system", content: systemPrompt }], // Using history slot for system prompt context
-            service.name
-        );
-
-        if (aiResponse.success) {
-            responseContent = aiResponse.message;
-        } else {
+            responseContent = await generateProposalMarkdown(
+                {
+                    serviceName: service.name,
+                    serviceId: service.slug,
+                    questionnaireAnswers: updatedAnswers
+                },
+                proposalHistory,
+                service.name
+            );
+        } catch (error) {
+            console.error("[Proposal] Generation failed:", error?.message || error);
             responseContent = "I have collected your requirements, but I'm having trouble generating the proposal right now. Please sign up to connect with an expert.";
         }
         // No input config for final step (or maybe CTA in future)
