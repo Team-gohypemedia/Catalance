@@ -72,10 +72,19 @@ export const startGuestSession = asyncHandler(async (req, res) => {
 export const guestChat = asyncHandler(async (req, res) => {
     const { sessionId, message } = req.body;
 
-    console.log(`\n--- [Guest Chat] Session: ${sessionId} ---`);
-    console.log(`[User]: ${message}`);
+    const incomingArray = Array.isArray(message)
+        ? message.filter(Boolean).map(String)
+        : [];
+    const messageText = Array.isArray(message)
+        ? incomingArray.join(", ")
+        : (message ?? "");
+    const trimmedMessageText = messageText.toString().trim();
+    const safeMessageText = incomingArray.length ? incomingArray.join(", ") : trimmedMessageText;
 
-    if (!sessionId || !message) {
+    console.log(`\n--- [Guest Chat] Session: ${sessionId} ---`);
+    console.log(`[User]: ${safeMessageText || message}`);
+
+    if (!sessionId || (!trimmedMessageText && incomingArray.length === 0)) {
         throw new AppError("Session ID and message are required", 400);
     }
 
@@ -126,7 +135,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             You are a friendly, professional assistant guiding a user through a questionnaire for a "${service.name}" service.
             
             Current Question Asked: "${currentQuestionText}"
-            User's Answer: "${message}"
+            User's Answer: "${safeMessageText}"
             
             Next Question in Script: "${nextQuestionText}"
 
@@ -186,7 +195,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 data: {
                     sessionId,
                     role: "user",
-                    content: message,
+                    content: safeMessageText,
                 },
             });
 
@@ -221,7 +230,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         data: {
             sessionId,
             role: "user",
-            content: message,
+            content: safeMessageText,
         },
     });
 
@@ -229,7 +238,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     const currentQuestionText = questions[currentStep]?.text || "General Inquiry";
     const updatedAnswers = {
         ...(session.answers || {}),
-        [currentQuestionText]: message
+        [currentQuestionText]: safeMessageText
     };
 
     // Increment step OR set based on Branching Logic
@@ -240,15 +249,17 @@ export const guestChat = asyncHandler(async (req, res) => {
     if (currentQuestion && currentQuestion.logic && Array.isArray(currentQuestion.logic)) {
         for (const rule of currentQuestion.logic) {
             let match = false;
-            const userAns = message.toLowerCase().trim();
+            const userAnswers = incomingArray.length
+                ? incomingArray.map(ans => ans.toLowerCase().trim())
+                : [safeMessageText.toLowerCase().trim()];
             const ruleValue = (rule.value || "").toLowerCase().trim();
 
             if (rule.condition === "equals") {
-                match = userAns === ruleValue;
+                match = userAnswers.includes(ruleValue);
             } else if (rule.condition === "not_equals") {
-                match = userAns !== ruleValue;
+                match = !userAnswers.includes(ruleValue);
             } else if (rule.condition === "contains") {
-                match = userAns.includes(ruleValue);
+                match = userAnswers.some(ans => ans.includes(ruleValue));
             }
 
             if (match && rule.nextQuestionSlug) {
@@ -333,7 +344,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     // Re-fetch messages for complete history or append manually
     const newHistory = [
         ...session.messages.map(m => ({ role: m.role, content: m.content })),
-        { role: "user", content: message },
+        { role: "user", content: safeMessageText },
         { role: "assistant", content: responseContent }
     ];
 
