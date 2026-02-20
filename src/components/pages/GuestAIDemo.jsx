@@ -30,6 +30,11 @@ const apiFetch = async (endpoint, options = {}) => {
     return data;
 };
 
+const isProposalMessage = (content = "") => {
+    if (typeof content !== "string") return false;
+    return /client name\s*:|project overview\s*:|primary objectives\s*:|features\/deliverables included\s*:/i.test(content);
+};
+
 const GuestAIDemo = () => {
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -297,20 +302,32 @@ const GuestAIDemo = () => {
                                     </div>
                                 )}
 
-                                <div className={`rounded-2xl p-4 max-w-[85%] text-sm leading-relaxed shadow-sm
-                                    ${msg.role === 'user'
-                                        ? 'bg-slate-900 text-white rounded-tr-none'
-                                        : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
-                                    }`}
-                                >
-                                    {msg.role === 'assistant' ? (
-                                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                                {msg.role === 'assistant' && isProposalMessage(msg.content) ? (
+                                    <div className="max-w-[90%] rounded-2xl border border-slate-300 bg-slate-50 p-5 text-slate-800 shadow-sm">
+                                        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                            <Bot className="h-4 w-4 text-indigo-600" />
+                                            Generated Proposal
+                                        </div>
+                                        <div className="prose prose-sm max-w-none">
                                             <ReactMarkdown>{msg.content}</ReactMarkdown>
                                         </div>
-                                    ) : (
-                                        msg.content
-                                    )}
-                                </div>
+                                    </div>
+                                ) : (
+                                    <div className={`rounded-2xl p-4 max-w-[85%] text-sm leading-relaxed shadow-sm
+                                        ${msg.role === 'user'
+                                            ? 'bg-slate-900 text-white rounded-tr-none'
+                                            : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
+                                        }`}
+                                    >
+                                        {msg.role === 'assistant' ? (
+                                            <div className="prose prose-sm max-w-none dark:prose-invert">
+                                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                            </div>
+                                        ) : (
+                                            msg.content
+                                        )}
+                                    </div>
+                                )}
 
                                 {msg.role === 'user' && (
                                     <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 shrink-0 mt-1">
