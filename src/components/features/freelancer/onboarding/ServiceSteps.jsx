@@ -42,6 +42,7 @@ import {
     ROLE_IN_PROJECT_OPTIONS,
     PROJECT_TIMELINE_OPTIONS,
     DEFAULT_TECH_STACK_OPTIONS,
+    getServicePlatformProfileFields,
 } from "./constants";
 import {
     getServiceLabel,
@@ -53,6 +54,11 @@ import {
     clampPriceValue,
 } from "./utils";
 import { StepHeader, OptionCard } from "./sub-components";
+
+const stripMinLabelSuffix = (label) =>
+    typeof label === "string"
+        ? label.replace(/\s*\(Min\s*\d+\)\s*$/i, "").trim()
+        : label;
 
 // ============================================================================
 // SERVICES SELECTION STEP
@@ -215,7 +221,7 @@ export const ServiceCaseFieldStep = ({
         const value = caseStudy[field.key] || "";
         return (
             <div className="space-y-6">
-                <StepHeader title={field.label} subtitle={renderServiceMeta(serviceKey)} />
+                <StepHeader title={stripMinLabelSuffix(field.label)} subtitle={renderServiceMeta(serviceKey)} />
                 <Select
                     value={value}
                     onValueChange={(next) => {
@@ -313,7 +319,7 @@ export const ServiceCaseFieldStep = ({
 
         return (
             <div className="space-y-6">
-                <StepHeader title={field.label} subtitle={renderServiceMeta(serviceKey)} />
+                <StepHeader title={stripMinLabelSuffix(field.label)} subtitle={renderServiceMeta(serviceKey)} />
                 <div className="grid grid-cols-2 gap-3">
                     {options.map((option) => (
                         <OptionCard
@@ -398,7 +404,7 @@ export const ServiceCaseFieldStep = ({
 
     return (
         <div className="space-y-6">
-            <StepHeader title={field.label} subtitle={renderServiceMeta(serviceKey)} />
+            <StepHeader title={stripMinLabelSuffix(field.label)} subtitle={renderServiceMeta(serviceKey)} />
             {isTextarea ? (
                 <Textarea
                     value={value}
@@ -681,7 +687,11 @@ export const ServiceGroupStep = ({
     return (
         <div className="space-y-6">
             <StepHeader
-                title={isFirstGroup ? `Which Areas Of ${getServiceLabel(serviceKey)} Do You Specialize In?` : group.label}
+                title={
+                    isFirstGroup
+                        ? `Which Areas Of ${getServiceLabel(serviceKey)} Do You Specialize In?`
+                        : stripMinLabelSuffix(group.label)
+                }
                 subtitle={renderServiceMeta(serviceKey)}
             />
             <div className="grid grid-cols-2 gap-3">
@@ -802,7 +812,7 @@ export const GlobalNicheStep = ({
                 title="Which Industries Or Niches Do You Work In?"
                 subtitle="Select all that apply"
             />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {INDUSTRY_NICHE_OPTIONS.map((option) => (
                     <OptionCard
                         key={option}
@@ -810,10 +820,7 @@ export const GlobalNicheStep = ({
                         selected={selections.includes(option)}
                         onClick={() => toggleNiche(option)}
                         label={option}
-                        className={cn(
-                            "justify-center text-center",
-                            option === "Other" && "col-span-2 md:col-span-3 lg:col-span-5 xl:col-span-5"
-                        )}
+                        className="justify-center text-center"
                     />
                 ))}
             </div>
@@ -840,6 +847,70 @@ export const GlobalNicheStep = ({
                 show: selections.length > 0 &&
                     (!selections.includes("Other") || otherValue.trim().length > 0)
             })}
+        </div>
+    );
+};
+
+// ============================================================================
+// SERVICE PLATFORM/PROFILE LINKS STEP
+// ============================================================================
+
+export const ServicePlatformLinksStep = ({
+    formData,
+    updateServiceField,
+    renderServiceMeta,
+    serviceKey,
+    currentStep,
+    renderContinueButton,
+}) => {
+    const detail = formData.serviceDetails?.[serviceKey] || createServiceDetail();
+    const linkFields = getServicePlatformProfileFields(serviceKey);
+    const platformLinks =
+        detail?.platformLinks && typeof detail.platformLinks === "object"
+            ? detail.platformLinks
+            : {};
+
+    const updatePlatformLink = (fieldKey, value) => {
+        updateServiceField(
+            serviceKey,
+            "platformLinks",
+            {
+                ...platformLinks,
+                [fieldKey]: value,
+            },
+            null,
+        );
+    };
+
+    return (
+        <div className="mx-auto w-full max-w-3xl space-y-6">
+            <StepHeader
+                title={`Share Your ${getServiceLabel(serviceKey)} Platform/Profile Links`}
+                subtitle={`${renderServiceMeta(serviceKey)} Add links that prove your work.`.trim()}
+            />
+
+            <div className="grid grid-cols-1 gap-4">
+                {linkFields.map((field) => (
+                    <div key={`${serviceKey}-${field.key}`} className="space-y-1.5">
+                        <Label className="text-white/70 text-xs">{field.label}</Label>
+                        <div className="relative">
+                            <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                            <Input
+                                value={platformLinks[field.key] || ""}
+                                onChange={(event) => updatePlatformLink(field.key, event.target.value)}
+                                placeholder={field.placeholder}
+                                className="pl-9 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                            />
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <p className="text-xs text-white/50 text-center">
+                At least one valid link is mandatory.
+            </p>
+
+            {renderContinueButton(currentStep, { show: true })}
         </div>
     );
 };
@@ -1207,7 +1278,10 @@ export const ServiceProjectDetailsStep = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Project Tags */}
                             <div className="space-y-1.5">
-                                <Label className="text-white/70 text-[11px]">Tags</Label>
+                                <Label className="text-white/70 text-[11px]">Tags/Keywords</Label>
+                                <p className="text-[10px] text-white/50">
+                                    Add relevant tags/keywords to get projects faster and get recommended.
+                                </p>
                                 <TagsInput
                                     value={project.tags || []}
                                     onChange={(val) => updateProject(index, "tags", val)}
@@ -1266,7 +1340,7 @@ const TagsInput = ({ value, onChange }) => {
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type a tag and press Enter..."
+                    placeholder="Type a tag/keyword and press Enter..."
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
                 />
                 <button
@@ -1311,7 +1385,7 @@ const TagsInput = ({ value, onChange }) => {
                 </div>
             )}
 
-            <p className="text-[10px] text-white/40">Press Enter or click Add to include each tag.</p>
+            <p className="text-[10px] text-white/40">Press Enter or click Add to include each tag/keyword.</p>
         </div>
     );
 };

@@ -463,6 +463,163 @@ const deriveFreelancerProjects = ({
   return extractFreelancerProjectsFromPortfolio(portfolioProjects);
 };
 
+const deriveMarketplaceServices = ({
+  profileDetails,
+  services
+} = {}) => {
+  const explicitServices = Array.isArray(services) ? services : [];
+  const profileServices = Array.isArray(profileDetails?.services)
+    ? profileDetails.services
+    : [];
+  const serviceDetailsKeys =
+    profileDetails?.serviceDetails &&
+    typeof profileDetails.serviceDetails === "object"
+      ? Object.keys(profileDetails.serviceDetails)
+      : [];
+
+  return normalizeStringList(
+    [...explicitServices, ...profileServices, ...serviceDetailsKeys],
+    { max: 64 }
+  );
+};
+
+const MARKETPLACE_SERVICE_META_BY_KEY = {
+  branding: {
+    title: "Branding",
+    description: "Build logo, brand identity, and strategic messaging for consistent brand growth.",
+    coverImage: "/assets/services/branding-cover.jpg"
+  },
+  website_ui_ux: {
+    title: "Web Development",
+    description: "Design and develop responsive, high-converting websites and landing pages.",
+    coverImage: "/assets/services/web-development-cover.jpg"
+  },
+  seo: {
+    title: "SEO",
+    description: "Improve visibility with technical SEO, content optimization, and keyword strategy.",
+    coverImage: "/assets/services/seo-cover.jpg"
+  },
+  social_media_marketing: {
+    title: "Social Media Management",
+    description: "Plan and execute social content, engagement, and platform growth campaigns.",
+    coverImage: "/assets/services/social-media-cover.jpg"
+  },
+  paid_advertising: {
+    title: "Performance Marketing / Paid Ads",
+    description: "Run ROI-focused ad campaigns across major paid media platforms.",
+    coverImage: "/assets/services/paid-ads-cover.jpg"
+  },
+  app_development: {
+    title: "App Development",
+    description: "Build scalable mobile apps with strong UX and reliable backend integrations.",
+    coverImage: "/assets/services/app-development-cover.jpg"
+  },
+  software_development: {
+    title: "Software Development",
+    description: "Develop custom software, APIs, and systems tailored to business workflows.",
+    coverImage: "/assets/services/software-development-cover.jpg"
+  },
+  lead_generation: {
+    title: "Lead Generation",
+    description: "Generate and qualify leads through outbound, funnels, and CRM workflows.",
+    coverImage: "/assets/services/lead-generation-cover.jpg"
+  },
+  video_services: {
+    title: "Video Services",
+    description: "Produce and edit marketing, social, and branded video content.",
+    coverImage: "/assets/services/video-services-cover.jpg"
+  },
+  writing_content: {
+    title: "Writing & Content",
+    description: "Create clear, conversion-driven content for web, blogs, and campaigns.",
+    coverImage: "/assets/services/writing-content-cover.jpg"
+  },
+  customer_support: {
+    title: "Customer Support Services",
+    description: "Deliver multi-channel customer support with quality assurance and SLAs.",
+    coverImage: "/assets/services/customer-support-cover.jpg"
+  },
+  influencer_marketing: {
+    title: "Influencer Marketing",
+    description: "Plan creator partnerships and campaigns to grow awareness and conversions.",
+    coverImage: "/assets/services/influencer-marketing-cover.jpg"
+  },
+  ugc_marketing: {
+    title: "UGC Marketing",
+    description: "Create and scale authentic UGC assets for paid and organic channels.",
+    coverImage: "/assets/services/ugc-marketing-cover.jpg"
+  },
+  ai_automation: {
+    title: "AI Automation",
+    description: "Automate business workflows using AI tools, agents, and integrations.",
+    coverImage: "/assets/services/ai-automation-cover.jpg"
+  },
+  whatsapp_chatbot: {
+    title: "WhatsApp Chatbot",
+    description: "Build automated WhatsApp conversations for support, sales, and engagement.",
+    coverImage: "/assets/services/whatsapp-chatbot-cover.jpg"
+  },
+  creative_design: {
+    title: "Creative & Design",
+    description: "Design social, brand, and marketing creatives aligned to business goals.",
+    coverImage: "/assets/services/creative-design-cover.jpg"
+  },
+  "3d_modeling": {
+    title: "3D Modeling",
+    description: "Create high-quality 3D assets for products, environments, and visualization.",
+    coverImage: "/assets/services/3d-modeling-cover.jpg"
+  },
+  cgi_videos: {
+    title: "CGI Video Services",
+    description: "Produce CGI animations and visual effects for product and brand storytelling.",
+    coverImage: "/assets/services/cgi-videos-cover.jpg"
+  },
+  crm_erp: {
+    title: "CRM & ERP Solutions",
+    description: "Implement CRM/ERP systems with automation, reporting, and integrations.",
+    coverImage: "/assets/services/crm-erp-cover.jpg"
+  },
+  voice_agent: {
+    title: "Voice Agent / AI Calling",
+    description: "Deploy AI voice agents for calls, support, and appointment workflows.",
+    coverImage: "/assets/services/voice-agent-cover.jpg"
+  }
+};
+
+const deriveMarketplaceServiceDetails = (services = []) =>
+  normalizeStringList(services, { max: 64 }).map((serviceKey) => {
+    const meta = MARKETPLACE_SERVICE_META_BY_KEY[serviceKey];
+    return {
+      key: serviceKey,
+      title: meta?.title || toTitleCaseLabel(serviceKey),
+      description: meta?.description || "Service information provided during onboarding.",
+      coverImage: meta?.coverImage || `/assets/services/${serviceKey}-cover.jpg`
+    };
+  });
+
+const upsertMarketplaceEntry = async ({
+  freelancerId,
+  services = []
+} = {}) => {
+  if (!freelancerId) return;
+  const normalizedServices = normalizeStringList(services, { max: 64 });
+  const serviceDetails = deriveMarketplaceServiceDetails(normalizedServices);
+
+  await prisma.marketplace.upsert({
+    where: { freelancerId },
+    create: {
+      freelancerId,
+      services: normalizedServices,
+      serviceDetails,
+      isFeatured: false
+    },
+    update: {
+      services: normalizedServices,
+      serviceDetails
+    }
+  });
+};
+
 const replaceFreelancerProjects = async (freelancerId, projects = []) => {
   if (!freelancerId) return;
 
@@ -703,6 +860,7 @@ export const updateUserProfile = async (userId, updates) => {
     "avatar",
     "profileDetails",
     "onboardingComplete",
+    "services",
     "skills",
     "portfolioProjects",
     "location"
@@ -727,6 +885,8 @@ export const updateUserProfile = async (userId, updates) => {
         cleanUpdates[key] = String(updates[key] || "").trim() || null;
       } else if (key === "profileDetails") {
         cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
+      } else if (key === "services") {
+        cleanUpdates[key] = normalizeStringList(updates[key], { max: 64 });
       } else {
         cleanUpdates[key] = updates[key];
       }
@@ -747,6 +907,12 @@ export const updateUserProfile = async (userId, updates) => {
       cleanUpdates.skills = normalizeSkills(mergedSkillCandidates, {
         strictTech: true,
         max: 120
+      });
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(cleanUpdates, "services")) {
+      cleanUpdates.services = deriveMarketplaceServices({
+        profileDetails: cleanUpdates.profileDetails
       });
     }
   }
@@ -792,16 +958,25 @@ export const updateUserProfile = async (userId, updates) => {
     data: cleanUpdates
   });
 
+  const isFreelancerUser = normalizeRoleValue(user.role) === "FREELANCER";
+  const resolvedProfileDetails = Object.prototype.hasOwnProperty.call(
+    cleanUpdates,
+    "profileDetails"
+  )
+    ? cleanUpdates.profileDetails
+    : user.profileDetails;
+  const resolvedServices = Object.prototype.hasOwnProperty.call(cleanUpdates, "services")
+    ? cleanUpdates.services
+    : user.services;
+
   const shouldSyncFreelancerProjects =
-    normalizeRoleValue(user.role) === "FREELANCER" &&
+    isFreelancerUser &&
     (Object.prototype.hasOwnProperty.call(cleanUpdates, "profileDetails") ||
       Object.prototype.hasOwnProperty.call(cleanUpdates, "portfolioProjects"));
 
   if (shouldSyncFreelancerProjects) {
     const normalizedProjects = deriveFreelancerProjects({
-      profileDetails: Object.prototype.hasOwnProperty.call(cleanUpdates, "profileDetails")
-        ? cleanUpdates.profileDetails
-        : user.profileDetails,
+      profileDetails: resolvedProfileDetails,
       portfolioProjects: Object.prototype.hasOwnProperty.call(
         cleanUpdates,
         "portfolioProjects"
@@ -811,6 +986,23 @@ export const updateUserProfile = async (userId, updates) => {
     });
 
     await replaceFreelancerProjects(user.id, normalizedProjects);
+  }
+
+  const shouldSyncMarketplace =
+    isFreelancerUser &&
+    (Object.prototype.hasOwnProperty.call(cleanUpdates, "profileDetails") ||
+      Object.prototype.hasOwnProperty.call(cleanUpdates, "services") ||
+      Object.prototype.hasOwnProperty.call(cleanUpdates, "onboardingComplete"));
+
+  if (shouldSyncMarketplace) {
+    const marketplaceServices = deriveMarketplaceServices({
+      profileDetails: resolvedProfileDetails,
+      services: resolvedServices
+    });
+    await upsertMarketplaceEntry({
+      freelancerId: user.id,
+      services: marketplaceServices
+    });
   }
 
   return sanitizeUser(user);
@@ -1019,7 +1211,8 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
 
   // Verify token with Firebase
   const decodedToken = await verifyFirebaseToken(token);
-  const { email, name } = decodedToken;
+  const { email, name, picture } = decodedToken;
+  const googleAvatar = extractAvatarUrl(picture);
 
   if (!email) {
     throw new AppError("Google account does not have an email address", 400);
@@ -1052,7 +1245,7 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
         role: initialRole, // Default to CLIENT if not specified in request
         roles: [initialRole],
         isVerified: true, // Google users are verified by definition
-        // We can store the profile picture if we had a field for it, maybe update later
+        avatar: googleAvatar,
         otpCode: null,
         otpExpires: null,
         status: initialRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE"
@@ -1074,6 +1267,16 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
       requestedRole &&
       !["ADMIN", "PROJECT_MANAGER"].includes(currentPrimaryRole || "");
     user = await ensureUserRoles(user, allowRequestedRole ? requestedRole : null);
+
+    const existingAvatar =
+      extractAvatarUrl(user?.avatar) ||
+      extractAvatarUrl(user?.profileDetails?.identity?.profilePhoto);
+    if (googleAvatar && !existingAvatar) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { avatar: googleAvatar }
+      });
+    }
   }
 
   const roles = Array.isArray(user?.roles)
@@ -1137,6 +1340,10 @@ const createUserRecord = async (payload) => {
     const normalizedPortfolioProjects = normalizePortfolioProjects(
       payload.portfolioProjects
     );
+    const normalizedServices = deriveMarketplaceServices({
+      profileDetails: normalizedFreelancerProfile,
+      services: payload.services
+    });
     const roles = Array.isArray(payload.roles) && payload.roles.length
       ? Array.from(new Set(payload.roles.map((role) => String(role).toUpperCase())))
       : [normalizedRole];
@@ -1161,6 +1368,7 @@ const createUserRecord = async (payload) => {
         avatar: resolvedAvatar,
         location: resolvedLocation,
         jobTitle: identityJobTitle || payload.jobTitle || null,
+        services: normalizedServices,
         portfolioProjects: normalizedPortfolioProjects,
         profileDetails: normalizedFreelancerProfile
       }
@@ -1172,6 +1380,15 @@ const createUserRecord = async (payload) => {
         portfolioProjects: normalizedPortfolioProjects
       });
       await replaceFreelancerProjects(user.id, normalizedProjects);
+
+      const marketplaceServices = deriveMarketplaceServices({
+        profileDetails: normalizedFreelancerProfile,
+        services: normalizedServices
+      });
+      await upsertMarketplaceEntry({
+        freelancerId: user.id,
+        services: marketplaceServices
+      });
     }
 
     // Don't send welcome email yet, wait for verification

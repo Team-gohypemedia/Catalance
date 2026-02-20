@@ -30,6 +30,53 @@ const initialFormState = {
   password: "",
 };
 
+const normalizeAvatarUrl = (value) => {
+  const url = String(value || "").trim();
+  if (!url || url.startsWith("blob:")) return "";
+  return url;
+};
+
+const getGoogleAvatarFromFirebaseUser = (firebaseUser) => {
+  if (!firebaseUser) return "";
+  const providerPhoto = Array.isArray(firebaseUser.providerData)
+    ? firebaseUser.providerData.find((entry) => Boolean(entry?.photoURL))
+        ?.photoURL || ""
+    : "";
+  return normalizeAvatarUrl(firebaseUser.photoURL || providerPhoto || "");
+};
+
+const mergeAuthUserWithAvatar = (apiUser, fallbackAvatar) => {
+  if (!apiUser || typeof apiUser !== "object") return apiUser;
+
+  const existingIdentityAvatar =
+    apiUser?.profileDetails?.identity?.profilePhoto || "";
+  const resolvedAvatar = normalizeAvatarUrl(
+    apiUser?.avatar || existingIdentityAvatar || fallbackAvatar
+  );
+
+  if (!resolvedAvatar) return apiUser;
+
+  return {
+    ...apiUser,
+    avatar: resolvedAvatar,
+    profileDetails: {
+      ...(apiUser.profileDetails && typeof apiUser.profileDetails === "object"
+        ? apiUser.profileDetails
+        : {}),
+      identity: {
+        ...((apiUser.profileDetails &&
+          typeof apiUser.profileDetails === "object" &&
+          apiUser.profileDetails.identity &&
+          typeof apiUser.profileDetails.identity === "object"
+          ? apiUser.profileDetails.identity
+          : {})),
+        profilePhoto:
+          existingIdentityAvatar || resolvedAvatar,
+      },
+    },
+  };
+};
+
 function Login({ className, ...props }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -131,8 +178,10 @@ function Login({ className, ...props }) {
 
       // Perform backend Google auth (auto-creates account when missing)
       const authPayload = await loginWithGoogle(idToken, selectedRole, "signup");
+      const googleAvatar = getGoogleAvatarFromFirebaseUser(firebaseUser);
+      const sessionUser = mergeAuthUserWithAvatar(authPayload?.user, googleAvatar);
 
-      setAuthSession(authPayload?.user, authPayload?.accessToken);
+      setAuthSession(sessionUser, authPayload?.accessToken);
       toast.success(`Welcome, ${authPayload?.user?.fullName || "User"}!`);
 
       const nextRole = authPayload?.user?.role?.toUpperCase();

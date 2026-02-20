@@ -23,6 +23,33 @@ import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import UserPlus from "lucide-react/dist/esm/icons/user-plus";
 import { Separator } from "@/components/ui/separator";
 
+let cachedFreelancers = null;
+let cachedFreelancersPromise = null;
+
+const fetchFreelancersOnce = async (authFetch) => {
+    if (Array.isArray(cachedFreelancers)) {
+        return cachedFreelancers;
+    }
+
+    if (!cachedFreelancersPromise) {
+        cachedFreelancersPromise = authFetch("/users?role=FREELANCER")
+            .then((res) => res.json())
+            .then((payload) => {
+                cachedFreelancers = Array.isArray(payload?.data) ? payload.data : [];
+                return cachedFreelancers;
+            })
+            .catch((error) => {
+                cachedFreelancersPromise = null;
+                throw error;
+            })
+            .finally(() => {
+                cachedFreelancersPromise = null;
+            });
+    }
+
+    return cachedFreelancersPromise;
+};
+
 export const ProjectManagerDashboardContent = () => {
     const { authFetch, user } = useAuth();
     const [searchParams] = useSearchParams();
@@ -808,17 +835,32 @@ const DisputeCard = ({ dispute, onUpdate, readOnly = false }) => {
     const [loadingFreelancers, setLoadingFreelancers] = useState(false);
 
     useEffect(() => {
+        let cancelled = false;
+
         if (showReassign && freelancers.length === 0) {
             setLoadingFreelancers(true);
-            authFetch("/users?role=FREELANCER")
-                .then(res => res.json())
-                .then(data => {
-                    if (data.data) setFreelancers(data.data);
+            fetchFreelancersOnce(authFetch)
+                .then((rows) => {
+                    if (!cancelled) {
+                        setFreelancers(rows);
+                    }
                 })
-                .catch(console.error)
-                .finally(() => setLoadingFreelancers(false));
+                .catch((error) => {
+                    if (!cancelled) {
+                        console.error(error);
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) {
+                        setLoadingFreelancers(false);
+                    }
+                });
         }
-    }, [showReassign, authFetch]); // freelancers.length dependency removed to avoid loops, handled by if check
+
+        return () => {
+            cancelled = true;
+        };
+    }, [showReassign, freelancers.length, authFetch]);
 
     const handleReassign = async () => {
         if (!selectedFreelancer) return;

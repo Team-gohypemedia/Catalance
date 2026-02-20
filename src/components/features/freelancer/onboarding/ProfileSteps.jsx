@@ -34,7 +34,7 @@ import {
     COUNTRY_OPTIONS,
     PROFESSION_TITLE_OPTIONS,
 } from "./constants";
-import { isValidUsername, normalizeUsernameInput } from "./utils";
+import { isValidUsername, normalizeUsernameInput, getServiceLabel } from "./utils";
 
 // ============================================================================
 // STATS STEP
@@ -81,7 +81,7 @@ export const WelcomeStep = ({ renderContinueButton, currentStep }) => (
                 Time to <span className="text-primary">Show Off </span> a Little
             </h1>
             <p className="text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
-                Tell us what you're great at so we can match you with clients who'll actually appreciate it. No boring forms, we promise.
+                Tell us what you&apos;re great at so we can match you with clients who&apos;ll actually appreciate it. No boring forms, we promise.
             </p>
         </div>
 
@@ -110,9 +110,10 @@ export const ProfileBasicsStep = ({
     renderContinueButton,
 }) => {
     const helperText = {
-        idle: "Use 3-20 characters: lowercase letters and numbers only.",
-        too_short: "Username must be at least 3 characters.",
-        invalid: "Only lowercase letters and numbers allowed (3-20 chars).",
+        idle: "Use 5-20 lowercase letters and numbers with at least 1 number.",
+        too_short: "Username must be at least 5 characters.",
+        missing_number: "Add at least 1 number.",
+        invalid: "Only lowercase letters and numbers allowed (5-20 chars).",
         checking: "Checking availability...",
         available: "✓ Username is available!",
         unavailable: "✗ That username is already taken.",
@@ -151,7 +152,7 @@ export const ProfileBasicsStep = ({
     return (
         <div className="space-y-5">
             <div className="text-center space-y-1">
-                <h1 className="text-2xl md:text-[2rem] font-bold text-white leading-tight">
+                <h1 className="text-2xl md:text-[2rem] font-bold text-primary leading-tight">
                     Complete Your Basic Profile
                 </h1>
                 <p className="text-white/60 text-sm">Answer these details to continue</p>
@@ -259,7 +260,7 @@ export const ProfileBasicsStep = ({
                                 "h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 pr-10",
                                 usernameStatus === "available" && "border-green-500/50",
                                 usernameStatus === "unavailable" && "border-red-500/50",
-                                (usernameStatus === "too_short" || usernameStatus === "invalid") && "border-amber-500/30"
+                                (usernameStatus === "too_short" || usernameStatus === "missing_number" || usernameStatus === "invalid") && "border-amber-500/30"
                             )}
                         />
                         {usernameStatus === "checking" && (
@@ -283,7 +284,7 @@ export const ProfileBasicsStep = ({
                             "text-xs min-h-4 transition-colors duration-200",
                             usernameStatus === "available" && "text-green-400",
                             usernameStatus === "unavailable" && "text-red-400",
-                            (usernameStatus === "too_short" || usernameStatus === "invalid") && "text-amber-400",
+                            (usernameStatus === "too_short" || usernameStatus === "missing_number" || usernameStatus === "invalid") && "text-amber-400",
                             (usernameStatus === "idle" || usernameStatus === "checking") && "text-white/50",
                             usernameStatus === "error" && "text-yellow-400"
                         )}
@@ -512,38 +513,6 @@ export const ProfileBasicsStep = ({
                     </div>
                 )}
 
-                <div className="space-y-1.5">
-                    <Label className="text-white/70 text-[11px]">LinkedIn Profile URL (Optional)</Label>
-                    <Input
-                        type="url"
-                        value={formData.linkedinUrl}
-                        onChange={(e) => updateFormField("linkedinUrl", e.target.value)}
-                        placeholder="https://www.linkedin.com/in/your-profile"
-                        className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
-                    />
-                </div>
-
-                <div className="space-y-1.5">
-                    <Label className="text-white/70 text-[11px]">Portfolio Or Website Link (Optional)</Label>
-                    <Input
-                        type="url"
-                        value={formData.portfolioUrl}
-                        onChange={(e) => updateFormField("portfolioUrl", e.target.value)}
-                        placeholder="https://your-portfolio.com"
-                        className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
-                    />
-                </div>
-
-                <div className="space-y-1.5 lg:col-span-2">
-                    <Label className="text-white/70 text-[11px]">GitHub Profile URL (Optional)</Label>
-                    <Input
-                        type="url"
-                        value={formData.githubUrl}
-                        onChange={(e) => updateFormField("githubUrl", e.target.value)}
-                        placeholder="https://github.com/your-username"
-                        className="h-10 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
-                    />
-                </div>
             </div>
 
             {renderContinueButton()}
@@ -665,9 +634,10 @@ export const UsernameStep = ({
     renderContinueButton,
 }) => {
     const helperText = {
-        idle: "Use 3-20 characters: lowercase letters and numbers only.",
-        too_short: "Username must be at least 3 characters.",
-        invalid: "Only lowercase letters and numbers allowed (3-20 chars).",
+        idle: "Use 5-20 lowercase letters and numbers with at least 1 number.",
+        too_short: "Username must be at least 5 characters.",
+        missing_number: "Add at least 1 number.",
+        invalid: "Only lowercase letters and numbers allowed (5-20 chars).",
         checking: "Checking availability...",
         available: "✓ Username is available!",
         unavailable: "✗ That username is already taken.",
@@ -705,7 +675,7 @@ export const UsernameStep = ({
                         "bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 pr-10",
                         usernameStatus === "available" && "border-green-500/50",
                         usernameStatus === "unavailable" && "border-red-500/50",
-                        (usernameStatus === "too_short" || usernameStatus === "invalid") && "border-amber-500/30"
+                        (usernameStatus === "too_short" || usernameStatus === "missing_number" || usernameStatus === "invalid") && "border-amber-500/30"
                     )}
                 />
                 {usernameStatus === "checking" && (
@@ -729,7 +699,7 @@ export const UsernameStep = ({
                     "text-sm transition-colors duration-200",
                     usernameStatus === "available" && "text-green-400",
                     usernameStatus === "unavailable" && "text-red-400",
-                    (usernameStatus === "too_short" || usernameStatus === "invalid") && "text-amber-400",
+                    (usernameStatus === "too_short" || usernameStatus === "missing_number" || usernameStatus === "invalid") && "text-amber-400",
                     (usernameStatus === "idle" || usernameStatus === "checking") && "text-white/50",
                     usernameStatus === "error" && "text-yellow-400"
                 )}
@@ -1174,7 +1144,7 @@ export const ServiceTransitionStep = ({ renderContinueButton }) => {
         <div className="space-y-8 animate-in fade-in zoom-in duration-500">
             <div className="text-center space-y-4">
                 <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
-                    You're almost <span className="text-primary">there</span>
+                    You&apos;re almost <span className="text-primary">there</span>
                 </h1>
                 <p className="text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
                     The average freelancer lands their first project in just 2 weeks. Finish your profile and join them.
@@ -1193,3 +1163,73 @@ export const ServiceTransitionStep = ({ renderContinueButton }) => {
         </div>
     );
 };
+
+// ============================================================================
+// SERVICE WELCOME STEP
+// ============================================================================
+
+export const ServiceWelcomeStep = ({
+    serviceKey,
+    serviceIndex = 0,
+    totalServices = 1,
+    renderContinueButton,
+    currentStep,
+}) => {
+    const serviceLabel = getServiceLabel(serviceKey);
+
+    return (
+        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
+            <div className="text-center space-y-4">
+                {totalServices > 1 && (
+                    <p className="text-sm text-white/50">
+                        Service {serviceIndex + 1} of {totalServices}
+                    </p>
+                )}
+                <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+                    Let&apos;s Start Your <span className="text-primary">{serviceLabel}</span> Setup
+                </h1>
+                <p className="text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
+                    We&apos;ll ask a few service-specific questions to match you with better-fit projects faster.
+                </p>
+            </div>
+
+            <div className="pt-4 w-full flex justify-center">
+                {renderContinueButton(currentStep, { show: true })}
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// SERVICE END STEP
+// ============================================================================
+
+export const ServiceEndStep = ({
+    serviceKey,
+    totalServices = 1,
+    renderContinueButton,
+    currentStep,
+}) => {
+    const serviceLabel = getServiceLabel(serviceKey);
+    const isSingleService = totalServices <= 1;
+
+    return (
+        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
+            <div className="text-center space-y-4">
+                <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+                    <span className="text-primary">Thank You</span>
+                </h1>
+                <p className="text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
+                    {isSingleService
+                        ? `You completed your ${serviceLabel} setup. Continue to finish your onboarding.`
+                        : "You completed all selected service sections. Continue to finish your onboarding."}
+                </p>
+            </div>
+
+            <div className="pt-4 w-full flex justify-center">
+                {renderContinueButton(currentStep, { show: true })}
+            </div>
+        </div>
+    );
+};
+
