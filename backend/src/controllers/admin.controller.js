@@ -647,7 +647,10 @@ export const getServiceQuestions = asyncHandler(async (req, res) => {
     type: q.type,
     required: q.required,
     options: q.options || [],
-    logic: q.logic || []
+    logic: q.logic || [],
+    subtitle: q.subtitle || "",
+    saveResponse: q.saveResponse || false,
+    nextQuestionSlug: q.nextQuestionSlug || ""
   }));
 
   res.json({ data: questions });
@@ -655,7 +658,7 @@ export const getServiceQuestions = asyncHandler(async (req, res) => {
 
 export const upsertQuestion = asyncHandler(async (req, res) => {
   const { serviceId } = req.params; // Service SLUG
-  const { id, type, question, options, logic, existingId, required } = req.body; // id is question SLUG
+  const { id, type, question, options, logic, existingId, required, subtitle, saveResponse, nextQuestionSlug } = req.body; // id is question SLUG
 
   if (!serviceId || !id || !type || !question) {
     throw new AppError("Missing required fields", 400);
@@ -670,6 +673,7 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
   }
 
   const isRequired = required === undefined ? true : required;
+  const isSaveResponse = saveResponse === undefined ? false : saveResponse;
 
   // If existingId is provided, we might be renaming the slug.
   if (existingId && existingId !== id) {
@@ -690,7 +694,10 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         type,
         options: options || [],
         logic: logic || [],
-        required: isRequired
+        required: isRequired,
+        subtitle: subtitle || null,
+        saveResponse: isSaveResponse,
+        nextQuestionSlug: nextQuestionSlug || null
       }
     });
   } else {
@@ -710,7 +717,9 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         type,
         options: options || [],
         logic: logic || [],
-        required: isRequired
+        required: isRequired,
+        subtitle: subtitle || null,
+        saveResponse: isSaveResponse
       },
       create: {
         serviceId: service.id,
@@ -720,7 +729,10 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         options: options || [],
         logic: logic || [],
         required: isRequired,
-        order: nextOrder
+        order: nextOrder,
+        subtitle: subtitle || null,
+        saveResponse: isSaveResponse,
+        nextQuestionSlug: nextQuestionSlug || null
       }
     });
   }

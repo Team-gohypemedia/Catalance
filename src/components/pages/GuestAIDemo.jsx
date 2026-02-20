@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Briefcase, ArrowRight, ArrowLeft, Check, Bot, User, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,8 +9,16 @@ import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
 // Helper to interact with our new Guest API
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const apiFetch = async (endpoint, options = {}) => {
-    const res = await fetch(`/api${endpoint}`, {
+    // Remove leading slash from endpoint if it exists to avoid double slashes with API_BASE
+    // Actually, if API_BASE is "http://.../api", and endpoint is "/ai/services", we want "http://.../api/ai/services".
+    // If API_BASE is "/api", we want "/api/ai/services".
+    // It's safer to just concatenate if we assume API_BASE doesn't end with slash or endpoint does.
+    // The previous code was `/api${endpoint}`. Endpoint starts with /.
+    // So if API_BASE is defined as "http://.../api", we are good.
+    const res = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
@@ -31,9 +39,14 @@ const GuestAIDemo = () => {
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [inputConfig, setInputConfig] = useState({ type: 'text', options: [] });
+    const [selectedOptions, setSelectedOptions] = useState([]);
 
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
+    const normalizedInputType = (inputConfig.type || 'text').toLowerCase();
+    const isMultiInput = normalizedInputType === 'multi_select'
+        || normalizedInputType === 'multi_option'
+        || normalizedInputType === 'grouped_multi_select';
 
     // Fetch Services on Mount
     useEffect(() => {
@@ -58,13 +71,18 @@ const GuestAIDemo = () => {
         }
     }, [isTyping, inputConfig]);
 
+    // Reset multi-select state when the expected input changes
+    useEffect(() => {
+        setSelectedOptions([]);
+    }, [inputConfig.type, inputConfig.options]);
+
     const fetchServices = async () => {
         try {
             const data = await apiFetch('/ai/services');
             if (data.success) {
                 setServices(data.services);
             }
-        } catch (error) {
+        } catch {
             toast.error("Failed to load services");
         } finally {
             setLoading(false);
@@ -91,7 +109,7 @@ const GuestAIDemo = () => {
                 ]);
                 setInputConfig(data.inputConfig || { type: 'text', options: [] });
             }
-        } catch (error) {
+        } catch {
             toast.error("Failed to start chat session");
             setSelectedService(null);
         } finally {
@@ -101,23 +119,31 @@ const GuestAIDemo = () => {
 
     const handleSendMessage = async (e, forcedContent = null) => {
         if (e) e.preventDefault();
-        const contentToSend = forcedContent || input;
+        const contentToSend = forcedContent ?? input;
+        const isArrayPayload = Array.isArray(contentToSend);
+        const normalizedArray = isArrayPayload
+            ? contentToSend.filter(Boolean).map(String)
+            : [];
+        const textPayload = isArrayPayload
+            ? normalizedArray.join(', ')
+            : contentToSend;
 
-        if (!contentToSend.trim() || !sessionId || isTyping) return;
+        if ((!isArrayPayload && !textPayload.trim()) || (isArrayPayload && normalizedArray.length === 0) || !sessionId || isTyping) return;
 
-        const userMsg = { role: 'user', content: contentToSend };
+        const userMsg = { role: 'user', content: textPayload };
         setMessages(prev => [...prev, userMsg]);
         setInput("");
         setIsTyping(true);
         // Clear options immediately to avoid double clicks
         setInputConfig({ type: 'text', options: [] });
+        setSelectedOptions([]);
 
         try {
             const data = await apiFetch('/guest/chat', {
                 method: 'POST',
                 body: JSON.stringify({
                     sessionId,
-                    message: userMsg.content
+                    message: isArrayPayload ? normalizedArray : userMsg.content
                 })
             });
 
@@ -139,7 +165,7 @@ const GuestAIDemo = () => {
                     setInputConfig(data.inputConfig);
                 }
             }
-        } catch (error) {
+        } catch {
             toast.error("Failed to send message");
         } finally {
             setIsTyping(false);
@@ -162,7 +188,7 @@ const GuestAIDemo = () => {
                         <h1 className="text-4xl font-bold tracking-tight text-slate-900">Choose a Service</h1>
                         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
                             Select a service below to start a consultation with our AI assistant.
-                            We'll help define your requirements instantly.
+                            We&apos;ll help define your requirements instantly.
                         </p>
                     </div>
 
@@ -313,16 +339,46 @@ const GuestAIDemo = () => {
                         {/* Options Rendering */}
                         {!isTyping && inputConfig.options && inputConfig.options.length > 0 && (
                             <div className="flex flex-wrap gap-2 justify-start pl-12 animate-in fade-in slide-in-from-bottom-2 pt-2">
-                                {inputConfig.options.map((option, idx) => (
+                                {inputConfig.options.map((option, idx) => {
+                                    const label = typeof option === 'string' ? option : option.label;
+                                    const value = String(typeof option === 'string' ? option : (option.value ?? option.label));
+                                    const isMulti = isMultiInput;
+                                    const isSelected = selectedOptions.includes(value);
+
+                                    const handleOptionClick = () => {
+                                        if (isMulti) {
+                                            setSelectedOptions(prev =>
+                                                prev.includes(value)
+                                                    ? prev.filter(v => v !== value)
+                                                    : [...prev, value]
+                                            );
+                                        } else {
+                                            handleSendMessage(null, value);
+                                        }
+                                    };
+
+                                    return (
+                                        <Button
+                                            key={idx}
+                                            type="button"
+                                            variant={isMulti ? (isSelected ? "default" : "outline") : "outline"}
+                                            className={`rounded-full transition-colors ${isMulti ? "" : "hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200"}`}
+                                            onClick={handleOptionClick}
+                                        >
+                                            {label}
+                                        </Button>
+                                    );
+                                })}
+                                {isMultiInput && (
                                     <Button
-                                        key={idx}
-                                        variant="outline"
-                                        className="rounded-full hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
-                                        onClick={() => handleSendMessage(null, typeof option === 'string' ? option : option.label)}
+                                        type="button"
+                                        className="rounded-full"
+                                        disabled={selectedOptions.length === 0 || isTyping}
+                                        onClick={(e) => handleSendMessage(e, selectedOptions)}
                                     >
-                                        {typeof option === 'string' ? option : option.label}
+                                        Send selection
                                     </Button>
-                                ))}
+                                )}
                             </div>
                         )}
                     </div>
@@ -331,25 +387,27 @@ const GuestAIDemo = () => {
                 <div className="p-4 bg-white border-t border-slate-200">
                     <div className="max-w-3xl mx-auto space-y-4">
 
-                        <form onSubmit={handleSendMessage} className="relative">
-                            <Input
-                                ref={inputRef}
-                                autoFocus
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                placeholder="Type your message..."
-                                className="pr-12 py-6 rounded-xl border-slate-300 focus-visible:ring-indigo-500"
-                                disabled={isTyping}
-                            />
-                            <Button
-                                size="icon"
-                                type="submit"
-                                disabled={!input.trim() || isTyping}
-                                className="absolute right-2 top-2 h-8 w-8 rounded-lg"
-                            >
-                                <Send className="h-4 w-4" />
-                            </Button>
-                        </form>
+                        {!isMultiInput && (
+                            <form onSubmit={handleSendMessage} className="relative">
+                                <Input
+                                    ref={inputRef}
+                                    autoFocus
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    placeholder="Type your message..."
+                                    className="pr-12 py-6 rounded-xl border-slate-300 focus-visible:ring-indigo-500"
+                                    disabled={isTyping}
+                                />
+                                <Button
+                                    size="icon"
+                                    type="submit"
+                                    disabled={!input.trim() || isTyping}
+                                    className="absolute right-2 top-2 h-8 w-8 rounded-lg"
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                            </form>
+                        )}
                         <p className="text-center text-xs text-slate-400 mt-2">
                             AI may produce inaccurate information about people, places, or facts.
                         </p>
