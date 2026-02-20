@@ -4,7 +4,8 @@
 import React, { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import Settings from "lucide-react/dist/esm/icons/settings";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -18,7 +19,15 @@ import {
     fetchStatesByCountry,
 } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
-import { GradientBackground } from "@/components/paper-design-shader-background";
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 
 // ── Local module imports ──────────────────────────────────────────────
 import {
@@ -31,6 +40,7 @@ import {
     DELAY_HANDLING_OPTIONS,
     INDUSTRY_NICHE_OPTIONS,
     STATE_OPTIONS_CACHE,
+    getServicePlatformProfileFields,
 } from "./constants";
 
 import {
@@ -66,10 +76,13 @@ import {
     PricingStrategyStep,
     PortfolioImportanceStep,
     ServiceTransitionStep,
+    ServiceWelcomeStep,
+    ServiceEndStep,
 } from "./ProfileSteps";
 
 import {
     ServicesStep,
+    ServicePlatformLinksStep,
     ServiceExperienceStep,
     ServiceLevelStep,
     ServiceProjectsStep,
@@ -133,6 +146,12 @@ const SKILL_ACRONYMS = new Set([
     "ui",
     "ux",
 ]);
+
+const FLOW_SETTINGS_STORAGE_KEY = "freelancer_onboarding_flow_settings_v1";
+
+const createInitialFlowSettings = () => ({
+    autoAdvance: true,
+});
 
 const formatSkillLabel = (value) => {
     const raw = String(value ?? "")
@@ -243,6 +262,44 @@ const normalizeAvatarUrl = (value) => {
     const url = String(value || "").trim();
     if (!url || url.startsWith("blob:")) return "";
     return url;
+};
+
+const resolveFreelancerFlowAvatar = (account = null) => {
+    if (!account || typeof account !== "object") return "";
+
+    const providerPhoto = Array.isArray(account.providerData)
+        ? account.providerData.find((entry) => Boolean(entry?.photoURL))?.photoURL || ""
+        : "";
+
+    const avatarCandidates = [
+        account.avatar,
+        account.profilePhoto,
+        account.photoURL,
+        account.picture,
+        account.image,
+        account.profileDetails?.identity?.profilePhoto,
+        providerPhoto,
+    ];
+
+    for (const candidate of avatarCandidates) {
+        const resolved = normalizeAvatarUrl(
+            extractProfilePhotoUrl(candidate) || candidate,
+        );
+        if (resolved) return resolved;
+    }
+
+    return "";
+};
+
+const buildRemoteProfilePhoto = (value, name = "Profile Photo") => {
+    const url = normalizeAvatarUrl(value);
+    if (!url) return null;
+    return {
+        name,
+        url,
+        uploadedUrl: url,
+        file: null,
+    };
 };
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
@@ -383,6 +440,24 @@ const FreelancerMultiStepForm = () => {
     const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
     const [stateOptions, setStateOptions] = useState([]);
     const [isStateOptionsLoading, setIsStateOptionsLoading] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [flowSettings, setFlowSettings] = useState(() => {
+        if (typeof window === "undefined") return createInitialFlowSettings();
+        try {
+            const saved = localStorage.getItem(FLOW_SETTINGS_STORAGE_KEY);
+            if (!saved) return createInitialFlowSettings();
+            const parsed = JSON.parse(saved);
+            if (!parsed || typeof parsed !== "object") {
+                return createInitialFlowSettings();
+            }
+            return {
+                ...createInitialFlowSettings(),
+                ...parsed,
+            };
+        } catch {
+            return createInitialFlowSettings();
+        }
+    });
 
     const [formData, setFormData] = useState(() => createInitialOnboardingFormData());
 
@@ -443,10 +518,22 @@ const FreelancerMultiStepForm = () => {
         sequence.push({ key: "services", type: "services" });
         sequence.push({ key: "niche-preference", type: "nichePreference" });
 
+        const totalSelectedServices = formData.selectedServices.length;
+
         formData.selectedServices.forEach((serviceKey, index) => {
-            if (index > 0) {
-                sequence.push({ key: `svc-transition-${index}`, type: "serviceTransition" });
-            }
+            sequence.push({
+                key: `svc-${serviceKey}-welcome`,
+                type: "serviceWelcome",
+                serviceKey,
+                serviceIndex: index,
+                totalServices: totalSelectedServices,
+            });
+
+            sequence.push({
+                key: `svc-${serviceKey}-platform-links`,
+                type: "servicePlatformLinks",
+                serviceKey,
+            });
 
             sequence.push({ key: `svc-${serviceKey}-experience`, type: "serviceExperience", serviceKey });
 
@@ -501,6 +588,16 @@ const FreelancerMultiStepForm = () => {
 
         });
 
+        if (totalSelectedServices > 0) {
+            const lastServiceKey = formData.selectedServices[totalSelectedServices - 1];
+            sequence.push({
+                key: "services-end",
+                type: "serviceEnd",
+                serviceKey: lastServiceKey,
+                totalServices: totalSelectedServices,
+            });
+        }
+
         sequence.push({ key: "hours", type: "hours" });
 
         sequence.push({ key: "start-timeline", type: "startTimeline" });
@@ -553,6 +650,15 @@ const FreelancerMultiStepForm = () => {
             ? nextFormData.languages.filter(Boolean)
             : [];
 
+        const existingPhotoUrl = extractProfilePhotoUrl(nextFormData.profilePhoto);
+        const accountAvatarUrl = resolveFreelancerFlowAvatar(user);
+        if (!existingPhotoUrl && accountAvatarUrl) {
+            nextFormData.profilePhoto = buildRemoteProfilePhoto(
+                accountAvatarUrl,
+                "Profile Photo",
+            );
+        }
+
         if (savedStep) {
             const parsedStep = parseInt(savedStep, 10);
             if (Number.isFinite(parsedStep) && parsedStep >= 0) {
@@ -563,7 +669,7 @@ const FreelancerMultiStepForm = () => {
         setFormData(nextFormData);
         setCurrentStepIndex(nextStepIndex);
         setIsLoaded(true);
-    }, [onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey]);
+    }, [onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey, user]);
 
     useEffect(() => {
         if (isLoaded) {
@@ -571,6 +677,10 @@ const FreelancerMultiStepForm = () => {
             localStorage.setItem(onboardingStorageKeys.stepKey, currentStepIndex.toString());
         }
     }, [formData, currentStepIndex, isLoaded, onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey]);
+
+    useEffect(() => {
+        localStorage.setItem(FLOW_SETTINGS_STORAGE_KEY, JSON.stringify(flowSettings));
+    }, [flowSettings]);
 
     useEffect(() => {
         if (!isLoaded) return;
@@ -720,6 +830,7 @@ const FreelancerMultiStepForm = () => {
 
     // ── Helpers ─────────────────────────────────────────────────────────
     const queueAdvance = (delay = 0) => {
+        if (!flowSettings.autoAdvance) return;
         if (advanceTimerRef.current) {
             clearTimeout(advanceTimerRef.current);
         }
@@ -737,8 +848,13 @@ const FreelancerMultiStepForm = () => {
             return;
         }
 
-        if (normalized.length < 3) {
+        if (normalized.length < 5) {
             setUsernameStatus("too_short");
+            return;
+        }
+
+        if (!/\d/.test(normalized)) {
+            setUsernameStatus("missing_number");
             return;
         }
 
@@ -924,6 +1040,161 @@ const FreelancerMultiStepForm = () => {
         localStorage.removeItem(onboardingStorageKeys.stepKey);
     }, [onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey]);
 
+    const getStepDisplayLabel = useCallback((step, index) => {
+        if (!step) return `Step ${index + 1}`;
+        const serviceLabel = step.serviceKey ? getServiceLabel(step.serviceKey) : "";
+
+        switch (step.type) {
+            case "welcome":
+                return "Welcome";
+            case "role":
+                return "Work style";
+            case "stats":
+                return "Freelancer stats";
+            case "profileBasics":
+                return "Basic profile";
+            case "services":
+                return "Select services";
+            case "nichePreference":
+                return "Industry niche";
+            case "serviceTransition":
+                return "Service transition";
+            case "serviceWelcome":
+                return `${serviceLabel}: Start`;
+            case "serviceEnd":
+                return "Services complete";
+            case "servicePlatformLinks":
+                return `${serviceLabel}: Platform links`;
+            case "serviceExperience":
+                return `${serviceLabel}: Experience`;
+            case "serviceProjects":
+                return `${serviceLabel}: Previous projects`;
+            case "serviceProjectDetails":
+                return `${serviceLabel}: Project ${Number(step.projectIndex || 0) + 1}`;
+            case "serviceSampleWork":
+                return `${serviceLabel}: Sample work`;
+            case "serviceSampleUpload":
+                return `${serviceLabel}: Upload sample`;
+            case "serviceAveragePrice":
+                return `${serviceLabel}: Average price`;
+            case "serviceComplexity":
+                return `${serviceLabel}: Project complexity`;
+            case "serviceGroup": {
+                const group = getServiceGroups(step.serviceKey).find(
+                    (entry) => entry.id === step.groupId,
+                );
+                return `${serviceLabel}: ${group?.title || "Service details"}`;
+            }
+            case "pricingStrategy":
+                return `${serviceLabel}: Pricing strategy`;
+            case "portfolioImportance":
+                return `${serviceLabel}: Portfolio importance`;
+            case "hours":
+                return "Weekly availability";
+            case "startTimeline":
+                return "Start timeline";
+            case "acceptInProgressProjects":
+                return "Parallel projects";
+            case "deliveryPolicy":
+                return "Delivery policy";
+            case "communicationPolicy":
+                return "Communication policy";
+            default: {
+                const fallback =
+                    step.key ||
+                    String(step.type || `Step ${index + 1}`).replace(/-/g, " ");
+                return toQuestionTitle(fallback);
+            }
+        }
+    }, []);
+
+    const handleSaveDraftFromSettings = useCallback(() => {
+        localStorage.setItem(onboardingStorageKeys.dataKey, JSON.stringify(formData));
+        localStorage.setItem(onboardingStorageKeys.stepKey, currentStepIndex.toString());
+        toast.success("Onboarding draft saved.");
+    }, [currentStepIndex, formData, onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey]);
+
+    const handleClearSavedDraftFromSettings = useCallback(() => {
+        clearOnboardingDraftStorage();
+        toast.success("Saved draft cleared from this browser.");
+    }, [clearOnboardingDraftStorage]);
+
+    const handleJumpToStepFromSettings = useCallback((nextStep) => {
+        const parsedStep = Number(nextStep);
+        if (!Number.isFinite(parsedStep)) return;
+        const boundedStep = Math.max(0, Math.min(totalSteps - 1, parsedStep));
+
+        if (advanceTimerRef.current) {
+            clearTimeout(advanceTimerRef.current);
+            advanceTimerRef.current = null;
+        }
+        queuedStepKeyRef.current = "";
+        setPendingAdvance(false);
+        setStepError("");
+        setCurrentStepIndex(boundedStep);
+    }, [totalSteps]);
+
+    const handleSettingsNavigateRelative = useCallback((delta) => {
+        handleJumpToStepFromSettings(currentStepIndex + delta);
+    }, [currentStepIndex, handleJumpToStepFromSettings]);
+
+    const handleAutoAdvanceChange = useCallback((checked) => {
+        setFlowSettings((prev) => ({
+            ...prev,
+            autoAdvance: Boolean(checked),
+        }));
+    }, []);
+
+    const handleRestartOnboardingFromSettings = useCallback(() => {
+        if (advanceTimerRef.current) {
+            clearTimeout(advanceTimerRef.current);
+            advanceTimerRef.current = null;
+        }
+        if (usernameDebounceRef.current) {
+            clearTimeout(usernameDebounceRef.current);
+            usernameDebounceRef.current = null;
+        }
+
+        queuedStepKeyRef.current = "";
+        setPendingAdvance(false);
+        setStepError("");
+        setIsSubmitting(false);
+        setIsVerifying(false);
+        setOtp("");
+        setUsernameStatus("idle");
+        setTechStackOtherDrafts({});
+        setGroupOtherDrafts({});
+        setPendingProfilePhotoFile(null);
+        setIsProfileCropOpen(false);
+        setStateOptions([]);
+        setIsStateOptionsLoading(false);
+        setCurrentStepIndex(0);
+
+        const nextFormData = createInitialOnboardingFormData();
+        const accountAvatarUrl = resolveFreelancerFlowAvatar(user);
+        if (accountAvatarUrl) {
+            nextFormData.profilePhoto = buildRemoteProfilePhoto(accountAvatarUrl);
+        }
+
+        const fullName = String(user?.fullName || "").trim();
+        const email = String(user?.email || "").trim().toLowerCase();
+        if (fullName) nextFormData.fullName = fullName;
+        if (email) nextFormData.email = email;
+
+        setFormData(nextFormData);
+        clearOnboardingDraftStorage();
+        setIsSettingsOpen(false);
+        toast.success("Freelancer onboarding flow restarted.");
+    }, [
+        clearOnboardingDraftStorage,
+        user,
+    ]);
+
+    const handleDashboardNavigateFromSettings = useCallback(() => {
+        setIsSettingsOpen(false);
+        navigate("/freelancer");
+    }, [navigate]);
+
     const handleCountryChange = (country, advanceDelay = null) => {
         setFormData((prev) => {
             if (prev.country === country) return prev;
@@ -976,6 +1247,34 @@ const FreelancerMultiStepForm = () => {
         if (advanceDelay !== null) queueAdvance(advanceDelay);
     };
 
+    const validateServicePlatformLinksForService = useCallback((data, serviceKey) => {
+        const detail = data?.serviceDetails?.[serviceKey];
+        const linkFields = getServicePlatformProfileFields(serviceKey);
+        const platformLinks =
+            detail?.platformLinks && typeof detail.platformLinks === "object"
+                ? detail.platformLinks
+                : {};
+
+        const providedLinks = linkFields
+            .map((field) => ({
+                key: field.key,
+                label: field.label,
+                value: String(platformLinks[field.key] || "").trim(),
+            }))
+            .filter((entry) => Boolean(entry.value));
+
+        if (!providedLinks.length) {
+            return "At least one valid link is mandatory.";
+        }
+
+        const invalidLink = providedLinks.find((entry) => !isValidUrl(entry.value));
+        if (invalidLink) {
+            return `Please enter a valid URL for ${invalidLink.label}.`;
+        }
+
+        return "";
+    }, []);
+
     const hasMultipleChoices = (options = []) => Array.isArray(options) && options.length > 1;
     const hasSingleChoice = (options = []) => Array.isArray(options) && options.length === 1;
 
@@ -1005,12 +1304,13 @@ const FreelancerMultiStepForm = () => {
                 if (!data.professionalTitle.trim()) return "Please enter your profession title.";
                 if (!data.username.trim()) return "Please enter a username.";
                 if (!isValidUsername(data.username)) {
-                    return "Username must be 3-20 characters and only lowercase letters and numbers.";
+                    return "Username must be 5-20 characters, include at least 1 number, and use only lowercase letters and numbers.";
                 }
                 if (usernameStatus === "checking") return "Checking username availability...";
                 if (usernameStatus === "unavailable") return "That username is already taken.";
-                if (usernameStatus === "too_short") return "Username must be at least 3 characters.";
-                if (usernameStatus === "invalid") return "Only lowercase letters and numbers allowed.";
+                if (usernameStatus === "too_short") return "Username must be at least 5 characters.";
+                if (usernameStatus === "missing_number") return "Username must include at least 1 number.";
+                if (usernameStatus === "invalid") return "Use only lowercase letters and numbers.";
                 if (usernameStatus === "error") return "Unable to verify username. Please try again.";
                 if (usernameStatus !== "available") return "Please check username availability.";
                 if (!data.country) return "Please select your country.";
@@ -1026,27 +1326,19 @@ const FreelancerMultiStepForm = () => {
                 if (data.languages.includes("Other") && !data.otherLanguage.trim()) {
                     return "Please specify your other language.";
                 }
-                if (data.linkedinUrl.trim() && !isValidUrl(data.linkedinUrl.trim())) {
-                    return "Please enter a valid LinkedIn profile URL.";
-                }
-                if (data.portfolioUrl.trim() && !isValidUrl(data.portfolioUrl.trim())) {
-                    return "Please enter a valid portfolio or website URL.";
-                }
-                if (data.githubUrl.trim() && !isValidUrl(data.githubUrl.trim())) {
-                    return "Please enter a valid GitHub profile URL.";
-                }
                 return "";
             case "professionalTitle":
                 return data.professionalTitle.trim() ? "" : "Please enter your profession title.";
             case "username":
                 if (!data.username.trim()) return "Please enter a username.";
                 if (!isValidUsername(data.username)) {
-                    return "Username must be 3-20 characters and only lowercase letters and numbers.";
+                    return "Username must be 5-20 characters, include at least 1 number, and use only lowercase letters and numbers.";
                 }
                 if (usernameStatus === "checking") return "Checking username availability...";
                 if (usernameStatus === "unavailable") return "That username is already taken.";
-                if (usernameStatus === "too_short") return "Username must be at least 3 characters.";
-                if (usernameStatus === "invalid") return "Only lowercase letters and numbers allowed.";
+                if (usernameStatus === "too_short") return "Username must be at least 5 characters.";
+                if (usernameStatus === "missing_number") return "Username must include at least 1 number.";
+                if (usernameStatus === "invalid") return "Use only lowercase letters and numbers.";
                 if (usernameStatus === "error") return "Unable to verify username. Please try again.";
                 if (usernameStatus !== "available") return "Please check username availability.";
                 return "";
@@ -1088,6 +1380,12 @@ const FreelancerMultiStepForm = () => {
                 if (data.globalIndustryFocus.includes("Other") && !data.globalIndustryOther.trim()) {
                     return "Please specify your other niche.";
                 }
+                return "";
+            case "servicePlatformLinks": {
+                return validateServicePlatformLinksForService(data, step.serviceKey);
+            }
+            case "serviceWelcome":
+            case "serviceEnd":
                 return "";
             case "services":
                 return data.selectedServices.length > 0 ? "" : "Please select at least one service.";
@@ -1197,6 +1495,35 @@ const FreelancerMultiStepForm = () => {
         if (validation) {
             setStepError(validation);
             toast.error(validation);
+            return;
+        }
+
+        const invalidServiceKey = (Array.isArray(formData.selectedServices)
+            ? formData.selectedServices
+            : []
+        ).find((serviceKey) =>
+            Boolean(validateServicePlatformLinksForService(formData, serviceKey)),
+        );
+
+        if (invalidServiceKey) {
+            const serviceValidationMessage = validateServicePlatformLinksForService(
+                formData,
+                invalidServiceKey,
+            );
+            const invalidStepIndex = steps.findIndex(
+                (step) =>
+                    step?.type === "servicePlatformLinks" &&
+                    step?.serviceKey === invalidServiceKey,
+            );
+
+            if (invalidStepIndex >= 0) {
+                setCurrentStepIndex(invalidStepIndex);
+            }
+
+            setStepError(serviceValidationMessage);
+            toast.error(
+                `${getServiceLabel(invalidServiceKey)}: ${serviceValidationMessage}`,
+            );
             return;
         }
 
@@ -1435,7 +1762,7 @@ const FreelancerMultiStepForm = () => {
         const footer = (
             <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
                 <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-zinc-950/95 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-black" />
                 <div className="relative mx-auto max-w-4xl px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 flex justify-center">
                     <button
                         type="button"
@@ -1558,6 +1885,17 @@ const FreelancerMultiStepForm = () => {
                         toggleServiceSelection={toggleServiceSelection}
                     />
                 );
+            case "serviceWelcome":
+                return (
+                    <ServiceWelcomeStep
+                        {...sharedProps}
+                        serviceKey={currentStep.serviceKey}
+                        serviceIndex={currentStep.serviceIndex}
+                        totalServices={currentStep.totalServices}
+                    />
+                );
+            case "servicePlatformLinks":
+                return <ServicePlatformLinksStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceExperience":
                 return <ServiceExperienceStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceProjects":
@@ -1599,6 +1937,14 @@ const FreelancerMultiStepForm = () => {
                 return <PortfolioImportanceStep {...sharedProps} />;
             case "serviceTransition":
                 return <ServiceTransitionStep {...sharedProps} />;
+            case "serviceEnd":
+                return (
+                    <ServiceEndStep
+                        {...sharedProps}
+                        serviceKey={currentStep.serviceKey}
+                        totalServices={currentStep.totalServices}
+                    />
+                );
             case "deliveryPolicy":
                 return <DeliveryPolicyStep formData={formData} updateFormField={updateFormField} />;
             case "hours":
@@ -1661,24 +2007,28 @@ const FreelancerMultiStepForm = () => {
     if (!isLoaded) return null;
 
     return (
-        <div className="h-screen w-full bg-zinc-950 text-white relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
-            <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
-                <div className="absolute inset-0 opacity-40 blur-3xl scale-110">
-                    <GradientBackground />
-                </div>
-                <div className="absolute inset-0 bg-black/10 z-[1]" />
-            </div>
-
+        <div className="h-screen w-full bg-black text-white relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
             <div className="relative z-10 flex flex-col h-full">
                 <div className="relative z-50 bg-transparent border-b border-white/5 shrink-0">
-                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/5 w-full">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 w-full">
                         <div
-                            className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_10px_rgba(253,224,71,0.5)]"
+                            className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_14px_rgba(253,224,71,0.8)]"
                             style={{ width: `${((currentStepIndex + 1) / totalSteps) * 100}%` }}
                         />
                     </div>
 
-                    <div className="w-full px-6 h-16 relative flex items-center justify-center">
+                    <div className="w-full px-6 h-16 relative flex items-center">
+                        {currentStepIndex === 0 && (
+                            <button
+                                type="button"
+                                onClick={handleDashboardNavigateFromSettings}
+                                className="absolute left-6 top-1/2 -translate-y-1/2 h-10 px-3 flex items-center gap-1.5 rounded-full bg-transparent border border-white/10 hover:bg-white/5 text-white/90 transition-all backdrop-blur-md z-20 group text-sm font-medium"
+                            >
+                                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                                <span>Back to dashboard</span>
+                            </button>
+                        )}
+
                         {currentStepIndex > 0 && (
                             <button
                                 onClick={handleBack}
@@ -1688,16 +2038,158 @@ const FreelancerMultiStepForm = () => {
                             </button>
                         )}
 
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">
-                            Step {currentStepIndex + 1} of {totalSteps}
-                        </span>
+                        <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                            <SheetTrigger asChild>
+                                <button
+                                    type="button"
+                                    aria-label="Freelancer flow settings"
+                                    className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-transparent border border-white/10 hover:bg-white/5 text-white transition-all backdrop-blur-md z-20"
+                                >
+                                    <Settings className="w-5 h-5" />
+                                </button>
+                            </SheetTrigger>
+                            <SheetContent
+                                side="right"
+                                className="w-[92vw] sm:max-w-md border-white/10 bg-black text-white p-0"
+                            >
+                                <SheetHeader className="border-b border-white/10 px-5 py-4 text-left">
+                                    <SheetTitle className="text-white">
+                                        Freelancer Flow Settings
+                                    </SheetTitle>
+                                    <SheetDescription className="text-white/60">
+                                        Manage navigation, progress, and draft controls.
+                                    </SheetDescription>
+                                </SheetHeader>
+
+                                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+                                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                                        <p className="text-[11px] uppercase tracking-wide text-white/50">
+                                            Progress
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-white">
+                                            Step {Math.min(currentStepIndex + 1, totalSteps)} of {totalSteps}
+                                        </p>
+                                        <p className="mt-1 text-xs text-white/60">
+                                            {getStepDisplayLabel(currentStep, currentStepIndex)}
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
+                                            <div>
+                                                <p className="text-sm font-medium text-white">
+                                                    Auto-advance
+                                                </p>
+                                                <p className="text-xs text-white/60">
+                                                    Move to the next step automatically after valid selections.
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                checked={flowSettings.autoAdvance}
+                                                onCheckedChange={handleAutoAdvanceChange}
+                                                aria-label="Toggle onboarding auto-advance"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <p className="text-xs uppercase tracking-wide text-white/50">
+                                            Navigation
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSettingsNavigateRelative(-1)}
+                                                disabled={currentStepIndex <= 0}
+                                                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                Previous step
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSettingsNavigateRelative(1)}
+                                                disabled={currentStepIndex >= totalSteps - 1}
+                                                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                Next step
+                                            </button>
+                                        </div>
+                                        <label className="block">
+                                            <span className="text-xs text-white/60">
+                                                Jump to step
+                                            </span>
+                                            <select
+                                                value={String(currentStepIndex)}
+                                                onChange={(event) =>
+                                                    handleJumpToStepFromSettings(event.target.value)
+                                                }
+                                                className="mt-1.5 w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                                            >
+                                                {steps.map((step, index) => (
+                                                    <option
+                                                        key={`${step.key || step.type || "step"}-${index}`}
+                                                        value={index}
+                                                    >
+                                                        {`Step ${index + 1}: ${getStepDisplayLabel(step, index)}`}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <p className="text-xs uppercase tracking-wide text-white/50">
+                                            Draft
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveDraftFromSettings}
+                                                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-primary/50 hover:bg-primary/10"
+                                            >
+                                                Save draft now
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleClearSavedDraftFromSettings}
+                                                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5"
+                                            >
+                                                Clear saved draft
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <p className="text-xs uppercase tracking-wide text-white/50">
+                                            Flow actions
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={handleRestartOnboardingFromSettings}
+                                            className="w-full rounded-lg border border-white/10 bg-transparent px-3 py-2.5 text-left text-sm font-medium text-white transition-colors hover:border-primary/50 hover:bg-primary/10"
+                                        >
+                                            Restart onboarding flow
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleDashboardNavigateFromSettings}
+                                            className="w-full rounded-lg border border-white/10 bg-transparent px-3 py-2.5 text-left text-sm font-medium text-white transition-colors hover:border-white/30 hover:bg-white/5"
+                                        >
+                                            Exit to freelancer dashboard
+                                        </button>
+                                    </div>
+                                </div>
+                            </SheetContent>
+                        </Sheet>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto w-full custom-scrollbar relative">
                     <div className={cn(
                         "mx-auto px-6 py-8 pb-36 min-h-full flex flex-col",
-                        currentStep?.key === "niche-preference" ? "max-w-7xl" : "max-w-4xl"
+                        currentStep?.key === "niche-preference" || currentStep?.type === "servicePlatformLinks"
+                            ? "max-w-7xl"
+                            : "max-w-4xl"
                     )}>
                         <AnimatePresence mode="wait">
                             <motion.div

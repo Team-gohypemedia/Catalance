@@ -10,7 +10,7 @@ import { toQuestionTitle } from "./utils";
 
 export const StepHeader = ({ title, subtitle }) => (
     <div className="mb-8 text-center px-4">
-        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">
+        <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2 leading-tight">
             {toQuestionTitle(title)}
         </h1>
         {subtitle && <p className="text-white/60 text-sm">{subtitle}</p>}
