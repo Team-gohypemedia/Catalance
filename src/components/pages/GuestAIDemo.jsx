@@ -9,8 +9,16 @@ import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 
 // Helper to interact with our new Guest API
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const apiFetch = async (endpoint, options = {}) => {
-    const res = await fetch(`/api${endpoint}`, {
+    // Remove leading slash from endpoint if it exists to avoid double slashes with API_BASE
+    // Actually, if API_BASE is "http://.../api", and endpoint is "/ai/services", we want "http://.../api/ai/services".
+    // If API_BASE is "/api", we want "/api/ai/services".
+    // It's safer to just concatenate if we assume API_BASE doesn't end with slash or endpoint does.
+    // The previous code was `/api${endpoint}`. Endpoint starts with /.
+    // So if API_BASE is defined as "http://.../api", we are good.
+    const res = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
