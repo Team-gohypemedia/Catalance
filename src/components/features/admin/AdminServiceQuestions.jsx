@@ -36,6 +36,9 @@ const AdminServiceQuestions = () => {
         id: "",
         type: "input",
         question: "",
+        subtitle: "",
+        saveResponse: false,
+        nextQuestionSlug: "",
         required: true,
         options: [],
         logic: []
@@ -144,6 +147,9 @@ const AdminServiceQuestions = () => {
                 id: question.id,
                 type: question.type || "input",
                 question: question.question,
+                subtitle: question.subtitle || "",
+                saveResponse: question.saveResponse || false,
+                nextQuestionSlug: question.nextQuestionSlug || "",
                 required: question.required !== undefined ? question.required : true,
                 options: question.options || [],
                 logic: question.logic || []
@@ -154,6 +160,9 @@ const AdminServiceQuestions = () => {
                 id: `q_${Date.now()}`,
                 type: "input",
                 question: "",
+                subtitle: "",
+                saveResponse: false,
+                nextQuestionSlug: "",
                 required: true,
                 options: [],
                 logic: []
@@ -398,6 +407,16 @@ const AdminServiceQuestions = () => {
                                                                     <p className="text-lg font-medium text-foreground leading-snug">
                                                                         {q.question}
                                                                     </p>
+                                                                    {q.subtitle && (
+                                                                        <p className="text-sm text-muted-foreground italic">
+                                                                            Context: {q.subtitle}
+                                                                        </p>
+                                                                    )}
+                                                                    {q.saveResponse && (
+                                                                        <Badge variant="secondary" className="mt-1 bg-yellow-100 text-yellow-800 border-yellow-200">
+                                                                            AI Context Saved
+                                                                        </Badge>
+                                                                    )}
 
                                                                     {q.options && q.options.length > 0 && (
                                                                         <div className="flex flex-wrap gap-2 pt-1">
@@ -434,211 +453,262 @@ const AdminServiceQuestions = () => {
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader>
+                    <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
+                        <DialogHeader className="p-6 pb-2">
                             <DialogTitle className="text-2xl">{currentQuestion ? "Edit Question" : "Add New Question"}</DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleSubmit} className="space-y-6 py-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="overflow-y-auto px-6 pb-6">
+                            <form onSubmit={handleSubmit} className="space-y-6 py-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="q-id">Question ID (Slug)</Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="q-id"
+                                                value={formData.id}
+                                                onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                                                required
+                                                className="pl-9 font-mono"
+                                                placeholder="e.g. project_timeline"
+                                            />
+                                            <LucideIcons.Hash className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">Unique identifier for this question logic.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="q-type">Input Type</Label>
+                                        <Select
+                                            value={formData.type}
+                                            onValueChange={(val) => setFormData({ ...formData, type: val })}
+                                        >
+                                            <SelectTrigger id="q-type">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="input">
+                                                    <div className="flex items-center gap-2">
+                                                        <LucideIcons.AlignLeft className="h-4 w-4 text-muted-foreground" />
+                                                        <span>Text Input</span>
+                                                    </div>
+                                                </SelectItem>
+                                                <SelectItem value="single_option">
+                                                    <div className="flex items-center gap-2">
+                                                        <LucideIcons.CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                                                        <span>Single Selection (Radio)</span>
+                                                    </div>
+                                                </SelectItem>
+                                                <SelectItem value="multi_option">
+                                                    <div className="flex items-center gap-2">
+                                                        <LucideIcons.CheckSquare className="h-4 w-4 text-muted-foreground" />
+                                                        <span>Multiple Selection (Checkbox)</span>
+                                                    </div>
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
-                                    <Label htmlFor="q-id">Question ID (Slug)</Label>
-                                    <div className="relative">
-                                        <Input
-                                            id="q-id"
-                                            value={formData.id}
-                                            onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                                            required
-                                            className="pl-9 font-mono"
-                                            placeholder="e.g. project_timeline"
+                                    <Label htmlFor="q-text">Question Text</Label>
+                                    <Input
+                                        id="q-text"
+                                        value={formData.question}
+                                        onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+                                        placeholder="e.g. What is your estimated budget for this project?"
+                                        className="text-lg"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="q-subtitle">Subtitle (AI Context)</Label>
+                                    <Input
+                                        id="q-subtitle"
+                                        value={formData.subtitle}
+                                        onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                                        placeholder="e.g. Asking for budget in USD to determine project scale."
+                                        className="text-sm text-muted-foreground"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">This context is hidden from user but visible to AI.</p>
+                                </div>
+
+                                <div className="flex flex-col gap-2 pb-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="q-required"
+                                            checked={formData.required}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, required: checked })}
                                         />
-                                        <LucideIcons.Hash className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Label htmlFor="q-required" className="cursor-pointer">
+                                            This question is required
+                                        </Label>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">Unique identifier for this question logic.</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="q-type">Input Type</Label>
-                                    <Select
-                                        value={formData.type}
-                                        onValueChange={(val) => setFormData({ ...formData, type: val })}
-                                    >
-                                        <SelectTrigger id="q-type">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="input">
-                                                <div className="flex items-center gap-2">
-                                                    <LucideIcons.AlignLeft className="h-4 w-4 text-muted-foreground" />
-                                                    <span>Text Input</span>
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="single_option">
-                                                <div className="flex items-center gap-2">
-                                                    <LucideIcons.CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                                                    <span>Single Selection (Radio)</span>
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="multi_option">
-                                                <div className="flex items-center gap-2">
-                                                    <LucideIcons.CheckSquare className="h-4 w-4 text-muted-foreground" />
-                                                    <span>Multiple Selection (Checkbox)</span>
-                                                </div>
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="q-text">Question Text</Label>
-                                <Input
-                                    id="q-text"
-                                    value={formData.question}
-                                    onChange={(e) => setFormData({ ...formData, question: e.target.value })}
-                                    placeholder="e.g. What is your estimated budget for this project?"
-                                    className="text-lg"
-                                    required
-                                />
-                            </div>
-
-                            <div className="flex items-center space-x-2 pb-2">
-                                <Checkbox
-                                    id="q-required"
-                                    checked={formData.required}
-                                    onCheckedChange={(checked) => setFormData({ ...formData, required: checked })}
-                                />
-                                <Label htmlFor="q-required" className="cursor-pointer">
-                                    This question is required
-                                </Label>
-                            </div>
-
-                            {(formData.type === "single_option" || formData.type === "multi_option") && (
-                                <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
-                                    <div className="flex justify-between items-center">
-                                        <Label className="text-base font-semibold">Answer Options</Label>
-                                        <Button type="button" variant="secondary" size="sm" onClick={addOption}>
-                                            <LucideIcons.Plus className="h-3 w-3 mr-1" /> Add Option
-                                        </Button>
-                                    </div>
-                                    <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                        {formData.options.map((opt, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center">
-                                                <div className="bg-background border rounded-full w-6 h-6 flex items-center justify-center text-xs text-muted-foreground shrink-0">
-                                                    {String.fromCharCode(65 + idx)}
-                                                </div>
-                                                <Input
-                                                    value={opt.label || ""}
-                                                    onChange={(e) => handleOptionChange(idx, e.target.value)}
-                                                    placeholder={`Option ${idx + 1}`}
-                                                    required
-                                                    className="bg-background"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => removeOption(idx)}
-                                                    className="hover:bg-destructive/10 hover:text-destructive shrink-0"
-                                                >
-                                                    <LucideIcons.Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                        {formData.options.length === 0 && (
-                                            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                                                <LucideIcons.ListChecks className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                                <p className="text-sm">No options added yet.</p>
-                                                <Button type="button" variant="link" onClick={addOption} className="h-auto p-0 mt-1">
-                                                    Add your first option
-                                                </Button>
-                                            </div>
-                                        )}
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="q-saveResponse"
+                                            checked={formData.saveResponse}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, saveResponse: checked })}
+                                        />
+                                        <Label htmlFor="q-saveResponse" className="cursor-pointer">
+                                            Save Response for AI Context
+                                        </Label>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Logic Configuration Section */}
-                            <div className="space-y-4 border-t pt-4">
-                                <div className="flex justify-between items-center">
-                                    <Label className="text-base font-semibold">Branching Logic (Advanced)</Label>
-                                    <Button type="button" variant="outline" size="sm" onClick={addLogicRule}>
-                                        <LucideIcons.GitBranch className="h-3 w-3 mr-1" /> Add Rule
-                                    </Button>
-                                </div>
-
-                                {formData.logic && formData.logic.length > 0 ? (
-                                    <div className="space-y-3 bg-slate-50 p-3 rounded-lg border">
-                                        {formData.logic.map((rule, idx) => (
-                                            <div key={idx} className="flex flex-col gap-3 p-3 bg-white rounded-lg border shadow-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium text-slate-500 w-20">If Answer</span>
-                                                    <Select value={rule.condition} onValueChange={(val) => updateLogicRule(idx, 'condition', val)}>
-                                                        <SelectTrigger className="h-9 w-[130px]">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="equals">Equals</SelectItem>
-                                                            <SelectItem value="not_equals">Not Equals</SelectItem>
-                                                            <SelectItem value="contains">Contains</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-
-                                                    {formData.options && formData.options.length > 0 ? (
-                                                        <Select value={rule.value} onValueChange={(val) => updateLogicRule(idx, 'value', val)}>
-                                                            <SelectTrigger className="h-9 flex-1">
-                                                                <SelectValue placeholder="Select option" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {formData.options.map((opt, i) => (
-                                                                    <SelectItem key={i} value={opt.label || opt.value || opt}>{opt.label || opt}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    ) : (
-                                                        <Input
-                                                            value={rule.value}
-                                                            onChange={(e) => updateLogicRule(idx, 'value', e.target.value)}
-                                                            className="h-9 flex-1"
-                                                            placeholder="Value to match"
-                                                        />
-                                                    )}
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium text-slate-500 w-20">Jump to</span>
-                                                    <Select value={rule.nextQuestionSlug} onValueChange={(val) => updateLogicRule(idx, 'nextQuestionSlug', val)}>
-                                                        <SelectTrigger className="h-9 flex-1">
-                                                            <SelectValue placeholder="Select target question" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {questions
-                                                                .filter(q => q.id !== formData.id) // Don't jump to self
-                                                                .map((q) => (
-                                                                    <SelectItem key={q.id} value={q.slug || q.id}>
-                                                                        <span className="truncate block max-w-[200px]">{q.id} - {q.question.substring(0, 30)}...</span>
-                                                                    </SelectItem>
-                                                                ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeLogicRule(idx)} className="h-9 w-9 text-destructive hover:bg-destructive/10">
+                                {(formData.type === "single_option" || formData.type === "multi_option") && (
+                                    <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+                                        <div className="flex justify-between items-center">
+                                            <Label className="text-base font-semibold">Answer Options</Label>
+                                            <Button type="button" variant="secondary" size="sm" onClick={addOption}>
+                                                <LucideIcons.Plus className="h-3 w-3 mr-1" /> Add Option
+                                            </Button>
+                                        </div>
+                                        <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                            {formData.options.map((opt, idx) => (
+                                                <div key={idx} className="flex gap-2 items-center">
+                                                    <div className="bg-background border rounded-full w-6 h-6 flex items-center justify-center text-xs text-muted-foreground shrink-0">
+                                                        {String.fromCharCode(65 + idx)}
+                                                    </div>
+                                                    <Input
+                                                        value={opt.label || ""}
+                                                        onChange={(e) => handleOptionChange(idx, e.target.value)}
+                                                        placeholder={`Option ${idx + 1}`}
+                                                        required
+                                                        className="bg-background"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => removeOption(idx)}
+                                                        className="hover:bg-destructive/10 hover:text-destructive shrink-0"
+                                                    >
                                                         <LucideIcons.Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="bg-slate-50/50 border border-dashed rounded-lg p-4 text-center">
-                                        <p className="text-sm text-muted-foreground">No branching rules defined.</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Flow will proceed to the next question in order.</p>
+                                            ))}
+                                            {formData.options.length === 0 && (
+                                                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                                                    <LucideIcons.ListChecks className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                                    <p className="text-sm">No options added yet.</p>
+                                                    <Button type="button" variant="link" onClick={addOption} className="h-auto p-0 mt-1">
+                                                        Add your first option
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
-                            </div>
 
-                            <DialogFooter className="pt-4 border-t">
-                                <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                                <Button type="submit">Save Question</Button>
-                            </DialogFooter>
-                        </form>
+                                {/* Logic Configuration Section */}
+                                <div className="space-y-4 border-t pt-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="q-next">Default Next Question (Optional)</Label>
+                                        <Select
+                                            value={formData.nextQuestionSlug || "default_next"}
+                                            onValueChange={(val) => setFormData({ ...formData, nextQuestionSlug: val === "default_next" ? "" : val })}
+                                        >
+                                            <SelectTrigger id="q-next">
+                                                <SelectValue placeholder="Next question in sequence" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="default_next">
+                                                    <span className="text-muted-foreground italic">Go to next question in sequence</span>
+                                                </SelectItem>
+                                                {questions
+                                                    .filter(q => q.id !== formData.id)
+                                                    .map((q) => (
+                                                        <SelectItem key={q.id} value={q.slug || q.id}>
+                                                            {q.id} - {q.question.substring(0, 30)}...
+                                                        </SelectItem>
+                                                    ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-[10px] text-muted-foreground">Override the default sequential flow. Advanced logic below takes precedence.</p>
+                                    </div>
+
+                                    <div className="flex justify-between items-center pt-2">
+                                        <Label className="text-base font-semibold">Branching Logic (Advanced)</Label>
+                                        <Button type="button" variant="outline" size="sm" onClick={addLogicRule}>
+                                            <LucideIcons.GitBranch className="h-3 w-3 mr-1" /> Add Rule
+                                        </Button>
+                                    </div>
+
+                                    {formData.logic && formData.logic.length > 0 ? (
+                                        <div className="space-y-3 bg-slate-50 p-3 rounded-lg border">
+                                            {formData.logic.map((rule, idx) => (
+                                                <div key={idx} className="flex flex-col gap-3 p-3 bg-white rounded-lg border shadow-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium text-slate-500 w-20">If Answer</span>
+                                                        <Select value={rule.condition} onValueChange={(val) => updateLogicRule(idx, 'condition', val)}>
+                                                            <SelectTrigger className="h-9 w-[130px]">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="equals">Equals</SelectItem>
+                                                                <SelectItem value="not_equals">Not Equals</SelectItem>
+                                                                <SelectItem value="contains">Contains</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+
+                                                        {formData.options && formData.options.length > 0 ? (
+                                                            <Select value={rule.value} onValueChange={(val) => updateLogicRule(idx, 'value', val)}>
+                                                                <SelectTrigger className="h-9 flex-1">
+                                                                    <SelectValue placeholder="Select option" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {formData.options.map((opt, i) => (
+                                                                        <SelectItem key={i} value={opt.label || opt.value || opt}>{opt.label || opt}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        ) : (
+                                                            <Input
+                                                                value={rule.value}
+                                                                onChange={(e) => updateLogicRule(idx, 'value', e.target.value)}
+                                                                className="h-9 flex-1"
+                                                                placeholder="Value to match"
+                                                            />
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium text-slate-500 w-20">Jump to</span>
+                                                        <Select value={rule.nextQuestionSlug} onValueChange={(val) => updateLogicRule(idx, 'nextQuestionSlug', val)}>
+                                                            <SelectTrigger className="h-9 flex-1">
+                                                                <SelectValue placeholder="Select target question" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {questions
+                                                                    .filter(q => q.id !== formData.id) // Don't jump to self
+                                                                    .map((q) => (
+                                                                        <SelectItem key={q.id} value={q.slug || q.id}>
+                                                                            <span className="truncate block max-w-[200px]">{q.id} - {q.question.substring(0, 30)}...</span>
+                                                                        </SelectItem>
+                                                                    ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeLogicRule(idx)} className="h-9 w-9 text-destructive hover:bg-destructive/10">
+                                                            <LucideIcons.Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-slate-50/50 border border-dashed rounded-lg p-4 text-center">
+                                            <p className="text-sm text-muted-foreground">No branching rules defined.</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Flow will proceed to the next question in order.</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <DialogFooter className="pt-4 border-t">
+                                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                                    <Button type="submit">Save Question</Button>
+                                </DialogFooter>
+                            </form>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>

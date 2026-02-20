@@ -26,7 +26,8 @@ export const createApp = () => {
     "http://localhost:5173",
     "http://localhost:5174",
     "https://localhost:5173",
-    "https://freelancer-self.vercel.app"
+    "https://freelancer-self.vercel.app",
+    "https://catalance.in"
   ];
 
   const configuredOrigins = [
