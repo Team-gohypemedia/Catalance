@@ -2179,6 +2179,11 @@ REMEMBER: Your #1 job is to make the client feel HEARD. Never make them repeat t
 const buildProposalSystemPrompt = () => `You are a proposal generator for a digital services agency.
 Use only the information provided in proposal_context and chat_history.
 Do not invent or assume missing details.
+If proposal_context contains structured fields (such as questionnaireAnswers, questionnaireAnswersBySlug, appHints), prioritize those over ambiguous chat text.
+Treat each non-empty value in proposal_context.questionnaireAnswers / questionnaireAnswersBySlug / capturedFields as confirmed user input.
+Do not drop confirmed inputs. If a confirmed input does not fit the standard sections, include it under "Additional Confirmed Inputs" as bullet points.
+If proposal_context.serviceQuestionAnswers is present, treat every non-empty answer there as service-question-verified input.
+Cross-check proposal fields against serviceQuestionAnswers before finalizing output.
 If launch timeline is missing, include this line exactly: "Launch Timeline: To be finalized based on kickoff date".
 If budget or pricing is missing, include this line exactly: "Budget: Pending confirmation of scope and volume".
 
@@ -2228,12 +2233,18 @@ For APP DEVELOPMENT services, include:
   App Type: ... (iOS/Android/cross-platform)
   App Features: ...
   Platform Requirements: ...
+  - If proposal_context.appHints.appType exists, use it for App Type.
+  - If proposal_context.appHints.appFeatures exists, use it for App Features.
+  - If proposal_context.appHints.platformRequirements exists, use it for Platform Requirements.
+  - Never omit explicitly provided technologies (e.g., Flutter, React Native, Node.js, Python, React.js admin dashboard) if present in proposal_context.
+  - If mobileTechnology/backendTechnology/dashboardTechnology exist in appHints, include them clearly inside Platform Requirements.
 
 For other services, extract and include relevant fields from the chat history.
 
 CRITICAL INSTRUCTIONS:
 - ALWAYS extract the actual Launch Timeline value from the chat conversation. Look for user responses about duration, months, or timeline. For example, if user says "3 months" or selects option "3. 6 months", use that exact value (e.g., "3 months", "6 months"). Only use "To be finalized" if no timeline was discussed.
 - ALWAYS extract the actual Budget value from the chat conversation. Look for user responses about budget or pricing. If user mentions a specific amount like "60K" or "50000 INR", use that exact value. Only use "Pending confirmation" if no budget was discussed.
+- If the user mentions specific technologies (Flutter, React Native, Node.js, Python, React.js dashboard, etc.), preserve them explicitly in the proposal.
 - Use concise, professional, business-ready language.
 - Use bullet list items for objectives, features, and deliverables.
 - The Project Overview should be a well-written paragraph summarizing the entire project scope.
