@@ -52,6 +52,202 @@ const normalizeMarkdownContent = (content = "") =>
         .replace(/\s*```$/i, "")
         .trim();
 
+const PROPOSAL_META_FIELDS = [
+    { key: 'clientName', label: 'Client Name' },
+    { key: 'businessName', label: 'Business Name' },
+    { key: 'serviceType', label: 'Service Type' },
+    { key: 'launchTimeline', label: 'Launch Timeline' },
+    { key: 'budget', label: 'Budget' },
+];
+
+const PROPOSAL_SECTION_ORDER = [
+    'Project Overview',
+    'Primary Objectives',
+    'Features/Deliverables Included',
+    'App Features',
+    'Platform Requirements',
+    'Additional Confirmed Inputs',
+];
+
+const normalizeProposalKey = (value = '') =>
+    String(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+
+const stripMarkdownDecorators = (value = '') =>
+    String(value)
+        .replace(/\*\*/g, '')
+        .replace(/`/g, '')
+        .trim();
+
+const PROPOSAL_META_KEY_MAP = {
+    'client name': 'clientName',
+    'business name': 'businessName',
+    'service type': 'serviceType',
+    'launch timeline': 'launchTimeline',
+    'budget': 'budget',
+};
+
+const ensureProposalSection = (sectionsMap, rawTitle = '') => {
+    const title = stripMarkdownDecorators(rawTitle).replace(/:$/, '').trim() || 'Details';
+    const key = normalizeProposalKey(title);
+
+    if (!sectionsMap.has(key)) {
+        sectionsMap.set(key, { key, title, lines: [], list: [] });
+    }
+
+    return sectionsMap.get(key);
+};
+
+const parseProposalContent = (content = '') => {
+    const normalized = normalizeMarkdownContent(content).replace(/\r/g, '');
+    const lines = normalized.split('\n');
+    const fields = {};
+    const sectionsMap = new Map();
+    let activeSection = null;
+
+    for (const rawLine of lines) {
+        let line = rawLine.trim();
+        if (!line) continue;
+
+        line = line.replace(/^#{1,6}\s*/, '').trim();
+        if (!line) continue;
+
+        const bulletMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
+        if (bulletMatch) {
+            const bulletText = stripMarkdownDecorators(bulletMatch[1]);
+            if (!activeSection) {
+                activeSection = ensureProposalSection(sectionsMap, 'Details');
+            }
+            activeSection.list.push(bulletText);
+            continue;
+        }
+
+        const keyValueMatch = line.match(/^([^:]{2,80}):\s*(.*)$/);
+        if (keyValueMatch) {
+            const rawKey = stripMarkdownDecorators(keyValueMatch[1]);
+            const value = stripMarkdownDecorators(keyValueMatch[2] || '');
+            const normalizedKey = normalizeProposalKey(rawKey);
+            const metaFieldKey = PROPOSAL_META_KEY_MAP[normalizedKey];
+
+            if (metaFieldKey && value) {
+                fields[metaFieldKey] = value;
+                activeSection = null;
+                continue;
+            }
+
+            activeSection = ensureProposalSection(sectionsMap, rawKey);
+            if (value) {
+                activeSection.lines.push(value);
+            }
+            continue;
+        }
+
+        if (!activeSection) {
+            activeSection = ensureProposalSection(sectionsMap, 'Details');
+        }
+        activeSection.lines.push(stripMarkdownDecorators(line));
+    }
+
+    const sections = Array.from(sectionsMap.values())
+        .filter((section) => section.lines.length > 0 || section.list.length > 0)
+        .sort((a, b) => {
+            const aIndex = PROPOSAL_SECTION_ORDER.indexOf(a.title);
+            const bIndex = PROPOSAL_SECTION_ORDER.indexOf(b.title);
+            const aScore = aIndex === -1 ? 999 : aIndex;
+            const bScore = bIndex === -1 ? 999 : bIndex;
+            return aScore - bScore;
+        });
+
+    return {
+        fields,
+        sections,
+        hasStructuredData: Object.keys(fields).length > 0 || sections.length > 0,
+    };
+};
+
+const ProposalPreview = ({ content, isDark }) => {
+    const parsed = parseProposalContent(content);
+
+    if (!parsed.hasStructuredData) {
+        return (
+            <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                <ReactMarkdown>{normalizeMarkdownContent(content)}</ReactMarkdown>
+            </div>
+        );
+    }
+
+    const presentMetaFields = PROPOSAL_META_FIELDS.filter(({ key }) => parsed.fields[key]);
+
+    return (
+        <div className="space-y-5">
+            {presentMetaFields.length > 0 && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {presentMetaFields.map((field) => (
+                        <div
+                            key={field.key}
+                            className={`rounded-xl border px-4 py-3 ${isDark
+                                ? 'border-white/10 bg-white/[0.03]'
+                                : 'border-black/10 bg-[#faf9f5]'
+                                }`}
+                        >
+                            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-[#bab59c]' : 'text-slate-500'}`}>
+                                {field.label}
+                            </p>
+                            <p className={`mt-1 text-sm font-medium leading-relaxed ${isDark ? 'text-white' : 'text-[#181711]'}`}>
+                                {parsed.fields[field.key]}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="space-y-3">
+                {parsed.sections.map((section) => (
+                    <div
+                        key={section.key}
+                        className={`rounded-xl border p-4 ${isDark
+                            ? 'border-white/10 bg-white/[0.02]'
+                            : 'border-black/10 bg-white'
+                            }`}
+                    >
+                        <h4 className={`text-sm font-semibold uppercase tracking-wide ${isDark ? 'text-primary' : 'text-[#181711]'}`}>
+                            {section.title}
+                        </h4>
+
+                        {section.lines.length > 0 && (
+                            <div className="mt-2 space-y-2">
+                                {section.lines.map((line, index) => (
+                                    <p
+                                        key={`${section.key}-line-${index}`}
+                                        className={`text-sm leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
+                                    >
+                                        {line}
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+
+                        {section.list.length > 0 && (
+                            <ul className="mt-3 space-y-2">
+                                {section.list.map((item, index) => (
+                                    <li key={`${section.key}-item-${index}`} className="flex items-start gap-2">
+                                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                                        <span className={`text-sm leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                            {item}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const GuestAIDemo = () => {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
@@ -350,14 +546,12 @@ const GuestAIDemo = () => {
                                     )}
 
                                     {proposalCard ? (
-                                        <div className={`w-full max-w-[92%] rounded-2xl border p-5 ${isDark ? 'border-primary/30 bg-white/[0.04] text-white' : 'border-primary/30 bg-white text-[#181711]'}`}>
-                                            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                                        <div className={`w-full max-w-[96%] rounded-2xl border p-5 shadow-sm md:p-6 ${isDark ? 'border-primary/30 bg-white/[0.04] text-white' : 'border-primary/40 bg-white text-[#181711]'}`}>
+                                            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
                                                 <Sparkles className="h-3.5 w-3.5" />
                                                 Generated Proposal
                                             </div>
-                                            <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
-                                                <ReactMarkdown>{normalizeMarkdownContent(msg.content)}</ReactMarkdown>
-                                            </div>
+                                            <ProposalPreview content={msg.content} isDark={isDark} />
                                         </div>
                                     ) : (
                                         <div

@@ -8,6 +8,16 @@ const NAME_QUESTION_REGEX = /\bname\b/i;
 const GREETING_SMALLTALK_REGEX =
     /\b(hi|hello|hey|yo|hola|namaste|salam|how are you|what'?s up|kya\s*hal|kaise\s*ho)\b/i;
 const NAME_INTRO_REGEX = /\b(my name is|i am|i'm|this is)\b/i;
+const CORRECTION_INTENT_REGEX =
+    /\b(change|changed|update|updated|correct|correction|revise|replace|instead|not\s+.*\s+but)\b/i;
+const EXTRACTION_CONFIDENCE_MIN = 0.7;
+const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.86;
+const FRIENDLY_BRIDGES = [
+    "Awesome - thanks for sharing that.",
+    "Great - this is super helpful.",
+    "Perfect - we are making solid progress.",
+    "Nice - got it clearly."
+];
 
 const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
     if (!NAME_QUESTION_REGEX.test(questionText || "")) return false;
@@ -18,6 +28,144 @@ const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
     // Keep this fallback for short small-talk style replies.
     const wordCount = normalized.split(/\s+/).filter(Boolean).length;
     return wordCount <= 8;
+};
+
+const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(text || ""));
+
+const buildFriendlyMessage = (mainText = "", bridgeText = "") => {
+    const cleanMainText = String(mainText || "").trim();
+    const cleanBridgeText = String(bridgeText || "").trim();
+    if (!cleanMainText) return cleanBridgeText;
+    if (!cleanBridgeText) return cleanMainText;
+    return `${cleanBridgeText}\n\n${cleanMainText}`;
+};
+
+const pickFriendlyBridge = (seedText = "") => {
+    const normalized = String(seedText || "");
+    if (!normalized) return FRIENDLY_BRIDGES[0];
+    const score = normalized
+        .split("")
+        .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    return FRIENDLY_BRIDGES[Math.abs(score) % FRIENDLY_BRIDGES.length];
+};
+
+const extractFriendlyBridgeFromValidationMessage = (validationMessage = "", nextQuestionText = "") => {
+    const cleanMessage = String(validationMessage || "")
+        .replace(/\*\*/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    if (!cleanMessage) return "";
+
+    const normalizedNextQuestion = normalizeTextToken(nextQuestionText);
+    const firstSentence = cleanMessage
+        .split(/(?<=[.!])\s+/)
+        .map((part) => part.trim())
+        .find(Boolean);
+
+    if (!firstSentence) return "";
+
+    const normalizedFirstSentence = normalizeTextToken(firstSentence);
+    if (
+        !normalizedFirstSentence ||
+        normalizedFirstSentence.includes(normalizedNextQuestion) ||
+        firstSentence.includes("?")
+    ) {
+        return "";
+    }
+
+    return firstSentence;
+};
+
+const findAnswerByQuestionPattern = (answersByQuestionText = {}, pattern) => {
+    if (!answersByQuestionText || typeof answersByQuestionText !== "object") return null;
+    for (const [questionText, answer] of Object.entries(answersByQuestionText)) {
+        if (!pattern.test(String(questionText || ""))) continue;
+        if (!hasAnswerValue(answer)) continue;
+        return String(answer).trim();
+    }
+    return null;
+};
+
+const detectTechMentions = (text = "", detectors = []) =>
+    detectors
+        .filter(({ regex }) => regex.test(text))
+        .map(({ label }) => label);
+
+const uniqueList = (items = []) =>
+    Array.from(new Set(items.filter(Boolean)));
+
+const buildAppProposalHints = ({ history = [], answersByQuestionText = {} }) => {
+    const userCorpus = (history || [])
+        .filter((msg) => msg?.role === "user")
+        .map((msg) => String(msg.content || ""))
+        .join(" \n ");
+
+    const mobileFromQuestion =
+        findAnswerByQuestionPattern(answersByQuestionText, /preferred mobile app development approach|development approach|go with|flutter|react native|native android|native ios/i) ||
+        findAnswerByQuestionPattern(answersByQuestionText, /tech stack|technologies/i);
+    const backendFromQuestion =
+        findAnswerByQuestionPattern(answersByQuestionText, /backend technology|backend stack|backend/i);
+    const dashboardFromQuestion =
+        findAnswerByQuestionPattern(answersByQuestionText, /admin dashboard|dashboard technology|dashboard/i);
+
+    const mobileDetected = detectTechMentions(userCorpus, [
+        { regex: /\bflutter\b/i, label: "Flutter" },
+        { regex: /react\s*native/i, label: "React Native" },
+        { regex: /\bnative\s*android\b|\bkotlin\b|\bjava\b/i, label: "Native Android (Kotlin/Java)" },
+        { regex: /\bnative\s*ios\b|\bswift\b/i, label: "Native iOS (Swift)" }
+    ]);
+
+    const backendDetected = detectTechMentions(userCorpus, [
+        { regex: /\bnode(?:\.?js)?\b/i, label: "Node.js" },
+        { regex: /\bpython\b|\bdjango\b|\bflask\b|\bfastapi\b/i, label: "Python" },
+        { regex: /\bphp\b|\blaravel\b/i, label: "PHP/Laravel" },
+        { regex: /\bjava\b|\bspring\b/i, label: "Java/Spring" },
+        { regex: /\bdotnet\b|\.net|c#/i, label: ".NET" }
+    ]);
+
+    const dashboardDetected = detectTechMentions(userCorpus, [
+        { regex: /\breact(?:\.?js)?\b/i, label: "React.js" },
+        { regex: /\bnext(?:\.?js)?\b/i, label: "Next.js" },
+        { regex: /\bangular\b/i, label: "Angular" },
+        { regex: /\bvue(?:\.?js)?\b/i, label: "Vue.js" }
+    ]);
+
+    const appType = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /which platform|android|ios|app available on|cross-?platform/i
+    );
+    const appFeatures = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /which features|features should your app include|deliverables/i
+    );
+
+    const platformRequirements = [];
+    if (mobileFromQuestion || mobileDetected.length) {
+        platformRequirements.push(
+            `Mobile app: ${mobileFromQuestion || uniqueList(mobileDetected).join(", ")}`
+        );
+    }
+    if (backendFromQuestion || backendDetected.length) {
+        platformRequirements.push(
+            `Backend: ${backendFromQuestion || uniqueList(backendDetected).join(", ")}`
+        );
+    }
+    if (dashboardFromQuestion || dashboardDetected.length) {
+        platformRequirements.push(
+            `Dashboard/Admin panel: ${dashboardFromQuestion || uniqueList(dashboardDetected).join(", ")}`
+        );
+    }
+
+    const hints = {
+        appType: appType || null,
+        appFeatures: appFeatures || null,
+        mobileTechnology: mobileFromQuestion || uniqueList(mobileDetected).join(", ") || null,
+        backendTechnology: backendFromQuestion || uniqueList(backendDetected).join(", ") || null,
+        dashboardTechnology: dashboardFromQuestion || uniqueList(dashboardDetected).join(", ") || null,
+        platformRequirements: platformRequirements.join(" | ") || null
+    };
+
+    return Object.values(hints).some(Boolean) ? hints : null;
 };
 
 const parseValidationResponse = (rawMessage) => {
@@ -73,6 +221,553 @@ const parseValidationResponse = (rawMessage) => {
         isValid: isValidMatch[1].toLowerCase() === "true",
         message: messageMatch[1].replace(/\\"/g, "\""),
     };
+};
+
+const normalizeTextToken = (value = "") =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+
+const hasAnswerValue = (value) => {
+    if (value === null || value === undefined) return false;
+    if (Array.isArray(value)) return value.some((item) => normalizeTextToken(item));
+    return normalizeTextToken(value).length > 0;
+};
+
+const toComparableAnswer = (value) => {
+    if (Array.isArray(value)) {
+        return value.map((item) => normalizeTextToken(item)).filter(Boolean).sort().join(" | ");
+    }
+
+    const normalized = normalizeTextToken(value);
+    if (!normalized) return "";
+
+    return normalized
+        .split(/,|\/|\band\b/gi)
+        .map((part) => normalizeTextToken(part))
+        .filter(Boolean)
+        .sort()
+        .join(" | ");
+};
+
+const findQuestionIndex = (questions = [], slugOrId = "") =>
+    questions.findIndex(
+        (q) => q?.slug === slugOrId || q?.id === slugOrId
+    );
+
+const extractAnswerTokens = (answerValue) => {
+    if (Array.isArray(answerValue)) {
+        return Array.from(
+            new Set(
+                answerValue
+                    .map((item) => normalizeTextToken(item))
+                    .filter(Boolean)
+            )
+        );
+    }
+
+    const normalized = normalizeTextToken(answerValue);
+    if (!normalized) return [];
+
+    const splitParts = normalized
+        .split(/,|\/|\band\b/gi)
+        .map((part) => normalizeTextToken(part))
+        .filter(Boolean);
+
+    if (!splitParts.includes(normalized)) {
+        splitParts.push(normalized);
+    }
+
+    return Array.from(new Set(splitParts));
+};
+
+const matchesLogicRule = (answerValue, rule = {}) => {
+    const condition = normalizeTextToken(rule.condition || "equals");
+    const ruleValue = normalizeTextToken(rule.value || "");
+    if (!ruleValue) return false;
+
+    const tokens = extractAnswerTokens(answerValue);
+    const joined = tokens.join(" ");
+
+    if (condition === "equals") {
+        return tokens.includes(ruleValue);
+    }
+
+    if (condition === "not_equals") {
+        return !tokens.includes(ruleValue);
+    }
+
+    if (condition === "contains") {
+        return tokens.some((token) => token.includes(ruleValue)) || joined.includes(ruleValue);
+    }
+
+    return false;
+};
+
+const resolveNextQuestionIndex = (questions = [], currentIndex = 0, answerValue = "") => {
+    const currentQuestion = questions[currentIndex];
+    if (!currentQuestion) return currentIndex + 1;
+
+    if (Array.isArray(currentQuestion.logic)) {
+        for (const rule of currentQuestion.logic) {
+            if (!matchesLogicRule(answerValue, rule)) continue;
+            if (!rule?.nextQuestionSlug) continue;
+            const targetIndex = findQuestionIndex(questions, rule.nextQuestionSlug);
+            if (targetIndex !== -1) return targetIndex;
+        }
+    }
+
+    if (currentQuestion.nextQuestionSlug) {
+        const defaultTarget = findQuestionIndex(questions, currentQuestion.nextQuestionSlug);
+        if (defaultTarget !== -1) return defaultTarget;
+    }
+
+    return currentIndex + 1;
+};
+
+const getAnswersBySlug = (sessionAnswers = {}, questions = []) => {
+    const result = {};
+    if (!sessionAnswers || typeof sessionAnswers !== "object") return result;
+
+    if (sessionAnswers.bySlug && typeof sessionAnswers.bySlug === "object") {
+        Object.assign(result, sessionAnswers.bySlug);
+    }
+
+    for (const question of questions) {
+        if (!question?.slug) continue;
+        if (hasAnswerValue(result[question.slug])) continue;
+
+        if (hasAnswerValue(sessionAnswers[question.slug])) {
+            result[question.slug] = sessionAnswers[question.slug];
+            continue;
+        }
+
+        if (hasAnswerValue(sessionAnswers[question.text])) {
+            result[question.slug] = sessionAnswers[question.text];
+            continue;
+        }
+
+        if (
+            sessionAnswers.byQuestionText &&
+            typeof sessionAnswers.byQuestionText === "object" &&
+            hasAnswerValue(sessionAnswers.byQuestionText[question.text])
+        ) {
+            result[question.slug] = sessionAnswers.byQuestionText[question.text];
+        }
+    }
+
+    return result;
+};
+
+const buildPersistedAnswersPayload = (answersBySlug = {}, questions = []) => {
+    const bySlug = {};
+    const byQuestionText = {};
+
+    for (const question of questions) {
+        if (!question?.slug) continue;
+        const value = answersBySlug[question.slug];
+        if (!hasAnswerValue(value)) continue;
+        bySlug[question.slug] = value;
+        byQuestionText[question.text] = value;
+    }
+
+    return { bySlug, byQuestionText };
+};
+
+const getChangedAnswerDetails = (questions = [], previousAnswersBySlug = {}, nextAnswersBySlug = {}) => {
+    const changes = [];
+    for (let index = 0; index < questions.length; index += 1) {
+        const question = questions[index];
+        if (!question?.slug) continue;
+
+        const previousValue = previousAnswersBySlug[question.slug];
+        const nextValue = nextAnswersBySlug[question.slug];
+        if (!hasAnswerValue(previousValue) || !hasAnswerValue(nextValue)) continue;
+        if (toComparableAnswer(previousValue) === toComparableAnswer(nextValue)) continue;
+
+        changes.push({
+            index,
+            slug: question.slug,
+            previousValue,
+            nextValue,
+            hasFlowLogic:
+                (Array.isArray(question.logic) && question.logic.length > 0) ||
+                Boolean(question.nextQuestionSlug)
+        });
+    }
+    return changes;
+};
+
+const getPossibleNextIndexes = (questions = [], index = 0) => {
+    const nextIndexes = new Set();
+    const question = questions[index];
+    if (!question) return [];
+
+    if (Array.isArray(question.logic)) {
+        for (const rule of question.logic) {
+            if (!rule?.nextQuestionSlug) continue;
+            const targetIndex = findQuestionIndex(questions, rule.nextQuestionSlug);
+            if (targetIndex !== -1) nextIndexes.add(targetIndex);
+        }
+    }
+
+    if (question.nextQuestionSlug) {
+        const defaultTarget = findQuestionIndex(questions, question.nextQuestionSlug);
+        if (defaultTarget !== -1) nextIndexes.add(defaultTarget);
+    }
+
+    if (index + 1 < questions.length) {
+        nextIndexes.add(index + 1);
+    }
+
+    return Array.from(nextIndexes);
+};
+
+const collectReachableIndexes = (questions = [], startIndex = -1) => {
+    if (!Number.isInteger(startIndex) || startIndex < 0 || startIndex >= questions.length) {
+        return new Set();
+    }
+
+    const visited = new Set();
+    const queue = [startIndex];
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        if (!Number.isInteger(current) || visited.has(current)) continue;
+        visited.add(current);
+
+        const nextIndexes = getPossibleNextIndexes(questions, current);
+        for (const nextIndex of nextIndexes) {
+            if (!visited.has(nextIndex)) {
+                queue.push(nextIndex);
+            }
+        }
+    }
+
+    return visited;
+};
+
+const getDependentIndexesForChanges = (questions = [], changes = []) => {
+    const dependentIndexes = new Set();
+
+    for (const change of changes) {
+        if (!change?.hasFlowLogic) continue;
+
+        const previousBranchNext = resolveNextQuestionIndex(
+            questions,
+            change.index,
+            change.previousValue
+        );
+        const nextBranchNext = resolveNextQuestionIndex(
+            questions,
+            change.index,
+            change.nextValue
+        );
+
+        if (previousBranchNext === nextBranchNext) continue;
+
+        const previousReachable = collectReachableIndexes(questions, previousBranchNext);
+        const nextReachable = collectReachableIndexes(questions, nextBranchNext);
+
+        for (const idx of previousReachable) {
+            if (!nextReachable.has(idx) && idx > change.index) {
+                dependentIndexes.add(idx);
+            }
+        }
+
+        for (const idx of nextReachable) {
+            if (!previousReachable.has(idx) && idx > change.index) {
+                dependentIndexes.add(idx);
+            }
+        }
+    }
+
+    return Array.from(dependentIndexes).sort((a, b) => a - b);
+};
+
+const clearAnswersByIndexes = (answersBySlug = {}, questions = [], indexes = []) => {
+    const nextAnswers = { ...(answersBySlug || {}) };
+    for (const index of indexes) {
+        const slug = questions[index]?.slug;
+        if (!slug) continue;
+        delete nextAnswers[slug];
+    }
+    return nextAnswers;
+};
+
+const applyExtractedAnswerUpdates = ({
+    baseAnswersBySlug = {},
+    existingAnswersBySlug = {},
+    extractedAnswers = [],
+    questionIndexBySlug = new Map(),
+    questionSlugSet = new Set(),
+    ignoreSlug = "",
+    correctionIntent = false,
+    logPrefix = "[Auto Capture]"
+}) => {
+    const nextAnswers = { ...(baseAnswersBySlug || {}) };
+    const updatedSlugs = [];
+
+    for (const extracted of extractedAnswers || []) {
+        const slug = extracted?.slug;
+        if (!slug || (questionSlugSet.size > 0 && !questionSlugSet.has(slug))) continue;
+        if (ignoreSlug && slug === ignoreSlug) continue;
+        if (!hasAnswerValue(extracted?.answer)) continue;
+
+        const confidence = Number(extracted?.confidence);
+        const normalizedConfidence = Number.isFinite(confidence) ? confidence : 0;
+        const hasExistingAnswer = hasAnswerValue(existingAnswersBySlug[slug]);
+        const minConfidence = hasExistingAnswer
+            ? (correctionIntent ? EXTRACTION_CONFIDENCE_MIN : EXTRACTION_CONFIDENCE_UPDATE_MIN)
+            : EXTRACTION_CONFIDENCE_MIN;
+
+        if (normalizedConfidence < minConfidence) continue;
+
+        if (
+            hasExistingAnswer &&
+            toComparableAnswer(existingAnswersBySlug[slug]) === toComparableAnswer(extracted.answer)
+        ) {
+            continue;
+        }
+
+        nextAnswers[slug] = extracted.answer;
+        updatedSlugs.push(slug);
+
+        const targetIndex = questionIndexBySlug.get(slug);
+        if (Number.isInteger(targetIndex)) {
+            console.log(
+                `${logPrefix} Updated "${slug}" at step ${targetIndex} (confidence=${normalizedConfidence.toFixed(2)})`
+            );
+        }
+    }
+
+    return { answersBySlug: nextAnswers, updatedSlugs };
+};
+
+const findNextUnansweredStep = (questions = [], answersBySlug = {}) => {
+    if (!Array.isArray(questions) || questions.length === 0) return 0;
+
+    let step = 0;
+    const visited = new Set();
+
+    while (step < questions.length) {
+        if (visited.has(step)) {
+            break;
+        }
+        visited.add(step);
+
+        const question = questions[step];
+        const answer = question?.slug ? answersBySlug[question.slug] : undefined;
+
+        if (!hasAnswerValue(answer)) {
+            return step;
+        }
+
+        step = resolveNextQuestionIndex(questions, step, answer);
+    }
+
+    return questions.length;
+};
+
+const parseAnswerExtractionResponse = (rawMessage) => {
+    if (typeof rawMessage !== "string" || !rawMessage.trim()) {
+        return [];
+    }
+
+    const raw = rawMessage.trim();
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    const extracted = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+        ? raw.substring(firstBrace, lastBrace + 1)
+        : raw;
+
+    const candidates = [
+        extracted,
+        extracted.replace(/\*\*/g, ""),
+        extracted
+            .replace(/^\s*```(?:json)?\s*/i, "")
+            .replace(/\s*```\s*$/i, ""),
+        raw,
+        raw.replace(/\*\*/g, "")
+    ];
+
+    for (const candidate of candidates) {
+        const normalized = candidate
+            .replace(/^\s*```(?:json)?\s*/i, "")
+            .replace(/\s*```\s*$/i, "")
+            .trim();
+
+        if (!normalized.startsWith("{") || !normalized.endsWith("}")) {
+            continue;
+        }
+
+        try {
+            const parsed = JSON.parse(normalized);
+            const rows = Array.isArray(parsed?.answers) ? parsed.answers : [];
+            return rows
+                .map((row) => ({
+                    slug: row?.slug,
+                    answer: row?.answer,
+                    confidence: Number(row?.confidence)
+                }))
+                .filter((row) => row.slug && hasAnswerValue(row.answer));
+        } catch {
+            // Try next normalization candidate.
+        }
+    }
+
+    return [];
+};
+
+const mergeExtractedAnswers = ({
+    baseAnswers = {},
+    extractedAnswers = [],
+    validSlugs = new Set()
+}) => {
+    const merged = { ...(baseAnswers || {}) };
+
+    for (const extracted of extractedAnswers || []) {
+        const slug = extracted?.slug;
+        if (!slug || (validSlugs.size > 0 && !validSlugs.has(slug))) continue;
+        if (!hasAnswerValue(extracted?.answer)) continue;
+
+        const confidence = Number(extracted?.confidence);
+        const normalizedConfidence = Number.isFinite(confidence) ? confidence : 0;
+        const existing = merged[slug];
+
+        if (!hasAnswerValue(existing)) {
+            if (normalizedConfidence >= 0.65) {
+                merged[slug] = extracted.answer;
+            }
+            continue;
+        }
+
+        if (
+            toComparableAnswer(existing) !== toComparableAnswer(extracted.answer) &&
+            normalizedConfidence >= 0.92
+        ) {
+            merged[slug] = extracted.answer;
+        }
+    }
+
+    return merged;
+};
+
+const buildQuestionAnswerCoverage = (questions = [], answersBySlug = {}) =>
+    questions.map((question) => ({
+        slug: question?.slug || "",
+        question: question?.text || "",
+        answer: hasAnswerValue(answersBySlug[question?.slug]) ? String(answersBySlug[question.slug]) : null
+    }));
+
+const extractAnswersFromMessage = async ({ serviceName = "", message = "", questions = [] }) => {
+    if (!message || !Array.isArray(questions) || questions.length === 0) {
+        return [];
+    }
+
+    const compactQuestions = questions.map((q) => ({
+        slug: q.slug,
+        question: q.text,
+        type: q.type || "text",
+        options: Array.isArray(q.options)
+            ? q.options.map((opt) => ({
+                value: typeof opt === "string" ? opt : (opt?.value ?? ""),
+                label: typeof opt === "string" ? opt : (opt?.label ?? "")
+            }))
+            : []
+    }));
+
+    const extractorPrompt = `
+You are extracting explicit answers from a single user message.
+
+Service: ${serviceName}
+User message: ${JSON.stringify(message)}
+Questionnaire: ${JSON.stringify(compactQuestions)}
+
+Rules:
+- Return only answers that are explicitly present in the user message.
+- Do not infer, assume, or guess.
+- If a question is not clearly answered, skip it.
+- Keep answers short and literal to what the user said.
+
+Return only valid JSON in this format:
+{
+  "answers": [
+    { "slug": "question_slug", "answer": "user answer", "confidence": 0.0 }
+  ]
+}
+`;
+
+    try {
+        const extractionResponse = await chatWithAI(
+            [{ role: "user", content: extractorPrompt }],
+            [{ role: "system", content: "You are a JSON-only extractor. Output strict JSON only." }],
+            "system_extractor"
+        );
+
+        if (!extractionResponse?.success) return [];
+        return parseAnswerExtractionResponse(extractionResponse.message);
+    } catch {
+        return [];
+    }
+};
+
+const extractAnswersFromConversation = async ({ serviceName = "", history = [], questions = [] }) => {
+    if (!Array.isArray(history) || history.length === 0) return [];
+    if (!Array.isArray(questions) || questions.length === 0) return [];
+
+    const compactQuestions = questions.map((q) => ({
+        slug: q.slug,
+        question: q.text,
+        type: q.type || "text",
+        options: Array.isArray(q.options)
+            ? q.options.map((opt) => ({
+                value: typeof opt === "string" ? opt : (opt?.value ?? ""),
+                label: typeof opt === "string" ? opt : (opt?.label ?? "")
+            }))
+            : []
+    }));
+
+    const transcript = history
+        .filter((msg) => msg?.role && msg?.content)
+        .map((msg) => `${String(msg.role).toUpperCase()}: ${String(msg.content)}`)
+        .join("\n");
+
+    const extractorPrompt = `
+You are extracting questionnaire answers from a completed chat transcript.
+
+Service: ${serviceName}
+Questions: ${JSON.stringify(compactQuestions)}
+Transcript:
+${transcript}
+
+Rules:
+- Return answers only if explicitly provided by USER messages.
+- If one user message answers multiple questions, return all matched questions.
+- Do not infer missing answers.
+- Prefer concise answer text.
+
+Return strict JSON only:
+{
+  "answers": [
+    { "slug": "question_slug", "answer": "answer text", "confidence": 0.0 }
+  ]
+}
+`;
+
+    try {
+        const extractionResponse = await chatWithAI(
+            [{ role: "user", content: extractorPrompt }],
+            [{ role: "system", content: "You are a JSON-only extractor. Output strict JSON only." }],
+            "system_extractor"
+        );
+
+        if (!extractionResponse?.success) return [];
+        return parseAnswerExtractionResponse(extractionResponse.message);
+    } catch {
+        return [];
+    }
 };
 
 // @desc    Start a new guest session with guided questions
@@ -186,6 +881,23 @@ export const guestChat = asyncHandler(async (req, res) => {
 
     const questions = service.questions;
     const currentStep = session.currentStep;
+    const currentQuestion = questions[currentStep];
+    const existingAnswersBySlug = getAnswersBySlug(session.answers || {}, questions);
+    const correctionIntent = hasCorrectionIntent(safeMessageText);
+    const questionIndexBySlug = new Map(
+        questions
+            .filter((q) => q?.slug)
+            .map((q, index) => [q.slug, index])
+    );
+    const questionSlugSet = new Set(questions.map((q) => q.slug).filter(Boolean));
+    let extractedAnswersForMessage = [];
+    if (currentStep < questions.length) {
+        extractedAnswersForMessage = await extractAnswersFromMessage({
+            serviceName: service.name,
+            message: safeMessageText,
+            questions
+        });
+    }
 
     // 3. Save User Answer (Preliminary)
     // We will save it, but we might not advance step if invalid.
@@ -195,7 +907,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     let aiResponseContent = "";
 
     if (currentStep < questions.length) {
-        const currentQuestionText = questions[currentStep].text;
+        const currentQuestionText = currentQuestion?.text || "";
 
         if (isGreetingInsteadOfNameAnswer(currentQuestionText, safeMessageText)) {
             validationResult = {
@@ -291,6 +1003,96 @@ export const guestChat = asyncHandler(async (req, res) => {
                 }
             }
 
+            const correctionCapture = applyExtractedAnswerUpdates({
+                baseAnswersBySlug: { ...existingAnswersBySlug },
+                existingAnswersBySlug,
+                extractedAnswers: extractedAnswersForMessage,
+                questionIndexBySlug,
+                questionSlugSet,
+                ignoreSlug: currentQuestion?.slug,
+                correctionIntent: true,
+                logPrefix: "[Correction Capture]"
+            });
+            const correctionChanges = getChangedAnswerDetails(
+                questions,
+                existingAnswersBySlug,
+                correctionCapture.answersBySlug
+            );
+
+            if (correctionChanges.length > 0) {
+                let correctedAnswersBySlug = correctionCapture.answersBySlug;
+                const dependentIndexes = getDependentIndexesForChanges(questions, correctionChanges);
+
+                if (dependentIndexes.length > 0) {
+                    correctedAnswersBySlug = clearAnswersByIndexes(
+                        correctedAnswersBySlug,
+                        questions,
+                        dependentIndexes
+                    );
+                    const dependentSlugs = dependentIndexes
+                        .map((index) => questions[index]?.slug)
+                        .filter(Boolean)
+                        .join(", ");
+                    console.log(
+                        `[Correction Flow] Cleared dependent answers after correction: ${dependentSlugs}`
+                    );
+                }
+
+                const correctionNextStep = findNextUnansweredStep(questions, correctedAnswersBySlug);
+                const correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions);
+
+                await prisma.aiGuestSession.update({
+                    where: { id: sessionId },
+                    data: {
+                        answers: correctedPayload,
+                        currentStep: correctionNextStep
+                    }
+                });
+
+                await prisma.aiGuestMessage.create({
+                    data: {
+                        sessionId,
+                        role: "user",
+                        content: safeMessageText,
+                    },
+                });
+
+                const followQuestion = correctionNextStep < questions.length
+                    ? questions[correctionNextStep].text
+                    : "Thanks, I updated that. Let me generate your proposal now.";
+                const correctionBridge = dependentIndexes.length > 0
+                    ? "Got it - I updated your earlier answer and adjusted related steps."
+                    : "Got it - I updated your earlier answer.";
+                const correctionMessage = buildFriendlyMessage(followQuestion, correctionBridge);
+
+                await prisma.aiGuestMessage.create({
+                    data: {
+                        sessionId,
+                        role: "assistant",
+                        content: correctionMessage,
+                    },
+                });
+
+                const sessionReload = await prisma.aiGuestSession.findUnique({
+                    where: { id: sessionId },
+                    include: { messages: { orderBy: { createdAt: 'asc' } } },
+                });
+
+                const correctionInputConfig = correctionNextStep < questions.length
+                    ? {
+                        type: questions[correctionNextStep].type || "text",
+                        options: questions[correctionNextStep].options || []
+                    }
+                    : { type: "text", options: [] };
+
+                return res.json({
+                    success: true,
+                    message: correctionMessage,
+                    inputConfig: correctionInputConfig,
+                    history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+                });
+            }
+
             // INVALID ANSWER FLOW
 
             // 1. Save User's (Invalid) Message
@@ -337,54 +1139,59 @@ export const guestChat = asyncHandler(async (req, res) => {
         },
     });
 
-    // Update answers in session
-    const currentQuestionText = questions[currentStep]?.text || "General Inquiry";
-    const updatedAnswers = {
-        ...(session.answers || {}),
-        [currentQuestionText]: safeMessageText
-    };
+    let updatedAnswersBySlug = { ...existingAnswersBySlug };
 
-    // Increment step OR set based on Branching Logic
-    let nextStep = currentStep + 1;
-    const currentQuestion = questions[currentStep];
-
-    // Branching Logic Evaluation
-    if (currentQuestion && currentQuestion.logic && Array.isArray(currentQuestion.logic)) {
-        for (const rule of currentQuestion.logic) {
-            let match = false;
-            const userAnswers = incomingArray.length
-                ? incomingArray.map(ans => ans.toLowerCase().trim())
-                : [safeMessageText.toLowerCase().trim()];
-            const ruleValue = (rule.value || "").toLowerCase().trim();
-
-            if (rule.condition === "equals") {
-                match = userAnswers.includes(ruleValue);
-            } else if (rule.condition === "not_equals") {
-                match = !userAnswers.includes(ruleValue);
-            } else if (rule.condition === "contains") {
-                match = userAnswers.some(ans => ans.includes(ruleValue));
-            }
-
-            if (match && rule.nextQuestionSlug) {
-                // Find index of target question
-                const targetIndex = questions.findIndex(q => q.slug === rule.nextQuestionSlug || q.id === rule.nextQuestionSlug);
-
-                if (targetIndex !== -1) {
-                    // Important: Ensure we don't jump backwards indefinitely or create loops (basic check: allow forward/backward but log it)
-                    nextStep = targetIndex;
-                    console.log(`[Logic Jump] Matched rule '${rule.condition} "${ruleValue}"', jumping to question index ${targetIndex}`);
-                    break; // Stop at first matching rule
-                } else {
-                    console.warn(`[Logic Jump] Target question '${rule.nextQuestionSlug}' not found.`);
-                }
-            }
-        }
+    if (currentQuestion?.slug) {
+        updatedAnswersBySlug[currentQuestion.slug] = safeMessageText;
     }
+
+    let autoCapturedAnswerSlugs = [];
+    if (currentStep < questions.length) {
+        const autoCapture = applyExtractedAnswerUpdates({
+            baseAnswersBySlug: updatedAnswersBySlug,
+            existingAnswersBySlug,
+            extractedAnswers: extractedAnswersForMessage,
+            questionIndexBySlug,
+            questionSlugSet,
+            ignoreSlug: currentQuestion?.slug,
+            correctionIntent,
+            logPrefix: "[Auto Capture]"
+        });
+        updatedAnswersBySlug = autoCapture.answersBySlug;
+        autoCapturedAnswerSlugs = autoCapture.updatedSlugs;
+    }
+
+    const changedAnswers = getChangedAnswerDetails(
+        questions,
+        existingAnswersBySlug,
+        updatedAnswersBySlug
+    );
+    const dependentIndexes = getDependentIndexesForChanges(questions, changedAnswers);
+    const dependentResetApplied = dependentIndexes.length > 0;
+
+    if (dependentResetApplied) {
+        updatedAnswersBySlug = clearAnswersByIndexes(updatedAnswersBySlug, questions, dependentIndexes);
+        autoCapturedAnswerSlugs = [];
+        const dependentSlugs = dependentIndexes
+            .map((index) => questions[index]?.slug)
+            .filter(Boolean)
+            .join(", ");
+        console.log(
+            `[Flow Reset] Cleared dependent answers only: ${dependentSlugs}`
+        );
+    } else if (changedAnswers.length > 0) {
+        console.log(
+            `[Flow Update] Updated previous answers without dependent reset.`
+        );
+    }
+
+    const nextStep = findNextUnansweredStep(questions, updatedAnswersBySlug);
+    const persistedAnswers = buildPersistedAnswersPayload(updatedAnswersBySlug, questions);
 
     await prisma.aiGuestSession.update({
         where: { id: sessionId },
         data: {
-            answers: updatedAnswers,
+            answers: persistedAnswers,
             currentStep: nextStep
         }
     });
@@ -394,9 +1201,27 @@ export const guestChat = asyncHandler(async (req, res) => {
     let nextInputConfig = { type: "text", options: [] };
 
     if (nextStep < questions.length) {
-        // CASE A: More questions to ask
-        // Use the friendly AI-generated transition if available, otherwise fallback to raw text
-        responseContent = aiResponseContent || questions[nextStep].text;
+        const nextQuestionText = questions[nextStep].text;
+        const expectedImmediateNextStep = resolveNextQuestionIndex(
+            questions,
+            currentStep,
+            currentQuestion?.slug ? updatedAnswersBySlug[currentQuestion.slug] : safeMessageText
+        );
+
+        const canUseAiTransition = Boolean(aiResponseContent)
+            && autoCapturedAnswerSlugs.length === 0
+            && !dependentResetApplied
+            && nextStep === expectedImmediateNextStep;
+
+        const fallbackBridge = autoCapturedAnswerSlugs.length > 0
+            ? "Awesome - I have already captured some details from your previous message."
+            : dependentResetApplied
+                ? "Thanks for clarifying - I updated the related flow."
+                : pickFriendlyBridge(nextQuestionText);
+        const aiBridge = canUseAiTransition
+            ? extractFriendlyBridgeFromValidationMessage(aiResponseContent, nextQuestionText)
+            : "";
+        responseContent = buildFriendlyMessage(nextQuestionText, aiBridge || fallbackBridge);
 
         // Configure next input
         nextInputConfig = {
@@ -410,13 +1235,58 @@ export const guestChat = asyncHandler(async (req, res) => {
                 ...session.messages.map((m) => ({ role: m.role, content: m.content })),
                 { role: "user", content: safeMessageText }
             ];
+            const allQuestionSlugs = new Set(questions.map((q) => q.slug).filter(Boolean));
+            const extractedFromConversation = await extractAnswersFromConversation({
+                serviceName: service.name,
+                history: proposalHistory,
+                questions
+            });
+            const proposalAnswersBySlug = mergeExtractedAnswers({
+                baseAnswers: persistedAnswers.bySlug,
+                extractedAnswers: extractedFromConversation,
+                validSlugs: allQuestionSlugs
+            });
+            const proposalAnswersPayload = buildPersistedAnswersPayload(proposalAnswersBySlug, questions);
+
+            if (extractedFromConversation.length > 0) {
+                console.log(
+                    `[Proposal Enrichment] merged ${extractedFromConversation.length} transcript-derived answer(s).`
+                );
+            }
+
+            if (
+                JSON.stringify(proposalAnswersPayload.bySlug) !==
+                JSON.stringify(persistedAnswers.bySlug)
+            ) {
+                await prisma.aiGuestSession.update({
+                    where: { id: sessionId },
+                    data: { answers: proposalAnswersPayload }
+                });
+            }
+
+            const proposalContext = {
+                serviceName: service.name,
+                serviceId: service.slug,
+                questionnaireAnswers: proposalAnswersPayload.byQuestionText,
+                questionnaireAnswersBySlug: proposalAnswersPayload.bySlug,
+                serviceQuestionAnswers: buildQuestionAnswerCoverage(questions, proposalAnswersPayload.bySlug),
+                capturedFields: Object.entries(proposalAnswersPayload.byQuestionText || {})
+                    .filter(([, value]) => hasAnswerValue(value))
+                    .map(([question, answer]) => ({
+                        question,
+                        answer: String(answer)
+                    }))
+            };
+            const appHints = buildAppProposalHints({
+                history: proposalHistory,
+                answersByQuestionText: proposalAnswersPayload.byQuestionText
+            });
+            if (appHints) {
+                proposalContext.appHints = appHints;
+            }
 
             responseContent = await generateProposalMarkdown(
-                {
-                    serviceName: service.name,
-                    serviceId: service.slug,
-                    questionnaireAnswers: updatedAnswers
-                },
+                proposalContext,
                 proposalHistory,
                 service.name
             );
