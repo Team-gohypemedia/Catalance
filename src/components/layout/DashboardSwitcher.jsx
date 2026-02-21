@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import { Shimmer } from "@/components/features/ai/elements/shimmer";
 
 const THRESHOLD = 0.65;
@@ -115,7 +114,7 @@ export function DashboardSwitcher() {
         <div className="px-2 py-1.5">
             <div
                 ref={containerRef}
-                className="relative h-14 rounded-2xl bg-secondary overflow-hidden select-none"
+                className="relative h-14 rounded-2xl bg-transparent overflow-hidden select-none"
             >
                 {/* Background progress fill */}
                 <div
@@ -131,7 +130,7 @@ export function DashboardSwitcher() {
                     className="absolute right-3 top-0 bottom-0 flex items-center"
                     style={{ opacity: isOverThreshold ? 0 : 0.3 + progress * 0.5, transition: "opacity 0.2s" }}
                 >
-                    <div className="w-10 h-10 rounded-xl bg-muted/30 border border-border/20 flex items-center justify-center text-xs font-semibold text-muted-foreground uppercase">
+                    <div className="w-10 h-10 rounded-xl bg-transparent flex items-center justify-center text-xs font-semibold text-muted-foreground uppercase">
                         {targetBrand.logoText}
                     </div>
                 </div>

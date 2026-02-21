@@ -117,6 +117,75 @@ const toTitleCaseLabel = (value = "") =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
+const EXPERIENCE_VALUE_LABELS = {
+  less_than_1: "Less than 1 year",
+  "1_3": "1-3 years",
+  "3_5": "3-5 years",
+  "5_plus": "5+ years"
+};
+
+const MARKETPLACE_SERVICE_TITLE_BY_KEY = {
+  branding: "Branding",
+  website_ui_ux: "Web Development",
+  seo: "SEO",
+  social_media_marketing: "Social Media Management",
+  paid_advertising: "Performance Marketing / Paid Ads",
+  app_development: "App Development",
+  software_development: "Software Development",
+  lead_generation: "Lead Generation",
+  video_services: "Video Services",
+  writing_content: "Writing & Content",
+  customer_support: "Customer Support Services",
+  influencer_marketing: "Influencer Marketing",
+  ugc_marketing: "UGC Marketing",
+  ai_automation: "AI Automation",
+  whatsapp_chatbot: "WhatsApp Chatbot",
+  creative_design: "Creative & Design",
+  "3d_modeling": "3D Modeling",
+  cgi_videos: "CGI Video Services",
+  crm_erp: "CRM & ERP Solutions",
+  voice_agent: "Voice Agent / AI Calling"
+};
+
+const normalizeOnboardingValueLabel = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const canonical = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (EXPERIENCE_VALUE_LABELS[canonical]) {
+    return EXPERIENCE_VALUE_LABELS[canonical];
+  }
+
+  return normalizeLabel(raw);
+};
+
+const getMarketplaceServiceTitle = (serviceKey = "") => {
+  const key = String(serviceKey || "").trim();
+  if (!key) return "Service";
+  return MARKETPLACE_SERVICE_TITLE_BY_KEY[key] || toTitleCaseLabel(key);
+};
+
+const normalizeOnboardingWorkExperienceTitle = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const onboardingMatch = raw.match(/^(.*?)[^a-z0-9]+onboarding$/i);
+  if (!onboardingMatch) return raw;
+
+  const baseRaw = String(onboardingMatch[1] || "").trim();
+  const canonical = baseRaw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const normalizedTitle = getMarketplaceServiceTitle(canonical || baseRaw);
+
+  return `${normalizedTitle} - Onboarding`;
+};
+
 const normalizeWorkExperienceEntries = (entries = []) =>
   (Array.isArray(entries) ? entries : [])
     .map((entry) => {
@@ -126,8 +195,8 @@ const normalizeWorkExperienceEntries = (entries = []) =>
       }
 
       if (!entry || typeof entry !== "object") return null;
-      const title = String(entry.title || "").trim();
-      const period = String(entry.period || "").trim();
+      const title = normalizeOnboardingWorkExperienceTitle(entry.title);
+      const period = normalizeOnboardingValueLabel(entry.period);
       const description = String(entry.description || "").trim();
       if (!title && !period && !description) return null;
       return { title, period, description };
@@ -148,7 +217,7 @@ const extractWorkExperienceFromProfileDetails = (profileDetails = {}) => {
     .map(([serviceKey, detail]) => {
       if (!detail || typeof detail !== "object") return null;
 
-      const experience = normalizeLabel(detail.experienceYears);
+      const experience = normalizeOnboardingValueLabel(detail.experienceYears);
       const level = normalizeLabel(detail.workingLevel);
       const complexity = normalizeLabel(detail.projectComplexity);
       const projectCount = Array.isArray(detail.projects) ? detail.projects.length : 0;
@@ -163,7 +232,7 @@ const extractWorkExperienceFromProfileDetails = (profileDetails = {}) => {
       }
 
       return {
-        title: `${toTitleCaseLabel(serviceKey) || "Service"} - Onboarding`,
+        title: `${getMarketplaceServiceTitle(serviceKey)} - Onboarding`,
         period: experience || "Experience shared in onboarding",
         description: meta.join(" | ")
       };

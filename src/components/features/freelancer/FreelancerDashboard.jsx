@@ -2,17 +2,15 @@ import React, { useEffect, useState } from "react";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Gavel from "lucide-react/dist/esm/icons/gavel";
 import Video from "lucide-react/dist/esm/icons/video";
-import CircleAlert from "lucide-react/dist/esm/icons/circle-alert";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { useNotifications } from "@/shared/context/NotificationContext";
-import { DashboardHeader } from "@/components/features/freelancer/dashboard/DashboardHeader";
+import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
 import { getSession } from "@/shared/lib/auth-storage";
 import { Button } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -205,14 +203,7 @@ export const DashboardContent = ({ _roleOverride }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-zinc-50 dark:bg-black transition-colors duration-300">
-      <div
-        className="absolute inset-0 z-0 pointer-events-none opacity-[0.03] dark:opacity-[0.08]"
-        style={{
-          backgroundImage: "radial-gradient(currentColor 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-      ></div>
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
 
       <SuspensionAlert
         open={showSuspensionAlert}
@@ -252,6 +243,7 @@ export const DashboardContent = ({ _roleOverride }) => {
 
       <DashboardHeader
         userName={sessionUser?.fullName}
+        tabLabel="Dashboard"
         notifications={notifications}
         unreadCount={unreadCount}
         markAllAsRead={markAllAsRead}
@@ -259,90 +251,66 @@ export const DashboardContent = ({ _roleOverride }) => {
       />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 relative scroll-smooth">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
         <div className="max-w-[1600px] mx-auto">
-          <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex flex-col lg:flex-row gap-10">
             {/* Left Column (Stats + Pipeline + Table) */}
-            <div className="flex-1 min-w-0 flex flex-col gap-8">
-              {/* Page Title */}
-              <div className="flex justify-between items-end">
-                <div>
-                  <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-foreground mb-2">
-                    Dashboard
-                  </h1>
-                  <p className="text-muted-foreground font-medium">
-                    Overview of your freelance activity.
-                  </p>
-                </div>
-                <div className="hidden sm:flex gap-2">
-                  <Badge
-                    variant="outline"
-                    className="px-3 py-1 rounded-full bg-primary/10 text-primary-dark border-primary/20 gap-1.5 font-bold"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                    Live Updates
-                  </Badge>
-                </div>
-              </div>
+            <div className="flex-1 min-w-0 flex flex-col gap-10">
+              {/* Page Title Wrapper - Removed */}
 
               {showOnboardingAlert ? (
-                <Alert
-                  variant="info"
-                  size="lg"
-                  layout="stack"
-                  icon={<CircleAlert className="h-4 w-4" />}
-                  action={
-                    <Button
-                      size="sm"
-                      onClick={() => navigate("/freelancer/onboarding")}
-                    >
-                      Start onboarding
-                    </Button>
-                  }
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold">
-                      Complete your onboarding to start getting projects.
-                    </p>
-                    <p className="text-xs">
-                      Add your profile details and services so clients can
-                      discover and hire you.
+                <div className="bg-card/40 border-l-4 border-l-yellow-500 border-border rounded-xl p-5 flex flex-col sm:flex-row items-center gap-5 relative overflow-hidden group transition-all duration-300 hover:bg-card/60">
+                  <div className="flex-1 text-center sm:text-left">
+                    <h4 className="text-base font-bold text-foreground mb-1 flex items-center justify-center sm:justify-start gap-2">
+                      <span className="text-yellow-500 inline-block">🚀</span>
+                      Complete your onboarding to start getting projects
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Add your profile details and services so clients can discover and hire you.
                     </p>
                   </div>
-                </Alert>
+
+                  <Button
+                    size="sm"
+                    className="w-full sm:w-auto font-bold bg-yellow-500 text-black hover:bg-yellow-600 transition-all rounded-full px-6"
+                    onClick={() => navigate("/freelancer/onboarding")}
+                  >
+                    Start Onboarding
+                  </Button>
+                </div>
               ) : null}
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {/* Total Earnings */}
-                <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md hover:border-primary/30 transition-all relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                <div className="bg-card p-8 rounded-3xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-primary/40 transition-all relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
                   <div className="relative z-10">
-                    <p className="text-muted-foreground text-sm font-bold mb-1 uppercase tracking-wide">
+                    <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
                       Total Amount
                     </p>
-                    <h3 className="text-3xl font-black tracking-tight text-foreground">
+                    <h3 className="text-4xl font-black tracking-tight text-foreground">
                       {formatCurrency(metrics.earnings)}
                     </h3>
-                    <p className="text-xs text-green-500 mt-2 flex items-center font-bold">
-                      <TrendingUp className="h-3 w-3 mr-1" /> Estimated (70%
+                    <p className="text-sm text-green-500 mt-3 flex items-center font-bold">
+                      <TrendingUp className="h-4 w-4 mr-1.5" /> Estimated (70%
                       share)
                     </p>
                   </div>
                 </div>
 
                 {/* Active Projects */}
-                <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md hover:border-blue-500/30 transition-all relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                <div className="bg-card p-8 rounded-3xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-blue-500/40 transition-all relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
                   <div className="relative z-10">
-                    <p className="text-muted-foreground text-sm font-bold mb-1 uppercase tracking-wide">
+                    <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
                       Active Projects
                     </p>
-                    <h3 className="text-3xl font-black tracking-tight text-foreground">
+                    <h3 className="text-4xl font-black tracking-tight text-foreground">
                       {metrics.activeProjects}
                     </h3>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="flex items-center gap-3 mt-3">
+                      <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
                         <div
                           className="h-full bg-blue-500 rounded-full"
                           style={{
@@ -353,7 +321,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                           }}
                         ></div>
                       </div>
-                      <span className="text-xs font-medium text-blue-500">
+                      <span className="text-sm font-medium text-blue-500">
                         Utilization
                       </span>
                     </div>
@@ -361,17 +329,17 @@ export const DashboardContent = ({ _roleOverride }) => {
                 </div>
 
                 {/* Proposals Sent */}
-                <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:shadow-md hover:border-purple-500/30 transition-all relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                <div className="bg-card p-8 rounded-3xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-purple-500/40 transition-all relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
                   <div className="relative z-10">
-                    <p className="text-muted-foreground text-sm font-bold mb-1 uppercase tracking-wide">
+                    <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
                       Pending Proposals
                     </p>
-                    <h3 className="text-3xl font-black tracking-tight text-foreground">
+                    <h3 className="text-4xl font-black tracking-tight text-foreground">
                       {metrics.proposalsReceived}
                     </h3>
-                    <p className="text-xs text-purple-500 mt-2 flex items-center font-bold">
-                      <Clock className="h-3 w-3 mr-1" /> Awaiting client
+                    <p className="text-sm text-purple-500 mt-3 flex items-center font-bold">
+                      <Clock className="h-4 w-4 mr-1.5" /> Awaiting client
                       response
                     </p>
                   </div>
@@ -387,29 +355,29 @@ export const DashboardContent = ({ _roleOverride }) => {
                   <Button
                     variant="link"
                     className="text-primary hover:text-primary/80 h-auto p-0 font-semibold"
-                    onClick={() => navigate("/freelancer/project")}
+                    onClick={() => navigate("/freelancer/project?view=ongoing")}
                   >
                     View All <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-secondary/30 border-b border-border">
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      <tr className="bg-secondary/40 border-b border-border">
+                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                           Project Name
                         </th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                           Status
                         </th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                           Client
                         </th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                           Budget
                         </th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground text-right">
+                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground text-right">
                           Action
                         </th>
                       </tr>
@@ -506,7 +474,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                 const timeDisplay = `${upcomingMeeting.startHour}:00 - ${upcomingMeeting.endHour}:00`;
 
                 return (
-                  <div className="bg-card rounded-2xl border border-border p-6 shadow-sm flex flex-col items-center justify-center shrink-0 min-w-[240px]">
+                  <div className="bg-card rounded-3xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex flex-col items-center justify-center shrink-0 min-w-[240px] relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -mr-6 -mt-6"></div>
                     <h3 className="font-bold text-lg text-foreground mb-2 flex items-center gap-2 relative z-10">
                       <Video className="h-5 w-5 text-primary" />
@@ -554,7 +522,7 @@ export const DashboardContent = ({ _roleOverride }) => {
               })()}
 
               {/* Pending Proposals Widget */}
-              <div className="bg-primary/5 dark:bg-card rounded-2xl p-6 border border-primary/10 dark:border-border shadow-lg relative overflow-hidden">
+              <div className="bg-primary/5 dark:bg-card rounded-3xl p-8 border border-primary/10 dark:border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] relative overflow-hidden">
                 <div className="absolute -top-6 -right-6 w-32 h-32 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-foreground relative z-10">
                   <Gavel className="text-primary h-5 w-5" /> Pending Proposals
@@ -604,7 +572,7 @@ export const DashboardContent = ({ _roleOverride }) => {
               </div>
 
               {/* Earnings Goal / Payment Status Widget */}
-              <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+              <div className="bg-card rounded-3xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
                 <h3 className="font-bold text-lg text-foreground mb-6">
                   Earnings Goal
                 </h3>
@@ -681,7 +649,7 @@ export const DashboardContent = ({ _roleOverride }) => {
               </div>
 
               {/* Active Clients (Was Assigned Talent) */}
-              <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+              <div className="bg-card rounded-3xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-lg text-foreground">
                     Active Clients

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Clock from "lucide-react/dist/esm/icons/clock";
@@ -181,8 +181,15 @@ const ProjectCard = ({ project }) => {
 
 const FreelancerProjectsContent = () => {
   const { authFetch, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const view = (searchParams.get("view") || "").toLowerCase();
+  const showOnlyOngoing = view === "ongoing";
+  const visibleProjects = useMemo(() => {
+    if (!showOnlyOngoing) return projects;
+    return projects.filter((project) => project.status !== "completed");
+  }, [projects, showOnlyOngoing]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -243,20 +250,48 @@ const FreelancerProjectsContent = () => {
   return (
     <div className="space-y-6 p-6">
       <FreelancerTopBar />
-      <header className="space-y-3">
-        <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
-          Freelancer projects
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
+            Freelancer projects
+          </p>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">
+            {showOnlyOngoing ? "Ongoing Projects" : "All Projects"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {showOnlyOngoing
+              ? "Showing active and pending projects only."
+              : "Showing every project in your pipeline."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            size="sm"
+            variant={showOnlyOngoing ? "default" : "outline"}
+            className="rounded-full px-4"
+          >
+            <Link to="/freelancer/project?view=ongoing">Ongoing</Link>
+          </Button>
+          <Button
+            asChild
+            size="sm"
+            variant={showOnlyOngoing ? "outline" : "default"}
+            className="rounded-full px-4"
+          >
+            <Link to="/freelancer/project">All</Link>
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {isLoading ? (
           [1, 2, 3].map((i) => <ProjectCardSkeleton key={i} />)
-        ) : projects.length ? (
-          projects.map((project) => <ProjectCard key={project.id} project={project} />)
+        ) : visibleProjects.length ? (
+          visibleProjects.map((project) => <ProjectCard key={project.id} project={project} />)
         ) : (
           <div className="col-span-full rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
-            No projects yet.
+            {showOnlyOngoing ? "No ongoing projects yet." : "No projects yet."}
           </div>
         )}
       </div>

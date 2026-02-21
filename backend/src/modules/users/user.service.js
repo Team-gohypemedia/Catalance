@@ -18,6 +18,17 @@ import {
 
 const OTP_TTL_MINUTES = 15;
 const OTP_EMAIL_RETRY_ATTEMPTS = 2;
+const marketplaceSupportsServiceDetails = (() => {
+  try {
+    const models = Prisma?.dmmf?.datamodel?.models || [];
+    const marketplaceModel = models.find((model) => model.name === "Marketplace");
+    return Boolean(
+      marketplaceModel?.fields?.some((field) => field?.name === "serviceDetails")
+    );
+  } catch {
+    return false;
+  }
+})();
 
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toUpperCase() : null;
@@ -155,6 +166,46 @@ const toTitleCaseLabel = (value = "") =>
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+
+const EXPERIENCE_VALUE_LABELS = {
+  less_than_1: "Less than 1 year",
+  "1_3": "1-3 years",
+  "3_5": "3-5 years",
+  "5_plus": "5+ years"
+};
+
+const normalizeOnboardingValueLabel = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const canonical = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (EXPERIENCE_VALUE_LABELS[canonical]) {
+    return EXPERIENCE_VALUE_LABELS[canonical];
+  }
+
+  return normalizeLabel(raw);
+};
+
+const normalizeOnboardingWorkExperienceTitle = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const onboardingMatch = raw.match(/^(.*?)[^a-z0-9]+onboarding$/i);
+  if (!onboardingMatch) return raw;
+
+  const baseRaw = String(onboardingMatch[1] || "").trim();
+  const canonical = baseRaw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const normalizedTitle = getMarketplaceServiceTitle(canonical || baseRaw);
+
+  return `${normalizedTitle} - Onboarding`;
+};
 
 const normalizeStringList = (value, { max = 32 } = {}) => {
   if (!Array.isArray(value)) return [];
@@ -586,38 +637,99 @@ const MARKETPLACE_SERVICE_META_BY_KEY = {
   }
 };
 
-const deriveMarketplaceServiceDetails = (services = []) =>
-  normalizeStringList(services, { max: 64 }).map((serviceKey) => {
+const deriveMarketplaceServiceDetails = ({
+  services = [],
+  profileDetails = {}
+} = {}) => {
+  const onboardingServiceDetails =
+    profileDetails?.serviceDetails && typeof profileDetails.serviceDetails === "object"
+      ? profileDetails.serviceDetails
+      : {};
+
+  return normalizeStringList(services, { max: 64 }).map((serviceKey) => {
     const meta = MARKETPLACE_SERVICE_META_BY_KEY[serviceKey];
+    const detail =
+      onboardingServiceDetails?.[serviceKey] &&
+      typeof onboardingServiceDetails[serviceKey] === "object"
+        ? onboardingServiceDetails[serviceKey]
+        : {};
+    const customDescription = String(
+      detail?.serviceDescription || detail?.description || ""
+    ).trim();
+    const customCoverImage = extractAvatarUrl(detail?.coverImage);
+
     return {
       key: serviceKey,
       title: meta?.title || toTitleCaseLabel(serviceKey),
-      description: meta?.description || "Service information provided during onboarding.",
-      coverImage: meta?.coverImage || `/assets/services/${serviceKey}-cover.jpg`
+      description:
+        customDescription ||
+        meta?.description ||
+        "Service information provided during onboarding.",
+      coverImage:
+        customCoverImage || meta?.coverImage || `/assets/services/${serviceKey}-cover.jpg`
     };
   });
+};
+
+const getMarketplaceServiceTitle = (serviceKey = "") => {
+  const key = String(serviceKey || "").trim();
+  if (!key) return "Service";
+  return MARKETPLACE_SERVICE_META_BY_KEY[key]?.title || toTitleCaseLabel(key);
+};
 
 const upsertMarketplaceEntry = async ({
   freelancerId,
-  services = []
+  services = [],
+  profileDetails = {}
 } = {}) => {
   if (!freelancerId) return;
   const normalizedServices = normalizeStringList(services, { max: 64 });
-  const serviceDetails = deriveMarketplaceServiceDetails(normalizedServices);
+  const serviceDetails = deriveMarketplaceServiceDetails({
+    services: normalizedServices,
+    profileDetails
+  });
 
-  await prisma.marketplace.upsert({
-    where: { freelancerId },
-    create: {
+  const runUpsert = async ({ includeServiceDetails }) => {
+    const createData = {
       freelancerId,
       services: normalizedServices,
-      serviceDetails,
       isFeatured: false
-    },
-    update: {
-      services: normalizedServices,
-      serviceDetails
+    };
+    const updateData = {
+      services: normalizedServices
+    };
+
+    if (includeServiceDetails) {
+      createData.serviceDetails = serviceDetails;
+      updateData.serviceDetails = serviceDetails;
     }
-  });
+
+    return prisma.marketplace.upsert({
+      where: { freelancerId },
+      create: createData,
+      update: updateData
+    });
+  };
+
+  if (marketplaceSupportsServiceDetails) {
+    try {
+      await runUpsert({ includeServiceDetails: true });
+      return;
+    } catch (error) {
+      const message = String(error?.message || "");
+      const shouldRetryWithoutServiceDetails =
+        (error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2022") ||
+        message.includes("Unknown argument `serviceDetails`") ||
+        message.includes("serviceDetails");
+
+      if (!shouldRetryWithoutServiceDetails) {
+        throw error;
+      }
+    }
+  }
+
+  await runUpsert({ includeServiceDetails: false });
 };
 
 const replaceFreelancerProjects = async (freelancerId, projects = []) => {
@@ -653,8 +765,8 @@ const normalizeWorkExperienceEntries = (value) => {
       }
 
       if (!entry || typeof entry !== "object") return null;
-      const title = String(entry.title || "").trim();
-      const period = String(entry.period || "").trim();
+      const title = normalizeOnboardingWorkExperienceTitle(entry.title);
+      const period = normalizeOnboardingValueLabel(entry.period);
       const description = String(entry.description || "").trim();
 
       if (!title && !period && !description) return null;
@@ -677,7 +789,7 @@ const buildWorkExperienceFromProfileDetails = (profileDetails = {}) => {
     .map(([serviceKey, detail]) => {
       if (!detail || typeof detail !== "object") return null;
 
-      const experience = normalizeLabel(detail.experienceYears);
+      const experience = normalizeOnboardingValueLabel(detail.experienceYears);
       const level = normalizeLabel(detail.workingLevel);
       const complexity = normalizeLabel(detail.projectComplexity);
       const projectCount = Array.isArray(detail.projects) ? detail.projects.length : 0;
@@ -692,7 +804,7 @@ const buildWorkExperienceFromProfileDetails = (profileDetails = {}) => {
       }
 
       return {
-        title: `${toTitleCaseLabel(serviceKey) || "Service"} - Onboarding`,
+        title: `${getMarketplaceServiceTitle(serviceKey)} - Onboarding`,
         period: experience || "Experience shared in onboarding",
         description: meta.join(" | ")
       };
@@ -1001,7 +1113,8 @@ export const updateUserProfile = async (userId, updates) => {
     });
     await upsertMarketplaceEntry({
       freelancerId: user.id,
-      services: marketplaceServices
+      services: marketplaceServices,
+      profileDetails: resolvedProfileDetails
     });
   }
 
@@ -1387,7 +1500,8 @@ const createUserRecord = async (payload) => {
       });
       await upsertMarketplaceEntry({
         freelancerId: user.id,
-        services: marketplaceServices
+        services: marketplaceServices,
+        profileDetails: normalizedFreelancerProfile
       });
     }
 
