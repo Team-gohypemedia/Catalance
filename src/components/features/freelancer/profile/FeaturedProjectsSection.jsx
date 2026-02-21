@@ -111,13 +111,23 @@ const FeaturedProjectsSection = ({
                         </button>
                       </div>
                     </div>
-                    <div className="p-3 flex items-center justify-between gap-3">
-                      <h4
-                        className="font-semibold truncate text-sm flex-1"
-                        title={project.title || project.link}
-                      >
-                        {project.title || "Project"}
-                      </h4>
+                    <div className="p-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h4
+                          className="font-semibold truncate text-sm"
+                          title={project.title || project.link}
+                        >
+                          {project.title || "Project"}
+                        </h4>
+                        {project.description ? (
+                          <p
+                            className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed"
+                            title={project.description}
+                          >
+                            {project.description}
+                          </p>
+                        ) : null}
+                      </div>
                       {project.link ? (
                         <a
                           href={project.link}

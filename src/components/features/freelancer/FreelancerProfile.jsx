@@ -1248,6 +1248,7 @@ const FreelancerProfile = () => {
           url: payload.data.url || normalizedUrl,
           title: payload.data.title || "",
           image: payload.data.image || null,
+          description: String(payload.data.description || "").trim(),
         };
       } catch (error) {
         console.warn("Project metadata fetch failed:", error);
@@ -1268,7 +1269,10 @@ const FreelancerProfile = () => {
             const hasCoverImage = Boolean(
               resolveAvatarUrl(project?.image, { allowBlob: true })
             );
-            if (!normalizedLink || hasCoverImage) return "";
+            const hasDescription = Boolean(
+              String(project?.description || "").trim()
+            );
+            if (!normalizedLink || (hasCoverImage && hasDescription)) return "";
             return normalizedLink;
           })
           .filter(Boolean)
@@ -1297,7 +1301,10 @@ const FreelancerProfile = () => {
 
       const updatesByLink = new Map(
         previewEntries
-          .filter(({ preview }) => preview && (preview.image || preview.title))
+          .filter(
+            ({ preview }) =>
+              preview && (preview.image || preview.title || preview.description)
+          )
           .map(({ link, preview }) => [link.toLowerCase(), preview])
       );
 
@@ -1317,10 +1324,17 @@ const FreelancerProfile = () => {
             allowBlob: true,
           });
           const currentTitle = String(project?.title || "").trim();
+          const currentDescription = String(project?.description || "").trim();
           const nextImage = currentImage || String(preview.image || "").trim();
           const nextTitle = currentTitle || String(preview.title || "").trim();
+          const nextDescription =
+            currentDescription || String(preview.description || "").trim();
 
-          if (nextImage === currentImage && nextTitle === currentTitle) {
+          if (
+            nextImage === currentImage &&
+            nextTitle === currentTitle &&
+            nextDescription === currentDescription
+          ) {
             return project;
           }
 
@@ -1329,6 +1343,7 @@ const FreelancerProfile = () => {
             ...project,
             image: nextImage || null,
             title: nextTitle || project?.title || "",
+            description: nextDescription || "",
           };
         });
 
@@ -1451,12 +1466,14 @@ const FreelancerProfile = () => {
     try {
       let previewTitle = "";
       let previewImage = null;
+      let previewDescription = "";
 
       const previewData = await fetchProjectPreview(normalizedUrl);
       if (previewData) {
         normalizedUrl = previewData.url || normalizedUrl;
         previewTitle = previewData.title || "";
         previewImage = previewData.image || null;
+        previewDescription = String(previewData.description || "").trim();
       }
 
       if (newProjectImageFile) {
@@ -1499,6 +1516,7 @@ const FreelancerProfile = () => {
           link: normalizedUrl,
           image: previewImage,
           title: fallbackTitle,
+          description: previewDescription,
         },
       ]);
 
@@ -1707,6 +1725,40 @@ const FreelancerProfile = () => {
       serviceKey,
       detail: onboardingServiceDetailMap?.[serviceKey] || {},
     }));
+  const onboardingProjectDescriptionMap = useMemo(() => {
+    const map = new Map();
+
+    Object.values(onboardingServiceDetailMap).forEach((detail) => {
+      const projects = Array.isArray(detail?.projects) ? detail.projects : [];
+      projects.forEach((project) => {
+        const description = String(project?.description || "").trim();
+        if (!description) return;
+
+        const projectLink = normalizeProjectLinkValue(
+          project?.link || project?.url || ""
+        );
+        const projectTitle = String(project?.title || "")
+          .trim()
+          .toLowerCase();
+
+        if (projectLink) {
+          const linkKey = `link:${projectLink.toLowerCase()}`;
+          if (!map.has(linkKey)) {
+            map.set(linkKey, description);
+          }
+        }
+
+        if (projectTitle) {
+          const titleKey = `title:${projectTitle}`;
+          if (!map.has(titleKey)) {
+            map.set(titleKey, description);
+          }
+        }
+      });
+    });
+
+    return map;
+  }, [onboardingServiceDetailMap]);
   const onboardingIdentityLocation = buildLocationFromIdentity(onboardingIdentity);
   const displayHeadline =
     String(onboardingIdentity?.professionalTitle || "").trim() ||
@@ -1748,6 +1800,39 @@ const FreelancerProfile = () => {
   const effectiveWorkExperience = workExperience.length
     ? workExperience
     : onboardingDerivedWorkExperience;
+  const displayPortfolioProjects = useMemo(
+    () =>
+      (Array.isArray(portfolioProjects) ? portfolioProjects : []).map(
+        (project) => {
+          const currentDescription = String(project?.description || "").trim();
+          if (currentDescription) return project;
+
+          const projectLink = normalizeProjectLinkValue(project?.link || "");
+          const projectTitle = String(project?.title || "")
+            .trim()
+            .toLowerCase();
+
+          const descriptionFromOnboarding =
+            (projectLink
+              ? onboardingProjectDescriptionMap.get(
+                  `link:${projectLink.toLowerCase()}`
+                )
+              : "") ||
+            (projectTitle
+              ? onboardingProjectDescriptionMap.get(`title:${projectTitle}`)
+              : "") ||
+            "";
+
+          if (!descriptionFromOnboarding) return project;
+
+          return {
+            ...project,
+            description: descriptionFromOnboarding,
+          };
+        }
+      ),
+    [portfolioProjects, onboardingProjectDescriptionMap]
+  );
   const serviceProfileCoverage = onboardingServiceEntries.length
     ? onboardingServiceEntries.filter(({ detail }) => {
         const description = String(
@@ -1988,7 +2073,7 @@ const FreelancerProfile = () => {
             />
 
             <FeaturedProjectsSection
-              portfolioProjects={portfolioProjects}
+              portfolioProjects={displayPortfolioProjects}
               projectCoverUploadingIndex={projectCoverUploadingIndex}
               handleProjectCoverInputChange={handleProjectCoverInputChange}
               removeProject={removeProject}
@@ -2259,13 +2344,14 @@ const FreelancerProfile = () => {
                   All Projects
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {portfolioProjects.length} project
-                  {portfolioProjects.length !== 1 ? "s" : ""} in your portfolio
+                  {displayPortfolioProjects.length} project
+                  {displayPortfolioProjects.length !== 1 ? "s" : ""} in your
+                  portfolio
                 </p>
                 <div className="mt-4 flex-1 overflow-y-auto">
-                  {portfolioProjects.length > 0 ? (
+                  {displayPortfolioProjects.length > 0 ? (
                     <div className="grid grid-cols-2 gap-3">
-                      {portfolioProjects.map((project, idx) => (
+                      {displayPortfolioProjects.map((project, idx) => (
                         <div
                           key={idx}
                           className="group flex flex-col p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
@@ -2285,8 +2371,16 @@ const FreelancerProfile = () => {
                             >
                               {project.title || "Project"}
                             </h4>
+                            {project.description ? (
+                              <p
+                                className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed"
+                                title={project.description}
+                              >
+                                {project.description}
+                              </p>
+                            ) : null}
                             <p
-                              className="text-xs text-muted-foreground truncate"
+                              className="mt-1 text-xs text-muted-foreground truncate"
                               title={project.link}
                             >
                               {project.link}
