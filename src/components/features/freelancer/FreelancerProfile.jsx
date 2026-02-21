@@ -1,30 +1,13 @@
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import X from "lucide-react/dist/esm/icons/x";
 import Camera from "lucide-react/dist/esm/icons/camera";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import User from "lucide-react/dist/esm/icons/user";
-import Rocket from "lucide-react/dist/esm/icons/rocket";
-import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import Github from "lucide-react/dist/esm/icons/github";
-import Linkedin from "lucide-react/dist/esm/icons/linkedin";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
-import FileText from "lucide-react/dist/esm/icons/file-text";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-} from "@/components/ui/carousel";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -35,9 +18,16 @@ import { format, parse, isValid } from "date-fns";
 import { cn } from "@/shared/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
+import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
+import ProfileHeroCard from "@/components/features/freelancer/profile/ProfileHeroCard";
+import ProfileSummaryCards from "@/components/features/freelancer/profile/ProfileSummaryCards";
+import ServicesFromOnboardingCard from "@/components/features/freelancer/profile/ServicesFromOnboardingCard";
+import FeaturedProjectsSection from "@/components/features/freelancer/profile/FeaturedProjectsSection";
+import ProfileSidebarCards from "@/components/features/freelancer/profile/ProfileSidebarCards";
+import ProjectCoverMedia from "@/components/features/freelancer/profile/ProjectCoverMedia";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useNotifications } from "@/shared/context/NotificationContext";
 import {
   getServiceLabel,
   createServiceDetail,
@@ -296,6 +286,52 @@ const normalizeValueLabel = (value) => {
   return formatSkillLabel(raw);
 };
 
+const normalizePresenceLink = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^[a-z]+:\/\//i.test(raw)) return raw;
+  if (raw.startsWith("/")) return "";
+  return `https://${raw}`;
+};
+
+const normalizeProjectLinkValue = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    return new URL(withProtocol).toString();
+  } catch {
+    return withProtocol;
+  }
+};
+
+const hasTextValue = (value) => String(value || "").trim().length > 0;
+
+const collectOnboardingPlatformLinks = (serviceDetailMap = {}) =>
+  Object.values(serviceDetailMap)
+    .flatMap((detail) => {
+      if (!detail || typeof detail !== "object") return [];
+      const links =
+        detail.platformLinks && typeof detail.platformLinks === "object"
+          ? detail.platformLinks
+          : {};
+      return Object.entries(links).map(([key, url]) => ({
+        key: String(key || "").toLowerCase().trim(),
+        url: normalizePresenceLink(url),
+      }));
+    })
+    .filter((entry) => entry.url);
+
+const isPortfolioLikeKey = (key = "") =>
+  key.includes("portfolio") ||
+  key.includes("website") ||
+  key.includes("liveproject") ||
+  key.includes("projectlink") ||
+  key === "github";
+
 const parseDelimitedValues = (value = "") =>
   String(value || "")
     .split(/[,\n]/)
@@ -395,6 +431,8 @@ const gradients = [
 const FreelancerProfile = () => {
   const navigate = useNavigate();
   const { user, authFetch } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } =
+    useNotifications();
   const [modalType, setModalType] = useState(null);
   const [skills, setSkills] = useState([]); // [{ name }]
   const [workExperience, setWorkExperience] = useState([]); // {title, period, description}
@@ -422,6 +460,14 @@ const FreelancerProfile = () => {
   const [newProjectUrl, setNewProjectUrl] = useState("");
   const [newProjectImageFile, setNewProjectImageFile] = useState(null);
   const [newProjectImagePreview, setNewProjectImagePreview] = useState("");
+  const [serviceProfileForm, setServiceProfileForm] = useState({
+    serviceKey: "",
+    serviceLabel: "",
+    serviceDescription: "",
+    coverImage: "",
+  });
+  const [savingServiceProfile, setSavingServiceProfile] = useState(false);
+  const [uploadingServiceCover, setUploadingServiceCover] = useState(false);
   const [projectCoverUploadingIndex, setProjectCoverUploadingIndex] =
     useState(null);
   const [newProjectLoading, setNewProjectLoading] = useState(false);
@@ -429,6 +475,7 @@ const FreelancerProfile = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
+  const projectPreviewAttemptRef = useRef(new Set());
   const [initialData, setInitialData] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1013,6 +1060,161 @@ const FreelancerProfile = () => {
     setModalType(null);
   };
 
+  const openEditServiceProfileModal = (serviceKey) => {
+    const serviceDetails =
+      profileDetails?.serviceDetails &&
+      typeof profileDetails.serviceDetails === "object"
+        ? profileDetails.serviceDetails
+        : {};
+    const detail =
+      serviceDetails?.[serviceKey] && typeof serviceDetails[serviceKey] === "object"
+        ? serviceDetails[serviceKey]
+        : {};
+
+    setServiceProfileForm({
+      serviceKey,
+      serviceLabel: getServiceLabel(serviceKey),
+      serviceDescription: String(
+        detail?.serviceDescription || detail?.description || ""
+      ).trim(),
+      coverImage: resolveAvatarUrl(detail?.coverImage, { allowBlob: true }),
+    });
+    setModalType("onboardingService");
+  };
+
+  const handleServiceCoverImageChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Cover image must be less than 8MB");
+      return;
+    }
+
+    setUploadingServiceCover(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+
+      const uploadResponse = await authFetch("/upload/project-image", {
+        method: "POST",
+        body: uploadData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errPayload = await uploadResponse
+          .json()
+          .catch(() => ({ message: "Failed to upload cover image" }));
+        throw new Error(errPayload?.message || "Failed to upload cover image");
+      }
+
+      const uploadPayload = await uploadResponse.json();
+      const uploadedUrl = String(uploadPayload?.data?.url || "").trim();
+      if (!uploadedUrl) {
+        throw new Error("Upload succeeded but no image URL was returned");
+      }
+
+      setServiceProfileForm((prev) => ({
+        ...prev,
+        coverImage: uploadedUrl,
+      }));
+      toast.success("Service cover image uploaded");
+    } catch (error) {
+      console.error("Service cover upload failed:", error);
+      toast.error(error?.message || "Failed to upload service cover image");
+    } finally {
+      setUploadingServiceCover(false);
+    }
+  };
+
+  const saveOnboardingServiceProfile = async () => {
+    const serviceKey = String(serviceProfileForm.serviceKey || "").trim();
+    if (!serviceKey) return;
+
+    const existingServiceDetails =
+      profileDetails?.serviceDetails &&
+      typeof profileDetails.serviceDetails === "object"
+        ? profileDetails.serviceDetails
+        : {};
+    const currentServiceDetail =
+      existingServiceDetails?.[serviceKey] &&
+      typeof existingServiceDetails[serviceKey] === "object"
+        ? existingServiceDetails[serviceKey]
+        : {};
+
+    const nextServiceDetails = {
+      ...existingServiceDetails,
+      [serviceKey]: {
+        ...createServiceDetail(),
+        ...currentServiceDetail,
+        serviceDescription: String(
+          serviceProfileForm.serviceDescription || ""
+        ).trim(),
+        coverImage: String(serviceProfileForm.coverImage || "").trim(),
+      },
+    };
+
+    const nextServices = Array.from(
+      new Set([
+        ...(Array.isArray(services) ? services : []),
+        ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
+        ...Object.keys(nextServiceDetails),
+      ])
+    )
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+
+    const nextProfileDetails = {
+      ...(profileDetails && typeof profileDetails === "object"
+        ? profileDetails
+        : {}),
+      serviceDetails: nextServiceDetails,
+      services: nextServices,
+    };
+
+    setSavingServiceProfile(true);
+    try {
+      const response = await authFetch("/auth/profile", {
+        method: "PUT",
+        body: JSON.stringify({
+          profileDetails: nextProfileDetails,
+          services: nextServices,
+        }),
+      });
+
+      if (!response.ok) {
+        const errPayload = await response
+          .json()
+          .catch(() => ({ message: "Failed to save service details" }));
+        throw new Error(errPayload?.message || "Failed to save service details");
+      }
+
+      setProfileDetails(nextProfileDetails);
+      setServices(nextServices);
+      setInitialData((prev) =>
+        prev
+          ? {
+              ...prev,
+              services: nextServices,
+            }
+          : prev
+      );
+      toast.success(`${getServiceLabel(serviceKey)} updated`);
+      setModalType(null);
+    } catch (error) {
+      console.error("Failed to save onboarding service profile:", error);
+      toast.error(error?.message || "Failed to save service details");
+    } finally {
+      setSavingServiceProfile(false);
+    }
+  };
+
   // ----- Portfolio Projects Logic -----
   const resetProjectDraft = () => {
     setNewProjectUrl("");
@@ -1024,6 +1226,122 @@ const FreelancerProfile = () => {
       return "";
     });
   };
+
+  const fetchProjectPreview = useCallback(
+    async (projectUrl) => {
+      const normalizedUrl = normalizeProjectLinkValue(projectUrl);
+      if (!normalizedUrl) return null;
+
+      try {
+        const previewResponse = await authFetch("/upload/project-preview", {
+          method: "POST",
+          body: JSON.stringify({ url: normalizedUrl }),
+          suppressToast: true,
+        });
+
+        if (!previewResponse.ok) return null;
+
+        const payload = await previewResponse.json().catch(() => null);
+        if (!payload?.success || !payload?.data) return null;
+
+        return {
+          url: payload.data.url || normalizedUrl,
+          title: payload.data.title || "",
+          image: payload.data.image || null,
+        };
+      } catch (error) {
+        console.warn("Project metadata fetch failed:", error);
+        return null;
+      }
+    },
+    [authFetch]
+  );
+
+  useEffect(() => {
+    if (!user?.id || !portfolioProjects.length) return;
+
+    const candidateLinks = Array.from(
+      new Set(
+        portfolioProjects
+          .map((project) => {
+            const normalizedLink = normalizeProjectLinkValue(project?.link);
+            const hasCoverImage = Boolean(
+              resolveAvatarUrl(project?.image, { allowBlob: true })
+            );
+            if (!normalizedLink || hasCoverImage) return "";
+            return normalizedLink;
+          })
+          .filter(Boolean)
+      )
+    ).filter(
+      (link) => !projectPreviewAttemptRef.current.has(link.toLowerCase())
+    );
+
+    if (!candidateLinks.length) return;
+
+    candidateLinks.forEach((link) =>
+      projectPreviewAttemptRef.current.add(link.toLowerCase())
+    );
+
+    let cancelled = false;
+
+    const backfillProjectPreviewImages = async () => {
+      const previewEntries = await Promise.all(
+        candidateLinks.map(async (link) => ({
+          link,
+          preview: await fetchProjectPreview(link),
+        }))
+      );
+
+      if (cancelled) return;
+
+      const updatesByLink = new Map(
+        previewEntries
+          .filter(({ preview }) => preview && (preview.image || preview.title))
+          .map(({ link, preview }) => [link.toLowerCase(), preview])
+      );
+
+      if (!updatesByLink.size) return;
+
+      setPortfolioProjects((prev) => {
+        let hasChanges = false;
+
+        const nextProjects = prev.map((project) => {
+          const normalizedLink = normalizeProjectLinkValue(project?.link);
+          if (!normalizedLink) return project;
+
+          const preview = updatesByLink.get(normalizedLink.toLowerCase());
+          if (!preview) return project;
+
+          const currentImage = resolveAvatarUrl(project?.image, {
+            allowBlob: true,
+          });
+          const currentTitle = String(project?.title || "").trim();
+          const nextImage = currentImage || String(preview.image || "").trim();
+          const nextTitle = currentTitle || String(preview.title || "").trim();
+
+          if (nextImage === currentImage && nextTitle === currentTitle) {
+            return project;
+          }
+
+          hasChanges = true;
+          return {
+            ...project,
+            image: nextImage || null,
+            title: nextTitle || project?.title || "",
+          };
+        });
+
+        return hasChanges ? nextProjects : prev;
+      });
+    };
+
+    void backfillProjectPreviewImages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [portfolioProjects, user?.id, fetchProjectPreview]);
 
   const handleProjectImageChange = (event) => {
     const file = event.target.files?.[0];
@@ -1111,11 +1429,16 @@ const FreelancerProfile = () => {
     const rawUrl = String(newProjectUrl || "").trim();
     if (!rawUrl) return;
 
-    let normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    let normalizedUrl = normalizeProjectLinkValue(rawUrl);
+    if (!normalizedUrl) {
+      toast.error("Enter a valid project URL");
+      return;
+    }
+
+    const normalizedUrlKey = normalizedUrl.toLowerCase();
     const hasDuplicate = portfolioProjects.some(
       (project) =>
-        String(project?.link || "").trim().toLowerCase() ===
-        normalizedUrl.toLowerCase()
+        normalizeProjectLinkValue(project?.link).toLowerCase() === normalizedUrlKey
     );
 
     if (hasDuplicate) {
@@ -1129,22 +1452,11 @@ const FreelancerProfile = () => {
       let previewTitle = "";
       let previewImage = null;
 
-      try {
-        const previewResponse = await authFetch("/upload/project-preview", {
-          method: "POST",
-          body: JSON.stringify({ url: normalizedUrl }),
-        });
-
-        if (previewResponse.ok) {
-          const payload = await previewResponse.json();
-          if (payload?.success && payload?.data) {
-            normalizedUrl = payload.data.url || normalizedUrl;
-            previewTitle = payload.data.title || "";
-            previewImage = payload.data.image || null;
-          }
-        }
-      } catch (error) {
-        console.warn("Project metadata fetch failed:", error);
+      const previewData = await fetchProjectPreview(normalizedUrl);
+      if (previewData) {
+        normalizedUrl = previewData.url || normalizedUrl;
+        previewTitle = previewData.title || "";
+        previewImage = previewData.image || null;
       }
 
       if (newProjectImageFile) {
@@ -1356,15 +1668,33 @@ const FreelancerProfile = () => {
     profileDetails?.availability && typeof profileDetails.availability === "object"
       ? profileDetails.availability
       : {};
-  const onboardingReliability =
-    profileDetails?.reliability && typeof profileDetails.reliability === "object"
-      ? profileDetails.reliability
-      : {};
   const onboardingServiceDetailMap =
     profileDetails?.serviceDetails &&
       typeof profileDetails.serviceDetails === "object"
       ? profileDetails.serviceDetails
       : {};
+  const onboardingPlatformLinks = collectOnboardingPlatformLinks(
+    onboardingServiceDetailMap
+  );
+  const fallbackPortfolioLink =
+    onboardingPlatformLinks.find((entry) => isPortfolioLikeKey(entry.key))?.url ||
+    "";
+  const fallbackLinkedinLink =
+    onboardingPlatformLinks.find((entry) => entry.key.includes("linkedin"))?.url ||
+    "";
+  const fallbackGithubLink =
+    onboardingPlatformLinks.find((entry) => entry.key.includes("github"))?.url ||
+    "";
+  const resolvedPortfolioLink =
+    normalizePresenceLink(portfolio.portfolioUrl) ||
+    normalizePresenceLink(onboardingIdentity?.portfolioUrl) ||
+    fallbackPortfolioLink;
+  const resolvedLinkedinLink =
+    normalizePresenceLink(portfolio.linkedinUrl) ||
+    normalizePresenceLink(onboardingIdentity?.linkedinUrl) ||
+    fallbackLinkedinLink;
+  const resolvedGithubLink =
+    normalizePresenceLink(portfolio.githubUrl) || fallbackGithubLink;
   const onboardingServiceEntries = Array.from(
     new Set([
       ...onboardingServices,
@@ -1383,6 +1713,10 @@ const FreelancerProfile = () => {
     personal.headline ||
     "Senior Full Stack Developer";
   const displayLocation = onboardingIdentityLocation || personal.location || "";
+  const displayBio =
+    String(profileDetails?.professionalBio || "").trim() ||
+    normalizeBioValue(personal.bio) ||
+    "";
   const experienceYearsLabel = String(personal.experienceYears ?? "").trim();
   const showExperienceYears =
     Boolean(experienceYearsLabel) && experienceYearsLabel !== "0";
@@ -1414,801 +1748,293 @@ const FreelancerProfile = () => {
   const effectiveWorkExperience = workExperience.length
     ? workExperience
     : onboardingDerivedWorkExperience;
+  const serviceProfileCoverage = onboardingServiceEntries.length
+    ? onboardingServiceEntries.filter(({ detail }) => {
+        const description = String(
+          detail?.serviceDescription || detail?.description || ""
+        ).trim();
+        const coverImage = resolveAvatarUrl(detail?.coverImage);
+        return Boolean(description || coverImage);
+      }).length / onboardingServiceEntries.length
+    : 0;
+  const skillsCoverage = Math.min(
+    toUniqueSkillNames(skills.map((entry) => entry?.name || entry)).length,
+    5
+  ) / 5;
+  const linkCoverage =
+    Math.min(
+      [resolvedPortfolioLink, resolvedLinkedinLink, resolvedGithubLink].filter(
+        Boolean
+      ).length,
+      2
+    ) / 2;
+  const availabilityCoverage =
+    [
+      hasTextValue(onboardingAvailability?.hoursPerWeek),
+      hasTextValue(onboardingAvailability?.workingSchedule),
+      hasTextValue(onboardingAvailability?.startTimeline),
+    ].filter(Boolean).length / 3;
+  const policiesCoverage =
+    [
+      Boolean(profileDetails?.deliveryPolicyAccepted),
+      Boolean(profileDetails?.communicationPolicyAccepted),
+      hasTextValue(profileDetails?.acceptInProgressProjects),
+    ].filter(Boolean).length / 3;
+
+  const profileCompletionCriteria = [
+    {
+      label: "Profile photo",
+      score: resolveAvatarUrl(personal.avatar) ? 1 : 0,
+      weight: 8,
+    },
+    {
+      label: "Professional title",
+      score: hasTextValue(onboardingIdentity?.professionalTitle) ? 1 : 0,
+      weight: 8,
+    },
+    {
+      label: "Professional bio",
+      score: hasTextValue(profileDetails?.professionalBio || personal.bio)
+        ? 1
+        : 0,
+      weight: 10,
+    },
+    {
+      label: "Location details",
+      score:
+        hasTextValue(onboardingIdentity?.country) &&
+        hasTextValue(onboardingIdentity?.city)
+          ? 1
+          : 0,
+      weight: 8,
+    },
+    {
+      label: "Services selected",
+      score: onboardingServiceEntries.length > 0 ? 1 : 0,
+      weight: 12,
+    },
+    {
+      label: "Service description/cover",
+      score: serviceProfileCoverage,
+      weight: 10,
+    },
+    {
+      label: "Skills and tech stack",
+      score: skillsCoverage,
+      weight: 10,
+    },
+    {
+      label: "Availability setup",
+      score: availabilityCoverage,
+      weight: 8,
+    },
+    {
+      label: "Profile links",
+      score: linkCoverage,
+      weight: 8,
+    },
+    {
+      label: "Featured project",
+      score: portfolioProjects.length > 0 ? 1 : 0,
+      weight: 8,
+    },
+    {
+      label: "Industry focus",
+      score: onboardingGlobalIndustry.length > 0 ? 1 : 0,
+      weight: 5,
+    },
+    {
+      label: "Policies accepted",
+      score: policiesCoverage,
+      weight: 5,
+    },
+  ];
+  const profileCompletionRawScore = profileCompletionCriteria.reduce(
+    (total, item) => total + item.score * item.weight,
+    0
+  );
+  const profileCompletionPercent = Math.round(
+    Math.max(0, Math.min(100, profileCompletionRawScore))
+  );
+  const completedCompletionSections = profileCompletionCriteria.filter(
+    (item) => item.score >= 0.999
+  ).length;
+  const incompleteCompletionLabels = profileCompletionCriteria
+    .filter((item) => item.score < 0.999)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 3)
+    .map((item) => item.label);
+  const profileCompletionMessage =
+    profileCompletionPercent >= 90
+      ? "Your profile is client-ready."
+      : profileCompletionPercent >= 70
+        ? "Almost there. Finish a few details to boost trust."
+        : "Complete key sections to improve visibility.";
+  const handleDashboardHeaderNotificationClick = (notification) => {
+    if (!notification) return;
+    markAsRead(notification.id);
+
+    if (notification.type === "chat" && notification.data) {
+      const service = notification.data.service || "";
+      const parts = service.split(":");
+      let projectId = notification.data.projectId;
+      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
+        projectId = parts[1];
+      }
+      navigate(
+        projectId
+          ? `/freelancer/messages?projectId=${projectId}`
+          : "/freelancer/messages"
+      );
+      return;
+    }
+
+    if (notification.type === "proposal") {
+      navigate("/freelancer/proposals");
+      return;
+    }
+
+    if (
+      (notification.type === "meeting_scheduled" ||
+        notification.type === "task_completed" ||
+        notification.type === "task_verified" ||
+        notification.type === "task_unverified") &&
+      notification.data?.projectId
+    ) {
+      navigate(`/freelancer/project/${notification.data.projectId}`);
+    }
+  };
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-background text-foreground pb-20">
-        <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-          <FreelancerTopBar label="Profile" />
-          <div className="rounded-3xl border border-border/50 bg-card p-10">
-            <div className="flex items-center justify-center gap-3 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Loading your profile...</span>
+      <div className="min-h-screen bg-secondary text-foreground flex flex-col">
+        <DashboardHeader
+          userName={user?.fullName || user?.name || personal.name}
+          tabLabel="Profile"
+          notifications={notifications}
+          unreadCount={unreadCount}
+          markAllAsRead={markAllAsRead}
+          handleNotificationClick={handleDashboardHeaderNotificationClick}
+        />
+        <main className="flex-1 overflow-y-auto pb-20">
+          <div className="w-full px-6 py-8">
+            <div className="rounded-3xl border border-border/50 bg-card p-10">
+              <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Loading your profile...</span>
+              </div>
             </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-        <FreelancerTopBar label="Profile" />
+    <div className="min-h-screen bg-secondary text-foreground flex flex-col">
+      <DashboardHeader
+        userName={user?.fullName || user?.name || personal.name}
+        tabLabel="Profile"
+        notifications={notifications}
+        unreadCount={unreadCount}
+        markAllAsRead={markAllAsRead}
+        handleNotificationClick={handleDashboardHeaderNotificationClick}
+      />
+      <main className="flex-1 overflow-y-auto pb-20">
+        <div className="w-full px-6 py-8 space-y-8">
 
-        {/* Header Card */}
-        <div className="relative rounded-3xl overflow-hidden bg-card border border-border/50 shadow-sm group/header">
-          {/* Gradient Banner */}
-          <div className={`h-44 relative ${randomGradient}`}>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" />
-          </div>
-
-          <div className="px-8 pb-10 flex flex-col md:flex-row items-end gap-6 -mt-20 relative z-10">
-            {/* Avatar */}
-            <div
-              className="relative group/avatar cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <div className="w-32 h-32 md:w-36 md:h-36 rounded-3xl shadow-xl">
-                <div className="w-full h-full rounded-[18px] overflow-hidden bg-muted relative">
-                  {personal.avatar ? (
-                    <img
-                      src={personal.avatar}
-                      alt={personal.name}
-                      className="w-full h-full object-cover"
-                      onError={() =>
-                        setPersonal((prev) =>
-                          prev.avatar ? { ...prev, avatar: "" } : prev
-                        )
-                      }
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-secondary text-3xl font-bold text-secondary-foreground">
-                      {initials}
-                    </div>
-                  )}
-                  {/* Upload Overlay */}
-                  <div
-                    className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${uploadingImage
-                      ? "opacity-100"
-                      : "opacity-0 group-hover/avatar:opacity-100"
-                      }`}
-                  >
-                    {uploadingImage ? (
-                      <Loader2 className="animate-spin text-white" />
-                    ) : (
-                      <Camera className="text-white" />
-                    )}
-                  </div>
-                </div>
-              </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleImageUpload}
-              />
-
-              {/* Verified Badge / Available */}
-              {personal.available && (
-                <div
-                  className="absolute bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-full border-4 border-card"
-                  title="Available for work"
-                >
-                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
-                </div>
-              )}
-            </div>
-
-            {/* Info */}
-            {/* Info */}
-            <div className="flex-1 flex flex-col md:flex-row items-end justify-between gap-4 md:mb-1">
-              <div className="flex flex-col gap-1 text-center md:text-left w-full md:w-auto">
-                {/* Name & Badge */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                  <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-                    {personal.name || "Your Name"}
-                  </h1>
-                  {personal.available && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold tracking-wide border border-emerald-500/30">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      AVAILABLE FOR WORK
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-lg text-gray-300 font-medium">
-                  {displayHeadline}
-                </p>
-
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-400 mt-1">
-                  {displayLocation && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>{displayLocation}</span>
-                    </div>
-                  )}
-                  {/* Experience as a dot-separated item or just next to it? Image didn't show exp clearly but keeping it if needed. */}
-                  {showExperienceYears && (
-                    <>
-                      <span className="hidden md:inline">•</span>
-                      <span>{experienceYearsLabel} Years Exp.</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Socials & Actions */}
-              <div className="flex items-center gap-3">
-                {portfolio.githubUrl && (
-                  <a
-                    href={portfolio.githubUrl}
-                    target="_blank"
-                    className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
-                    rel="noreferrer"
-                  >
-                    <Github className="w-5 h-5" />
-                  </a>
-                )}
-                {portfolio.linkedinUrl && (
-                  <a
-                    href={portfolio.linkedinUrl}
-                    target="_blank"
-                    className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
-                    rel="noreferrer"
-                  >
-                    <Linkedin className="w-5 h-5" />
-                  </a>
-                )}
-                {portfolio.portfolioUrl && (
-                  <a
-                    href={portfolio.portfolioUrl}
-                    target="_blank"
-                    className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
-                    rel="noreferrer"
-                  >
-                    <Globe className="w-5 h-5" />
-                  </a>
-                )}
-                {portfolio.resume && (
-                  <a
-                    href={portfolio.resume}
-                    target="_blank"
-                    className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
-                    rel="noreferrer"
-                    title="View Resume"
-                  >
-                    <FileText className="w-5 h-5" />
-                  </a>
-                )}
-                {/* Edit Skills/Socials Modal Trigger - keeping functionality */}
-                <button
-                  onClick={() => setModalType("portfolio")}
-                  className="p-2.5 text-primary hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/20"
-                  title="Add/Edit Social Links"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Save Button */}
-            {isDirty && (
-              <Button
-                variant="default"
-                size="sm"
-                className="absolute top-4 right-14 bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/20 transition-all font-semibold shadow-lg animate-in fade-in zoom-in duration-300"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : null}
-                {isSaving ? "Saving..." : "Save Profile"}
-              </Button>
-            )}
-
-            {/* Edit Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/10"
-              onClick={openEditPersonalModal}
-            >
-              <Edit2 className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
+        <ProfileHeroCard
+          randomGradient={randomGradient}
+          fileInputRef={fileInputRef}
+          personal={personal}
+          setPersonal={setPersonal}
+          initials={initials}
+          uploadingImage={uploadingImage}
+          handleImageUpload={handleImageUpload}
+          displayHeadline={displayHeadline}
+          displayLocation={displayLocation}
+          displayBio={displayBio}
+          showExperienceYears={showExperienceYears}
+          experienceYearsLabel={experienceYearsLabel}
+          resolvedGithubLink={resolvedGithubLink}
+          resolvedLinkedinLink={resolvedLinkedinLink}
+          resolvedPortfolioLink={resolvedPortfolioLink}
+          resumeLink={portfolio.resume}
+          isDirty={isDirty}
+          handleSave={handleSave}
+          isSaving={isSaving}
+          openEditPersonalModal={openEditPersonalModal}
+          openPortfolioModal={() => setModalType("portfolio")}
+        />
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <div className="xl:col-span-8 space-y-6">
-            <Card className="p-6 md:p-7 space-y-4 relative group">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <span className="text-primary">
-                    <User className="w-5 h-5" />
-                  </span>
-                  About And Intro
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={openEditPersonalModal}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {profileDetails?.professionalBio ||
-                  personal.bio ||
-                  personal.headline ||
-                  "Complete onboarding to add your professional summary."}
-              </p>
-            </Card>
+            <ProfileSummaryCards
+              profileDetails={profileDetails}
+              openFullProfileEditor={openFullProfileEditor}
+              onboardingRoleLabel={onboardingRoleLabel}
+              onboardingAvailability={onboardingAvailability}
+              normalizeValueLabel={normalizeValueLabel}
+            />
 
-            <Card className="p-6 md:p-7 space-y-5">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <span className="text-primary">
-                    <Briefcase className="w-5 h-5" />
-                  </span>
-                  Onboarding Snapshot
-                </h3>
-                <Button variant="outline" size="sm" onClick={openFullProfileEditor}>
-                  Edit All Details
-                </Button>
-              </div>
+            <ServicesFromOnboardingCard
+              onboardingServiceEntries={onboardingServiceEntries}
+              getServiceLabel={getServiceLabel}
+              resolveAvatarUrl={resolveAvatarUrl}
+              collectServiceSpecializations={collectServiceSpecializations}
+              toUniqueLabels={toUniqueLabels}
+              normalizeValueLabel={normalizeValueLabel}
+              openEditServiceProfileModal={openEditServiceProfileModal}
+            />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Work Model
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {onboardingRoleLabel}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Availability
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {normalizeValueLabel(onboardingAvailability.hoursPerWeek) ||
-                      "Not set"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {normalizeValueLabel(onboardingAvailability.workingSchedule) ||
-                      "Schedule not set"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Start Timeline
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {normalizeValueLabel(onboardingAvailability.startTimeline) ||
-                      "Not set"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                    Reliability
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {normalizeValueLabel(onboardingReliability.missedDeadlines) ||
-                      "Not set"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {normalizeValueLabel(onboardingReliability.delayHandling) ||
-                      "Delay handling not set"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50">
-                  Delivery Policy:{" "}
-                  {profileDetails?.deliveryPolicyAccepted ? "Accepted" : "Not set"}
-                </span>
-                <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50">
-                  Communication Policy:{" "}
-                  {profileDetails?.communicationPolicyAccepted
-                    ? "Accepted"
-                    : "Not set"}
-                </span>
-                <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50">
-                  Accept In-Progress Projects:{" "}
-                  {normalizeValueLabel(profileDetails?.acceptInProgressProjects) ||
-                    "Not set"}
-                </span>
-              </div>
-            </Card>
-
-            <Card className="p-6 md:p-7 space-y-4">
-              <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <span className="text-primary">
-                  <Cpu className="w-5 h-5" />
-                </span>
-                Services From Onboarding
-              </h3>
-
-              {onboardingServiceEntries.length > 0 ? (
-                <div className="space-y-3">
-                  {onboardingServiceEntries.map(({ serviceKey, detail }) => {
-                    const serviceTitle = getServiceLabel(serviceKey);
-                    const specializationTags = collectServiceSpecializations(detail);
-                    const nicheTags = toUniqueLabels([
-                      ...(Array.isArray(detail?.niches) ? detail.niches : []),
-                      detail?.otherNiche || "",
-                    ]);
-                    const projectList = Array.isArray(detail?.projects)
-                      ? detail.projects
-                      : [];
-
-                    return (
-                      <div
-                        key={serviceKey}
-                        className="rounded-xl border border-border/70 bg-secondary/20 p-4 space-y-3"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="font-semibold text-foreground">
-                            {serviceTitle}
-                          </h4>
-                          <span className="text-xs text-muted-foreground">
-                            {normalizeValueLabel(detail?.experienceYears) ||
-                              "Experience not set"}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-                          <p>
-                            Level:{" "}
-                            <span className="text-foreground">
-                              {normalizeValueLabel(detail?.workingLevel) ||
-                                "Not set"}
-                            </span>
-                          </p>
-                          <p>
-                            Complexity:{" "}
-                            <span className="text-foreground">
-                              {normalizeValueLabel(detail?.projectComplexity) ||
-                                "Not set"}
-                            </span>
-                          </p>
-                          <p>
-                            Avg Project Price:{" "}
-                            <span className="text-foreground">
-                              {normalizeValueLabel(detail?.averageProjectPrice) ||
-                                "Not set"}
-                            </span>
-                          </p>
-                          <p>
-                            Industry Focus:{" "}
-                            <span className="text-foreground">
-                              {normalizeValueLabel(detail?.industryFocus) ||
-                                "Not set"}
-                            </span>
-                          </p>
-                        </div>
-
-                        {nicheTags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {nicheTags.map((tag) => (
-                              <span
-                                key={`${serviceKey}-niche-${tag}`}
-                                className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs text-foreground"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {specializationTags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {specializationTags.map((tag) => (
-                              <span
-                                key={`${serviceKey}-spec-${tag}`}
-                                className="px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-xs text-primary"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {projectList.length > 0 && (
-                          <div className="rounded-lg border border-border/60 bg-background/70 p-3 space-y-2">
-                            <p className="text-xs font-medium text-foreground">
-                              Projects Added In Onboarding
-                            </p>
-                            <div className="space-y-1.5">
-                              {projectList.map((project, index) => (
-                                <div
-                                  key={`${serviceKey}-project-${index}`}
-                                  className="text-xs text-muted-foreground"
-                                >
-                                  <span className="text-foreground font-medium">
-                                    {project?.title || "Project"}
-                                  </span>
-                                  {project?.timeline
-                                    ? ` | ${normalizeValueLabel(project.timeline)}`
-                                    : ""}
-                                  {project?.budget
-                                    ? ` | ${normalizeValueLabel(project.budget)}`
-                                    : ""}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No service data from onboarding yet.
-                </p>
-              )}
-            </Card>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <span className="text-primary">
-                    <Rocket className="w-5 h-5" />
-                  </span>
-                  Featured Projects
-                </h3>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary flex items-center gap-1"
-                    onClick={() => {
-                      resetProjectDraft();
-                      setModalType("addProject");
-                    }}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Project
-                  </Button>
-                  <button
-                    className="text-primary text-sm font-medium hover:underline"
-                    onClick={() => setModalType("viewAllProjects")}
-                  >
-                    View All
-                  </button>
-                </div>
-              </div>
-
-              {portfolioProjects.length > 0 ? (
-                <div className="relative px-12">
-                  <Carousel
-                    opts={{
-                      align: "start",
-                      loop: true,
-                    }}
-                    className="w-full"
-                  >
-                    <CarouselContent className="-ml-4">
-                      {portfolioProjects.map((project, idx) => (
-                        <CarouselItem key={idx} className="pl-4 md:basis-1/2">
-                          <div className="group relative rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all h-full">
-                            <div className="aspect-video bg-muted relative overflow-hidden">
-                              {project.image ? (
-                                <img
-                                  src={project.image}
-                                  alt={project.title}
-                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-4xl bg-secondary/30">
-                                  PRJ
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                {project.link ? (
-                                  <a
-                                    href={project.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 bg-white rounded-full text-black hover:scale-110 transition-transform"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                  </a>
-                                ) : (
-                                  <span className="p-2 bg-white/70 rounded-full text-black/60 cursor-not-allowed">
-                                    <ExternalLink className="w-4 h-4" />
-                                  </span>
-                                )}
-                                <label
-                                  htmlFor={`project-cover-main-${idx}`}
-                                  className="p-2 bg-white rounded-full text-black hover:scale-110 transition-transform cursor-pointer"
-                                  title="Upload cover image"
-                                >
-                                  {projectCoverUploadingIndex === idx ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Camera className="w-4 h-4" />
-                                  )}
-                                </label>
-                                <input
-                                  id={`project-cover-main-${idx}`}
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(event) =>
-                                    handleProjectCoverInputChange(idx, event)
-                                  }
-                                />
-                                <button
-                                  onClick={() => removeProject(idx)}
-                                  className="p-2 bg-destructive text-white rounded-full hover:scale-110 transition-transform"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                            <div className="p-3 flex items-center justify-between gap-3">
-                              <h4
-                                className="font-semibold truncate text-sm flex-1"
-                                title={project.title || project.link}
-                              >
-                                {project.title || "Project"}
-                              </h4>
-                              {project.link ? (
-                                <a
-                                  href={project.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center justify-center p-2 rounded-lg bg-secondary/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300"
-                                  title="Visit Project"
-                                >
-                                  <ExternalLink className="w-4 h-4" />
-                                </a>
-                              ) : (
-                                <span className="flex items-center justify-center p-2 rounded-lg bg-secondary/40 text-muted-foreground/60 cursor-not-allowed">
-                                  <ExternalLink className="w-4 h-4" />
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </CarouselItem>
-                      ))}
-                    </CarouselContent>
-                    <CarouselPrevious className="-left-4" />
-                    <CarouselNext className="-right-4" />
-                  </Carousel>
-                </div>
-              ) : (
-                <div className="aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center p-4 text-center hover:bg-secondary/10 transition-colors">
-                  <p className="text-muted-foreground text-sm">
-                    No projects added yet. Click "Add Project" to get started.
-                  </p>
-                </div>
-              )}
-            </div>
+            <FeaturedProjectsSection
+              portfolioProjects={portfolioProjects}
+              projectCoverUploadingIndex={projectCoverUploadingIndex}
+              handleProjectCoverInputChange={handleProjectCoverInputChange}
+              removeProject={removeProject}
+              onAddProject={() => {
+                resetProjectDraft();
+                setModalType("addProject");
+              }}
+              onViewAllProjects={() => setModalType("viewAllProjects")}
+            />
           </div>
 
-          <div className="xl:col-span-4 space-y-6">
-            <Card className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <span className="text-primary">
-                    <MapPin className="w-5 h-5" />
-                  </span>
-                  Identity Details
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={openEditPersonalModal}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <p className="text-muted-foreground">
-                  Username:{" "}
-                  <span className="text-foreground">
-                    {onboardingIdentity?.username || "Not set"}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Professional Title:{" "}
-                  <span className="text-foreground">
-                    {onboardingIdentity?.professionalTitle ||
-                      personal.headline ||
-                      "Not set"}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Country:{" "}
-                  <span className="text-foreground">
-                    {onboardingIdentity?.country || "Not set"}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  State/City:{" "}
-                  <span className="text-foreground">
-                    {onboardingIdentity?.city || "Not set"}
-                  </span>
-                </p>
-              </div>
-
-              {onboardingLanguages.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {onboardingLanguages.map((language) => (
-                    <span
-                      key={`language-${language}`}
-                      className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50"
-                    >
-                      {language}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </Card>
-
-            <Card className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <span className="text-primary">
-                    <Cpu className="w-5 h-5" />
-                  </span>
-                  Skills And Tech Stack
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setModalType("skill")}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {skills.length > 0 ? (
-                  skills.map((s, i) => (
-                    <div key={i} className="group relative">
-                      <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50 cursor-default block">
-                        {s.name}
-                      </span>
-                      <Trash2
-                        className="w-3 h-3 absolute -top-1 -right-1 text-destructive opacity-0 group-hover:opacity-100 cursor-pointer bg-card rounded-full"
-                        onClick={() => deleteSkill(i)}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    No skills added.
-                  </p>
-                )}
-              </div>
-            </Card>
-
-            <Card className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <span className="text-primary">
-                    <Globe className="w-5 h-5" />
-                  </span>
-                  Industry And Presence
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setModalType("portfolio")}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {onboardingGlobalIndustry.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {onboardingGlobalIndustry.map((industry) => (
-                    <span
-                      key={`industry-${industry}`}
-                      className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs text-foreground"
-                    >
-                      {industry}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-2 text-sm">
-                <p className="text-muted-foreground">
-                  Portfolio:{" "}
-                  <span className="text-foreground break-all">
-                    {portfolio.portfolioUrl ||
-                      onboardingIdentity?.portfolioUrl ||
-                      "Not set"}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  LinkedIn:{" "}
-                  <span className="text-foreground break-all">
-                    {portfolio.linkedinUrl ||
-                      onboardingIdentity?.linkedinUrl ||
-                      "Not set"}
-                  </span>
-                </p>
-              </div>
-            </Card>
-
-            <Card className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <span className="text-primary">
-                    <Briefcase className="w-5 h-5" />
-                  </span>
-                  Work Experience
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={openCreateExperienceModal}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="relative border-l border-border ml-3.5 space-y-8 py-2">
-                {effectiveWorkExperience.length > 0 ? (
-                  effectiveWorkExperience.map((exp, i) => {
-                    const [position, company] = splitExperienceTitle(exp.title);
-                    return (
-                      <div
-                        key={i}
-                        className={`relative pl-8 group ${workExperience.length > 0 ? "cursor-pointer" : "cursor-default"}`}
-                        onClick={() => {
-                          if (workExperience.length > 0) {
-                            openEditExperienceModal(exp, i);
-                          }
-                        }}
-                      >
-                        <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-primary bg-background group-hover:bg-primary transition-colors" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary mb-0.5 block">
-                          {exp.period || "Date N/A"}
-                        </span>
-                        <h4 className="font-bold text-foreground leading-tight">
-                          {position || "Position"}
-                        </h4>
-                        <p className="text-xs text-muted-foreground font-medium mb-1">
-                          {company || "Company"}
-                        </p>
-                        {exp.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {exp.description}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="pl-6 text-sm text-muted-foreground">
-                    No experience added.
-                  </p>
-                )}
-              </div>
-            </Card>
-          </div>
+          <ProfileSidebarCards
+            profileCompletionPercent={profileCompletionPercent}
+            completedCompletionSections={completedCompletionSections}
+            profileCompletionCriteriaLength={profileCompletionCriteria.length}
+            profileCompletionMessage={profileCompletionMessage}
+            incompleteCompletionLabels={incompleteCompletionLabels}
+            openEditPersonalModal={openEditPersonalModal}
+            onboardingIdentity={onboardingIdentity}
+            personal={personal}
+            onboardingLanguages={onboardingLanguages}
+            skills={skills}
+            deleteSkill={deleteSkill}
+            openSkillModal={() => setModalType("skill")}
+            onboardingGlobalIndustry={onboardingGlobalIndustry}
+            resolvedPortfolioLink={resolvedPortfolioLink}
+            resolvedLinkedinLink={resolvedLinkedinLink}
+            openPortfolioModal={() => setModalType("portfolio")}
+            openCreateExperienceModal={openCreateExperienceModal}
+            effectiveWorkExperience={effectiveWorkExperience}
+            workExperience={workExperience}
+            openEditExperienceModal={openEditExperienceModal}
+            splitExperienceTitle={splitExperienceTitle}
+          />
         </div>
       </div>
-
+      </main>
       {/* Modal */}
       {modalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
           <div
             className={`w-full rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "viewAllProjects"
               ? "max-w-[60%] h-[90vh] flex flex-col"
-              : "max-w-md"
+              : modalType === "onboardingService"
+                ? "max-w-2xl"
+                : "max-w-md"
               }`}
           >
             {modalType === "skill" ? (
@@ -2276,6 +2102,92 @@ const FreelancerProfile = () => {
                     className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors"
                   >
                     Add
+                  </button>
+                </div>
+              </>
+            ) : modalType === "onboardingService" ? (
+              <>
+                <h1 className="text-lg font-semibold text-foreground">
+                  Edit Service Profile
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Update description and cover image for{" "}
+                  <span className="text-foreground font-medium">
+                    {serviceProfileForm.serviceLabel || "this service"}
+                  </span>
+                  .
+                </p>
+                <div className="mt-4 space-y-4">
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Service Description
+                    <textarea
+                      value={serviceProfileForm.serviceDescription}
+                      onChange={(event) =>
+                        setServiceProfileForm((prev) => ({
+                          ...prev,
+                          serviceDescription: event.target.value,
+                        }))
+                      }
+                      rows={5}
+                      placeholder="Describe what you deliver for this service."
+                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                    />
+                  </label>
+
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                      Service Cover Image
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="mt-2 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-xl file:border file:border-border file:bg-card file:px-3 file:py-1 file:text-xs file:font-semibold file:text-foreground"
+                      onChange={handleServiceCoverImageChange}
+                    />
+                    {serviceProfileForm.coverImage ? (
+                      <div className="mt-3 overflow-hidden rounded-xl border border-border">
+                        <img
+                          src={serviceProfileForm.coverImage}
+                          alt={`${serviceProfileForm.serviceLabel || "Service"} cover`}
+                          className="h-44 w-full object-cover"
+                        />
+                        <div className="p-2 border-t border-border bg-background/60 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setServiceProfileForm((prev) => ({
+                                ...prev,
+                                coverImage: "",
+                              }))
+                            }
+                            className="rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                          >
+                            Remove Cover
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModalType(null)}
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveOnboardingServiceProfile}
+                    disabled={savingServiceProfile || uploadingServiceCover}
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  >
+                    {(savingServiceProfile || uploadingServiceCover) && (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    )}
+                    Save
                   </button>
                 </div>
               </>
@@ -2359,17 +2271,12 @@ const FreelancerProfile = () => {
                           className="group flex flex-col p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
                         >
                           <div className="w-full h-40 rounded-lg overflow-hidden bg-muted mb-2">
-                            {project.image ? (
-                              <img
-                                src={project.image}
-                                alt={project.title}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-2xl bg-secondary/50">
-                                💻
-                              </div>
-                            )}
+                            <ProjectCoverMedia
+                              project={project}
+                              containerClassName="h-full w-full"
+                              imageClassName="h-full w-full object-cover"
+                              fallbackTitleClassName="text-xl"
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4
@@ -2976,3 +2883,5 @@ const FreelancerProfileWrapper = () => {
 };
 
 export default FreelancerProfileWrapper;
+
+

@@ -83,6 +83,7 @@ import {
 import {
     ServicesStep,
     ServicePlatformLinksStep,
+    ServiceProfileStep,
     ServiceExperienceStep,
     ServiceLevelStep,
     ServiceProjectsStep,
@@ -304,6 +305,7 @@ const buildRemoteProfilePhoto = (value, name = "Profile Photo") => {
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
+const SERVICE_COVER_UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
 
 const formatFileSize = (bytes) => {
     if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -436,6 +438,7 @@ const FreelancerMultiStepForm = () => {
     const usernameDebounceRef = useRef(null);
     const [techStackOtherDrafts, setTechStackOtherDrafts] = useState({});
     const [groupOtherDrafts, setGroupOtherDrafts] = useState({});
+    const [serviceCoverUploadMap, setServiceCoverUploadMap] = useState({});
     const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
     const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
     const [stateOptions, setStateOptions] = useState([]);
@@ -505,6 +508,55 @@ const FreelancerMultiStepForm = () => {
         [authFetch],
     );
 
+    const uploadServiceCoverImage = useCallback(
+        async (file) => {
+            if (!(typeof File !== "undefined" && file instanceof File)) {
+                throw new Error("Please select a valid image file.");
+            }
+
+            if (!String(file.type || "").startsWith("image/")) {
+                throw new Error("Only image files are allowed for service cover.");
+            }
+
+            if (file.size > SERVICE_COVER_UPLOAD_MAX_BYTES) {
+                throw new Error(
+                    `Cover image must be ${formatFileSize(SERVICE_COVER_UPLOAD_MAX_BYTES)} or smaller.`,
+                );
+            }
+
+            if (!user) {
+                throw new Error("Please sign in before uploading service cover images.");
+            }
+
+            const uploadData = new FormData();
+            uploadData.append("file", file);
+
+            const response = await authFetch("/upload/project-image", {
+                method: "POST",
+                body: uploadData,
+            });
+
+            if (!response.ok) {
+                let message = "Failed to upload service cover image.";
+                try {
+                    const payload = await response.json();
+                    message = payload?.error?.message || payload?.message || message;
+                } catch {
+                    // Keep default message
+                }
+                throw new Error(message);
+            }
+
+            const payload = await response.json().catch(() => ({}));
+            const uploadedUrl = String(payload?.data?.url || "").trim();
+            if (!uploadedUrl) {
+                throw new Error("Cover image upload succeeded but no URL was returned.");
+            }
+            return uploadedUrl;
+        },
+        [authFetch, user],
+    );
+
     // ── Steps sequence ──────────────────────────────────────────────────
     const steps = useMemo(() => {
         const sequence = [];
@@ -532,6 +584,12 @@ const FreelancerMultiStepForm = () => {
             sequence.push({
                 key: `svc-${serviceKey}-platform-links`,
                 type: "servicePlatformLinks",
+                serviceKey,
+            });
+
+            sequence.push({
+                key: `svc-${serviceKey}-profile`,
+                type: "serviceProfile",
                 serviceKey,
             });
 
@@ -1065,6 +1123,8 @@ const FreelancerMultiStepForm = () => {
                 return "Services complete";
             case "servicePlatformLinks":
                 return `${serviceLabel}: Platform links`;
+            case "serviceProfile":
+                return `${serviceLabel}: Description & cover`;
             case "serviceExperience":
                 return `${serviceLabel}: Experience`;
             case "serviceProjects":
@@ -1247,6 +1307,24 @@ const FreelancerMultiStepForm = () => {
         if (advanceDelay !== null) queueAdvance(advanceDelay);
     };
 
+    const handleServiceCoverSelect = async (serviceKey, file) => {
+        if (!serviceKey) return;
+
+        setServiceCoverUploadMap((prev) => ({ ...prev, [serviceKey]: true }));
+        try {
+            const uploadedUrl = await uploadServiceCoverImage(file);
+            updateServiceField(serviceKey, "coverImage", uploadedUrl);
+            toast.success(`${getServiceLabel(serviceKey)} cover image uploaded.`);
+        } catch (error) {
+            toast.error(error?.message || "Failed to upload service cover image.");
+        } finally {
+            setServiceCoverUploadMap((prev) => ({
+                ...prev,
+                [serviceKey]: false,
+            }));
+        }
+    };
+
     const validateServicePlatformLinksForService = useCallback((data, serviceKey) => {
         const detail = data?.serviceDetails?.[serviceKey];
         const linkFields = getServicePlatformProfileFields(serviceKey);
@@ -1384,6 +1462,10 @@ const FreelancerMultiStepForm = () => {
             case "servicePlatformLinks": {
                 return validateServicePlatformLinksForService(data, step.serviceKey);
             }
+            case "serviceProfile":
+                return serviceCoverUploadMap[step.serviceKey]
+                    ? "Please wait for the service cover image upload to finish."
+                    : "";
             case "serviceWelcome":
             case "serviceEnd":
                 return "";
@@ -1490,6 +1572,16 @@ const FreelancerMultiStepForm = () => {
     // ── Submit ──────────────────────────────────────────────────────────
     const handleSubmit = async () => {
         if (isSubmitting) return;
+
+        const uploadingServiceKey = Object.entries(serviceCoverUploadMap).find(
+            ([, uploading]) => uploading,
+        )?.[0];
+        if (uploadingServiceKey) {
+            const message = `Please wait for ${getServiceLabel(uploadingServiceKey)} cover image upload to finish.`;
+            setStepError(message);
+            toast.error(message);
+            return;
+        }
 
         const validation = validateStep(currentStep, formData);
         if (validation) {
@@ -1610,6 +1702,7 @@ const FreelancerMultiStepForm = () => {
             if (user) {
                 const updatePayload = {
                     profileDetails: freelancerProfile,
+                    services: formData.selectedServices,
                     skills: onboardingSkills,
                     portfolioProjects: onboardingPortfolioProjects,
                     location: onboardingLocation,
@@ -1646,6 +1739,7 @@ const FreelancerMultiStepForm = () => {
                 password: formData.password,
                 role: "FREELANCER",
                 freelancerProfile,
+                services: formData.selectedServices,
                 skills: onboardingSkills,
                 portfolioProjects: onboardingPortfolioProjects,
                 location: onboardingLocation,
@@ -1762,7 +1856,7 @@ const FreelancerMultiStepForm = () => {
         const footer = (
             <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
                 <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-secondary" />
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-primary-foreground" />
                 <div className="relative mx-auto max-w-4xl px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 flex justify-center">
                     <button
                         type="button"
@@ -1771,7 +1865,7 @@ const FreelancerMultiStepForm = () => {
                         className={cn(
                             "pointer-events-auto min-w-[180px] px-8 py-3 rounded-xl font-semibold transition-all",
                             disabled
-                                ? "bg-transparent border border-white/10 text-white/40 cursor-not-allowed"
+                                ? "bg-primary-foreground border border-white/10 text-white/40 cursor-not-allowed"
                                 : "bg-primary border border-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
                         )}
                     >
@@ -1896,6 +1990,15 @@ const FreelancerMultiStepForm = () => {
                 );
             case "servicePlatformLinks":
                 return <ServicePlatformLinksStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
+            case "serviceProfile":
+                return (
+                    <ServiceProfileStep
+                        {...sharedProps}
+                        serviceKey={currentStep.serviceKey}
+                        onUploadServiceCover={handleServiceCoverSelect}
+                        isCoverUploading={Boolean(serviceCoverUploadMap[currentStep.serviceKey])}
+                    />
+                );
             case "serviceExperience":
                 return <ServiceExperienceStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceProjects":
@@ -2009,7 +2112,7 @@ const FreelancerMultiStepForm = () => {
     return (
         <div className="h-screen w-full bg-secondary text-foreground relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
             <div className="relative z-10 flex flex-col h-full">
-                <div className="relative z-50 bg-transparent border-b border-white/5 shrink-0">
+                <div className="relative z-50 bg-primary-foreground border-b border-white/5 shrink-0">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 w-full">
                         <div
                             className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_14px_rgba(253,224,71,0.8)]"
@@ -2022,7 +2125,7 @@ const FreelancerMultiStepForm = () => {
                             <button
                                 type="button"
                                 onClick={handleDashboardNavigateFromSettings}
-                                className="absolute left-6 top-1/2 -translate-y-1/2 h-10 px-3 flex items-center gap-1.5 rounded-full bg-transparent border border-white/10 hover:bg-white/5 text-white/90 transition-all backdrop-blur-md z-20 group text-sm font-medium"
+                                className="absolute left-6 top-1/2 -translate-y-1/2 h-10 px-3 flex items-center gap-1.5 rounded-full bg-primary-foreground border border-white/10 hover:bg-white/5 text-white/90 transition-all backdrop-blur-md z-20 group text-sm font-medium"
                             >
                                 <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
                                 <span>Back to dashboard</span>
@@ -2032,7 +2135,7 @@ const FreelancerMultiStepForm = () => {
                         {currentStepIndex > 0 && (
                             <button
                                 onClick={handleBack}
-                                className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-transparent border border-white/10 hover:bg-white/5 text-white transition-all backdrop-blur-md z-20 group"
+                                className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-primary-foreground border border-white/10 hover:bg-white/5 text-white transition-all backdrop-blur-md z-20 group"
                             >
                                 <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
                             </button>
@@ -2043,7 +2146,7 @@ const FreelancerMultiStepForm = () => {
                                 <button
                                     type="button"
                                     aria-label="Freelancer flow settings"
-                                    className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-transparent border border-white/10 hover:bg-white/5 text-white transition-all backdrop-blur-md z-20"
+                                    className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-primary-foreground border border-white/10 hover:bg-white/5 text-white transition-all backdrop-blur-md z-20"
                                 >
                                     <Settings className="w-5 h-5" />
                                 </button>
@@ -2101,7 +2204,7 @@ const FreelancerMultiStepForm = () => {
                                                 type="button"
                                                 onClick={() => handleSettingsNavigateRelative(-1)}
                                                 disabled={currentStepIndex <= 0}
-                                                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                                                className="rounded-lg border border-white/10 bg-primary-foreground px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                                 Previous step
                                             </button>
@@ -2109,7 +2212,7 @@ const FreelancerMultiStepForm = () => {
                                                 type="button"
                                                 onClick={() => handleSettingsNavigateRelative(1)}
                                                 disabled={currentStepIndex >= totalSteps - 1}
-                                                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                                                className="rounded-lg border border-white/10 bg-primary-foreground px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                                 Next step
                                             </button>
@@ -2145,14 +2248,14 @@ const FreelancerMultiStepForm = () => {
                                             <button
                                                 type="button"
                                                 onClick={handleSaveDraftFromSettings}
-                                                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-primary/50 hover:bg-primary/10"
+                                                className="rounded-lg border border-white/10 bg-primary-foreground px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-primary/50 hover:bg-primary/10"
                                             >
                                                 Save draft now
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={handleClearSavedDraftFromSettings}
-                                                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5"
+                                                className="rounded-lg border border-white/10 bg-primary-foreground px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5"
                                             >
                                                 Clear saved draft
                                             </button>
@@ -2166,14 +2269,14 @@ const FreelancerMultiStepForm = () => {
                                         <button
                                             type="button"
                                             onClick={handleRestartOnboardingFromSettings}
-                                            className="w-full rounded-lg border border-white/10 bg-transparent px-3 py-2.5 text-left text-sm font-medium text-white transition-colors hover:border-primary/50 hover:bg-primary/10"
+                                            className="w-full rounded-lg border border-white/10 bg-primary-foreground px-3 py-2.5 text-left text-sm font-medium text-white transition-colors hover:border-primary/50 hover:bg-primary/10"
                                         >
                                             Restart onboarding flow
                                         </button>
                                         <button
                                             type="button"
                                             onClick={handleDashboardNavigateFromSettings}
-                                            className="w-full rounded-lg border border-white/10 bg-transparent px-3 py-2.5 text-left text-sm font-medium text-white transition-colors hover:border-white/30 hover:bg-white/5"
+                                            className="w-full rounded-lg border border-white/10 bg-primary-foreground px-3 py-2.5 text-left text-sm font-medium text-white transition-colors hover:border-white/30 hover:bg-white/5"
                                         >
                                             Exit to freelancer dashboard
                                         </button>
@@ -2220,3 +2323,4 @@ const FreelancerMultiStepForm = () => {
 };
 
 export default FreelancerMultiStepForm;
+

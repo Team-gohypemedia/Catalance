@@ -14,6 +14,8 @@ import {
 export const createServiceDetail = () => ({
     experienceYears: "",
     workingLevel: "",
+    serviceDescription: "",
+    coverImage: "",
     platformLinks: {},
     hasPreviousProjects: "",
     caseStudy: {

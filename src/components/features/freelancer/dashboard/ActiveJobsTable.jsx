@@ -14,7 +14,7 @@ export const ActiveJobsTable = ({ metrics, formatCurrency, navigate }) => {
                     variant="ghost"
                     size="sm"
                     className="text-muted-foreground hover:text-foreground h-8 text-xs font-medium"
-                    onClick={() => navigate("/freelancer/project")}
+                    onClick={() => navigate("/freelancer/project?view=ongoing")}
                 >
                     View All <ArrowRight className="ml-1 h-3 w-3" />
                 </Button>

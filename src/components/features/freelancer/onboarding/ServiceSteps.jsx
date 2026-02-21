@@ -92,7 +92,7 @@ export const ServicesStep = ({
                                 "group flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 relative overflow-hidden min-h-[120px]",
                                 isSelected
                                     ? "border-primary/50 bg-primary/5 shadow-md shadow-primary/5"
-                                    : "border-white/10 bg-transparent dark:bg-transparent hover:border-primary/30 hover:bg-white/10"
+                                    : "border-white/10 bg-primary-foreground dark:bg-primary-foreground hover:border-primary/30 hover:bg-white/10"
                             )}
                         >
                             {isSelected && <div className="absolute inset-0 border border-primary/50 rounded-xl" />}
@@ -101,8 +101,8 @@ export const ServicesStep = ({
                                 className={cn(
                                     "p-2.5 rounded-lg transition-colors mb-2",
                                     isSelected
-                                        ? "bg-transparent text-primary"
-                                        : "bg-transparent text-white/70 group-hover:text-white"
+                                        ? "bg-primary-foreground text-primary"
+                                        : "bg-primary-foreground text-white/70 group-hover:text-white"
                                 )}
                             >
                                 {option.icon && <option.icon className="w-5 h-5" />}
@@ -236,7 +236,7 @@ export const ServiceCaseFieldStep = ({
                         }
                     }}
                 >
-                    <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
+                    <SelectTrigger className="w-full bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white p-6 rounded-xl">
                         <SelectValue placeholder="Select an option" />
                     </SelectTrigger>
                     <SelectContent className="bg-secondary/60 backdrop-blur-xl border-white/10 text-foreground max-h-[300px]">
@@ -261,7 +261,7 @@ export const ServiceCaseFieldStep = ({
                                 }
                             }}
                             placeholder="Type the industry"
-                            className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                            className="bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
                         />
                     </div>
                 )}
@@ -352,7 +352,7 @@ export const ServiceCaseFieldStep = ({
                                     }
                                 }}
                                 placeholder="Type tools, e.g. Next.js, Tailwind, Prisma"
-                                className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                                className="bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
                             />
                             <button
                                 type="button"
@@ -410,7 +410,7 @@ export const ServiceCaseFieldStep = ({
                     value={value}
                     onChange={(e) => updateServiceCaseField(serviceKey, field.key, e.target.value)}
                     placeholder={field.placeholder}
-                    className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30 min-h-[140px] rounded-xl p-4"
+                    className="bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30 min-h-[140px] rounded-xl p-4"
                 />
             ) : (
                 <Input
@@ -423,7 +423,7 @@ export const ServiceCaseFieldStep = ({
                         }
                     }}
                     placeholder={field.placeholder}
-                    className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                    className="bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
                 />
             )}
             {renderContinueButton()}
@@ -452,7 +452,7 @@ export const ServiceSampleWorkStep = ({ formData, updateServiceField, renderServ
             ))}
         </div>
         {formData.serviceDetails?.[serviceKey]?.hasSampleWork === "no" && (
-            <div className="mt-4 p-4 rounded-xl border border-white/10 bg-transparent dark:bg-transparent">
+            <div className="mt-4 p-4 rounded-xl border border-white/10 bg-primary-foreground dark:bg-primary-foreground">
                 <p className="text-xs text-white/60 text-center">
                     If no sample work is provided, your profile remains visible only for entry-level, low-budget, and trial projects.
                 </p>
@@ -546,7 +546,7 @@ export const ServiceAveragePriceStep = ({
                     queueAdvance(0);
                 }}
             >
-                <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
+                <SelectTrigger className="w-full bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white p-6 rounded-xl">
                     <SelectValue placeholder="Select a price range" />
                 </SelectTrigger>
                 <SelectContent className="bg-secondary/60 backdrop-blur-xl border-white/10 text-foreground max-h-[300px]">
@@ -726,7 +726,7 @@ export const ServiceGroupStep = ({
                                 }
                             }}
                             placeholder="Type options, e.g. Strapi, Supabase, Firebase"
-                            className="bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                            className="bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
                         />
                         <button
                             type="button"
@@ -899,7 +899,7 @@ export const ServicePlatformLinksStep = ({
                                 value={platformLinks[field.key] || ""}
                                 onChange={(event) => updatePlatformLink(field.key, event.target.value)}
                                 placeholder={field.placeholder}
-                                className="pl-9 bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                                className="pl-9 bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
                             />
                         </div>
                     </div>
@@ -909,6 +909,122 @@ export const ServicePlatformLinksStep = ({
             <p className="text-xs text-white/50 text-center">
                 At least one valid link is mandatory.
             </p>
+
+            {renderContinueButton(currentStep, { show: true })}
+        </div>
+    );
+};
+
+// ============================================================================
+// SERVICE DESCRIPTION & COVER STEP
+// ============================================================================
+
+export const ServiceProfileStep = ({
+    formData,
+    updateServiceField,
+    renderServiceMeta,
+    serviceKey,
+    onUploadServiceCover,
+    isCoverUploading,
+    currentStep,
+    renderContinueButton,
+}) => {
+    const detail = formData.serviceDetails?.[serviceKey] || createServiceDetail();
+    const coverImageUrl =
+        typeof detail?.coverImage === "string"
+            ? detail.coverImage.trim()
+            : detail?.coverImage && typeof detail.coverImage === "object"
+                ? String(
+                    detail.coverImage.uploadedUrl ||
+                    detail.coverImage.url ||
+                    detail.coverImage.src ||
+                    detail.coverImage.value ||
+                    "",
+                ).trim()
+                : "";
+    const serviceDescriptionValue = String(
+        detail?.serviceDescription || detail?.description || "",
+    );
+
+    return (
+        <div className="mx-auto w-full max-w-3xl space-y-6">
+            <StepHeader
+                title={`Add ${getServiceLabel(serviceKey)} Description & Cover`}
+                subtitle={`${renderServiceMeta(serviceKey)} This appears on your freelancer profile.`.trim()}
+            />
+
+            <div className="space-y-2">
+                <Label className="text-white/70 text-xs">Service Description</Label>
+                <Textarea
+                    value={serviceDescriptionValue}
+                    onChange={(event) =>
+                        updateServiceField(
+                            serviceKey,
+                            "serviceDescription",
+                            event.target.value,
+                        )
+                    }
+                    placeholder={`Describe what you deliver in ${getServiceLabel(serviceKey)}.`}
+                    className="bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30 min-h-[120px]"
+                />
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-white/70 text-xs">Service Cover Image</Label>
+                <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    id={`service-cover-${serviceKey}`}
+                    onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) {
+                            void onUploadServiceCover?.(serviceKey, file);
+                        }
+                        event.target.value = "";
+                    }}
+                />
+                <label
+                    htmlFor={`service-cover-${serviceKey}`}
+                    className={cn(
+                        "flex items-center gap-3 px-4 py-4 rounded-xl border border-dashed transition-all",
+                        isCoverUploading
+                            ? "border-primary/40 bg-primary/5 cursor-wait"
+                            : "border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer",
+                    )}
+                >
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                        <Upload className="w-5 h-5 text-white/70" />
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                        <span className="block text-sm text-white/80 truncate">
+                            {isCoverUploading
+                                ? "Uploading cover image to Cloudflare R2..."
+                                : coverImageUrl
+                                    ? "Cover image uploaded"
+                                    : "Upload cover image (JPG, PNG, WEBP)"}
+                        </span>
+                    </div>
+                </label>
+
+                {coverImageUrl && (
+                    <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/20">
+                        <img
+                            src={coverImageUrl}
+                            alt={`${getServiceLabel(serviceKey)} cover`}
+                            className="w-full h-44 object-cover"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => updateServiceField(serviceKey, "coverImage", "")}
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white/80 hover:text-white transition-colors"
+                            aria-label="Remove service cover image"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+            </div>
 
             {renderContinueButton(currentStep, { show: true })}
         </div>
@@ -1156,7 +1272,7 @@ export const ServiceProjectDetailsStep = ({
                                         value={project.link || ""}
                                         onChange={(e) => updateProject(index, "link", e.target.value)}
                                         placeholder="https://..."
-                                        className="pl-9 !h-[42px] bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                                        className="pl-9 !h-[42px] bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
                                     />
                                 </div>
                             </div>
@@ -1232,7 +1348,7 @@ export const ServiceProjectDetailsStep = ({
                                     value={project.readme || ""}
                                     onChange={(e) => updateProject(index, "readme", e.target.value)}
                                     placeholder="https://github.com/your-username/your-repo/blob/main/README.md"
-                                    className="pl-9 !h-[42px] bg-transparent dark:bg-transparent border-white/10 text-white placeholder:text-white/30"
+                                    className="pl-9 !h-[42px] bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
                                 />
                             </div>
                         </div>
@@ -1524,3 +1640,4 @@ const TechStackSelect = ({ value, onChange }) => {
         </div>
     );
 };
+
