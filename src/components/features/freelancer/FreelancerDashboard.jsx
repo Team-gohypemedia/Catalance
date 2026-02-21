@@ -1,34 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
-import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
-import FolderOpen from "lucide-react/dist/esm/icons/folder-open";
-import CreditCard from "lucide-react/dist/esm/icons/credit-card";
-import Users from "lucide-react/dist/esm/icons/users";
-import Settings from "lucide-react/dist/esm/icons/settings";
-import Search from "lucide-react/dist/esm/icons/search";
-import Bell from "lucide-react/dist/esm/icons/bell";
-import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
-import PieChart from "lucide-react/dist/esm/icons/pie-chart";
-import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
-import Plus from "lucide-react/dist/esm/icons/plus";
-import Filter from "lucide-react/dist/esm/icons/filter";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
-import Clock from "lucide-react/dist/esm/icons/clock";
-import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import React, { useEffect, useState } from "react";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
-import Banknote from "lucide-react/dist/esm/icons/banknote";
-import Sun from "lucide-react/dist/esm/icons/sun";
-import Moon from "lucide-react/dist/esm/icons/moon";
-import Menu from "lucide-react/dist/esm/icons/menu";
-import X from "lucide-react/dist/esm/icons/x";
 import Gavel from "lucide-react/dist/esm/icons/gavel";
-import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import Video from "lucide-react/dist/esm/icons/video";
 import CircleAlert from "lucide-react/dist/esm/icons/circle-alert";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import Clock from "lucide-react/dist/esm/icons/clock";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
+import { useNotifications } from "@/shared/context/NotificationContext";
+import { DashboardHeader } from "@/components/features/freelancer/dashboard/DashboardHeader";
 import { getSession } from "@/shared/lib/auth-storage";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -42,19 +24,10 @@ import {
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
-import { useTheme } from "@/components/providers/theme-provider";
-import { useNotifications } from "@/shared/context/NotificationContext";
 import { consumeFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
 import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSidebar } from "@/components/ui/sidebar";
 
-export const DashboardContent = ({ roleOverride }) => {
+export const DashboardContent = ({ _roleOverride }) => {
   const [sessionUser, setSessionUser] = useState(null);
   const { authFetch, user } = useAuth();
   const [metrics, setMetrics] = useState({
@@ -68,14 +41,31 @@ export const DashboardContent = ({ roleOverride }) => {
     totalProposals: 0,
   });
   const [upcomingMeeting, setUpcomingMeeting] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useNotifications();
-  const { toggleSidebar } = useSidebar();
+
+  const handleNotificationClick = (notification) => {
+    markAsRead(notification.id);
+    if (notification.type === "chat" && notification.data) {
+      const service = notification.data.service || "";
+      const parts = service.split(":");
+      let projectId = notification.data.projectId;
+      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
+        projectId = parts[1];
+      }
+      navigate(
+        projectId
+          ? `/freelancer/messages?projectId=${projectId}`
+          : "/freelancer/messages"
+      );
+    } else if (notification.type === "proposal") {
+      navigate("/freelancer/proposals");
+    }
+  };
+
   const showOnboardingAlert =
     user?.role === "FREELANCER" && !user?.onboardingComplete;
 
@@ -99,7 +89,6 @@ export const DashboardContent = ({ roleOverride }) => {
   useEffect(() => {
     const loadMetrics = async () => {
       if (!authFetch) return;
-      setIsLoading(true);
       try {
         const response = await authFetch("/proposals?as=freelancer");
         const payload = await response.json().catch(() => null);
@@ -117,7 +106,6 @@ export const DashboardContent = ({ roleOverride }) => {
 
         accepted.forEach((p) => {
           const amount = Number(p.amount) || 0;
-          const spent = Number(p.project?.spent) || 0;
           const status = p.project?.status || "";
 
           // Reverting to strict logic: Only count as 'Received' if project is COMPLETED.
@@ -164,8 +152,6 @@ export const DashboardContent = ({ roleOverride }) => {
         });
       } catch (error) {
         console.error("Failed to load freelancer metrics", error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -218,25 +204,6 @@ export const DashboardContent = ({ roleOverride }) => {
     }).format(amount);
   };
 
-  const handleNotificationClick = (notification) => {
-    markAsRead(notification.id);
-    if (notification.type === "chat" && notification.data) {
-      const service = notification.data.service || "";
-      const parts = service.split(":");
-      let projectId = notification.data.projectId;
-      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
-        projectId = parts[1];
-      }
-      navigate(
-        projectId
-          ? `/freelancer/messages?projectId=${projectId}`
-          : "/freelancer/messages"
-      );
-    } else if (notification.type === "proposal") {
-      navigate("/freelancer/proposals");
-    }
-  };
-
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-zinc-50 dark:bg-black transition-colors duration-300">
       <div
@@ -283,126 +250,13 @@ export const DashboardContent = ({ roleOverride }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Glass Header */}
-      <header className="sticky top-0 z-40 px-6 py-4 flex items-center justify-between transition-colors duration-300 border-b border-border/40 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-zinc-900/60">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="lg:hidden text-muted-foreground"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-
-          <h2 className="text-xl font-bold tracking-tight text-foreground hidden md:block">
-            Freelancer<span className="text-primary font-normal">OS</span>
-          </h2>
-          <div className="h-6 w-px bg-border hidden md:block"></div>
-
-          {/* Search Bar - Visual only for now */}
-          <div className="relative group hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 group-focus-within:text-primary transition-colors" />
-            <input
-              className="bg-secondary/50 border border-border rounded-xl pl-10 pr-4 py-2 text-sm w-64 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-background transition-all placeholder:text-muted-foreground outline-none"
-              placeholder="Search projects..."
-              type="text"
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full text-muted-foreground hover:text-foreground"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
-          </Button>
-
-          {/* Notifications */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative rounded-full text-muted-foreground hover:text-foreground"
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-2 right-2 h-2 w-2 bg-primary rounded-full ring-2 ring-background"></span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <h4 className="text-sm font-semibold">Notifications</h4>
-                {unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto p-0 text-xs text-primary"
-                    onClick={markAllAsRead}
-                  >
-                    Mark all as read
-                  </Button>
-                )}
-              </div>
-              <ScrollArea className="h-72">
-                {notifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                    <Bell className="mb-2 h-8 w-8 opacity-40" />
-                    <p className="text-sm">No notifications yet</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {notifications.slice(0, 20).map((notification) => (
-                      <button
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-muted/50 ${
-                          !notification.read ? "bg-primary/5" : ""
-                        }`}
-                      >
-                        <div
-                          className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
-                            !notification.read ? "bg-primary" : "bg-transparent"
-                          }`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {notification.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {notification.message}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </PopoverContent>
-          </Popover>
-
-          {/* Profile */}
-          <div
-            className="text-right hidden sm:block cursor-pointer"
-            onClick={() => navigate("/freelancer/profile")}
-          >
-            <p className="text-sm font-bold text-foreground leading-none">
-              {sessionUser?.fullName || "Freelancer"}
-            </p>
-            <p className="text-xs text-muted-foreground">Frontend Developer</p>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader
+        userName={sessionUser?.fullName}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        markAllAsRead={markAllAsRead}
+        handleNotificationClick={handleNotificationClick}
+      />
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 relative scroll-smooth">
@@ -646,13 +500,13 @@ export const DashboardContent = ({ roleOverride }) => {
                 const dateDisplay = isToday
                   ? "Today"
                   : meetingDate.toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    });
+                    month: "short",
+                    day: "numeric",
+                  });
                 const timeDisplay = `${upcomingMeeting.startHour}:00 - ${upcomingMeeting.endHour}:00`;
 
                 return (
-                  <div className="bg-card rounded-2xl border border-border p-6 shadow-sm relative overflow-hidden">
+                  <div className="bg-card rounded-2xl border border-border p-6 shadow-sm flex flex-col items-center justify-center shrink-0 min-w-[240px]">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -mr-6 -mt-6"></div>
                     <h3 className="font-bold text-lg text-foreground mb-2 flex items-center gap-2 relative z-10">
                       <Video className="h-5 w-5 text-primary" />
@@ -677,7 +531,7 @@ export const DashboardContent = ({ roleOverride }) => {
                         onClick={() =>
                           window.open(
                             upcomingMeeting.meetingLink ||
-                              "https://meet.google.com/",
+                            "https://meet.google.com/",
                             "_blank"
                           )
                         }
@@ -756,7 +610,7 @@ export const DashboardContent = ({ roleOverride }) => {
                 </h3>
                 <div className="flex items-center gap-6">
                   {/* Circular Progress */}
-                  <div className="relative w-28 h-28 flex-shrink-0">
+                  <div className="relative w-28 h-28 shrink-0">
                     <svg
                       className="w-full h-full transform -rotate-90"
                       viewBox="0 0 100 100"
@@ -783,9 +637,9 @@ export const DashboardContent = ({ roleOverride }) => {
                         strokeDashoffset={
                           263.89 -
                           263.89 *
-                            (metrics.earnings > 0
-                              ? metrics.receivedEarnings / metrics.earnings
-                              : 0)
+                          (metrics.earnings > 0
+                            ? metrics.receivedEarnings / metrics.earnings
+                            : 0)
                         }
                         className="text-primary transition-all duration-1000 ease-out"
                         strokeLinecap="round"
@@ -795,9 +649,9 @@ export const DashboardContent = ({ roleOverride }) => {
                       <span className="text-2xl font-black text-foreground">
                         {metrics.earnings > 0
                           ? Math.round(
-                              (metrics.receivedEarnings / metrics.earnings) *
-                                100
-                            )
+                            (metrics.receivedEarnings / metrics.earnings) *
+                            100
+                          )
                           : 0}
                         %
                       </span>
@@ -901,7 +755,7 @@ const FreelancerDashboard = () => {
 export const ClientDashboard = () => {
   return (
     <RoleAwareSidebar>
-      <DashboardContent roleOverride="CLIENT" />
+      <DashboardContent _roleOverride="CLIENT" />
     </RoleAwareSidebar>
   );
 };

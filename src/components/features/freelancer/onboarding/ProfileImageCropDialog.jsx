@@ -25,9 +25,8 @@ const formatFileSize = (bytes) => {
     units.length - 1
   );
   const value = bytes / 1024 ** exponent;
-  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${
-    units[exponent]
-  }`;
+  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]
+    }`;
 };
 
 const loadImageFromUrl = (url) =>
@@ -259,7 +258,7 @@ export default function ProfileImageCropDialog({
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="mx-auto relative h-[320px] w-[320px] overflow-hidden rounded-2xl border border-white/15 bg-black">
+          <div className="mx-auto relative h-[320px] w-[320px] overflow-hidden rounded-2xl border border-white/15 bg-secondary">
             {previewUrl ? (
               <img
                 src={previewUrl}

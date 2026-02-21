@@ -368,7 +368,7 @@ const buildPortfolioProjectsFromServiceDetails = (serviceDetails = {}) => {
                 ? link.toLowerCase()
                 : readme
                     ? readme.toLowerCase()
-                : `${serviceKey}:${title.toLowerCase()}:${index}`;
+                    : `${serviceKey}:${title.toLowerCase()}:${index}`;
 
             if (projectMap.has(dedupKey)) return;
 
@@ -1762,7 +1762,7 @@ const FreelancerMultiStepForm = () => {
         const footer = (
             <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
                 <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-black" />
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-secondary" />
                 <div className="relative mx-auto max-w-4xl px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 flex justify-center">
                     <button
                         type="button"
@@ -2007,7 +2007,7 @@ const FreelancerMultiStepForm = () => {
     if (!isLoaded) return null;
 
     return (
-        <div className="h-screen w-full bg-black text-white relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
+        <div className="h-screen w-full bg-secondary text-foreground relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
             <div className="relative z-10 flex flex-col h-full">
                 <div className="relative z-50 bg-transparent border-b border-white/5 shrink-0">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 w-full">
@@ -2050,7 +2050,7 @@ const FreelancerMultiStepForm = () => {
                             </SheetTrigger>
                             <SheetContent
                                 side="right"
-                                className="w-[92vw] sm:max-w-md border-white/10 bg-black text-white p-0"
+                                className="w-[92vw] sm:max-w-md border-white/10 bg-secondary text-foreground p-0"
                             >
                                 <SheetHeader className="border-b border-white/10 px-5 py-4 text-left">
                                     <SheetTitle className="text-white">
@@ -2123,7 +2123,7 @@ const FreelancerMultiStepForm = () => {
                                                 onChange={(event) =>
                                                     handleJumpToStepFromSettings(event.target.value)
                                                 }
-                                                className="mt-1.5 w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                                                className="mt-1.5 w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
                                             >
                                                 {steps.map((step, index) => (
                                                     <option
