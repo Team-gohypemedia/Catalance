@@ -1,7 +1,6 @@
 import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
-import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
+import { ChevronRight, MoreHorizontal } from "lucide-react"
+import { Slot } from "radix-ui"
 
 import { cn } from "@/shared/lib/utils"
 
@@ -43,12 +42,15 @@ function BreadcrumbLink({
   className,
   ...props
 }) {
-  const Comp = asChild ? Slot : "a"
+  const Comp = asChild ? Slot.Root : "a"
 
   return (
     <Comp
       data-slot="breadcrumb-link"
-      className={cn("hover:text-foreground transition-colors", className)}
+      className={cn(
+        "text-foreground hover:text-foreground transition-colors wrap-break-word",
+        className
+      )}
       {...props} />
   );
 }
@@ -63,7 +65,7 @@ function BreadcrumbPage({
       role="link"
       aria-disabled="true"
       aria-current="page"
-      className={cn("text-foreground font-normal", className)}
+      className={cn("text-foreground hover:text-foreground transition-colors wrap-break-word", className)}
       {...props} />
   );
 }

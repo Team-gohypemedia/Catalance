@@ -239,7 +239,7 @@ export const ServiceCaseFieldStep = ({
                     <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
                         <SelectValue placeholder="Select an option" />
                     </SelectTrigger>
-                    <SelectContent className="bg-black/60 backdrop-blur-xl border-white/10 text-white max-h-[300px]">
+                    <SelectContent className="bg-secondary/60 backdrop-blur-xl border-white/10 text-foreground max-h-[300px]">
                         {options.map((option) => (
                             <SelectItem key={option.value || option} value={option.value || option} className="focus:bg-white/10 focus:text-white cursor-pointer">
                                 {option.label || option}
@@ -549,7 +549,7 @@ export const ServiceAveragePriceStep = ({
                 <SelectTrigger className="w-full bg-transparent dark:bg-transparent border-white/10 text-white p-6 rounded-xl">
                     <SelectValue placeholder="Select a price range" />
                 </SelectTrigger>
-                <SelectContent className="bg-black/60 backdrop-blur-xl border-white/10 text-white max-h-[300px]">
+                <SelectContent className="bg-secondary/60 backdrop-blur-xl border-white/10 text-foreground max-h-[300px]">
                     {AVERAGE_PROJECT_PRICE_OPTIONS.map((option) => (
                         <SelectItem
                             key={option.value}

@@ -1,0 +1,11 @@
+﻿
+D:\DEV\React Projects\Catalance\src\components\features\freelancer\FreelancerDashboard.jsx
+   1:28  error  'useMemo' is defined but never used. Allowed unused vars must match /^React$/u             no-unused-vars
+  12:10  error  'Card' is defined but never used. Allowed unused vars must match /^React$/u                no-unused-vars
+  12:16  error  'CardContent' is defined but never used. Allowed unused vars must match /^React$/u         no-unused-vars
+  29:36  error  'roleOverride' is defined but never used. Allowed unused args must match /^_/u             no-unused-vars
+  43:10  error  'isLoading' is assigned a value but never used. Allowed unused vars must match /^React$/u  no-unused-vars
+  88:17  error  'spent' is assigned a value but never used. Allowed unused vars must match /^React$/u      no-unused-vars
+
+Γ£û 6 problems (6 errors, 0 warnings)
+
