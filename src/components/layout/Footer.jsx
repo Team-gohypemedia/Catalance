@@ -125,6 +125,12 @@ const Footer = () => {
                   About Us
                 </Link>
                 <Link
+                  to="/contact-us"
+                  className={`transition-colors text-sm font-medium hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
+                >
+                  Contact Us
+                </Link>
+                <Link
                   to="/careers"
                   className={`transition-colors text-sm font-medium flex items-center hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
                 >
@@ -155,12 +161,6 @@ const Footer = () => {
                 >
                   Help Center
                 </Link>
-                <Link
-                  to="/contact-us"
-                  className={`transition-colors text-sm font-medium hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
-                >
-                  Contact Us
-                </Link>
               </nav>
             </div>
             {/* Legal */}
@@ -188,6 +188,18 @@ const Footer = () => {
                   className={`transition-colors text-sm font-medium hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
                 >
                   Refund Policy
+                </Link>
+                <Link
+                  to="/fees-pricing"
+                  className={`transition-colors text-sm font-medium hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
+                >
+                  Fees and Pricing
+                </Link>
+                <Link
+                  to="/security"
+                  className={`transition-colors text-sm font-medium hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
+                >
+                  Security
                 </Link>
               </nav>
             </div>
