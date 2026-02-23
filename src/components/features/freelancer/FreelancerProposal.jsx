@@ -5,13 +5,9 @@ import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
-import Search from "lucide-react/dist/esm/icons/search";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import Edit2 from "lucide-react/dist/esm/icons/edit-2";
-import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,7 +52,7 @@ const extractProposalDetails = (content = "", budgetNum = null) => {
 
   // 2. Try to find Timeline
   const timelineMatch = content.match(
-    /(?:Timeline|Duration|Time)[\s:_\-\n]*([^\n\.,]+)/i
+    /(?:Timeline|Duration|Time)[\s:_\-\n]*([^\n.,]+)/i
   );
   if (timelineMatch) {
     timeline = timelineMatch[1].trim();
@@ -212,10 +208,6 @@ const ProposalRowCard = ({ proposal, onOpen, onDelete }) => {
     proposal.content,
     proposal.budget
   );
-
-  // Status Badge Style (Outline to match screenshot)
-  // Screenshot shows "ACCEPTED" in green outline/text on dark bg
-  const badgeStyle = "bg-transparent border bg-opacity-10 dark:bg-opacity-10";
 
   return (
     <div className="group relative flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-xl border border-border/50 bg-card/40 hover:bg-card hover:border-primary/20 transition-all duration-300 shadow-sm">
@@ -441,10 +433,11 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   }, [proposals]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
       <FreelancerTopBar />
 
-      <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
+        <div className="max-w-[1600px] mx-auto space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight mb-2">
             My Proposals
@@ -539,6 +532,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
           </TabsContent>
         </Tabs>
       </div>
+      </main>
 
       {/* Dialog */}
       <Dialog

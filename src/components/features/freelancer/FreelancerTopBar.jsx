@@ -27,6 +27,7 @@ export const FreelancerTopBar = ({ label }) => {
     if (pathname.startsWith("/freelancer/project")) return "Projects";
     return "Dashboard";
   }, [label, pathname]);
+  const showProposalButton = !pathname.startsWith("/freelancer/proposals");
 
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
@@ -79,6 +80,7 @@ export const FreelancerTopBar = ({ label }) => {
       unreadCount={unreadCount}
       markAllAsRead={markAllAsRead}
       handleNotificationClick={handleNotificationClick}
+      showProposalButton={showProposalButton}
     />
   );
 };

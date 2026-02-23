@@ -12,6 +12,11 @@ import { initSocket } from "./lib/socket.js";
 import { startCronJobs } from "./services/cron.service.js";
 
 const runningInVercel = process.env.VERCEL === "1";
+const cronEnabledFlag = String(process.env.ENABLE_CRON_JOBS ?? "true")
+  .trim()
+  .toLowerCase();
+const cronJobsEnabled = !["0", "false", "no", "off"].includes(cronEnabledFlag);
+const dbConnectRetryMs = Number(process.env.DB_CONNECT_RETRY_MS || 30000);
 export const createApp = () => {
   const app = express();
 
@@ -139,12 +144,40 @@ if (!runningInVercel) {
   const server = httpServer.listen(env.PORT, () => {
     console.log(`API server ready on http://localhost:${env.PORT}`);
 
-    // Check DB connection
-    prisma.$connect()
-      .then(() => console.log('✓ Database connected successfully'))
-      .catch((e) => console.error('✗ Database connection failed:', e.message));
+    let cronStarted = false;
 
-    startCronJobs();
+    const connectDatabaseAndInitialize = async () => {
+      try {
+        await prisma.$connect();
+        console.log("Database connected successfully");
+
+        if (cronJobsEnabled && !cronStarted) {
+          startCronJobs();
+          cronStarted = true;
+        }
+
+        if (!cronJobsEnabled) {
+          console.log("Cron jobs are disabled (ENABLE_CRON_JOBS=false).");
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        console.error("Database connection failed:", message);
+
+        if (cronJobsEnabled) {
+          console.warn(
+            `[Startup] Retrying database connection in ${Math.round(
+              dbConnectRetryMs / 1000
+            )}s...`
+          );
+          setTimeout(() => {
+            void connectDatabaseAndInitialize();
+          }, dbConnectRetryMs);
+        }
+      }
+    };
+
+    void connectDatabaseAndInitialize();
   });
 
   server.on("error", (error) => {

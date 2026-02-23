@@ -10,7 +10,7 @@ import {
 } from "framer-motion";
 
 import React, { useState } from "react";
-import logo from '@/assets/react.svg'
+import logo from "@/assets/logos/logo.png";
 
 
 export const Navbar = ({
@@ -186,17 +186,7 @@ export const MobileNavToggle = ({
 };
 
 export const NavbarLogo = () => {
-  return (
-    <>
-      <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-full mr-2">
-        {/* <BookMarked className="size-4" /> */}
-        <img src={logo} alt="Catalance" className="h-5 w-5" />
-      </div>
-      <div className="grid flex-1 text-left text-sm leading-tight text-white">
-        <span className="truncate text-lg font-semibold">Catalance</span>
-      </div>
-    </>
-  );
+  return <img src={logo} alt="Catalance logo" className="h-10 w-auto object-contain" />;
 };
 
 export const NavbarButton = ({
