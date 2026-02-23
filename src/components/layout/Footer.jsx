@@ -155,6 +155,12 @@ const Footer = () => {
                 >
                   Help Center
                 </Link>
+                <Link
+                  to="/contact-us"
+                  className={`transition-colors text-sm font-medium hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
+                >
+                  Contact Us
+                </Link>
               </nav>
             </div>
             {/* Legal */}
@@ -176,6 +182,12 @@ const Footer = () => {
                   className={`transition-colors text-sm font-medium hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
                 >
                   Privacy Policy
+                </Link>
+                <Link
+                  to="/refund-policy"
+                  className={`transition-colors text-sm font-medium hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
+                >
+                  Refund Policy
                 </Link>
               </nav>
             </div>

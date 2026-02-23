@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -118,9 +118,6 @@ const AdminServiceQuestions = lazy(
   () => import("@/components/features/admin/AdminServiceQuestions"),
 );
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
-const TermsConditions = lazy(
-  () => import("@/components/pages/TermsConditions"),
-);
 const Careers = lazy(() => import("@/components/pages/Careers"));
 const BrowseTalent = lazy(() => import("@/components/pages/BrowseTalent"));
 const EnterpriseSolutions = lazy(
@@ -130,6 +127,8 @@ const Blog = lazy(() => import("@/components/pages/Blog"));
 const HelpCenter = lazy(() => import("@/components/pages/HelpCenter"));
 const TermsOfService = lazy(() => import("@/components/pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("@/components/pages/PrivacyPolicy"));
+const RefundPolicy = lazy(() => import("@/components/pages/RefundPolicy"));
+const ContactUs = lazy(() => import("@/components/pages/ContactUs"));
 const GuestAIDemo = lazy(() => import("@/components/pages/GuestAIDemo"));
 
 const RouteFallback = () => (
@@ -160,14 +159,6 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <About />
-                </LayoutWithNavbar>
-              }
-            />
-            <Route
-              path="/terms"
-              element={
-                <LayoutWithNavbar>
-                  <TermsConditions />
                 </LayoutWithNavbar>
               }
             />
@@ -224,6 +215,22 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <PrivacyPolicy />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/refund-policy"
+              element={
+                <LayoutWithNavbar>
+                  <RefundPolicy />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/contact-us"
+              element={
+                <LayoutWithNavbar>
+                  <ContactUs />
                 </LayoutWithNavbar>
               }
             />
@@ -587,8 +594,7 @@ LayoutWithNavbar.propTypes = {
 };
 
 const ProtectedRoute = ({ children, loginPath = "/login" }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
-  const location = useLocation();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
