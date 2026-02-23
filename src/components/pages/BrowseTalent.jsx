@@ -19,7 +19,6 @@ import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Video from "lucide-react/dist/esm/icons/video";
 import Megaphone from "lucide-react/dist/esm/icons/megaphone";
 import Users from "lucide-react/dist/esm/icons/users";
-import { useTheme } from "@/components/providers/theme-provider";
 
 gsap.registerPlugin(SplitText, useGSAP);
 
@@ -59,7 +58,6 @@ const TalentCard = ({
   rating,
   projects,
   location,
-  avatar,
   isDark,
 }) => (
   <Link to="/service" className="block group">
@@ -70,13 +68,7 @@ const TalentCard = ({
           : "bg-white border-black/5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5"
       }`}
     >
-      <div className="flex items-start gap-4">
-        <img
-          src={avatar}
-          alt={name}
-          className="w-16 h-16 rounded-xl object-cover"
-        />
-        <div className="flex-1 min-w-0">
+      <div className="min-w-0">
           <h3
             className={`text-lg font-bold mb-1 group-hover:text-primary transition-colors truncate ${isDark ? "text-white" : "text-gray-900"}`}
           >
@@ -102,7 +94,6 @@ const TalentCard = ({
               <MapPin className="w-3.5 h-3.5" /> {location}
             </span>
           </div>
-        </div>
       </div>
     </div>
   </Link>
@@ -112,7 +103,6 @@ const BrowseTalent = () => {
   const containerRef = useRef(null);
   const heroTextRef = useRef(null);
   const heroGradientRef = useRef(null);
-  const { theme } = useTheme();
   const [resolvedTheme, setResolvedTheme] = useState("dark");
 
   useEffect(() => {
@@ -178,40 +168,32 @@ const BrowseTalent = () => {
 
   const featuredTalent = [
     {
-      name: "Sarah Chen",
+      name: "Mohd Kaif",
       role: "Full-Stack Developer",
       rating: "4.9",
       projects: "127",
       location: "Singapore",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
     },
     {
-      name: "Marcus Johnson",
+      name: "Ravindra Nath Jha",
       role: "UI/UX Designer",
       rating: "5.0",
       projects: "89",
       location: "New York",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
     },
     {
-      name: "Elena Rodriguez",
+      name: "Kshitij Sharma",
       role: "Content Strategist",
       rating: "4.8",
       projects: "156",
       location: "Barcelona",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
     },
     {
-      name: "David Kim",
+      name: "Aniket Thakur",
       role: "Motion Designer",
       rating: "4.9",
       projects: "73",
       location: "Seoul",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
     },
   ];
 
@@ -330,7 +312,7 @@ const BrowseTalent = () => {
             Ready to get started?
           </h2>
           <p className={`${mutedTextColor} mb-8 max-w-xl mx-auto`}>
-            Tell us about your project and we'll match you with the perfect
+            Tell us about your project and we&apos;ll match you with the perfect
             talent.
           </p>
           <Link to="/service">

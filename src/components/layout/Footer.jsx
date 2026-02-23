@@ -131,15 +131,6 @@ const Footer = () => {
                 >
                   Contact Us
                 </Link>
-                <Link
-                  to="/careers"
-                  className={`transition-colors text-sm font-medium flex items-center hover:text-[#f2cc0d] ${isDark ? "text-slate-400" : "text-gray-600"}`}
-                >
-                  Careers{" "}
-                  <span className="ml-1 text-[10px] bg-[#f2cc0d]/20 text-[#f2cc0d] px-1.5 py-0.5 rounded font-bold">
-                    Hiring
-                  </span>
-                </Link>
               </nav>
             </div>
             {/* Resources */}

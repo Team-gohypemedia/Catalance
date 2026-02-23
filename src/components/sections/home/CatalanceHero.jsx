@@ -273,7 +273,7 @@ const CatalanceHero = () => {
                         <Target className="w-4 h-4" />
                       </div>
                       <span className="text-sm font-medium text-foreground/90">
-                        Zero commission
+                        30% commission
                       </span>
                     </div>
                     <div className="flex items-center gap-2.5">

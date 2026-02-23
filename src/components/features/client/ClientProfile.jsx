@@ -128,21 +128,26 @@ const ClientProfileContent = () => {
 
       // Check if we need to upload an image first
       if (selectedFile) {
-        const uploadData = new FormData();
-        uploadData.append("file", selectedFile);
+        setUploadingImage(true);
+        try {
+          const uploadData = new FormData();
+          uploadData.append("file", selectedFile);
 
-        const uploadRes = await authFetch("/upload", {
-          method: "POST",
-          body: uploadData,
-        });
+          const uploadRes = await authFetch("/upload", {
+            method: "POST",
+            body: uploadData,
+          });
 
-        if (!uploadRes.ok) {
-          const err = await uploadRes.json();
-          throw new Error(err.message || "Image upload failed");
+          if (!uploadRes.ok) {
+            const err = await uploadRes.json();
+            throw new Error(err.message || "Image upload failed");
+          }
+
+          const data = await uploadRes.json();
+          currentAvatarUrl = data.data.url;
+        } finally {
+          setUploadingImage(false);
         }
-
-        const data = await uploadRes.json();
-        currentAvatarUrl = data.data.url;
       }
 
       const payload = {
@@ -187,17 +192,18 @@ const ClientProfileContent = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-background overflow-x-hidden">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
       {/* Background Texture */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.15]"
         style={backgroundStyle}
       />
 
-      <div className="relative z-10 space-y-8 p-6 lg:p-10 w-full max-w-7xl mx-auto">
-        <ClientTopBar />
+      <ClientTopBar />
 
-        <div className="grid gap-8 lg:grid-cols-[280px_1fr] animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
+        <div className="max-w-[1600px] mx-auto">
+          <div className="grid gap-8 lg:grid-cols-[280px_1fr] animate-in fade-in slide-in-from-bottom-4 duration-700">
           {/* Left Column: Identity Card */}
           <div className="space-y-6">
             <Card className="border-border/60 bg-card/60 backdrop-blur-xl overflow-hidden relative group">
@@ -402,8 +408,9 @@ const ClientProfileContent = () => {
               </Button>
             </div>
           </form>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

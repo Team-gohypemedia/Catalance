@@ -69,13 +69,6 @@ const statusConfig = {
   },
 };
 
-const mapStatus = (status = "") => {
-  const normalized = status.toString().toUpperCase();
-  if (normalized === "COMPLETED") return "completed";
-  if (normalized === "IN_PROGRESS" || normalized === "OPEN") return "in-progress";
-  return "pending";
-};
-
 const ProjectCard = ({ project }) => {
   const config = statusConfig[project.status] || statusConfig.pending;
   const StatusIcon = config.icon;
@@ -243,34 +236,43 @@ const ClientProjectsContent = () => {
   }, [authFetch, isAuthenticated]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
       <ClientTopBar />
-      <header className="space-y-3">
-        <p className="text-sm uppercase tracking-[0.4em] text-primary/70">Client projects</p>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold">Project tracker</h1>
-            <p className="text-muted-foreground">
-              Monitor freelancer work, budgets, and deadlines in one place.
+
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
+        <div className="max-w-[1600px] mx-auto space-y-6">
+          <header className="space-y-3">
+            <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
+              Client projects
             </p>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h1 className="text-3xl font-semibold">Project tracker</h1>
+                <p className="text-muted-foreground">
+                  Monitor freelancer work, budgets, and deadlines in one place.
+                </p>
+              </div>
+            </div>
+          </header>
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {isLoading ? (
+              // Show skeleton cards while loading
+              [1, 2, 3].map((i) => <ProjectCardSkeleton key={i} />)
+            ) : projects.length ? (
+              projects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))
+            ) : (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-muted-foreground">
+                  No projects yet. Accepted proposals will appear here.
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
-      </header>
-
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {isLoading ? (
-          // Show skeleton cards while loading
-          [1, 2, 3].map((i) => <ProjectCardSkeleton key={i} />)
-        ) : projects.length ? (
-          projects.map((project) => <ProjectCard key={project.id} project={project} />)
-        ) : (
-          <Card className="border-dashed">
-            <CardContent className="p-6 text-muted-foreground">
-              No projects yet. Accepted proposals will appear here.
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      </main>
     </div>
   );
 };

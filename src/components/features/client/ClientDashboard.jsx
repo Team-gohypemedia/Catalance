@@ -1234,24 +1234,11 @@ const ClientDashboardContent = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background">
-      {/* Grid pattern background */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none opacity-30 dark:opacity-10"
-        style={{
-          backgroundImage:
-            "radial-gradient(hsl(var(--border)) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-
-      {/* Top Bar */}
-      <div className="sticky top-0 z-40 px-6 py-3 bg-background/85 backdrop-blur-xl border-b border-border/50">
-        <ClientTopBar label="Dashboard" />
-      </div>
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
+      <ClientTopBar label="Dashboard" />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 relative">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
         <div className="max-w-[1600px] mx-auto">
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Left Column - Main Content */}

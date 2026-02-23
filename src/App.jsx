@@ -121,12 +121,12 @@ const AdminServiceQuestions = lazy(
   () => import("@/components/features/admin/AdminServiceQuestions"),
 );
 const GetStarted = lazy(() => import("@/components/features/auth/GetStarted"));
-const Careers = lazy(() => import("@/components/pages/Careers"));
 const BrowseTalent = lazy(() => import("@/components/pages/BrowseTalent"));
 const EnterpriseSolutions = lazy(
   () => import("@/components/pages/EnterpriseSolutions"),
 );
 const Blog = lazy(() => import("@/components/pages/Blog"));
+const BlogPost = lazy(() => import("@/components/pages/BlogPost"));
 const HelpCenter = lazy(() => import("@/components/pages/HelpCenter"));
 const TermsOfService = lazy(() => import("@/components/pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("@/components/pages/PrivacyPolicy"));
@@ -168,14 +168,6 @@ const App = () => {
               }
             />
             <Route
-              path="/careers"
-              element={
-                <LayoutWithNavbar>
-                  <Careers />
-                </LayoutWithNavbar>
-              }
-            />
-            <Route
               path="/talent"
               element={
                 <LayoutWithNavbar>
@@ -188,6 +180,14 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <EnterpriseSolutions />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/blog/:slug"
+              element={
+                <LayoutWithNavbar>
+                  <BlogPost />
                 </LayoutWithNavbar>
               }
             />

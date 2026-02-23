@@ -106,7 +106,7 @@ export const NavBody = ({
       style={{
         width: width,
         y: y,
-        minWidth: "800px",
+        minWidth: "900px",
         backgroundColor: backgroundColor,
         boxShadow: shadow,
         backdropFilter: backdropFilter,

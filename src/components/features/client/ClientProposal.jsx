@@ -388,10 +388,11 @@ const ClientProposalContent = () => {
   );
 
   return (
-    <div className="space-y-8 p-6 w-full max-w-7xl mx-auto">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
       <ClientTopBar />
 
-      <div className="space-y-6">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
+        <div className="max-w-[1600px] mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -499,6 +500,7 @@ const ClientProposalContent = () => {
           </div>
         </Tabs>
       </div>
+      </main>
 
       <Dialog
         open={isViewing}

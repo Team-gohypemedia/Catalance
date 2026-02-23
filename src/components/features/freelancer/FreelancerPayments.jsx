@@ -169,7 +169,7 @@ const FreelancerPaymentsContent = () => {
               Payments
             </h1>
             <p className="text-sm text-muted-foreground">
-              Track received payments, pending payouts, and contract value.
+              Track received payments, pending payouts, and project value.
             </p>
           </header>
 
@@ -232,7 +232,7 @@ const FreelancerPaymentsContent = () => {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                    Active contracts
+                    Active projects
                   </p>
                   <BriefcaseBusiness className="h-4 w-4 text-blue-500" />
                 </div>
@@ -271,7 +271,7 @@ const FreelancerPaymentsContent = () => {
               </div>
             ) : rows.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
-                No payment records yet. Accepted contracts will appear here.
+                No payment records yet. Accepted projects will appear here.
               </div>
             ) : (
               <div className="overflow-x-auto">
