@@ -18,7 +18,6 @@ import Settings from "lucide-react/dist/esm/icons/settings";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
-import { useTheme } from "@/components/providers/theme-provider";
 
 gsap.registerPlugin(SplitText, useGSAP);
 
@@ -83,7 +82,6 @@ const HelpCenter = () => {
   const containerRef = useRef(null);
   const heroTextRef = useRef(null);
   const heroGradientRef = useRef(null);
-  const { theme } = useTheme();
   const [resolvedTheme, setResolvedTheme] = useState("dark");
 
   useEffect(() => {
@@ -282,10 +280,10 @@ const HelpCenter = () => {
           />
           <h2 className="text-3xl font-bold mb-4">Still need help?</h2>
           <p className={`${mutedTextColor} mb-8 max-w-xl mx-auto`}>
-            Can't find what you're looking for? Our support team is here to
+            Can&apos;t find what you&apos;re looking for? Our support team is here to
             help.
           </p>
-          <Link to="/contact">
+          <Link to="/contact-us">
             <Button size="lg" className="rounded-full px-8">
               Contact Support <ArrowRight className="ml-2 w-5 h-5" />
             </Button>

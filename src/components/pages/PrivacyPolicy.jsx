@@ -1,239 +1,185 @@
-import { useRef, useEffect, useState } from "react";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { SplitText } from "gsap/SplitText";
 import { Badge } from "@/components/ui/badge";
-import { Spotlight } from "@/components/ui/spotlight";
 import Shield from "lucide-react/dist/esm/icons/shield";
-import { useTheme } from "@/components/providers/theme-provider";
 
-gsap.registerPlugin(SplitText, useGSAP);
-
-const Section = ({ title, children, isDark }) => (
-  <div className="mb-10">
-    <h2
-      className={`text-2xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}
-    >
+const Section = ({ title, children }) => (
+  <section className="mb-10">
+    <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
       {title}
     </h2>
-    <div
-      className={`space-y-4 leading-relaxed ${isDark ? "text-neutral-300" : "text-gray-700"}`}
-    >
+    <div className="space-y-4 leading-relaxed text-gray-700 dark:text-neutral-300">
       {children}
     </div>
-  </div>
+  </section>
 );
 
 const PrivacyPolicy = () => {
-  const containerRef = useRef(null);
-  const heroTextRef = useRef(null);
-  const { theme } = useTheme();
-  const [resolvedTheme, setResolvedTheme] = useState("dark");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const root = window.document.documentElement;
-    const checkTheme = () =>
-      setResolvedTheme(root.classList.contains("dark") ? "dark" : "light");
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-
-  const isDark = resolvedTheme === "dark";
-  const bgColor = isDark ? "bg-black" : "bg-white";
-  const textColor = isDark ? "text-white" : "text-gray-900";
-  const mutedTextColor = isDark ? "text-neutral-400" : "text-gray-600";
-  const gridColor = isDark
-    ? "rgba(255, 255, 255, 0.05)"
-    : "rgba(0, 0, 0, 0.05)";
-
-  useGSAP(
-    () => {
-      if (!heroTextRef.current) return;
-
-      const childSplit = new SplitText(heroTextRef.current, {
-        type: "words,chars",
-      });
-
-      gsap.set(childSplit.chars, { autoAlpha: 0, y: 50, rotateX: -90 });
-      gsap.to(childSplit.chars, {
-        autoAlpha: 1,
-        y: 0,
-        rotateX: 0,
-        stagger: 0.02,
-        duration: 1,
-        ease: "power3.out",
-      });
-    },
-    { scope: containerRef },
-  );
-
   return (
     <main
-      ref={containerRef}
-      className={`relative min-h-screen w-full ${bgColor} ${textColor} overflow-hidden font-sans selection:bg-primary/30`}
+      className="relative min-h-screen w-full overflow-hidden bg-white text-gray-900 dark:bg-black dark:text-white selection:bg-primary/30"
     >
-      {/* Background Grid */}
       <div
-        className="absolute inset-0 z-0 pointer-events-none"
+        className="pointer-events-none absolute inset-0 z-0"
         style={{
           backgroundImage: `
-            linear-gradient(to right, ${gridColor} 1px, transparent 1px),
-            linear-gradient(to bottom, ${gridColor} 1px, transparent 1px)
+            linear-gradient(to right, rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 23, 42, 0.06) 1px, transparent 1px)
           `,
           backgroundSize: "80px 80px",
         }}
       />
 
-      <Spotlight
-        className="-top-40 left-0 md:left-60 md:-top-20 opacity-50"
-        fill={isDark ? "#fdc800" : "#f59e0b"}
-      />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.18),transparent_45%)] dark:bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.12),transparent_45%)]" />
 
-      <div className="relative z-10 max-w-4xl mx-auto px-6 pt-20 pb-20">
-        {/* Header */}
+      <div className="relative z-10 mx-auto max-w-4xl px-6 pb-20 pt-24">
         <div className="text-center mb-16">
           <Badge className="mb-6 bg-primary/10 text-primary border-primary/20 backdrop-blur-md px-4 py-1.5">
             <Shield className="w-3.5 h-3.5 mr-2" />
             Privacy
           </Badge>
-          <h1
-            ref={heroTextRef}
-            className="text-4xl md:text-6xl font-bold tracking-tight mb-4"
-          >
+          <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-6xl">
             Privacy Policy
           </h1>
-          <p className={mutedTextColor}>Effective Date: 14-Jan-2026</p>
-        </div>
-
-        {/* Introduction */}
-        <div
-          className={`mb-12 p-6 rounded-2xl ${isDark ? "bg-white/5 border border-white/10" : "bg-gray-50 border border-gray-200"}`}
-        >
-          <p
-            className={`text-lg leading-relaxed ${isDark ? "text-neutral-300" : "text-gray-700"}`}
-          >
-            At Catalance, your privacy matters. This policy explains how we
-            collect, use, and protect your information.
+          <p className="text-gray-600 dark:text-neutral-400">
+            Last updated: February 23, 2026
           </p>
         </div>
 
-        {/* Content */}
-        <div className={`prose max-w-none ${isDark ? "prose-invert" : ""}`}>
-          <Section title="1. Information We Collect" isDark={isDark}>
-            <p className="font-semibold">a) Personal Information</p>
-            <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>Name</li>
-              <li>Email address</li>
-              <li>Phone number</li>
-              <li>Payment details</li>
-              <li>Profile information</li>
-            </ul>
-            <p className="font-semibold mt-4">b) Usage Information</p>
-            <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>IP address</li>
-              <li>Browser type</li>
-              <li>Pages visited</li>
-              <li>Device information</li>
-            </ul>
-          </Section>
-
-          <Section title="2. How We Use Your Information" isDark={isDark}>
-            <p>We use your data to:</p>
-            <ul className="list-disc pl-6 space-y-2 mt-4">
-              <li>Create and manage accounts</li>
-              <li>Facilitate projects and payments</li>
-              <li>Improve platform experience</li>
-              <li>Send updates and notifications</li>
-              <li>Provide customer support</li>
-            </ul>
-          </Section>
-
-          <Section title="3. Data Sharing" isDark={isDark}>
-            <p className="font-semibold text-primary">
-              Catalance does not sell your data.
-            </p>
-            <p className="mt-4">We may share information with:</p>
-            <ul className="list-disc pl-6 space-y-2 mt-2">
-              <li>Payment processors</li>
-              <li>Legal authorities (if required by law)</li>
-              <li>Technology partners for platform operations</li>
-            </ul>
-          </Section>
-
-          <Section title="4. Cookies" isDark={isDark}>
-            <p>We use cookies to:</p>
-            <ul className="list-disc pl-6 space-y-2 mt-4">
-              <li>Enhance user experience</li>
-              <li>Analyze site traffic</li>
-              <li>Remember preferences</li>
-            </ul>
-            <p className="mt-4">
-              You can disable cookies in your browser settings.
-            </p>
-          </Section>
-
-          <Section title="5. Data Security" isDark={isDark}>
+        <div className="prose max-w-none prose-slate dark:prose-invert">
+          <Section title="Introduction">
             <p>
-              We implement industry-standard security measures to protect your
+              This Privacy Policy explains how Catalance collects, uses, stores,
+              and shares personal information. Fiverr&apos;s policy applies to
+              users and visitors and is updated regularly, and Catalance
+              similarly commits to update this policy and indicate the last
+              revision date.
+            </p>
+          </Section>
+
+          <Section title="Information we collect">
+            <p>
+              We collect information you provide directly, including name,
+              email, password, profile details, payment information, identity
+              documents, and uploaded content.
+            </p>
+            <p>
+              We also collect data automatically, such as device details, IP
+              address, log data, usage statistics, cookies, transaction data,
+              and approximate geolocation.
+            </p>
+            <p>
+              We may receive information from third parties such as identity
+              verification and payment processors to detect fraud and support
+              risk assessment.
+            </p>
+          </Section>
+
+          <Section title="Legal basis for processing">
+            <p>
+              We process personal data to perform contracts (for example,
+              payments and support), pursue legitimate interests (for example,
+              improving and securing the platform), comply with legal
+              obligations (for example, anti-money-laundering requirements),
+              and obtain consent when required.
+            </p>
+            <p>
+              As reflected in comparable marketplace policies, legitimate
+              interest processing is balanced against users&apos; rights.
+            </p>
+          </Section>
+
+          <Section title="How we use information">
+            <p>We use information to:</p>
+            <ul className="mt-4 list-disc space-y-2 pl-6">
+              <li>Create and manage accounts</li>
+              <li>Enable communications between users</li>
+              <li>Process payments and provide support</li>
+              <li>Improve and personalize services</li>
+              <li>Conduct research and analytics</li>
+              <li>Protect marketplace integrity and prevent fraud</li>
+              <li>Send service and marketing communications with opt-out</li>
+              <li>Comply with legal obligations</li>
+            </ul>
+          </Section>
+
+          <Section title="Sharing of information">
+            <p>
+              Catalance shares data with service providers and other users as
+              necessary to perform contracts. We may also share information
+              with regulators or prospective buyers in corporate transactions.
+            </p>
+            <p>
+              We do not sell personal information. Some marketplace platforms
+              offer a &quot;Do Not Sell My Personal Information&quot; option under the
+              CCPA; Catalance follows the principle of not selling personal
               data.
             </p>
-            <p className="mt-2">
-              However, no system is 100% secure, and we cannot guarantee
-              absolute protection.
+          </Section>
+
+          <Section title="Data retention">
+            <p>
+              We retain personal information only as long as necessary for the
+              purposes described in this policy or as required by law.
             </p>
           </Section>
 
-          <Section title="6. User Rights" isDark={isDark}>
-            <p>You have the right to:</p>
-            <ul className="list-disc pl-6 space-y-2 mt-4">
-              <li>Access your data</li>
-              <li>Update your information</li>
-              <li>Request deletion of your account</li>
-              <li>Opt out of marketing communications</li>
-            </ul>
-          </Section>
-
-          <Section title="7. Data Retention" isDark={isDark}>
-            <p>We retain personal information only as long as necessary to:</p>
-            <ul className="list-disc pl-6 space-y-2 mt-4">
-              <li>Provide services</li>
-              <li>Meet legal obligations</li>
-              <li>Resolve disputes</li>
-            </ul>
-          </Section>
-
-          <Section title="8. Third-Party Links" isDark={isDark}>
+          <Section title="Cookies and tracking technologies">
             <p>
-              Catalance is not responsible for the privacy practices of external
-              websites linked on our platform.
+              We use cookies to recognize users, improve functionality, analyze
+              usage, and deliver targeted advertising. Users can manage cookie
+              preferences via browser settings.
+            </p>
+            <p>
+              Similar to major platform policies, Catalance may not respond to
+              Do Not Track signals.
             </p>
           </Section>
 
-          <Section title="9. Children's Privacy" isDark={isDark}>
+          <Section title="International data transfers">
             <p>
-              Catalance does not knowingly collect data from users under 18.
+              If personal data is transferred outside India, we will implement
+              appropriate safeguards, including standard contractual clauses
+              where required.
             </p>
           </Section>
 
-          <Section title="10. Policy Updates" isDark={isDark}>
+          <Section title="Data security">
             <p>
-              We may update this Privacy Policy from time to time. Changes will
-              be posted on this page.
+              We implement administrative, technical, and physical safeguards
+              to protect personal information.
+            </p>
+            <p>
+              Industry best practices can include measures such as
+              multi-factor authentication, HTTPS/HSTS encryption, malware and
+              spam scanning, and controls aligned with standards like SOC 2,
+              PCI DSS, and ISO 27001/27018. Catalance aims to follow similar
+              best practices over time.
             </p>
           </Section>
 
-          <Section title="11. Contact Us" isDark={isDark}>
+          <Section title="Your rights">
             <p>
-              For privacy concerns, contact:{" "}
-              <a
-                href="mailto:support@catalance.in"
-                className="text-primary hover:underline"
-              >
-                support@catalance.in
-              </a>
+              Depending on your jurisdiction, you may have the right to access,
+              rectify, delete, or port your personal data, object to or
+              restrict processing, and withdraw consent where processing is
+              based on consent.
+            </p>
+          </Section>
+
+          <Section title="Children&apos;s privacy">
+            <p>
+              Our services are intended for users at least 18 years old.
+              Catalance does not knowingly collect personal information from
+              children under 13 and does not offer services intended for
+              children.
+            </p>
+          </Section>
+
+          <Section title="Updates">
+            <p>
+              We may update this Privacy Policy from time to time and will post
+              the revised version with an updated &quot;Last updated&quot; date.
+              Continued use of the service after updates constitutes
+              acceptance.
             </p>
           </Section>
         </div>
