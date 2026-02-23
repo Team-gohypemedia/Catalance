@@ -128,6 +128,8 @@ const HelpCenter = lazy(() => import("@/components/pages/HelpCenter"));
 const TermsOfService = lazy(() => import("@/components/pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("@/components/pages/PrivacyPolicy"));
 const RefundPolicy = lazy(() => import("@/components/pages/RefundPolicy"));
+const FeesPricing = lazy(() => import("@/components/pages/FeesPricing"));
+const Security = lazy(() => import("@/components/pages/Security"));
 const ContactUs = lazy(() => import("@/components/pages/ContactUs"));
 const GuestAIDemo = lazy(() => import("@/components/pages/GuestAIDemo"));
 
@@ -223,6 +225,22 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <RefundPolicy />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/fees-pricing"
+              element={
+                <LayoutWithNavbar>
+                  <FeesPricing />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/security"
+              element={
+                <LayoutWithNavbar>
+                  <Security />
                 </LayoutWithNavbar>
               }
             />
