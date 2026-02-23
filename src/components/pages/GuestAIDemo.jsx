@@ -316,12 +316,16 @@ const GuestAIDemo = () => {
 
             if (data.success) {
                 setSessionId(data.sessionId);
-                setMessages([
-                    {
-                        role: "assistant",
-                        content: `Hello! I see you're interested in **${service.name}**.\n\n${service.questions?.[0]?.text || "How can I help you regarding this service?"}`
-                    }
-                ]);
+                if (Array.isArray(data.history) && data.history.length > 0) {
+                    setMessages(data.history);
+                } else {
+                    setMessages([
+                        {
+                            role: "assistant",
+                            content: data.message || `Hello! I see you're interested in **${service.name}**.`
+                        }
+                    ]);
+                }
                 setInputConfig(data.inputConfig || { type: 'text', options: [] });
             }
         } catch {
