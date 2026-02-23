@@ -67,6 +67,82 @@ const hasDirectOptionAnswer = (message = "", question = {}) => {
     });
 };
 
+const extractNumericChoiceNumbers = (text = "", maxOptionCount = 0) => {
+    const matches = String(text || "").match(/\d+/g) || [];
+    const numbers = [];
+
+    for (const match of matches) {
+        const value = Number.parseInt(match, 10);
+        if (!Number.isFinite(value)) continue;
+        if (value < 1 || value > maxOptionCount) continue;
+        if (!numbers.includes(value)) numbers.push(value);
+    }
+
+    return numbers;
+};
+
+const mapNumericReplyToOptions = (question = {}, rawText = "") => {
+    const optionLabels = getQuestionOptionLabels(question);
+    if (optionLabels.length === 0) {
+        return { matched: false, normalizedText: rawText, selectedLabels: [] };
+    }
+
+    const numbers = extractNumericChoiceNumbers(rawText, optionLabels.length);
+    if (numbers.length === 0) {
+        return { matched: false, normalizedText: rawText, selectedLabels: [] };
+    }
+
+    const selectedLabels = numbers
+        .map((number) => optionLabels[number - 1])
+        .filter(Boolean);
+
+    if (selectedLabels.length === 0) {
+        return { matched: false, normalizedText: rawText, selectedLabels: [] };
+    }
+
+    return {
+        matched: true,
+        normalizedText: selectedLabels.join(", "),
+        selectedLabels
+    };
+};
+
+const countOptionLabelsMentioned = (message = "", question = {}) => {
+    const normalizedMessage = normalizeTextToken(message);
+    if (!normalizedMessage) return 0;
+
+    return getQuestionOptionLabels(question).reduce((count, label) => {
+        const normalizedLabel = normalizeTextToken(label);
+        if (!normalizedLabel) return count;
+        return normalizedMessage.includes(normalizedLabel) ? count + 1 : count;
+    }, 0);
+};
+
+const stripExistingOptionLines = (message = "", optionLabels = []) => {
+    const normalizedOptionLabels = optionLabels
+        .map((label) => normalizeTextToken(label))
+        .filter(Boolean);
+
+    if (normalizedOptionLabels.length === 0) {
+        return String(message || "").trim();
+    }
+
+    const lines = String(message || "").split("\n");
+    const keptLines = lines.filter((line) => {
+        const trimmed = String(line || "").trim();
+        if (!trimmed) return true;
+        const withoutPrefix = trimmed.replace(/^(\d+\.\s*|[-*]\s*)/, "");
+        const normalizedLine = normalizeTextToken(withoutPrefix);
+        if (!normalizedLine) return true;
+        return !normalizedOptionLabels.includes(normalizedLine);
+    });
+
+    return keptLines
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+};
+
 const buildFriendlyMessage = (mainText = "", bridgeText = "") => {
     const cleanMainText = String(mainText || "").trim();
     const cleanBridgeText = String(bridgeText || "").trim();
@@ -774,6 +850,23 @@ const formatQuestionWithOptions = (question = {}) => {
 const hasNumberedOptionsInMessage = (value = "") =>
     /\n\s*1\.\s+\S+/.test(String(value || ""));
 
+const shouldAppendQuestionBlockForInfoRequest = ({
+    assistantMessage = "",
+    question = {}
+}) => {
+    const message = String(assistantMessage || "").trim();
+    if (!message) return true;
+
+    const hasOptions = getQuestionOptionLabels(question).length > 0;
+    if (hasOptions) {
+        if (hasNumberedOptionsInMessage(message)) return false;
+        if (countOptionLabelsMentioned(message, question) >= 2) return false;
+        return true;
+    }
+
+    return !/[?؟]/.test(message);
+};
+
 const buildAiGuidedQuestionMessage = async ({
     serviceName = "",
     userLastMessage = "",
@@ -862,11 +955,10 @@ Return strict JSON only:
         }
 
         if (hasOptions) {
-            const hasAnyOptionLabel = getQuestionOptionLabels(nextQuestion).some((label) =>
-                normalizeTextToken(parsedMessage).includes(normalizeTextToken(label))
-            );
-            if (!hasAnyOptionLabel) {
-                return `${parsedMessage}\n\n${optionLabelsText}`;
+            const optionLabels = getQuestionOptionLabels(nextQuestion);
+            if (!hasNumberedOptionsInMessage(parsedMessage)) {
+                const cleanedMessage = stripExistingOptionLines(parsedMessage, optionLabels);
+                return `${cleanedMessage}\n\n${optionLabelsText}`;
             }
         }
 
@@ -1397,8 +1489,19 @@ export const guestChat = asyncHandler(async (req, res) => {
     const questions = service.questions;
     const currentStep = session.currentStep;
     const currentQuestion = questions[currentStep];
+    const numericSelection = mapNumericReplyToOptions(currentQuestion, safeMessageText);
+    const userMessageText = numericSelection.matched
+        ? numericSelection.normalizedText
+        : safeMessageText;
+
+    if (numericSelection.matched) {
+        console.log(
+            `[Numeric Selection] mapped "${safeMessageText}" -> "${userMessageText}"`
+        );
+    }
+
     const existingAnswersBySlug = getAnswersBySlug(session.answers || {}, questions);
-    const correctionIntent = hasCorrectionIntent(safeMessageText);
+    const correctionIntent = hasCorrectionIntent(userMessageText);
     const questionIndexBySlug = new Map(
         questions
             .filter((q) => q?.slug)
@@ -1409,7 +1512,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     if (currentStep < questions.length) {
         extractedAnswersForMessage = await extractAnswersFromMessage({
             serviceName: service.name,
-            message: safeMessageText,
+            message: userMessageText,
             questions
         });
     }
@@ -1429,7 +1532,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             questions
         ).byQuestionText;
 
-        if (isGreetingInsteadOfNameAnswer(currentQuestionText, safeMessageText)) {
+        if (isGreetingInsteadOfNameAnswer(currentQuestionText, userMessageText)) {
             validationResult = {
                 isValid: false,
                 status: "invalid_answer",
@@ -1438,8 +1541,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             aiResponseContent = validationResult.message;
             console.log("[Validation Fallback]:", validationResult);
         } else if (
-            isContextSuggestionRequest(safeMessageText) &&
-            !hasDirectOptionAnswer(safeMessageText, currentQuestion)
+            isContextSuggestionRequest(userMessageText) &&
+            !hasDirectOptionAnswer(userMessageText, currentQuestion)
         ) {
             validationResult = {
                 isValid: false,
@@ -1466,7 +1569,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             Current Question Asked: "${currentQuestionText}"
             Current Question Options: ${JSON.stringify(currentQuestionOptions)}
             Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
-            User's Answer: "${safeMessageText}"
+            User's Answer: "${userMessageText}"
             
             Next Question in Script: "${nextQuestionText}"
 
@@ -1521,7 +1624,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         }
 
         // If parsing fails, avoid advancing on obvious non-answers.
-        if (!validationResult && GREETING_ONLY_REGEX.test(safeMessageText)) {
+        if (!validationResult && GREETING_ONLY_REGEX.test(userMessageText)) {
             validationResult = {
                 isValid: false,
                 message: "Please answer the question directly so I can continue.",
@@ -1532,16 +1635,17 @@ export const guestChat = asyncHandler(async (req, res) => {
             validationResult = { isValid: true, message: "" };
         }
 
-        if (!validationResult.isValid) {
+            if (!validationResult.isValid) {
             if (validationResult.status === "info_request") {
                 const questionBlock = formatQuestionWithOptions(currentQuestion);
-                if (questionBlock && !containsNormalizedText(aiResponseContent, currentQuestionText)) {
-                    aiResponseContent = `${aiResponseContent}\n\n${questionBlock}`;
-                } else if (
-                    currentQuestionOptions.length > 0 &&
-                    !hasNumberedOptionsInMessage(aiResponseContent)
+                if (
+                    questionBlock &&
+                    shouldAppendQuestionBlockForInfoRequest({
+                        assistantMessage: aiResponseContent,
+                        question: currentQuestion
+                    })
                 ) {
-                    aiResponseContent = `${aiResponseContent}\n\n${buildOptionLabelsText(currentQuestion)}`;
+                    aiResponseContent = `${aiResponseContent}\n\n${questionBlock}`;
                 }
             }
 
@@ -1595,7 +1699,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                     data: {
                         sessionId,
                         role: "user",
-                        content: safeMessageText,
+                        content: userMessageText,
                     },
                 });
 
@@ -1647,17 +1751,18 @@ export const guestChat = asyncHandler(async (req, res) => {
                 data: {
                     sessionId,
                     role: "user",
-                    content: safeMessageText,
+                    content: userMessageText,
                 },
             });
 
             // 2. Save Assistant's Feedback Message
             const feedbackCore = aiResponseContent || "Could you please provide more specific details?";
             const sideReply = buildAgentSideReply({
-                userMessage: safeMessageText,
+                userMessage: userMessageText,
                 answersByQuestionText: buildPersistedAnswersPayload(existingAnswersBySlug, questions).byQuestionText
             });
             const quickReplyHint = hasNumberedOptionsInMessage(feedbackCore)
+                || countOptionLabelsMentioned(feedbackCore, currentQuestion) >= 2
                 ? ""
                 : buildQuickReplyHint(currentQuestion);
             const feedbackMsg = [sideReply, feedbackCore, quickReplyHint]
@@ -1693,14 +1798,14 @@ export const guestChat = asyncHandler(async (req, res) => {
         data: {
             sessionId,
             role: "user",
-            content: safeMessageText,
+            content: userMessageText,
         },
     });
 
     let updatedAnswersBySlug = { ...existingAnswersBySlug };
 
     if (currentQuestion?.slug) {
-        updatedAnswersBySlug[currentQuestion.slug] = safeMessageText;
+        updatedAnswersBySlug[currentQuestion.slug] = userMessageText;
     }
 
     let autoCapturedAnswerSlugs = [];
@@ -1764,7 +1869,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         const expectedImmediateNextStep = resolveNextQuestionIndex(
             questions,
             currentStep,
-            currentQuestion?.slug ? updatedAnswersBySlug[currentQuestion.slug] : safeMessageText
+            currentQuestion?.slug ? updatedAnswersBySlug[currentQuestion.slug] : userMessageText
         );
 
         const canUseAiTransition = Boolean(aiResponseContent)
@@ -1773,7 +1878,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             && nextStep === expectedImmediateNextStep;
 
         const sideReply = buildAgentSideReply({
-            userMessage: safeMessageText,
+            userMessage: userMessageText,
             answersByQuestionText: persistedAnswers.byQuestionText
         });
         const personalizedBridge = buildPersonalizedQuestionBridge({
@@ -1813,7 +1918,7 @@ export const guestChat = asyncHandler(async (req, res) => {
 
         const aiGuidedQuestionMessage = await buildAiGuidedQuestionMessage({
             serviceName: service.name,
-            userLastMessage: safeMessageText,
+            userLastMessage: userMessageText,
             currentQuestion,
             nextQuestion,
             answersByQuestionText: persistedAnswers.byQuestionText,
@@ -1841,7 +1946,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         try {
             const proposalHistory = [
                 ...session.messages.map((m) => ({ role: m.role, content: m.content })),
-                { role: "user", content: safeMessageText }
+                { role: "user", content: userMessageText }
             ];
             const allQuestionSlugs = new Set(questions.map((q) => q.slug).filter(Boolean));
             const extractedFromConversation = await extractAnswersFromConversation({
@@ -1918,7 +2023,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     // Re-fetch messages for complete history or append manually
     const newHistory = [
         ...session.messages.map(m => ({ role: m.role, content: m.content })),
-        { role: "user", content: safeMessageText },
+        { role: "user", content: userMessageText },
         { role: "assistant", content: responseContent }
     ];
 
