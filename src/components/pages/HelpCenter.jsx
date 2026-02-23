@@ -1,11 +1,8 @@
-import { useRef, useEffect, useState } from "react";
+﻿import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { SplitText } from "gsap/SplitText";
-import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/providers/theme-provider";
 import { Badge } from "@/components/ui/badge";
-import { Spotlight } from "@/components/ui/spotlight";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Search from "lucide-react/dist/esm/icons/search";
@@ -15,280 +12,218 @@ import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Shield from "lucide-react/dist/esm/icons/shield";
 import Users from "lucide-react/dist/esm/icons/users";
 import Settings from "lucide-react/dist/esm/icons/settings";
-import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import FileText from "lucide-react/dist/esm/icons/file-text";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 
-gsap.registerPlugin(SplitText, useGSAP);
+const CATEGORIES = [
+  {
+    icon: BookOpen,
+    title: "Getting Started",
+    description: "Basics to launch your first project.",
+  },
+  {
+    icon: Users,
+    title: "Account & Profile",
+    description: "Manage profile, security, and access.",
+  },
+  {
+    icon: CreditCard,
+    title: "Payments & Billing",
+    description: "Invoices, payouts, and billing support.",
+  },
+  {
+    icon: FileText,
+    title: "Projects & Contracts",
+    description: "Milestones, scope, and delivery workflows.",
+  },
+  {
+    icon: Shield,
+    title: "Trust & Safety",
+    description: "Disputes, security, and protection.",
+  },
+  {
+    icon: Settings,
+    title: "Technical Support",
+    description: "Troubleshoot common platform issues.",
+  },
+];
 
-const CategoryCard = ({ icon: Icon, title, description, articles, isDark }) => (
-  <Link to="#" className="block group">
-    <div
-      className={`p-6 rounded-2xl border transition-all duration-300 hover:-translate-y-1 h-full ${
-        isDark
-          ? "bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/30"
-          : "bg-white border-black/5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5"
-      }`}
-    >
-      <div
-        className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300 ${
-          isDark
-            ? "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-black"
-            : "bg-primary/10 text-primary-700 group-hover:bg-primary group-hover:text-white"
-        }`}
-      >
-        <Icon className="w-6 h-6" />
-      </div>
-      <h3
-        className={`text-lg font-bold mb-2 group-hover:text-primary transition-colors ${isDark ? "text-white" : "text-gray-900"}`}
-      >
-        {title}
-      </h3>
-      <p
-        className={`text-sm mb-3 ${isDark ? "text-neutral-400" : "text-gray-600"}`}
-      >
-        {description}
-      </p>
-      <span
-        className={`text-sm font-medium ${isDark ? "text-neutral-500" : "text-gray-500"}`}
-      >
-        {articles} articles
-      </span>
-    </div>
-  </Link>
-);
-
-const ArticleLink = ({ title, isDark }) => (
-  <Link
-    to="#"
-    className={`flex items-center justify-between p-4 rounded-xl border transition-all hover:border-primary/30 group ${
-      isDark
-        ? "bg-white/5 border-white/10 hover:bg-white/10"
-        : "bg-white border-black/5 hover:shadow-md"
-    }`}
-  >
-    <span
-      className={`group-hover:text-primary transition-colors ${isDark ? "text-white" : "text-gray-900"}`}
-    >
-      {title}
-    </span>
-    <ChevronRight
-      className={`w-5 h-5 group-hover:translate-x-1 transition-transform ${isDark ? "text-neutral-400" : "text-gray-400"}`}
-    />
-  </Link>
-);
+const ARTICLES = [
+  { title: "How to create a project brief", category: "Getting Started" },
+  { title: "Improve your profile visibility", category: "Account & Profile" },
+  { title: "How payout timelines work", category: "Payments & Billing" },
+  { title: "Setting milestone-based contracts", category: "Projects & Contracts" },
+  { title: "How to open a dispute", category: "Trust & Safety" },
+  { title: "Fix login and notification issues", category: "Technical Support" },
+];
 
 const HelpCenter = () => {
-  const containerRef = useRef(null);
-  const heroTextRef = useRef(null);
-  const heroGradientRef = useRef(null);
-  const [resolvedTheme, setResolvedTheme] = useState("dark");
+  const { theme } = useTheme();
+  const isDark = theme !== "light";
+  const [query, setQuery] = useState("");
+  const resultsRef = useRef(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const root = window.document.documentElement;
-    const checkTheme = () =>
-      setResolvedTheme(root.classList.contains("dark") ? "dark" : "light");
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
+  const normalizedQuery = query.trim().toLowerCase();
 
-  const isDark = resolvedTheme === "dark";
-  const bgColor = isDark ? "bg-black" : "bg-white";
-  const textColor = isDark ? "text-white" : "text-gray-900";
-  const mutedTextColor = isDark ? "text-neutral-400" : "text-gray-600";
-  const gridColor = isDark
-    ? "rgba(255, 255, 255, 0.05)"
-    : "rgba(0, 0, 0, 0.05)";
+  const filteredCategories = useMemo(() => {
+    if (!normalizedQuery) return CATEGORIES;
 
-  useGSAP(
-    () => {
-      if (!heroTextRef.current) return;
+    return CATEGORIES.filter((category) => {
+      const text = `${category.title} ${category.description}`.toLowerCase();
+      return text.includes(normalizedQuery);
+    });
+  }, [normalizedQuery]);
 
-      const childSplit = new SplitText(heroTextRef.current, {
-        type: "words,chars",
-      });
+  const filteredArticles = useMemo(() => {
+    if (!normalizedQuery) return ARTICLES;
 
-      gsap.set(childSplit.chars, { autoAlpha: 0, y: 50, rotateX: -90 });
-      gsap.set(heroGradientRef.current, { autoAlpha: 0, y: 30, scale: 0.95 });
+    return ARTICLES.filter((article) => {
+      const text = `${article.title} ${article.category}`.toLowerCase();
+      return text.includes(normalizedQuery);
+    });
+  }, [normalizedQuery]);
 
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-
-      tl.to(childSplit.chars, {
-        autoAlpha: 1,
-        y: 0,
-        rotateX: 0,
-        stagger: 0.02,
-        duration: 1,
-      }).to(
-        heroGradientRef.current,
-        {
-          autoAlpha: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.8,
-        },
-        "-=0.6",
-      );
-    },
-    { scope: containerRef },
-  );
-
-  const categories = [
-    {
-      icon: BookOpen,
-      title: "Getting Started",
-      description: "New to Catalance? Start here.",
-      articles: 12,
-    },
-    {
-      icon: Users,
-      title: "Account & Profile",
-      description: "Manage your account settings.",
-      articles: 18,
-    },
-    {
-      icon: CreditCard,
-      title: "Payments & Billing",
-      description: "Invoices, payouts, and taxes.",
-      articles: 24,
-    },
-    {
-      icon: FileText,
-      title: "Projects & Contracts",
-      description: "Managing your work on the platform.",
-      articles: 15,
-    },
-    {
-      icon: Shield,
-      title: "Trust & Safety",
-      description: "Security, disputes, and protection.",
-      articles: 10,
-    },
-    {
-      icon: Settings,
-      title: "Technical Support",
-      description: "Troubleshooting and FAQs.",
-      articles: 22,
-    },
-  ];
-
-  const popularArticles = [
-    "How to create a compelling freelancer profile",
-    "Understanding platform fees and payment schedules",
-    "How to submit a proposal that wins",
-    "Setting up two-factor authentication",
-    "What to do if a client doesn't pay",
-    "How to request a refund or dispute",
-  ];
+  const handleSearch = (event) => {
+    event.preventDefault();
+    resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <main
-      ref={containerRef}
-      className={`relative min-h-screen w-full ${bgColor} ${textColor} overflow-hidden font-sans selection:bg-primary/30`}
+      className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-white text-gray-900"}`}
     >
-      {/* Background Grid */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, ${gridColor} 1px, transparent 1px),
-            linear-gradient(to bottom, ${gridColor} 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px",
-        }}
-      />
-
-      <Spotlight
-        className="-top-40 left-0 md:left-60 md:-top-20 opacity-50"
-        fill={isDark ? "#fdc800" : "#f59e0b"}
-      />
-
-      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-20">
-        {/* Hero Section */}
-        <div className="text-center max-w-4xl mx-auto mb-16">
-          <Badge className="mb-6 bg-primary/10 text-primary border-primary/20 backdrop-blur-md px-4 py-1.5">
-            <HelpCircle className="w-3.5 h-3.5 mr-2" />
+      <div className="mx-auto max-w-6xl px-5 pb-20 pt-28 md:px-8 md:pt-32">
+        <section
+          className={`rounded-3xl border p-7 md:p-10 ${
+            isDark ? "border-white/10 bg-white/[0.03]" : "border-black/10 bg-gray-50"
+          }`}
+        >
+          <Badge
+            className={`mb-5 border px-4 py-1.5 ${
+              isDark
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-primary/40 bg-primary/10 text-primary"
+            }`}
+          >
+            <HelpCircle className="mr-1 h-3.5 w-3.5" />
             Help Center
           </Badge>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-[1.1]">
-            <span ref={heroTextRef} className="inline-block">
-              How can we{" "}
-            </span>{" "}
-            <span
-              ref={heroGradientRef}
-              className={`inline-block bg-clip-text text-transparent bg-linear-to-r ${isDark ? "from-primary via-yellow-200 to-primary" : "from-primary via-orange-400 to-primary"}`}
-            >
-              help you?
-            </span>
+
+          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+            How can we help?
           </h1>
-
-          {/* Search Bar */}
-          <div className="max-w-2xl mx-auto">
-            <div
-              className={`flex items-center gap-2 p-2 rounded-2xl border ${isDark ? "bg-white/5 border-white/10" : "bg-white border-black/10 shadow-lg"}`}
-            >
-              <div className="flex-1 flex items-center gap-3 px-4">
-                <Search
-                  className={`w-5 h-5 ${isDark ? "text-neutral-400" : "text-gray-400"}`}
-                />
-                <Input
-                  type="text"
-                  placeholder="Search for help articles..."
-                  className="border-0 bg-transparent focus-visible:ring-0 text-lg"
-                />
-              </div>
-              <Button size="lg" className="rounded-xl px-6">
-                Search
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Categories Grid */}
-        <div className="mb-20">
-          <h2 className="text-2xl font-bold mb-8 text-center">
-            Browse by Category
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((cat, idx) => (
-              <CategoryCard key={idx} {...cat} isDark={isDark} />
-            ))}
-          </div>
-        </div>
-
-        {/* Popular Articles */}
-        <div className="mb-20">
-          <h2 className="text-2xl font-bold mb-8 text-center">
-            Popular Articles
-          </h2>
-          <div className="max-w-3xl mx-auto space-y-3">
-            {popularArticles.map((article, idx) => (
-              <ArticleLink key={idx} title={article} isDark={isDark} />
-            ))}
-          </div>
-        </div>
-
-        {/* Contact Support CTA */}
-        <div
-          className={`rounded-3xl p-12 text-center ${isDark ? "bg-white/5" : "bg-primary/5"}`}
-        >
-          <MessageCircle
-            className={`w-12 h-12 mx-auto mb-4 ${isDark ? "text-primary" : "text-primary"}`}
-          />
-          <h2 className="text-3xl font-bold mb-4">Still need help?</h2>
-          <p className={`${mutedTextColor} mb-8 max-w-xl mx-auto`}>
-            Can&apos;t find what you&apos;re looking for? Our support team is here to
-            help.
+          <p className={`mt-3 text-base ${isDark ? "text-neutral-300" : "text-gray-600"}`}>
+            Search help topics and find the right guide quickly.
           </p>
-          <Link to="/contact-us">
-            <Button size="lg" className="rounded-full px-8">
-              Contact Support <ArrowRight className="ml-2 w-5 h-5" />
+
+          <form
+            onSubmit={handleSearch}
+            className={`mt-6 flex flex-col gap-3 rounded-2xl border p-2 sm:flex-row sm:items-center ${
+              isDark ? "border-white/10 bg-black/30" : "border-black/10 bg-white"
+            }`}
+          >
+            <div className="relative flex-1">
+              <Search
+                className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${
+                  isDark ? "text-neutral-400" : "text-gray-500"
+                }`}
+              />
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search help articles"
+                className={`h-11 border-none pl-10 shadow-none ${
+                  isDark
+                    ? "bg-transparent text-white placeholder:text-neutral-500"
+                    : "bg-transparent text-gray-900 placeholder:text-gray-500"
+                }`}
+              />
+            </div>
+            <Button type="submit" className="h-11 rounded-xl px-6 font-semibold">
+              Search Help
             </Button>
-          </Link>
-        </div>
+          </form>
+
+          {normalizedQuery ? (
+            <p className={`mt-3 text-sm ${isDark ? "text-neutral-400" : "text-gray-600"}`}>
+              {filteredCategories.length + filteredArticles.length} results for &quot;
+              {query}
+              &quot;
+            </p>
+          ) : null}
+        </section>
+
+        <section ref={resultsRef} className="mt-12">
+          <h2 className="text-2xl font-semibold">Categories</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredCategories.map((category) => {
+              const Icon = category.icon;
+
+              return (
+                <article
+                  key={category.title}
+                  className={`rounded-2xl border p-5 ${
+                    isDark ? "border-white/10 bg-white/[0.03]" : "border-black/10 bg-white"
+                  }`}
+                >
+                  <div
+                    className={`mb-4 flex h-10 w-10 items-center justify-center rounded-lg ${
+                      isDark ? "bg-primary/15 text-primary" : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-semibold">{category.title}</h3>
+                  <p className={`mt-2 text-sm ${isDark ? "text-neutral-300" : "text-gray-600"}`}>
+                    {category.description}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="text-2xl font-semibold">Popular Articles</h2>
+          <div className="mt-5 space-y-3">
+            {filteredArticles.length === 0 ? (
+              <p className={isDark ? "text-neutral-400" : "text-gray-600"}>No matching articles found.</p>
+            ) : (
+              filteredArticles.map((article) => (
+                <article
+                  key={article.title}
+                  className={`flex items-center justify-between rounded-xl border p-4 ${
+                    isDark ? "border-white/10 bg-white/[0.03]" : "border-black/10 bg-white"
+                  }`}
+                >
+                  <div>
+                    <p className="font-medium">{article.title}</p>
+                    <p className={`text-sm ${isDark ? "text-neutral-400" : "text-gray-500"}`}>
+                      {article.category}
+                    </p>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section
+          className={`mt-12 rounded-3xl border p-7 text-center ${
+            isDark ? "border-white/10 bg-white/[0.03]" : "border-black/10 bg-gray-50"
+          }`}
+        >
+          <h2 className="text-2xl font-semibold">Still need help?</h2>
+          <p className={`mt-2 text-sm ${isDark ? "text-neutral-300" : "text-gray-600"}`}>
+            Contact support and we&apos;ll assist you directly.
+          </p>
+          <Button asChild className="mt-5 rounded-full px-6">
+            <Link to="/contact-us">
+              Contact Support
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </section>
       </div>
     </main>
   );

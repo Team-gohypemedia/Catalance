@@ -9,7 +9,7 @@ const THRESHOLD = 0.65;
 
 const brandPresets = {
     freelancer: {
-        name: "Freelancer HQ",
+        name: "Freelancer Dashboard",
         logoText: "FR",
         path: "/freelancer",
     },
@@ -86,11 +86,12 @@ export function DashboardSwitcher() {
             setIsDragging(false);
 
             if (currentProgress >= THRESHOLD) {
-                setDragX(maxDrag);
-                dragXRef.current = maxDrag;
-
-                // Navigate to target dashboard
-                navigate(targetBrand.path);
+                // Reset immediately so the switcher never appears empty while routing.
+                setDragX(0);
+                dragXRef.current = 0;
+                if (location.pathname !== targetBrand.path) {
+                    navigate(targetBrand.path);
+                }
             } else {
                 setDragX(0);
                 dragXRef.current = 0;
@@ -108,7 +109,7 @@ export function DashboardSwitcher() {
             window.removeEventListener("touchmove", handleMove);
             window.removeEventListener("touchend", handleEnd);
         };
-    }, [isDragging, maxDrag, navigate, targetBrand.path]);
+    }, [isDragging, maxDrag, navigate, targetBrand.path, location.pathname]);
 
     return (
         <div className="px-2 py-1.5">
@@ -155,17 +156,17 @@ export function DashboardSwitcher() {
 
                     {/* Label - fades out when dragging */}
                     <div
-                        className="group-data-[collapsible=icon]:hidden"
+                        className="group-data-[collapsible=icon]:hidden min-w-0"
                         style={{
                             opacity: Math.max(0, 1 - progress * 2.5),
                             transition: isDragging ? "none" : "opacity 0.2s",
                         }}
                     >
-                        <p className="text-sm font-semibold text-foreground whitespace-nowrap">
+                        <p className="text-sm font-semibold text-foreground truncate max-w-[9.75rem]">
                             {currentBrand.name}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                            Slide to switch →
+                        <p className="text-xs text-muted-foreground truncate">
+                            Slide to switch {"->"}
                         </p>
                     </div>
                 </div>
@@ -193,3 +194,4 @@ DashboardSwitcher.propTypes = {
 };
 
 export default DashboardSwitcher;
+

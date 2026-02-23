@@ -36,7 +36,7 @@ const fallbackUser = {
 
 const brandPresets = {
   FREELANCER: {
-    name: "Freelancer HQ",
+    name: "Freelancer Dashboard",
     plan: "Creator workspace",
     logoText: "FR",
   },

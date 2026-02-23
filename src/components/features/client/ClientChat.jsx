@@ -960,10 +960,17 @@ const ClientChatContent = () => {
   }, [messages]);
 
   return (
-    <div className="flex h-screen flex-col gap-4 overflow-hidden p-2">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
       <ClientTopBar />
 
-      <div className={`grid h-full gap-4 overflow-hidden ${proposalMessage ? "lg:grid-cols-[320px_minmax(0,1fr)_400px]" : "lg:grid-cols-[320px_minmax(0,1fr)]"}`}>
+      <main className="flex-1 overflow-hidden p-4 md:p-8 lg:p-12 z-10 relative">
+        <div className="max-w-[1600px] mx-auto h-full">
+          <div
+            className={`grid h-full min-h-0 gap-4 overflow-hidden ${proposalMessage
+              ? "lg:grid-cols-[320px_minmax(0,1fr)_400px]"
+              : "lg:grid-cols-[320px_minmax(0,1fr)]"
+              }`}
+          >
         <Card className="border border-border/50 bg-card/70">
           <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
             <div className="border-b border-border/40 pb-4 space-y-1">
@@ -1088,7 +1095,9 @@ const ClientChatContent = () => {
             </div>
           </div>
         )}
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };
