@@ -18,9 +18,7 @@ import { Input } from '@/components/ui/input';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { useTheme } from '@/components/providers/theme-provider';
-import { API_BASE_URL } from '@/shared/lib/api-client';
-
-const API_BASE = API_BASE_URL || import.meta.env.VITE_API_BASE_URL || '/api';
+import { request } from '@/shared/lib/api-client';
 
 const CAPABILITY_ITEMS = [
     'Instant requirement gathering',
@@ -29,32 +27,20 @@ const CAPABILITY_ITEMS = [
     '24/7 guided consultation',
 ];
 
-const apiFetch = async (endpoint, options = {}) => {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        cache: 'no-store',
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
-    });
-    const contentType = res.headers.get('content-type') || '';
-    const isJson = contentType.includes('application/json');
-    const data = isJson ? await res.json().catch(() => null) : null;
-
-    if (!res.ok) {
-        const message =
-            data?.error ||
-            data?.message ||
-            `API Request Failed (${res.status})`;
-        throw new Error(message);
+const unwrapPayload = (value) => {
+    if (!value || typeof value !== 'object') return value;
+    if ('data' in value && value.data !== undefined && value.data !== null) {
+        return value.data;
     }
+    return value;
+};
 
-    if (!isJson || !data) {
-        throw new Error(`Unexpected API response (${res.status}). Check API base URL and rewrites.`);
-    }
-
-    return data;
+const extractServices = (value) => {
+    const payload = unwrapPayload(value);
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.services)) return payload.services;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
 };
 
 const isProposalMessage = (content = "") => {
@@ -269,6 +255,7 @@ const GuestAIDemo = () => {
     const isDark = theme === 'dark';
 
     const [services, setServices] = useState([]);
+    const [servicesError, setServicesError] = useState("");
     const [loading, setLoading] = useState(true);
     const [selectedService, setSelectedService] = useState(null);
     const [sessionId, setSessionId] = useState(null);
@@ -310,12 +297,23 @@ const GuestAIDemo = () => {
 
     const fetchServices = async () => {
         try {
-            const data = await apiFetch('/ai/services');
-            if (data.success) {
-                setServices(data.services);
+            setServicesError("");
+            const response = await request('/ai/services', {
+                method: 'GET',
+                cache: 'no-store',
+            });
+            const normalizedServices = extractServices(response);
+            if (normalizedServices.length > 0) {
+                setServices(normalizedServices);
+            } else {
+                console.warn('[GuestAIDemo] Services payload had no rows:', response);
+                setServices([]);
+                setServicesError("No services are available right now.");
             }
         } catch (error) {
             console.error('[GuestAIDemo] Failed to load services:', error);
+            setServices([]);
+            setServicesError(error?.message || "Failed to load services");
             toast.error(error?.message || "Failed to load services");
         } finally {
             setLoading(false);
@@ -326,12 +324,13 @@ const GuestAIDemo = () => {
         setSelectedService(service);
         setLoading(true);
         try {
-            const data = await apiFetch('/guest/start', {
+            const response = await request('/guest/start', {
                 method: 'POST',
                 body: JSON.stringify({ serviceId: service.slug || service.id })
             });
+            const data = unwrapPayload(response);
 
-            if (data.success) {
+            if (data?.sessionId) {
                 setSessionId(data.sessionId);
                 if (Array.isArray(data.history) && data.history.length > 0) {
                     setMessages(data.history);
@@ -344,6 +343,9 @@ const GuestAIDemo = () => {
                     ]);
                 }
                 setInputConfig(data.inputConfig || { type: 'text', options: [] });
+            } else {
+                console.warn('[GuestAIDemo] Unexpected start payload:', response);
+                throw new Error('Failed to start chat session');
             }
         } catch (error) {
             console.error('[GuestAIDemo] Failed to start chat session:', error);
@@ -375,25 +377,26 @@ const GuestAIDemo = () => {
         setSelectedOptions([]);
 
         try {
-            const data = await apiFetch('/guest/chat', {
+            const response = await request('/guest/chat', {
                 method: 'POST',
                 body: JSON.stringify({
                     sessionId,
                     message: isArrayPayload ? normalizedArray : userMsg.content
                 })
             });
+            const data = unwrapPayload(response);
 
-            if (data.success) {
-                if (data.history) {
-                    setMessages(data.history);
-                } else {
-                    const aiMsg = { role: 'assistant', content: data.message };
-                    setMessages(prev => [...prev, aiMsg]);
-                }
+            if (data?.history) {
+                setMessages(data.history);
+            } else if (typeof data?.message === 'string' && data.message.trim()) {
+                const aiMsg = { role: 'assistant', content: data.message };
+                setMessages(prev => [...prev, aiMsg]);
+            } else {
+                console.warn('[GuestAIDemo] Unexpected chat payload:', response);
+            }
 
-                if (data.inputConfig) {
-                    setInputConfig(data.inputConfig);
-                }
+            if (data?.inputConfig) {
+                setInputConfig(data.inputConfig);
             }
         } catch (error) {
             console.error('[GuestAIDemo] Failed to send message:', error);
@@ -442,39 +445,59 @@ const GuestAIDemo = () => {
                     </motion.div>
 
                     <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                        {services.map((service, index) => (
-                            <motion.div
-                                key={service.id}
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: Math.min(index * 0.04, 0.25) }}
-                                whileHover={{ y: -4 }}
-                            >
-                                <Card
-                                    className={`h-full cursor-pointer rounded-2xl border transition-all ${isDark
-                                        ? 'border-white/10 bg-white/[0.04] hover:border-primary/50 hover:bg-white/[0.07]'
-                                        : 'border-black/10 bg-white hover:border-primary/50'
-                                        }`}
-                                    onClick={() => handleServiceSelect(service)}
-                                >
+                        {services.length === 0 ? (
+                            <div className="md:col-span-2 xl:col-span-3">
+                                <Card className={`rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white'}`}>
                                     <CardHeader>
-                                        <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                            <Briefcase className="h-5 w-5" />
-                                        </div>
-                                        <CardTitle className={`text-xl ${isDark ? 'text-white' : 'text-[#181711]'}`}>{service.name}</CardTitle>
+                                        <CardTitle className={isDark ? 'text-white' : 'text-[#181711]'}>
+                                            Services unavailable
+                                        </CardTitle>
                                         <CardDescription className={isDark ? 'text-[#bab59c]' : 'text-slate-600'}>
-                                            {service.description || `Start a ${service.name} consultation`}
+                                            {servicesError || "We could not load services right now. Please retry."}
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className={`inline-flex items-center gap-2 text-sm font-semibold ${isDark ? 'text-primary' : 'text-[#181711]'}`}>
-                                            Start consultation
-                                            <ArrowRight className="h-4 w-4" />
-                                        </div>
+                                        <Button onClick={fetchServices}>
+                                            Retry
+                                        </Button>
                                     </CardContent>
                                 </Card>
-                            </motion.div>
-                        ))}
+                            </div>
+                        ) : (
+                            services.map((service, index) => (
+                                <motion.div
+                                    key={service.id}
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: Math.min(index * 0.04, 0.25) }}
+                                    whileHover={{ y: -4 }}
+                                >
+                                    <Card
+                                        className={`h-full cursor-pointer rounded-2xl border transition-all ${isDark
+                                            ? 'border-white/10 bg-white/[0.04] hover:border-primary/50 hover:bg-white/[0.07]'
+                                            : 'border-black/10 bg-white hover:border-primary/50'
+                                            }`}
+                                        onClick={() => handleServiceSelect(service)}
+                                    >
+                                        <CardHeader>
+                                            <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
+                                                <Briefcase className="h-5 w-5" />
+                                            </div>
+                                            <CardTitle className={`text-xl ${isDark ? 'text-white' : 'text-[#181711]'}`}>{service.name}</CardTitle>
+                                            <CardDescription className={isDark ? 'text-[#bab59c]' : 'text-slate-600'}>
+                                                {service.description || `Start a ${service.name} consultation`}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className={`inline-flex items-center gap-2 text-sm font-semibold ${isDark ? 'text-primary' : 'text-[#181711]'}`}>
+                                                Start consultation
+                                                <ArrowRight className="h-4 w-4" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
