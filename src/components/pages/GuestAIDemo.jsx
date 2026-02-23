@@ -18,8 +18,9 @@ import { Input } from '@/components/ui/input';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { useTheme } from '@/components/providers/theme-provider';
+import { API_BASE_URL } from '@/shared/lib/api-client';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE = API_BASE_URL || import.meta.env.VITE_API_BASE_URL || '/api';
 
 const CAPABILITY_ITEMS = [
     'Instant requirement gathering',
@@ -31,13 +32,28 @@ const CAPABILITY_ITEMS = [
 const apiFetch = async (endpoint, options = {}) => {
     const res = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
+        cache: 'no-store',
         headers: {
             'Content-Type': 'application/json',
             ...options.headers,
         },
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'API Request Failed');
+    const contentType = res.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+    const data = isJson ? await res.json().catch(() => null) : null;
+
+    if (!res.ok) {
+        const message =
+            data?.error ||
+            data?.message ||
+            `API Request Failed (${res.status})`;
+        throw new Error(message);
+    }
+
+    if (!isJson || !data) {
+        throw new Error(`Unexpected API response (${res.status}). Check API base URL and rewrites.`);
+    }
+
     return data;
 };
 
@@ -298,8 +314,9 @@ const GuestAIDemo = () => {
             if (data.success) {
                 setServices(data.services);
             }
-        } catch {
-            toast.error("Failed to load services");
+        } catch (error) {
+            console.error('[GuestAIDemo] Failed to load services:', error);
+            toast.error(error?.message || "Failed to load services");
         } finally {
             setLoading(false);
         }
@@ -328,8 +345,9 @@ const GuestAIDemo = () => {
                 }
                 setInputConfig(data.inputConfig || { type: 'text', options: [] });
             }
-        } catch {
-            toast.error("Failed to start chat session");
+        } catch (error) {
+            console.error('[GuestAIDemo] Failed to start chat session:', error);
+            toast.error(error?.message || "Failed to start chat session");
             setSelectedService(null);
         } finally {
             setLoading(false);
@@ -377,8 +395,9 @@ const GuestAIDemo = () => {
                     setInputConfig(data.inputConfig);
                 }
             }
-        } catch {
-            toast.error("Failed to send message");
+        } catch (error) {
+            console.error('[GuestAIDemo] Failed to send message:', error);
+            toast.error(error?.message || "Failed to send message");
         } finally {
             setIsTyping(false);
         }
