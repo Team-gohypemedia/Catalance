@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/shared/context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import { consumeFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ export const DashboardContent = ({ _roleOverride }) => {
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useNotifications();
 
@@ -64,8 +65,28 @@ export const DashboardContent = ({ _roleOverride }) => {
     }
   };
 
-  const showOnboardingAlert =
-    user?.role === "FREELANCER" && !user?.onboardingComplete;
+  const effectiveUser = user ?? sessionUser;
+  const primaryRole = String(effectiveUser?.role || "").toUpperCase();
+  const additionalRoles = Array.isArray(effectiveUser?.roles)
+    ? effectiveUser.roles.map((role) => String(role).toUpperCase())
+    : [];
+  const normalizeBoolean = (value) => {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value === 1;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      return normalized === "true" || normalized === "1";
+    }
+    return false;
+  };
+  const isFreelancerUser =
+    primaryRole === "FREELANCER" || additionalRoles.includes("FREELANCER");
+  const isOnboardingComplete = normalizeBoolean(
+    effectiveUser?.onboardingComplete
+  );
+  const forcedRole = String(_roleOverride || "").toUpperCase();
+  const isFreelancerRoute = location.pathname.startsWith("/freelancer");
+  const showOnboardingAlert = forcedRole !== "CLIENT" && isFreelancerRoute;
 
   useEffect(() => {
     const session = getSession();
@@ -77,12 +98,12 @@ export const DashboardContent = ({ _roleOverride }) => {
   }, []);
 
   useEffect(() => {
-    if (user?.role !== "FREELANCER") return;
+    if (!isFreelancerUser) return;
 
     if (consumeFreelancerWelcomePending()) {
       setShowWelcomeDialog(true);
     }
-  }, [user?.role]);
+  }, [isFreelancerUser]);
 
   useEffect(() => {
     const loadMetrics = async () => {
@@ -262,20 +283,30 @@ export const DashboardContent = ({ _roleOverride }) => {
                 <div className="bg-card/40 border-l-4 border-l-yellow-500 border-border rounded-xl p-5 flex flex-col sm:flex-row items-center gap-5 relative overflow-hidden group transition-all duration-300 hover:bg-card/60">
                   <div className="flex-1 text-center sm:text-left">
                     <h4 className="text-base font-bold text-foreground mb-1 flex items-center justify-center sm:justify-start gap-2">
-                      <span className="text-yellow-500 inline-block">🚀</span>
-                      Complete your onboarding to start getting projects
+                      <Sparkles className="h-4 w-4 text-yellow-500" />
+                      {isOnboardingComplete
+                        ? "Keep your onboarding profile up to date"
+                        : "Complete your onboarding to start getting projects"}
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      Add your profile details and services so clients can discover and hire you.
+                      {isOnboardingComplete
+                        ? "Update your onboarding details anytime to improve discovery and match quality."
+                        : "Add your profile details and services so clients can discover and hire you."}
                     </p>
                   </div>
 
                   <Button
                     size="sm"
                     className="w-full sm:w-auto font-bold bg-yellow-500 text-black hover:bg-yellow-600 transition-all rounded-full px-6"
-                    onClick={() => navigate("/freelancer/onboarding")}
+                    onClick={() =>
+                      navigate(
+                        isOnboardingComplete
+                          ? "/freelancer/onboarding?mode=edit"
+                          : "/freelancer/onboarding"
+                      )
+                    }
                   >
-                    Start Onboarding
+                    {isOnboardingComplete ? "Edit Onboarding" : "Start Onboarding"}
                   </Button>
                 </div>
               ) : null}
@@ -729,3 +760,4 @@ export const ClientDashboard = () => {
 };
 
 export default FreelancerDashboard;
+

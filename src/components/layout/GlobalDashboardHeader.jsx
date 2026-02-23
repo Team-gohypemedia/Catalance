@@ -6,7 +6,6 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -34,6 +33,7 @@ export const DashboardHeader = ({
   proposalLabel = "Proposals",
   proposalPath = "/freelancer/proposals",
   ProposalIcon = FileText,
+  showProposalButton = true,
 }) => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
@@ -55,8 +55,8 @@ export const DashboardHeader = ({
               <BreadcrumbPage
                 className={
                   hasTabCrumb
-                    ? "font-medium text-muted-foreground"
-                    : "font-semibold text-foreground"
+                    ? "text-sm font-medium text-muted-foreground"
+                    : "text-sm font-semibold text-foreground"
                 }
               >
                 {dashboardLabel}
@@ -66,7 +66,7 @@ export const DashboardHeader = ({
               <>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="font-semibold text-foreground">
+                  <BreadcrumbPage className="text-sm font-semibold text-foreground">
                     {normalizedTabLabel}
                   </BreadcrumbPage>
                 </BreadcrumbItem>
@@ -74,15 +74,6 @@ export const DashboardHeader = ({
             ) : null}
           </BreadcrumbList>
         </Breadcrumb>
-        <div className="ml-4 hidden sm:flex">
-          <Badge
-            variant="outline"
-            className="gap-1.5 rounded-full border-primary/20 px-3 py-1 font-bold text-primary-dark"
-          >
-            <span className="h-2 w-2 animate-pulse rounded-full bg-green-500"></span>
-            Live Updates
-          </Badge>
-        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -165,13 +156,15 @@ export const DashboardHeader = ({
 
         <Separator orientation="vertical" className="mx-1 hidden h-4 sm:block" />
 
-        <Button
-          className="hidden h-11 px-5 text-sm font-bold bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 sm:flex"
-          onClick={() => navigate(proposalPath)}
-        >
-          {ProposalIcon ? <ProposalIcon className="mr-2 h-4 w-4" /> : null}
-          {proposalLabel}
-        </Button>
+        {showProposalButton ? (
+          <Button
+            className="hidden h-11 px-5 text-sm font-bold bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 sm:flex"
+            onClick={() => navigate(proposalPath)}
+          >
+            {ProposalIcon ? <ProposalIcon className="mr-2 h-4 w-4" /> : null}
+            {proposalLabel}
+          </Button>
+        ) : null}
       </div>
     </header>
   );

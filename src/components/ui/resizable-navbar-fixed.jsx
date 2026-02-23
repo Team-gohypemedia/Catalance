@@ -11,7 +11,7 @@ import {
 } from "framer-motion";
 
 import React, { useState } from "react";
-import logo from "@/assets/react.svg";
+import logo from "@/assets/logos/logo.png";
 
 export const Navbar = ({ children, className, isHome, isDark }) => {
   const { scrollY } = useScroll();
@@ -236,20 +236,9 @@ export const MobileNavToggle = ({ isOpen, onClick }) => {
   );
 };
 
-export const NavbarLogo = ({ textColor }) => {
-  return (
-    <>
-      <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-full mr-2">
-        <img src={logo} alt="Catalance" className="h-5 w-5" />
-      </div>
-      <div className={cn("grid flex-1 text-left text-sm leading-tight")}>
-        <span className="truncate text-lg font-semibold">
-          <motion.span style={{ color: textColor }}>Catalance</motion.span>
-        </span>
-      </div>
-    </>
-  );
-};
+export const NavbarLogo = () => (
+  <img src={logo} alt="Catalance logo" className="h-8 w-auto object-contain pl-2" />
+);
 
 export const NavbarButton = ({
   href,

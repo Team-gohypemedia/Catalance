@@ -4,11 +4,59 @@ import { env } from '../config/env.js';
 import { sendEmail } from '../lib/email-service.js';
 import { resend } from '../lib/resend.js';
 
+const CRON_DB_COOLDOWN_MS = 5 * 60 * 1000;
+let skipCronUntil = 0;
+
+const isDatabaseConnectivityError = (error) => {
+    const code = error?.code;
+    if (code === 'P1001' || code === 'P1017') {
+        return true;
+    }
+
+    const message = String(error?.message || '').toLowerCase();
+    return (
+        message.includes("can't reach database server") ||
+        message.includes('connection was forcibly closed') ||
+        message.includes('error in postgresql connection')
+    );
+};
+
+const shouldSkipCronRun = (jobName) => {
+    const now = Date.now();
+    if (now >= skipCronUntil) {
+        return false;
+    }
+
+    const remainingSeconds = Math.max(1, Math.ceil((skipCronUntil - now) / 1000));
+    console.warn(
+        `[Cron] Skipping "${jobName}" because database connectivity is in cooldown (${remainingSeconds}s remaining).`
+    );
+    return true;
+};
+
+const handleCronError = (jobName, error) => {
+    if (isDatabaseConnectivityError(error)) {
+        skipCronUntil = Date.now() + CRON_DB_COOLDOWN_MS;
+        console.error(
+            `[Cron] Database unavailable during "${jobName}". Pausing cron DB work for ${Math.round(
+                CRON_DB_COOLDOWN_MS / 1000
+            )}s.`
+        );
+        return;
+    }
+
+    console.error(`[Cron] Error in ${jobName}:`, error);
+};
+
 export const startCronJobs = () => {
     console.log('Starting cron jobs...');
 
     // Run every minute
     cron.schedule('* * * * *', async () => {
+        if (shouldSkipCronRun('meeting reminder cron')) {
+            return;
+        }
+
         try {
             const now = new Date();
             // Look for meetings in the upcoming window covering ~10 minutes
@@ -111,15 +159,19 @@ export const startCronJobs = () => {
                 });
             }
         } catch (error) {
-            console.error('Error in meeting reminder cron:', error);
+            handleCronError('meeting reminder cron', error);
         }
-    });
+    }, { noOverlap: true });
 
     // ============================================================
     // Budget Increase Reminder: Run every hour to check for proposals
     // that have been pending for more than 24 hours without acceptance
     // ============================================================
     cron.schedule('0 * * * *', async () => {
+        if (shouldSkipCronRun('budget reminder cron')) {
+            return;
+        }
+
         try {
             const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -211,15 +263,19 @@ export const startCronJobs = () => {
                 });
             }
         } catch (error) {
-            console.error('[Cron] Error in budget reminder cron:', error);
+            handleCronError('budget reminder cron', error);
         }
-    });
+    }, { noOverlap: true });
 
     // ============================================================
     // Auto-Reject Proposals: Run every hour to auto-reject proposals
     // that have been pending for more than 48 hours without acceptance
     // ============================================================
     cron.schedule('0 * * * *', async () => {
+        if (shouldSkipCronRun('auto-reject proposals cron')) {
+            return;
+        }
+
         try {
             const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
@@ -301,15 +357,19 @@ export const startCronJobs = () => {
                 }
             }
         } catch (error) {
-            console.error('[Cron] Error in auto-reject proposals cron:', error);
+            handleCronError('auto-reject proposals cron', error);
         }
-    });
+    }, { noOverlap: true });
 
     // ============================================================
     // Auto-Delete Rejected Proposals: Run every hour to delete proposals
     // that have been REJECTED for more than 48 hours
     // ============================================================
     cron.schedule('0 * * * *', async () => {
+        if (shouldSkipCronRun('auto-delete rejected proposals cron')) {
+            return;
+        }
+
         try {
             const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
@@ -327,7 +387,7 @@ export const startCronJobs = () => {
                  console.log(`[Cron] 🗑️ Permanently deleted ${result.count} rejected proposals older than 48hrs.`);
             }
         } catch (error) {
-            console.error('[Cron] Error in auto-delete rejected proposals cron:', error);
+            handleCronError('auto-delete rejected proposals cron', error);
         }
-    });
+    }, { noOverlap: true });
 };

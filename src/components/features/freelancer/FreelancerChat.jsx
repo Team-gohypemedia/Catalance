@@ -20,8 +20,6 @@ import Clock4 from "lucide-react/dist/esm/icons/clock-4";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import X from "lucide-react/dist/esm/icons/x";
-import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
@@ -228,8 +226,6 @@ const ChatArea = ({
           const isAssistant = message.role === "assistant";
           const align = isAssistant || !isSelf ? "justify-start" : "justify-end";
           const isDeleted = message.deleted || message.isDeleted;
-          const isClient = message.senderRole === "CLIENT";
-          const isFreelancer = message.senderRole === "FREELANCER";
 
           const bubbleClass = (() => {
             if (isAssistant) {
@@ -631,7 +627,7 @@ const FreelancerChatContent = () => {
       }
     });
 
-    socket.on("chat:read_receipt", ({ conversationId: cid, readerId, readAt }) => {
+    socket.on("chat:read_receipt", ({ conversationId: cid, readAt }) => {
        if (cid !== conversationId) return;
        setMessages(prev => prev.map(msg => {
          // Mark all messages sent by ME (or as 'user') as read if reader is someone else
@@ -893,10 +889,12 @@ const FreelancerChatContent = () => {
   const activeMessages = useMemo(() => messages, [messages]);
 
   return (
-    <div className="flex h-screen flex-col gap-4 overflow-hidden p-2">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
       <FreelancerTopBar />
 
-      <div className="grid h-full gap-4 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
+      <main className="flex-1 overflow-hidden p-4 md:p-8 lg:p-12 z-10 relative">
+        <div className="max-w-[1600px] mx-auto h-full">
+          <div className="grid h-full min-h-0 gap-4 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="border border-border/50 bg-card/70">
           <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
             <div className="flex items-center justify-between border-b border-border/40 pb-4">
@@ -1016,36 +1014,12 @@ const FreelancerChatContent = () => {
             </div>
           </div>
         )}
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };
-
-const ChatSkeleton = () => (
-  <div className="flex h-full flex-1 flex-col overflow-hidden rounded-3xl border border-border/40 bg-background/50">
-    <div className="flex items-center gap-4 border-b border-border/40 px-8 py-5">
-      <Skeleton className="h-12 w-12 rounded-full" />
-      <div className="space-y-2">
-        <Skeleton className="h-5 w-32" />
-        <Skeleton className="h-3 w-16" />
-      </div>
-    </div>
-    <div className="flex-1 space-y-6 p-6">
-      <div className="flex justify-start">
-        <Skeleton className="h-12 w-64 rounded-2xl rounded-tl-none" />
-      </div>
-      <div className="flex justify-end">
-        <Skeleton className="h-16 w-72 rounded-2xl rounded-tr-none" />
-      </div>
-      <div className="flex justify-start">
-        <Skeleton className="h-10 w-48 rounded-2xl rounded-tl-none" />
-      </div>
-    </div>
-    <div className="p-4">
-        <Skeleton className="h-14 w-full rounded-full" />
-    </div>
-  </div>
-);
 
 const FreelancerChat = () => {
   return (

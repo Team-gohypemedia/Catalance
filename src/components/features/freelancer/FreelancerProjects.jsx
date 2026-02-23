@@ -248,53 +248,60 @@ const FreelancerProjectsContent = () => {
   }, [authFetch, isAuthenticated]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
       <FreelancerTopBar />
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
-            Freelancer projects
-          </p>
-          <h1 className="text-2xl font-black tracking-tight text-foreground">
-            {showOnlyOngoing ? "Ongoing Projects" : "All Projects"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {showOnlyOngoing
-              ? "Showing active and pending projects only."
-              : "Showing every project in your pipeline."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            asChild
-            size="sm"
-            variant={showOnlyOngoing ? "default" : "outline"}
-            className="rounded-full px-4"
-          >
-            <Link to="/freelancer/project?view=ongoing">Ongoing</Link>
-          </Button>
-          <Button
-            asChild
-            size="sm"
-            variant={showOnlyOngoing ? "outline" : "default"}
-            className="rounded-full px-4"
-          >
-            <Link to="/freelancer/project">All</Link>
-          </Button>
-        </div>
-      </header>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {isLoading ? (
-          [1, 2, 3].map((i) => <ProjectCardSkeleton key={i} />)
-        ) : visibleProjects.length ? (
-          visibleProjects.map((project) => <ProjectCard key={project.id} project={project} />)
-        ) : (
-          <div className="col-span-full rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
-            {showOnlyOngoing ? "No ongoing projects yet." : "No projects yet."}
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
+        <div className="max-w-[1600px] mx-auto space-y-6">
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
+                Freelancer projects
+              </p>
+              <h1 className="text-2xl font-black tracking-tight text-foreground">
+                {showOnlyOngoing ? "Ongoing Projects" : "All Projects"}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {showOnlyOngoing
+                  ? "Showing active and pending projects only."
+                  : "Showing every project in your pipeline."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                asChild
+                size="sm"
+                variant={showOnlyOngoing ? "default" : "outline"}
+                className="rounded-full px-4"
+              >
+                <Link to="/freelancer/project?view=ongoing">Ongoing</Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant={showOnlyOngoing ? "outline" : "default"}
+                className="rounded-full px-4"
+              >
+                <Link to="/freelancer/project">All</Link>
+              </Button>
+            </div>
+          </header>
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {isLoading ? (
+              [1, 2, 3].map((i) => <ProjectCardSkeleton key={i} />)
+            ) : visibleProjects.length ? (
+              visibleProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))
+            ) : (
+              <div className="col-span-full rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
+                {showOnlyOngoing ? "No ongoing projects yet." : "No projects yet."}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
