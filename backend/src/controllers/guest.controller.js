@@ -10,6 +10,11 @@ const GREETING_SMALLTALK_REGEX =
 const NAME_INTRO_REGEX = /\b(my name is|i am|i'm|this is)\b/i;
 const CORRECTION_INTENT_REGEX =
     /\b(change|changed|update|updated|correct|correction|revise|replace|instead|not\s+.*\s+but)\b/i;
+const CONTEXT_SUGGESTION_REGEX =
+    /\b(suggest|suggestion|recommend|recommended|best|which is better|according to|as per|based on|shared earlier|from earlier|my startup|my case|possible|is it possible|can we build|can this be built|feasible|not sure|confused|difference|explain)\b/i;
+const AGENT_IDENTITY_REGEX =
+    /\b(what(?:'s| is)\s+your\s+name|your\s+name\??|who\s+are\s+you|are\s+you\s+(?:an?\s+)?(?:ai|bot|human))\b/i;
+const GRATITUDE_REGEX = /\b(thanks|thank you|thx|ty)\b/i;
 const EXTRACTION_CONFIDENCE_MIN = 0.7;
 const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.86;
 const FRIENDLY_BRIDGES = [
@@ -31,6 +36,36 @@ const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
 };
 
 const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(text || ""));
+const isContextSuggestionRequest = (text = "") => CONTEXT_SUGGESTION_REGEX.test(String(text || ""));
+
+const getQuestionOptionLabels = (question = {}) => {
+    if (!Array.isArray(question?.options)) return [];
+    return question.options
+        .map((option) =>
+            typeof option === "string"
+                ? option
+                : (option?.label || option?.value || "")
+        )
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+};
+
+const hasDirectOptionAnswer = (message = "", question = {}) => {
+    const normalizedMessage = normalizeTextToken(message);
+    if (!normalizedMessage) return false;
+
+    const optionLabels = getQuestionOptionLabels(question);
+    if (optionLabels.length === 0) return false;
+
+    return optionLabels.some((label) => {
+        const normalizedLabel = normalizeTextToken(label);
+        if (!normalizedLabel) return false;
+        return (
+            normalizedMessage.includes(normalizedLabel) ||
+            normalizedLabel.includes(normalizedMessage)
+        );
+    });
+};
 
 const buildFriendlyMessage = (mainText = "", bridgeText = "") => {
     const cleanMainText = String(mainText || "").trim();
@@ -40,6 +75,19 @@ const buildFriendlyMessage = (mainText = "", bridgeText = "") => {
     return `${cleanBridgeText}\n\n${cleanMainText}`;
 };
 
+const combineInlineMessages = (...parts) =>
+    parts
+        .map((part) => String(part || "").trim())
+        .filter(Boolean)
+        .join(" ");
+
+const containsNormalizedText = (source = "", snippet = "") => {
+    const normalizedSource = normalizeTextToken(source);
+    const normalizedSnippet = normalizeTextToken(snippet);
+    if (!normalizedSource || !normalizedSnippet) return false;
+    return normalizedSource.includes(normalizedSnippet);
+};
+
 const pickFriendlyBridge = (seedText = "") => {
     const normalized = String(seedText || "");
     if (!normalized) return FRIENDLY_BRIDGES[0];
@@ -47,6 +95,173 @@ const pickFriendlyBridge = (seedText = "") => {
         .split("")
         .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
     return FRIENDLY_BRIDGES[Math.abs(score) % FRIENDLY_BRIDGES.length];
+};
+
+const buildPersonalizedQuestionBridge = ({
+    nextQuestionText = "",
+    answersByQuestionText = {},
+    serviceName = ""
+}) => {
+    const normalizedQuestion = normalizeTextToken(nextQuestionText);
+    const defaultBridge = pickFriendlyBridge(nextQuestionText);
+
+    const clientName = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(name)\b/i
+    );
+    const businessName = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(business|company)\b.*\bname\b/i
+    );
+    const projectIdea = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(describe|requirements|idea|overview|briefly)\b/i
+    );
+    const appType = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(type of mobile app|app type|what type)\b/i
+    );
+    const platform = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(platform|android|ios)\b/i
+    );
+    const features = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(features)\b/i
+    );
+    const roles = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(who will use|user roles|users)\b/i
+    );
+    const design = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(design style)\b/i
+    );
+    const branding = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(branding assets|logo|brand colors)\b/i
+    );
+    const framework = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(preferred mobile app development approach|development approach|framework|flutter|react native|native)\b/i
+    );
+    const backend = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(backend technology|backend stack|backend)\b/i
+    );
+    const timeline = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(timeline|completed|delivery)\b/i
+    );
+
+    const firstName = clientName ? String(clientName).trim().split(/\s+/)[0] : "";
+    const userPrefix = firstName ? `${firstName}, ` : "";
+    const projectLabel =
+        businessName || appType || serviceName || "your project";
+
+    if (/which platform|android|ios/.test(normalizedQuestion)) {
+        if (framework) return `${userPrefix}since you prefer ${framework}, let's lock the platform that fits best.`;
+        return `${userPrefix}for ${projectLabel}, let's finalize the target platform next.`;
+    }
+
+    if (/which features|features should|deliverables included/.test(normalizedQuestion)) {
+        if (projectIdea) return `${userPrefix}great direction so far - now let's shortlist the core MVP features.`;
+        return `${userPrefix}let's map the key features that make ${projectLabel} useful from day one.`;
+    }
+
+    if (/who will use|user roles|users/.test(normalizedQuestion)) {
+        if (features) return `${userPrefix}to shape the right flows, let's confirm exactly who will use the app.`;
+        return `${userPrefix}this will help us keep scope clean for ${projectLabel}.`;
+    }
+
+    if (/design style/.test(normalizedQuestion)) {
+        if (roles) return `${userPrefix}nice - with ${roles} in mind, let's set the design direction.`;
+        return `${userPrefix}let's give ${projectLabel} the right visual feel.`;
+    }
+
+    if (/branding assets|logo|brand colors/.test(normalizedQuestion)) {
+        if (design) return `${userPrefix}great choice on design style - this helps us align branding quickly.`;
+        return `${userPrefix}this helps us keep the UI consistent from the start.`;
+    }
+
+    if (/familiar with mobile app technologies/.test(normalizedQuestion)) {
+        if (framework || backend) return `${userPrefix}great progress - I already noted parts of your stack.`;
+        return `${userPrefix}this helps us pick the most practical build path.`;
+    }
+
+    if (/preferred mobile app development approach|development approach/.test(normalizedQuestion)) {
+        if (platform) return `${userPrefix}since you're targeting ${platform}, let's confirm the development approach.`;
+        return `${userPrefix}this will define speed, maintainability, and budget fit.`;
+    }
+
+    if (/backend technology|backend stack/.test(normalizedQuestion)) {
+        if (framework) return `${userPrefix}perfect - now let's pair the backend with ${framework}.`;
+        return `${userPrefix}this helps us plan scalability and integrations properly.`;
+    }
+
+    if (/expected number of users|after launch/.test(normalizedQuestion)) {
+        if (backend) return `${userPrefix}awesome - with ${backend} in mind, let's estimate scale targets.`;
+        return `${userPrefix}this helps us design architecture that won't break as you grow.`;
+    }
+
+    if (/when do you want|timeline|completed/.test(normalizedQuestion)) {
+        if (features) return `${userPrefix}great feature set - now let's align a realistic timeline.`;
+        return `${userPrefix}this helps us plan phases and milestones clearly.`;
+    }
+
+    if (/estimated budget|budget/.test(normalizedQuestion)) {
+        if (timeline) return `${userPrefix}nice - with ${timeline} timeline, let's lock a workable budget range.`;
+        return `${userPrefix}this helps us keep scope and delivery realistic.`;
+    }
+
+    if (/additional requirements|notes/.test(normalizedQuestion)) {
+        if (businessName) return `${userPrefix}we're almost done for ${businessName} - anything else you want to add?`;
+        return `${userPrefix}last step - share any extra requirements if needed.`;
+    }
+
+    if (branding) {
+        return `${userPrefix}${defaultBridge} I have noted your branding details too.`;
+    }
+
+    return defaultBridge;
+};
+
+const buildProgressBridge = ({ nextStep = 0, totalQuestions = 0 }) => {
+    if (!totalQuestions || totalQuestions < 5) return "";
+    const answeredCount = Math.max(0, Math.min(nextStep, totalQuestions));
+    const ratio = answeredCount / totalQuestions;
+    if (ratio >= 0.85) return "We are almost done.";
+    if (ratio >= 0.55) return "Great pace - we are past the halfway point.";
+    if (ratio >= 0.3) return "Nice progress - your scope is getting clear.";
+    return "";
+};
+
+const buildAgentSideReply = ({ userMessage = "", answersByQuestionText = {} }) => {
+    const normalizedUserMessage = normalizeTextToken(userMessage);
+    if (!normalizedUserMessage) return "";
+
+    const clientName = findAnswerByQuestionPattern(
+        answersByQuestionText,
+        /\b(name)\b/i
+    );
+    const firstName = clientName ? String(clientName).trim().split(/\s+/)[0] : "";
+    const userPrefix = firstName ? `${firstName}, ` : "";
+
+    if (AGENT_IDENTITY_REGEX.test(normalizedUserMessage)) {
+        return `${userPrefix}I am your Catalance AI planning partner, and I will guide you until the proposal is ready.`;
+    }
+
+    if (GRATITUDE_REGEX.test(normalizedUserMessage)) {
+        return `${userPrefix}glad to help.`;
+    }
+
+    return "";
+};
+
+const buildQuickReplyHint = (question = {}) => {
+    const optionLabels = getQuestionOptionLabels(question);
+    if (optionLabels.length === 0 || optionLabels.length > 6) return "";
+    return `Quick reply options: ${optionLabels.join(" | ")}`;
 };
 
 const extractFriendlyBridgeFromValidationMessage = (validationMessage = "", nextQuestionText = "") => {
@@ -373,6 +588,292 @@ const buildPersistedAnswersPayload = (answersBySlug = {}, questions = []) => {
     }
 
     return { bySlug, byQuestionText };
+};
+
+const getAnswerBySlugPattern = (answersBySlug = {}, pattern) => {
+    if (!answersBySlug || typeof answersBySlug !== "object") return "";
+    for (const [slug, value] of Object.entries(answersBySlug)) {
+        if (!pattern.test(slug)) continue;
+        if (!hasAnswerValue(value)) continue;
+        return String(value || "");
+    }
+    return "";
+};
+
+const pickOptionLabelByPatterns = (optionLabels = [], patterns = []) => {
+    if (!Array.isArray(optionLabels) || optionLabels.length === 0) return "";
+    for (const pattern of patterns) {
+        const found = optionLabels.find((label) => pattern.test(normalizeTextToken(label)));
+        if (found) return found;
+    }
+    return "";
+};
+
+const buildContextualSuggestionMessage = ({
+    question = {},
+    answersBySlug = {},
+    serviceName = ""
+}) => {
+    const questionText = String(question?.text || "Could you please confirm this?");
+    const optionLabels = getQuestionOptionLabels(question);
+    const normalizedQuestion = normalizeTextToken(questionText);
+    const combinedContext = Object.values(answersBySlug || {})
+        .map((value) => String(value || ""))
+        .join(" ");
+    const normalizedContext = normalizeTextToken(combinedContext);
+    const questionWithOptions = formatQuestionWithOptions(question);
+
+    if (optionLabels.length === 0) {
+        return [
+            `Great question - this is important for planning your ${serviceName || "project"} correctly.`,
+            "Once you confirm this detail, I can give more accurate scope and recommendations.",
+            `Please share this so we can continue:\n${questionText}`
+        ].join("\n\n");
+    }
+
+    let recommendation = "";
+    let reason = "";
+
+    if (/platform|android|ios/.test(normalizedQuestion)) {
+        const frameworkAnswer = normalizeTextToken(
+            getAnswerBySlugPattern(
+                answersBySlug,
+                /(dev_framework|mobile|frontend|tech_stack|approach)/i
+            )
+        );
+
+        if (/flutter|react native|cross/.test(frameworkAnswer)) {
+            recommendation = pickOptionLabelByPatterns(optionLabels, [/both|cross|android.*ios|ios.*android/]);
+            reason = "because cross-platform development aligns well with your selected stack.";
+        } else if (/kotlin|java|android/.test(frameworkAnswer)) {
+            recommendation = pickOptionLabelByPatterns(optionLabels, [/android/]);
+            reason = "because your stack points toward Android-focused development.";
+        } else if (/swift|ios/.test(frameworkAnswer)) {
+            recommendation = pickOptionLabelByPatterns(optionLabels, [/ios/]);
+            reason = "because your stack points toward iOS-focused development.";
+        } else {
+            recommendation = pickOptionLabelByPatterns(optionLabels, [/both|cross|android.*ios|ios.*android/]) || optionLabels[0];
+            reason = "to maximize reach during early growth.";
+        }
+    } else if (/who will use|user role|users/.test(normalizedQuestion)) {
+        if (/vendor|seller|marketplace|multi/.test(normalizedContext)) {
+            recommendation = pickOptionLabelByPatterns(optionLabels, [/vendor|seller|marketplace/]);
+            reason = "because your app flow includes listing and transactions between users.";
+        } else if (/admin|dashboard|panel|manage/.test(normalizedContext)) {
+            recommendation = pickOptionLabelByPatterns(optionLabels, [/admin|manager/]);
+            reason = "because you mentioned admin-side operations earlier.";
+        } else {
+            recommendation = pickOptionLabelByPatterns(optionLabels, [/customer/]) || optionLabels[0];
+            reason = "to keep MVP scope focused and faster to launch.";
+        }
+    } else if (/design style|branding|look/.test(normalizedQuestion)) {
+        recommendation = optionLabels[0];
+        reason = "as a safe starting point based on typical startup MVP launches.";
+    } else if (/budget/.test(normalizedQuestion)) {
+        return `Based on your current scope, I can guide a realistic range, but I still need your final budget number to proceed.\n\n${questionText}`;
+    } else {
+        recommendation = optionLabels[0];
+        reason = "based on the details you've already shared.";
+    }
+
+    if (!recommendation) {
+        recommendation = optionLabels[0];
+    }
+
+    const alternatives = optionLabels
+        .filter((label) => normalizeTextToken(label) !== normalizeTextToken(recommendation))
+        .slice(0, 2);
+    const alternativesLine = alternatives.length > 0
+        ? `If that doesn't fit, you can consider ${alternatives.join(" or ")}.`
+        : "";
+
+    return [
+        "Great question - you're asking the right thing.",
+        `Based on your current context, I'd start with **${recommendation}** ${reason}`,
+        alternativesLine,
+        "How to decide quickly:",
+        "- Pick the option closest to your immediate launch goal.",
+        "- If you're unsure, choose the closest fit and I'll refine scope in the next step.",
+        "Please choose one option so we can continue:",
+        questionWithOptions
+    ]
+        .filter(Boolean)
+        .join("\n\n")
+        .trim();
+};
+
+const parseMessageFieldFromJson = (rawMessage = "") => {
+    if (typeof rawMessage !== "string" || !rawMessage.trim()) {
+        return "";
+    }
+
+    const raw = rawMessage.trim();
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    const extracted = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+        ? raw.substring(firstBrace, lastBrace + 1)
+        : raw;
+
+    const candidates = [
+        extracted,
+        extracted.replace(/\*\*/g, ""),
+        extracted
+            .replace(/^\s*```(?:json)?\s*/i, "")
+            .replace(/\s*```\s*$/i, ""),
+        raw,
+        raw.replace(/\*\*/g, "")
+    ];
+
+    for (const candidate of candidates) {
+        const normalized = candidate
+            .replace(/^\s*```(?:json)?\s*/i, "")
+            .replace(/\s*```\s*$/i, "")
+            .trim();
+
+        if (!normalized.startsWith("{") || !normalized.endsWith("}")) {
+            continue;
+        }
+
+        try {
+            const parsed = JSON.parse(normalized);
+            if (typeof parsed?.message === "string" && parsed.message.trim()) {
+                return parsed.message.trim();
+            }
+        } catch {
+            // Try next normalization candidate.
+        }
+    }
+
+    const fallbackMatch = raw.match(/"message"\s*:\s*"([\s\S]*?)"/i);
+    if (!fallbackMatch) return "";
+    return fallbackMatch[1].replace(/\\"/g, "\"").trim();
+};
+
+const buildAnswersContextLines = (answersByQuestionText = {}) =>
+    Object.entries(answersByQuestionText || {})
+        .filter(([, value]) => hasAnswerValue(value))
+        .map(([question, answer]) => `- ${question}: ${String(answer).trim()}`)
+        .slice(0, 12)
+        .join("\n");
+
+const buildOptionLabelsText = (question = {}) => {
+    const labels = getQuestionOptionLabels(question);
+    if (labels.length === 0) return "No predefined options.";
+    return labels.map((label, index) => `${index + 1}. ${label}`).join("\n");
+};
+
+const formatQuestionWithOptions = (question = {}) => {
+    const questionText = String(question?.text || "").trim();
+    const optionsText = buildOptionLabelsText(question);
+    const hasOptions = getQuestionOptionLabels(question).length > 0;
+    if (!questionText) return "";
+    if (!hasOptions) return questionText;
+    return `${questionText}\n${optionsText}`;
+};
+
+const hasNumberedOptionsInMessage = (value = "") =>
+    /\n\s*1\.\s+\S+/.test(String(value || ""));
+
+const buildAiGuidedQuestionMessage = async ({
+    serviceName = "",
+    userLastMessage = "",
+    currentQuestion = {},
+    nextQuestion = {},
+    answersByQuestionText = {},
+    sideReply = "",
+    bridgeSegments = [],
+    isInitial = false
+}) => {
+    const nextQuestionText = String(nextQuestion?.text || "").trim();
+    if (!nextQuestionText) return "";
+
+    const optionLabelsText = buildOptionLabelsText(nextQuestion);
+    const hasOptions = getQuestionOptionLabels(nextQuestion).length > 0;
+    const answersContext = buildAnswersContextLines(answersByQuestionText);
+    const guidanceHints = bridgeSegments
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .slice(0, 4)
+        .join(" | ");
+
+    const startTaskBlock = `
+Task:
+1) Start with a short friendly welcome.
+2) Ask the required first question naturally (rephrase it; do not copy it verbatim).
+3) If options exist, give one brief orientation suggestion.
+4) If options exist, show them as numbered list using exact labels.
+`;
+
+const followupTaskBlock = `
+Task:
+1) Briefly acknowledge what user just shared.
+2) Briefly summarize previous flow in one sentence.
+3) If options exist, give one soft suggestion/recommendation for this next question.
+4) If user seems unsure/confused, add 1-2 short guidance bullet points before asking.
+5) Ask the required next question naturally (rephrase it; do not copy it verbatim).
+6) If options exist, show them as numbered list using the exact labels provided.
+`;
+
+    const prompt = `
+You are writing one assistant message in a guided questionnaire.
+
+Service: "${serviceName}"
+User last message: ${JSON.stringify(userLastMessage)}
+Question just answered: ${JSON.stringify(String(currentQuestion?.text || ""))}
+Required next question (must ask now): ${JSON.stringify(nextQuestionText)}
+Required options (if any):
+${optionLabelsText}
+
+Context from earlier answers:
+${answersContext || "- none yet"}
+
+Helper phrases you may reuse naturally:
+- side_reply: ${JSON.stringify(sideReply)}
+- hints: ${JSON.stringify(guidanceHints)}
+
+${isInitial ? startTaskBlock : followupTaskBlock}
+
+Rules:
+- Keep it human and conversational, not robotic.
+- Use the same language style as the user last message.
+- Do not skip or replace the required next question.
+- Do not ask extra unrelated questions.
+- Keep under 190 words.
+
+Return strict JSON only:
+{
+  "message": "final assistant message"
+}
+`;
+
+    try {
+        const aiResponse = await chatWithAI(
+            [{ role: "user", content: prompt }],
+            [{ role: "system", content: "You are a JSON-only writing assistant. Return strict JSON only." }],
+            serviceName || "system_question_writer"
+        );
+
+        if (!aiResponse?.success) return "";
+        const parsedMessage = parseMessageFieldFromJson(aiResponse.message);
+        if (!parsedMessage) return "";
+
+        if (!/[?؟]/.test(parsedMessage)) {
+            return "";
+        }
+
+        if (hasOptions) {
+            const hasAnyOptionLabel = getQuestionOptionLabels(nextQuestion).some((label) =>
+                normalizeTextToken(parsedMessage).includes(normalizeTextToken(label))
+            );
+            if (!hasAnyOptionLabel) {
+                return `${parsedMessage}\n\n${optionLabelsText}`;
+            }
+        }
+
+        return parsedMessage;
+    } catch {
+        return "";
+    }
 };
 
 const getChangedAnswerDetails = (questions = [], previousAnswersBySlug = {}, nextAnswersBySlug = {}) => {
@@ -800,11 +1301,25 @@ export const startGuestSession = asyncHandler(async (req, res) => {
         throw new AppError("Service not found or inactive", 404);
     }
 
-    const firstQuestion = service.questions[0]?.text || "How can I help you regarding this service?";
+    const firstQuestionDefinition = service.questions[0];
+    const fallbackFirstQuestion = firstQuestionDefinition?.text || "How can I help you regarding this service?";
     const firstQuestionConfig = {
-        type: service.questions[0]?.type || "text",
-        options: service.questions[0]?.options || []
+        type: firstQuestionDefinition?.type || "text",
+        options: firstQuestionDefinition?.options || []
     };
+    const aiFirstQuestion = firstQuestionDefinition
+        ? await buildAiGuidedQuestionMessage({
+            serviceName: service.name,
+            userLastMessage: "",
+            currentQuestion: {},
+            nextQuestion: firstQuestionDefinition,
+            answersByQuestionText: {},
+            sideReply: "",
+            bridgeSegments: [],
+            isInitial: true
+        })
+        : "";
+    const firstQuestion = aiFirstQuestion || fallbackFirstQuestion;
 
     // 2. Create Session
     const session = await prisma.aiGuestSession.create({
@@ -908,6 +1423,11 @@ export const guestChat = asyncHandler(async (req, res) => {
 
     if (currentStep < questions.length) {
         const currentQuestionText = currentQuestion?.text || "";
+        const currentQuestionOptions = getQuestionOptionLabels(currentQuestion);
+        const knownContextByQuestion = buildPersistedAnswersPayload(
+            existingAnswersBySlug,
+            questions
+        ).byQuestionText;
 
         if (isGreetingInsteadOfNameAnswer(currentQuestionText, safeMessageText)) {
             validationResult = {
@@ -917,6 +1437,21 @@ export const guestChat = asyncHandler(async (req, res) => {
             };
             aiResponseContent = validationResult.message;
             console.log("[Validation Fallback]:", validationResult);
+        } else if (
+            isContextSuggestionRequest(safeMessageText) &&
+            !hasDirectOptionAnswer(safeMessageText, currentQuestion)
+        ) {
+            validationResult = {
+                isValid: false,
+                status: "info_request",
+                message: buildContextualSuggestionMessage({
+                    question: currentQuestion,
+                    answersBySlug: existingAnswersBySlug,
+                    serviceName: service.name
+                })
+            };
+            aiResponseContent = validationResult.message;
+            console.log("[Validation Context Suggestion]:", validationResult);
         } else {
 
         // Prepare context for the NEXT question if it exists
@@ -929,6 +1464,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             You are a friendly, professional assistant guiding a user through a questionnaire for a "${service.name}" service.
             
             Current Question Asked: "${currentQuestionText}"
+            Current Question Options: ${JSON.stringify(currentQuestionOptions)}
+            Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
             User's Answer: "${safeMessageText}"
             
             Next Question in Script: "${nextQuestionText}"
@@ -943,7 +1480,11 @@ export const guestChat = asyncHandler(async (req, res) => {
             2. Generate a Response Message:
             - If INVALID: Politely ask for clarification or the specific details needed.
             - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
-            - If INFO_REQUEST: Give a brief helpful answer (1-2 short sentences), then ask the Current Question again so we can continue the flow.
+            - If INFO_REQUEST: Give a practical helpful answer with more detail:
+              1) Answer the user's confusion/question clearly (2-4 short sentences).
+              2) Give one recommendation and why it fits their known context.
+              3) Then ask the Current Question again so we can continue the flow.
+              4) If Current Question has options, include them as numbered list (1., 2., 3.).
             - If VALID: Acknowledge the answer briefly and enthusiastically, then ask the "Next Question in Script" naturally. 
               (Example: "That sounds great! Now, [Next Question]?")
               (If it's the final question, just say "Thanks! Let me put that together for you.")
@@ -993,13 +1534,14 @@ export const guestChat = asyncHandler(async (req, res) => {
 
         if (!validationResult.isValid) {
             if (validationResult.status === "info_request") {
-                const normalizedResponse = (aiResponseContent || "").toLowerCase();
-                const normalizedCurrentQuestion = (currentQuestionText || "").toLowerCase();
-                if (
-                    currentQuestionText &&
-                    !normalizedResponse.includes(normalizedCurrentQuestion)
+                const questionBlock = formatQuestionWithOptions(currentQuestion);
+                if (questionBlock && !containsNormalizedText(aiResponseContent, currentQuestionText)) {
+                    aiResponseContent = `${aiResponseContent}\n\n${questionBlock}`;
+                } else if (
+                    currentQuestionOptions.length > 0 &&
+                    !hasNumberedOptionsInMessage(aiResponseContent)
                 ) {
-                    aiResponseContent = `${aiResponseContent}\n\n${currentQuestionText}`;
+                    aiResponseContent = `${aiResponseContent}\n\n${buildOptionLabelsText(currentQuestion)}`;
                 }
             }
 
@@ -1060,9 +1602,14 @@ export const guestChat = asyncHandler(async (req, res) => {
                 const followQuestion = correctionNextStep < questions.length
                     ? questions[correctionNextStep].text
                     : "Thanks, I updated that. Let me generate your proposal now.";
+                const personalizedFollowBridge = buildPersonalizedQuestionBridge({
+                    nextQuestionText: followQuestion,
+                    answersByQuestionText: correctedPayload.byQuestionText,
+                    serviceName: service.name
+                });
                 const correctionBridge = dependentIndexes.length > 0
-                    ? "Got it - I updated your earlier answer and adjusted related steps."
-                    : "Got it - I updated your earlier answer.";
+                    ? `Got it - I updated your earlier answer and adjusted related steps. ${personalizedFollowBridge}`
+                    : `Got it - I updated your earlier answer. ${personalizedFollowBridge}`;
                 const correctionMessage = buildFriendlyMessage(followQuestion, correctionBridge);
 
                 await prisma.aiGuestMessage.create({
@@ -1105,7 +1652,18 @@ export const guestChat = asyncHandler(async (req, res) => {
             });
 
             // 2. Save Assistant's Feedback Message
-            const feedbackMsg = aiResponseContent || "Could you please provide more specific details?";
+            const feedbackCore = aiResponseContent || "Could you please provide more specific details?";
+            const sideReply = buildAgentSideReply({
+                userMessage: safeMessageText,
+                answersByQuestionText: buildPersistedAnswersPayload(existingAnswersBySlug, questions).byQuestionText
+            });
+            const quickReplyHint = hasNumberedOptionsInMessage(feedbackCore)
+                ? ""
+                : buildQuickReplyHint(currentQuestion);
+            const feedbackMsg = [sideReply, feedbackCore, quickReplyHint]
+                .map((part) => String(part || "").trim())
+                .filter(Boolean)
+                .join("\n\n");
             await prisma.aiGuestMessage.create({
                 data: {
                     sessionId,
@@ -1201,7 +1759,8 @@ export const guestChat = asyncHandler(async (req, res) => {
     let nextInputConfig = { type: "text", options: [] };
 
     if (nextStep < questions.length) {
-        const nextQuestionText = questions[nextStep].text;
+        const nextQuestion = questions[nextStep];
+        const nextQuestionText = nextQuestion.text;
         const expectedImmediateNextStep = resolveNextQuestionIndex(
             questions,
             currentStep,
@@ -1213,20 +1772,69 @@ export const guestChat = asyncHandler(async (req, res) => {
             && !dependentResetApplied
             && nextStep === expectedImmediateNextStep;
 
-        const fallbackBridge = autoCapturedAnswerSlugs.length > 0
-            ? "Awesome - I have already captured some details from your previous message."
-            : dependentResetApplied
-                ? "Thanks for clarifying - I updated the related flow."
-                : pickFriendlyBridge(nextQuestionText);
+        const sideReply = buildAgentSideReply({
+            userMessage: safeMessageText,
+            answersByQuestionText: persistedAnswers.byQuestionText
+        });
+        const personalizedBridge = buildPersonalizedQuestionBridge({
+            nextQuestionText,
+            answersByQuestionText: persistedAnswers.byQuestionText,
+            serviceName: service.name
+        });
         const aiBridge = canUseAiTransition
             ? extractFriendlyBridgeFromValidationMessage(aiResponseContent, nextQuestionText)
             : "";
-        responseContent = buildFriendlyMessage(nextQuestionText, aiBridge || fallbackBridge);
+        const bridgeSegments = [];
+
+        if (aiBridge) {
+            bridgeSegments.push(aiBridge);
+            if (!containsNormalizedText(aiBridge, personalizedBridge)) {
+                bridgeSegments.push(personalizedBridge);
+            }
+        } else {
+            bridgeSegments.push(personalizedBridge);
+        }
+
+        if (autoCapturedAnswerSlugs.length > 0) {
+            bridgeSegments.push("I have already captured some details from your previous message.");
+        }
+
+        if (dependentResetApplied) {
+            bridgeSegments.push("I updated related answers so this flow stays consistent.");
+        }
+
+        const progressBridge = buildProgressBridge({
+            nextStep,
+            totalQuestions: questions.length
+        });
+        if (progressBridge) {
+            bridgeSegments.push(progressBridge);
+        }
+
+        const aiGuidedQuestionMessage = await buildAiGuidedQuestionMessage({
+            serviceName: service.name,
+            userLastMessage: safeMessageText,
+            currentQuestion,
+            nextQuestion,
+            answersByQuestionText: persistedAnswers.byQuestionText,
+            sideReply,
+            bridgeSegments
+        });
+
+        if (aiGuidedQuestionMessage) {
+            responseContent = aiGuidedQuestionMessage;
+        } else {
+            const combinedBridge = combineInlineMessages(...bridgeSegments);
+            const questionMessage = buildFriendlyMessage(nextQuestionText, combinedBridge);
+            responseContent = sideReply
+                ? buildFriendlyMessage(questionMessage, sideReply)
+                : questionMessage;
+        }
 
         // Configure next input
         nextInputConfig = {
-            type: questions[nextStep].type || "text",
-            options: questions[nextStep].options || []
+            type: nextQuestion.type || "text",
+            options: nextQuestion.options || []
         };
     } else {
         // CASE B: All questions answered -> Generate Proposal
