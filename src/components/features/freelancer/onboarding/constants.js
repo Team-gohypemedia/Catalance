@@ -259,7 +259,6 @@ export const DEFAULT_SERVICE_PLATFORM_PROFILE_FIELDS = [
     { key: "github", label: "GitHub / Code Profile", placeholder: "https://github.com/your-username" },
 ];
 
-const SERVICE_PLATFORM_LINK_KEYS = ["linkedin", "github", "portfolio"];
 const SERVICE_PLATFORM_LINK_FALLBACK_FIELDS = [
     { key: "linkedin", label: "LinkedIn Profile", placeholder: "https://www.linkedin.com/in/your-profile" },
     { key: "github", label: "GitHub Profile", placeholder: "https://github.com/your-username" },
@@ -371,17 +370,18 @@ export const SERVICE_PLATFORM_PROFILE_FIELDS = {
 
 export const getServicePlatformProfileFields = (serviceKey) => {
     const serviceFields = SERVICE_PLATFORM_PROFILE_FIELDS[serviceKey] || [];
-    const fieldsByKey = new Map();
+    const sourceFields = serviceFields.length
+        ? serviceFields
+        : [...DEFAULT_SERVICE_PLATFORM_PROFILE_FIELDS, ...SERVICE_PLATFORM_LINK_FALLBACK_FIELDS];
 
-    [...serviceFields, ...DEFAULT_SERVICE_PLATFORM_PROFILE_FIELDS, ...SERVICE_PLATFORM_LINK_FALLBACK_FIELDS].forEach((field) => {
+    const fieldsByKey = new Map();
+    sourceFields.forEach((field) => {
         const key = String(field?.key || "").trim();
         if (!key || fieldsByKey.has(key)) return;
         fieldsByKey.set(key, field);
     });
 
-    return SERVICE_PLATFORM_LINK_KEYS
-        .map((key) => fieldsByKey.get(key))
-        .filter(Boolean);
+    return Array.from(fieldsByKey.values());
 };
 
 export const EXPERIENCE_YEARS_OPTIONS = [

@@ -83,7 +83,6 @@ import {
 import {
     ServicesStep,
     ServicePlatformLinksStep,
-    ServiceProfileStep,
     ServiceExperienceStep,
     ServiceLevelStep,
     ServiceProjectsStep,
@@ -305,7 +304,6 @@ const buildRemoteProfilePhoto = (value, name = "Profile Photo") => {
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
-const SERVICE_COVER_UPLOAD_MAX_BYTES = 8 * 1024 * 1024;
 
 const formatFileSize = (bytes) => {
     if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -438,7 +436,6 @@ const FreelancerMultiStepForm = () => {
     const usernameDebounceRef = useRef(null);
     const [techStackOtherDrafts, setTechStackOtherDrafts] = useState({});
     const [groupOtherDrafts, setGroupOtherDrafts] = useState({});
-    const [serviceCoverUploadMap, setServiceCoverUploadMap] = useState({});
     const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
     const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
     const [stateOptions, setStateOptions] = useState([]);
@@ -508,55 +505,6 @@ const FreelancerMultiStepForm = () => {
         [authFetch],
     );
 
-    const uploadServiceCoverImage = useCallback(
-        async (file) => {
-            if (!(typeof File !== "undefined" && file instanceof File)) {
-                throw new Error("Please select a valid image file.");
-            }
-
-            if (!String(file.type || "").startsWith("image/")) {
-                throw new Error("Only image files are allowed for service cover.");
-            }
-
-            if (file.size > SERVICE_COVER_UPLOAD_MAX_BYTES) {
-                throw new Error(
-                    `Cover image must be ${formatFileSize(SERVICE_COVER_UPLOAD_MAX_BYTES)} or smaller.`,
-                );
-            }
-
-            if (!user) {
-                throw new Error("Please sign in before uploading service cover images.");
-            }
-
-            const uploadData = new FormData();
-            uploadData.append("file", file);
-
-            const response = await authFetch("/upload/project-image", {
-                method: "POST",
-                body: uploadData,
-            });
-
-            if (!response.ok) {
-                let message = "Failed to upload service cover image.";
-                try {
-                    const payload = await response.json();
-                    message = payload?.error?.message || payload?.message || message;
-                } catch {
-                    // Keep default message
-                }
-                throw new Error(message);
-            }
-
-            const payload = await response.json().catch(() => ({}));
-            const uploadedUrl = String(payload?.data?.url || "").trim();
-            if (!uploadedUrl) {
-                throw new Error("Cover image upload succeeded but no URL was returned.");
-            }
-            return uploadedUrl;
-        },
-        [authFetch, user],
-    );
-
     // ── Steps sequence ──────────────────────────────────────────────────
     const steps = useMemo(() => {
         const sequence = [];
@@ -571,6 +519,12 @@ const FreelancerMultiStepForm = () => {
         sequence.push({ key: "niche-preference", type: "nichePreference" });
 
         const totalSelectedServices = formData.selectedServices.length;
+        if (totalSelectedServices > 0) {
+            sequence.push({
+                key: "services-platform-links",
+                type: "servicePlatformLinks",
+            });
+        }
 
         formData.selectedServices.forEach((serviceKey, index) => {
             sequence.push({
@@ -579,18 +533,6 @@ const FreelancerMultiStepForm = () => {
                 serviceKey,
                 serviceIndex: index,
                 totalServices: totalSelectedServices,
-            });
-
-            sequence.push({
-                key: `svc-${serviceKey}-platform-links`,
-                type: "servicePlatformLinks",
-                serviceKey,
-            });
-
-            sequence.push({
-                key: `svc-${serviceKey}-profile`,
-                type: "serviceProfile",
-                serviceKey,
             });
 
             sequence.push({ key: `svc-${serviceKey}-experience`, type: "serviceExperience", serviceKey });
@@ -1122,9 +1064,7 @@ const FreelancerMultiStepForm = () => {
             case "serviceEnd":
                 return "Services complete";
             case "servicePlatformLinks":
-                return `${serviceLabel}: Platform links`;
-            case "serviceProfile":
-                return `${serviceLabel}: Description & cover`;
+                return serviceLabel ? `${serviceLabel}: Platform links` : "Platform links";
             case "serviceExperience":
                 return `${serviceLabel}: Experience`;
             case "serviceProjects":
@@ -1307,24 +1247,6 @@ const FreelancerMultiStepForm = () => {
         if (advanceDelay !== null) queueAdvance(advanceDelay);
     };
 
-    const handleServiceCoverSelect = async (serviceKey, file) => {
-        if (!serviceKey) return;
-
-        setServiceCoverUploadMap((prev) => ({ ...prev, [serviceKey]: true }));
-        try {
-            const uploadedUrl = await uploadServiceCoverImage(file);
-            updateServiceField(serviceKey, "coverImage", uploadedUrl);
-            toast.success(`${getServiceLabel(serviceKey)} cover image uploaded.`);
-        } catch (error) {
-            toast.error(error?.message || "Failed to upload service cover image.");
-        } finally {
-            setServiceCoverUploadMap((prev) => ({
-                ...prev,
-                [serviceKey]: false,
-            }));
-        }
-    };
-
     const validateServicePlatformLinksForService = useCallback((data, serviceKey) => {
         const detail = data?.serviceDetails?.[serviceKey];
         const linkFields = getServicePlatformProfileFields(serviceKey);
@@ -1352,6 +1274,31 @@ const FreelancerMultiStepForm = () => {
 
         return "";
     }, []);
+
+    const validateAllSelectedServicePlatformLinks = useCallback((data) => {
+        const selectedServices = Array.isArray(data?.selectedServices)
+            ? data.selectedServices
+            : [];
+
+        if (selectedServices.length === 0) {
+            return "Please select at least one service.";
+        }
+
+        const invalidServiceKey = selectedServices.find((serviceKey) =>
+            Boolean(validateServicePlatformLinksForService(data, serviceKey)),
+        );
+
+        if (!invalidServiceKey) {
+            return "";
+        }
+
+        const serviceError = validateServicePlatformLinksForService(
+            data,
+            invalidServiceKey,
+        );
+
+        return `${getServiceLabel(invalidServiceKey)}: ${serviceError}`;
+    }, [validateServicePlatformLinksForService]);
 
     const hasMultipleChoices = (options = []) => Array.isArray(options) && options.length > 1;
     const hasSingleChoice = (options = []) => Array.isArray(options) && options.length === 1;
@@ -1460,12 +1407,8 @@ const FreelancerMultiStepForm = () => {
                 }
                 return "";
             case "servicePlatformLinks": {
-                return validateServicePlatformLinksForService(data, step.serviceKey);
+                return validateAllSelectedServicePlatformLinks(data);
             }
-            case "serviceProfile":
-                return serviceCoverUploadMap[step.serviceKey]
-                    ? "Please wait for the service cover image upload to finish."
-                    : "";
             case "serviceWelcome":
             case "serviceEnd":
                 return "";
@@ -1573,16 +1516,6 @@ const FreelancerMultiStepForm = () => {
     const handleSubmit = async () => {
         if (isSubmitting) return;
 
-        const uploadingServiceKey = Object.entries(serviceCoverUploadMap).find(
-            ([, uploading]) => uploading,
-        )?.[0];
-        if (uploadingServiceKey) {
-            const message = `Please wait for ${getServiceLabel(uploadingServiceKey)} cover image upload to finish.`;
-            setStepError(message);
-            toast.error(message);
-            return;
-        }
-
         const validation = validateStep(currentStep, formData);
         if (validation) {
             setStepError(validation);
@@ -1590,32 +1523,19 @@ const FreelancerMultiStepForm = () => {
             return;
         }
 
-        const invalidServiceKey = (Array.isArray(formData.selectedServices)
-            ? formData.selectedServices
-            : []
-        ).find((serviceKey) =>
-            Boolean(validateServicePlatformLinksForService(formData, serviceKey)),
-        );
+        const serviceLinksValidation = validateAllSelectedServicePlatformLinks(formData);
 
-        if (invalidServiceKey) {
-            const serviceValidationMessage = validateServicePlatformLinksForService(
-                formData,
-                invalidServiceKey,
-            );
+        if (serviceLinksValidation) {
             const invalidStepIndex = steps.findIndex(
-                (step) =>
-                    step?.type === "servicePlatformLinks" &&
-                    step?.serviceKey === invalidServiceKey,
+                (step) => step?.type === "servicePlatformLinks",
             );
 
             if (invalidStepIndex >= 0) {
                 setCurrentStepIndex(invalidStepIndex);
             }
 
-            setStepError(serviceValidationMessage);
-            toast.error(
-                `${getServiceLabel(invalidServiceKey)}: ${serviceValidationMessage}`,
-            );
+            setStepError(serviceLinksValidation);
+            toast.error(serviceLinksValidation);
             return;
         }
 
@@ -1989,16 +1909,7 @@ const FreelancerMultiStepForm = () => {
                     />
                 );
             case "servicePlatformLinks":
-                return <ServicePlatformLinksStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
-            case "serviceProfile":
-                return (
-                    <ServiceProfileStep
-                        {...sharedProps}
-                        serviceKey={currentStep.serviceKey}
-                        onUploadServiceCover={handleServiceCoverSelect}
-                        isCoverUploading={Boolean(serviceCoverUploadMap[currentStep.serviceKey])}
-                    />
-                );
+                return <ServicePlatformLinksStep {...sharedProps} />;
             case "serviceExperience":
                 return <ServiceExperienceStep {...sharedProps} serviceKey={currentStep.serviceKey} />;
             case "serviceProjects":

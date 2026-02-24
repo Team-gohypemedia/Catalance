@@ -858,19 +858,20 @@ export const GlobalNicheStep = ({
 export const ServicePlatformLinksStep = ({
     formData,
     updateServiceField,
-    renderServiceMeta,
-    serviceKey,
     currentStep,
     renderContinueButton,
 }) => {
-    const detail = formData.serviceDetails?.[serviceKey] || createServiceDetail();
-    const linkFields = getServicePlatformProfileFields(serviceKey);
-    const platformLinks =
-        detail?.platformLinks && typeof detail.platformLinks === "object"
-            ? detail.platformLinks
-            : {};
+    const selectedServices = Array.isArray(formData.selectedServices)
+        ? formData.selectedServices
+        : [];
 
-    const updatePlatformLink = (fieldKey, value) => {
+    const updatePlatformLink = (serviceKey, fieldKey, value) => {
+        const detail = formData.serviceDetails?.[serviceKey] || createServiceDetail();
+        const platformLinks =
+            detail?.platformLinks && typeof detail.platformLinks === "object"
+                ? detail.platformLinks
+                : {};
+
         updateServiceField(
             serviceKey,
             "platformLinks",
@@ -883,31 +884,60 @@ export const ServicePlatformLinksStep = ({
     };
 
     return (
-        <div className="mx-auto w-full max-w-3xl space-y-6">
+        <div className="mx-auto w-full max-w-5xl space-y-8">
             <StepHeader
-                title={`Share Your ${getServiceLabel(serviceKey)} Platform/Profile Links`}
-                subtitle={`${renderServiceMeta(serviceKey)} Add links that prove your work.`.trim()}
+                title="Share Your Platform/Profile Links"
+                subtitle="Add relevant links for each selected service to prove your work."
             />
 
-            <div className="grid grid-cols-1 gap-4">
-                {linkFields.map((field) => (
-                    <div key={`${serviceKey}-${field.key}`} className="space-y-1.5">
-                        <Label className="text-white/70 text-xs">{field.label}</Label>
-                        <div className="relative">
-                            <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                            <Input
-                                value={platformLinks[field.key] || ""}
-                                onChange={(event) => updatePlatformLink(field.key, event.target.value)}
-                                placeholder={field.placeholder}
-                                className="pl-9 bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
-                            />
+            <div className="space-y-6">
+                {selectedServices.map((serviceKey, index) => {
+                    const detail = formData.serviceDetails?.[serviceKey] || createServiceDetail();
+                    const linkFields = getServicePlatformProfileFields(serviceKey);
+                    const platformLinks =
+                        detail?.platformLinks && typeof detail.platformLinks === "object"
+                            ? detail.platformLinks
+                            : {};
+
+                    return (
+                        <div
+                            key={serviceKey}
+                            className="rounded-2xl border border-white/10 bg-primary-foreground/80 p-5 sm:p-6 space-y-4"
+                        >
+                            <div className="space-y-1">
+                                <p className="text-xs text-white/55">
+                                    {index + 1} of {selectedServices.length}
+                                </p>
+                                <h3 className="text-lg font-semibold text-primary">
+                                    {getServiceLabel(serviceKey)}
+                                </h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {linkFields.map((field) => (
+                                    <div key={`${serviceKey}-${field.key}`} className="space-y-1.5">
+                                        <Label className="text-white/70 text-xs">{field.label}</Label>
+                                        <div className="relative">
+                                            <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                            <Input
+                                                value={platformLinks[field.key] || ""}
+                                                onChange={(event) =>
+                                                    updatePlatformLink(serviceKey, field.key, event.target.value)
+                                                }
+                                                placeholder={field.placeholder}
+                                                className="pl-9 bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             <p className="text-xs text-white/50 text-center">
-                At least one valid link is mandatory.
+                At least one valid link is mandatory for each selected service.
             </p>
 
             {renderContinueButton(currentStep, { show: true })}
