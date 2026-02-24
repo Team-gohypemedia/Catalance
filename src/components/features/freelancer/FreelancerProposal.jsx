@@ -433,7 +433,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   }, [proposals]);
 
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
       <FreelancerTopBar />
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">

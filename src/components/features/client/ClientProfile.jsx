@@ -192,7 +192,7 @@ const ClientProfileContent = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
       {/* Background Texture */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.15]"
