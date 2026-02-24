@@ -45,7 +45,7 @@ export const DashboardHeader = ({
     normalizedTabLabel.toLowerCase() !== dashboardLabel.toLowerCase();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-secondary px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex flex-1 items-center gap-1">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
         <Separator orientation="vertical" className="h-4" />

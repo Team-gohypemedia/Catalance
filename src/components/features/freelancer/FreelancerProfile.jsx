@@ -1992,7 +1992,7 @@ const FreelancerProfile = () => {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-secondary text-foreground flex flex-col">
+      <div className="min-h-screen bg-background text-foreground flex flex-col">
         <DashboardHeader
           userName={user?.fullName || user?.name || personal.name}
           tabLabel="Profile"
@@ -2016,7 +2016,7 @@ const FreelancerProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-secondary text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       <DashboardHeader
         userName={user?.fullName || user?.name || personal.name}
         tabLabel="Profile"

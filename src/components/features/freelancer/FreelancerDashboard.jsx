@@ -227,7 +227,7 @@ export const DashboardContent = ({ _roleOverride }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-secondary transition-colors duration-300">
+    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
 
       <SuspensionAlert
         open={showSuspensionAlert}
