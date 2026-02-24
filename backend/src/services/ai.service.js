@@ -292,7 +292,10 @@ const formatWebsiteTypeLabel = (value = "") =>
 
 const buildWebsiteTypeReference = () => {
   const websiteService = servicesData.services.find(
-    (service) => service.id === "website_uiux"
+    (service) =>
+      service.id === "web_development" ||
+      service.id === "website_uiux" ||
+      service.id === "website_ui_ux"
   );
   const websiteTypes = Array.isArray(websiteService?.website_types)
     ? websiteService.website_types
@@ -990,7 +993,12 @@ const formatBudgetUnitLabel = (service = null) => {
 
 const getServiceLabel = (service) => {
   const id = `${service?.id || ""}`.toLowerCase();
-  if (id === "website_uiux" || id === "website_ui_ux") {
+  if (
+    id === "web_development" ||
+    id === "website_uiux" ||
+    id === "website_ui_ux" ||
+    id === "web-development"
+  ) {
     return "Web Development";
   }
 

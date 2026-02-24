@@ -1030,3 +1030,4 @@ const FreelancerChat = () => {
 };
 
 export default FreelancerChat;
+

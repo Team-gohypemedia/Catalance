@@ -126,7 +126,7 @@ const EXPERIENCE_VALUE_LABELS = {
 
 const MARKETPLACE_SERVICE_TITLE_BY_KEY = {
   branding: "Branding",
-  website_ui_ux: "Web Development",
+  web_development: "Web Development",
   seo: "SEO",
   social_media_marketing: "Social Media Management",
   paid_advertising: "Performance Marketing / Paid Ads",
@@ -147,6 +147,33 @@ const MARKETPLACE_SERVICE_TITLE_BY_KEY = {
   voice_agent: "Voice Agent / AI Calling"
 };
 
+const MARKETPLACE_SERVICE_KEY_ALIASES = {
+  website_uiux: "web_development",
+  website_ui_ux: "web_development",
+  website_ui_ux_design_2d_3d: "web_development",
+  website_ui_ux_design: "web_development",
+  "web-development": "web_development"
+};
+
+const normalizeMarketplaceServiceIdentifier = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const resolveMarketplaceServiceKey = (value = "") => {
+  const canonical = normalizeMarketplaceServiceIdentifier(value);
+  if (!canonical) return "";
+
+  const aliased = MARKETPLACE_SERVICE_KEY_ALIASES[canonical] || canonical;
+  if (Object.prototype.hasOwnProperty.call(MARKETPLACE_SERVICE_TITLE_BY_KEY, aliased)) {
+    return aliased;
+  }
+
+  return aliased;
+};
+
 const normalizeOnboardingValueLabel = (value = "") => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -164,7 +191,7 @@ const normalizeOnboardingValueLabel = (value = "") => {
 };
 
 const getMarketplaceServiceTitle = (serviceKey = "") => {
-  const key = String(serviceKey || "").trim();
+  const key = resolveMarketplaceServiceKey(serviceKey);
   if (!key) return "Service";
   return MARKETPLACE_SERVICE_TITLE_BY_KEY[key] || toTitleCaseLabel(key);
 };
@@ -177,10 +204,7 @@ const normalizeOnboardingWorkExperienceTitle = (value = "") => {
   if (!onboardingMatch) return raw;
 
   const baseRaw = String(onboardingMatch[1] || "").trim();
-  const canonical = baseRaw
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  const canonical = resolveMarketplaceServiceKey(baseRaw);
   const normalizedTitle = getMarketplaceServiceTitle(canonical || baseRaw);
 
   return `${normalizedTitle} - Onboarding`;

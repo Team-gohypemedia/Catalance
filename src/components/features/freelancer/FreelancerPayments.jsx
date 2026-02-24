@@ -334,3 +334,4 @@ const FreelancerPayments = () => {
 };
 
 export default FreelancerPayments;
+

@@ -158,7 +158,7 @@ export const DashboardHeader = ({
 
         {showProposalButton ? (
           <Button
-            className="hidden h-11 px-5 text-sm font-bold bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 sm:flex"
+            className="hidden h-11 rounded-xl px-5 text-sm font-bold bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 sm:flex"
             onClick={() => navigate(proposalPath)}
           >
             {ProposalIcon ? <ProposalIcon className="mr-2 h-4 w-4" /> : null}

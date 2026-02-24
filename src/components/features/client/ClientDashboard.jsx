@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
@@ -459,7 +459,7 @@ const StatsCard = ({
   };
 
   return (
-    <Card className="relative overflow-hidden group hover:shadow-md transition-shadow border-border/60">
+    <Card className="relative overflow-hidden rounded-xl group hover:shadow-md transition-shadow border-border/60">
       <div
         className={`absolute top-0 right-0 w-16 h-16 ${colors[accentColor]} rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110`}
       />
@@ -3485,7 +3485,7 @@ const ClientDashboardContent = () => {
             {/* Right Sidebar */}
             <div className="lg:w-[360px] flex-shrink-0 flex flex-col gap-6">
               {/* Action Center */}
-              <Card className="bg-zinc-100 dark:bg-zinc-900/50 text-foreground border-border/50 shadow-sm">
+              <Card className="rounded-xl bg-zinc-100 dark:bg-zinc-900/50 text-foreground border-border/50 shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
                     <Zap className="w-5 h-5" /> Action Center
@@ -3493,7 +3493,7 @@ const ClientDashboardContent = () => {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <Button
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                    className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                     onClick={() => navigate("/service")}
                   >
                     <Plus className="w-4 h-4 mr-2" />
@@ -3502,14 +3502,14 @@ const ClientDashboardContent = () => {
 
                   <Button
                     variant="outline"
-                    className="w-full bg-background hover:bg-background/80 text-foreground border-border/10 shadow-sm"
+                    className="w-full rounded-xl bg-background hover:bg-background/80 text-foreground border-border/10 shadow-sm"
                     onClick={() => navigate("/client/proposal")}
                   >
                     View Proposal
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full bg-background hover:bg-background/80 text-foreground border-border/10 shadow-sm"
+                    className="w-full rounded-xl bg-background hover:bg-background/80 text-foreground border-border/10 shadow-sm"
                     onClick={() => navigate("/client/project")}
                   >
                     View Projects
@@ -3518,7 +3518,7 @@ const ClientDashboardContent = () => {
               </Card>
 
               {/* Talent Snapshot */}
-              <Card className="border-border/60">
+              <Card className="rounded-xl border-border/60">
                 <CardHeader className="pb-2 flex-row items-center justify-between">
                   <CardTitle className="text-lg font-bold">
                     Active Chat
@@ -3648,3 +3648,4 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
+

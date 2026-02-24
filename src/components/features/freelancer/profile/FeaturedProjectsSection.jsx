@@ -164,3 +164,4 @@ const FeaturedProjectsSection = ({
 };
 
 export default FeaturedProjectsSection;
+

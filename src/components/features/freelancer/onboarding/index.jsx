@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import Settings from "lucide-react/dist/esm/icons/settings";
+import X from "lucide-react/dist/esm/icons/x";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -302,6 +303,73 @@ const buildRemoteProfilePhoto = (value, name = "Profile Photo") => {
     };
 };
 
+const normalizeOnboardingServiceKey = (value = "") => {
+    const canonical = String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+
+    if (!canonical) return "";
+    if (
+        canonical === "website_ui_ux" ||
+        canonical === "website_uiux" ||
+        canonical === "website_ui_ux_design_2d_3d" ||
+        canonical === "website_ui_ux_design" ||
+        canonical === "web_development" ||
+        canonical === "web_development_ui_ux" ||
+        canonical === "web_development_uiux" ||
+        canonical === "web_development_design_2d_3d" ||
+        canonical === "web_development_design"
+    ) {
+        return "web_development";
+    }
+
+    return canonical;
+};
+
+const normalizeOnboardingServiceState = (state = {}) => {
+    const selectedServices = Array.isArray(state?.selectedServices)
+        ? Array.from(
+            new Set(
+                state.selectedServices
+                    .map((entry) => normalizeOnboardingServiceKey(entry))
+                    .filter(Boolean),
+            ),
+        )
+        : [];
+
+    const rawServiceDetails =
+        state?.serviceDetails && typeof state.serviceDetails === "object"
+            ? state.serviceDetails
+            : {};
+    const serviceDetails = {};
+
+    Object.entries(rawServiceDetails).forEach(([serviceKey, detail]) => {
+        const normalizedKey = normalizeOnboardingServiceKey(serviceKey);
+        if (!normalizedKey) return;
+        if (!serviceDetails[normalizedKey]) {
+            serviceDetails[normalizedKey] = detail;
+            return;
+        }
+        if (
+            detail &&
+            typeof detail === "object" &&
+            Object.keys(detail).length &&
+            (!serviceDetails[normalizedKey] ||
+                !Object.keys(serviceDetails[normalizedKey]).length)
+        ) {
+            serviceDetails[normalizedKey] = detail;
+        }
+    });
+
+    return {
+        ...state,
+        selectedServices,
+        serviceDetails,
+    };
+};
+
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
 
@@ -441,6 +509,7 @@ const FreelancerMultiStepForm = () => {
     const [stateOptions, setStateOptions] = useState([]);
     const [isStateOptionsLoading, setIsStateOptionsLoading] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [settingsServiceToAdd, setSettingsServiceToAdd] = useState("");
     const [flowSettings, setFlowSettings] = useState(() => {
         if (typeof window === "undefined") return createInitialFlowSettings();
         try {
@@ -649,6 +718,7 @@ const FreelancerMultiStepForm = () => {
         nextFormData.languages = Array.isArray(nextFormData.languages)
             ? nextFormData.languages.filter(Boolean)
             : [];
+        nextFormData = normalizeOnboardingServiceState(nextFormData);
 
         const existingPhotoUrl = extractProfilePhotoUrl(nextFormData.profilePhoto);
         const accountAvatarUrl = resolveFreelancerFlowAvatar(user);
@@ -1108,21 +1178,61 @@ const FreelancerMultiStepForm = () => {
         }
     }, []);
 
-    const handleSaveDraftFromSettings = useCallback(() => {
-        localStorage.setItem(onboardingStorageKeys.dataKey, JSON.stringify(formData));
-        localStorage.setItem(onboardingStorageKeys.stepKey, currentStepIndex.toString());
-        toast.success("Onboarding draft saved.");
-    }, [currentStepIndex, formData, onboardingStorageKeys.dataKey, onboardingStorageKeys.stepKey]);
+    const selectedServicesForSettings = useMemo(
+        () => (Array.isArray(formData.selectedServices) ? formData.selectedServices : []),
+        [formData.selectedServices],
+    );
+    const availableServicesForSettings = useMemo(() => {
+        const selectedSet = new Set(selectedServicesForSettings);
+        return SERVICE_OPTIONS.filter((option) => !selectedSet.has(option.value));
+    }, [selectedServicesForSettings]);
 
-    const handleClearSavedDraftFromSettings = useCallback(() => {
-        clearOnboardingDraftStorage();
-        toast.success("Saved draft cleared from this browser.");
-    }, [clearOnboardingDraftStorage]);
+    useEffect(() => {
+        if (!settingsServiceToAdd) return;
+        const isStillAvailable = availableServicesForSettings.some(
+            (option) => option.value === settingsServiceToAdd,
+        );
+        if (!isStillAvailable) {
+            setSettingsServiceToAdd("");
+        }
+    }, [availableServicesForSettings, settingsServiceToAdd]);
 
     const handleJumpToStepFromSettings = useCallback((nextStep) => {
         const parsedStep = Number(nextStep);
         if (!Number.isFinite(parsedStep)) return;
         const boundedStep = Math.max(0, Math.min(totalSteps - 1, parsedStep));
+        const isMovingForward = boundedStep > currentStepIndex;
+
+        if (isMovingForward) {
+            const currentStepValidation = currentStep ? validateStep(currentStep, formData) : "";
+            if (currentStepValidation) {
+                setStepError(currentStepValidation);
+                toast.error(currentStepValidation);
+                return;
+            }
+
+            let firstUnansweredStepIndex = -1;
+            let firstUnansweredStepError = "";
+
+            for (let index = 0; index < steps.length; index += 1) {
+                const validation = validateStep(steps[index], formData);
+                if (validation) {
+                    firstUnansweredStepIndex = index;
+                    firstUnansweredStepError = validation;
+                    break;
+                }
+            }
+
+            if (firstUnansweredStepIndex >= 0 && boundedStep > firstUnansweredStepIndex) {
+                const blockedStep = steps[firstUnansweredStepIndex];
+                const blockedLabel = getStepDisplayLabel(blockedStep, firstUnansweredStepIndex);
+                const blockedMessage = `Please complete Step ${firstUnansweredStepIndex + 1}: ${blockedLabel}.`;
+                setStepError(firstUnansweredStepError || blockedMessage);
+                toast.error(blockedMessage);
+                setCurrentStepIndex(firstUnansweredStepIndex);
+                return;
+            }
+        }
 
         if (advanceTimerRef.current) {
             clearTimeout(advanceTimerRef.current);
@@ -1132,11 +1242,107 @@ const FreelancerMultiStepForm = () => {
         setPendingAdvance(false);
         setStepError("");
         setCurrentStepIndex(boundedStep);
-    }, [totalSteps]);
+    }, [currentStep, currentStepIndex, formData, getStepDisplayLabel, steps, totalSteps]);
 
     const handleSettingsNavigateRelative = useCallback((delta) => {
         handleJumpToStepFromSettings(currentStepIndex + delta);
     }, [currentStepIndex, handleJumpToStepFromSettings]);
+
+    const getSettingsServicesStepIndex = useCallback(() => {
+        const platformLinksIndex = steps.findIndex((step) => step.type === "servicePlatformLinks");
+        if (platformLinksIndex >= 0) return platformLinksIndex;
+
+        const servicesIndex = steps.findIndex((step) => step.type === "services");
+        if (servicesIndex >= 0) return servicesIndex;
+
+        return 0;
+    }, [steps]);
+
+    const handleAddServiceFromSettings = useCallback(() => {
+        const nextServiceKey = String(settingsServiceToAdd || "").trim();
+        if (!nextServiceKey) return;
+
+        if (selectedServicesForSettings.includes(nextServiceKey)) {
+            setSettingsServiceToAdd("");
+            return;
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            selectedServices: [...(Array.isArray(prev.selectedServices) ? prev.selectedServices : []), nextServiceKey],
+            serviceDetails: {
+                ...(prev.serviceDetails || {}),
+                [nextServiceKey]: prev.serviceDetails?.[nextServiceKey] || createServiceDetail(),
+            },
+        }));
+
+        setStepError("");
+        setSettingsServiceToAdd("");
+        handleJumpToStepFromSettings(getSettingsServicesStepIndex());
+        toast.success(`${getServiceLabel(nextServiceKey)} added to selected services.`);
+    }, [
+        getSettingsServicesStepIndex,
+        handleJumpToStepFromSettings,
+        selectedServicesForSettings,
+        settingsServiceToAdd,
+    ]);
+
+    const handleRemoveServiceFromSettings = useCallback((serviceKey) => {
+        if (!selectedServicesForSettings.includes(serviceKey)) return;
+
+        if (selectedServicesForSettings.length <= 1) {
+            toast.error("At least one service must remain selected.");
+            return;
+        }
+
+        setFormData((prev) => {
+            const nextSelectedServices = (Array.isArray(prev.selectedServices) ? prev.selectedServices : [])
+                .filter((key) => key !== serviceKey);
+
+            const nextServiceDetails = { ...(prev.serviceDetails || {}) };
+            delete nextServiceDetails[serviceKey];
+
+            return {
+                ...prev,
+                selectedServices: nextSelectedServices,
+                serviceDetails: nextServiceDetails,
+            };
+        });
+
+        setTechStackOtherDrafts((prev) => {
+            if (!Object.prototype.hasOwnProperty.call(prev, serviceKey)) return prev;
+            const nextDrafts = { ...prev };
+            delete nextDrafts[serviceKey];
+            return nextDrafts;
+        });
+
+        setGroupOtherDrafts((prev) => {
+            let changed = false;
+            const nextDrafts = {};
+
+            Object.entries(prev).forEach(([key, value]) => {
+                if (key.startsWith(`${serviceKey}:`)) {
+                    changed = true;
+                    return;
+                }
+                nextDrafts[key] = value;
+            });
+
+            return changed ? nextDrafts : prev;
+        });
+
+        setStepError("");
+        if (settingsServiceToAdd === serviceKey) {
+            setSettingsServiceToAdd("");
+        }
+        handleJumpToStepFromSettings(getSettingsServicesStepIndex());
+        toast.success(`${getServiceLabel(serviceKey)} removed from selected services.`);
+    }, [
+        getSettingsServicesStepIndex,
+        handleJumpToStepFromSettings,
+        selectedServicesForSettings,
+        settingsServiceToAdd,
+    ]);
 
     const handleAutoAdvanceChange = useCallback((checked) => {
         setFlowSettings((prev) => ({
@@ -1766,6 +1972,20 @@ const FreelancerMultiStepForm = () => {
         return `${index + 1} of ${totalServices}: ${label}`;
     };
 
+    const currentStepValidationMessage = currentStep ? validateStep(currentStep, formData) : "";
+
+    let firstUnansweredStepIndex = -1;
+    for (let index = 0; index < steps.length; index += 1) {
+        const validation = validateStep(steps[index], formData);
+        if (validation) {
+            firstUnansweredStepIndex = index;
+            break;
+        }
+    }
+    const maxSettingsNavigableStepIndex = firstUnansweredStepIndex === -1
+        ? totalSteps - 1
+        : firstUnansweredStepIndex;
+
 
 
     const renderContinueButton = (step = currentStep, { show = true } = {}) => {
@@ -1776,7 +1996,7 @@ const FreelancerMultiStepForm = () => {
         const footer = (
             <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none">
                 <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-primary-foreground" />
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-secondary" />
                 <div className="relative mx-auto max-w-4xl px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 flex justify-center">
                     <button
                         type="button"
@@ -2021,9 +2241,9 @@ const FreelancerMultiStepForm = () => {
     if (!isLoaded) return null;
 
     return (
-        <div className="h-screen w-full bg-secondary text-foreground relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
+        <div className="h-screen w-full bg-background text-foreground relative overflow-hidden flex flex-col font-sans selection:bg-primary/30">
             <div className="relative z-10 flex flex-col h-full">
-                <div className="relative z-50 bg-primary-foreground border-b border-white/5 shrink-0">
+                <div className="relative z-50 bg-secondary border-b border-white/5 shrink-0">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 w-full">
                         <div
                             className="h-full bg-primary transition-all duration-300 ease-out shadow-[0_0_14px_rgba(253,224,71,0.8)]"
@@ -2064,14 +2284,14 @@ const FreelancerMultiStepForm = () => {
                             </SheetTrigger>
                             <SheetContent
                                 side="right"
-                                className="w-[92vw] sm:max-w-md border-white/10 bg-secondary text-foreground p-0"
+                                className="w-[92vw] sm:max-w-md border-white/10 bg-background text-foreground p-0"
                             >
                                 <SheetHeader className="border-b border-white/10 px-5 py-4 text-left">
                                     <SheetTitle className="text-white">
                                         Freelancer Flow Settings
                                     </SheetTitle>
                                     <SheetDescription className="text-white/60">
-                                        Manage navigation, progress, and draft controls.
+                                        Manage navigation, progress, and flow controls.
                                     </SheetDescription>
                                 </SheetHeader>
 
@@ -2122,7 +2342,10 @@ const FreelancerMultiStepForm = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => handleSettingsNavigateRelative(1)}
-                                                disabled={currentStepIndex >= totalSteps - 1}
+                                                disabled={
+                                                    currentStepIndex >= totalSteps - 1
+                                                    || Boolean(currentStepValidationMessage)
+                                                }
                                                 className="rounded-lg border border-white/10 bg-primary-foreground px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                                 Next step
@@ -2137,40 +2360,84 @@ const FreelancerMultiStepForm = () => {
                                                 onChange={(event) =>
                                                     handleJumpToStepFromSettings(event.target.value)
                                                 }
-                                                className="mt-1.5 w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                                                className="mt-1.5 w-full rounded-lg border border-white/10 bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
                                             >
-                                                {steps.map((step, index) => (
-                                                    <option
-                                                        key={`${step.key || step.type || "step"}-${index}`}
-                                                        value={index}
-                                                    >
-                                                        {`Step ${index + 1}: ${getStepDisplayLabel(step, index)}`}
-                                                    </option>
-                                                ))}
+                                                {steps.map((step, index) => {
+                                                    const isLocked =
+                                                        index > maxSettingsNavigableStepIndex
+                                                        && index !== currentStepIndex;
+
+                                                    return (
+                                                        <option
+                                                            key={`${step.key || step.type || "step"}-${index}`}
+                                                            value={index}
+                                                            disabled={isLocked}
+                                                        >
+                                                            {`Step ${index + 1}: ${getStepDisplayLabel(step, index)}${isLocked ? " (Locked)" : ""}`}
+                                                        </option>
+                                                    );
+                                                })}
                                             </select>
                                         </label>
                                     </div>
 
                                     <div className="space-y-2">
                                         <p className="text-xs uppercase tracking-wide text-white/50">
-                                            Draft
+                                            Services
                                         </p>
-                                        <div className="grid grid-cols-2 gap-2">
+
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedServicesForSettings.map((serviceKey) => (
+                                                <span
+                                                    key={serviceKey}
+                                                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-3 py-1 text-xs text-white"
+                                                >
+                                                    <span>{getServiceLabel(serviceKey)}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveServiceFromSettings(serviceKey)}
+                                                        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                                                        aria-label={`Remove ${getServiceLabel(serviceKey)}`}
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+
+                                        <div className="grid grid-cols-[1fr_auto] gap-2">
+                                            <select
+                                                value={settingsServiceToAdd}
+                                                onChange={(event) =>
+                                                    setSettingsServiceToAdd(event.target.value)
+                                                }
+                                                disabled={availableServicesForSettings.length === 0}
+                                                className="w-full rounded-lg border border-white/10 bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                <option value="">
+                                                    {availableServicesForSettings.length > 0
+                                                        ? "Select service to add"
+                                                        : "All services already selected"}
+                                                </option>
+                                                {availableServicesForSettings.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
                                             <button
                                                 type="button"
-                                                onClick={handleSaveDraftFromSettings}
-                                                className="rounded-lg border border-white/10 bg-primary-foreground px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-primary/50 hover:bg-primary/10"
+                                                onClick={handleAddServiceFromSettings}
+                                                disabled={!settingsServiceToAdd}
+                                                className="rounded-lg border border-white/10 bg-primary-foreground px-3 py-2 text-sm font-medium text-white transition-colors hover:border-primary/50 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
-                                                Save draft now
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleClearSavedDraftFromSettings}
-                                                className="rounded-lg border border-white/10 bg-primary-foreground px-3 py-2 text-left text-sm font-medium text-white transition-colors hover:border-white/40 hover:bg-white/5"
-                                            >
-                                                Clear saved draft
+                                                Add
                                             </button>
                                         </div>
+
+                                        <p className="text-[11px] text-white/50">
+                                            Keep at least one service selected.
+                                        </p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -2234,4 +2501,5 @@ const FreelancerMultiStepForm = () => {
 };
 
 export default FreelancerMultiStepForm;
+
 

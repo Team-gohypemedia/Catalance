@@ -258,7 +258,7 @@ export default function ProfileImageCropDialog({
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="mx-auto relative h-[320px] w-[320px] overflow-hidden rounded-2xl border border-white/15 bg-secondary">
+          <div className="mx-auto relative h-[320px] w-[320px] overflow-hidden rounded-2xl border border-white/15 bg-accent">
             {previewUrl ? (
               <img
                 src={previewUrl}
@@ -360,3 +360,4 @@ ProfileImageCropDialog.defaultProps = {
   file: null,
   maxUploadBytes: 5 * 1024 * 1024,
 };
+
