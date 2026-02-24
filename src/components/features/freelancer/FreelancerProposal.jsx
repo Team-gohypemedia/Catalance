@@ -637,3 +637,4 @@ const FreelancerProposal = ({ filter = "all" }) => {
 };
 
 export default FreelancerProposal;
+

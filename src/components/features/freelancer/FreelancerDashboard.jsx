@@ -86,7 +86,10 @@ export const DashboardContent = ({ _roleOverride }) => {
   );
   const forcedRole = String(_roleOverride || "").toUpperCase();
   const isFreelancerRoute = location.pathname.startsWith("/freelancer");
-  const showOnboardingAlert = forcedRole !== "CLIENT" && isFreelancerRoute;
+  const showOnboardingAlert =
+    forcedRole !== "CLIENT" &&
+    isFreelancerRoute &&
+    !isOnboardingComplete;
 
   useEffect(() => {
     const session = getSession();
@@ -284,29 +287,20 @@ export const DashboardContent = ({ _roleOverride }) => {
                   <div className="flex-1 text-center sm:text-left">
                     <h4 className="text-base font-bold text-foreground mb-1 flex items-center justify-center sm:justify-start gap-2">
                       <Sparkles className="h-4 w-4 text-yellow-500" />
-                      {isOnboardingComplete
-                        ? "Keep your onboarding profile up to date"
-                        : "Complete your onboarding to start getting projects"}
+                      Complete your onboarding to start getting projects
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      {isOnboardingComplete
-                        ? "Update your onboarding details anytime to improve discovery and match quality."
-                        : "Add your profile details and services so clients can discover and hire you."}
+                      Add your profile details and services so clients can
+                      discover and hire you.
                     </p>
                   </div>
 
                   <Button
                     size="sm"
-                    className="w-full sm:w-auto font-bold bg-yellow-500 text-black hover:bg-yellow-600 transition-all rounded-full px-6"
-                    onClick={() =>
-                      navigate(
-                        isOnboardingComplete
-                          ? "/freelancer/onboarding?mode=edit"
-                          : "/freelancer/onboarding"
-                      )
-                    }
+                    className="w-full sm:w-auto font-bold bg-yellow-500 text-black hover:bg-yellow-600 transition-all rounded-xl px-6"
+                    onClick={() => navigate("/freelancer/onboarding")}
                   >
-                    {isOnboardingComplete ? "Edit Onboarding" : "Start Onboarding"}
+                    Start Onboarding
                   </Button>
                 </div>
               ) : null}
@@ -314,7 +308,7 @@ export const DashboardContent = ({ _roleOverride }) => {
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {/* Total Earnings */}
-                <div className="bg-card p-8 rounded-3xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-primary/40 transition-all relative overflow-hidden group">
+                <div className="bg-card p-8 rounded-xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-primary/40 transition-all relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
                   <div className="relative z-10">
                     <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
@@ -331,7 +325,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                 </div>
 
                 {/* Active Projects */}
-                <div className="bg-card p-8 rounded-3xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-blue-500/40 transition-all relative overflow-hidden group">
+                <div className="bg-card p-8 rounded-xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-blue-500/40 transition-all relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
                   <div className="relative z-10">
                     <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
@@ -360,7 +354,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                 </div>
 
                 {/* Proposals Sent */}
-                <div className="bg-card p-8 rounded-3xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-purple-500/40 transition-all relative overflow-hidden group">
+                <div className="bg-card p-8 rounded-xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-purple-500/40 transition-all relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
                   <div className="relative z-10">
                     <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
@@ -392,7 +386,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                   </Button>
                 </div>
 
-                <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-secondary/40 border-b border-border">
@@ -505,7 +499,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                 const timeDisplay = `${upcomingMeeting.startHour}:00 - ${upcomingMeeting.endHour}:00`;
 
                 return (
-                  <div className="bg-card rounded-3xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex flex-col items-center justify-center shrink-0 min-w-[240px] relative overflow-hidden">
+                  <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex flex-col items-center justify-center shrink-0 min-w-[240px] relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -mr-6 -mt-6"></div>
                     <h3 className="font-bold text-lg text-foreground mb-2 flex items-center gap-2 relative z-10">
                       <Video className="h-5 w-5 text-primary" />
@@ -553,7 +547,7 @@ export const DashboardContent = ({ _roleOverride }) => {
               })()}
 
               {/* Pending Proposals Widget */}
-              <div className="bg-primary/5 dark:bg-card rounded-3xl p-8 border border-primary/10 dark:border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] relative overflow-hidden">
+              <div className="bg-primary/5 dark:bg-card rounded-xl p-8 border border-primary/10 dark:border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] relative overflow-hidden">
                 <div className="absolute -top-6 -right-6 w-32 h-32 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
                 <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-foreground relative z-10">
                   <Gavel className="text-primary h-5 w-5" /> Pending Proposals
@@ -603,7 +597,7 @@ export const DashboardContent = ({ _roleOverride }) => {
               </div>
 
               {/* Earnings Goal / Payment Status Widget */}
-              <div className="bg-card rounded-3xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
+              <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
                 <h3 className="font-bold text-lg text-foreground mb-6">
                   Earnings Goal
                 </h3>
@@ -680,7 +674,7 @@ export const DashboardContent = ({ _roleOverride }) => {
               </div>
 
               {/* Active Clients (Was Assigned Talent) */}
-              <div className="bg-card rounded-3xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
+              <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-lg text-foreground">
                     Active Clients
@@ -760,4 +754,5 @@ export const ClientDashboard = () => {
 };
 
 export default FreelancerDashboard;
+
 

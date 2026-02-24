@@ -47,9 +47,33 @@ export const createServiceDetail = () => ({
 // SERVICE HELPERS
 // ============================================================================
 
+const normalizeServiceKey = (value = "") =>
+    String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+
+const SERVICE_KEY_ALIASES = {
+    website_uiux: "web_development",
+    website_ui_ux: "web_development",
+    website_ui_ux_design_2d_3d: "web_development",
+    website_ui_ux_design: "web_development",
+    "web-development": "web_development",
+};
+
 export const getServiceLabel = (serviceKey) => {
-    const match = SERVICE_OPTIONS.find((option) => option.value === serviceKey);
-    return match ? match.label : serviceKey;
+    const canonicalKey = SERVICE_KEY_ALIASES[normalizeServiceKey(serviceKey)] || normalizeServiceKey(serviceKey);
+    const match = SERVICE_OPTIONS.find(
+        (option) => normalizeServiceKey(option.value) === canonicalKey,
+    );
+
+    if (match?.label) return match.label;
+    if (canonicalKey === "web_development") {
+        return "Web Development";
+    }
+
+    return String(serviceKey || "").trim();
 };
 
 const REMOVED_SERVICE_GROUP_QUESTIONS = new Set([
@@ -140,7 +164,7 @@ const appendUniqueOptions = (options = [], extraOptions = []) => {
 };
 
 const TECH_PARITY_FALLBACKS_BY_SERVICE = {
-    website_ui_ux: ["Framer Motion", "Nuxt.js", "SvelteKit"],
+    web_development: ["Framer Motion", "Nuxt.js", "SvelteKit"],
     software_development: ["RabbitMQ", "Elasticsearch", "Kafka"],
     app_development: ["React Query", "Realm", "SQLite"],
     creative_design: ["Adobe Lightroom", "Procreate", "LottieFiles"],

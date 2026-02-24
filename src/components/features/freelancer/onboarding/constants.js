@@ -1,4 +1,4 @@
-import {
+﻿import {
     User,
     Building2,
     Clock,
@@ -39,7 +39,7 @@ export const SUB_PROFESSION_OPTIONS_BY_SERVICE = {
         "Packaging Designer",
         "Brand Guidelines Specialist",
     ],
-    website_ui_ux: [
+    web_development: [
         "Web Developer",
         "Frontend Developer",
         "Full Stack Developer",
@@ -231,7 +231,7 @@ export const ROLE_OPTIONS = [
 
 export const SERVICE_OPTIONS = [
     { value: "branding", label: "Branding", icon: Sparkles },
-    { value: "website_ui_ux", label: "Web Development", icon: Globe },
+    { value: "web_development", label: "Web Development", icon: Globe },
     { value: "seo", label: "SEO", icon: Search },
     { value: "social_media_marketing", label: "Social Media Management", icon: Share2 },
     { value: "paid_advertising", label: "Performance Marketing / Paid Ads", icon: TrendingUp },
@@ -271,7 +271,7 @@ export const SERVICE_PLATFORM_PROFILE_FIELDS = {
         { key: "dribbble", label: "Dribbble Profile", placeholder: "https://dribbble.com/your-profile" },
         { key: "portfolio", label: "Portfolio Website", placeholder: "https://your-portfolio.com" },
     ],
-    website_ui_ux: [
+    web_development: [
         { key: "liveProjects", label: "Live Website / Landing Page", placeholder: "https://your-live-project.com" },
         { key: "github", label: "GitHub Profile", placeholder: "https://github.com/your-username" },
         { key: "dribbble", label: "Dribbble / UI Portfolio", placeholder: "https://dribbble.com/your-profile" },
@@ -386,8 +386,8 @@ export const getServicePlatformProfileFields = (serviceKey) => {
 
 export const EXPERIENCE_YEARS_OPTIONS = [
     { value: "less_than_1", label: "Less than 1 year" },
-    { value: "1_3", label: "1–3 years" },
-    { value: "3_5", label: "3–5 years" },
+    { value: "1_3", label: "1â€“3 years" },
+    { value: "3_5", label: "3â€“5 years" },
     { value: "5_plus", label: "5+ years" },
 ];
 
@@ -449,8 +449,8 @@ export const ROLE_IN_PROJECT_OPTIONS = [
 
 export const PROJECT_TIMELINE_OPTIONS = [
     { value: "less_than_2_weeks", label: "Less than 2 weeks" },
-    { value: "2_4_weeks", label: "2–4 weeks" },
-    { value: "1_3_months", label: "1–3 months" },
+    { value: "2_4_weeks", label: "2â€“4 weeks" },
+    { value: "1_3_months", label: "1â€“3 months" },
     { value: "3_plus_months", label: "3+ months" },
 ];
 
@@ -519,7 +519,7 @@ export const DEFAULT_TECH_STACK_OPTIONS = [
 ];
 
 export const DAILY_TECH_OPTIONS_BY_SERVICE = {
-    website_ui_ux: [
+    web_development: [
         "HTML / CSS / JavaScript",
         "TypeScript",
         "Tailwind CSS",
@@ -876,7 +876,7 @@ export const CASE_STUDY_FIELDS = [
 ];
 
 export const SERVICE_GROUPS = {
-    website_ui_ux: [
+    web_development: [
         {
             id: "website_specialization",
             label: "Which Types Of Websites Do You Build?",
@@ -1438,3 +1438,4 @@ export const SERVICE_GROUPS = {
         },
     ],
 };
+

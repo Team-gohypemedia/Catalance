@@ -1429,6 +1429,7 @@ const isWebsiteService = (serviceName = "", serviceId = "") => {
   return (
     combined.includes("website") ||
     combined.includes("web-development") ||
+    combined.includes("web_development") ||
     combined.includes("web ")
   );
 };

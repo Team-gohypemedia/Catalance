@@ -315,3 +315,4 @@ const FreelancerProjects = () => {
 };
 
 export default FreelancerProjects;
+

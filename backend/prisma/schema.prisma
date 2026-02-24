@@ -85,7 +85,7 @@ model User {
   resume       String?
   profileDetails Json?       @default("{}")
   freelancerProjects FreelancerProject[]
-  marketplace     Marketplace?
+  marketplace     Marketplace[]
 
 
   ownedProjects Project[] @relation("ProjectOwner")
@@ -107,14 +107,19 @@ model User {
 
 model Marketplace {
   id           String   @id @default(cuid())
-  freelancerId String   @unique
+  freelancerId String
   freelancer   User     @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
-  services     String[] @default([])
-  serviceDetails Json   @default("[]")
+  serviceKey   String   @default("")
+  service      String   @default("")
+  serviceDetails Json   @default("{}")
   isFeatured   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  @@unique([freelancerId, serviceKey])
+  @@unique([freelancerId, service])
+  @@index([serviceKey])
+  @@index([freelancerId])
   @@index([isFeatured])
 }
 

@@ -371,7 +371,7 @@ const collectServiceSpecializations = (detail = {}) => {
 
 const splitExperienceTitle = (title = "") => {
   const raw = String(title || "");
-  const separators = [" · ", " • ", " Â· ", " - "];
+  const separators = [" · ", " • ", " · ", " - "];
 
   for (const separator of separators) {
     if (raw.includes(separator)) {
@@ -385,7 +385,7 @@ const splitExperienceTitle = (title = "") => {
 
 const splitExperiencePeriod = (period = "") => {
   const raw = String(period || "");
-  const separators = [" – ", " â€“ ", " - "];
+  const separators = [" – ", " – ", " - "];
 
   for (const separator of separators) {
     if (raw.includes(separator)) {
@@ -2977,5 +2977,6 @@ const FreelancerProfileWrapper = () => {
 };
 
 export default FreelancerProfileWrapper;
+
 
 

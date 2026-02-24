@@ -29,9 +29,34 @@ const marketplaceSupportsServiceDetails = (() => {
     return false;
   }
 })();
+const marketplaceSupportsServiceKey = (() => {
+  try {
+    const models = Prisma?.dmmf?.datamodel?.models || [];
+    const marketplaceModel = models.find((model) => model.name === "Marketplace");
+    return Boolean(
+      marketplaceModel?.fields?.some((field) => field?.name === "serviceKey")
+    );
+  } catch {
+    return false;
+  }
+})();
 
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toUpperCase() : null;
+
+const hasRole = (user, role) => {
+  const targetRole = normalizeRoleValue(role);
+  if (!targetRole) return false;
+
+  const primaryRole = normalizeRoleValue(user?.role);
+  if (primaryRole === targetRole) return true;
+
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+    : [];
+
+  return roles.includes(targetRole);
+};
 
 const normalizeGoogleAuthMode = (value) => {
   const normalized = typeof value === "string" ? value.toLowerCase().trim() : "";
@@ -125,6 +150,25 @@ const extractAvatarUrl = (value) => {
 
 const USERNAME_REGEX = /^[a-z0-9]{3,20}$/;
 
+const LEGACY_FREELANCER_SERVICE_KEY_MAP = {
+  website_uiux: "web_development",
+  website_ui_ux: "web_development",
+  website_ui_ux_design_2d_3d: "web_development",
+  website_ui_ux_design: "web_development",
+  "web-development": "web_development"
+};
+
+const normalizeLegacyFreelancerServiceKey = (value = "") => {
+  const canonical = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (!canonical) return "";
+  return LEGACY_FREELANCER_SERVICE_KEY_MAP[canonical] || canonical;
+};
+
 const normalizeUsername = (value = "") =>
   String(value || "")
     .trim()
@@ -151,6 +195,43 @@ const normalizeFreelancerProfileDetails = (profileDetails) => {
   }
 
   nextProfileDetails.identity = nextIdentity;
+
+  if (Array.isArray(nextProfileDetails.services)) {
+    nextProfileDetails.services = normalizeStringList(
+      nextProfileDetails.services.map((serviceKey) =>
+        normalizeLegacyFreelancerServiceKey(serviceKey)
+      ),
+      { max: 64 }
+    );
+  }
+
+  if (
+    nextProfileDetails.serviceDetails &&
+    typeof nextProfileDetails.serviceDetails === "object"
+  ) {
+    const nextServiceDetails = {};
+    Object.entries(nextProfileDetails.serviceDetails).forEach(([serviceKey, detail]) => {
+      const normalizedKey = normalizeLegacyFreelancerServiceKey(serviceKey);
+      if (!normalizedKey) return;
+
+      if (!Object.prototype.hasOwnProperty.call(nextServiceDetails, normalizedKey)) {
+        nextServiceDetails[normalizedKey] = detail;
+        return;
+      }
+
+      if (
+        detail &&
+        typeof detail === "object" &&
+        Object.keys(detail).length &&
+        (!nextServiceDetails[normalizedKey] ||
+          !Object.keys(nextServiceDetails[normalizedKey]).length)
+      ) {
+        nextServiceDetails[normalizedKey] = detail;
+      }
+    });
+    nextProfileDetails.serviceDetails = nextServiceDetails;
+  }
+
   return nextProfileDetails;
 };
 
@@ -477,7 +558,7 @@ const extractFreelancerProjectsFromProfileDetails = (profileDetails = {}) => {
     if (!entries.length) return;
 
     const normalizedServiceKey = String(serviceKey || "").trim() || null;
-    const serviceName = toTitleCaseLabel(normalizedServiceKey || "") || null;
+    const serviceName = getMarketplaceServiceTitle(normalizedServiceKey || "") || null;
     const sharedFields = buildFreelancerProjectOnboardingSnapshot({
       profileDetails,
       detail
@@ -514,6 +595,90 @@ const deriveFreelancerProjects = ({
   return extractFreelancerProjectsFromPortfolio(portfolioProjects);
 };
 
+const normalizeMarketplaceServiceIdentifier = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const MARKETPLACE_SERVICE_KEY_ALIASES = {
+  website_uiux: "web_development",
+  website_ui_ux: "web_development",
+  website_ui_ux_design_2d_3d: "web_development",
+  website_ui_ux_design: "web_development",
+  web_development: "web_development",
+  web_development_design_2d_3d: "web_development",
+  web_development_design: "web_development",
+  web_development_ui_ux: "web_development",
+  web_development_uiux: "web_development",
+  web_development_ui_ux_design: "web_development",
+  web_development_ui_ux_design_2d_3d: "web_development",
+  web_development_uiux_design_2d_3d: "web_development",
+  web_development_uiux_design: "web_development",
+  "web-development": "web_development"
+};
+
+const toMarketplaceStorageServiceKey = (serviceKey = "") =>
+  resolveMarketplaceServiceKey(serviceKey);
+
+const resolveMarketplaceServiceKey = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const canonical = normalizeMarketplaceServiceIdentifier(raw);
+  if (!canonical) return "";
+
+  const aliased = MARKETPLACE_SERVICE_KEY_ALIASES[canonical] || canonical;
+
+  if (Object.prototype.hasOwnProperty.call(MARKETPLACE_SERVICE_META_BY_KEY, aliased)) {
+    return aliased;
+  }
+
+  for (const [serviceKey, meta] of Object.entries(MARKETPLACE_SERVICE_META_BY_KEY)) {
+    const titleCanonical = normalizeMarketplaceServiceIdentifier(meta?.title || "");
+    if (titleCanonical && titleCanonical === aliased) {
+      return serviceKey;
+    }
+  }
+
+  return aliased;
+};
+
+const normalizeMarketplaceServiceKeys = (value, { max = 64 } = {}) =>
+  normalizeStringList(
+    Array.isArray(value) ? value.map((entry) => resolveMarketplaceServiceKey(entry)) : [],
+    { max }
+  );
+
+const hasMeaningfulServiceDetailValue = (value) => {
+  if (value === null || value === undefined) return false;
+
+  if (typeof value === "string") {
+    return String(value).trim().length > 0;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((entry) => hasMeaningfulServiceDetailValue(entry));
+  }
+
+  if (typeof value === "object") {
+    return Object.values(value).some((entry) =>
+      hasMeaningfulServiceDetailValue(entry)
+    );
+  }
+
+  return false;
+};
+
 const deriveMarketplaceServices = ({
   profileDetails,
   services
@@ -522,14 +687,18 @@ const deriveMarketplaceServices = ({
   const profileServices = Array.isArray(profileDetails?.services)
     ? profileDetails.services
     : [];
-  const serviceDetailsKeys =
+  const serviceDetailsEntries =
     profileDetails?.serviceDetails &&
     typeof profileDetails.serviceDetails === "object"
-      ? Object.keys(profileDetails.serviceDetails)
+      ? Object.entries(profileDetails.serviceDetails)
       : [];
+  const serviceDetailsKeys = serviceDetailsEntries
+    .filter(([, detail]) => hasMeaningfulServiceDetailValue(detail))
+    .map(([serviceKey]) => serviceKey);
+  const preferredSources = [...explicitServices, ...profileServices];
 
-  return normalizeStringList(
-    [...explicitServices, ...profileServices, ...serviceDetailsKeys],
+  return normalizeMarketplaceServiceKeys(
+    preferredSources.length ? preferredSources : serviceDetailsKeys,
     { max: 64 }
   );
 };
@@ -540,7 +709,7 @@ const MARKETPLACE_SERVICE_META_BY_KEY = {
     description: "Build logo, brand identity, and strategic messaging for consistent brand growth.",
     coverImage: "/assets/services/branding-cover.jpg"
   },
-  website_ui_ux: {
+  web_development: {
     title: "Web Development",
     description: "Design and develop responsive, high-converting websites and landing pages.",
     coverImage: "/assets/services/web-development-cover.jpg"
@@ -646,7 +815,7 @@ const deriveMarketplaceServiceDetails = ({
       ? profileDetails.serviceDetails
       : {};
 
-  return normalizeStringList(services, { max: 64 }).map((serviceKey) => {
+  return normalizeMarketplaceServiceKeys(services, { max: 64 }).map((serviceKey) => {
     const meta = MARKETPLACE_SERVICE_META_BY_KEY[serviceKey];
     const detail =
       onboardingServiceDetails?.[serviceKey] &&
@@ -683,37 +852,122 @@ const upsertMarketplaceEntry = async ({
   profileDetails = {}
 } = {}) => {
   if (!freelancerId) return;
-  const normalizedServices = normalizeStringList(services, { max: 64 });
+  const normalizedServiceKeys = normalizeMarketplaceServiceKeys(services, { max: 64 });
+  const marketplaceServices = [];
+  const seenStorageKeys = new Set();
+
+  normalizedServiceKeys.forEach((canonicalKey) => {
+    const serviceKey = toMarketplaceStorageServiceKey(canonicalKey);
+    if (!serviceKey || seenStorageKeys.has(serviceKey)) return;
+    seenStorageKeys.add(serviceKey);
+    marketplaceServices.push({
+      canonicalKey,
+      serviceKey,
+      serviceTitle: getMarketplaceServiceTitle(canonicalKey)
+    });
+  });
   const serviceDetails = deriveMarketplaceServiceDetails({
-    services: normalizedServices,
+    services: normalizedServiceKeys,
     profileDetails
   });
+  const serviceDetailsByKey = new Map(
+    serviceDetails
+      .filter((detail) => detail && typeof detail === "object")
+      .map((detail) => [String(detail.key || "").trim(), detail])
+      .filter(([key]) => Boolean(key))
+  );
 
-  const runUpsert = async ({ includeServiceDetails }) => {
-    const createData = {
-      freelancerId,
-      services: normalizedServices,
-      isFeatured: false
-    };
-    const updateData = {
-      services: normalizedServices
-    };
+  const runUpsert = async ({ includeServiceDetails, includeServiceKey }) =>
+    prisma.$transaction(async (tx) => {
+      if (!marketplaceServices.length) {
+        await tx.marketplace.deleteMany({
+          where: { freelancerId }
+        });
+        return;
+      }
 
-    if (includeServiceDetails) {
-      createData.serviceDetails = serviceDetails;
-      updateData.serviceDetails = serviceDetails;
-    }
+      if (includeServiceKey) {
+        await tx.marketplace.deleteMany({
+          where: {
+            freelancerId,
+            serviceKey: {
+              notIn: marketplaceServices.map((entry) => entry.serviceKey)
+            }
+          }
+        });
+      } else {
+        const legacyTitles = normalizeStringList(
+          marketplaceServices.map((entry) => entry.serviceTitle),
+          { max: 64 }
+        );
+        await tx.marketplace.deleteMany({
+          where: {
+            freelancerId,
+            service: {
+              notIn: legacyTitles
+            }
+          }
+        });
+      }
 
-    return prisma.marketplace.upsert({
-      where: { freelancerId },
-      create: createData,
-      update: updateData
+      for (const marketplaceService of marketplaceServices) {
+        const { canonicalKey, serviceKey, serviceTitle } = marketplaceService;
+        const detail = serviceDetailsByKey.get(canonicalKey) || {
+          key: serviceKey,
+          title: serviceTitle
+        };
+        const detailWithStorageKey = {
+          ...detail,
+          key: serviceKey
+        };
+        const createData = {
+          freelancerId,
+          service: serviceTitle,
+          isFeatured: false
+        };
+        const updateData = {
+          service: serviceTitle
+        };
+
+        if (includeServiceKey) {
+          createData.serviceKey = serviceKey;
+          updateData.serviceKey = serviceKey;
+        }
+
+        if (includeServiceDetails) {
+          createData.serviceDetails = detailWithStorageKey;
+          updateData.serviceDetails = detailWithStorageKey;
+        }
+
+        if (includeServiceKey) {
+          await tx.marketplace.upsert({
+            where: {
+              freelancerId_serviceKey: {
+                freelancerId,
+                serviceKey
+              }
+            },
+            create: createData,
+            update: updateData
+          });
+        } else {
+          await tx.marketplace.upsert({
+            where: {
+              freelancerId_service: {
+                freelancerId,
+                service: serviceTitle
+              }
+            },
+            create: createData,
+            update: updateData
+          });
+        }
+      }
     });
-  };
 
-  if (marketplaceSupportsServiceDetails) {
+  if (marketplaceSupportsServiceDetails && marketplaceSupportsServiceKey) {
     try {
-      await runUpsert({ includeServiceDetails: true });
+      await runUpsert({ includeServiceDetails: true, includeServiceKey: true });
       return;
     } catch (error) {
       const message = String(error?.message || "");
@@ -729,7 +983,30 @@ const upsertMarketplaceEntry = async ({
     }
   }
 
-  await runUpsert({ includeServiceDetails: false });
+  if (marketplaceSupportsServiceKey) {
+    await runUpsert({ includeServiceDetails: false, includeServiceKey: true });
+    return;
+  }
+
+  if (marketplaceSupportsServiceDetails) {
+    try {
+      await runUpsert({ includeServiceDetails: true, includeServiceKey: false });
+      return;
+    } catch (error) {
+      const message = String(error?.message || "");
+      const shouldRetryWithoutServiceDetails =
+        (error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2022") ||
+        message.includes("Unknown argument `serviceDetails`") ||
+        message.includes("serviceDetails");
+
+      if (!shouldRetryWithoutServiceDetails) {
+        throw error;
+      }
+    }
+  }
+
+  await runUpsert({ includeServiceDetails: false, includeServiceKey: false });
 };
 
 const replaceFreelancerProjects = async (freelancerId, projects = []) => {
@@ -933,9 +1210,15 @@ export const listUsers = async (filters = {}) => {
   const onboardingComplete = parseBooleanFilter(filters.onboardingComplete);
   const normalizedRoleFilter = normalizeRoleValue(filters.role);
   const where = {
-    role: filters.role,
     status: filters.status || "ACTIVE"
   };
+
+  if (normalizedRoleFilter) {
+    where.OR = [
+      { role: normalizedRoleFilter },
+      { roles: { has: normalizedRoleFilter } }
+    ];
+  }
 
   if (onboardingComplete !== undefined) {
     where.onboardingComplete = onboardingComplete;
@@ -998,7 +1281,9 @@ export const updateUserProfile = async (userId, updates) => {
       } else if (key === "profileDetails") {
         cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
       } else if (key === "services") {
-        cleanUpdates[key] = normalizeStringList(updates[key], { max: 64 });
+        cleanUpdates[key] = normalizeMarketplaceServiceKeys(updates[key], {
+          max: 64
+        });
       } else {
         cleanUpdates[key] = updates[key];
       }
@@ -1065,12 +1350,11 @@ export const updateUserProfile = async (userId, updates) => {
     }
   }
 
-  const user = await prisma.user.update({
+  let user = await prisma.user.update({
     where: { id: userId },
     data: cleanUpdates
   });
 
-  const isFreelancerUser = normalizeRoleValue(user.role) === "FREELANCER";
   const resolvedProfileDetails = Object.prototype.hasOwnProperty.call(
     cleanUpdates,
     "profileDetails"
@@ -1080,6 +1364,41 @@ export const updateUserProfile = async (userId, updates) => {
   const resolvedServices = Object.prototype.hasOwnProperty.call(cleanUpdates, "services")
     ? cleanUpdates.services
     : user.services;
+
+  const profileServiceDetails =
+    resolvedProfileDetails?.serviceDetails &&
+    typeof resolvedProfileDetails.serviceDetails === "object"
+      ? resolvedProfileDetails.serviceDetails
+      : null;
+  const profileServiceCount = profileServiceDetails
+    ? Object.keys(profileServiceDetails).length
+    : 0;
+  const profileRoleSignal = String(resolvedProfileDetails?.role || "")
+    .trim()
+    .toLowerCase();
+  const hasFreelancerIntent =
+    profileServiceCount > 0 ||
+    (Array.isArray(resolvedServices) && resolvedServices.length > 0) ||
+    ["freelancer", "individual", "agency", "part_time", "part-time"].includes(
+      profileRoleSignal
+    );
+
+  if (hasFreelancerIntent && !hasRole(user, "FREELANCER")) {
+    const currentRoles = Array.isArray(user.roles)
+      ? user.roles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+      : [];
+    const nextRoles = Array.from(new Set([...currentRoles, "FREELANCER"]));
+
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        roles: nextRoles,
+        status: "PENDING_APPROVAL"
+      }
+    });
+  }
+
+  const isFreelancerUser = hasRole(user, "FREELANCER");
 
   const shouldSyncFreelancerProjects =
     isFreelancerUser &&

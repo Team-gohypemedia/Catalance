@@ -79,3 +79,4 @@ export const StatsGrid = ({ metrics, formatCurrency }) => {
         </div>
     );
 };
+

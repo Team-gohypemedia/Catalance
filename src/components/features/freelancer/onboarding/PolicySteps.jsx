@@ -49,7 +49,7 @@ export const DeliveryPolicyStep = ({ formData, updateFormField }) => (
             title="Do You Agree To Catalance Delivery & Revision SOP?"
             subtitle="Required To Continue"
         />
-        <div className="rounded-xl border border-white/10 bg-primary-foreground dark:bg-primary-foreground p-6 space-y-4">
+        <div className="rounded-xl border border-white/10 bg-accent dark:bg-accent p-6 space-y-4">
             <p className="text-white/70 text-sm">
                 Catalance maintains standardized delivery and revision policies to ensure fairness, transparency, and dispute
                 protection for both clients and freelancers.
@@ -82,7 +82,7 @@ export const CommunicationPolicyStep = ({ formData, updateFormField }) => (
             title="Do You Agree To Catalance Communication Policy?"
             subtitle="Required To Continue"
         />
-        <div className="rounded-xl border border-white/10 bg-primary-foreground dark:bg-primary-foreground p-6 space-y-4">
+        <div className="rounded-xl border border-white/10 bg-accent dark:bg-accent p-6 space-y-4">
             <p className="text-white/70 text-sm">
                 To ensure project transparency, client protection, and freelancer dispute coverage, all communication must remain
                 within Catalance.
@@ -145,9 +145,9 @@ export const BioStep = ({ formData, updateFormField, queueAdvance, renderContinu
                 }
             }}
             placeholder="Write 2-4 sentences about your experience, specialties, and the value you bring."
-            className="bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30 min-h-[160px] rounded-xl p-4"
+            className="bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30 min-h-[160px] rounded-xl p-4"
         />
-        <label className="flex items-start gap-3 text-white/70 text-sm cursor-pointer rounded-xl border border-white/10 bg-primary-foreground dark:bg-primary-foreground p-4">
+        <label className="flex items-start gap-3 text-white/70 text-sm cursor-pointer rounded-xl border border-white/10 bg-accent dark:bg-accent p-4">
             <input
                 type="checkbox"
                 checked={formData.termsAccepted}
@@ -175,7 +175,7 @@ export const OtpVerificationStep = ({ formData, otp, setOtp, isSubmitting }) => 
                 onChange={(e) => setOtp(e.target.value)}
                 placeholder="Enter 6-digit code"
                 maxLength={6}
-                className="mt-2 bg-primary-foreground dark:bg-primary-foreground border-white/10 text-white placeholder:text-white/30 text-center text-2xl tracking-widest"
+                className="mt-2 bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30 text-center text-2xl tracking-widest"
             />
         </div>
         {isSubmitting && (
@@ -186,4 +186,6 @@ export const OtpVerificationStep = ({ formData, otp, setOtp, isSubmitting }) => 
         )}
     </div>
 );
+
+
 

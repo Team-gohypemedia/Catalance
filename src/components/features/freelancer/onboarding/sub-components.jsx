@@ -38,8 +38,8 @@ export const OptionCard = ({
             "group relative w-full h-full flex items-center justify-center rounded-xl border transition-all duration-300 overflow-hidden",
             compact ? "px-4 py-3" : "px-6 py-5",
             selected
-                ? "border-primary bg-primary-foreground shadow-lg shadow-primary/5"
-                : "border-white/10 bg-primary-foreground hover:bg-white/5 hover:border-white/20",
+                ? "border-primary bg-accent shadow-lg shadow-primary/5"
+                : "border-white/10 bg-accent hover:bg-white/5 hover:border-white/20",
             className
         )}
     >
@@ -49,8 +49,8 @@ export const OptionCard = ({
                     className={cn(
                         "absolute left-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border",
                         selected
-                            ? "bg-primary-foreground border-primary text-primary shadow-md shadow-primary/20 scale-110"
-                            : "bg-primary-foreground border-white/10 text-white/60 group-hover:border-white/20 group-hover:text-white"
+                            ? "bg-accent border-primary text-primary shadow-md shadow-primary/20 scale-110"
+                            : "bg-accent border-white/10 text-white/60 group-hover:border-white/20 group-hover:text-white"
                     )}
                 >
                     <Icon className="w-5 h-5" />
@@ -81,4 +81,6 @@ export const OptionCard = ({
         </div>
     </motion.button>
 );
+
+
 
