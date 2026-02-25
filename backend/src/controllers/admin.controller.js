@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { sendEmail } from "../lib/email-service.js";
+import { invalidateServicesCatalogCache } from "../services/ai.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -628,6 +629,9 @@ export const upsertService = asyncHandler(async (req, res) => {
       currency: currency || "INR"
     }
   });
+
+  // Bust the cached catalog so /ai/services immediately reflects the change
+  invalidateServicesCatalogCache();
 
   res.json({ data: { success: true } });
 });
