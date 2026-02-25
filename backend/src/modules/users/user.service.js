@@ -40,6 +40,169 @@ const marketplaceSupportsServiceKey = (() => {
     return false;
   }
 })();
+const supportsFreelancerProfileModel = (() => {
+  try {
+    const models = Prisma?.dmmf?.datamodel?.models || [];
+    return models.some((model) => model?.name === "FreelancerProfile");
+  } catch {
+    return false;
+  }
+})();
+
+const withFreelancerProfileInclude = (query = {}) => {
+  if (!supportsFreelancerProfileModel) return query;
+  if (query?.select) return query;
+
+  return {
+    ...query,
+    include: {
+      ...(query?.include || {}),
+      freelancerProfile: true
+    }
+  };
+};
+
+const FREELANCER_PROFILE_FIELD_KEYS = new Set([
+  "bio",
+  "skills",
+  "hourlyRate",
+  "jobTitle",
+  "companyName",
+  "location",
+  "rating",
+  "reviewCount",
+  "experienceYears",
+  "workExperience",
+  "services",
+  "portfolio",
+  "linkedin",
+  "github",
+  "portfolioProjects",
+  "resume",
+  "profileDetails"
+]);
+
+const pickFreelancerProfileUpdates = (updates = {}) =>
+  Object.entries(updates).reduce((acc, [key, value]) => {
+    if (FREELANCER_PROFILE_FIELD_KEYS.has(key)) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+
+const resolveFreelancerProfileDetails = (user = null) => {
+  if (!user || typeof user !== "object") return {};
+
+  const relatedProfileDetails = user?.freelancerProfile?.profileDetails;
+  if (
+    relatedProfileDetails &&
+    typeof relatedProfileDetails === "object" &&
+    !Array.isArray(relatedProfileDetails)
+  ) {
+    return relatedProfileDetails;
+  }
+
+  const legacyProfileDetails = user?.profileDetails;
+  if (
+    legacyProfileDetails &&
+    typeof legacyProfileDetails === "object" &&
+    !Array.isArray(legacyProfileDetails)
+  ) {
+    return legacyProfileDetails;
+  }
+
+  return {};
+};
+
+const resolveFreelancerProfileRecord = (user = null) => {
+  if (!user || typeof user !== "object") {
+    return {
+      skills: [],
+      services: [],
+      portfolioProjects: [],
+      workExperience: [],
+      reviewCount: 0,
+      rating: 0,
+      experienceYears: 0,
+      profileDetails: {}
+    };
+  }
+
+  const relation =
+    user.freelancerProfile && typeof user.freelancerProfile === "object"
+      ? user.freelancerProfile
+      : {};
+  const read = (key) =>
+    relation[key] !== undefined ? relation[key] : user[key];
+
+  const skills = Array.isArray(read("skills")) ? read("skills") : [];
+  const services = Array.isArray(read("services")) ? read("services") : [];
+  const portfolioProjects = Array.isArray(read("portfolioProjects"))
+    ? read("portfolioProjects")
+    : [];
+  const workExperienceRaw = read("workExperience");
+  const workExperience = Array.isArray(workExperienceRaw) ? workExperienceRaw : [];
+  const reviewCountRaw = read("reviewCount");
+  const experienceYearsRaw = read("experienceYears");
+
+  return {
+    bio: read("bio") ?? null,
+    skills,
+    hourlyRate: read("hourlyRate") ?? null,
+    jobTitle: read("jobTitle") ?? null,
+    companyName: read("companyName") ?? null,
+    location: read("location") ?? null,
+    rating: read("rating") ?? 0,
+    reviewCount: Number.isFinite(Number(reviewCountRaw)) ? Number(reviewCountRaw) : 0,
+    experienceYears: Number.isFinite(Number(experienceYearsRaw))
+      ? Number(experienceYearsRaw)
+      : 0,
+    workExperience,
+    services,
+    portfolio: read("portfolio") ?? null,
+    linkedin: read("linkedin") ?? null,
+    github: read("github") ?? null,
+    portfolioProjects,
+    resume: read("resume") ?? null,
+    profileDetails: resolveFreelancerProfileDetails(user)
+  };
+};
+
+const upsertFreelancerProfile = async ({ userId, updates = {} }) => {
+  if (!supportsFreelancerProfileModel || !userId) return;
+
+  const profileUpdates = pickFreelancerProfileUpdates(updates);
+  if (!Object.keys(profileUpdates).length) return;
+
+  if (Object.prototype.hasOwnProperty.call(profileUpdates, "profileDetails")) {
+    const normalizedProfileDetails =
+      profileUpdates.profileDetails &&
+      typeof profileUpdates.profileDetails === "object" &&
+      !Array.isArray(profileUpdates.profileDetails)
+        ? profileUpdates.profileDetails
+        : {};
+    profileUpdates.profileDetails = normalizedProfileDetails;
+  }
+
+  try {
+    await prisma.freelancerProfile.upsert({
+      where: { userId },
+      update: profileUpdates,
+      create: { userId, ...profileUpdates }
+    });
+  } catch (error) {
+    console.warn(
+      `[FreelancerProfile] Unable to upsert profile for user ${userId}:`,
+      error?.message || error
+    );
+  }
+};
+
+const syncFreelancerProfileDetails = async ({ userId, profileDetails }) =>
+  upsertFreelancerProfile({
+    userId,
+    updates: { profileDetails }
+  });
 
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toUpperCase() : null;
@@ -1200,10 +1363,12 @@ const ensureUserRoles = async (user, requestedRole) => {
     return user;
   }
 
-  return prisma.user.update({
-    where: { id: user.id },
-    data: updates
-  });
+  return prisma.user.update(
+    withFreelancerProfileInclude({
+      where: { id: user.id },
+      data: updates
+    })
+  );
 };
 
 export const listUsers = async (filters = {}) => {
@@ -1227,19 +1392,23 @@ export const listUsers = async (filters = {}) => {
   const includeFreelancerProjects =
     !normalizedRoleFilter || normalizedRoleFilter === "FREELANCER";
 
-  const users = await prisma.user.findMany({
-    where,
-    include: includeFreelancerProjects
-      ? {
-          freelancerProjects: {
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
-          }
+  const include = includeFreelancerProjects
+    ? {
+        freelancerProjects: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
         }
-      : undefined,
-    orderBy: {
-      createdAt: "desc"
-    }
-  });
+      }
+    : undefined;
+
+  const users = await prisma.user.findMany(
+    withFreelancerProfileInclude({
+      where,
+      include,
+      orderBy: {
+        createdAt: "desc"
+      }
+    })
+  );
 
   return users.map(sanitizeUser);
 };
@@ -1350,20 +1519,77 @@ export const updateUserProfile = async (userId, updates) => {
     }
   }
 
-  let user = await prisma.user.update({
-    where: { id: userId },
-    data: cleanUpdates
+  const userUpdateKeys = new Set([
+    "fullName",
+    "phoneNumber",
+    "avatar",
+    "onboardingComplete"
+  ]);
+
+  const userUpdates = {};
+  const freelancerProfileUpdates = {};
+  Object.entries(cleanUpdates).forEach(([key, value]) => {
+    if (userUpdateKeys.has(key)) {
+      userUpdates[key] = value;
+      return;
+    }
+    freelancerProfileUpdates[key] = value;
   });
 
-  const resolvedProfileDetails = Object.prototype.hasOwnProperty.call(
-    cleanUpdates,
+  const hasProfileDetailsUpdate = Object.prototype.hasOwnProperty.call(
+    freelancerProfileUpdates,
     "profileDetails"
+  );
+
+  let user = null;
+  if (Object.keys(userUpdates).length) {
+    user = await prisma.user.update(
+      withFreelancerProfileInclude({
+        where: { id: userId },
+        data: userUpdates
+      })
+    );
+  } else {
+    user = await prisma.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: userId }
+      })
+    );
+  }
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (Object.keys(freelancerProfileUpdates).length) {
+    await upsertFreelancerProfile({
+      userId: user.id,
+      updates: freelancerProfileUpdates
+    });
+
+    user = await prisma.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: user.id }
+      })
+    );
+  }
+
+  const resolvedFreelancerProfile = resolveFreelancerProfileRecord(user);
+  const resolvedProfileDetails = hasProfileDetailsUpdate
+    ? freelancerProfileUpdates.profileDetails
+    : resolvedFreelancerProfile.profileDetails;
+  const resolvedServices = Object.prototype.hasOwnProperty.call(
+    freelancerProfileUpdates,
+    "services"
   )
-    ? cleanUpdates.profileDetails
-    : user.profileDetails;
-  const resolvedServices = Object.prototype.hasOwnProperty.call(cleanUpdates, "services")
-    ? cleanUpdates.services
-    : user.services;
+    ? freelancerProfileUpdates.services
+    : resolvedFreelancerProfile.services;
+  const resolvedPortfolioProjects = Object.prototype.hasOwnProperty.call(
+    freelancerProfileUpdates,
+    "portfolioProjects"
+  )
+    ? freelancerProfileUpdates.portfolioProjects
+    : resolvedFreelancerProfile.portfolioProjects;
 
   const profileServiceDetails =
     resolvedProfileDetails?.serviceDetails &&
@@ -1389,31 +1615,28 @@ export const updateUserProfile = async (userId, updates) => {
       : [];
     const nextRoles = Array.from(new Set([...currentRoles, "FREELANCER"]));
 
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        roles: nextRoles,
-        status: "PENDING_APPROVAL"
-      }
-    });
+    user = await prisma.user.update(
+      withFreelancerProfileInclude({
+        where: { id: user.id },
+        data: {
+          roles: nextRoles,
+          status: "PENDING_APPROVAL"
+        }
+      })
+    );
   }
 
   const isFreelancerUser = hasRole(user, "FREELANCER");
 
   const shouldSyncFreelancerProjects =
     isFreelancerUser &&
-    (Object.prototype.hasOwnProperty.call(cleanUpdates, "profileDetails") ||
-      Object.prototype.hasOwnProperty.call(cleanUpdates, "portfolioProjects"));
+    (hasProfileDetailsUpdate ||
+      Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "portfolioProjects"));
 
   if (shouldSyncFreelancerProjects) {
     const normalizedProjects = deriveFreelancerProjects({
       profileDetails: resolvedProfileDetails,
-      portfolioProjects: Object.prototype.hasOwnProperty.call(
-        cleanUpdates,
-        "portfolioProjects"
-      )
-        ? cleanUpdates.portfolioProjects
-        : user.portfolioProjects
+      portfolioProjects: resolvedPortfolioProjects
     });
 
     await replaceFreelancerProjects(user.id, normalizedProjects);
@@ -1421,9 +1644,9 @@ export const updateUserProfile = async (userId, updates) => {
 
   const shouldSyncMarketplace =
     isFreelancerUser &&
-    (Object.prototype.hasOwnProperty.call(cleanUpdates, "profileDetails") ||
-      Object.prototype.hasOwnProperty.call(cleanUpdates, "services") ||
-      Object.prototype.hasOwnProperty.call(cleanUpdates, "onboardingComplete"));
+    (hasProfileDetailsUpdate ||
+      Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "services") ||
+      Object.prototype.hasOwnProperty.call(userUpdates, "onboardingComplete"));
 
   if (shouldSyncMarketplace) {
     const marketplaceServices = deriveMarketplaceServices({
@@ -1475,9 +1698,11 @@ export const registerUser = async (payload) => {
 
 export const verifyUserOtp = async ({ email, otp }) => {
   const normalizedEmail = String(email || "").toLowerCase().trim();
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail }
-  });
+  const user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: normalizedEmail }
+    })
+  );
 
   if (!user) {
     throw new AppError("User not found", 404);
@@ -1504,14 +1729,16 @@ export const verifyUserOtp = async ({ email, otp }) => {
   }
 
   // Verify user
-  const updatedUser = await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      isVerified: true,
-      otpCode: null,
-      otpExpires: null
-    }
-  });
+  const updatedUser = await prisma.user.update(
+    withFreelancerProfileInclude({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        otpCode: null,
+        otpExpires: null
+      }
+    })
+  );
 
   // Send welcome email now that they are verified
   await maybeSendWelcomeEmail(updatedUser);
@@ -1524,9 +1751,11 @@ export const verifyUserOtp = async ({ email, otp }) => {
 
 export const resendOtp = async (email) => {
   const normalizedEmail = String(email || "").toLowerCase().trim();
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail }
-  });
+  const user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: normalizedEmail }
+    })
+  );
 
   if (!user) {
     throw new AppError("User not found", 404);
@@ -1565,9 +1794,11 @@ export const resendOtp = async (email) => {
 
 export const authenticateUser = async ({ email, password, role }) => {
   const normalizedEmail = String(email || "").toLowerCase().trim();
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail }
-  });
+  const user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: normalizedEmail }
+    })
+  );
 
   let isValid =
     user?.passwordHash && password
@@ -1652,9 +1883,11 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
   const normalizedEmail = String(email).toLowerCase().trim();
 
   // Check if user exists
-  let user = await prisma.user.findUnique({
-    where: { email: normalizedEmail }
-  });
+  let user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: normalizedEmail }
+    })
+  );
 
   if (!user) {
     if (authMode !== "signup") {
@@ -1669,29 +1902,33 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
     const randomPassword = crypto.randomBytes(16).toString("hex");
     const initialRole = requestedRole || "CLIENT";
 
-    user = await prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        fullName: name || email.split("@")[0],
-        passwordHash: await hashUserPassword(randomPassword), // We still set a password to avoid null constraints if any
-        role: initialRole, // Default to CLIENT if not specified in request
-        roles: [initialRole],
-        isVerified: true, // Google users are verified by definition
-        avatar: googleAvatar,
-        otpCode: null,
-        otpExpires: null,
-        status: initialRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE"
-      }
-    });
+    user = await prisma.user.create(
+      withFreelancerProfileInclude({
+        data: {
+          email: normalizedEmail,
+          fullName: name || email.split("@")[0],
+          passwordHash: await hashUserPassword(randomPassword), // We still set a password to avoid null constraints if any
+          role: initialRole, // Default to CLIENT if not specified in request
+          roles: [initialRole],
+          isVerified: true, // Google users are verified by definition
+          avatar: googleAvatar,
+          otpCode: null,
+          otpExpires: null,
+          status: initialRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE"
+        }
+      })
+    );
 
     await maybeSendWelcomeEmail(user);
   } else {
     // If user exists but is not verified, verify them since they used Google
     if (!user.isVerified) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { isVerified: true }
-      });
+      user = await prisma.user.update(
+        withFreelancerProfileInclude({
+          where: { id: user.id },
+          data: { isVerified: true }
+        })
+      );
     }
 
     const currentPrimaryRole = normalizeRoleValue(user.role);
@@ -1700,14 +1937,17 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
       !["ADMIN", "PROJECT_MANAGER"].includes(currentPrimaryRole || "");
     user = await ensureUserRoles(user, allowRequestedRole ? requestedRole : null);
 
+    const currentProfileDetails = resolveFreelancerProfileDetails(user);
     const existingAvatar =
       extractAvatarUrl(user?.avatar) ||
-      extractAvatarUrl(user?.profileDetails?.identity?.profilePhoto);
+      extractAvatarUrl(currentProfileDetails?.identity?.profilePhoto);
     if (googleAvatar && !existingAvatar) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { avatar: googleAvatar }
-      });
+      user = await prisma.user.update(
+        withFreelancerProfileInclude({
+          where: { id: user.id },
+          data: { avatar: googleAvatar }
+        })
+      );
     }
   }
 
@@ -1726,9 +1966,11 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
 };
 
 export const getUserById = async (id) => {
-  const user = await prisma.user.findUnique({
-    where: { id }
-  });
+  const user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { id }
+    })
+  );
 
   if (!user) {
     throw new AppError("User not found", 404);
@@ -1776,35 +2018,64 @@ const createUserRecord = async (payload) => {
       profileDetails: normalizedFreelancerProfile,
       services: payload.services
     });
+    const normalizedWorkExperience = normalizeWorkExperienceEntries(
+      payload.workExperience
+    );
+    const parsedExperienceYears = Number(payload.experienceYears);
+    const normalizedExperienceYears =
+      Number.isFinite(parsedExperienceYears) && parsedExperienceYears >= 0
+        ? Math.round(parsedExperienceYears)
+        : 0;
+    const freelancerProfileData = {
+      bio: extractBioText(payload.bio),
+      skills: mergedSkills,
+      hourlyRate: payload.hourlyRate ?? null,
+      jobTitle: identityJobTitle || payload.jobTitle || null,
+      companyName: String(payload.companyName || "").trim() || null,
+      location: resolvedLocation,
+      experienceYears: normalizedExperienceYears,
+      workExperience: normalizedWorkExperience,
+      services: normalizedServices,
+      portfolio: payload.portfolio || null,
+      linkedin: payload.linkedin || null,
+      github: payload.github || null,
+      portfolioProjects: normalizedPortfolioProjects,
+      resume: payload.resume || null,
+      profileDetails: normalizedFreelancerProfile
+    };
+    const hasFreelancerProfileData =
+      normalizedRole === "FREELANCER" ||
+      Object.keys(normalizedFreelancerProfile || {}).length > 0 ||
+      Boolean(freelancerProfileData.bio) ||
+      freelancerProfileData.skills.length > 0 ||
+      freelancerProfileData.services.length > 0 ||
+      freelancerProfileData.portfolioProjects.length > 0 ||
+      freelancerProfileData.workExperience.length > 0;
     const roles = Array.isArray(payload.roles) && payload.roles.length
       ? Array.from(new Set(payload.roles.map((role) => String(role).toUpperCase())))
       : [normalizedRole];
-    const user = await prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        fullName: payload.fullName,
-        passwordHash: await hashUserPassword(payload.password),
-        role: normalizedRole,
-        roles,
-        bio: extractBioText(payload.bio),
-        skills: mergedSkills,
-        hourlyRate: payload.hourlyRate ?? null,
-        otpCode: payload.otpCode,
-        otpExpires: payload.otpExpires,
-        isVerified: false,
-        status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
-        onboardingComplete: payload.onboardingComplete === true,
-        portfolio: payload.portfolio,
-        linkedin: payload.linkedin,
-        github: payload.github,
-        avatar: resolvedAvatar,
-        location: resolvedLocation,
-        jobTitle: identityJobTitle || payload.jobTitle || null,
-        services: normalizedServices,
-        portfolioProjects: normalizedPortfolioProjects,
-        profileDetails: normalizedFreelancerProfile
-      }
-    });
+    const user = await prisma.user.create(
+      withFreelancerProfileInclude({
+        data: {
+          email: normalizedEmail,
+          fullName: payload.fullName,
+          passwordHash: await hashUserPassword(payload.password),
+          role: normalizedRole,
+          roles,
+          otpCode: payload.otpCode,
+          otpExpires: payload.otpExpires,
+          isVerified: false,
+          status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
+          onboardingComplete: payload.onboardingComplete === true,
+          avatar: resolvedAvatar,
+          freelancerProfile: hasFreelancerProfileData
+            ? {
+                create: freelancerProfileData
+              }
+            : undefined
+        }
+      })
+    );
 
     if (normalizedRole === "FREELANCER") {
       const normalizedProjects = deriveFreelancerProjects({
@@ -1872,12 +2143,17 @@ export const sanitizeUser = (user) => {
   }
 
   // eslint-disable-next-line no-unused-vars
-  const { passwordHash, ...safeUser } = user;
+  const { passwordHash, freelancerProfile, ...safeUser } = user;
+  const resolvedFreelancerProfile = resolveFreelancerProfileRecord({
+    ...safeUser,
+    freelancerProfile
+  });
+  const resolvedProfileDetails = resolvedFreelancerProfile.profileDetails;
   const identityAvatar = extractAvatarUrl(
-    safeUser?.profileDetails?.identity?.profilePhoto
+    resolvedProfileDetails?.identity?.profilePhoto
   );
-  const identityLocation = buildLocationFromIdentity(safeUser?.profileDetails?.identity);
-  const identityJobTitle = buildJobTitleFromIdentity(safeUser?.profileDetails?.identity);
+  const identityLocation = buildLocationFromIdentity(resolvedProfileDetails?.identity);
+  const identityJobTitle = buildJobTitleFromIdentity(resolvedProfileDetails?.identity);
   const normalizedRole = normalizeRoleValue(safeUser.role) || "FREELANCER";
   const roles = Array.isArray(safeUser.roles)
     ? safeUser.roles.map((role) => normalizeRoleValue(role)).filter(Boolean)
@@ -1885,42 +2161,66 @@ export const sanitizeUser = (user) => {
   const mergedRoles = roles.includes(normalizedRole)
     ? roles
     : [...roles, normalizedRole];
-  const normalizedSkills = normalizeSkills(safeUser.skills, {
+  const normalizedSkills = normalizeSkills(resolvedFreelancerProfile.skills, {
     strictTech: true,
     max: 120
   });
   const profileDerivedSkills = extractSkillsFromProfileDetails(
-    safeUser?.profileDetails,
+    resolvedProfileDetails,
     { strictTech: true, max: 120 }
   );
   const mergedSkills = normalizeSkills(
     [...normalizedSkills, ...profileDerivedSkills],
     { strictTech: true, max: 120 }
   );
-  const profileSkillFallback = Array.isArray(safeUser?.profileDetails?.skills)
-    ? safeUser.profileDetails.skills
+  const profileSkillFallback = Array.isArray(resolvedProfileDetails?.skills)
+    ? resolvedProfileDetails.skills
     : [];
   const fallbackSkills = normalizeSkills(
     [...normalizedSkills, ...profileSkillFallback],
     { strictTech: false, max: 120 }
   );
   const normalizedWorkExperience = normalizeWorkExperienceEntries(
-    safeUser.workExperience
+    resolvedFreelancerProfile.workExperience
   );
   const profileDerivedWorkExperience = buildWorkExperienceFromProfileDetails(
-    safeUser?.profileDetails
+    resolvedProfileDetails
   );
   const mergedWorkExperience = normalizedWorkExperience.length
     ? normalizedWorkExperience
     : profileDerivedWorkExperience;
+  const resolvedServices = deriveMarketplaceServices({
+    profileDetails: resolvedProfileDetails,
+    services: resolvedFreelancerProfile.services
+  });
+  const normalizedPortfolioProjects = normalizePortfolioProjects(
+    resolvedFreelancerProfile.portfolioProjects
+  );
 
   return {
     ...safeUser,
+    bio: resolvedFreelancerProfile.bio || null,
+    profileDetails: resolvedProfileDetails,
     skills: mergedSkills.length ? mergedSkills : fallbackSkills,
+    hourlyRate: resolvedFreelancerProfile.hourlyRate ?? null,
     avatar: safeUser.avatar || identityAvatar || null,
-    location: identityLocation || safeUser.location || null,
-    jobTitle: identityJobTitle || safeUser.jobTitle || null,
-    headline: identityJobTitle || safeUser.headline || safeUser.jobTitle || null,
+    location: identityLocation || resolvedFreelancerProfile.location || null,
+    jobTitle: identityJobTitle || resolvedFreelancerProfile.jobTitle || null,
+    companyName: resolvedFreelancerProfile.companyName || null,
+    rating: resolvedFreelancerProfile.rating ?? 0,
+    reviewCount: resolvedFreelancerProfile.reviewCount ?? 0,
+    experienceYears: resolvedFreelancerProfile.experienceYears ?? 0,
+    services: resolvedServices,
+    portfolio: resolvedFreelancerProfile.portfolio || null,
+    linkedin: resolvedFreelancerProfile.linkedin || null,
+    github: resolvedFreelancerProfile.github || null,
+    portfolioProjects: normalizedPortfolioProjects,
+    resume: resolvedFreelancerProfile.resume || null,
+    headline:
+      identityJobTitle ||
+      resolvedFreelancerProfile.jobTitle ||
+      safeUser.headline ||
+      null,
     workExperience: mergedWorkExperience,
     roles: mergedRoles.length ? mergedRoles : [normalizedRole]
   };

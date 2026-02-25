@@ -137,7 +137,14 @@ const extractR2KeyFromUrl = (value) => {
     return extracted.includes("/") ? extracted : `avatars/${extracted}`;
   }
 
-  return null;
+  const isAbsoluteUrl = /^https?:\/\//i.test(url);
+  if (isAbsoluteUrl) {
+    return null;
+  }
+
+  const normalized = decodeURIComponent(url.replace(/^\/+/, ""));
+  if (!normalized) return null;
+  return normalized.includes("/") ? normalized : `avatars/${normalized}`;
 };
 
 const buildProjectTitleFallback = (projectUrl) => {
@@ -508,42 +515,51 @@ export const uploadResume = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   const userEmail = req.user?.email;
 
-  // 1. Delete old resume if it exists (Non-blocking)
+  let targetUser = null;
   if (userId) {
-    try {
-      const currentUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { resume: true }
-      });
-
-      if (currentUser?.resume) {
-        let oldKey = null;
-        try {
-            // Check for various URL formats
-            if (currentUser.resume.includes("/api/images/resumes/")) {
-                const parts = currentUser.resume.split("/resumes/");
-                if (parts.length > 1) {
-                    oldKey = `resumes/${parts[1]}`;
-                }
-            } else if (currentUser.resume.includes("/resumes/")) {
-                // fallback if just the key or different URL structure
-                const parts = currentUser.resume.split("/resumes/");
-                if (parts.length > 1) {
-                    oldKey = `resumes/${parts[1]}`;
-                }
-            }
-
-            if (oldKey) {
-                console.log(`[uploadResume] Attempting to delete old resume: ${oldKey}`);
-                await s3Client.send(new DeleteObjectCommand({
-                    Bucket: BUCKET_NAME,
-                    Key: oldKey
-                }));
-                console.log(`[uploadResume] Deleted old resume from R2: ${oldKey}`);
-            }
-        } catch (innerErr) {
-             console.warn("[uploadResume] Failed to parse or delete old resume:", innerErr);
+    targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        freelancerProfile: {
+          select: { resume: true }
         }
+      }
+    });
+  }
+
+  if (!targetUser && userEmail) {
+    targetUser = await prisma.user.findUnique({
+      where: { email: userEmail },
+      select: {
+        id: true,
+        email: true,
+        freelancerProfile: {
+          select: { resume: true }
+        }
+      }
+    });
+  }
+
+  if (!targetUser) {
+    throw new AppError("User not found for resume save", 404);
+  }
+
+  // 1. Delete old resume if it exists (Non-blocking)
+  const currentResume = targetUser.freelancerProfile?.resume;
+  if (currentResume) {
+    try {
+      const oldKey = extractR2KeyFromUrl(currentResume);
+      if (oldKey) {
+        console.log(`[uploadResume] Attempting to delete old resume: ${oldKey}`);
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: oldKey
+          })
+        );
+        console.log(`[uploadResume] Deleted old resume from R2: ${oldKey}`);
       }
     } catch (e) {
       console.warn("[uploadResume] Error checking old resume:", e);
@@ -552,10 +568,9 @@ export const uploadResume = asyncHandler(async (req, res) => {
 
   const file = req.file;
   const fileExt = path.extname(file.originalname);
-  const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
   const uniqueId = uuidv4();
-  // Store in resumes/ folder
-  const fileName = `resumes/${uniqueId}${fileExt}`;
+  const profilePrefix = buildFreelancerProfilePrefix(targetUser.id);
+  const fileName = `${profilePrefix}/resume/${uniqueId}${fileExt}`;
 
   try {
     const command = new PutObjectCommand({
@@ -570,25 +585,7 @@ export const uploadResume = asyncHandler(async (req, res) => {
 
     await s3Client.send(command);
 
-    // Construct public URL
-    // Backend mounted at /api, but images endpoint is /images.
-    // So we can use the same image proxy or a new one. 
-    // The image.routes.js proxies /:key. If key has slashes (resumes/uuid.pdf), it might need encodeURIComponent or better handling.
-    // However, our existing proxy likely handles the key directly or expects flat structure.
-    // Let's check image.routes.js...
-    // Actually, image.routes.js is likely just serving from R2. 
-    // If we want a separate endpoint, or just use the same.
-    // Let's use a specific endpoint for resumes if needed, OR just rely on the same /api/images proxy if it supports folders.
-    // Existing uploadImage uses `avatars/` prefix in the controller, but the proxy route takes `:key`. 
-    // If the proxy route is `router.get("/:key", ...)` it matches only segment. 
-    // If we use `/api/images/resumes/filename` we need the route to support it.
-    // For now, let's use a direct link logic.
-    // Actually, let's just use the `avatars/` logic style: return a URL matching what the proxy expects.
-    // If strict on URL structure, we might need to update image.routes.js.
-    // Let's assume for now we return a URL like `/api/images/resumes/${uniqueId}${fileExt}`.
-    // And I will Update image.routes.js to handle full paths or just `resumes/` prefix.
-    const baseUrl = process.env.API_URL || `${req.protocol}://${req.get("host")}`;
-    const publicUrl = `${baseUrl}/api/images/resumes/${uniqueId}${fileExt}`;
+    const publicUrl = buildPublicUrl(fileName);
 
     console.log(`[uploadResume] Resume uploaded to R2: ${fileName}`);
     console.log(`[uploadResume] Public URL: ${publicUrl}`);
@@ -596,33 +593,14 @@ export const uploadResume = asyncHandler(async (req, res) => {
     console.log(`[uploadResume] userEmail from JWT: ${userEmail}`);
     console.log(`[uploadResume] Full req.user object:`, JSON.stringify(req.user, null, 2));
 
-    // Save resume URL to database
-    let savedCount = 0;
-    if (userId) {
-      console.log(`[uploadResume] Attempting to save resume for userId: ${userId}`);
-      const result = await prisma.user.updateMany({
-        where: { id: userId },
-        data: { resume: publicUrl },
-      });
-      console.log(`[uploadResume] Save result for userId:`, result);
-      savedCount += result.count;
-    }
-    if (!savedCount && userEmail) {
-      console.log(`[uploadResume] Attempting to save resume for email: ${userEmail}`);
-      const result = await prisma.user.updateMany({
-        where: { email: userEmail },
-        data: { resume: publicUrl },
-      });
-      console.log(`[uploadResume] Save result for email:`, result);
-      savedCount += result.count;
-    }
-    
-    console.log(`[uploadResume] Total saved count: ${savedCount}`);
-    
-    if (!savedCount) {
-      console.error(`[uploadResume] FAILED: No user found to save resume`);
-      throw new AppError("User not found for resume save", 404);
-    }
+    await prisma.freelancerProfile.upsert({
+      where: { userId: targetUser.id },
+      update: { resume: publicUrl },
+      create: {
+        userId: targetUser.id,
+        resume: publicUrl
+      }
+    });
     
     console.log(`[uploadResume] SUCCESS: Resume saved to database for user`);
 
