@@ -931,6 +931,8 @@ Rules:
 - Use the same language style as the user last message.
 - Do not skip or replace the required next question.
 - Do not ask extra unrelated questions.
+- If options are provided for the required next question, ask user to choose from those options.
+- Do not say "type below" or ask for free-text when options are present.
 - Keep under 190 words.
 
 Return strict JSON only:
@@ -1591,6 +1593,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             - If VALID: Acknowledge the answer briefly and enthusiastically, then ask the "Next Question in Script" naturally. 
               (Example: "That sounds great! Now, [Next Question]?")
               (If it's the final question, just say "Thanks! Let me put that together for you.")
+            - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
 
             Return ONLY a raw JSON object (double quotes only) with this structure:
             {
