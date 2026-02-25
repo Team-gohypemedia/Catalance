@@ -51,9 +51,6 @@ model User {
   role         UserRole   @default(FREELANCER)
   roles        String[]   @default([])
   status       UserStatus @default(ACTIVE)
-  bio          String?    @db.Text
-  skills       String[]   @default([])
-  hourlyRate   Decimal?   @db.Decimal(10, 2)
   resetPasswordToken   String?   @unique
   resetPasswordExpires DateTime?
   fcmToken     String?    // Firebase Cloud Messaging token for push notifications
@@ -64,26 +61,7 @@ model User {
   suspendedAt  DateTime?  // Track when user was suspended for 90-day deletion countdown
   phone        String?    // Contact number
   avatar       String?    // Profile image URL
-  
-  // Extended Profile
-  jobTitle     String?
-  companyName  String?
-  location     String?
-  rating       Decimal?   @db.Decimal(3, 1) @default(0)
-  reviewCount  Int        @default(0)
-  
-  // New Profile Fields
-  experienceYears Int?    @default(0)
-  workExperience  Json?   @default("[]")
-  services        String[] @default([])
-  
-  // Social/Portfolio
-  portfolio    String?
-  linkedin     String?
-  github       String?
-  portfolioProjects Json?    @default("[]")
-  resume       String?
-  profileDetails Json?       @default("{}")
+  freelancerProfile FreelancerProfile?
   freelancerProjects FreelancerProject[]
   marketplace     Marketplace[]
 
@@ -103,6 +81,30 @@ model User {
   payments Payment[] @relation("FreelancerPayments")
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+}
+
+model FreelancerProfile {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio            String?  @db.Text
+  skills         String[] @default([])
+  hourlyRate     Decimal? @db.Decimal(10, 2)
+  jobTitle       String?
+  companyName    String?
+  location       String?
+  rating         Decimal? @db.Decimal(3, 1) @default(0)
+  reviewCount    Int      @default(0)
+  experienceYears Int?    @default(0)
+  workExperience Json?    @default("[]")
+  services       String[] @default([])
+  portfolio      String?
+  linkedin       String?
+  github         String?
+  portfolioProjects Json? @default("[]")
+  resume         String?
+  profileDetails Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Marketplace {

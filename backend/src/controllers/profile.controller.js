@@ -68,6 +68,46 @@ const extractAvatarUrl = (value) => {
   return "";
 };
 
+const toProfileDetailsObject = (value) => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value;
+  }
+  return {};
+};
+
+const resolveUserProfileDetails = async (user = null) => {
+  const relationProfileDetails = toProfileDetailsObject(
+    user?.freelancerProfile?.profileDetails
+  );
+  if (Object.keys(relationProfileDetails).length) {
+    return relationProfileDetails;
+  }
+
+  const legacyProfileDetails = toProfileDetailsObject(user?.profileDetails);
+  if (!user?.id || !prisma?.freelancerProfile?.findUnique) {
+    return legacyProfileDetails;
+  }
+
+  try {
+    const profile = await prisma.freelancerProfile.findUnique({
+      where: { userId: user.id },
+      select: { profileDetails: true }
+    });
+
+    if (!profile) {
+      return legacyProfileDetails;
+    }
+
+    return toProfileDetailsObject(profile.profileDetails);
+  } catch (error) {
+    console.warn(
+      `[FreelancerProfile] Unable to load profile details for user ${user.id}:`,
+      error?.message || error
+    );
+    return legacyProfileDetails;
+  }
+};
+
 const extractPortfolioProjectsFromProfileDetails = (profileDetails = {}) => {
   const serviceDetails =
     profileDetails && typeof profileDetails === "object"
@@ -268,17 +308,27 @@ const extractWorkExperienceFromProfileDetails = (profileDetails = {}) => {
 export const migrateBioData = asyncHandler(async (req, res) => {
   console.log("[migrateBioData] Starting FORCE WIPE migration...");
 
-  // Find all users
-  const users = await prisma.user.findMany();
+  const profiles = await prisma.freelancerProfile.findMany({
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true
+        }
+      }
+    }
+  });
   let wipedCount = 0;
 
-  for (const user of users) {
+  for (const profile of profiles) {
+    const userEmail = String(profile?.user?.email || "").toLowerCase();
+    const bioValue = String(profile?.bio || "");
     // specific check for the user reporting issues, or any user with JSON-like bio
-    if ((user.bio && user.bio.trim().startsWith('{')) || user.email.includes('wetivi')) {
-      console.log(`[migrateBioData] Wiping bio for user: ${user.email}`);
+    if ((bioValue && bioValue.trim().startsWith('{')) || userEmail.includes('wetivi')) {
+      console.log(`[migrateBioData] Wiping bio for user: ${profile?.user?.email || profile.userId}`);
 
-      await prisma.user.update({
-        where: { id: user.id },
+      await prisma.freelancerProfile.update({
+        where: { userId: profile.userId },
         data: {
           bio: "" // WIPE IT CLEAN
         }
@@ -324,45 +374,52 @@ export const getProfile = asyncHandler(async (req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
   const user = await prisma.user.findUnique({
-    where: tokenUserId ? { id: tokenUserId } : { email: tokenEmail }
+    where: tokenUserId ? { id: tokenUserId } : { email: tokenEmail },
+    include: {
+      freelancerProfile: true
+    }
   });
   if (!user) {
     throw new AppError("User not found", 404);
   }
 
-  console.log("[getProfile] Raw user.bio from DB:", user.bio);
+  const freelancerProfile =
+    user.freelancerProfile && typeof user.freelancerProfile === "object"
+      ? user.freelancerProfile
+      : {};
+
+  console.log("[getProfile] Raw freelancerProfile.bio from DB:", freelancerProfile.bio);
 
   // Initialize with native column values
   // We strictly treat bio as a string now. No more JSON parsing support.
-  let bioText = user.bio || "";
-  let expYears = user.experienceYears || 0;
-  const profileDetails =
-    user.profileDetails && typeof user.profileDetails === "object"
-      ? user.profileDetails
-      : {};
+  let bioText = String(freelancerProfile.bio || "");
+  let expYears = Number(freelancerProfile.experienceYears) || 0;
+  const profileDetails = await resolveUserProfileDetails(user);
   const identityJobTitle = buildJobTitleFromIdentity(profileDetails?.identity);
-  let jobTitle = identityJobTitle || user.jobTitle || user.headline || "";
+  let jobTitle = identityJobTitle || freelancerProfile.jobTitle || user.headline || "";
   const identityAvatar = extractAvatarUrl(profileDetails?.identity?.profilePhoto);
   const identityLocation = buildLocationFromIdentity(profileDetails?.identity);
 
   // Fix Location " 0" issue and fallback
-  let userLocation = identityLocation || user.location || "";
+  let userLocation = identityLocation || freelancerProfile.location || "";
   if (userLocation && userLocation.endsWith(" 0")) {
     userLocation = userLocation.slice(0, -2);
   }
 
   let userPhone = user.phone || user.phoneNumber || "";
   // Ensure userServices is an array
-  let userServices = Array.isArray(user.services) ? user.services : [];
+  let userServices = Array.isArray(freelancerProfile.services)
+    ? freelancerProfile.services
+    : [];
 
   // Ensure workExperience is an array of objects
   let userWorkExperience = [];
   try {
-    if (Array.isArray(user.workExperience)) {
-      userWorkExperience = user.workExperience;
-    } else if (typeof user.workExperience === 'string') {
+    if (Array.isArray(freelancerProfile.workExperience)) {
+      userWorkExperience = freelancerProfile.workExperience;
+    } else if (typeof freelancerProfile.workExperience === 'string') {
       // Try parsing if it's a JSON string
-      const parsed = JSON.parse(user.workExperience);
+      const parsed = JSON.parse(freelancerProfile.workExperience);
       if (Array.isArray(parsed)) userWorkExperience = parsed;
     }
   } catch (e) {
@@ -375,8 +432,8 @@ export const getProfile = asyncHandler(async (req, res) => {
     userWorkExperience = profileWorkExperience;
   }
   const profileProjects = extractPortfolioProjectsFromProfileDetails(profileDetails);
-  const nativePortfolioProjects = Array.isArray(user.portfolioProjects)
-    ? user.portfolioProjects
+  const nativePortfolioProjects = Array.isArray(freelancerProfile.portfolioProjects)
+    ? freelancerProfile.portfolioProjects
     : [];
   const mergedPortfolioProjects = nativePortfolioProjects.length
     ? nativePortfolioProjects
@@ -384,7 +441,9 @@ export const getProfile = asyncHandler(async (req, res) => {
   const profileSkills = Array.isArray(profileDetails?.skills)
     ? profileDetails.skills
     : [];
-  const nativeSkills = Array.isArray(user.skills) ? user.skills : [];
+  const nativeSkills = Array.isArray(freelancerProfile.skills)
+    ? freelancerProfile.skills
+    : [];
   const strictProfileSkills = extractSkillsFromProfileDetails(profileDetails, {
     strictTech: true,
     max: 120
@@ -427,10 +486,10 @@ export const getProfile = asyncHandler(async (req, res) => {
       workExperience: userWorkExperience,
       services: userServices,
       portfolio: {
-        portfolioUrl: user.portfolio ?? "",
-        linkedinUrl: user.linkedin ?? "",
-        githubUrl: user.github ?? "",
-        resume: user.resume ?? "",
+        portfolioUrl: freelancerProfile.portfolio ?? "",
+        linkedinUrl: freelancerProfile.linkedin ?? "",
+        githubUrl: freelancerProfile.github ?? "",
+        resume: freelancerProfile.resume ?? "",
       },
       portfolioProjects: mergedPortfolioProjects,
       profileDetails
@@ -453,7 +512,10 @@ export const saveProfile = asyncHandler(async (req, res) => {
   }
 
   const existingUser = await prisma.user.findUnique({
-    where: userId ? { id: userId } : { email }
+    where: userId ? { id: userId } : { email },
+    include: {
+      freelancerProfile: true
+    }
   });
   if (!existingUser) {
     throw new AppError("User not found", 404);
@@ -467,8 +529,9 @@ export const saveProfile = asyncHandler(async (req, res) => {
   const portfolioProjects = payload.portfolioProjects || [];
   const portfolio = payload.portfolio || {};
 
-  // 1. Prepare Native Update - store each field in its own column
-  const updateData = {};
+  // 1. Prepare update payloads split by table
+  const userUpdateData = {};
+  const freelancerProfileUpdateData = {};
   const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
   // Sanitize SKILLS to ensure string[] and not [{name: "..."}] or JSON strings
@@ -492,91 +555,106 @@ export const saveProfile = asyncHandler(async (req, res) => {
         })
         .filter(Boolean);
     }
-    updateData.skills = normalizeSkills(cleanSkills, {
+    freelancerProfileUpdateData.skills = normalizeSkills(cleanSkills, {
       strictTech: true,
       max: 120
     });
   }
 
   if (hasOwn(payload, "services")) {
-    updateData.services = services;
+    freelancerProfileUpdateData.services = services;
   }
   if (hasOwn(payload, "portfolioProjects")) {
-    updateData.portfolioProjects = portfolioProjects;
+    freelancerProfileUpdateData.portfolioProjects = portfolioProjects;
   }
   if (hasOwn(payload, "workExperience")) {
-    updateData.workExperience = workExperience;
+    freelancerProfileUpdateData.workExperience = workExperience;
   }
 
   const hasPortfolio = hasOwn(payload, "portfolio");
   if (hasPortfolio) {
-    updateData.portfolio = portfolio.portfolioUrl || null;
-    updateData.linkedin = portfolio.linkedinUrl || null;
-    updateData.github = portfolio.githubUrl || null;
+    freelancerProfileUpdateData.portfolio = portfolio.portfolioUrl || null;
+    freelancerProfileUpdateData.linkedin = portfolio.linkedinUrl || null;
+    freelancerProfileUpdateData.github = portfolio.githubUrl || null;
   }
 
   const resumeValue = payload.resume || portfolio.resume || null;
   if (resumeValue) {
-    updateData.resume = resumeValue;
+    freelancerProfileUpdateData.resume = resumeValue;
   }
 
   // DEBUG: Log resume specifically
   console.log("[saveProfile] Resume from portfolio:", portfolio.resume);
   console.log("[saveProfile] Resume from payload:", payload.resume);
-  console.log("[saveProfile] Final resume value:", updateData.resume);
+  console.log("[saveProfile] Final resume value:", freelancerProfileUpdateData.resume);
 
   // Personal details - store in dedicated columns
-  if (personal.name) updateData.fullName = personal.name;
-  if (personal.avatar !== undefined) updateData.avatar = personal.avatar;
+  if (personal.name) userUpdateData.fullName = personal.name;
+  if (personal.avatar !== undefined) userUpdateData.avatar = personal.avatar;
   if (personal.phone !== undefined) {
-    updateData.phone = personal.phone;
-    updateData.phoneNumber = personal.phone;
+    userUpdateData.phone = personal.phone;
+    userUpdateData.phoneNumber = personal.phone;
   }
-  if (personal.location !== undefined) updateData.location = personal.location;
-  if (personal.headline !== undefined) updateData.jobTitle = personal.headline;
-  if (payload.companyName !== undefined) updateData.companyName = payload.companyName;
-  if (payload.website !== undefined) updateData.portfolio = payload.website;
+  if (personal.location !== undefined) freelancerProfileUpdateData.location = personal.location;
+  if (personal.headline !== undefined) freelancerProfileUpdateData.jobTitle = personal.headline;
+  if (payload.companyName !== undefined) {
+    freelancerProfileUpdateData.companyName = payload.companyName;
+  }
+  if (payload.website !== undefined) freelancerProfileUpdateData.portfolio = payload.website;
 
   // Bio should be plain text, NOT JSON
   const bioInput = personal.bio !== undefined ? personal.bio : payload.bio;
   if (bioInput !== undefined) {
-    updateData.bio = extractBioText(bioInput);
-  } else if (typeof existingUser.bio === "string") {
-    const trimmed = existingUser.bio.trim();
+    freelancerProfileUpdateData.bio = extractBioText(bioInput);
+  } else if (typeof existingUser?.freelancerProfile?.bio === "string") {
+    const trimmed = existingUser.freelancerProfile.bio.trim();
     const looksJson =
       (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
       (trimmed.startsWith("[") && trimmed.endsWith("]"));
     if (looksJson) {
-      updateData.bio = extractBioText(existingUser.bio);
+      freelancerProfileUpdateData.bio = extractBioText(existingUser.freelancerProfile.bio);
     }
   }
-  if (typeof updateData.bio === "string") {
-    const trimmedBio = updateData.bio.trim();
+  if (typeof freelancerProfileUpdateData.bio === "string") {
+    const trimmedBio = freelancerProfileUpdateData.bio.trim();
     const looksJson =
       (trimmedBio.startsWith("{") && trimmedBio.endsWith("}")) ||
       (trimmedBio.startsWith("[") && trimmedBio.endsWith("]"));
     if (looksJson) {
-      updateData.bio = extractBioText(trimmedBio);
+      freelancerProfileUpdateData.bio = extractBioText(trimmedBio);
     }
   }
 
   // Experience years as number
   if (personal.experienceYears !== undefined) {
-    updateData.experienceYears = Number(personal.experienceYears) || 0;
+    freelancerProfileUpdateData.experienceYears = Number(personal.experienceYears) || 0;
   }
 
   // Handle Onboarding Completion & Verification Flow
   if (payload.onboardingComplete === true) {
-    updateData.onboardingComplete = true;
+    userUpdateData.onboardingComplete = true;
     // Set status to PENDING_APPROVAL when onboarding is finished
     // This locks the dashboard until admin approves
-    updateData.status = "PENDING_APPROVAL";
+    userUpdateData.status = "PENDING_APPROVAL";
   }
 
-  await prisma.user.update({
-    where: userId ? { id: userId } : { email },
-    data: updateData
-  });
+  if (Object.keys(userUpdateData).length) {
+    await prisma.user.update({
+      where: userId ? { id: userId } : { email },
+      data: userUpdateData
+    });
+  }
+
+  if (Object.keys(freelancerProfileUpdateData).length) {
+    await prisma.freelancerProfile.upsert({
+      where: { userId: existingUser.id },
+      update: freelancerProfileUpdateData,
+      create: {
+        userId: existingUser.id,
+        ...freelancerProfileUpdateData
+      }
+    });
+  }
 
   res.json({ data: { success: true } });
 });
@@ -593,9 +671,10 @@ export const saveResume = asyncHandler(async (req, res) => {
     throw new AppError("Resume URL is required", 400);
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { resume }
+  await prisma.freelancerProfile.upsert({
+    where: { userId },
+    update: { resume },
+    create: { userId, resume }
   });
 
   res.json({ data: { success: true, resume } });

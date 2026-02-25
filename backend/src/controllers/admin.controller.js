@@ -344,16 +344,20 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         fullName: true,
         email: true,
         role: true,
-        bio: true,
-        skills: true,
-        hourlyRate: true,
         status: true,
         createdAt: true,
         updatedAt: true,
-        portfolioProjects: true,
-        portfolio: true,
-        linkedin: true,
-        github: true,
+        freelancerProfile: {
+          select: {
+            bio: true,
+            skills: true,
+            hourlyRate: true,
+            portfolioProjects: true,
+            portfolio: true,
+            linkedin: true,
+            github: true
+          }
+        },
         // For clients: get their owned projects
         ownedProjects: {
           select: {
@@ -402,6 +406,10 @@ export const getUserDetails = asyncHandler(async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+    const freelancerProfile =
+      user.freelancerProfile && typeof user.freelancerProfile === "object"
+        ? user.freelancerProfile
+        : {};
 
     // Calculate statistics based on role
     let stats = {};
@@ -467,16 +475,18 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           fullName: user.fullName,
           email: user.email,
           role: user.role,
-          bio: user.bio,
-          skills: user.skills,
-          hourlyRate: user.hourlyRate,
+          bio: freelancerProfile.bio ?? null,
+          skills: Array.isArray(freelancerProfile.skills) ? freelancerProfile.skills : [],
+          hourlyRate: freelancerProfile.hourlyRate ?? null,
           status: user.status || 'ACTIVE',
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
-          portfolioProjects: user.portfolioProjects,
-          portfolio: user.portfolio,
-          linkedin: user.linkedin,
-          github: user.github
+          portfolioProjects: Array.isArray(freelancerProfile.portfolioProjects)
+            ? freelancerProfile.portfolioProjects
+            : [],
+          portfolio: freelancerProfile.portfolio ?? null,
+          linkedin: freelancerProfile.linkedin ?? null,
+          github: freelancerProfile.github ?? null
         },
         stats,
         projects: user.role === "CLIENT" ? user.ownedProjects : [],

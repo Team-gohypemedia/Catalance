@@ -63,6 +63,24 @@ const normalizeBudget = (value) => {
   return null;
 };
 
+const flattenFreelancerProfile = (freelancer = null) => {
+  if (!freelancer || typeof freelancer !== "object") return freelancer;
+  const profile =
+    freelancer.freelancerProfile && typeof freelancer.freelancerProfile === "object"
+      ? freelancer.freelancerProfile
+      : {};
+
+  return {
+    ...freelancer,
+    jobTitle: profile.jobTitle || null,
+    skills: Array.isArray(profile.skills) ? profile.skills : [],
+    bio: profile.bio || null,
+    portfolio: profile.portfolio || null,
+    linkedin: profile.linkedin || null,
+    github: profile.github || null
+  };
+};
+
 // ... (previous imports)
 
 export const createProject = asyncHandler(async (req, res) => {
@@ -161,7 +179,22 @@ export const listProjects = asyncHandler(async (req, res) => {
         proposals: {
           include: {
             freelancer: {
-              select: { id: true, fullName: true, email: true, avatar: true, jobTitle: true, skills: true, bio: true, portfolio: true, linkedin: true, github: true }
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                avatar: true,
+                freelancerProfile: {
+                  select: {
+                    jobTitle: true,
+                    skills: true,
+                    bio: true,
+                    portfolio: true,
+                    linkedin: true,
+                    github: true
+                  }
+                }
+              }
             }
           },
           orderBy: { createdAt: "desc" }
@@ -175,7 +208,16 @@ export const listProjects = asyncHandler(async (req, res) => {
       },
       orderBy: { createdAt: "desc" }
     });
-    res.json({ data: projects });
+    const hydratedProjects = projects.map((project) => ({
+      ...project,
+      proposals: Array.isArray(project.proposals)
+        ? project.proposals.map((proposal) => ({
+            ...proposal,
+            freelancer: flattenFreelancerProfile(proposal.freelancer)
+          }))
+        : []
+    }));
+    res.json({ data: hydratedProjects });
   } catch (error) {
     console.error("Error listing projects:", error);
     throw new AppError(`Failed to fetch projects: ${error.message}`, 500);
@@ -199,7 +241,22 @@ export const getProject = asyncHandler(async (req, res) => {
       proposals: {
         include: {
             freelancer: {
-              select: { id: true, fullName: true, email: true, avatar: true, jobTitle: true, skills: true, bio: true, portfolio: true, linkedin: true, github: true }
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                avatar: true,
+                freelancerProfile: {
+                  select: {
+                    jobTitle: true,
+                    skills: true,
+                    bio: true,
+                    portfolio: true,
+                    linkedin: true,
+                    github: true
+                  }
+                }
+              }
             }
         },
         orderBy: { createdAt: "desc" }
@@ -223,8 +280,17 @@ export const getProject = asyncHandler(async (req, res) => {
   // TODO: Add refined permission check if needed (e.g. check if user is owner or freelancer)
   // For now, allow if authenticated (or maybe just restrict to owner?)
   // if (project.ownerId !== userId) { ... }
+  const hydratedProject = {
+    ...project,
+    proposals: Array.isArray(project.proposals)
+      ? project.proposals.map((proposal) => ({
+          ...proposal,
+          freelancer: flattenFreelancerProfile(proposal.freelancer)
+        }))
+      : []
+  };
 
-  res.json({ data: project });
+  res.json({ data: hydratedProject });
 });
 
 export const updateProject = asyncHandler(async (req, res) => {
