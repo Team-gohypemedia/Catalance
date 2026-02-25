@@ -88,7 +88,6 @@ model FreelancerProfile {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   bio            String?  @db.Text
   skills         String[] @default([])
-  hourlyRate     Decimal? @db.Decimal(10, 2)
   jobTitle       String?
   companyName    String?
   location       String?

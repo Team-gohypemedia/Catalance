@@ -48,16 +48,55 @@ const supportsFreelancerProfileModel = (() => {
     return false;
   }
 })();
+const USER_SAFE_SCALAR_SELECT = Object.freeze({
+  id: true,
+  email: true,
+  fullName: true,
+  phoneNumber: true,
+  passwordHash: true,
+  role: true,
+  roles: true,
+  status: true,
+  resetPasswordToken: true,
+  resetPasswordExpires: true,
+  fcmToken: true,
+  otpCode: true,
+  otpExpires: true,
+  onboardingComplete: true,
+  isVerified: true,
+  suspendedAt: true,
+  phone: true,
+  avatar: true,
+  createdAt: true,
+  updatedAt: true
+});
 
 const withFreelancerProfileInclude = (query = {}) => {
   if (!supportsFreelancerProfileModel) return query;
-  if (query?.select) return query;
+  if (query?.select) {
+    if (Object.prototype.hasOwnProperty.call(query.select, "freelancerProfile")) {
+      return query;
+    }
+
+    return {
+      ...query,
+      select: {
+        ...query.select,
+        freelancerProfile: true
+      }
+    };
+  }
+
+  const include = query?.include && typeof query.include === "object" ? query.include : {};
+  const { include: _include, ...rest } = query;
 
   return {
-    ...query,
-    include: {
-      ...(query?.include || {}),
-      freelancerProfile: true
+    ...rest,
+    select: {
+      ...USER_SAFE_SCALAR_SELECT,
+      ...include,
+      freelancerProfile:
+        include.freelancerProfile === undefined ? true : include.freelancerProfile
     }
   };
 };
@@ -65,7 +104,6 @@ const withFreelancerProfileInclude = (query = {}) => {
 const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "bio",
   "skills",
-  "hourlyRate",
   "jobTitle",
   "companyName",
   "location",
@@ -148,7 +186,6 @@ const resolveFreelancerProfileRecord = (user = null) => {
   return {
     bio: read("bio") ?? null,
     skills,
-    hourlyRate: read("hourlyRate") ?? null,
     jobTitle: read("jobTitle") ?? null,
     companyName: read("companyName") ?? null,
     location: read("location") ?? null,
@@ -2029,7 +2066,6 @@ const createUserRecord = async (payload) => {
     const freelancerProfileData = {
       bio: extractBioText(payload.bio),
       skills: mergedSkills,
-      hourlyRate: payload.hourlyRate ?? null,
       jobTitle: identityJobTitle || payload.jobTitle || null,
       companyName: String(payload.companyName || "").trim() || null,
       location: resolvedLocation,
@@ -2202,7 +2238,6 @@ export const sanitizeUser = (user) => {
     bio: resolvedFreelancerProfile.bio || null,
     profileDetails: resolvedProfileDetails,
     skills: mergedSkills.length ? mergedSkills : fallbackSkills,
-    hourlyRate: resolvedFreelancerProfile.hourlyRate ?? null,
     avatar: safeUser.avatar || identityAvatar || null,
     location: identityLocation || resolvedFreelancerProfile.location || null,
     jobTitle: identityJobTitle || resolvedFreelancerProfile.jobTitle || null,
@@ -2249,7 +2284,8 @@ const issueAccessToken = (user, activeRole) => {
 // Request a password reset
 export const requestPasswordReset = async (email) => {
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase().trim() }
+    where: { email: email.toLowerCase().trim() },
+    select: { id: true, email: true }
   });
 
   if (!user) {

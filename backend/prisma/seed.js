@@ -44,8 +44,7 @@ const main = async () => {
       passwordHash: defaultPasswordHash,
       role: "FREELANCER",
       bio: "Product designer & front-end developer.",
-      skills: ["React", "TypeScript", "UI/UX"],
-      hourlyRate: 75
+      skills: ["React", "TypeScript", "UI/UX"]
     }
   });
 

@@ -9,8 +9,7 @@ export const createUserSchema = z.object({
     password: z.string().min(8).max(72),
     role: userRoleEnum.default("FREELANCER"),
     bio: z.string().max(500).optional(),
-    skills: z.array(z.string()).default([]),
-    hourlyRate: z.coerce.number().positive().optional()
+    skills: z.array(z.string()).default([])
   })
 });
 

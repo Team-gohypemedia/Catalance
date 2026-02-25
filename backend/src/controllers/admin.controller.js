@@ -351,7 +351,6 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           select: {
             bio: true,
             skills: true,
-            hourlyRate: true,
             portfolioProjects: true,
             portfolio: true,
             linkedin: true,
@@ -477,7 +476,6 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           role: user.role,
           bio: freelancerProfile.bio ?? null,
           skills: Array.isArray(freelancerProfile.skills) ? freelancerProfile.skills : [],
-          hourlyRate: freelancerProfile.hourlyRate ?? null,
           status: user.status || 'ACTIVE',
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,

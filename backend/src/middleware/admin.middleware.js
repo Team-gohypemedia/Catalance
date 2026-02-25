@@ -19,7 +19,8 @@ export const requireAdmin = async (req, res, next) => {
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
+      select: { id: true, role: true, status: true }
     });
 
     console.log("requireAdmin: Found user with role", user?.role);
