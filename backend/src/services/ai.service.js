@@ -2416,7 +2416,16 @@ export const getServiceInfo = async (serviceId) => {
 
 export const getAllServices = async () => {
   await ensureServicesCatalogLoaded();
-  return servicesData.services;
+  // Always filter to active-only – the DB query already does this,
+  // but the JSON-file fallback may include inactive entries.
+  return (servicesData.services || []).filter(
+    (s) => s.active === undefined || s.active === true
+  );
+};
+
+/** Force the next getAllServices / chatWithAI call to re-read the DB. */
+export const invalidateServicesCatalogCache = () => {
+  servicesCatalogLastSyncAt = 0;
 };
 
 // Test-only helpers for deterministic budget flow regression coverage.
