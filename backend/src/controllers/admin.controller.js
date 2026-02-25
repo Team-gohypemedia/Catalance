@@ -727,7 +727,8 @@ export const upsertQuestion = asyncHandler(async (req, res) => {
         logic: logic || [],
         required: isRequired,
         subtitle: subtitle || null,
-        saveResponse: isSaveResponse
+        saveResponse: isSaveResponse,
+        nextQuestionSlug: nextQuestionSlug || null
       },
       create: {
         serviceId: service.id,
