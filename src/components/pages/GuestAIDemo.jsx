@@ -326,6 +326,7 @@ const GuestAIDemo = () => {
         try {
             const response = await request('/guest/start', {
                 method: 'POST',
+                timeout: 120000,
                 body: JSON.stringify({ serviceId: service.slug || service.id })
             });
             const data = unwrapPayload(response);
@@ -379,6 +380,7 @@ const GuestAIDemo = () => {
         try {
             const response = await request('/guest/chat', {
                 method: 'POST',
+                timeout: 120000,
                 body: JSON.stringify({
                     sessionId,
                     message: isArrayPayload ? normalizedArray : userMsg.content
