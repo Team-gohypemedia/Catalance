@@ -1,7 +1,6 @@
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import X from "lucide-react/dist/esm/icons/x";
 import Camera from "lucide-react/dist/esm/icons/camera";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
@@ -22,9 +21,12 @@ import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import ProfileHeroCard from "@/components/features/freelancer/profile/ProfileHeroCard";
 import ProfileSummaryCards from "@/components/features/freelancer/profile/ProfileSummaryCards";
+import ProfileAboutCard from "@/components/features/freelancer/profile/ProfileAboutCard";
+import ProfileOnboardingSnapshotCard from "@/components/features/freelancer/profile/ProfileOnboardingSnapshotCard";
 import ServicesFromOnboardingCard from "@/components/features/freelancer/profile/ServicesFromOnboardingCard";
 import FeaturedProjectsSection from "@/components/features/freelancer/profile/FeaturedProjectsSection";
 import ProfileSidebarCards from "@/components/features/freelancer/profile/ProfileSidebarCards";
+import ProfileSkillsCard from "@/components/features/freelancer/profile/ProfileSkillsCard";
 import ProjectCoverMedia from "@/components/features/freelancer/profile/ProjectCoverMedia";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
@@ -255,17 +257,24 @@ const resolveAvatarUrl = (value, { allowBlob = false } = {}) => {
   return "";
 };
 
+const EXPERIENCE_VALUE_LABELS = {
+  less_than_1: "Less than 1 year",
+  "1_3": "1-3 years",
+  "3_5": "3-5 years",
+  "5_plus": "5+ years",
+};
+
 const ONBOARDING_ROLE_LABELS = {
   individual: "Individual Freelancer",
   agency: "Agency / Studio",
   part_time: "Part-Time Freelancer",
 };
 
-const EXPERIENCE_VALUE_LABELS = {
-  less_than_1: "Less than 1 year",
-  "1_3": "1-3 years",
-  "3_5": "3-5 years",
-  "5_plus": "5+ years",
+const HOURS_PER_WEEK_LABELS = {
+  less_than_10: "Less than 10 hours/week",
+  "10_20": "10-20 hours/week",
+  "20_30": "20-30 hours/week",
+  "30_plus": "30+ hours/week",
 };
 
 const normalizeValueLabel = (value) => {
@@ -284,6 +293,38 @@ const normalizeValueLabel = (value) => {
   if (normalized === "open") return "Open to all";
 
   return formatSkillLabel(raw);
+};
+
+const formatHoursPerWeekLabel = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  const canonical = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (HOURS_PER_WEEK_LABELS[canonical]) {
+    return HOURS_PER_WEEK_LABELS[canonical];
+  }
+
+  const normalized = normalizeValueLabel(raw);
+  if (!normalized) return "";
+
+  if (/^(\d+)\s+plus$/i.test(normalized)) {
+    const [, hours] = normalized.match(/^(\d+)\s+plus$/i) || [];
+    return hours ? `${hours}+ hours/week` : normalized;
+  }
+
+  if (/^\d+\s*-\s*\d+$/.test(normalized)) {
+    return `${normalized} hours/week`;
+  }
+
+  if (/\bhours?\b/i.test(normalized)) {
+    return normalized;
+  }
+
+  return normalized;
 };
 
 const normalizePresenceLink = (value = "") => {
@@ -417,17 +458,6 @@ const initialWorkForm = {
   description: "",
 };
 
-const gradients = [
-  "bg-linear-to-r from-pink-500 via-purple-500 to-indigo-500",
-  "bg-linear-to-r from-cyan-500 via-blue-500 to-indigo-500",
-  "bg-linear-to-r from-rose-500 via-orange-500 to-yellow-500",
-  "bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500",
-  "bg-linear-to-r from-violet-600 via-purple-500 to-fuchsia-500",
-  "bg-linear-to-r from-blue-400 via-indigo-500 to-purple-500",
-  "bg-linear-to-r from-fuchsia-500 via-pink-500 to-rose-500",
-  "bg-linear-to-r from-orange-400 via-red-500 to-rose-500",
-];
-
 const FreelancerProfile = () => {
   const navigate = useNavigate();
   const { user, authFetch } = useAuth();
@@ -480,10 +510,6 @@ const FreelancerProfile = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Random gradient for banner
-  const randomGradient = useMemo(() => {
-    return gradients[Math.floor(Math.random() * gradients.length)];
-  }, []);
   const onboardingStorageKeys = useMemo(
     () => getFreelancerOnboardingStorageKeys(user),
     [user?.id, user?.email]
@@ -895,10 +921,6 @@ const FreelancerProfile = () => {
     setModalType(null);
   };
 
-  const deleteExperience = (index) => {
-    setWorkExperience((prev) => prev.filter((_, i) => i !== index));
-  };
-
   // ----- Save to backend -----
   const handleSave = async () => {
     if (!personal.email) {
@@ -1063,7 +1085,7 @@ const FreelancerProfile = () => {
   const openEditServiceProfileModal = (serviceKey) => {
     const serviceDetails =
       profileDetails?.serviceDetails &&
-      typeof profileDetails.serviceDetails === "object"
+        typeof profileDetails.serviceDetails === "object"
         ? profileDetails.serviceDetails
         : {};
     const detail =
@@ -1139,12 +1161,12 @@ const FreelancerProfile = () => {
 
     const existingServiceDetails =
       profileDetails?.serviceDetails &&
-      typeof profileDetails.serviceDetails === "object"
+        typeof profileDetails.serviceDetails === "object"
         ? profileDetails.serviceDetails
         : {};
     const currentServiceDetail =
       existingServiceDetails?.[serviceKey] &&
-      typeof existingServiceDetails[serviceKey] === "object"
+        typeof existingServiceDetails[serviceKey] === "object"
         ? existingServiceDetails[serviceKey]
         : {};
 
@@ -1200,9 +1222,9 @@ const FreelancerProfile = () => {
       setInitialData((prev) =>
         prev
           ? {
-              ...prev,
-              services: nextServices,
-            }
+            ...prev,
+            services: nextServices,
+          }
           : prev
       );
       toast.success(`${getServiceLabel(serviceKey)} updated`);
@@ -1547,7 +1569,7 @@ const FreelancerProfile = () => {
         : {};
     const rawServiceDetails =
       profileDetails?.serviceDetails &&
-      typeof profileDetails.serviceDetails === "object"
+        typeof profileDetails.serviceDetails === "object"
         ? profileDetails.serviceDetails
         : {};
 
@@ -1564,7 +1586,7 @@ const FreelancerProfile = () => {
       const fallback = createServiceDetail();
       const current =
         rawServiceDetails?.[serviceKey] &&
-        typeof rawServiceDetails[serviceKey] === "object"
+          typeof rawServiceDetails[serviceKey] === "object"
           ? rawServiceDetails[serviceKey]
           : {};
 
@@ -1604,10 +1626,10 @@ const FreelancerProfile = () => {
       city: String(identity?.city || "").trim(),
       profilePhoto: profilePhotoUrl
         ? {
-            url: profilePhotoUrl,
-            uploadedUrl: profilePhotoUrl,
-            name: "profile-photo",
-          }
+          url: profilePhotoUrl,
+          uploadedUrl: profilePhotoUrl,
+          name: "profile-photo",
+        }
         : null,
       languages: Array.isArray(identity?.languages) ? identity.languages : [],
       otherLanguage: String(identity?.otherLanguage || "").trim(),
@@ -1657,11 +1679,6 @@ const FreelancerProfile = () => {
     profileDetails?.identity && typeof profileDetails.identity === "object"
       ? profileDetails.identity
       : {};
-  const onboardingRole = String(profileDetails?.role || "").trim();
-  const onboardingRoleLabel =
-    ONBOARDING_ROLE_LABELS[onboardingRole] ||
-    normalizeValueLabel(onboardingRole) ||
-    "Not set";
   const onboardingServices = Array.from(
     new Set([
       ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
@@ -1686,6 +1703,26 @@ const FreelancerProfile = () => {
     profileDetails?.availability && typeof profileDetails.availability === "object"
       ? profileDetails.availability
       : {};
+  const onboardingRole = String(profileDetails?.role || "").trim();
+  const onboardingRoleLabel =
+    ONBOARDING_ROLE_LABELS[onboardingRole] ||
+    normalizeValueLabel(onboardingRole) ||
+    "Not set yet";
+  const onboardingHoursLabel =
+    formatHoursPerWeekLabel(onboardingAvailability?.hoursPerWeek) || "Not set yet";
+  const onboardingScheduleLabel =
+    normalizeValueLabel(onboardingAvailability?.workingSchedule) ||
+    "Not set yet";
+  const onboardingStartTimelineLabel =
+    normalizeValueLabel(onboardingAvailability?.startTimeline) || "Not set yet";
+  const deliveryPolicyLabel = profileDetails?.deliveryPolicyAccepted
+    ? "Accepted"
+    : "Not set yet";
+  const communicationPolicyLabel = profileDetails?.communicationPolicyAccepted
+    ? "Accepted"
+    : "Not set yet";
+  const acceptInProgressProjectsLabel =
+    normalizeValueLabel(profileDetails?.acceptInProgressProjects) || "Not set yet";
   const onboardingServiceDetailMap =
     profileDetails?.serviceDetails &&
       typeof profileDetails.serviceDetails === "object"
@@ -1788,8 +1825,8 @@ const FreelancerProfile = () => {
           const descriptionFromOnboarding =
             (projectLink
               ? onboardingProjectDescriptionMap.get(
-                  `link:${projectLink.toLowerCase()}`
-                )
+                `link:${projectLink.toLowerCase()}`
+              )
               : "") ||
             (projectTitle
               ? onboardingProjectDescriptionMap.get(`title:${projectTitle}`)
@@ -1806,69 +1843,102 @@ const FreelancerProfile = () => {
       ),
     [portfolioProjects, onboardingProjectDescriptionMap]
   );
+  const serviceEntriesMissingDescription = onboardingServiceEntries.filter(
+    ({ detail }) =>
+      !hasTextValue(detail?.serviceDescription || detail?.description)
+  ).length;
+  const serviceEntriesMissingCover = onboardingServiceEntries.filter(
+    ({ detail }) => !resolveAvatarUrl(detail?.coverImage)
+  ).length;
+  const serviceEntriesWithAnyProfileData = onboardingServiceEntries.filter(
+    ({ detail }) => {
+      const description = String(
+        detail?.serviceDescription || detail?.description || ""
+      ).trim();
+      const coverImage = resolveAvatarUrl(detail?.coverImage);
+      return Boolean(description || coverImage);
+    }
+  ).length;
   const serviceProfileCoverage = onboardingServiceEntries.length
-    ? onboardingServiceEntries.filter(({ detail }) => {
-        const description = String(
-          detail?.serviceDescription || detail?.description || ""
-        ).trim();
-        const coverImage = resolveAvatarUrl(detail?.coverImage);
-        return Boolean(description || coverImage);
-      }).length / onboardingServiceEntries.length
+    ? serviceEntriesWithAnyProfileData / onboardingServiceEntries.length
     : 0;
-  const skillsCoverage = Math.min(
-    toUniqueSkillNames(skills.map((entry) => entry?.name || entry)).length,
-    5
-  ) / 5;
-  const linkCoverage =
-    Math.min(
-      [resolvedPortfolioLink, resolvedLinkedinLink, resolvedGithubLink].filter(
-        Boolean
-      ).length,
-      2
-    ) / 2;
+
+  const uniqueSkillCount = toUniqueSkillNames(
+    skills.map((entry) => entry?.name || entry)
+  ).length;
+  const missingSkillCount = Math.max(0, 5 - uniqueSkillCount);
+  const skillsCoverage = Math.min(uniqueSkillCount, 5) / 5;
+
+  const profileLinkCandidates = [
+    { label: "Portfolio", value: resolvedPortfolioLink },
+    { label: "LinkedIn", value: resolvedLinkedinLink },
+    { label: "GitHub", value: resolvedGithubLink },
+  ];
+  const availableProfileLinkLabels = profileLinkCandidates
+    .filter((item) => Boolean(item.value))
+    .map((item) => item.label);
+  const missingProfileLinkLabels = profileLinkCandidates
+    .filter((item) => !item.value)
+    .map((item) => item.label);
+  const missingProfileLinkCount = Math.max(0, 2 - availableProfileLinkLabels.length);
+  const linkCoverage = Math.min(availableProfileLinkLabels.length, 2) / 2;
+
+  const availabilityMissingDetails = [];
+  if (!hasTextValue(onboardingAvailability?.hoursPerWeek)) {
+    availabilityMissingDetails.push("weekly hours");
+  }
+  if (!hasTextValue(onboardingAvailability?.workingSchedule)) {
+    availabilityMissingDetails.push("working schedule");
+  }
+  if (!hasTextValue(onboardingAvailability?.startTimeline)) {
+    availabilityMissingDetails.push("start timeline");
+  }
   const availabilityCoverage =
-    [
-      hasTextValue(onboardingAvailability?.hoursPerWeek),
-      hasTextValue(onboardingAvailability?.workingSchedule),
-      hasTextValue(onboardingAvailability?.startTimeline),
-    ].filter(Boolean).length / 3;
-  const policiesCoverage =
-    [
-      Boolean(profileDetails?.deliveryPolicyAccepted),
-      Boolean(profileDetails?.communicationPolicyAccepted),
-      hasTextValue(profileDetails?.acceptInProgressProjects),
-    ].filter(Boolean).length / 3;
+    (3 - availabilityMissingDetails.length) / 3;
+
+  const policyMissingDetails = [];
+  if (!profileDetails?.deliveryPolicyAccepted) {
+    policyMissingDetails.push("delivery policy");
+  }
+  if (!profileDetails?.communicationPolicyAccepted) {
+    policyMissingDetails.push("communication policy");
+  }
+  if (!hasTextValue(profileDetails?.acceptInProgressProjects)) {
+    policyMissingDetails.push("in-progress project preference");
+  }
+  const policiesCoverage = (3 - policyMissingDetails.length) / 3;
+
+  const hasProfilePhoto = Boolean(resolveAvatarUrl(personal.avatar));
+  const hasProfessionalTitle = hasTextValue(onboardingIdentity?.professionalTitle);
+  const hasProfessionalBio = hasTextValue(
+    profileDetails?.professionalBio || personal.bio
+  );
+  const hasCountry = hasTextValue(onboardingIdentity?.country);
+  const hasCity = hasTextValue(onboardingIdentity?.city);
+  const hasSelectedServices = onboardingServiceEntries.length > 0;
+  const hasFeaturedProject = portfolioProjects.length > 0;
+  const hasIndustryFocus = onboardingGlobalIndustry.length > 0;
 
   const profileCompletionCriteria = [
-    {
-      label: "Profile photo",
-      score: resolveAvatarUrl(personal.avatar) ? 1 : 0,
-      weight: 8,
-    },
+    { label: "Profile photo", score: hasProfilePhoto ? 1 : 0, weight: 8 },
     {
       label: "Professional title",
-      score: hasTextValue(onboardingIdentity?.professionalTitle) ? 1 : 0,
+      score: hasProfessionalTitle ? 1 : 0,
       weight: 8,
     },
     {
       label: "Professional bio",
-      score: hasTextValue(profileDetails?.professionalBio || personal.bio)
-        ? 1
-        : 0,
+      score: hasProfessionalBio ? 1 : 0,
       weight: 10,
     },
     {
       label: "Location details",
-      score:
-        hasTextValue(onboardingIdentity?.country) &&
-        hasTextValue(onboardingIdentity?.city)
-          ? 1
-          : 0,
+      score: hasCountry && hasCity ? 1 : 0,
       weight: 8,
     },
     {
       label: "Services selected",
-      score: onboardingServiceEntries.length > 0 ? 1 : 0,
+      score: hasSelectedServices ? 1 : 0,
       weight: 12,
     },
     {
@@ -1886,27 +1956,126 @@ const FreelancerProfile = () => {
       score: availabilityCoverage,
       weight: 8,
     },
-    {
-      label: "Profile links",
-      score: linkCoverage,
-      weight: 8,
-    },
+    { label: "Profile links", score: linkCoverage, weight: 8 },
     {
       label: "Featured project",
-      score: portfolioProjects.length > 0 ? 1 : 0,
+      score: hasFeaturedProject ? 1 : 0,
       weight: 8,
     },
     {
       label: "Industry focus",
-      score: onboardingGlobalIndustry.length > 0 ? 1 : 0,
+      score: hasIndustryFocus ? 1 : 0,
       weight: 5,
     },
-    {
-      label: "Policies accepted",
-      score: policiesCoverage,
-      weight: 5,
-    },
+    { label: "Policies accepted", score: policiesCoverage, weight: 5 },
   ];
+
+  const profileCompletionMissingDetails = [];
+
+  if (!hasProfilePhoto) {
+    profileCompletionMissingDetails.push({
+      label: "Profile photo",
+      detail: "Upload a clear profile image.",
+    });
+  }
+
+  if (!hasProfessionalTitle) {
+    profileCompletionMissingDetails.push({
+      label: "Professional title",
+      detail: "Add your headline or role title.",
+    });
+  }
+
+  if (!hasProfessionalBio) {
+    profileCompletionMissingDetails.push({
+      label: "Professional bio",
+      detail: "Write a short bio that highlights your expertise.",
+    });
+  }
+
+  if (!hasCountry || !hasCity) {
+    const missingLocationParts = [];
+    if (!hasCity) missingLocationParts.push("city");
+    if (!hasCountry) missingLocationParts.push("country");
+    profileCompletionMissingDetails.push({
+      label: "Location details",
+      detail: `Add your ${missingLocationParts.join(" and ")}.`,
+    });
+  }
+
+  if (!hasSelectedServices) {
+    profileCompletionMissingDetails.push({
+      label: "Services selected",
+      detail: "Select at least one service you offer.",
+    });
+  }
+
+  if (hasSelectedServices && serviceProfileCoverage < 1) {
+    const serviceDetailGaps = [];
+    if (serviceEntriesMissingDescription > 0) {
+      serviceDetailGaps.push(
+        `${serviceEntriesMissingDescription} description${serviceEntriesMissingDescription === 1 ? "" : "s"}`
+      );
+    }
+    if (serviceEntriesMissingCover > 0) {
+      serviceDetailGaps.push(
+        `${serviceEntriesMissingCover} cover image${serviceEntriesMissingCover === 1 ? "" : "s"}`
+      );
+    }
+    profileCompletionMissingDetails.push({
+      label: "Service description/cover",
+      detail: `Complete ${serviceDetailGaps.join(" and ")} across your selected services.`,
+    });
+  }
+
+  if (skillsCoverage < 1) {
+    profileCompletionMissingDetails.push({
+      label: "Skills and tech stack",
+      detail:
+        missingSkillCount > 0
+          ? `Add ${missingSkillCount} more skill${missingSkillCount === 1 ? "" : "s"} (target: 5).`
+          : "Add a clearer tech stack with up to 5 key skills.",
+    });
+  }
+
+  if (availabilityMissingDetails.length > 0) {
+    profileCompletionMissingDetails.push({
+      label: "Availability setup",
+      detail: `Add ${availabilityMissingDetails.join(", ")}.`,
+    });
+  }
+
+  if (linkCoverage < 1) {
+    const suggestedLinks = missingProfileLinkLabels.slice(0, 2).join(" or ");
+    profileCompletionMissingDetails.push({
+      label: "Profile links",
+      detail: suggestedLinks
+        ? `Add ${missingProfileLinkCount} more link${missingProfileLinkCount === 1 ? "" : "s"} (suggested: ${suggestedLinks}).`
+        : `Add ${missingProfileLinkCount} more profile link${missingProfileLinkCount === 1 ? "" : "s"}.`,
+    });
+  }
+
+  if (!hasFeaturedProject) {
+    profileCompletionMissingDetails.push({
+      label: "Featured project",
+      detail: "Add at least one project to your portfolio.",
+    });
+  }
+
+  if (!hasIndustryFocus) {
+    profileCompletionMissingDetails.push({
+      label: "Industry focus",
+      detail: "Select your global industry focus.",
+    });
+  }
+
+  if (policyMissingDetails.length > 0) {
+    profileCompletionMissingDetails.push({
+      label: "Policies accepted",
+      detail: `Review and complete: ${policyMissingDetails.join(", ")}.`,
+    });
+  }
+
   const profileCompletionRawScore = profileCompletionCriteria.reduce(
     (total, item) => total + item.score * item.weight,
     0
@@ -1917,11 +2086,9 @@ const FreelancerProfile = () => {
   const completedCompletionSections = profileCompletionCriteria.filter(
     (item) => item.score >= 0.999
   ).length;
-  const incompleteCompletionLabels = profileCompletionCriteria
-    .filter((item) => item.score < 0.999)
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 3)
-    .map((item) => item.label);
+  const partialCompletionSections = profileCompletionCriteria.filter(
+    (item) => item.score > 0 && item.score < 0.999
+  ).length;
   const profileCompletionMessage =
     profileCompletionPercent >= 90
       ? "Your profile is client-ready."
@@ -1999,90 +2166,105 @@ const FreelancerProfile = () => {
         handleNotificationClick={handleDashboardHeaderNotificationClick}
       />
       <main className="flex-1 overflow-y-auto pb-20">
-        <div className="w-full px-6 py-8 space-y-8">
+        <div className="w-full px-6 py-6 md:py-8">
 
-        <ProfileHeroCard
-          randomGradient={randomGradient}
-          fileInputRef={fileInputRef}
-          personal={personal}
-          setPersonal={setPersonal}
-          initials={initials}
-          uploadingImage={uploadingImage}
-          handleImageUpload={handleImageUpload}
-          displayHeadline={displayHeadline}
-          displayLocation={displayLocation}
-          displayBio={displayBio}
-          showExperienceYears={showExperienceYears}
-          experienceYearsLabel={experienceYearsLabel}
-          resolvedGithubLink={resolvedGithubLink}
-          resolvedLinkedinLink={resolvedLinkedinLink}
-          resolvedPortfolioLink={resolvedPortfolioLink}
-          resumeLink={portfolio.resume}
-          isDirty={isDirty}
-          handleSave={handleSave}
-          isSaving={isSaving}
-          openEditPersonalModal={openEditPersonalModal}
-          openPortfolioModal={() => setModalType("portfolio")}
-        />
-
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          <div className="xl:col-span-8 space-y-6">
-            <ProfileSummaryCards
-              profileDetails={profileDetails}
-              openFullProfileEditor={openFullProfileEditor}
-              onboardingRoleLabel={onboardingRoleLabel}
-              onboardingAvailability={onboardingAvailability}
-              normalizeValueLabel={normalizeValueLabel}
-            />
-
-            <ServicesFromOnboardingCard
-              onboardingServiceEntries={onboardingServiceEntries}
-              getServiceLabel={getServiceLabel}
-              resolveAvatarUrl={resolveAvatarUrl}
-              collectServiceSpecializations={collectServiceSpecializations}
-              toUniqueLabels={toUniqueLabels}
-              normalizeValueLabel={normalizeValueLabel}
-              openEditServiceProfileModal={openEditServiceProfileModal}
-            />
-
-            <FeaturedProjectsSection
-              portfolioProjects={displayPortfolioProjects}
-              projectCoverUploadingIndex={projectCoverUploadingIndex}
-              handleProjectCoverInputChange={handleProjectCoverInputChange}
-              removeProject={removeProject}
-              onAddProject={() => {
-                resetProjectDraft();
-                setModalType("addProject");
-              }}
-              onViewAllProjects={() => setModalType("viewAllProjects")}
-            />
-          </div>
-
-          <ProfileSidebarCards
-            profileCompletionPercent={profileCompletionPercent}
-            completedCompletionSections={completedCompletionSections}
-            profileCompletionCriteriaLength={profileCompletionCriteria.length}
-            profileCompletionMessage={profileCompletionMessage}
-            incompleteCompletionLabels={incompleteCompletionLabels}
+          {/* ── Full-width hero ── */}
+          <ProfileHeroCard
+            fileInputRef={fileInputRef}
+            personal={personal}
+            setPersonal={setPersonal}
+            initials={initials}
+            uploadingImage={uploadingImage}
+            handleImageUpload={handleImageUpload}
+            displayHeadline={displayHeadline}
+            displayLocation={displayLocation}
+            displayBio={displayBio}
+            showExperienceYears={showExperienceYears}
+            experienceYearsLabel={experienceYearsLabel}
+            resolvedLinkedinLink={resolvedLinkedinLink}
+            resolvedPortfolioLink={resolvedPortfolioLink}
+            resumeLink={portfolio.resume}
             openEditPersonalModal={openEditPersonalModal}
             onboardingIdentity={onboardingIdentity}
-            personal={personal}
             onboardingLanguages={onboardingLanguages}
-            skills={skills}
-            deleteSkill={deleteSkill}
-            openSkillModal={() => setModalType("skill")}
-            onboardingGlobalIndustry={onboardingGlobalIndustry}
-            resolvedPortfolioLink={resolvedPortfolioLink}
-            resolvedLinkedinLink={resolvedLinkedinLink}
-            openPortfolioModal={() => setModalType("portfolio")}
-            openCreateExperienceModal={openCreateExperienceModal}
-            effectiveWorkExperience={effectiveWorkExperience}
-            workExperience={workExperience}
-            openEditExperienceModal={openEditExperienceModal}
-            splitExperienceTitle={splitExperienceTitle}
+            isDirty={isDirty}
+            handleSave={handleSave}
+            isSaving={isSaving}
           />
+
+          {/* ── Two-column grid ── */}
+          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
+
+            {/* ── Left: Main content ── */}
+            <div className="min-w-0 space-y-5">
+              <ProfileAboutCard
+                bioText={displayBio}
+                openEditPersonalModal={openEditPersonalModal}
+              />
+
+              <ProfileOnboardingSnapshotCard
+                workModelLabel={onboardingRoleLabel}
+                availabilityLabel={onboardingHoursLabel}
+                scheduleLabel={onboardingScheduleLabel}
+                startTimelineLabel={onboardingStartTimelineLabel}
+                deliveryPolicyLabel={deliveryPolicyLabel}
+                communicationPolicyLabel={communicationPolicyLabel}
+                acceptInProgressProjectsLabel={acceptInProgressProjectsLabel}
+              />
+
+              <ProfileSkillsCard
+                skills={skills}
+                deleteSkill={deleteSkill}
+                openSkillModal={() => setModalType("skill")}
+              />
+
+              <ServicesFromOnboardingCard
+                onboardingServiceEntries={onboardingServiceEntries}
+                getServiceLabel={getServiceLabel}
+                resolveAvatarUrl={resolveAvatarUrl}
+                collectServiceSpecializations={collectServiceSpecializations}
+                toUniqueLabels={toUniqueLabels}
+                normalizeValueLabel={normalizeValueLabel}
+                openEditServiceProfileModal={openEditServiceProfileModal}
+              />
+
+              <FeaturedProjectsSection
+                portfolioProjects={displayPortfolioProjects}
+                projectCoverUploadingIndex={projectCoverUploadingIndex}
+                handleProjectCoverInputChange={handleProjectCoverInputChange}
+                removeProject={removeProject}
+                onAddProject={() => {
+                  resetProjectDraft();
+                  setModalType("addProject");
+                }}
+                onViewAllProjects={() => setModalType("viewAllProjects")}
+              />
+            </div>
+
+            {/* ── Right: Sidebar ── */}
+            <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
+              <ProfileSummaryCards
+                profileCompletionPercent={profileCompletionPercent}
+                completedCompletionSections={completedCompletionSections}
+                partialCompletionSections={partialCompletionSections}
+                profileCompletionCriteriaLength={profileCompletionCriteria.length}
+                profileCompletionMessage={profileCompletionMessage}
+                profileCompletionMissingDetails={profileCompletionMissingDetails}
+              />
+
+              <ProfileSidebarCards
+                openCreateExperienceModal={openCreateExperienceModal}
+                effectiveWorkExperience={effectiveWorkExperience}
+                workExperience={workExperience}
+                openEditExperienceModal={openEditExperienceModal}
+                splitExperienceTitle={splitExperienceTitle}
+                profileDetails={profileDetails}
+                openFullProfileEditor={openFullProfileEditor}
+              />
+            </div>
+
+          </div>
         </div>
-      </div>
       </main>
       {/* Modal */}
       {modalType && (

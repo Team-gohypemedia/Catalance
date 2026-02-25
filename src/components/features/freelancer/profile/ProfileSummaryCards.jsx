@@ -1,83 +1,130 @@
-import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const ProfileSummaryCards = ({
-  openFullProfileEditor,
-  onboardingRoleLabel,
-  onboardingAvailability,
-  normalizeValueLabel,
-  profileDetails,
+  profileCompletionPercent,
+  completedCompletionSections,
+  partialCompletionSections,
+  profileCompletionCriteriaLength,
+  profileCompletionMessage,
+  profileCompletionMissingDetails,
 }) => {
+  const completion = Math.min(
+    100,
+    Math.max(0, Number(profileCompletionPercent) || 0)
+  );
+  const bubbleLeftPercent = Math.min(96, Math.max(4, completion));
+  const progressMessage =
+    profileCompletionMessage ||
+    "You're nearly there, add a few more details to complete your profile.";
+  const visibleMissingDetails = Array.isArray(profileCompletionMissingDetails)
+    ? profileCompletionMissingDetails.slice(0, 4)
+    : [];
+  const hiddenMissingCount = Math.max(
+    0,
+    (Array.isArray(profileCompletionMissingDetails)
+      ? profileCompletionMissingDetails.length
+      : 0) - visibleMissingDetails.length
+  );
+
+  const isComplete = completion >= 90;
+
   return (
-    <>
-      <Card className="p-6 md:p-7 space-y-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-            <span className="text-primary">
-              <Briefcase className="w-5 h-5" />
-            </span>
-            Onboarding Snapshot
-          </h3>
-          <Button
-            variant="outline"
-            size="sm"
-            className="self-start sm:self-auto"
-            onClick={openFullProfileEditor}
+    <Card className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:p-5">
+      {/* Subtle top glow */}
+      <div
+        className="pointer-events-none absolute -top-12 left-1/2 h-24 w-3/4 -translate-x-1/2 rounded-full opacity-[0.06] blur-2xl"
+        style={{
+          background: isComplete
+            ? "radial-gradient(ellipse, #10b981, transparent)"
+            : "radial-gradient(ellipse, hsl(var(--primary)), transparent)",
+        }}
+        aria-hidden="true"
+      />
+
+      <div className="relative pt-9">
+        <div className="relative">
+          <div className="h-2 overflow-hidden rounded-full bg-secondary/80">
+            <div
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{
+                width: `${completion}%`,
+                background: isComplete
+                  ? "linear-gradient(90deg, #10b981, #34d399)"
+                  : "linear-gradient(90deg, hsl(var(--primary)), #8b5cf6, #6366f1)",
+              }}
+            />
+          </div>
+
+          <div
+            className="absolute -top-8 z-10 flex -translate-x-1/2 flex-col items-center"
+            style={{ left: `${bubbleLeftPercent}%` }}
           >
-            Edit All Details
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-border/60 bg-secondary/20 p-4 min-h-[108px] flex flex-col justify-center">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Work Model
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">{onboardingRoleLabel}</p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-secondary/20 p-4 min-h-[108px] flex flex-col justify-center">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Availability
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
-              {normalizeValueLabel(onboardingAvailability.hoursPerWeek) || "Not set"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {normalizeValueLabel(onboardingAvailability.workingSchedule) ||
-                "Schedule not set"}
-            </p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-secondary/20 p-4 min-h-[108px] flex flex-col justify-center">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Start Timeline
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
-              {normalizeValueLabel(onboardingAvailability.startTimeline) || "Not set"}
-            </p>
+            <span
+              className="rounded-lg px-2.5 py-1 text-xs font-bold shadow-sm"
+              style={{
+                background: isComplete
+                  ? "linear-gradient(135deg, #10b981, #34d399)"
+                  : "linear-gradient(135deg, hsl(var(--primary)), #8b5cf6)",
+                color: "white",
+                boxShadow: isComplete
+                  ? "0 2px 8px rgba(16,185,129,0.3)"
+                  : "0 2px 8px hsl(var(--primary) / 0.3)",
+              }}
+            >
+              {completion}%
+            </span>
+            <span
+              className="-mt-1.5 h-2.5 w-2.5 rotate-45"
+              style={{
+                background: isComplete ? "#34d399" : "#8b5cf6",
+              }}
+              aria-hidden="true"
+            />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <span className="rounded-lg border border-border/50 bg-secondary/70 px-3 py-2 text-xs font-medium text-secondary-foreground flex items-center justify-between gap-2">
-            <span className="text-muted-foreground">Delivery Policy</span>
-            <span>{profileDetails?.deliveryPolicyAccepted ? "Accepted" : "Not set"}</span>
-          </span>
-          <span className="rounded-lg border border-border/50 bg-secondary/70 px-3 py-2 text-xs font-medium text-secondary-foreground flex items-center justify-between gap-2">
-            <span className="text-muted-foreground">Communication Policy</span>
-            <span>
-              {profileDetails?.communicationPolicyAccepted ? "Accepted" : "Not set"}
-            </span>
-          </span>
-          <span className="rounded-lg border border-border/50 bg-secondary/70 px-3 py-2 text-xs font-medium text-secondary-foreground flex items-center justify-between gap-2">
-            <span className="text-muted-foreground">Accept In-Progress Projects</span>
-            <span>
-              {normalizeValueLabel(profileDetails?.acceptInProgressProjects) || "Not set"}
-            </span>
-          </span>
+        <div className="mt-2 flex items-center justify-between text-xs font-medium tracking-wide text-muted-foreground">
+          <span>0%</span>
+          <span>100%</span>
         </div>
-      </Card>
-    </>
+      </div>
+
+      <p
+        className="mt-5 text-lg font-semibold leading-snug text-foreground"
+        style={{ textWrap: "balance" }}
+      >
+        {progressMessage}
+      </p>
+
+      <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+        {completedCompletionSections}/{profileCompletionCriteriaLength} profile
+        sections completed
+        {Number(partialCompletionSections) > 0
+          ? ` | ${partialCompletionSections} in progress`
+          : ""}
+      </p>
+
+      {visibleMissingDetails.length > 0 ? (
+        <div className="mt-4 rounded-xl border border-border/60 bg-background/50 p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Missing details
+          </p>
+          <ul className="mt-2 space-y-2">
+            {visibleMissingDetails.map((item, index) => (
+              <li key={`${item.label}-${index}`}>
+                <p className="text-xs font-semibold text-foreground">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.detail}</p>
+              </li>
+            ))}
+          </ul>
+          {hiddenMissingCount > 0 ? (
+            <p className="mt-2 text-[11px] font-medium text-muted-foreground">
+              +{hiddenMissingCount} more detail{hiddenMissingCount === 1 ? "" : "s"} to complete
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </Card>
   );
 };
 

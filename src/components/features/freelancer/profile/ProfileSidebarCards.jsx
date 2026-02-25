@@ -1,263 +1,273 @@
-import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import Cpu from "lucide-react/dist/esm/icons/cpu";
-import Edit2 from "lucide-react/dist/esm/icons/edit-2";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import FilePlus2 from "lucide-react/dist/esm/icons/file-plus-2";
+import GraduationCap from "lucide-react/dist/esm/icons/graduation-cap";
 import Plus from "lucide-react/dist/esm/icons/plus";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import User from "lucide-react/dist/esm/icons/user";
-import { Button } from "@/components/ui/button";
+import X from "lucide-react/dist/esm/icons/x";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import { Card } from "@/components/ui/card";
 
+const normalizeEducationEntries = (profileDetails = {}) => {
+  const candidates = [
+    profileDetails?.education,
+    profileDetails?.educationHistory,
+    profileDetails?.identity?.education,
+    profileDetails?.identity?.educationHistory,
+  ].filter(Array.isArray);
+
+  const rows = candidates.flatMap((items) =>
+    items.map((entry, index) => {
+      if (!entry) return null;
+      if (typeof entry === "string") {
+        return {
+          id: `edu-string-${index}-${entry}`,
+          school: entry,
+          degreeLine: "",
+          metaLine: "",
+        };
+      }
+
+      if (typeof entry !== "object") return null;
+
+      const school = String(
+        entry.school ||
+        entry.institution ||
+        entry.university ||
+        entry.college ||
+        entry.name ||
+        entry.title ||
+        ""
+      ).trim();
+      const degree = String(
+        entry.degree || entry.qualification || entry.program || entry.level || ""
+      ).trim();
+      const field = String(
+        entry.field ||
+        entry.specialization ||
+        entry.stream ||
+        entry.focus ||
+        entry.subject ||
+        ""
+      ).trim();
+      const country = String(
+        entry.country || entry.location || entry.region || ""
+      ).trim();
+      const graduationYear = String(
+        entry.graduationYear ||
+        entry.endYear ||
+        entry.year ||
+        entry.completedYear ||
+        ""
+      ).trim();
+
+      const degreeLine = [degree, field].filter(Boolean).join(". ");
+      const metaLine = [country, graduationYear ? `Graduated ${graduationYear}` : ""]
+        .filter(Boolean)
+        .join(", ");
+
+      if (!school && !degreeLine && !metaLine) return null;
+
+      return {
+        id: `edu-${index}-${school}-${graduationYear}`,
+        school: school || "Education",
+        degreeLine,
+        metaLine,
+      };
+    })
+  );
+
+  const deduped = new Map();
+  rows.filter(Boolean).forEach((row) => {
+    const key = `${row.school}|${row.degreeLine}|${row.metaLine}`.toLowerCase();
+    if (!deduped.has(key)) {
+      deduped.set(key, row);
+    }
+  });
+
+  return Array.from(deduped.values());
+};
+
+const normalizeSkill = (entry, index) => {
+  if (typeof entry === "string") {
+    return { id: `skill-${index}-${entry}`, name: entry, level: "Intermediate" };
+  }
+
+  if (!entry || typeof entry !== "object") {
+    return { id: `skill-${index}`, name: "Skill", level: "Intermediate" };
+  }
+
+  return {
+    id: `skill-${index}-${entry.name || "item"}`,
+    name: String(entry.name || "Skill").trim(),
+    level: String(
+      entry.level || entry.proficiency || entry.experienceLevel || "Intermediate"
+    ).trim(),
+  };
+};
+
+/* Subtle color palette for skill pills */
+const SKILL_COLORS = [
+  { bg: "bg-primary/10", text: "text-primary", border: "border-primary/20", hoverBg: "hover:bg-primary/20" },
+  { bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20", hoverBg: "hover:bg-violet-500/20" },
+  { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", hoverBg: "hover:bg-blue-500/20" },
+  { bg: "bg-cyan-500/10", text: "text-cyan-400", border: "border-cyan-500/20", hoverBg: "hover:bg-cyan-500/20" },
+  { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", hoverBg: "hover:bg-emerald-500/20" },
+  { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20", hoverBg: "hover:bg-amber-500/20" },
+  { bg: "bg-rose-500/10", text: "text-rose-400", border: "border-rose-500/20", hoverBg: "hover:bg-rose-500/20" },
+  { bg: "bg-indigo-500/10", text: "text-indigo-400", border: "border-indigo-500/20", hoverBg: "hover:bg-indigo-500/20" },
+];
+
 const ProfileSidebarCards = ({
-  profileCompletionPercent,
-  completedCompletionSections,
-  profileCompletionCriteriaLength,
-  profileCompletionMessage,
-  incompleteCompletionLabels,
-  openEditPersonalModal,
-  onboardingIdentity,
-  personal,
-  onboardingLanguages,
-  skills,
-  deleteSkill,
-  openSkillModal,
-  onboardingGlobalIndustry,
-  resolvedPortfolioLink,
-  resolvedLinkedinLink,
-  openPortfolioModal,
   openCreateExperienceModal,
   effectiveWorkExperience,
   workExperience,
   openEditExperienceModal,
   splitExperienceTitle,
+  profileDetails,
+  openFullProfileEditor,
 }) => {
+  const educationEntries = normalizeEducationEntries(profileDetails);
+  const hasExperience = (Array.isArray(effectiveWorkExperience)
+    ? effectiveWorkExperience
+    : []
+  ).length > 0;
+
   return (
-    <div className="xl:col-span-4 space-y-6">
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-            <span className="text-primary">
-              <User className="w-5 h-5" />
-            </span>
-            Profile Completion
-          </h3>
-          <span className="text-sm font-semibold text-primary">
-            {profileCompletionPercent}%
-          </span>
-        </div>
-
-        <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-500 ease-out"
-            style={{ width: `${profileCompletionPercent}%` }}
-          />
-        </div>
-
-        <p className="text-xs text-muted-foreground">
-          {completedCompletionSections}/{profileCompletionCriteriaLength} sections fully completed
-        </p>
-        <p className="text-sm text-foreground">{profileCompletionMessage}</p>
-
-        {incompleteCompletionLabels.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {incompleteCompletionLabels.map((label) => (
-              <span
-                key={`profile-completion-gap-${label}`}
-                className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-xs border border-border/50"
-              >
-                {label}
-              </span>
-            ))}
+    <div className="space-y-5">
+      {/* ── Work Experience ── */}
+      <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h3 className="text-xl font-bold tracking-tight text-foreground">
+              Work Experience
+            </h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Add your job history and achievements to give clients insight into
+              your expertise.
+            </p>
+            <button
+              type="button"
+              onClick={openCreateExperienceModal}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98]"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Add work experience
+            </button>
           </div>
-        )}
+
+          {!hasExperience ? (
+            <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-muted/40">
+              <FilePlus2 className="h-10 w-10 text-muted-foreground/60" aria-hidden="true" />
+            </div>
+          ) : null}
+        </div>
+
+        {hasExperience ? (
+          <div className="relative mt-5 space-y-0">
+            {/* Timeline line */}
+            <div
+              className="absolute bottom-4 left-[11px] top-4 w-px bg-border/60"
+              aria-hidden="true"
+            />
+
+            {effectiveWorkExperience.map((exp, index) => {
+              const [position, company] = splitExperienceTitle(exp.title);
+              return (
+                <button
+                  key={`work-exp-${index}`}
+                  type="button"
+                  onClick={() => {
+                    if (workExperience.length > 0) {
+                      openEditExperienceModal(exp, index);
+                    }
+                  }}
+                  className="group relative flex w-full gap-4 py-3 text-left transition-colors duration-200"
+                >
+                  {/* Timeline dot */}
+                  <div className="relative z-10 mt-1.5 flex shrink-0">
+                    <span
+                      className="h-[9px] w-[9px] rounded-full border-2 border-primary/60 bg-card transition-colors duration-200 group-hover:border-primary group-hover:bg-primary/20"
+                      aria-hidden="true"
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1 rounded-xl border border-transparent p-3 transition-all duration-200 group-hover:border-border/60 group-hover:bg-muted/30">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-semibold text-foreground">
+                          {position || "Position"}
+                        </h4>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {company || "Company"}
+                        </p>
+                      </div>
+                      <Briefcase className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors duration-200 group-hover:text-primary/60" aria-hidden="true" />
+                    </div>
+                    <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                      {exp.period || "Timeline not set"}
+                    </p>
+                    {exp.description ? (
+                      <p className="mt-1.5 text-xs leading-relaxed text-foreground/80 line-clamp-2">
+                        {exp.description}
+                      </p>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </Card>
 
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-            <span className="text-primary">
-              <MapPin className="w-5 h-5" />
-            </span>
-            Identity Details
+      {/* ── Education ── */}
+      <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-xl font-bold tracking-tight text-foreground">
+            Education
           </h3>
-          <Button variant="ghost" size="icon" onClick={openEditPersonalModal}>
-            <Edit2 className="w-4 h-4" />
-          </Button>
+          <button
+            type="button"
+            onClick={openFullProfileEditor}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98]"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add new
+          </button>
         </div>
 
-        <div className="space-y-2 text-sm">
-          <p className="text-muted-foreground">
-            Username: <span className="text-foreground">{onboardingIdentity?.username || "Not set"}</span>
-          </p>
-          <p className="text-muted-foreground">
-            Professional Title:{" "}
-            <span className="text-foreground">
-              {onboardingIdentity?.professionalTitle || personal.headline || "Not set"}
-            </span>
-          </p>
-          <p className="text-muted-foreground">
-            Country: <span className="text-foreground">{onboardingIdentity?.country || "Not set"}</span>
-          </p>
-          <p className="text-muted-foreground">
-            State/City: <span className="text-foreground">{onboardingIdentity?.city || "Not set"}</span>
-          </p>
-        </div>
-
-        {onboardingLanguages.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {onboardingLanguages.map((language) => (
-              <span
-                key={`language-${language}`}
-                className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50"
+        <div className="mt-4 space-y-2.5">
+          {educationEntries.length > 0 ? (
+            educationEntries.map((entry) => (
+              <div
+                key={entry.id}
+                className="group rounded-xl border border-border/50 bg-muted/20 p-3.5 transition-all duration-200 hover:border-border/70 hover:bg-muted/30"
               >
-                {language}
-              </span>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-            <span className="text-primary">
-              <Cpu className="w-5 h-5" />
-            </span>
-            Skills And Tech Stack
-          </h3>
-          <Button variant="ghost" size="icon" onClick={openSkillModal}>
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {skills.length > 0 ? (
-            skills.map((s, i) => (
-              <div key={i} className="group relative">
-                <span className="px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border/50 cursor-default block">
-                  {s.name}
-                </span>
-                <Trash2
-                  className="w-3 h-3 absolute -top-1 -right-1 text-destructive opacity-0 group-hover:opacity-100 cursor-pointer bg-card rounded-full"
-                  onClick={() => deleteSkill(i)}
-                />
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <GraduationCap className="h-4 w-4 text-primary" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-semibold text-foreground">
+                      {entry.school}
+                    </h4>
+                    {entry.degreeLine ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {entry.degreeLine}
+                      </p>
+                    ) : null}
+                    {entry.metaLine ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground/70">
+                        {entry.metaLine}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             ))
           ) : (
-            <p className="text-xs text-muted-foreground">No skills added.</p>
-          )}
-        </div>
-      </Card>
-
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-            <span className="text-primary">
-              <Globe className="w-5 h-5" />
-            </span>
-            Industry And Presence
-          </h3>
-          <Button variant="ghost" size="icon" onClick={openPortfolioModal}>
-            <Edit2 className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {onboardingGlobalIndustry.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {onboardingGlobalIndustry.map((industry) => (
-              <span
-                key={`industry-${industry}`}
-                className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-xs text-foreground"
-              >
-                {industry}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="space-y-2 text-sm">
-          <p className="text-muted-foreground">
-            Portfolio:{" "}
-            {resolvedPortfolioLink ? (
-              <a
-                href={resolvedPortfolioLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-foreground break-all underline-offset-2 hover:underline"
-              >
-                {resolvedPortfolioLink}
-              </a>
-            ) : (
-              <span className="text-foreground break-all">Not set</span>
-            )}
-          </p>
-          <p className="text-muted-foreground">
-            LinkedIn:{" "}
-            {resolvedLinkedinLink ? (
-              <a
-                href={resolvedLinkedinLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-foreground break-all underline-offset-2 hover:underline"
-              >
-                {resolvedLinkedinLink}
-              </a>
-            ) : (
-              <span className="text-foreground break-all">Not set</span>
-            )}
-          </p>
-        </div>
-      </Card>
-
-      <Card className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
-            <span className="text-primary">
-              <Briefcase className="w-5 h-5" />
-            </span>
-            Work Experience
-          </h3>
-          <Button variant="ghost" size="icon" onClick={openCreateExperienceModal}>
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-
-        <div className="relative border-l border-border ml-3.5 space-y-8 py-2">
-          {effectiveWorkExperience.length > 0 ? (
-            effectiveWorkExperience.map((exp, i) => {
-              const [position, company] = splitExperienceTitle(exp.title);
-              return (
-                <div
-                  key={i}
-                  className={`relative pl-8 group ${
-                    workExperience.length > 0 ? "cursor-pointer" : "cursor-default"
-                  }`}
-                  onClick={() => {
-                    if (workExperience.length > 0) {
-                      openEditExperienceModal(exp, i);
-                    }
-                  }}
-                >
-                  <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-primary bg-background group-hover:bg-primary transition-colors" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary mb-0.5 block">
-                    {exp.period || "Date N/A"}
-                  </span>
-                  <h4 className="font-bold text-foreground leading-tight">
-                    {position || "Position"}
-                  </h4>
-                  <p className="text-xs text-muted-foreground font-medium mb-1">
-                    {company || "Company"}
-                  </p>
-                  {exp.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {exp.description}
-                    </p>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <p className="pl-6 text-sm text-muted-foreground">No experience added.</p>
+            <div className="rounded-xl border border-dashed border-border/50 bg-muted/10 p-4">
+              <p className="text-sm text-muted-foreground">
+                Add education details to strengthen your profile credibility.
+              </p>
+            </div>
           )}
         </div>
       </Card>
@@ -266,4 +276,3 @@ const ProfileSidebarCards = ({
 };
 
 export default ProfileSidebarCards;
-

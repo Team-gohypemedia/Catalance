@@ -1,16 +1,13 @@
 import Camera from "lucide-react/dist/esm/icons/camera";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
-import FileText from "lucide-react/dist/esm/icons/file-text";
-import Github from "lucide-react/dist/esm/icons/github";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import Linkedin from "lucide-react/dist/esm/icons/linkedin";
+import Eye from "lucide-react/dist/esm/icons/eye";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MapPin from "lucide-react/dist/esm/icons/map-pin";
-import Plus from "lucide-react/dist/esm/icons/plus";
+import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import Share2 from "lucide-react/dist/esm/icons/share-2";
 import { Button } from "@/components/ui/button";
 
 const ProfileHeroCard = ({
-  randomGradient,
   fileInputRef,
   personal,
   setPersonal,
@@ -19,196 +16,215 @@ const ProfileHeroCard = ({
   handleImageUpload,
   displayHeadline,
   displayLocation,
-  displayBio,
-  showExperienceYears,
-  experienceYearsLabel,
-  resolvedGithubLink,
-  resolvedLinkedinLink,
   resolvedPortfolioLink,
+  resolvedLinkedinLink,
   resumeLink,
+  openEditPersonalModal,
+  onboardingIdentity,
+  onboardingLanguages,
   isDirty,
   handleSave,
   isSaving,
-  openEditPersonalModal,
-  openPortfolioModal,
 }) => {
-  return (
-    <div className="relative rounded-3xl overflow-hidden bg-card border border-border/50 shadow-sm group/header">
-      <div className={`h-44 relative ${randomGradient}`}>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent" />
-      </div>
+  const identityTitle =
+    onboardingIdentity?.professionalTitle || displayHeadline || "Add title";
+  const username = String(onboardingIdentity?.username || "").trim();
+  const spokenLanguages = Array.isArray(onboardingLanguages)
+    ? onboardingLanguages.slice(0, 3)
+    : [];
+  const previewLink =
+    resolvedPortfolioLink || resolvedLinkedinLink || resumeLink || "";
 
-      <div className="px-8 pb-10 flex flex-col md:flex-row items-end gap-6 -mt-20 relative z-10">
-        <div
-          className="relative group/avatar cursor-pointer"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <div className="w-32 h-32 md:w-36 md:h-36 rounded-3xl shadow-xl">
-            <div className="w-full h-full rounded-[18px] overflow-hidden bg-muted relative">
-              {personal.avatar ? (
-                <img
-                  src={personal.avatar}
-                  alt={personal.name}
-                  className="w-full h-full object-cover"
-                  onError={() =>
-                    setPersonal((prev) =>
-                      prev.avatar ? { ...prev, avatar: "" } : prev
-                    )
-                  }
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-secondary text-3xl font-bold text-secondary-foreground">
-                  {initials}
-                </div>
-              )}
+  const handleShareProfile = async () => {
+    if (typeof window === "undefined" || !navigator?.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch {
+      // Clipboard access can be denied by browser settings.
+    }
+  };
+
+  const handlePreviewProfile = () => {
+    if (!previewLink || typeof window === "undefined") return;
+    window.open(previewLink, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+      {/* Gradient accent bar */}
+      <div
+        className="h-1 w-full"
+        style={{
+          background:
+            "linear-gradient(90deg, hsl(var(--primary)) 0%, #8b5cf6 40%, #6366f1 70%, #3b82f6 100%)",
+        }}
+        aria-hidden="true"
+      />
+
+      <div className="p-5 md:p-7">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-5">
+            {/* Avatar with glowing ring */}
+            <div
+              className="group/avatar relative shrink-0 cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <div
-                className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
+                className="absolute -inset-[3px] rounded-full opacity-70 blur-[2px] transition-opacity duration-300 group-hover/avatar:opacity-100"
+                style={{
+                  background:
+                    "linear-gradient(135deg, hsl(var(--primary)), #8b5cf6, #6366f1)",
+                }}
+                aria-hidden="true"
+              />
+              <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-card bg-muted md:h-24 md:w-24">
+                {personal.avatar ? (
+                  <img
+                    src={personal.avatar}
+                    alt={personal.name || "Profile avatar"}
+                    className="h-full w-full object-cover"
+                    onError={() =>
+                      setPersonal((prev) =>
+                        prev.avatar ? { ...prev, avatar: "" } : prev
+                      )
+                    }
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-muted-foreground">
+                    {initials}
+                  </div>
+                )}
+              </div>
+
+              {/* Online indicator */}
+              <span
+                className="absolute bottom-0.5 right-0.5 z-10 h-3.5 w-3.5 rounded-full border-2 border-card bg-emerald-500"
+                title="Online"
+                aria-hidden="true"
+              />
+
+              <div
+                className={`absolute -bottom-1 -right-1 z-10 rounded-full border border-border/60 bg-card p-1.5 shadow-sm transition-opacity duration-200 ${
                   uploadingImage
                     ? "opacity-100"
                     : "opacity-0 group-hover/avatar:opacity-100"
                 }`}
               >
                 {uploadingImage ? (
-                  <Loader2 className="animate-spin text-white" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground" />
                 ) : (
-                  <Camera className="text-white" />
+                  <Camera className="h-3.5 w-3.5 text-foreground" />
                 )}
+              </div>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleImageUpload}
+              />
+            </div>
+
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1
+                  className="text-2xl font-bold tracking-tight text-foreground md:text-3xl"
+                  style={{ textWrap: "balance" }}
+                >
+                  {personal.name || "Your Name"}
+                </h1>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-lg text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                  onClick={openEditPersonalModal}
+                  title="Edit profile"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+                {username ? (
+                  <span className="rounded-full bg-muted/60 px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
+                    @{username}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-lg font-semibold text-foreground/90 md:text-xl">
+                  {identityTitle}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-lg text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                  onClick={openEditPersonalModal}
+                  title="Edit title"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-0.5 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                  {displayLocation || "Location not set"}
+                </span>
+                <span
+                  className="h-3 w-px bg-border/80"
+                  aria-hidden="true"
+                />
+                <span className="inline-flex items-center gap-1.5">
+                  <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                  {spokenLanguages.length > 0
+                    ? `Speaks ${spokenLanguages.join(", ")}`
+                    : "Languages not set"}
+                </span>
               </div>
             </div>
           </div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept="image/*"
-            onChange={handleImageUpload}
-          />
 
-          {personal.available && (
-            <div
-              className="absolute bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-full border-4 border-card"
-              title="Available for work"
-            >
-              <div className="w-2.5 h-2.5 bg-white rounded-full" />
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 flex flex-col md:flex-row items-end justify-between gap-4 md:mb-1">
-          <div className="flex flex-col gap-1 text-center md:text-left w-full md:w-auto">
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-              <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-                {personal.name || "Your Name"}
-              </h1>
-              {personal.available && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold tracking-wide border border-emerald-500/30">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  AVAILABLE FOR WORK
-                </span>
-              )}
-            </div>
-
-            <p className="text-lg text-gray-300 font-medium">{displayHeadline}</p>
-
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-400 mt-1">
-              {displayLocation && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{displayLocation}</span>
-                </div>
-              )}
-              {showExperienceYears && (
-                <>
-                  <span className="hidden md:inline">&bull;</span>
-                  <span>{experienceYearsLabel} Years Exp.</span>
-                </>
-              )}
-            </div>
-
-            {displayBio ? (
-              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-gray-300/90 whitespace-pre-wrap">
-                {displayBio}
-              </p>
+          <div className="flex items-center gap-2">
+            {isDirty ? (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                style={{
+                  background:
+                    "linear-gradient(135deg, hsl(var(--primary)), #8b5cf6)",
+                }}
+              >
+                {isSaving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : null}
+                {isSaving ? "Saving…" : "Save"}
+              </button>
             ) : null}
-          </div>
 
-          <div className="flex items-center gap-3">
-            {resolvedGithubLink && (
-              <a
-                href={resolvedGithubLink}
-                target="_blank"
-                className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
-                rel="noreferrer"
-              >
-                <Github className="w-5 h-5" />
-              </a>
-            )}
-            {resolvedLinkedinLink && (
-              <a
-                href={resolvedLinkedinLink}
-                target="_blank"
-                className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
-                rel="noreferrer"
-              >
-                <Linkedin className="w-5 h-5" />
-              </a>
-            )}
-            {resolvedPortfolioLink && (
-              <a
-                href={resolvedPortfolioLink}
-                target="_blank"
-                className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
-                rel="noreferrer"
-              >
-                <Globe className="w-5 h-5" />
-              </a>
-            )}
-            {resumeLink && (
-              <a
-                href={resumeLink}
-                target="_blank"
-                className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all rounded-xl border border-white/10"
-                rel="noreferrer"
-                title="View Resume"
-              >
-                <FileText className="w-5 h-5" />
-              </a>
-            )}
             <button
-              onClick={openPortfolioModal}
-              className="p-2.5 text-primary hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/20"
-              title="Add/Edit Social Links"
+              type="button"
+              onClick={handleShareProfile}
+              className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98]"
             >
-              <Plus className="w-5 h-5" />
+              <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Share
+            </button>
+            <button
+              type="button"
+              onClick={handlePreviewProfile}
+              disabled={!previewLink}
+              className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-sm"
+            >
+              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+              Preview
             </button>
           </div>
         </div>
-
-        {isDirty && (
-          <Button
-            variant="default"
-            size="sm"
-            className="absolute top-4 right-14 bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/20 transition-all font-semibold shadow-lg animate-in fade-in zoom-in duration-300"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            {isSaving ? "Saving..." : "Save Profile"}
-          </Button>
-        )}
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/10"
-          onClick={openEditPersonalModal}
-        >
-          <Edit2 className="w-5 h-5" />
-        </Button>
       </div>
     </div>
   );
 };
 
 export default ProfileHeroCard;
-
