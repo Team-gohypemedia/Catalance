@@ -1744,6 +1744,31 @@ export const guestChat = asyncHandler(async (req, res) => {
                 });
             }
 
+            let invalidFlowAnswersBySlug = existingAnswersBySlug;
+            let capturedFutureNote = "";
+
+            if (correctionCapture.updatedSlugs.length > 0) {
+                invalidFlowAnswersBySlug = correctionCapture.answersBySlug;
+                const capturedPayload = buildPersistedAnswersPayload(
+                    invalidFlowAnswersBySlug,
+                    questions
+                );
+
+                await prisma.aiGuestSession.update({
+                    where: { id: sessionId },
+                    data: {
+                        answers: capturedPayload,
+                        // Keep user on the same required step even after pre-capturing future answers.
+                        currentStep
+                    }
+                });
+
+                console.log(
+                    `[Future Capture] Stored future answer(s) while waiting for current step: ${correctionCapture.updatedSlugs.join(", ")}`
+                );
+                capturedFutureNote = "I noted the project details you shared and saved them. Please answer this current question so we can continue.";
+            }
+
             // INVALID ANSWER FLOW
 
             // 1. Save User's (Invalid) Message
@@ -1759,13 +1784,13 @@ export const guestChat = asyncHandler(async (req, res) => {
             const feedbackCore = aiResponseContent || "Could you please provide more specific details?";
             const sideReply = buildAgentSideReply({
                 userMessage: userMessageText,
-                answersByQuestionText: buildPersistedAnswersPayload(existingAnswersBySlug, questions).byQuestionText
+                answersByQuestionText: buildPersistedAnswersPayload(invalidFlowAnswersBySlug, questions).byQuestionText
             });
             const quickReplyHint = hasNumberedOptionsInMessage(feedbackCore)
                 || countOptionLabelsMentioned(feedbackCore, currentQuestion) >= 2
                 ? ""
                 : buildQuickReplyHint(currentQuestion);
-            const feedbackMsg = [sideReply, feedbackCore, quickReplyHint]
+            const feedbackMsg = [sideReply, capturedFutureNote, feedbackCore, quickReplyHint]
                 .map((part) => String(part || "").trim())
                 .filter(Boolean)
                 .join("\n\n");
