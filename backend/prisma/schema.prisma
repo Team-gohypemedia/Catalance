@@ -61,6 +61,7 @@ model User {
   suspendedAt  DateTime?  // Track when user was suspended for 90-day deletion countdown
   phone        String?    // Contact number
   avatar       String?    // Profile image URL
+  clientProfile ClientProfile?
   freelancerProfile FreelancerProfile?
   freelancerProjects FreelancerProject[]
   marketplace     Marketplace[]
@@ -101,6 +102,14 @@ model FreelancerProfile {
   github         String?
   portfolioProjects Json? @default("[]")
   resume         String?
+  profileDetails Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ClientProfile {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   profileDetails Json     @default("{}")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -183,7 +192,7 @@ model FreelancerProject {
 
   @@index([freelancerId])
   @@index([freelancerId, serviceKey])
-  @@map("Projects")
+  @@map("MatchingProjects")
 }
 
 model CompletedProject {
@@ -240,17 +249,6 @@ model Dispute {
   
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-}
-
-model Profile {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  name           String?
-  services       String[] @default([])
-  skills         Json?
-  workExperience Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
 }
 
 model ServiceCatalog {

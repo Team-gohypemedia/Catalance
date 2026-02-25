@@ -1254,39 +1254,7 @@ const normalizeWorkExperienceEntries = (value) => {
 
 const buildWorkExperienceFromProfileDetails = (profileDetails = {}) => {
   const explicit = normalizeWorkExperienceEntries(profileDetails?.workExperience);
-  if (explicit.length) return explicit;
-
-  const serviceDetails =
-    profileDetails && typeof profileDetails === "object"
-      ? profileDetails.serviceDetails
-      : null;
-  if (!serviceDetails || typeof serviceDetails !== "object") return [];
-
-  return Object.entries(serviceDetails)
-    .map(([serviceKey, detail]) => {
-      if (!detail || typeof detail !== "object") return null;
-
-      const experience = normalizeOnboardingValueLabel(detail.experienceYears);
-      const level = normalizeLabel(detail.workingLevel);
-      const complexity = normalizeLabel(detail.projectComplexity);
-      const projectCount = Array.isArray(detail.projects) ? detail.projects.length : 0;
-
-      if (!experience && !level && !complexity && !projectCount) return null;
-
-      const meta = [];
-      if (level) meta.push(`Level: ${level}`);
-      if (complexity) meta.push(`Complexity: ${complexity}`);
-      if (projectCount) {
-        meta.push(`${projectCount} onboarding project${projectCount > 1 ? "s" : ""}`);
-      }
-
-      return {
-        title: `${getMarketplaceServiceTitle(serviceKey)} - Onboarding`,
-        period: experience || "Experience shared in onboarding",
-        description: meta.join(" | ")
-      };
-    })
-    .filter(Boolean);
+  return explicit;
 };
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -1772,34 +1772,7 @@ const FreelancerProfile = () => {
   const experienceYearsLabel = String(personal.experienceYears ?? "").trim();
   const showExperienceYears =
     Boolean(experienceYearsLabel) && experienceYearsLabel !== "0";
-  const onboardingDerivedWorkExperience = normalizeWorkExperienceEntries(
-    onboardingServiceEntries.map(({ serviceKey, detail }) => {
-      const serviceTitle = getServiceLabel(serviceKey);
-      const experience = normalizeValueLabel(detail?.experienceYears);
-      const level = normalizeValueLabel(detail?.workingLevel);
-      const complexity = normalizeValueLabel(detail?.projectComplexity);
-      const projectCount = Array.isArray(detail?.projects) ? detail.projects.length : 0;
-
-      const meta = [
-        level ? `Level: ${level}` : "",
-        complexity ? `Complexity: ${complexity}` : "",
-        projectCount ? `${projectCount} onboarding project${projectCount > 1 ? "s" : ""}` : "",
-      ]
-        .filter(Boolean)
-        .join(" | ");
-
-      if (!experience && !meta) return null;
-
-      return {
-        title: `${serviceTitle} · Onboarding`,
-        period: experience || "Experience shared in onboarding",
-        description: meta,
-      };
-    })
-  );
-  const effectiveWorkExperience = workExperience.length
-    ? workExperience
-    : onboardingDerivedWorkExperience;
+  const effectiveWorkExperience = workExperience;
   const displayPortfolioProjects = useMemo(
     () =>
       (Array.isArray(portfolioProjects) ? portfolioProjects : []).map(
@@ -2977,6 +2950,3 @@ const FreelancerProfileWrapper = () => {
 };
 
 export default FreelancerProfileWrapper;
-
-
-
