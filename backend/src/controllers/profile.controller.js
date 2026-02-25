@@ -375,7 +375,14 @@ export const getProfile = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.findUnique({
     where: tokenUserId ? { id: tokenUserId } : { email: tokenEmail },
-    include: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      phoneNumber: true,
+      status: true,
+      avatar: true,
       freelancerProfile: true
     }
   });
@@ -513,7 +520,9 @@ export const saveProfile = asyncHandler(async (req, res) => {
 
   const existingUser = await prisma.user.findUnique({
     where: userId ? { id: userId } : { email },
-    include: {
+    select: {
+      id: true,
+      email: true,
       freelancerProfile: true
     }
   });

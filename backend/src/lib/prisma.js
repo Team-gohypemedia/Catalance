@@ -33,6 +33,41 @@ const WRITE_ACTIONS = new Set([
   "updateMany",
   "upsert"
 ]);
+const USER_QUERY_ACTIONS_WITH_ROW_RESULT = new Set([
+  "findUnique",
+  "findUniqueOrThrow",
+  "findFirst",
+  "findFirstOrThrow",
+  "findMany",
+  "create",
+  "update",
+  "upsert",
+  "delete"
+]);
+const USER_SAFE_DEFAULT_SELECT = Object.freeze({
+  id: true,
+  email: true,
+  fullName: true,
+  phoneNumber: true,
+  passwordHash: true,
+  role: true,
+  roles: true,
+  status: true,
+  resetPasswordToken: true,
+  resetPasswordExpires: true,
+  fcmToken: true,
+  otpCode: true,
+  otpExpires: true,
+  onboardingComplete: true,
+  isVerified: true,
+  suspendedAt: true,
+  phone: true,
+  avatar: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
 
 const transientRetryAttempts = Math.max(
   1,
@@ -218,6 +253,27 @@ if (!globalForPrisma.__prisma) {
     prismaInitError = error;
     globalForPrisma.__prisma = null;
   }
+}
+
+if (globalForPrisma.__prisma && !globalForPrisma.__prismaUserProjectionGuardAttached) {
+  globalForPrisma.__prisma.$use(async (params, next) => {
+    if (
+      params?.model === "User" &&
+      USER_QUERY_ACTIONS_WITH_ROW_RESULT.has(String(params?.action || ""))
+    ) {
+      const args = params.args || {};
+      const hasExplicitProjection = hasOwn(args, "select") || hasOwn(args, "include");
+      if (!hasExplicitProjection) {
+        params.args = {
+          ...args,
+          select: USER_SAFE_DEFAULT_SELECT
+        };
+      }
+    }
+
+    return next(params);
+  });
+  globalForPrisma.__prismaUserProjectionGuardAttached = true;
 }
 
 if (globalForPrisma.__prisma && !globalForPrisma.__prismaConnectivityRetryAttached) {
