@@ -271,6 +271,14 @@ const GuestAIDemo = () => {
     const isMultiInput = normalizedInputType === 'multi_select'
         || normalizedInputType === 'multi_option'
         || normalizedInputType === 'grouped_multi_select';
+    const hasOptionInput = Array.isArray(inputConfig.options) && inputConfig.options.length > 0;
+    const shouldShowTextInput = true;
+
+    const normalizeOptionToken = (value = '') =>
+        String(value || '').trim().toLowerCase();
+
+    const optionIsSelected = (value = '') =>
+        selectedOptions.some((selected) => normalizeOptionToken(selected) === normalizeOptionToken(value));
 
     useEffect(() => {
         fetchServices();
@@ -284,12 +292,12 @@ const GuestAIDemo = () => {
     }, [messages, isTyping, inputConfig]);
 
     useEffect(() => {
-        if (!isTyping && inputRef.current) {
+        if (!isTyping && shouldShowTextInput && inputRef.current) {
             setTimeout(() => {
                 inputRef.current?.focus();
             }, 100);
         }
-    }, [isTyping, inputConfig]);
+    }, [isTyping, shouldShowTextInput, inputConfig]);
 
     useEffect(() => {
         setSelectedOptions([]);
@@ -647,20 +655,26 @@ const GuestAIDemo = () => {
                             </motion.div>
                         )}
 
-                        {!isTyping && inputConfig.options && inputConfig.options.length > 0 && (
+                        {!isTyping && hasOptionInput && (
                             <div className="ml-0 flex flex-wrap gap-2.5 pt-1 md:ml-11">
                                 {inputConfig.options.map((option, idx) => {
                                     const label = typeof option === 'string' ? option : option.label;
                                     const value = String(typeof option === 'string' ? option : (option.value ?? option.label));
-                                    const isSelected = selectedOptions.includes(value);
+                                    const isSelected = optionIsSelected(value);
 
                                     const handleOptionClick = () => {
                                         if (isMultiInput) {
-                                            setSelectedOptions(prev =>
-                                                prev.includes(value)
-                                                    ? prev.filter(v => v !== value)
-                                                    : [...prev, value]
-                                            );
+                                            setSelectedOptions((prev) => {
+                                                const alreadySelected = prev.some(
+                                                    (v) => normalizeOptionToken(v) === normalizeOptionToken(value)
+                                                );
+                                                if (alreadySelected) {
+                                                    return prev.filter(
+                                                        (v) => normalizeOptionToken(v) !== normalizeOptionToken(value)
+                                                    );
+                                                }
+                                                return [...prev, value];
+                                            });
                                         } else {
                                             handleSendMessage(null, value);
                                         }
@@ -670,15 +684,16 @@ const GuestAIDemo = () => {
                                         <Button
                                             key={idx}
                                             type="button"
-                                            variant="outline"
-                                            className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider ${isSelected
-                                                ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
+                                            variant={isSelected ? "default" : "outline"}
+                                            className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all ${isSelected
+                                                ? 'border-primary bg-primary text-primary-foreground shadow-md ring-2 ring-primary/50 hover:bg-primary/90'
                                                 : isDark
                                                     ? 'border-white/20 bg-white/[0.04] text-slate-100 hover:bg-white/[0.09]'
                                                     : 'border-black/15 bg-white text-slate-700 hover:border-primary/50 hover:bg-primary/10'
                                                 }`}
                                             onClick={handleOptionClick}
                                         >
+                                            {isSelected && <Check className="mr-1.5 h-3.5 w-3.5" />}
                                             {label}
                                         </Button>
                                     );
@@ -701,7 +716,7 @@ const GuestAIDemo = () => {
 
                 <div className={`border-t p-4 md:px-6 md:py-5 ${isDark ? 'border-white/10 bg-black/35' : 'border-black/10 bg-white/90'}`}>
                     <div className="mx-auto max-w-4xl space-y-3">
-                        {!isMultiInput && (
+                        {shouldShowTextInput && (
                             <form onSubmit={handleSendMessage} className="relative">
                                 <Input
                                     ref={inputRef}
