@@ -26,7 +26,6 @@ const CatalanceHero = () => {
   }, []);
   const textColor = isDark ? "text-white" : "text-gray-900";
   const subTextColor = isDark ? "text-neutral-300" : "text-gray-600";
-  const bgColor = isDark ? "bg-black" : "bg-white";
 
   return (
     <>
@@ -113,21 +112,24 @@ const CatalanceHero = () => {
         />
 
         {/* ================== CONTENT ================== */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-20 text-center">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-16 md:py-20 text-center">
           {/* Badge */}
           <div
             className={`flex justify-center mb-4 mt-16 ${isMounted ? "animate-fadeInUp" : "opacity-0"
               }`}
           >
             <Badge
-              className={`group [&>svg]:size-6 [&>svg]:pointer-events-auto ${isDark
+              className={`group [&>svg]:size-5 sm:[&>svg]:size-6 [&>svg]:pointer-events-auto ${isDark
                 ? "bg-transparent hover:bg-white/5 text-white border-white/20"
                 : "bg-white/80 hover:bg-white text-gray-900 border-gray-200 shadow-sm"
-                } border backdrop-blur-md px-6 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer`}
+                } border backdrop-blur-md max-w-full justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-6 py-2.5 text-[11px] sm:text-sm font-medium whitespace-nowrap transition-all duration-300 cursor-pointer`}
             >
               <SparklesIcon size={24} className="text-primary" />
-              <span className="text-primary font-semibold">10,000+</span>{" "}
-              freelancers are already earning on Catalance
+              <span className="text-primary font-semibold">10,000+</span>
+              <span className="sm:hidden">freelancers earn on Catalance</span>
+              <span className="hidden sm:inline">
+                freelancers are already earning on Catalance
+              </span>
             </Badge>
           </div>
 
@@ -137,7 +139,7 @@ const CatalanceHero = () => {
             style={{ animationDelay: "100ms" }}
           >
             <h1
-              className={`font-medium tracking-tight leading-tight whitespace-nowrap mb-4 ${textColor}`}
+              className={`font-medium tracking-tight leading-tight whitespace-normal text-balance max-w-4xl mx-auto mb-4 ${textColor}`}
               style={{ fontSize: "clamp(1.5rem, 4vw, 4rem)" }}
             >
               Where <span className="text-primary">Great Work</span> Meets Great <span className="text-primary">Opportunities</span>.
@@ -146,7 +148,7 @@ const CatalanceHero = () => {
 
           {/* Subhead */}
           <p
-            className={`text-lg md:text-xl lg:text-2xl ${subTextColor} mx-auto mb-6 font-light leading-relaxed whitespace-nowrap ${isMounted ? "animate-fadeInUp" : "opacity-0"
+            className={`text-base sm:text-lg md:text-xl lg:text-2xl ${subTextColor} max-w-3xl mx-auto mb-6 font-light leading-relaxed whitespace-normal text-balance ${isMounted ? "animate-fadeInUp" : "opacity-0"
               }`}
             style={{ animationDelay: "200ms" }}
           >
@@ -155,13 +157,13 @@ const CatalanceHero = () => {
 
           {/* Cards Container */}
           <div
-            className={`relative max-w-3xl mx-auto mb-16 px-4 ${isMounted ? "animate-fadeInUp" : "opacity-0"
+            className={`relative max-w-3xl mx-auto mb-16 px-0 sm:px-4 ${isMounted ? "animate-fadeInUp" : "opacity-0"
               }`}
             style={{ animationDelay: "300ms" }}
           >
-            <div className="grid md:grid-cols-2 gap-15 relative">
+            <div className="grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-15 relative">
               {/* OR Circle */}
-              <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+              <div className="hidden lg:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
                 <div
                   className={`relative w-22 h-22 rounded-full ${isDark
                     ? "bg-black border-primary/50"
@@ -182,7 +184,7 @@ const CatalanceHero = () => {
 
               {/* Business Card */}
               <Link to="/service" className="block">
-                <div className="group relative p-6 rounded-3xl flex flex-col bg-background bg-linear-to-bl from-primary/40 via-background to-background text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02]">
+                <div className="group relative p-5 sm:p-6 rounded-3xl flex flex-col bg-black bg-linear-to-bl from-primary/40 via-black to-black text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02]">
                   <div className="mb-6 flex flex-col items-start">
                     <div className="px-0 py-2">
                       <Briefcase className="w-5 h-5 text-primary" />
@@ -191,7 +193,7 @@ const CatalanceHero = () => {
                       For Businesses
                     </span>
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
                     Find Talent You Can Count On
                   </h3>
                   <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
@@ -236,7 +238,7 @@ const CatalanceHero = () => {
                   <div className="w-full mt-auto">
                     <Button
                       size="lg"
-                      className="w-full group/btn font-semibold px-6 py-6 text-base shadow-lg shadow-orange-500/20 transition-all duration-300 hover:shadow-orange-500/40"
+                      className="w-full group/btn font-semibold px-6 py-5 sm:py-6 text-base shadow-lg shadow-orange-500/20 transition-all duration-300 hover:shadow-orange-500/40"
                     >
                       Hire Now
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
@@ -248,7 +250,7 @@ const CatalanceHero = () => {
 
               {/* Freelancer Card */}
               <Link to="/signup?role=freelancer" className="block">
-                <div className="group relative p-6 rounded-3xl flex flex-col bg-background bg-linear-to-bl from-primary/40 via-background to-background text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02]">
+                <div className="group relative p-5 sm:p-6 rounded-3xl flex flex-col bg-black bg-linear-to-bl from-primary/40 via-black to-black text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02]">
                   <div className="mb-6 flex flex-col items-start">
                     <div className="px-0 py-2">
                       <Zap className="w-5 h-5 text-primary" />
@@ -257,7 +259,7 @@ const CatalanceHero = () => {
                       For Freelancers
                     </span>
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
                     Find Clients Who Value Your Work
                   </h3>
                   <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
@@ -304,7 +306,7 @@ const CatalanceHero = () => {
                   <div className="w-full mt-auto">
                     <Button
                       size="lg"
-                      className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-6 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/40"
+                      className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-5 sm:py-6 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/40"
                     >
                       Get Hired Now
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />

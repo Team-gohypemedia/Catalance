@@ -1,12 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import Code2 from "lucide-react/dist/esm/icons/code-2";
 import Palette from "lucide-react/dist/esm/icons/palette";
 import PenTool from "lucide-react/dist/esm/icons/pen-tool";
-import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import Layers from "lucide-react/dist/esm/icons/layers";
-import Zap from "lucide-react/dist/esm/icons/zap";
 import Smartphone from "lucide-react/dist/esm/icons/smartphone";
 import Terminal from "lucide-react/dist/esm/icons/terminal";
 import Database from "lucide-react/dist/esm/icons/database";
@@ -18,6 +16,33 @@ import Box from "lucide-react/dist/esm/icons/box";
 import Monitor from "lucide-react/dist/esm/icons/monitor";
 
 const DecorativeIcons = ({ isDark = true }) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia("(max-width: 639px)");
+    const handleChange = (event) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, []);
+
+  const iconScale = isMobile ? 0.68 : 1;
+  const iconContainerPadding = isMobile ? "0.5rem" : "0.75rem";
+  const glowBlur = isMobile ? "blur(12px)" : "blur(20px)";
+  const glowScale = isMobile ? 1.5 : 2;
+  const glowShadowOpacity = isMobile ? (isDark ? 0.2 : 0.14) : isDark ? 0.3 : 0.2;
+
   const icons = [
     // Left side icons - moved further from edge (10-18% range) and two columns
     { id: 1, Icon: Code2, x: "10%", y: "12%", delay: 0, size: 36, glow: true },
@@ -93,8 +118,8 @@ const DecorativeIcons = ({ isDark = true }) => {
               className="absolute inset-0 rounded-2xl"
               style={{
                 background: `radial-gradient(circle, rgba(250, 204, 21, 0.4) 0%, transparent 70%)`,
-                filter: "blur(20px)",
-                transform: "scale(2)",
+                filter: glowBlur,
+                transform: `scale(${glowScale})`,
               }}
               animate={{
                 opacity: isDark ? [0.1, 0.2, 0.1] : [0.2, 0.35, 0.2],
@@ -109,26 +134,27 @@ const DecorativeIcons = ({ isDark = true }) => {
 
           {/* Icon container */}
           <div
-            className="relative p-3 rounded-2xl backdrop-blur-md"
+            className="relative rounded-2xl backdrop-blur-md"
             style={{
+              padding: iconContainerPadding,
               background: isDark
                 ? "linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, rgba(250, 204, 21, 0.05) 100%)"
                 : "linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.08) 100%)",
               border: `1px solid rgba(250, 204, 21, ${isDark ? 0.3 : 0.4})`,
               boxShadow: glow
                 ? `0 0 30px rgba(250, 204, 21, ${
-                    isDark ? 0.3 : 0.2
+                    glowShadowOpacity
                   }), inset 0 0 20px rgba(250, 204, 21, 0.1)`
                 : `0 0 15px rgba(250, 204, 21, ${isDark ? 0.15 : 0.1})`,
             }}
           >
             <Icon
-              size={size}
+              size={Math.round(size * iconScale)}
               className="text-primary"
               strokeWidth={1.5}
               style={{
                 filter: glow
-                  ? `drop-shadow(0 0 8px rgba(250, 204, 21, 0.6))`
+                  ? `drop-shadow(0 0 ${isMobile ? 5 : 8}px rgba(250, 204, 21, 0.6))`
                   : "none",
               }}
             />

@@ -445,8 +445,8 @@ const ServiceCard = memo(
         className={`
         group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full
         ${isSelected
-            ? "border-[#ffc800] shadow-[0_0_40px_-10px_rgba(255,200,0,0.3)] bg-background"
-            : "border-white/20 bg-background shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:border-[#ffc800]/50 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2"
+            ? "border-[#ffc800] shadow-[0_0_40px_-10px_rgba(255,200,0,0.3)] bg-black"
+            : "border-white/20 bg-black shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:border-[#ffc800]/50 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2"
           }
       `}
       >

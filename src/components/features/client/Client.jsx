@@ -3,7 +3,7 @@ import ClientOnboading from "./ClientOnboading";
 
 const Client = () => {
   return (
-    <main className="relative min-h-screen bg-background text-foreground overflow-hidden transition-colors">
+    <main className="relative min-h-screen bg-black text-foreground overflow-hidden transition-colors">
       <CursorSpotlight />
       <div
         aria-hidden="true"
