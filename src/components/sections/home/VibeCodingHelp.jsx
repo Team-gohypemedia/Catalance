@@ -20,11 +20,11 @@ const VibeCodingHelp = () => {
           {/* Left Content */}
           <div className="flex-1 text-left max-w-lg">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-white mb-4 leading-tight">
-              Need help with Vibe coding?
+              Need expert support for your project?
             </h2>
             <p className="text-white/90 text-base md:text-lg mb-8 leading-relaxed">
-              Get matched with the right expert to keep building and marketing
-              your project
+              Get matched with vetted specialists to plan, build, and grow your
+              business with confidence.
             </p>
             <Link to="/service">
               <Button

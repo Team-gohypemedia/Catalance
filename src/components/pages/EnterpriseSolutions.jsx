@@ -6,7 +6,6 @@ import { SplitText } from "gsap/SplitText";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spotlight } from "@/components/ui/spotlight";
-import { Card, CardContent } from "@/components/ui/card";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Building2 from "lucide-react/dist/esm/icons/building-2";
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
@@ -17,7 +16,6 @@ import BarChart3 from "lucide-react/dist/esm/icons/bar-chart-3";
 import Headphones from "lucide-react/dist/esm/icons/headphones";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
-import { useTheme } from "@/components/providers/theme-provider";
 
 gsap.registerPlugin(SplitText, useGSAP);
 
@@ -55,7 +53,6 @@ const EnterpriseSolutions = () => {
   const containerRef = useRef(null);
   const heroTextRef = useRef(null);
   const heroGradientRef = useRef(null);
-  const { theme } = useTheme();
   const [resolvedTheme, setResolvedTheme] = useState("dark");
 
   useEffect(() => {
@@ -207,11 +204,6 @@ const EnterpriseSolutions = () => {
             tools, security, and support designed for organizations at scale.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/contact">
-              <Button size="lg" className="h-14 px-8 text-lg rounded-full">
-                Schedule a Demo <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
             <Link to="/contact">
               <Button
                 size="lg"

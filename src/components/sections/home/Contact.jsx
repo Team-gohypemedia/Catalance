@@ -1,5 +1,4 @@
 import { useRef, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -10,18 +9,35 @@ import {
 } from "@/components/ui/accordion";
 import MapPin from "lucide-react/dist/esm/icons/map-pin";
 import Phone from "lucide-react/dist/esm/icons/phone";
-import Mail from "lucide-react/dist/esm/icons/mail";
 import LifeBuoy from "lucide-react/dist/esm/icons/life-buoy";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Send from "lucide-react/dist/esm/icons/send";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
-import { useTheme } from "@/components/providers/theme-provider";
+import { toast } from "sonner";
+import { submitContactInquiry } from "@/shared/lib/api-client";
+
+const SUBJECT_OPTIONS = [
+  "General Inquiry",
+  "Project Manager Not Responding",
+  "Freelancer Not Responding",
+  "Client Not Responding",
+  "Payment & Billing Issue",
+  "Account Access Issue",
+  "Technical Support",
+];
 
 const Contact = () => {
-  const { theme } = useTheme();
   const [resolvedTheme, setResolvedTheme] = useState("dark");
   const containerRef = useRef(null);
   const formRef = useRef(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    subject: "General Inquiry",
+    message: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formStatus, setFormStatus] = useState({ type: "", message: "" });
 
   // Detect actual theme
   useEffect(() => {
@@ -44,8 +60,6 @@ const Contact = () => {
   const borderColor = isDark ? "border-white/10" : "border-black/5";
   const inputBg = isDark ? "bg-white/5" : "bg-white";
   const mutedText = isDark ? "text-gray-400" : "text-gray-600";
-  const primaryText = "text-[#f2cc0d]";
-
   useGSAP(
     () => {
       // Hero Fade In
@@ -71,6 +85,51 @@ const Contact = () => {
     },
     { scope: containerRef },
   );
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    setFormStatus({ type: "", message: "" });
+    setIsSubmitting(true);
+
+    try {
+      await submitContactInquiry({
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        subject: formData.subject.trim(),
+        message: formData.message.trim(),
+      });
+
+      setFormStatus({
+        type: "success",
+        message: "Message sent successfully. We will get back to you shortly.",
+      });
+      toast.success("Message sent successfully.");
+      setFormData({
+        name: "",
+        email: "",
+        subject: "General Inquiry",
+        message: "",
+      });
+    } catch (error) {
+      const message =
+        error?.message ||
+        "We could not send your message right now. Please try again.";
+      setFormStatus({ type: "error", message });
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <main
@@ -114,8 +173,8 @@ const Contact = () => {
                 </span>
               </h1>
               <p className="text-gray-300 text-lg md:text-xl font-normal leading-relaxed max-w-2xl mx-auto">
-                Have a question or enterprise inquiry? Our team is ready to help
-                you deploy the future.
+                Have a question or support issue? Our team is ready to help
+                you quickly.
               </p>
             </div>
           </div>
@@ -128,8 +187,8 @@ const Contact = () => {
               {
                 icon: Briefcase,
                 title: "Sales Inquiry",
-                value: "gourav@gohypemedia.com",
-                link: "mailto:gourav@gohypemedia.com",
+                value: "catalanceofficial@gmail.com",
+                link: "mailto:catalanceofficial@gmail.com",
               },
               {
                 icon: LifeBuoy,
@@ -196,16 +255,20 @@ const Contact = () => {
                   within 24 hours.
                 </p>
               </div>
-              <form ref={formRef} className="flex flex-col gap-6">
+              <form ref={formRef} className="flex flex-col gap-6" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <label className="flex flex-col gap-2">
                     <span className={`text-sm font-semibold ml-1 ${mutedText}`}>
                       Name
                     </span>
                     <input
+                      name="name"
                       className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 ${isDark ? "text-white placeholder-gray-500" : "text-black placeholder-gray-400"} focus:outline-none focus:ring-1 focus:ring-[#f2cc0d] focus:border-[#f2cc0d] transition-all`}
                       placeholder="John Doe"
                       type="text"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
                     />
                   </label>
                   <label className="flex flex-col gap-2">
@@ -213,9 +276,13 @@ const Contact = () => {
                       Work Email
                     </span>
                     <input
+                      name="email"
                       className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 ${isDark ? "text-white placeholder-gray-500" : "text-black placeholder-gray-400"} focus:outline-none focus:ring-1 focus:ring-[#f2cc0d] focus:border-[#f2cc0d] transition-all`}
                       placeholder="john@company.com"
                       type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
                     />
                   </label>
                 </div>
@@ -225,20 +292,19 @@ const Contact = () => {
                   </span>
                   <div className="relative">
                     <select
+                      name="subject"
                       className={`w-full ${inputBg} border ${borderColor} rounded-xl px-4 h-14 ${isDark ? "text-white" : "text-black"} appearance-none focus:outline-none focus:ring-1 focus:ring-[#f2cc0d] focus:border-[#f2cc0d] transition-all cursor-pointer`}
+                      value={formData.subject}
+                      onChange={handleInputChange}
                     >
-                      <option className={isDark ? "bg-[#221f10]" : "bg-white"}>
-                        General Inquiry
-                      </option>
-                      <option className={isDark ? "bg-[#221f10]" : "bg-white"}>
-                        Enterprise Sales
-                      </option>
-                      <option className={isDark ? "bg-[#221f10]" : "bg-white"}>
-                        Technical Support
-                      </option>
-                      <option className={isDark ? "bg-[#221f10]" : "bg-white"}>
-                        Partnerships
-                      </option>
+                      {SUBJECT_OPTIONS.map((subjectOption) => (
+                        <option
+                          key={subjectOption}
+                          className={isDark ? "bg-[#221f10]" : "bg-white"}
+                        >
+                          {subjectOption}
+                        </option>
+                      ))}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none w-5 h-5" />
                   </div>
@@ -248,16 +314,30 @@ const Contact = () => {
                     Message
                   </span>
                   <textarea
+                    name="message"
                     className={`w-full ${inputBg} border ${borderColor} rounded-xl p-4 min-h-[160px] ${isDark ? "text-white placeholder-gray-500" : "text-black placeholder-gray-400"} resize-y focus:outline-none focus:ring-1 focus:ring-[#f2cc0d] focus:border-[#f2cc0d] transition-all`}
                     placeholder="How can we help you?"
+                    value={formData.message}
+                    onChange={handleInputChange}
+                    required
                   ></textarea>
                 </label>
                 <button
                   className="mt-2 w-fit flex items-center justify-center rounded-full h-12 px-8 bg-[#f2cc0d] text-[#232010] text-base font-bold shadow-[0_4px_20px_rgba(242,204,13,0.3)] hover:shadow-[0_6px_25px_rgba(242,204,13,0.5)] hover:-translate-y-0.5 transition-all"
-                  type="button"
+                  type="submit"
+                  disabled={isSubmitting}
                 >
-                  Send Message <Send className="w-4 h-4 ml-2" />
+                  {isSubmitting ? "Sending..." : "Send Message"}{" "}
+                  <Send className="w-4 h-4 ml-2" />
                 </button>
+                {formStatus.message ? (
+                  <p
+                    className={`text-sm ${formStatus.type === "success" ? "text-green-400" : "text-red-400"}`}
+                    role="status"
+                  >
+                    {formStatus.message}
+                  </p>
+                ) : null}
               </form>
             </div>
 

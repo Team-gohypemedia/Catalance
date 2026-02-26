@@ -11,7 +11,7 @@ import {
 } from "framer-motion";
 
 import React, { useState } from "react";
-import logo from "@/assets/logos/logo.png";
+import logo from "@/assets/logos/logo.svg";
 
 export const Navbar = ({ children, className, isHome, isDark }) => {
   const { scrollY } = useScroll();
@@ -237,7 +237,18 @@ export const MobileNavToggle = ({ isOpen, onClick }) => {
 };
 
 export const NavbarLogo = () => (
-  <img src={logo} alt="Catalance logo" className="h-8 w-auto object-contain pl-2" />
+  <div className="flex items-center gap-2">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
+      <img
+        src={logo}
+        alt="Catalance logo mark"
+        className="h-5 w-5 object-contain brightness-0 saturate-100"
+      />
+    </div>
+    <span className="text-lg font-bold tracking-tight text-black dark:text-white">
+      Catalance
+    </span>
+  </div>
 );
 
 export const NavbarButton = ({

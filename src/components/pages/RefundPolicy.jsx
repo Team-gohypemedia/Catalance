@@ -58,8 +58,8 @@ const RefundPolicy = () => {
             </p>
             <p>
               Refunds for hourly contracts are at the freelancer&apos;s
-              discretion. Upwork notes that freelancers can issue a full,
-              partial, or no refund.
+              discretion. Depending on contract terms and work status, a
+              freelancer may issue a full, partial, or no refund.
             </p>
           </Section>
 
@@ -78,8 +78,7 @@ const RefundPolicy = () => {
               <li>
                 <strong>Dispute or mediation:</strong> If the freelancer
                 declines, the client may open a dispute. Catalance offers
-                mediation similar to Upwork&apos;s process for fixed-price
-                contracts.
+                mediation for eligible fixed-price contracts.
               </li>
             </ol>
           </Section>
@@ -87,22 +86,19 @@ const RefundPolicy = () => {
           <Section title="Refund of fees">
             <p>
               If a client receives a refund, Catalance will refund the
-              corresponding freelancer service fee. Upwork also returns the
-              freelancer service fee when a client is refunded.
+              corresponding freelancer service fee.
             </p>
             <p>
               Contract initiation fees and processing charges are
-              non-refundable. Upwork&apos;s once-per-contract fee is also not
-              refunded after payment.
+              non-refundable after payment.
             </p>
           </Section>
 
           <Section title="Refund to payment method or credit balance">
             <p>
               Funds are returned to the original payment method when possible.
-              Fiverr&apos;s refund guide notes that canceled order funds are
-              applied to user balance by default and that refund requests may
-              take up to ten days.
+              In some cases, funds may be added as account credit based on
+              payment partner constraints and account settings.
             </p>
             <p>
               Catalance allows clients to choose either Catalance credit or a
@@ -120,8 +116,8 @@ const RefundPolicy = () => {
 
           <Section title="For freelancers">
             <p>
-              A service fee is charged on each payment earned. Upwork charges a
-              variable fee between 0% and 15% per contract.
+              A service fee is charged on each payment earned. The applicable
+              fee is variable by contract.
             </p>
             <p>
               Catalance will display the applicable fee before a job is
@@ -134,8 +130,7 @@ const RefundPolicy = () => {
           <Section title="For clients">
             <p>
               Clients pay a marketplace or transaction fee on each payment.
-              Upwork charges a 5% fee (3% if paying via ACH) and a contract
-              initiation fee between $0.99 and $14.99.
+              Catalance may also charge a one-time contract initiation fee.
             </p>
             <p>
               Catalance&apos;s fee is disclosed at checkout and may vary by
