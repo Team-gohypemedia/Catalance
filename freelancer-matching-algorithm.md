@@ -35,7 +35,7 @@ From the generated proposal markdown we can also parse:
 
 Each freelancer has a rich profile stored across two models:
 
-#### `User` model fields
+#### `FreelancerProfile` model fields
 | Field | Type | Use for Matching |
 |---|---|---|
 | `services` | `String[]` | Primary filter — `["web_development", "lead_generation"]` |
@@ -45,9 +45,8 @@ Each freelancer has a rich profile stored across two models:
 | `rating` | `Decimal` | Quality ranking boost |
 | `reviewCount` | `Int` | Social proof boost |
 | `profileDetails` | `Json` | Deep profile with `serviceDetails`, `availability`, `globalIndustryFocus` |
-| `hourlyRate` | `Decimal?` | Budget compatibility |
 
-#### `FreelancerProject` model fields (each freelancer can have multiple)
+#### `MatchingProjects` model fields (each freelancer can have multiple)
 | Field | Type | Use for Matching |
 |---|---|---|
 | `serviceKey` | `String` | Service type — `"web_development"`, `"ai_automation"` |

@@ -41,6 +41,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { getSession } from "@/shared/lib/auth-storage";
+import { rankFreelancersForProposal } from "@/shared/lib/freelancer-matching";
 import {
   listFreelancers,
   fetchChatConversations,
@@ -172,144 +173,6 @@ const formatBudget = (budget) => {
   return `₹${finalValue.toLocaleString("en-IN")}`;
 };
 
-const MATCH_STOP_WORDS = new Set([
-  "and",
-  "the",
-  "with",
-  "for",
-  "from",
-  "that",
-  "this",
-  "your",
-  "you",
-  "our",
-  "are",
-  "was",
-  "were",
-  "have",
-  "has",
-  "had",
-  "will",
-  "can",
-  "yes",
-  "no",
-  "open",
-  "need",
-  "want",
-  "build",
-  "project",
-  "client",
-  "work",
-  "service",
-  "services",
-]);
-
-const normalizeTokenText = (value) =>
-  String(value || "")
-    .toLowerCase()
-    .replace(/[_/]/g, " ")
-    .replace(/[^a-z0-9\s]/g, " ")
-    .trim();
-
-const tokenizeText = (value) =>
-  normalizeTokenText(value)
-    .split(/\s+/)
-    .filter((token) => token.length > 2 && !MATCH_STOP_WORDS.has(token));
-
-const flattenTokenValues = (value) => {
-  if (value === null || value === undefined) return [];
-  if (Array.isArray(value)) return value.flatMap((item) => flattenTokenValues(item));
-  if (typeof value === "object") {
-    return Object.values(value).flatMap((item) => flattenTokenValues(item));
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    return [String(value)];
-  }
-  return [];
-};
-
-const appendTokens = (target, value) => {
-  flattenTokenValues(value).forEach((entry) => {
-    tokenizeText(entry).forEach((token) => target.add(token));
-  });
-};
-
-const getProposalRequirementTokens = (proposal) => {
-  const tokens = new Set();
-  if (!proposal) return tokens;
-
-  appendTokens(tokens, proposal.projectTitle);
-  appendTokens(tokens, proposal.service);
-  appendTokens(tokens, proposal.serviceKey);
-  appendTokens(tokens, proposal.timeline);
-  appendTokens(tokens, proposal.summary || proposal.content || "");
-
-  return tokens;
-};
-
-const getFreelancerProfileTokens = (freelancer) => {
-  const tokens = new Set();
-  const profileDetails =
-    freelancer?.profileDetails && typeof freelancer.profileDetails === "object"
-      ? freelancer.profileDetails
-      : {};
-
-  appendTokens(tokens, freelancer?.skills);
-  appendTokens(tokens, freelancer?.bio);
-  appendTokens(tokens, freelancer?.jobTitle);
-  appendTokens(tokens, freelancer?.portfolioProjects);
-  appendTokens(tokens, freelancer?.freelancerProjects);
-  appendTokens(tokens, profileDetails?.services);
-  appendTokens(tokens, profileDetails?.globalIndustryFocus);
-  appendTokens(tokens, profileDetails?.globalIndustryOther);
-  appendTokens(tokens, profileDetails?.role);
-  appendTokens(tokens, profileDetails?.identity);
-  appendTokens(tokens, profileDetails?.serviceDetails);
-
-  return tokens;
-};
-
-const scoreFreelancerMatch = (freelancer, proposal, requirementTokens) => {
-  if (!proposal || requirementTokens.size === 0) {
-    return { score: 0, matchHighlights: [] };
-  }
-
-  const freelancerTokens = getFreelancerProfileTokens(freelancer);
-  const overlaps = [];
-
-  requirementTokens.forEach((token) => {
-    if (freelancerTokens.has(token)) {
-      overlaps.push(token);
-    }
-  });
-
-  const profileServices = Array.isArray(freelancer?.profileDetails?.services)
-    ? freelancer.profileDetails.services.map((service) => String(service || "").toLowerCase())
-    : [];
-  const requestedService = String(proposal?.serviceKey || proposal?.service || "")
-    .toLowerCase()
-    .trim();
-  const serviceMatch =
-    requestedService &&
-    profileServices.some(
-      (service) =>
-        service === requestedService ||
-        service.includes(requestedService) ||
-        requestedService.includes(service),
-    );
-
-  const score = overlaps.length * 3 + (serviceMatch ? 12 : 0);
-  return {
-    score,
-    matchHighlights: Array.from(new Set(overlaps)).slice(0, 4),
-  };
-};
-
-const parseRating = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 const readSavedProposalsFromKeys = (listKey, singleKey) => {
   let proposals = [];
   const listRaw = window.localStorage.getItem(listKey);
@@ -425,6 +288,38 @@ const persistSavedProposalsToStorage = (proposals, activeId, storageKeys) => {
     window.localStorage.setItem(keys.singleKey, JSON.stringify(active));
   }
 };
+
+const hasFreelancerRole = (user = {}) => {
+  const primaryRole = String(user?.role || "").toUpperCase();
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((entry) => String(entry || "").toUpperCase())
+    : [];
+  return primaryRole === "FREELANCER" || roles.includes("FREELANCER");
+};
+
+const getFreelancerDisplayRole = (user = {}) =>
+  hasFreelancerRole(user) ? "FREELANCER" : user?.role || "Freelancer";
+
+const shouldHydrateProjectProposal = (project = {}) => {
+  const status = String(project?.status || "").toUpperCase();
+  const hasProposals =
+    Array.isArray(project?.proposals) && project.proposals.length > 0;
+  return status === "DRAFT" || hasProposals;
+};
+
+const mapProjectToSavedProposal = (project = {}) =>
+  normalizeSavedProposal({
+    id: `project-${project.id}`,
+    projectId: project.id,
+    syncedProjectId: project.id,
+    projectTitle: project.title || "Proposal",
+    summary: project.description || "",
+    content: project.description || "",
+    budget: project.budget || "",
+    timeline: project.timeline || "",
+    createdAt: project.createdAt || new Date().toISOString(),
+    updatedAt: project.updatedAt || project.createdAt || new Date().toISOString()
+  });
 
 const generateGradient = (id) => {
   if (!id) return "bg-[#FFD700]";
@@ -659,29 +554,7 @@ const ClientDashboardContent = () => {
     if (!Array.isArray(suggestedFreelancers) || suggestedFreelancers.length === 0) {
       return [];
     }
-
-    const requirementTokens = getProposalRequirementTokens(savedProposal);
-
-    return suggestedFreelancers
-      .map((freelancer) => {
-        const { score, matchHighlights } = scoreFreelancerMatch(
-          freelancer,
-          savedProposal,
-          requirementTokens,
-        );
-        return {
-          ...freelancer,
-          matchScore: score,
-          matchHighlights,
-        };
-      })
-      .sort((a, b) => {
-        if (b.matchScore !== a.matchScore) {
-          return b.matchScore - a.matchScore;
-        }
-
-        return parseRating(b.rating) - parseRating(a.rating);
-      });
+    return rankFreelancersForProposal(suggestedFreelancers, savedProposal);
   }, [suggestedFreelancers, savedProposal]);
 
   // Load projects
@@ -857,6 +730,25 @@ const ClientDashboardContent = () => {
     loadProjects();
   }, [authFetch]);
 
+  useEffect(() => {
+    if (!Array.isArray(projects) || projects.length === 0) return;
+
+    const projectDerivedProposals = projects
+      .filter((project) => shouldHydrateProjectProposal(project))
+      .map((project) => mapProjectToSavedProposal(project));
+
+    if (projectDerivedProposals.length === 0) return;
+
+    const merged = mergeProposalsBySignature(
+      savedProposals,
+      projectDerivedProposals,
+    );
+
+    if (merged.length === savedProposals.length) return;
+
+    persistSavedProposalState(merged, activeProposalId);
+  }, [projects, savedProposals, activeProposalId]);
+
   // Load freelancers
   // Load freelancers (chat conversations)
   useEffect(() => {
@@ -894,21 +786,42 @@ const ClientDashboardContent = () => {
       }
     };
     loadChatFreelancers();
-    loadChatFreelancers();
   }, []);
 
   // Load all freelancers for suggestions
   useEffect(() => {
+    if (!sessionUser?.id) return;
+
     const loadAllFreelancers = async () => {
       try {
-        const all = await listFreelancers({ onboardingComplete: "true" });
-        setSuggestedFreelancers(Array.isArray(all) ? all : []);
+        const [activeFreelancers, pendingFreelancers] = await Promise.all([
+          listFreelancers({
+            onboardingComplete: "true",
+            status: "ACTIVE",
+          }),
+          listFreelancers({
+            onboardingComplete: "true",
+            status: "PENDING_APPROVAL",
+          }),
+        ]);
+
+        const merged = [...(activeFreelancers || []), ...(pendingFreelancers || [])];
+        const uniqueById = merged.filter(
+          (freelancer, index, self) =>
+            freelancer?.id &&
+            self.findIndex((item) => item?.id === freelancer.id) === index,
+        );
+        const normalized = uniqueById.filter(
+          (freelancer) =>
+            freelancer?.id !== sessionUser.id && hasFreelancerRole(freelancer),
+        );
+        setSuggestedFreelancers(normalized);
       } catch (err) {
         console.error("Failed to load suggested freelancers:", err);
       }
     };
     loadAllFreelancers();
-  }, []);
+  }, [sessionUser?.id]);
 
   // Sort projects by date (most recent first)
   const uniqueProjects = useMemo(() => {
@@ -2022,23 +1935,20 @@ const ClientDashboardContent = () => {
                   <div className="flex-1 overflow-y-auto py-6 px-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                       {(() => {
-                        const projectTitle =
-                          savedProposal?.projectTitle?.trim();
+                        const sourceProjectId =
+                          savedProposal?.syncedProjectId ||
+                          savedProposal?.projectId ||
+                          null;
                         const alreadyInvitedIds = new Set();
 
-                        if (projectTitle) {
-                          // Check all projects with same title for freelancers with PENDING proposals
-                          projects.forEach((p) => {
-                            if ((p.title || "").trim() === projectTitle) {
-                              (p.proposals || []).forEach((prop) => {
-                                // Only count PENDING proposals - REJECTED means we can resend
-                                const status = (
-                                  prop.status || ""
-                                ).toUpperCase();
-                                if (prop.freelancerId && status === "PENDING") {
-                                  alreadyInvitedIds.add(prop.freelancerId);
-                                }
-                              });
+                        if (sourceProjectId) {
+                          const currentProject = projects.find(
+                            (project) => project?.id === sourceProjectId,
+                          );
+                          (currentProject?.proposals || []).forEach((prop) => {
+                            const status = String(prop?.status || "").toUpperCase();
+                            if (prop?.freelancerId && status === "PENDING") {
+                              alreadyInvitedIds.add(prop.freelancerId);
                             }
                           });
                         }
@@ -2163,18 +2073,40 @@ const ClientDashboardContent = () => {
                                     {freelancer.fullName || freelancer.name}
                                   </h3>
                                   <p className="text-sm text-muted-foreground font-medium mb-5">
-                                    {freelancer.role || "Freelancer"}
+                                    {getFreelancerDisplayRole(freelancer)}
                                   </p>
 
-                                  {Array.isArray(freelancer.matchHighlights) &&
-                                    freelancer.matchHighlights.length > 0 && (
-                                      <p className="text-[11px] text-primary font-medium mb-4">
-                                        Match:{" "}
-                                        {freelancer.matchHighlights
-                                          .slice(0, 2)
-                                          .join(", ")}
-                                      </p>
-                                    )}
+                                  {(typeof freelancer.matchScore === "number" ||
+                                    (Array.isArray(freelancer.matchReasons) &&
+                                      freelancer.matchReasons.length > 0) ||
+                                    (Array.isArray(freelancer.matchHighlights) &&
+                                      freelancer.matchHighlights.length > 0)) && (
+                                    <div className="mb-4 space-y-1.5">
+                                      {typeof freelancer.matchScore === "number" && (
+                                        <Badge
+                                          variant="secondary"
+                                          className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                                        >
+                                          {freelancer.matchScore}% match
+                                        </Badge>
+                                      )}
+                                      {Array.isArray(freelancer.matchReasons) &&
+                                        freelancer.matchReasons.length > 0 && (
+                                          <p className="text-[11px] text-muted-foreground font-medium px-2">
+                                            {freelancer.matchReasons[0]}
+                                          </p>
+                                        )}
+                                      {Array.isArray(freelancer.matchHighlights) &&
+                                        freelancer.matchHighlights.length > 0 && (
+                                          <p className="text-[11px] text-primary font-medium">
+                                            Match:{" "}
+                                            {freelancer.matchHighlights
+                                              .slice(0, 2)
+                                              .join(", ")}
+                                          </p>
+                                        )}
+                                    </div>
+                                  )}
 
                                   {/* Skills Row */}
                                   <div className="flex flex-wrap justify-center gap-2 mb-4 px-2 min-h-[40px]">
