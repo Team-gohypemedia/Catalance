@@ -3192,7 +3192,7 @@ function AIChat({
   return (
     <div className={`text-foreground ${embedded ? "h-full w-full" : ""}`}>
       <div
-        className={`flex ${embedded ? "h-full w-full" : "h-screen"} bg-background font-sans relative overflow-hidden`}
+        className={`flex ${embedded ? "h-full w-full bg-black" : "h-screen bg-background"} font-sans relative overflow-hidden`}
       >
         {/* Main Chat Area */}
         <main
@@ -3201,7 +3201,8 @@ function AIChat({
           {/* Modern Header */}
           <header
             className={cn(
-              "relative flex items-center justify-between border-b border-border/60 bg-background/90 px-6 py-4 backdrop-blur",
+              "relative flex items-center justify-between border-b border-border/60 px-6 py-4 backdrop-blur",
+              embedded ? "bg-black/95" : "bg-background/90",
               embedded && "pr-12 sm:pr-14",
             )}
           >
@@ -3443,7 +3444,12 @@ function AIChat({
           </Conversation>
 
           {/* Input Area */}
-          <div className="border-t border-border/60 bg-background/90 backdrop-blur">
+          <div
+            className={cn(
+              "border-t border-border/60 backdrop-blur",
+              embedded ? "bg-black/95" : "bg-background/90",
+            )}
+          >
             {/* Hidden Input for File Upload - Moved outside PromptInput to avoid conflicts */}
             <input
               type="file"
@@ -3463,7 +3469,10 @@ function AIChat({
                   {activeFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="group flex items-center gap-2 rounded-lg border border-border/80 bg-card px-2.5 py-1.5 shadow-sm animate-in slide-in-from-bottom-2 fade-in duration-300"
+                      className={cn(
+                        "group flex items-center gap-2 rounded-lg border border-border/80 px-2.5 py-1.5 shadow-sm animate-in slide-in-from-bottom-2 fade-in duration-300",
+                        embedded ? "bg-black" : "bg-card",
+                      )}
                     >
                       <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border border-primary/25 bg-primary/10 text-primary">
                         <FileText className="size-2.5" />
@@ -3488,7 +3497,12 @@ function AIChat({
 
               <PromptInput
                 onSubmit={handleSubmit}
-                className="relative overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 [&>[data-slot=input-group]]:!border-none"
+                className={cn(
+                  "relative overflow-hidden rounded-2xl border shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/15 [&>[data-slot=input-group]]:!border-none",
+                  embedded
+                    ? "border-primary/55 bg-black [&>[data-slot=input-group]]:!bg-black focus-within:border-primary/55"
+                    : "border-border/80 bg-card focus-within:border-primary/40",
+                )}
               >
                 <PromptInputTextarea
                   ref={textareaRef}
@@ -3595,7 +3609,7 @@ function AIChat({
 
         {/* Proposal Panel - Side by side with chat when embedded */}
         {embedded && showProposal && (
-          <div className="flex h-full w-1/2 flex-col border-l border-border bg-background animate-in slide-in-from-right duration-300">
+          <div className="flex h-full w-1/2 flex-col border-l border-border bg-black animate-in slide-in-from-right duration-300">
             <ProposalSidebar
               proposal={proposal}
               isOpen={true}

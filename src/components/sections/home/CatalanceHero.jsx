@@ -96,7 +96,7 @@ const CatalanceHero = () => {
                                linear-gradient(to bottom, rgba(255,255,255,0.15) 1px, transparent 1px)`
               : `linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
                                linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)`,
-            backgroundSize: "100px 100px",
+            backgroundSize: "200px 200px",
           }}
         />
 
@@ -156,30 +156,11 @@ const CatalanceHero = () => {
 
           {/* Cards Container */}
           <div
-            className={`relative max-w-3xl mx-auto mb-16 px-0 sm:px-4 ${isMounted ? "animate-fadeInUp" : "opacity-0"
+            className={`relative max-w-3xl lg:max-w-5xl mx-auto mb-16 px-0 sm:px-4 ${isMounted ? "animate-fadeInUp" : "opacity-0"
               }`}
             style={{ animationDelay: "300ms" }}
           >
-            <div className="grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-15 relative">
-              {/* OR Circle */}
-              <div className="hidden lg:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-                <div
-                  className={`relative w-22 h-22 rounded-full ${isDark
-                    ? "bg-black border-primary/50"
-                    : "bg-white border-primary/50"
-                    } border-2 flex items-center justify-center shadow-[0_0_20px_var(--color-primary)] backdrop-blur-sm pointer-events-auto`}
-                >
-                  <span className="text-foreground font-medium text-2xl tracking-wider">
-                    OR
-                  </span>
-                  <div
-                    className={`absolute inset-0 rounded-full ${isDark
-                      ? "bg-linear-to-r from-primary/20 via-primary/40 to-primary/20"
-                      : "bg-linear-to-r from-primary/10 via-primary/20 to-primary/10"
-                      } blur-xl animate-pulse -z-10`}
-                  />
-                </div>
-              </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-8 md:gap-12 lg:gap-2 relative">
 
               {/* Business Card */}
               <Link to="/service" className="block">
@@ -247,6 +228,26 @@ const CatalanceHero = () => {
                 </div>
               </Link>
 
+              {/* OR Circle */}
+              <div className="hidden lg:flex items-center justify-center">
+                <div
+                  className={`relative w-22 h-22 rounded-full ${isDark
+                    ? "bg-black border-primary/50"
+                    : "bg-white border-primary/50"
+                    } border-2 flex items-center justify-center shadow-[0_0_20px_var(--color-primary)] backdrop-blur-sm`}
+                >
+                  <span className="text-foreground font-medium text-2xl tracking-wider">
+                    OR
+                  </span>
+                  <div
+                    className={`absolute inset-0 rounded-full ${isDark
+                      ? "bg-linear-to-r from-primary/20 via-primary/40 to-primary/20"
+                      : "bg-linear-to-r from-primary/10 via-primary/20 to-primary/10"
+                      } blur-xl animate-pulse -z-10`}
+                  />
+                </div>
+              </div>
+
               {/* Freelancer Card */}
               <Link to="/signup?role=freelancer" className="block">
                 <div className="group relative p-5 sm:p-6 rounded-3xl flex flex-col bg-black bg-linear-to-bl from-primary/40 via-black to-black text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02]">
@@ -274,7 +275,7 @@ const CatalanceHero = () => {
                         <Target className="w-4 h-4" />
                       </div>
                       <span className="text-sm font-medium text-foreground/90">
-                        30% commission
+                        0% commission
                       </span>
                     </div>
                     <div className="flex items-center gap-2.5">

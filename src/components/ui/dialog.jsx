@@ -49,11 +49,12 @@ const DialogContent = React.forwardRef(({
   className,
   children,
   showCloseButton = true,
+  overlayClassName,
   ...props
 }, ref) => {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         ref={ref}
         data-slot="dialog-content"
