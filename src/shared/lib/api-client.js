@@ -5,11 +5,19 @@ const normalizeBaseUrl = (url) => {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 };
 
+const isLocalApiUrl = (url) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?($|\/)/i.test(
+    String(url || "").trim(),
+  );
+
 // Prefer explicit env, then same-origin (for deployed frontends), then local dev fallback.
 const safeWindow = typeof window === "undefined" ? null : window;
 const envBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
 const envSocketUrl = normalizeBaseUrl(import.meta.env.VITE_SOCKET_URL);
 const envSocketPath = import.meta.env.VITE_SOCKET_PATH;
+const envUseRemoteApiInDev = String(import.meta.env.VITE_USE_REMOTE_API_IN_DEV || "")
+  .trim()
+  .toLowerCase();
 
 const isLocal5173 = safeWindow && safeWindow.location.origin === "http://localhost:5173";
 const isLocal5174 = safeWindow && safeWindow.location.origin === "http://localhost:5174";
@@ -24,8 +32,19 @@ const localDevBaseUrl =
     ? "http://localhost:5000/api"
     : null;
 
+const shouldPreferLocalApiInDev =
+  Boolean(localDevBaseUrl) &&
+  !["1", "true", "yes"].includes(envUseRemoteApiInDev) &&
+  (!envBaseUrl || !isLocalApiUrl(envBaseUrl));
+
+const effectiveEnvBaseUrl =
+  shouldPreferLocalApiInDev && envBaseUrl && !isLocalApiUrl(envBaseUrl)
+    ? null
+    : envBaseUrl;
+
 export const API_BASE_URL =
-  envBaseUrl ||
+  (shouldPreferLocalApiInDev ? localDevBaseUrl : null) ||
+  effectiveEnvBaseUrl ||
   normalizeBaseUrl(sameOriginBaseUrl) ||
   normalizeBaseUrl(localDevBaseUrl) ||
   "http://localhost:5000/api";

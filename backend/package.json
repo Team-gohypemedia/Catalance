@@ -16,6 +16,7 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed.js",
     "prisma:seed:catalog": "node scripts/seed_service_catalog.js",
+    "seed:matching:test": "node scripts/seed_matching_test_data.js",
     "db:backfill:marketplace-services": "node scripts/backfill_marketplace_services_strings.js",
     "db:normalize:web-development-label": "node scripts/normalize_web_development_labels.js"
   },
