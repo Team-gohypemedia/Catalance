@@ -55,14 +55,14 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
     [0, 100],
     [
       "none",
-      "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05), 0 1px 0 rgba(255, 255, 255, 0.1) inset",
+      "0 0 24px rgba(34, 42, 53, 0.06), 0 1px 1px rgba(0, 0, 0, 0.05), 0 0 4px rgba(34, 42, 53, 0.08), 0 16px 68px rgba(47, 48, 55, 0.05)",
     ]
   );
 
   const backdropFilter = useTransform(
     smoothScrollY,
     [0, 100],
-    ["blur(0px)", "blur(10px)"]
+    ["none", "blur(10px)"]
   );
 
   return (
@@ -242,7 +242,7 @@ export const NavbarLogo = () => (
       <img
         src={logo}
         alt="Catalance logo mark"
-        className="h-5 w-5 object-contain brightness-0 saturate-100"
+        className="h-6 w-6 object-contain brightness-0 saturate-100"
       />
     </div>
     <span className="text-lg font-bold tracking-tight text-black dark:text-white">

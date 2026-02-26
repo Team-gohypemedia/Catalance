@@ -1112,7 +1112,7 @@ export const PricingStrategyStep = ({ renderContinueButton }) => {
 
 export const PortfolioImportanceStep = ({ renderContinueButton }) => {
     return (
-        <div className="space-y-8 animate-in fade-in zoom-in duration-500">
+        <div className="space-y-6 animate-in fade-in zoom-in duration-500">
             <div className="text-center space-y-4">
                 <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
                     Profiles with <span className="text-primary">portfolios</span> get hired first
@@ -1122,13 +1122,7 @@ export const PortfolioImportanceStep = ({ renderContinueButton }) => {
                 </p>
             </div>
 
-            {/* Empty Image Container */}
-            <div className="w-full max-w-4xl mx-auto aspect-video bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center relative overflow-hidden group">
-                <div className="absolute inset-0 bg-linear-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <p className="text-white/20 font-medium">Image Placeholder</p>
-            </div>
-
-            <div className="pt-4 w-full flex justify-center">
+            <div className="pt-2 w-full flex justify-center">
                 {renderContinueButton(undefined, { show: true })}
             </div>
         </div>
