@@ -48,10 +48,9 @@ const PrivacyPolicy = () => {
           <Section title="Introduction">
             <p>
               This Privacy Policy explains how Catalance collects, uses, stores,
-              and shares personal information. Fiverr&apos;s policy applies to
-              users and visitors and is updated regularly, and Catalance
-              similarly commits to update this policy and indicate the last
-              revision date.
+              and shares personal information. This policy applies to users and
+              visitors, and Catalance may update it from time to time with a
+              revised &quot;Last updated&quot; date.
             </p>
           </Section>
 

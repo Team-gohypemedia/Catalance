@@ -225,6 +225,20 @@ export const resendOtp = (email) => {
   });
 };
 
+export const submitContactInquiry = ({ name, email, subject, message }) => {
+  return request("/contact/inquiry", {
+    method: "POST",
+    body: JSON.stringify({ name, email, subject, message })
+  });
+};
+
+export const subscribeNewsletter = (email) => {
+  return request("/contact/newsletter", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+};
+
 export const updateProfile = (updates) => {
   return request("/auth/profile", {
     method: "PUT",
@@ -307,5 +321,7 @@ export const apiClient = {
   fetchChatConversations,
   fetchChatMessages,
   sendChatMessage,
-  verifyOtp
+  verifyOtp,
+  submitContactInquiry,
+  subscribeNewsletter
 };

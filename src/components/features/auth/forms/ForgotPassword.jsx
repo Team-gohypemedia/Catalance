@@ -19,6 +19,7 @@ function ForgotPassword({ className, ...props }) {
     const [email, setEmail] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [debugResetUrl, setDebugResetUrl] = useState("");
     const navigate = useNavigate();
 
     const handleSubmit = async (event) => {
@@ -28,6 +29,7 @@ function ForgotPassword({ className, ...props }) {
         try {
             const response = await forgotPassword(email.trim().toLowerCase());
             toast.success("Check your email for reset instructions");
+            setDebugResetUrl(response?.debugResetUrl || "");
             setIsSuccess(true);
         } catch (error) {
             const message = error?.message || "Failed to process request. Please try again.";
@@ -67,6 +69,22 @@ function ForgotPassword({ className, ...props }) {
                                     <p className="text-muted-foreground text-xs">
                                         The link will expire in 1 hour.
                                     </p>
+                                    {debugResetUrl ? (
+                                        <div className="w-full rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-left">
+                                            <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                                                Development mode fallback
+                                            </p>
+                                            <p className="mt-1 text-xs text-muted-foreground break-all">
+                                                Email delivery is unavailable locally. Use this reset link:
+                                            </p>
+                                            <a
+                                                href={debugResetUrl}
+                                                className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
+                                            >
+                                                Open reset link
+                                            </a>
+                                        </div>
+                                    ) : null}
                                     <Button
                                         onClick={() => navigate("/login")}
                                         variant="outline"
@@ -97,7 +115,7 @@ function ForgotPassword({ className, ...props }) {
                                             Forgot your password?
                                         </h1>
                                         <p className="text-muted-foreground text-sm text-balance">
-                                            Enter your email address and we'll send you a link to reset your password
+                                            Enter your email address and we&apos;ll send you a link to reset your password
                                         </p>
                                     </div>
                                     <Field>

@@ -49,11 +49,9 @@ const TermsOfService = () => {
             <p>
               Welcome to Catalance. By accessing our website or using any
               Catalance services you agree to be bound by these Terms of
-              Service. Upwork stresses that its user agreement is a legally
-              binding contract that includes important information about your
-              legal rights and obligations. Catalance adopts the same
-              approach. If you do not agree to these Terms, please do not use
-              our services.
+              Service. This agreement is legally binding and includes important
+              information about your legal rights and obligations. If you do
+              not agree to these Terms, please do not use our services.
             </p>
           </Section>
 
@@ -61,14 +59,12 @@ const TermsOfService = () => {
             <p>
               You must be at least 18 years old (or the age of majority in
               your jurisdiction) and have legal capacity to enter into a
-              contract. Upwork reminds users they must be 18 years or older,
-              and Catalance adopts the same requirement.
+              contract.
             </p>
             <p>
               You must create an account to access certain features;
-              registration is subject to our approval, just as Upwork retains
-              the right to decline registrations for lawful reasons. You are
-              responsible for maintaining the confidentiality of your login
+              registration is subject to our approval for lawful reasons. You
+              are responsible for maintaining the confidentiality of your login
               credentials, and if you register on behalf of a business, you
               must have authority to bind that entity.
             </p>
@@ -78,10 +74,9 @@ const TermsOfService = () => {
             <p>
               Catalance provides an online marketplace where clients post
               projects and freelancers offer services. We are not a party to
-              the contracts between clients and freelancers. Upwork&apos;s user
-              agreement notes that the contract is between client and
-              freelancer and may include escrow instructions and other
-              documents.
+              the contracts between clients and freelancers. The contract for
+              project delivery remains between the client and freelancer and
+              may include escrow instructions and related documents.
             </p>
             <p>
               Catalance users remain responsible for taxes and legal
@@ -91,34 +86,24 @@ const TermsOfService = () => {
             <ul className="mt-4 list-disc space-y-2 pl-6">
               <li>Violate applicable laws</li>
               <li>Submit false information</li>
-              <li>Attempt to avoid fees</li>
+              <li>Attempt to bypass platform policies</li>
               <li>Engage in fraud or spam</li>
               <li>Interfere with platform security</li>
             </ul>
             <p>
-              Upwork&apos;s terms also warn users not to share contact details
-              outside the site and to use escrow for payments.
+              Users should keep communication and payments on-platform for
+              security, auditability, and dispute support.
             </p>
           </Section>
 
           <Section title="Fees and payments">
             <p>
-              Catalance will charge freelancers a service fee and clients a
-              marketplace or transaction fee. Upwork&apos;s freelancer service
-              fee ranges from 0% to 15% per contract, and Upwork charges
-              clients a one-time contract initiation fee between $0.99 and
-              $14.99 that is not refundable after payment.
+              Commercial terms and payment requirements are shown during the
+              project flow and may vary by contract type.
             </p>
             <p>
-              Catalance will disclose fee percentages at checkout; they may
-              vary based on contract type and client history. Clients fund
-              fixed-price contracts in advance and maintain valid payment
-              methods for hourly contracts; funds are held in escrow until work
-              is approved.
-            </p>
-            <p>
-              All transactions are processed in Indian Rupees (INR) unless
-              otherwise stated.
+              Users must keep payment activity on-platform and follow milestone
+              and approval workflows as defined by the service.
             </p>
           </Section>
 

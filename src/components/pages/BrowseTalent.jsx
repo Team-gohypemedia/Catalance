@@ -22,7 +22,7 @@ import Users from "lucide-react/dist/esm/icons/users";
 
 gsap.registerPlugin(SplitText, useGSAP);
 
-const CategoryCard = ({ icon: Icon, title, count, isDark }) => (
+const CategoryCard = ({ icon: Icon, title, isDark }) => (
   <Link to="/service" className="block group">
     <div
       className={`p-6 rounded-2xl border transition-all duration-300 hover:-translate-y-1 ${
@@ -45,9 +45,6 @@ const CategoryCard = ({ icon: Icon, title, count, isDark }) => (
       >
         {title}
       </h3>
-      <p className={`text-sm ${isDark ? "text-neutral-400" : "text-gray-600"}`}>
-        {count} professionals
-      </p>
     </div>
   </Link>
 );
@@ -158,12 +155,12 @@ const BrowseTalent = () => {
   );
 
   const categories = [
-    { icon: Code, title: "Development", count: "15,000+" },
-    { icon: Palette, title: "Design", count: "8,500+" },
-    { icon: PenTool, title: "Writing", count: "6,200+" },
-    { icon: TrendingUp, title: "Marketing", count: "4,800+" },
-    { icon: Video, title: "Video & Animation", count: "3,500+" },
-    { icon: Megaphone, title: "Social Media", count: "2,900+" },
+    { icon: Code, title: "Development" },
+    { icon: Palette, title: "Design" },
+    { icon: PenTool, title: "Writing" },
+    { icon: TrendingUp, title: "Marketing" },
+    { icon: Video, title: "Video & Animation" },
+    { icon: Megaphone, title: "Social Media" },
   ];
 
   const featuredTalent = [
@@ -171,29 +168,29 @@ const BrowseTalent = () => {
       name: "Mohd Kaif",
       role: "Full-Stack Developer",
       rating: "4.9",
-      projects: "127",
-      location: "Singapore",
+      projects: "5",
+      location: "Delhi, India",
     },
     {
       name: "Ravindra Nath Jha",
-      role: "UI/UX Designer",
+      role: "Software Engineer",
       rating: "5.0",
-      projects: "89",
-      location: "New York",
+      projects: "4",
+      location: "Delhi, India",
     },
     {
       name: "Kshitij Sharma",
       role: "Content Strategist",
       rating: "4.8",
-      projects: "156",
-      location: "Barcelona",
+      projects: "3",
+      location: "Delhi, India",
     },
     {
       name: "Aniket Thakur",
       role: "Motion Designer",
       rating: "4.9",
-      projects: "73",
-      location: "Seoul",
+      projects: "2",
+      location: "Delhi, India",
     },
   ];
 
@@ -288,14 +285,8 @@ const BrowseTalent = () => {
 
         {/* Featured Talent Section */}
         <div className="mb-20">
-          <div className="flex items-center justify-between mb-8">
+          <div className="mb-8">
             <h2 className="text-2xl md:text-3xl font-bold">Featured Talent</h2>
-            <Link
-              to="/service"
-              className="text-primary hover:underline flex items-center gap-1"
-            >
-              View all <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {featuredTalent.map((talent, idx) => (

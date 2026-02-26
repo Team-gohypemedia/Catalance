@@ -1,12 +1,42 @@
-import React from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "@/components/providers/theme-provider";
+import { toast } from "sonner";
+import { subscribeNewsletter } from "@/shared/lib/api-client";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import logo from "@/assets/logos/logo.svg";
 
 const Footer = () => {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const currentYear = new Date().getFullYear();
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [isSubmittingNewsletter, setIsSubmittingNewsletter] = useState(false);
+
+  const handleNewsletterSubmit = async (event) => {
+    event.preventDefault();
+    if (isSubmittingNewsletter) return;
+
+    const normalizedEmail = newsletterEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      toast.error("Please enter your email address.");
+      return;
+    }
+
+    setIsSubmittingNewsletter(true);
+    try {
+      const response = await subscribeNewsletter(normalizedEmail);
+      toast.success(response?.message || "Subscribed successfully.");
+      setNewsletterEmail("");
+    } catch (error) {
+      toast.error(
+        error?.message ||
+          "We could not complete your subscription right now. Please try again."
+      );
+    } finally {
+      setIsSubmittingNewsletter(false);
+    }
+  };
 
   return (
     <footer
@@ -36,8 +66,8 @@ const Footer = () => {
             <p
               className={`text-lg font-medium leading-relaxed max-w-sm ${isDark ? "text-[#bab59c]" : "text-gray-600"}`}
             >
-              Orchestrating the future of work with premium enterprise talent
-              solutions.
+              We help businesses find trusted talent and deliver quality
+              projects faster.
             </p>
             {/* Social Links */}
             <div className="flex items-center gap-4 mt-2">
@@ -217,15 +247,22 @@ const Footer = () => {
               </p>
             </div>
             <div className="w-full max-w-md">
-              <form className="relative group">
+              <form className="relative group" onSubmit={handleNewsletterSubmit}>
                 <input
                   className={`w-full h-14 pl-6 pr-16 border-none rounded-2xl focus:ring-2 focus:ring-[#f2cc0d]/50 transition-all outline-none ${isDark ? "bg-neutral-900 text-white placeholder:text-neutral-500" : "bg-gray-100 text-gray-900 placeholder:text-gray-500"}`}
                   placeholder="Enter your email address"
                   type="email"
+                  autoComplete="email"
+                  required
+                  value={newsletterEmail}
+                  onChange={(event) => setNewsletterEmail(event.target.value)}
+                  disabled={isSubmittingNewsletter}
                 />
                 <button
                   className="absolute right-2 top-2 h-10 w-10 flex items-center justify-center bg-[#f2cc0d] rounded-xl text-[#181711] hover:bg-[#ffe03d] transition-colors shadow-lg shadow-[#f2cc0d]/20"
-                  type="button"
+                  type="submit"
+                  disabled={isSubmittingNewsletter}
+                  aria-label="Subscribe to newsletter"
                 >
                   <ArrowRight className="w-5 h-5" />
                 </button>
@@ -239,7 +276,7 @@ const Footer = () => {
           <p
             className={`text-sm font-medium ${isDark ? "text-slate-500" : "text-gray-500"}`}
           >
-            © 2024 Catalance Inc. All rights reserved.
+            &copy; {currentYear} Catalance Inc. All rights reserved.
           </p>
           <div className="flex flex-wrap justify-center md:justify-end items-center gap-6">
             <div

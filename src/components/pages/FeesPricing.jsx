@@ -54,8 +54,8 @@ const FeesPricing = () => {
           <Section title="For freelancers">
             <p>
               A service fee is charged on each payment earned through the
-              platform. Upwork uses a variable model ranging from 0% to 15% per
-              contract, and Catalance similarly uses contract-based fee logic.
+              platform. Catalance uses contract-based fee logic, and rates may
+              vary by project type and agreement terms.
             </p>
             <p>
               The applicable fee is shown before a job is accepted and remains

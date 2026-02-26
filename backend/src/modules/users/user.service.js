@@ -18,6 +18,7 @@ import {
 
 const OTP_TTL_MINUTES = 15;
 const OTP_EMAIL_RETRY_ATTEMPTS = 2;
+const PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS = 2;
 const marketplaceSupportsServiceDetails = (() => {
   try {
     const models = Prisma?.dmmf?.datamodel?.models || [];
@@ -1376,6 +1377,77 @@ const ensureUserRoles = async (user, requestedRole) => {
   );
 };
 
+const sendPasswordResetEmail = async ({ email, resetUrl }) => {
+  const hasResendConfig = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
+
+  if (!hasResendConfig) {
+    const message =
+      "Email service is not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL).";
+
+    if (env.NODE_ENV === "production") {
+      throw new AppError(message, 500, {
+        provider: "resend",
+        reason: "missing_config"
+      });
+    }
+
+    console.warn(`[Password Reset Email] ${message}`);
+    console.log(`[DEV] Reset URL for ${email}: ${resetUrl}`);
+    return { delivered: false, reason: "missing_config" };
+  }
+
+  const resend = ensureResendClient();
+  let lastError = null;
+
+  for (
+    let attempt = 1;
+    attempt <= PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      const result = await resend.emails.send({
+        from: env.RESEND_FROM_EMAIL,
+        to: email,
+        subject: "Reset Your Password - Catalance",
+        html: generatePasswordResetEmail(resetUrl, email),
+        text: generatePasswordResetTextEmail(resetUrl, email)
+      });
+
+      if (result?.error) {
+        throw new Error(
+          typeof result.error === "string"
+            ? result.error
+            : result.error?.message || JSON.stringify(result.error)
+        );
+      }
+
+      console.log(
+        `[Password Reset Email] Sent to ${email}. ID: ${result?.data?.id || "n/a"}`
+      );
+      return { delivered: true, id: result?.data?.id || null };
+    } catch (error) {
+      lastError = error;
+      console.error(
+        `[Password Reset Email] Attempt ${attempt}/${PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS} failed:`,
+        error?.message || error
+      );
+      if (attempt < PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS) {
+        await wait(400);
+      }
+    }
+  }
+
+  throw new AppError(
+    "We could not deliver the password reset email. Please try again in a moment.",
+    502,
+    {
+      provider: "resend",
+      reason: "delivery_failed",
+      cause: lastError?.message || "unknown_error"
+    }
+  );
+};
+
 export const listUsers = async (filters = {}) => {
   const onboardingComplete = parseBooleanFilter(filters.onboardingComplete);
   const normalizedRoleFilter = normalizeRoleValue(filters.role);
@@ -2347,25 +2419,21 @@ export const requestPasswordReset = async (email) => {
     WHERE "id" = ${user.id}
   `;
 
-  if (env.RESEND_API_KEY && env.RESEND_FROM_EMAIL) {
-    try {
-      const resend = ensureResendClient();
-      const resetUrl = `${env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${resetToken}`;
+  const resetUrl = `${env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${resetToken}`;
+  const emailResult = await sendPasswordResetEmail({
+    email: user.email,
+    resetUrl
+  });
 
-      await resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
-        to: user.email,
-        subject: "Reset Your Password - Catalance",
-        html: generatePasswordResetEmail(resetUrl, user.email),
-        text: generatePasswordResetTextEmail(resetUrl, user.email)
-      });
-    } catch (emailError) {
-      console.error("Failed to send password reset email:", emailError);
-      throw new AppError("Failed to send reset email. Please try again later.", 500);
-    }
+  const response = {
+    message: "If an account exists with that email, a password reset link has been sent."
+  };
+
+  if (env.NODE_ENV !== "production" && !emailResult?.delivered) {
+    response.debugResetUrl = resetUrl;
   }
 
-  return { message: "If an account exists with that email, a password reset link has been sent." };
+  return response;
 };
 
 export const verifyResetToken = async (token) => {
