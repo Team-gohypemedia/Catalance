@@ -35,6 +35,15 @@ const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
     return wordCount <= 8;
 };
 
+const buildServiceAwareOpeningMessage = (serviceName = "") => {
+    const normalizedServiceName = String(serviceName || "").trim().toLowerCase();
+    const scopeLabel = normalizedServiceName
+        ? `your ${normalizedServiceName} requirement`
+        : "your requirement";
+
+    return `Hello! I'm CATA, here to match you with the most suitable freelancer for ${scopeLabel}.\nMay I know your name?`;
+};
+
 const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(text || ""));
 const isContextSuggestionRequest = (text = "") => CONTEXT_SUGGESTION_REGEX.test(String(text || ""));
 
@@ -1413,7 +1422,10 @@ export const startGuestSession = asyncHandler(async (req, res) => {
             isInitial: true
         })
         : "";
-    const firstQuestion = aiFirstQuestion || fallbackFirstQuestion;
+    const isNameFirstQuestion = NAME_QUESTION_REGEX.test(String(firstQuestionDefinition?.text || ""));
+    const firstQuestion = isNameFirstQuestion
+        ? buildServiceAwareOpeningMessage(service.name)
+        : (aiFirstQuestion || fallbackFirstQuestion);
 
     // 2. Create Session
     const session = await prisma.aiGuestSession.create({
