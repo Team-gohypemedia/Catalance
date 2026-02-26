@@ -1378,11 +1378,11 @@ const ensureUserRoles = async (user, requestedRole) => {
 };
 
 const sendPasswordResetEmail = async ({ email, resetUrl }) => {
-  const hasResendConfig = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
+  const hasResendConfig = Boolean(env.RESEND_API_KEY);
 
   if (!hasResendConfig) {
     const message =
-      "Email service is not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL).";
+      "Email service is not configured (missing RESEND_API_KEY).";
 
     if (env.NODE_ENV === "production") {
       throw new AppError(message, 500, {
@@ -1397,42 +1397,54 @@ const sendPasswordResetEmail = async ({ email, resetUrl }) => {
   }
 
   const resend = ensureResendClient();
+  const fromCandidates = [];
+  const configuredFrom = String(env.RESEND_FROM_EMAIL || "").trim();
+  const fallbackFrom = "Catalance <onboarding@resend.dev>";
+  if (configuredFrom) {
+    fromCandidates.push(configuredFrom);
+  }
+  if (!fromCandidates.includes(fallbackFrom)) {
+    fromCandidates.push(fallbackFrom);
+  }
+
   let lastError = null;
 
-  for (
-    let attempt = 1;
-    attempt <= PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS;
-    attempt += 1
-  ) {
-    try {
-      const result = await resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
-        to: email,
-        subject: "Reset Your Password - Catalance",
-        html: generatePasswordResetEmail(resetUrl, email),
-        text: generatePasswordResetTextEmail(resetUrl, email)
-      });
+  for (const fromAddress of fromCandidates) {
+    for (
+      let attempt = 1;
+      attempt <= PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS;
+      attempt += 1
+    ) {
+      try {
+        const result = await resend.emails.send({
+          from: fromAddress,
+          to: email,
+          subject: "Reset Your Password - Catalance",
+          html: generatePasswordResetEmail(resetUrl, email),
+          text: generatePasswordResetTextEmail(resetUrl, email)
+        });
 
-      if (result?.error) {
-        throw new Error(
-          typeof result.error === "string"
-            ? result.error
-            : result.error?.message || JSON.stringify(result.error)
+        if (result?.error) {
+          throw new Error(
+            typeof result.error === "string"
+              ? result.error
+              : result.error?.message || JSON.stringify(result.error)
+          );
+        }
+
+        console.log(
+          `[Password Reset Email] Sent to ${email}. ID: ${result?.data?.id || "n/a"}. From: ${fromAddress}`
         );
-      }
-
-      console.log(
-        `[Password Reset Email] Sent to ${email}. ID: ${result?.data?.id || "n/a"}`
-      );
-      return { delivered: true, id: result?.data?.id || null };
-    } catch (error) {
-      lastError = error;
-      console.error(
-        `[Password Reset Email] Attempt ${attempt}/${PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS} failed:`,
-        error?.message || error
-      );
-      if (attempt < PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS) {
-        await wait(400);
+        return { delivered: true, id: result?.data?.id || null, from: fromAddress };
+      } catch (error) {
+        lastError = error;
+        console.error(
+          `[Password Reset Email] Attempt ${attempt}/${PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS} failed. From: ${fromAddress}.`,
+          error?.message || error
+        );
+        if (attempt < PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS) {
+          await wait(400);
+        }
       }
     }
   }
@@ -2419,7 +2431,9 @@ export const requestPasswordReset = async (email) => {
     WHERE "id" = ${user.id}
   `;
 
-  const resetUrl = `${env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${resetToken}`;
+  const defaultFrontendUrl =
+    env.NODE_ENV === "production" ? "https://catalance.in" : "http://localhost:5173";
+  const resetUrl = `${env.FRONTEND_URL || defaultFrontendUrl}/reset-password?token=${resetToken}`;
   const emailResult = await sendPasswordResetEmail({
     email: user.email,
     resetUrl
