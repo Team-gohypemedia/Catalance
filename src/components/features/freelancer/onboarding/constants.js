@@ -265,6 +265,12 @@ const SERVICE_PLATFORM_LINK_FALLBACK_FIELDS = [
     { key: "portfolio", label: "Portfolio Website", placeholder: "https://your-portfolio.com" },
 ];
 
+const UNIVERSAL_OTHER_PLATFORM_PROFILE_FIELD = {
+    key: "other",
+    label: "Other Profile / Platform Link",
+    placeholder: "https://your-other-platform-link.com",
+};
+
 export const SERVICE_PLATFORM_PROFILE_FIELDS = {
     branding: [
         { key: "behance", label: "Behance Profile", placeholder: "https://www.behance.net/your-profile" },
@@ -371,8 +377,12 @@ export const SERVICE_PLATFORM_PROFILE_FIELDS = {
 export const getServicePlatformProfileFields = (serviceKey) => {
     const serviceFields = SERVICE_PLATFORM_PROFILE_FIELDS[serviceKey] || [];
     const sourceFields = serviceFields.length
-        ? serviceFields
-        : [...DEFAULT_SERVICE_PLATFORM_PROFILE_FIELDS, ...SERVICE_PLATFORM_LINK_FALLBACK_FIELDS];
+        ? [...serviceFields, UNIVERSAL_OTHER_PLATFORM_PROFILE_FIELD]
+        : [
+            ...DEFAULT_SERVICE_PLATFORM_PROFILE_FIELDS,
+            ...SERVICE_PLATFORM_LINK_FALLBACK_FIELDS,
+            UNIVERSAL_OTHER_PLATFORM_PROFILE_FIELD,
+        ];
 
     const fieldsByKey = new Map();
     sourceFields.forEach((field) => {
@@ -386,8 +396,8 @@ export const getServicePlatformProfileFields = (serviceKey) => {
 
 export const EXPERIENCE_YEARS_OPTIONS = [
     { value: "less_than_1", label: "Less than 1 year" },
-    { value: "1_3", label: "1â€“3 years" },
-    { value: "3_5", label: "3â€“5 years" },
+    { value: "1_3", label: "1-3 years" },
+    { value: "3_5", label: "3-5 years" },
     { value: "5_plus", label: "5+ years" },
 ];
 
@@ -449,15 +459,15 @@ export const ROLE_IN_PROJECT_OPTIONS = [
 
 export const PROJECT_TIMELINE_OPTIONS = [
     { value: "less_than_2_weeks", label: "Less than 2 weeks" },
-    { value: "2_4_weeks", label: "2â€“4 weeks" },
-    { value: "1_3_months", label: "1â€“3 months" },
+    { value: "2_4_weeks", label: "2-4 weeks" },
+    { value: "1_3_months", label: "1-3 months" },
     { value: "3_plus_months", label: "3+ months" },
 ];
 
 export const PROJECT_COMPLEXITY_OPTIONS = [
-    { value: "small", label: "Small tasks / Quick projects" },
-    { value: "medium", label: "Medium complexity projects" },
-    { value: "large", label: "Large / Enterprise level systems" },
+    { value: "small", label: "Beginner" },
+    { value: "medium", label: "Intermediate" },
+    { value: "large", label: "Expert" },
 
 ];
 

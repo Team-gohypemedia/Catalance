@@ -37,7 +37,6 @@ const Contact = () => {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formStatus, setFormStatus] = useState({ type: "", message: "" });
 
   // Detect actual theme
   useEffect(() => {
@@ -98,7 +97,6 @@ const Contact = () => {
     event.preventDefault();
     if (isSubmitting) return;
 
-    setFormStatus({ type: "", message: "" });
     setIsSubmitting(true);
 
     try {
@@ -109,10 +107,6 @@ const Contact = () => {
         message: formData.message.trim(),
       });
 
-      setFormStatus({
-        type: "success",
-        message: "Message sent successfully. We will get back to you shortly.",
-      });
       toast.success("Message sent successfully.");
       setFormData({
         name: "",
@@ -124,7 +118,6 @@ const Contact = () => {
       const message =
         error?.message ||
         "We could not send your message right now. Please try again.";
-      setFormStatus({ type: "error", message });
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -330,14 +323,6 @@ const Contact = () => {
                   {isSubmitting ? "Sending..." : "Send Message"}{" "}
                   <Send className="w-4 h-4 ml-2" />
                 </button>
-                {formStatus.message ? (
-                  <p
-                    className={`text-sm ${formStatus.type === "success" ? "text-green-400" : "text-red-400"}`}
-                    role="status"
-                  >
-                    {formStatus.message}
-                  </p>
-                ) : null}
               </form>
             </div>
 
