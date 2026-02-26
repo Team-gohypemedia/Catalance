@@ -209,32 +209,63 @@ function Signup({ className, ...props }) {
       setIsVerifying(true);
     } catch (error) {
       const message = error?.message || "Unable to create your account right now.";
+      const normalizedMessage = message.toLowerCase();
 
-      if (message.toLowerCase().includes("already exists")) {
-        toast.info("Account already exists. Redirecting to login...");
-        const roleParam = searchParams.get("role");
-        const loginPath = roleParam ? `/login?role=${roleParam}` : "/login";
-        const normalizedRoleParam =
-          typeof roleParam === "string" ? roleParam.toUpperCase() : null;
-        const redirectTo =
-          normalizedRoleParam === CLIENT_ROLE
-            ? "/client"
-            : normalizedRoleParam === FREELANCER_ROLE
-              ? "/freelancer"
-              : null;
-        setTimeout(
-          () =>
-            navigate(loginPath, {
-              state: {
-                email: formData.email,
-                role: roleParam,
-                fromProposal: isFromProposal,
-                ...(redirectTo ? { redirectTo } : {}),
-              },
-            }),
-          1000
-        );
-        return;
+      if (normalizedMessage.includes("already exists")) {
+        try {
+          await resendOtp(formData.email.trim().toLowerCase());
+          setIsVerifying(true);
+          setOtpValue("");
+          setFormError("");
+          setResendCooldown(60);
+          toast.info(
+            "This email is already registered but not verified. We sent a fresh verification code."
+          );
+          return;
+        } catch (resendError) {
+          const resendMessage =
+            resendError?.message || "Unable to resend verification code.";
+          const normalizedResendMessage = resendMessage.toLowerCase();
+
+          if (!normalizedResendMessage.includes("already verified")) {
+            setFormError(resendMessage);
+            toast.error(resendMessage);
+            return;
+          }
+
+          toast.info("Account already exists. Redirecting to login...");
+          const roleParam = searchParams.get("role");
+          const loginPath = roleParam ? `/login?role=${roleParam}` : "/login";
+          const normalizedRoleParam =
+            typeof roleParam === "string" ? roleParam.toUpperCase() : null;
+          const redirectTo =
+            normalizedRoleParam === CLIENT_ROLE
+              ? "/client"
+              : normalizedRoleParam === FREELANCER_ROLE
+                ? "/freelancer"
+                : null;
+          setTimeout(
+            () =>
+              navigate(loginPath, {
+                state: {
+                  email: formData.email,
+                  role: roleParam,
+                  fromProposal: isFromProposal,
+                  ...(redirectTo ? { redirectTo } : {}),
+                },
+              }),
+            1000
+          );
+          return;
+        }
+      }
+
+      if (
+        normalizedMessage.includes("verification code email") ||
+        normalizedMessage.includes("pending verification")
+      ) {
+        setIsVerifying(true);
+        setOtpValue("");
       }
 
       setFormError(message);

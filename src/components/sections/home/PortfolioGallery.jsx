@@ -122,7 +122,7 @@ const PortfolioGallery = () => {
   const isDark = theme === "dark";
 
   return (
-    <section className="w-full py-16 px-4 md:px-8 lg:px-16 transition-colors duration-500">
+    <section className="w-full bg-black py-16 px-4 md:px-8 lg:px-16 transition-colors duration-500">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="mb-12 text-center">

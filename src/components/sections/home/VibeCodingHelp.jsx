@@ -9,13 +9,11 @@ const VibeCodingHelp = () => {
   const isDark = theme === "dark";
 
   return (
-    <section className="w-full py-12 px-4 md:px-8 lg:px-16">
+    <section className="w-full bg-black py-12 px-4 md:px-8 lg:px-16">
       <div
         className="relative max-w-7xl mx-auto rounded-3xl overflow-hidden transition-colors duration-500"
         style={{
-          background: isDark
-            ? "linear-gradient(135deg, #4a3540 0%, #3d2a35 50%, #2e1f28 100%)"
-            : "linear-gradient(135deg, #c88a9c 0%, #a67180 50%, #8e5a6a 100%)",
+          background: "linear-gradient(135deg, #1f2025 0%, #17181d 55%, #101115 100%)",
         }}
       >
         <div className="flex flex-col lg:flex-row items-center justify-between gap-8 p-8 md:p-12 lg:p-16">

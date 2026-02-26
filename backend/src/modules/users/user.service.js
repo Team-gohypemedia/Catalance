@@ -1674,27 +1674,102 @@ export const createUser = async (payload) => {
 };
 
 export const registerUser = async (payload) => {
+  const normalizedEmail = String(payload.email || "").toLowerCase().trim();
+  const normalizedRole = normalizeRoleValue(payload.role) || "FREELANCER";
   const otpCode = crypto.randomInt(100000, 999999).toString();
   const otpExpires = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+  let reusedPendingUser = false;
 
-  const user = await createUserRecord({ ...payload, otpCode, otpExpires });
+  const buildPendingRoles = (currentRoles = []) => {
+    const normalizedCurrentRoles = Array.isArray(currentRoles)
+      ? currentRoles.map((entry) => normalizeRoleValue(entry)).filter(Boolean)
+      : [];
+    const nextRoles = Array.from(new Set([...normalizedCurrentRoles, normalizedRole]));
+    return nextRoles.length ? nextRoles : [normalizedRole];
+  };
+
+  const refreshPendingUser = async (pendingUser) =>
+    prisma.user.update(
+      withFreelancerProfileInclude({
+        where: { id: pendingUser.id },
+        data: {
+          fullName:
+            String(payload.fullName || pendingUser.fullName || "").trim() ||
+            pendingUser.fullName,
+          passwordHash: await hashUserPassword(payload.password),
+          role: normalizedRole,
+          roles: buildPendingRoles(pendingUser.roles),
+          status: normalizedRole === "FREELANCER" ? "PENDING_APPROVAL" : "ACTIVE",
+          onboardingComplete: payload.onboardingComplete === true,
+          otpCode,
+          otpExpires,
+          isVerified: false
+        }
+      })
+    );
+
+  let user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: normalizedEmail }
+    })
+  );
+
+  if (user) {
+    if (user.isVerified) {
+      throw new AppError("A user with that email already exists", 409);
+    }
+
+    reusedPendingUser = true;
+    user = await refreshPendingUser(user);
+  } else {
+    try {
+      user = await createUserRecord({
+        ...payload,
+        email: normalizedEmail,
+        role: normalizedRole,
+        otpCode,
+        otpExpires
+      });
+    } catch (error) {
+      const isDuplicateConflict = error instanceof AppError && error.statusCode === 409;
+      if (!isDuplicateConflict) {
+        throw error;
+      }
+
+      // A concurrent signup likely created the row first. Recover if it's still pending.
+      const existingPendingUser = await prisma.user.findUnique(
+        withFreelancerProfileInclude({
+          where: { email: normalizedEmail }
+        })
+      );
+
+      if (!existingPendingUser || existingPendingUser.isVerified) {
+        throw error;
+      }
+
+      reusedPendingUser = true;
+      user = await refreshPendingUser(existingPendingUser);
+    }
+  }
   let otpEmail;
   try {
     otpEmail = await sendOtpEmail({ email: user.email, otpCode });
   } catch (error) {
-    await prisma.user.delete({ where: { id: user.id } }).catch((cleanupError) => {
-      console.warn(
-        `[OTP Email] Failed to cleanup unsent signup user ${user.id}:`,
-        cleanupError?.message || cleanupError
-      );
-    });
-    throw error;
+    throw new AppError(
+      `${error?.message || "Unable to send verification code."} Your account is ${reusedPendingUser ? "still" : "now"} pending verification. Please use Resend Code and try again in a moment.`,
+      error?.statusCode || 502,
+      error?.details
+    );
   }
 
   return {
     message: otpEmail?.delivered
-      ? "Verification code sent to your email"
-      : "Account created. In development mode, use the OTP printed in backend logs.",
+      ? reusedPendingUser
+        ? "Account found. A fresh verification code has been sent to your email."
+        : "Verification code sent to your email"
+      : reusedPendingUser
+        ? "Account found. In development mode, use the OTP printed in backend logs."
+        : "Account created. In development mode, use the OTP printed in backend logs.",
     email: user.email,
     userId: user.id,
     emailDelivery: otpEmail?.delivered ? "sent" : "not_sent"
