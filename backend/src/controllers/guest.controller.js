@@ -171,13 +171,38 @@ const stripNameNotedRecap = (message = "") => {
     if (!cleaned.trim()) return "";
 
     const recapPatterns = [
-        /\bi(?:'|â€™)?ve\s+(?:got|noted)\s+your\s+name\b[^.?!\n]*[.?!]?/gi,
-        /\bgot\s+your\s+name\s+noted\b[^.?!\n]*[.?!]?/gi
+        /\bi(?:'|’)?ve\s+(?:got|noted)\s+your\s+name\b[^.?!\n]*[.?!]?/gi,
+        /\bgot\s+your\s+name\s+noted\b[^.?!\n]*[.?!]?/gi,
+        /\b(?:so\s+far,\s*)?i\s+know\s+your\s+name\s+is\b[^.?!\n]*\b(?:and|&)\s+your\s+(?:brand|company)\s+is\b[^.?!\n]*[.?!]?/gi,
+        /\b(?:so\s+far,\s*)?(?:i|we)\s+(?:have|got|noted|captured|recorded|saved|collected)\s+your\s+name\b[^.?!\n]*\b(?:and|&)\s+your\s+(?:brand|company)\b[^.?!\n]*[.?!]?/gi
     ];
 
     for (const pattern of recapPatterns) {
         cleaned = cleaned.replace(pattern, " ");
     }
+
+    const isNameBrandRecapSentence = (sentence = "") => {
+        const text = String(sentence || "").toLowerCase();
+        const hasName = /\byour\s+name\b/.test(text);
+        const hasBrand =
+            /\byour\s+(?:brand|company)\b/.test(text) ||
+            /\byour\s+(?:brand|company)\s+name\b/.test(text) ||
+            /\byour\s+company\s+or\s+brand\b/.test(text);
+        if (!hasName || !hasBrand) return false;
+
+        const firstPersonRecap =
+            /\b(i|we)\b/.test(text) &&
+            /\b(have|got|know|noted|captured|recorded|saved|collected)\b/.test(text);
+        const sharedRecap = /\byou\S*\s+shared\b/.test(text);
+        const soFarRecap = /\bso\s+far\b/.test(text);
+
+        return firstPersonRecap || sharedRecap || soFarRecap;
+    };
+
+    cleaned = cleaned
+        .split(/(?<=[.?!])\s+/)
+        .filter((sentence) => !isNameBrandRecapSentence(sentence))
+        .join(" ");
 
     return cleaned
         .replace(/[ \t]{2,}/g, " ")
@@ -2125,3 +2150,5 @@ export const getGuestHistory = asyncHandler(async (req, res) => {
         messages: session.messages,
     });
 });
+
+
