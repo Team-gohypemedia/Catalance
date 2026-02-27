@@ -54,6 +54,225 @@ const normalizeMarkdownContent = (content = "") =>
         .replace(/\s*```$/i, "")
         .trim();
 
+const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
+const QUESTION_LINE_REGEX = /\?\s*$/;
+
+const normalizeInlineOptions = (text = "") =>
+    String(text || "")
+        // Common AI output: "... question? 1. Option A"
+        .replace(/\?\s*(\d+)\.\s+/g, '?\n$1. ')
+        // Fallback for prompt formats like "Please choose: 1. A"
+        .replace(/:\s*(\d+)\.\s+/g, ':\n$1. ');
+
+const splitContextAndQuestion = (text = "") => {
+    const source = String(text || "").trim();
+    if (!source) return { contextText: "", questionText: "" };
+    if (!source.includes("?")) return { contextText: source, questionText: "" };
+
+    const sentenceMatches = source.match(/[^.!?\n]+[.!?]+/g) || [source];
+    let questionIdx = -1;
+
+    for (let idx = sentenceMatches.length - 1; idx >= 0; idx -= 1) {
+        if (sentenceMatches[idx].trim().endsWith("?")) {
+            questionIdx = idx;
+            break;
+        }
+    }
+
+    if (questionIdx === -1) {
+        const lines = source
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean);
+        const lastLine = lines[lines.length - 1] || "";
+        if (!lastLine.endsWith("?")) {
+            return { contextText: source, questionText: "" };
+        }
+        return {
+            contextText: lines.slice(0, -1).join("\n\n").trim(),
+            questionText: lastLine
+        };
+    }
+
+    const questionText = sentenceMatches[questionIdx].trim();
+    const contextText = sentenceMatches
+        .filter((_, idx) => idx !== questionIdx)
+        .map((sentence) => sentence.trim())
+        .filter((sentence) => !/^\d+\.$/.test(sentence))
+        .map((sentence) => sentence.trim())
+        .join(" ")
+        .trim();
+
+    return { contextText, questionText };
+};
+
+const parseAssistantMessageLayout = (content = "") => {
+    const normalized = normalizeInlineOptions(
+        normalizeMarkdownContent(content).replace(/\r/g, "").trim()
+    );
+    if (!normalized) {
+        return { contextText: "", questionText: "", options: [] };
+    }
+
+    const lines = normalized
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    const optionEntries = lines
+        .map((line, idx) => {
+            const match = line.match(OPTION_LINE_REGEX);
+            if (!match) return null;
+            return { idx, number: match[1], text: match[2].trim() };
+        })
+        .filter(Boolean);
+
+    let questionIndex = -1;
+    for (let idx = lines.length - 1; idx >= 0; idx -= 1) {
+        if (QUESTION_LINE_REGEX.test(lines[idx])) {
+            questionIndex = idx;
+            break;
+        }
+    }
+
+    if (questionIndex === -1 && optionEntries.length > 0) {
+        const firstOptionIndex = optionEntries[0].idx;
+        for (let idx = firstOptionIndex - 1; idx >= 0; idx -= 1) {
+            if (!OPTION_LINE_REGEX.test(lines[idx])) {
+                questionIndex = idx;
+                break;
+            }
+        }
+    }
+
+    if (questionIndex === -1) {
+        const split = splitContextAndQuestion(normalized);
+        if (!split.questionText) {
+            return { contextText: normalized, questionText: "", options: [] };
+        }
+        return {
+            contextText: split.contextText,
+            questionText: split.questionText,
+            options: []
+        };
+    }
+
+    const splitQuestionLine = splitContextAndQuestion(lines[questionIndex]);
+    const hasInlineQuestionSplit = Boolean(splitQuestionLine.questionText);
+    const questionText = hasInlineQuestionSplit
+        ? splitQuestionLine.questionText
+        : lines[questionIndex];
+    const contextParts = lines
+        .filter((line, idx) => idx !== questionIndex && !OPTION_LINE_REGEX.test(line));
+
+    // Add extracted context only when we actually split a mixed line
+    // like "Tip... What would you like...?"
+    if (hasInlineQuestionSplit && splitQuestionLine.contextText) {
+        contextParts.push(splitQuestionLine.contextText);
+    }
+
+    const contextText = contextParts.join("\n\n").trim();
+
+    return {
+        contextText,
+        questionText,
+        options: optionEntries.map((option) => ({
+            number: option.number,
+            text: option.text
+        }))
+    };
+};
+
+const AssistantMessageBody = ({
+    content,
+    isDark,
+    enableOptionClick = false,
+    onOptionClick = () => { },
+    isOptionSelected = () => false,
+    isMultiInput = false,
+    selectedCount = 0,
+    onSubmitMulti = () => { }
+}) => {
+    const { contextText, questionText, options } = parseAssistantMessageLayout(content);
+    const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
+
+    if (!hasStructuredQuestion) {
+        return (
+            <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            {contextText && (
+                <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                    <ReactMarkdown>{contextText}</ReactMarkdown>
+                </div>
+            )}
+
+            {questionText && (
+                <div className={`rounded-xl border px-3 py-3 ${isDark ? 'border-white/12 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                    <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                        <ReactMarkdown>{questionText}</ReactMarkdown>
+                    </div>
+                </div>
+            )}
+
+            {options.length > 0 && (
+                <div className="space-y-2">
+                    {options.map((option) => (
+                        enableOptionClick ? (
+                            <button
+                                key={`${option.number}-${option.text}`}
+                                type="button"
+                                onClick={() => onOptionClick(option.text)}
+                                className={`flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left transition-all ${isOptionSelected(option.text)
+                                    ? 'border-primary bg-primary/20 ring-1 ring-primary/50'
+                                    : isDark
+                                        ? 'border-white/15 bg-white/[0.04] hover:bg-white/[0.08]'
+                                        : 'border-black/10 bg-[#faf9f5] hover:bg-slate-100'
+                                    }`}
+                            >
+                                <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
+                                    {option.number}
+                                </span>
+                                <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                    <ReactMarkdown>{option.text}</ReactMarkdown>
+                                </div>
+                            </button>
+                        ) : (
+                            <div
+                                key={`${option.number}-${option.text}`}
+                                className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${isDark ? 'border-white/15 bg-white/[0.04]' : 'border-black/10 bg-[#faf9f5]'}`}
+                            >
+                                <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
+                                    {option.number}
+                                </span>
+                                <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                    <ReactMarkdown>{option.text}</ReactMarkdown>
+                                </div>
+                            </div>
+                        )
+                    ))}
+
+                    {enableOptionClick && isMultiInput && (
+                        <Button
+                            type="button"
+                            className="mt-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary-foreground hover:bg-primary/90"
+                            disabled={selectedCount === 0}
+                            onClick={onSubmitMulti}
+                        >
+                            Send selection
+                        </Button>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const PROPOSAL_META_FIELDS = [
     { key: 'clientName', label: 'Client Name' },
     { key: 'businessName', label: 'Business Name' },
@@ -279,6 +498,54 @@ const GuestAIDemo = () => {
 
     const optionIsSelected = (value = '') =>
         selectedOptions.some((selected) => normalizeOptionToken(selected) === normalizeOptionToken(value));
+
+    const resolveConfiguredOptionValue = (optionText = '') => {
+        const raw = String(optionText || '').trim();
+        if (!raw) return '';
+
+        const normalizedRaw = normalizeOptionToken(stripMarkdownDecorators(raw));
+        const matched = (inputConfig.options || []).find((option) => {
+            const label = typeof option === 'string' ? option : option.label;
+            const value = String(typeof option === 'string' ? option : (option.value ?? option.label));
+            const normalizedLabel = normalizeOptionToken(stripMarkdownDecorators(String(label || '')));
+            const normalizedValue = normalizeOptionToken(stripMarkdownDecorators(value));
+
+            return (
+                normalizedRaw === normalizedLabel ||
+                normalizedRaw === normalizedValue ||
+                normalizedRaw.includes(normalizedLabel) ||
+                normalizedLabel.includes(normalizedRaw)
+            );
+        });
+
+        if (!matched) return raw;
+        return String(typeof matched === 'string' ? matched : (matched.value ?? matched.label ?? raw));
+    };
+
+    const isOptionSelectedByText = (optionText = '') =>
+        optionIsSelected(resolveConfiguredOptionValue(optionText));
+
+    const handleChatOptionClick = (optionText = '') => {
+        const resolvedValue = resolveConfiguredOptionValue(optionText);
+        if (!resolvedValue) return;
+
+        if (isMultiInput) {
+            setSelectedOptions((prev) => {
+                const alreadySelected = prev.some(
+                    (v) => normalizeOptionToken(v) === normalizeOptionToken(resolvedValue)
+                );
+                if (alreadySelected) {
+                    return prev.filter(
+                        (v) => normalizeOptionToken(v) !== normalizeOptionToken(resolvedValue)
+                    );
+                }
+                return [...prev, resolvedValue];
+            });
+            return;
+        }
+
+        handleSendMessage(null, resolvedValue);
+    };
 
     useEffect(() => {
         fetchServices();
@@ -620,9 +887,21 @@ const GuestAIDemo = () => {
                                                 }`}
                                         >
                                             {msg.role === 'assistant' ? (
-                                                <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
-                                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                                </div>
+                                                <AssistantMessageBody
+                                                    content={msg.content}
+                                                    isDark={isDark}
+                                                    enableOptionClick={
+                                                        msg.role === 'assistant' &&
+                                                        idx === messages.length - 1 &&
+                                                        !isTyping &&
+                                                        hasOptionInput
+                                                    }
+                                                    onOptionClick={handleChatOptionClick}
+                                                    isOptionSelected={isOptionSelectedByText}
+                                                    isMultiInput={isMultiInput}
+                                                    selectedCount={selectedOptions.length}
+                                                    onSubmitMulti={(e) => handleSendMessage(e, selectedOptions)}
+                                                />
                                             ) : (
                                                 msg.content
                                             )}
@@ -655,62 +934,6 @@ const GuestAIDemo = () => {
                             </motion.div>
                         )}
 
-                        {!isTyping && hasOptionInput && (
-                            <div className="ml-0 flex flex-wrap gap-2.5 pt-1 md:ml-11">
-                                {inputConfig.options.map((option, idx) => {
-                                    const label = typeof option === 'string' ? option : option.label;
-                                    const value = String(typeof option === 'string' ? option : (option.value ?? option.label));
-                                    const isSelected = optionIsSelected(value);
-
-                                    const handleOptionClick = () => {
-                                        if (isMultiInput) {
-                                            setSelectedOptions((prev) => {
-                                                const alreadySelected = prev.some(
-                                                    (v) => normalizeOptionToken(v) === normalizeOptionToken(value)
-                                                );
-                                                if (alreadySelected) {
-                                                    return prev.filter(
-                                                        (v) => normalizeOptionToken(v) !== normalizeOptionToken(value)
-                                                    );
-                                                }
-                                                return [...prev, value];
-                                            });
-                                        } else {
-                                            handleSendMessage(null, value);
-                                        }
-                                    };
-
-                                    return (
-                                        <Button
-                                            key={idx}
-                                            type="button"
-                                            variant={isSelected ? "default" : "outline"}
-                                            className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all ${isSelected
-                                                ? 'border-primary bg-primary text-primary-foreground shadow-md ring-2 ring-primary/50 hover:bg-primary/90'
-                                                : isDark
-                                                    ? 'border-white/20 bg-white/[0.04] text-slate-100 hover:bg-white/[0.09]'
-                                                    : 'border-black/15 bg-white text-slate-700 hover:border-primary/50 hover:bg-primary/10'
-                                                }`}
-                                            onClick={handleOptionClick}
-                                        >
-                                            {isSelected && <Check className="mr-1.5 h-3.5 w-3.5" />}
-                                            {label}
-                                        </Button>
-                                    );
-                                })}
-
-                                {isMultiInput && (
-                                    <Button
-                                        type="button"
-                                        className="rounded-full bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary-foreground hover:bg-primary/90"
-                                        disabled={selectedOptions.length === 0 || isTyping}
-                                        onClick={(e) => handleSendMessage(e, selectedOptions)}
-                                    >
-                                        Send selection
-                                    </Button>
-                                )}
-                            </div>
-                        )}
                     </div>
                 </ScrollArea>
 
