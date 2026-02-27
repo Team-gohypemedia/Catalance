@@ -136,10 +136,7 @@ const AssistantMessageBody = ({ content, isDark }) => {
 
             {questionText && (
                 <div className={`rounded-xl border px-3 py-3 ${isDark ? 'border-primary/40 bg-primary/10' : 'border-primary/30 bg-primary/5'}`}>
-                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-primary' : 'text-[#7a6200]'}`}>
-                        Question
-                    </p>
-                    <div className={`mt-1 prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                    <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
                 </div>
