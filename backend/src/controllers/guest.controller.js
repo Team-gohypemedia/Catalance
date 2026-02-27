@@ -76,12 +76,47 @@ const hasDirectOptionAnswer = (message = "", question = {}) => {
     });
 };
 
-const extractNumericChoiceNumbers = (text = "", maxOptionCount = 0) => {
-    const matches = String(text || "").match(/\d+/g) || [];
-    const numbers = [];
+const normalizeOptionComparableText = (value = "") =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/\*\*/g, "")
+        .replace(/[`_]/g, "")
+        .replace(/[\u2013\u2014]/g, "-")
+        .replace(/\s*-\s*/g, "-")
+        .replace(/[^a-z0-9\s+-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-    for (const match of matches) {
-        const value = Number.parseInt(match, 10);
+const findExactOptionLabelMatches = (rawText = "", optionLabels = []) => {
+    const normalizedInput = normalizeOptionComparableText(rawText);
+    if (!normalizedInput) return [];
+
+    return optionLabels.filter((label) => {
+        const normalizedLabel = normalizeOptionComparableText(label);
+        if (!normalizedLabel) return false;
+        return normalizedInput === normalizedLabel;
+    });
+};
+const extractNumericChoiceNumbers = (text = "", maxOptionCount = 0) => {
+    const raw = String(text || "");
+    const regex = /\d+/g;
+    const numbers = [];
+    let match = null;
+
+    while ((match = regex.exec(raw)) !== null) {
+        const token = match[0];
+        const start = match.index;
+        const end = start + token.length;
+
+        // Ignore digits that are part of range-like text (e.g. "2-4 weeks", "1-2 months")
+        const leftWindow = raw.slice(Math.max(0, start - 3), start);
+        const rightWindow = raw.slice(end, end + 3);
+        const isRangeFragment =
+            /[\u2013\u2014-]\s*$/.test(leftWindow) ||
+            /^\s*[\u2013\u2014-]/.test(rightWindow);
+        if (isRangeFragment) continue;
+
+        const value = Number.parseInt(token, 10);
         if (!Number.isFinite(value)) continue;
         if (value < 1 || value > maxOptionCount) continue;
         if (!numbers.includes(value)) numbers.push(value);
@@ -94,6 +129,16 @@ const mapNumericReplyToOptions = (question = {}, rawText = "") => {
     const optionLabels = getQuestionOptionLabels(question);
     if (optionLabels.length === 0) {
         return { matched: false, normalizedText: rawText, selectedLabels: [] };
+    }
+
+    // Prefer exact label matching first so values like "2-4 weeks" map correctly.
+    const exactMatches = findExactOptionLabelMatches(rawText, optionLabels);
+    if (exactMatches.length > 0) {
+        return {
+            matched: true,
+            normalizedText: exactMatches.join(", "),
+            selectedLabels: exactMatches
+        };
     }
 
     const numbers = extractNumericChoiceNumbers(rawText, optionLabels.length);
@@ -171,7 +216,7 @@ const stripNameNotedRecap = (message = "") => {
     if (!cleaned.trim()) return "";
 
     const recapPatterns = [
-        /\bi(?:'|’)?ve\s+(?:got|noted)\s+your\s+name\b[^.?!\n]*[.?!]?/gi,
+        /\bi(?:'|\u2019)?ve\s+(?:got|noted)\s+your\s+name\b[^.?!\n]*[.?!]?/gi,
         /\bgot\s+your\s+name\s+noted\b[^.?!\n]*[.?!]?/gi,
         /\b(?:so\s+far,\s*)?i\s+know\s+your\s+name\s+is\b[^.?!\n]*\b(?:and|&)\s+your\s+(?:brand|company)\s+is\b[^.?!\n]*[.?!]?/gi,
         /\b(?:so\s+far,\s*)?(?:i|we)\s+(?:have|got|noted|captured|recorded|saved|collected)\s+your\s+name\b[^.?!\n]*\b(?:and|&)\s+your\s+(?:brand|company)\b[^.?!\n]*[.?!]?/gi
