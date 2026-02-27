@@ -283,9 +283,17 @@ const FreelancerSelectionDialog = ({
 
                       <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-lg bg-white/[0.02] p-2">
                         {budgetFit !== null && (
-                          <div className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border/60 bg-muted/35 px-2 py-1 text-[11px] font-medium text-foreground/85">
-                            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                            Budget fit {budgetFit}%
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-foreground/90">
+                              <span>Budget fit</span>
+                              <span>{budgetFit}%</span>
+                            </div>
+                            <div className="h-1.5 w-11/12 overflow-hidden rounded-full bg-black/35">
+                              <div
+                                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                                style={{ width: `${Math.max(0, Math.min(100, budgetFit))}%` }}
+                              />
+                            </div>
                           </div>
                         )}
                         {portfolioProjects.length > 0 && (
