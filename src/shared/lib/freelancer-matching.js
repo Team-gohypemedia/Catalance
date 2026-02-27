@@ -1,12 +1,13 @@
 const SCORE_WEIGHTS = {
   technology: 30,
-  specialization: 20,
-  industry: 10,
-  budget: 15,
-  experience: 10,
-  complexity: 5,
-  rating: 5,
-  portfolio: 5,
+  specialization: 22,
+  industry: 13,
+  relevance: 12,
+  budget: 13,
+  experience: 5,
+  complexity: 2,
+  rating: 2,
+  portfolio: 1,
 };
 
 const EXPERIENCE_RANK = {
@@ -167,6 +168,9 @@ const INDUSTRY_KEYWORDS = {
 
 const REQUIRED_TECH_FIELD_KEYS = [
   "tech_stack",
+  "project_stack",
+  "project_tech_stack",
+  "required_tech_stack",
   "frontend_framework",
   "backend_technology",
   "database",
@@ -177,6 +181,27 @@ const REQUIRED_TECH_FIELD_KEYS = [
   "ecommerce_platform",
   "technology",
   "platform_requirements",
+];
+
+const PRIORITY_TECH_FIELD_KEYS = [
+  "project_stack",
+  "project_tech_stack",
+  "required_tech_stack",
+  "project_note",
+  "project_notes",
+  "tech_stack",
+  "frontend_framework",
+  "backend_technology",
+  "database",
+];
+
+const TECH_NOTE_FIELD_KEYS = [
+  "project_note",
+  "project_notes",
+  "project_requirement",
+  "project_requirements",
+  "description",
+  "requirements",
 ];
 
 const REQUIRED_SPECIALIZATION_FIELD_KEYS = [
@@ -197,6 +222,83 @@ const REQUIRED_INDUSTRY_FIELD_KEYS = [
 const REQUIRED_BUDGET_FIELD_KEYS = ["budget", "project_budget", "user_budget"];
 const REQUIRED_TIMELINE_FIELD_KEYS = ["timeline", "launch_timeline", "duration"];
 const REQUIRED_COMPLEXITY_FIELD_KEYS = ["project_complexity", "complexity"];
+const REQUIRED_RELEVANCE_TEXT_FIELD_KEYS = [
+  "project_note",
+  "project_notes",
+  "project_requirement",
+  "project_requirements",
+  "requirement",
+  "requirements",
+  "description",
+  "scope",
+  "deliverables",
+  "features",
+  "goals",
+  "business_goal",
+];
+
+const MAX_REQUIREMENT_KEYWORDS = 80;
+const BUDGET_HARD_FILTER_MULTIPLIER = 1.35;
+const KEYWORD_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "but",
+  "by",
+  "for",
+  "from",
+  "has",
+  "have",
+  "if",
+  "in",
+  "into",
+  "is",
+  "it",
+  "its",
+  "of",
+  "on",
+  "or",
+  "our",
+  "that",
+  "the",
+  "their",
+  "them",
+  "there",
+  "these",
+  "this",
+  "to",
+  "we",
+  "with",
+  "you",
+  "your",
+  "need",
+  "needs",
+  "want",
+  "wants",
+  "looking",
+  "build",
+  "project",
+  "service",
+  "required",
+  "requirement",
+  "requirements",
+  "client",
+  "work",
+  "budget",
+  "timeline",
+  "stack",
+  "note",
+  "inr",
+  "usd",
+  "eur",
+  "aud",
+  "cad",
+  "gbp",
+]);
 
 const SERVICE_ALIAS_LOOKUP = buildAliasLookup(SERVICE_KEY_ALIASES);
 const TECH_ALIAS_LOOKUP = buildAliasLookup(TECH_ALIASES, true);
@@ -405,7 +507,7 @@ function parseBudgetAmount(raw) {
   if (raw === null || raw === undefined || raw === "") return null;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
 
-  const text = String(raw).toLowerCase().replace(/,/g, " ");
+  const text = String(raw).toLowerCase().replace(/,/g, "");
   const regex =
     /(\d+(?:\.\d+)?)\s*(k|thousand|lakh|lac|lakhs|lacs|crore|cr|million|m)?/gi;
   const values = [];
@@ -440,7 +542,7 @@ function parseBudgetRange(rangeText) {
   const raw = String(rangeText || "").trim();
   if (!raw) return null;
 
-  const text = raw.toLowerCase();
+  const text = raw.toLowerCase().replace(/,/g, "");
   const regex =
     /(\d+(?:\.\d+)?)\s*(k|thousand|lakh|lac|lakhs|lacs|crore|cr|million|m)?/gi;
   const amounts = [];
@@ -593,6 +695,35 @@ function collectRequirementValues({ fields, bySlug, byQuestion, capturedFields }
   ];
 }
 
+function isLikelyStructuredTechnology(rawValue, canonical) {
+  const normalizedRaw = normalizeText(rawValue);
+  if (!normalizedRaw || !canonical) return false;
+
+  if (Object.prototype.hasOwnProperty.call(TECH_ALIASES, canonical)) {
+    return true;
+  }
+
+  const tokens = normalizedRaw.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return false;
+  if (tokens.length !== 1) return false;
+  return normalizedRaw.length <= 24;
+}
+
+function collectCanonicalTechnologies(candidates = []) {
+  const canonicalSet = new Set();
+
+  candidates.forEach((candidate) => {
+    splitMultiValue(candidate).forEach((part) => {
+      const canonical = normalizeTech(part);
+      if (!canonical) return;
+      if (!isLikelyStructuredTechnology(part, canonical)) return;
+      canonicalSet.add(canonical);
+    });
+  });
+
+  return canonicalSet;
+}
+
 function extractTechnologies({
   proposal,
   proposalText,
@@ -602,41 +733,64 @@ function extractTechnologies({
   capturedFields,
   appHints,
 }) {
-  const candidates = [];
-  candidates.push(
-    ...collectRequirementValues(
-      { fields, bySlug, byQuestion, capturedFields },
-      REQUIRED_TECH_FIELD_KEYS,
-    ),
+  const priorityCandidates = collectRequirementValues(
+    { fields, bySlug, byQuestion, capturedFields },
+    PRIORITY_TECH_FIELD_KEYS,
   );
-  candidates.push(...flattenValues(proposal?.technologies));
-  candidates.push(...flattenValues(proposal?.techstack));
+  const structuredCandidates = collectRequirementValues(
+    { fields, bySlug, byQuestion, capturedFields },
+    REQUIRED_TECH_FIELD_KEYS,
+  );
+  const noteCandidates = collectRequirementValues(
+    { fields, bySlug, byQuestion, capturedFields },
+    TECH_NOTE_FIELD_KEYS,
+  );
+  const explicitCandidates = [
+    ...flattenValues(proposal?.technologies),
+    ...flattenValues(proposal?.techstack),
+  ];
+  const appHintCandidates =
+    appHints && typeof appHints === "object"
+      ? [
+          ...flattenValues(appHints.mobileTechnology),
+          ...flattenValues(appHints.backendTechnology),
+          ...flattenValues(appHints.dashboardTechnology),
+          ...flattenValues(appHints.techStack),
+        ]
+      : [];
 
-  if (appHints && typeof appHints === "object") {
-    candidates.push(
-      ...flattenValues(appHints.mobileTechnology),
-      ...flattenValues(appHints.backendTechnology),
-      ...flattenValues(appHints.dashboardTechnology),
-      ...flattenValues(appHints.techStack),
-    );
-  }
-
+  const priorityCanonicals = collectCanonicalTechnologies(priorityCandidates);
   const canonicalSet = new Set();
-  candidates.forEach((candidate) => {
-    splitMultiValue(candidate).forEach((part) => {
-      const canonical = normalizeTech(part);
-      if (canonical) canonicalSet.add(canonical);
-    });
-  });
 
-  const searchableText = normalizeText(
-    [proposalText, ...candidates].filter(Boolean).join(" "),
-  );
-  TECH_ALIAS_TEXT_LOOKUP.forEach((item) => {
-    if (searchableText.includes(item.alias)) {
-      canonicalSet.add(item.canonical);
-    }
-  });
+  if (priorityCanonicals.size > 0) {
+    priorityCanonicals.forEach((entry) => canonicalSet.add(entry));
+    collectCanonicalTechnologies(appHintCandidates).forEach((entry) =>
+      canonicalSet.add(entry),
+    );
+  } else {
+    collectCanonicalTechnologies([
+      ...structuredCandidates,
+      ...explicitCandidates,
+      ...appHintCandidates,
+    ]).forEach((entry) => canonicalSet.add(entry));
+
+    const searchableText = normalizeText(
+      [
+        proposalText,
+        ...structuredCandidates,
+        ...noteCandidates,
+        ...explicitCandidates,
+        ...appHintCandidates,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+    TECH_ALIAS_TEXT_LOOKUP.forEach((item) => {
+      if (searchableText.includes(item.alias)) {
+        canonicalSet.add(item.canonical);
+      }
+    });
+  }
 
   const canonicals = Array.from(canonicalSet);
   return {
@@ -749,6 +903,46 @@ function isOngoingProject({ fields, bySlug, byQuestion, capturedFields }) {
   return candidates.some((entry) => /ongoing|in progress|existing/i.test(String(entry)));
 }
 
+function tokenizeKeywords(value, { max = 120 } = {}) {
+  const tokens = normalizeText(value)
+    .replace(/[./]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3)
+    .filter((token) => !/^\d+$/.test(token))
+    .filter((token) => !KEYWORD_STOP_WORDS.has(token));
+
+  return tokens.slice(0, max);
+}
+
+function extractRequirementKeywords({
+  proposal,
+  proposalText,
+  fields,
+  bySlug,
+  byQuestion,
+  capturedFields,
+}) {
+  const textCandidates = [
+    proposal?.projectTitle,
+    proposal?.title,
+    proposal?.summary,
+    proposal?.content,
+    ...collectRequirementValues(
+      { fields, bySlug, byQuestion, capturedFields },
+      REQUIRED_RELEVANCE_TEXT_FIELD_KEYS,
+    ),
+  ];
+
+  const keywords = uniqueList(
+    textCandidates.flatMap((candidate) =>
+      tokenizeKeywords(candidate, { max: MAX_REQUIREMENT_KEYWORDS }),
+    ),
+  );
+
+  return keywords.slice(0, MAX_REQUIREMENT_KEYWORDS);
+}
+
 function safeNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -808,18 +1002,148 @@ function scoreIndustryMatch(requiredIndustries, freelancerIndustries) {
   return Math.min(1, matched / requiredIndustries.length);
 }
 
-function scoreBudgetMatch(clientBudget, freelancerPriceRange) {
-  if (!clientBudget || !freelancerPriceRange) return 0.5;
-
-  const range = parseBudgetRange(freelancerPriceRange);
-  if (!range) return 0.5;
-
-  if (clientBudget >= range.min && clientBudget <= range.max) return 1;
-  if (clientBudget >= range.min * 0.5 && clientBudget <= range.max * 1.5) {
-    return 0.7;
+function extractServicePriceFromDetail(detail) {
+  if (!detail || typeof detail !== "object") return "";
+  const candidates = [
+    detail?.averageProjectPriceRange,
+    detail?.averageProjectPrice,
+    detail?.averagePrice,
+    detail?.priceRange,
+    detail?.pricing
+  ];
+  for (const candidate of candidates) {
+    const normalized = String(candidate || "").trim();
+    if (normalized) return normalized;
   }
-  if (clientBudget < range.min) return 0.3;
-  return 0.5;
+  return "";
+}
+
+function resolveServicePriceRange(freelancer, serviceProject, requirements) {
+  const directRange = String(serviceProject?.averageProjectPriceRange || "").trim();
+  if (directRange) return directRange;
+
+  const serviceDetails = freelancer?.profileDetails?.serviceDetails;
+  if (!serviceDetails || typeof serviceDetails !== "object") return "";
+
+  const candidateKeys = uniqueList([
+    normalizeServiceKey(serviceProject?.serviceKey || serviceProject?.serviceName),
+    normalizeServiceKey(requirements?.serviceKey),
+  ]).filter(Boolean);
+
+  for (const candidateKey of candidateKeys) {
+    if (serviceDetails[candidateKey]) {
+      const range = extractServicePriceFromDetail(serviceDetails[candidateKey]);
+      if (range) return range;
+    }
+  }
+
+  for (const [rawKey, detail] of Object.entries(serviceDetails)) {
+    const normalizedKey = normalizeServiceKey(rawKey);
+    if (candidateKeys.length && !candidateKeys.includes(normalizedKey)) continue;
+    const range = extractServicePriceFromDetail(detail);
+    if (range) return range;
+  }
+
+  return "";
+}
+
+function evaluateBudgetMatch(clientBudget, freelancerPriceRange) {
+  const budgetAmount = safeNumber(clientBudget, 0);
+  const normalizedPriceRange = String(freelancerPriceRange || "").trim();
+
+  if (!budgetAmount) {
+    return {
+      raw: 0.5,
+      hardRejected: false,
+      withinRange: false,
+      range: null,
+      priceRange: normalizedPriceRange || null,
+    };
+  }
+
+  if (!normalizedPriceRange) {
+    return {
+      raw: 0.35,
+      hardRejected: false,
+      withinRange: false,
+      range: null,
+      priceRange: null,
+    };
+  }
+
+  const range = parseBudgetRange(normalizedPriceRange);
+  if (!range) {
+    return {
+      raw: 0.35,
+      hardRejected: false,
+      withinRange: false,
+      range: null,
+      priceRange: normalizedPriceRange,
+    };
+  }
+
+  const min = safeNumber(range.min, 0);
+  const max = Number.isFinite(range.max) ? range.max : Number.POSITIVE_INFINITY;
+  const isFarAboveBudget = budgetAmount < min && min > budgetAmount * BUDGET_HARD_FILTER_MULTIPLIER;
+
+  if (isFarAboveBudget) {
+    return {
+      raw: 0.1,
+      hardRejected: true,
+      withinRange: false,
+      range: { min, max },
+      priceRange: normalizedPriceRange,
+    };
+  }
+
+  if (budgetAmount >= min && budgetAmount <= max) {
+    return {
+      raw: 1,
+      hardRejected: false,
+      withinRange: true,
+      range: { min, max },
+      priceRange: normalizedPriceRange,
+    };
+  }
+
+  if (budgetAmount < min) {
+    const gapRatio = (min - budgetAmount) / Math.max(min, 1);
+    let raw = 0.25;
+    if (gapRatio <= 0.1) raw = 0.85;
+    else if (gapRatio <= 0.25) raw = 0.65;
+    else if (gapRatio <= 0.4) raw = 0.45;
+
+    return {
+      raw,
+      hardRejected: false,
+      withinRange: false,
+      range: { min, max },
+      priceRange: normalizedPriceRange,
+    };
+  }
+
+  if (!Number.isFinite(max)) {
+    return {
+      raw: 0.95,
+      hardRejected: false,
+      withinRange: true,
+      range: { min, max },
+      priceRange: normalizedPriceRange,
+    };
+  }
+
+  const overshootRatio = (budgetAmount - max) / Math.max(max, 1);
+  let raw = 0.55;
+  if (overshootRatio <= 0.2) raw = 0.85;
+  else if (overshootRatio <= 0.5) raw = 0.7;
+
+  return {
+    raw,
+    hardRejected: false,
+    withinRange: false,
+    range: { min, max },
+    priceRange: normalizedPriceRange,
+  };
 }
 
 function mapExperienceToRank(value, fallbackYears = 0) {
@@ -887,11 +1211,27 @@ function collectFreelancerTechs(freelancer, serviceProject) {
 
 function scoreTechnologyMatch(requirements, freelancer, serviceProject) {
   if (!requirements.technologyCanonicals.length) {
-    return { raw: 1, matchedTechnologies: [] };
+    return {
+      raw: 1,
+      matchedTechnologies: [],
+      matchedCanonicals: [],
+      matchedCount: 0,
+      requiredCount: 0,
+      isFullMatch: true,
+    };
   }
 
   const freelancerTechs = collectFreelancerTechs(freelancer, serviceProject);
-  if (!freelancerTechs.size) return { raw: 0, matchedTechnologies: [] };
+  if (!freelancerTechs.size) {
+    return {
+      raw: 0,
+      matchedTechnologies: [],
+      matchedCanonicals: [],
+      matchedCount: 0,
+      requiredCount: requirements.technologyCanonicals.length,
+      isFullMatch: false,
+    };
+  }
 
   const matched = [];
   requirements.technologyCanonicals.forEach((requiredCanonical) => {
@@ -908,10 +1248,116 @@ function scoreTechnologyMatch(requirements, freelancer, serviceProject) {
   });
 
   const uniqueMatched = Array.from(new Set(matched));
+  const requiredCount = requirements.technologyCanonicals.length;
+  const matchedCount = uniqueMatched.length;
   return {
-    raw: uniqueMatched.length / requirements.technologyCanonicals.length,
+    raw: matchedCount / requiredCount,
     matchedTechnologies: uniqueMatched.map((item) => getTechLabel(item)),
+    matchedCanonicals: uniqueMatched,
+    matchedCount,
+    requiredCount,
+    isFullMatch: matchedCount >= requiredCount,
   };
+}
+
+function extractFreelancerKeywordTokens(freelancer = {}, serviceProject = {}, requirements = {}) {
+  const tokens = new Set();
+  const projectEntries = Array.isArray(freelancer?.freelancerProjects)
+    ? freelancer.freelancerProjects
+    : [];
+  const portfolioEntries = Array.isArray(freelancer?.portfolioProjects)
+    ? freelancer.portfolioProjects
+    : [];
+
+  const serviceDetails =
+    freelancer?.profileDetails?.serviceDetails &&
+    typeof freelancer.profileDetails.serviceDetails === "object"
+      ? freelancer.profileDetails.serviceDetails
+      : {};
+  const relevantServiceKey = normalizeServiceKey(
+    serviceProject?.serviceKey || serviceProject?.serviceName || requirements?.serviceKey,
+  );
+  const relevantServiceDetails = Object.entries(serviceDetails)
+    .filter(([rawKey]) => {
+      if (!relevantServiceKey) return true;
+      return normalizeServiceKey(rawKey) === relevantServiceKey;
+    })
+    .map(([, detail]) => detail);
+
+  const textCandidates = [
+    ...flattenValues(freelancer?.skills),
+    ...flattenValues(freelancer?.services),
+    ...flattenValues(serviceProject?.serviceName),
+    ...flattenValues(serviceProject?.serviceSpecializations),
+    ...flattenValues(serviceProject?.industriesOrNiches),
+    ...flattenValues(serviceProject?.activeTechnologies),
+    ...flattenValues(serviceProject?.tags),
+    ...flattenValues(serviceProject?.techStack),
+    ...flattenValues(serviceProject?.title),
+    ...flattenValues(serviceProject?.description),
+    ...flattenValues(freelancer?.profileDetails?.globalIndustryFocus),
+    ...flattenValues(freelancer?.profileDetails?.globalIndustryOther),
+    ...flattenValues(relevantServiceDetails),
+    ...projectEntries.flatMap((project) => [
+      project?.title,
+      project?.description,
+      ...(Array.isArray(project?.tags) ? project.tags : []),
+      ...(Array.isArray(project?.techStack) ? project.techStack : []),
+      ...(Array.isArray(project?.serviceSpecializations)
+        ? project.serviceSpecializations
+        : []),
+      ...(Array.isArray(project?.industriesOrNiches) ? project.industriesOrNiches : []),
+    ]),
+    ...portfolioEntries.flatMap((project) => [
+      project?.title,
+      project?.description,
+      ...(Array.isArray(project?.tags) ? project.tags : []),
+      ...(Array.isArray(project?.techStack) ? project.techStack : []),
+    ]),
+  ];
+
+  textCandidates.forEach((candidate) => {
+    tokenizeKeywords(candidate, { max: 80 }).forEach((token) => tokens.add(token));
+  });
+
+  return tokens;
+}
+
+function scoreRequirementRelevance(requirements, freelancer, serviceProject) {
+  const requiredKeywords = Array.isArray(requirements?.requirementKeywords)
+    ? requirements.requirementKeywords
+    : [];
+  if (!requiredKeywords.length) return 0.5;
+
+  const freelancerKeywords = extractFreelancerKeywordTokens(
+    freelancer,
+    serviceProject,
+    requirements,
+  );
+  if (!freelancerKeywords.size) return 0;
+
+  let matched = 0;
+
+  requiredKeywords.forEach((keyword) => {
+    if (freelancerKeywords.has(keyword)) {
+      matched += 1;
+      return;
+    }
+
+    if (keyword.length < 5) return;
+    for (const freelancerKeyword of freelancerKeywords) {
+      if (
+        freelancerKeyword === keyword ||
+        freelancerKeyword.includes(keyword) ||
+        keyword.includes(freelancerKeyword)
+      ) {
+        matched += 0.65;
+        return;
+      }
+    }
+  });
+
+  return Math.min(1, matched / requiredKeywords.length);
 }
 
 function scorePortfolioRelevance(freelancerProjects, requirements) {
@@ -987,26 +1433,31 @@ function resolveWeights(requirements) {
   if (!requirements.technologyCanonicals.length) {
     const redistributed = weights.technology;
     weights.technology = 0;
-    weights.specialization += (redistributed * 2) / 3;
-    weights.industry += redistributed / 3;
+    weights.specialization += redistributed * 0.4;
+    weights.industry += redistributed * 0.3;
+    weights.relevance += redistributed * 0.3;
   }
   return weights;
 }
 
 function extractFreelancerServiceSpecializations(serviceProject = {}) {
-  return uniqueList(flattenValues(serviceProject.serviceSpecializations));
+  const resolved =
+    serviceProject && typeof serviceProject === "object" ? serviceProject : {};
+  return uniqueList(flattenValues(resolved.serviceSpecializations));
 }
 
 function extractFreelancerIndustries(serviceProject = {}, freelancer = {}) {
+  const resolved =
+    serviceProject && typeof serviceProject === "object" ? serviceProject : {};
   const industries = [
-    ...flattenValues(serviceProject.industriesOrNiches),
+    ...flattenValues(resolved.industriesOrNiches),
     ...flattenValues(freelancer?.profileDetails?.globalIndustryFocus),
     ...flattenValues(freelancer?.profileDetails?.globalIndustryOther),
   ];
   return uniqueList(industries);
 }
 
-function buildMatchReasons({ scores, matchedTechnologies, requirements }) {
+function buildMatchReasons({ scores, matchedTechnologies, requirements, budgetMeta }) {
   const reasons = [];
 
   if (scores.technology >= 0.6 && matchedTechnologies.length) {
@@ -1023,8 +1474,16 @@ function buildMatchReasons({ scores, matchedTechnologies, requirements }) {
     );
   }
 
+  if (scores.relevance >= 0.6) {
+    reasons.push("Requirements align with skills, services, and portfolio keywords");
+  }
+
   if (scores.budget >= 0.8 && requirements.budget) {
-    reasons.push("Budget range aligns with your project scope");
+    if (budgetMeta?.priceRange) {
+      reasons.push(`Service pricing (${budgetMeta.priceRange}) aligns with your budget`);
+    } else {
+      reasons.push("Budget range aligns with your project scope");
+    }
   }
 
   if (scores.industry >= 0.6 && requirements.industries.length) {
@@ -1051,26 +1510,39 @@ function buildMatchReasons({ scores, matchedTechnologies, requirements }) {
 }
 
 function computeScoreForProject(freelancer, serviceProject, requirements) {
-  const technology = scoreTechnologyMatch(requirements, freelancer, serviceProject);
+  const resolvedServiceProject =
+    serviceProject && typeof serviceProject === "object" ? serviceProject : {};
+  const technology = scoreTechnologyMatch(
+    requirements,
+    freelancer,
+    resolvedServiceProject,
+  );
   const specialization = scoreSpecializationMatch(
     requirements.specializations,
-    extractFreelancerServiceSpecializations(serviceProject),
+    extractFreelancerServiceSpecializations(resolvedServiceProject),
   );
   const industry = scoreIndustryMatch(
     requirements.industries,
-    extractFreelancerIndustries(serviceProject, freelancer),
+    extractFreelancerIndustries(resolvedServiceProject, freelancer),
   );
-  const budget = scoreBudgetMatch(
-    requirements.budget,
-    serviceProject?.averageProjectPriceRange,
+  const relevance = scoreRequirementRelevance(
+    requirements,
+    freelancer,
+    resolvedServiceProject,
   );
+  const resolvedPriceRange = resolveServicePriceRange(
+    freelancer,
+    resolvedServiceProject,
+    requirements,
+  );
+  const budget = evaluateBudgetMatch(requirements.budget, resolvedPriceRange);
   const experience = scoreExperience(
-    serviceProject?.yearsOfExperienceInService,
+    resolvedServiceProject?.yearsOfExperienceInService,
     requirements.complexity,
     freelancer?.experienceYears,
   );
   const complexity = scoreComplexityFit(
-    serviceProject?.projectComplexityLevel,
+    resolvedServiceProject?.projectComplexityLevel,
     requirements.complexity,
   );
   const rating = scoreRating(freelancer?.rating, freelancer?.reviewCount);
@@ -1083,7 +1555,8 @@ function computeScoreForProject(freelancer, serviceProject, requirements) {
     technology: technology.raw,
     specialization,
     industry,
-    budget,
+    relevance,
+    budget: budget.raw,
     experience,
     complexity,
     rating,
@@ -1109,12 +1582,23 @@ function computeScoreForProject(freelancer, serviceProject, requirements) {
     scores,
     matchedTechnologies: technology.matchedTechnologies,
     requirements,
+    budgetMeta: budget,
   });
 
   const matchHighlights = uniqueList([
     ...technology.matchedTechnologies.slice(0, 3),
     ...requirements.specializations.slice(0, 2),
-  ]).slice(0, 4);
+    ...requirements.industries.slice(0, 1),
+  ]).slice(0, 5);
+
+  const matchedServiceKey = normalizeServiceKey(
+    resolvedServiceProject?.serviceKey ||
+      resolvedServiceProject?.serviceName ||
+      requirements.serviceKey,
+  );
+  const techHardFilterPassed =
+    !requirements.technologyCanonicals.length || technology.matchedCount > 0;
+  const budgetHardFilterPassed = !budget.hardRejected;
 
   return {
     totalScore: Math.round(totalScore),
@@ -1122,6 +1606,29 @@ function computeScoreForProject(freelancer, serviceProject, requirements) {
     matchedTechnologies: technology.matchedTechnologies,
     matchReasons,
     matchHighlights,
+    techMatch: {
+      requiredCount: technology.requiredCount,
+      matchedCount: technology.matchedCount,
+      coverage: rounded(technology.raw, 4),
+      fullMatch: technology.isFullMatch,
+    },
+    budgetCompatibility: {
+      score: rounded(budget.raw, 4),
+      withinRange: budget.withinRange,
+      hardRejected: budget.hardRejected,
+      priceRange: budget.priceRange,
+      range: budget.range,
+    },
+    matchedService: {
+      serviceKey: matchedServiceKey || null,
+      serviceName: resolvedServiceProject?.serviceName || null,
+      averageProjectPriceRange: budget.priceRange || null,
+    },
+    hardFilters: {
+      technology: techHardFilterPassed,
+      budget: budgetHardFilterPassed,
+      passed: techHardFilterPassed && budgetHardFilterPassed,
+    },
   };
 }
 
@@ -1130,11 +1637,10 @@ function getServiceProjectsForRequirement(freelancer, serviceKey) {
     ? freelancer.freelancerProjects
     : [];
   if (!serviceKey) return projects;
-  const filtered = projects.filter((project) => {
+  return projects.filter((project) => {
     const key = normalizeServiceKey(project?.serviceKey || project?.serviceName);
     return key === serviceKey;
   });
-  return filtered.length ? filtered : projects;
 }
 
 function freelancerMatchesService(freelancer, serviceKey) {
@@ -1247,6 +1753,14 @@ export function extractMatchingRequirements(proposal = {}) {
     byQuestion,
     capturedFields,
   });
+  const requirementKeywords = extractRequirementKeywords({
+    proposal,
+    proposalText,
+    fields,
+    bySlug,
+    byQuestion,
+    capturedFields,
+  });
 
   const budget = extractBudget({ proposal, fields, bySlug, byQuestion, capturedFields });
   const timelineMonths = extractTimeline({
@@ -1284,6 +1798,7 @@ export function extractMatchingRequirements(proposal = {}) {
     technologyCanonicals: technologies.canonicals,
     specializations,
     industries,
+    requirementKeywords,
     budget,
     timelineMonths,
     complexity,
@@ -1296,13 +1811,54 @@ export function extractMatchingRequirements(proposal = {}) {
   };
 }
 
+function compareScoredVariants(a, b) {
+  if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+
+  const techMatchCountDiff =
+    safeNumber(b?.techMatch?.matchedCount, 0) -
+    safeNumber(a?.techMatch?.matchedCount, 0);
+  if (techMatchCountDiff !== 0) return techMatchCountDiff;
+
+  const techCoverageDiff =
+    safeNumber(b?.techMatch?.coverage, 0) - safeNumber(a?.techMatch?.coverage, 0);
+  if (techCoverageDiff !== 0) return techCoverageDiff;
+
+  const budgetScoreDiff =
+    safeNumber(b?.budgetCompatibility?.score, 0) -
+    safeNumber(a?.budgetCompatibility?.score, 0);
+  if (budgetScoreDiff !== 0) return budgetScoreDiff;
+
+  return 0;
+}
+
+function prioritizeByTechCoverage(scoredFreelancers, requirements) {
+  if (!requirements?.technologyCanonicals?.length) {
+    return scoredFreelancers;
+  }
+
+  const techMatched = scoredFreelancers.filter(
+    (freelancer) => safeNumber(freelancer?.techMatch?.matchedCount, 0) > 0,
+  );
+  if (!techMatched.length) return [];
+
+  const fullMatches = techMatched.filter(
+    (freelancer) => freelancer?.techMatch?.fullMatch === true,
+  );
+
+  if (fullMatches.length > 0) {
+    return fullMatches;
+  }
+
+  return techMatched;
+}
+
 export function rankFreelancersForProposal(freelancers = [], proposal = null) {
   if (!Array.isArray(freelancers) || freelancers.length === 0) return [];
   const requirements = extractMatchingRequirements(proposal || {});
   const candidates = buildCandidatePool(freelancers, requirements);
   const scoringPool = candidates.length ? candidates : freelancers;
 
-  return scoringPool
+  const scoredFreelancers = scoringPool
     .map((freelancer) => {
       const serviceProjects = getServiceProjectsForRequirement(
         freelancer,
@@ -1310,17 +1866,19 @@ export function rankFreelancersForProposal(freelancers = [], proposal = null) {
       );
       const projectVariants = serviceProjects.length ? serviceProjects : [null];
 
-      let bestResult = null;
-      projectVariants.forEach((serviceProject) => {
-        const scored = computeScoreForProject(
-          freelancer,
-          serviceProject,
-          requirements,
-        );
-        if (!bestResult || scored.totalScore > bestResult.totalScore) {
-          bestResult = scored;
-        }
-      });
+      const scoredVariants = projectVariants
+        .map((serviceProject) =>
+          computeScoreForProject(
+            freelancer,
+            serviceProject,
+            requirements,
+          ),
+        )
+        .filter((variant) => variant?.hardFilters?.passed);
+
+      if (!scoredVariants.length) return null;
+      scoredVariants.sort(compareScoredVariants);
+      const bestResult = scoredVariants[0];
 
       return {
         ...freelancer,
@@ -1329,12 +1887,58 @@ export function rankFreelancersForProposal(freelancers = [], proposal = null) {
         matchedTechnologies: bestResult?.matchedTechnologies || [],
         matchReasons: bestResult?.matchReasons || [],
         matchHighlights: bestResult?.matchHighlights || [],
+        techMatch: bestResult?.techMatch || {
+          requiredCount: 0,
+          matchedCount: 0,
+          coverage: 0,
+          fullMatch: false,
+        },
+        budgetCompatibility: bestResult?.budgetCompatibility || {
+          score: 0,
+          withinRange: false,
+          hardRejected: false,
+          priceRange: null,
+          range: null,
+        },
+        matchedService: bestResult?.matchedService || {
+          serviceKey: requirements.serviceKey || null,
+          serviceName: null,
+          averageProjectPriceRange: null,
+        },
+        matchHardFilters: bestResult?.hardFilters || {
+          technology: false,
+          budget: false,
+          passed: false,
+        },
       };
     })
+    .filter(Boolean);
+
+  const filteredByTechCoverage = prioritizeByTechCoverage(
+    scoredFreelancers,
+    requirements,
+  );
+
+  return filteredByTechCoverage
     .sort((a, b) => {
       if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+
+      const techCoverageDiff =
+        safeNumber(b?.techMatch?.coverage, 0) - safeNumber(a?.techMatch?.coverage, 0);
+      if (techCoverageDiff !== 0) return techCoverageDiff;
+
+      const budgetScoreDiff =
+        safeNumber(b?.budgetCompatibility?.score, 0) -
+        safeNumber(a?.budgetCompatibility?.score, 0);
+      if (budgetScoreDiff !== 0) return budgetScoreDiff;
+
       const ratingDiff = safeNumber(b.rating, 0) - safeNumber(a.rating, 0);
       if (ratingDiff !== 0) return ratingDiff;
+
       return safeNumber(b.reviewCount, 0) - safeNumber(a.reviewCount, 0);
-    });
+    })
+    .map((freelancer) => ({
+      ...freelancer,
+      matchScore: Math.round(safeNumber(freelancer.matchScore, 0)),
+    }));
 }
