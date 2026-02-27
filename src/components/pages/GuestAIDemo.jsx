@@ -57,8 +57,59 @@ const normalizeMarkdownContent = (content = "") =>
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
 
+const normalizeInlineOptions = (text = "") =>
+    String(text || "")
+        // Common AI output: "... question? 1. Option A"
+        .replace(/\?\s*(\d+)\.\s+/g, '?\n$1. ')
+        // Fallback for prompt formats like "Please choose: 1. A"
+        .replace(/:\s*(\d+)\.\s+/g, ':\n$1. ');
+
+const splitContextAndQuestion = (text = "") => {
+    const source = String(text || "").trim();
+    if (!source) return { contextText: "", questionText: "" };
+    if (!source.includes("?")) return { contextText: source, questionText: "" };
+
+    const sentenceMatches = source.match(/[^.!?\n]+[.!?]+/g) || [source];
+    let questionIdx = -1;
+
+    for (let idx = sentenceMatches.length - 1; idx >= 0; idx -= 1) {
+        if (sentenceMatches[idx].trim().endsWith("?")) {
+            questionIdx = idx;
+            break;
+        }
+    }
+
+    if (questionIdx === -1) {
+        const lines = source
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean);
+        const lastLine = lines[lines.length - 1] || "";
+        if (!lastLine.endsWith("?")) {
+            return { contextText: source, questionText: "" };
+        }
+        return {
+            contextText: lines.slice(0, -1).join("\n\n").trim(),
+            questionText: lastLine
+        };
+    }
+
+    const questionText = sentenceMatches[questionIdx].trim();
+    const contextText = sentenceMatches
+        .filter((_, idx) => idx !== questionIdx)
+        .map((sentence) => sentence.trim())
+        .filter((sentence) => !/^\d+\.$/.test(sentence))
+        .map((sentence) => sentence.trim())
+        .join(" ")
+        .trim();
+
+    return { contextText, questionText };
+};
+
 const parseAssistantMessageLayout = (content = "") => {
-    const normalized = normalizeMarkdownContent(content).replace(/\r/g, "").trim();
+    const normalized = normalizeInlineOptions(
+        normalizeMarkdownContent(content).replace(/\r/g, "").trim()
+    );
     if (!normalized) {
         return { contextText: "", questionText: "", options: [] };
     }
@@ -95,14 +146,27 @@ const parseAssistantMessageLayout = (content = "") => {
     }
 
     if (questionIndex === -1) {
-        return { contextText: normalized, questionText: "", options: [] };
+        const split = splitContextAndQuestion(normalized);
+        if (!split.questionText) {
+            return { contextText: normalized, questionText: "", options: [] };
+        }
+        return {
+            contextText: split.contextText,
+            questionText: split.questionText,
+            options: []
+        };
     }
 
-    const questionText = lines[questionIndex];
-    const contextText = lines
-        .filter((line, idx) => idx !== questionIndex && !OPTION_LINE_REGEX.test(line))
-        .join("\n\n")
-        .trim();
+    const splitQuestionLine = splitContextAndQuestion(lines[questionIndex]);
+    const questionText = splitQuestionLine.questionText || lines[questionIndex];
+    const contextParts = lines
+        .filter((line, idx) => idx !== questionIndex && !OPTION_LINE_REGEX.test(line));
+
+    if (splitQuestionLine.contextText) {
+        contextParts.push(splitQuestionLine.contextText);
+    }
+
+    const contextText = contextParts.join("\n\n").trim();
 
     return {
         contextText,
@@ -135,7 +199,7 @@ const AssistantMessageBody = ({ content, isDark }) => {
             )}
 
             {questionText && (
-                <div className={`rounded-xl border px-3 py-3 ${isDark ? 'border-primary/40 bg-primary/10' : 'border-primary/30 bg-primary/5'}`}>
+                <div className={`rounded-xl border px-3 py-3 ${isDark ? 'border-white/12 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
                     <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
