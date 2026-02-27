@@ -18,10 +18,10 @@ const GRATITUDE_REGEX = /\b(thanks|thank you|thx|ty)\b/i;
 const EXTRACTION_CONFIDENCE_MIN = 0.7;
 const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.86;
 const FRIENDLY_BRIDGES = [
-    "Awesome - thanks for sharing that.",
-    "Great - this is super helpful.",
-    "Perfect - we are making solid progress.",
-    "Nice - got it clearly."
+    "Thanks for sharing that.",
+    "Great, this helps a lot.",
+    "Perfect, we are moving forward well.",
+    "Nice, I noted that."
 ];
 
 const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
@@ -165,6 +165,26 @@ const combineInlineMessages = (...parts) =>
         .map((part) => String(part || "").trim())
         .filter(Boolean)
         .join(" ");
+
+const stripNameNotedRecap = (message = "") => {
+    let cleaned = String(message || "");
+    if (!cleaned.trim()) return "";
+
+    const recapPatterns = [
+        /\bi(?:'|’)?ve\s+(?:got|noted)\s+your\s+name\b[^.?!\n]*[.?!]?/gi,
+        /\bgot\s+your\s+name\s+noted\b[^.?!\n]*[.?!]?/gi
+    ];
+
+    for (const pattern of recapPatterns) {
+        cleaned = cleaned.replace(pattern, " ");
+    }
+
+    return cleaned
+        .replace(/[ \t]{2,}/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/^[ \t]+/gm, "")
+        .trim();
+};
 
 const containsNormalizedText = (source = "", snippet = "") => {
     const normalizedSource = normalizeTextToken(source);
@@ -710,8 +730,8 @@ const buildContextualSuggestionMessage = ({
 
     if (optionLabels.length === 0) {
         return [
-            `Great question - this is important for planning your ${serviceName || "project"} correctly.`,
-            "Once you confirm this detail, I can give more accurate scope and recommendations.",
+            `Good question. This helps me plan your ${serviceName || "project"} better.`,
+            "Once you share this, I can guide you more clearly.",
             `Please share this so we can continue:\n${questionText}`
         ].join("\n\n");
     }
@@ -755,7 +775,7 @@ const buildContextualSuggestionMessage = ({
         recommendation = optionLabels[0];
         reason = "as a safe starting point based on typical startup MVP launches.";
     } else if (/budget/.test(normalizedQuestion)) {
-        return `Based on your current scope, I can guide a realistic range, but I still need your final budget number to proceed.\n\n${questionText}`;
+        return `I can suggest a realistic range, but I still need your final budget to continue.\n\n${questionText}`;
     } else {
         recommendation = optionLabels[0];
         reason = "based on the details you've already shared.";
@@ -769,16 +789,16 @@ const buildContextualSuggestionMessage = ({
         .filter((label) => normalizeTextToken(label) !== normalizeTextToken(recommendation))
         .slice(0, 2);
     const alternativesLine = alternatives.length > 0
-        ? `If that doesn't fit, you can consider ${alternatives.join(" or ")}.`
+        ? `If that does not fit, you can choose ${alternatives.join(" or ")}.`
         : "";
 
     return [
-        "Great question - you're asking the right thing.",
-        `Based on your current context, I'd start with **${recommendation}** ${reason}`,
+        "Good question.",
+        `Based on what you shared, I suggest **${recommendation}** ${reason}`,
         alternativesLine,
-        "How to decide quickly:",
-        "- Pick the option closest to your immediate launch goal.",
-        "- If you're unsure, choose the closest fit and I'll refine scope in the next step.",
+        "Quick tip:",
+        "- Pick the option that best matches your first launch goal.",
+        "- If you are not sure, choose the closest one and we can adjust next.",
         "Please choose one option so we can continue:",
         questionWithOptions
     ]
@@ -938,6 +958,8 @@ ${isInitial ? startTaskBlock : followupTaskBlock}
 Rules:
 - Keep it human and conversational, not robotic.
 - Use the same language style as the user last message.
+- Use simple English with short, clear sentences.
+- Keep the tone polite and friendly in every response.
 - Do not skip or replace the required next question.
 - Do not ask extra unrelated questions.
 - If options are provided for the required next question, ask user to choose from those options.
@@ -1546,31 +1568,6 @@ export const guestChat = asyncHandler(async (req, res) => {
             questions
         ).byQuestionText;
 
-        if (isGreetingInsteadOfNameAnswer(currentQuestionText, userMessageText)) {
-            validationResult = {
-                isValid: false,
-                status: "invalid_answer",
-                message: "I am doing well, thanks. Please share your name so I can continue."
-            };
-            aiResponseContent = validationResult.message;
-            console.log("[Validation Fallback]:", validationResult);
-        } else if (
-            isContextSuggestionRequest(userMessageText) &&
-            !hasDirectOptionAnswer(userMessageText, currentQuestion)
-        ) {
-            validationResult = {
-                isValid: false,
-                status: "info_request",
-                message: buildContextualSuggestionMessage({
-                    question: currentQuestion,
-                    answersBySlug: existingAnswersBySlug,
-                    serviceName: service.name
-                })
-            };
-            aiResponseContent = validationResult.message;
-            console.log("[Validation Context Suggestion]:", validationResult);
-        } else {
-
         // Prepare context for the NEXT question if it exists
         const nextStepIndex = currentStep + 1;
         const nextQuestionText = (nextStepIndex < questions.length)
@@ -1597,6 +1594,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             2. Generate a Response Message:
             - If INVALID: Politely ask for clarification or the specific details needed.
             - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
+            - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
+            - Do not sound corrective or robotic. Avoid phrases like "invalid response", "I caught", "still need", or "wrong answer".
             - If INFO_REQUEST: Give a practical helpful answer with more detail:
               1) Answer the user's confusion/question clearly (2-4 short sentences).
               2) Give one recommendation and why it fits their known context.
@@ -1606,6 +1605,8 @@ export const guestChat = asyncHandler(async (req, res) => {
               (Example: "That sounds great! Now, [Next Question]?")
               (If it's the final question, just say "Thanks! Let me put that together for you.")
             - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
+            - Keep wording polite, friendly, and in simple English.
+            - Keep sentences short and easy to understand.
 
             Return ONLY a raw JSON object (double quotes only) with this structure:
             {
@@ -1636,18 +1637,25 @@ export const guestChat = asyncHandler(async (req, res) => {
         } else {
             console.warn("[Validation] AI request failed");
         }
-        }
-
-        // If parsing fails, avoid advancing on obvious non-answers.
-        if (!validationResult && GREETING_ONLY_REGEX.test(userMessageText)) {
-            validationResult = {
-                isValid: false,
-                message: "Please answer the question directly so I can continue.",
-            };
-        }
 
         if (!validationResult) {
-            validationResult = { isValid: true, message: "" };
+            const aiReaskCurrentQuestion = await buildAiGuidedQuestionMessage({
+                serviceName: service.name,
+                userLastMessage: userMessageText,
+                currentQuestion,
+                nextQuestion: currentQuestion,
+                answersByQuestionText: knownContextByQuestion,
+                sideReply: "",
+                bridgeSegments: [],
+                isInitial: false
+            });
+            validationResult = {
+                isValid: false,
+                status: "invalid_answer",
+                message: aiReaskCurrentQuestion || formatQuestionWithOptions(currentQuestion),
+            };
+            aiResponseContent = validationResult.message;
+            console.log("[Validation Parse Fallback]:", validationResult);
         }
 
             if (!validationResult.isValid) {
@@ -1729,7 +1737,9 @@ export const guestChat = asyncHandler(async (req, res) => {
                 const correctionBridge = dependentIndexes.length > 0
                     ? `Got it - I updated your earlier answer and adjusted related steps. ${personalizedFollowBridge}`
                     : `Got it - I updated your earlier answer. ${personalizedFollowBridge}`;
-                const correctionMessage = buildFriendlyMessage(followQuestion, correctionBridge);
+                const correctionMessage = stripNameNotedRecap(
+                    buildFriendlyMessage(followQuestion, correctionBridge)
+                );
 
                 await prisma.aiGuestMessage.create({
                     data: {
@@ -1781,7 +1791,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 console.log(
                     `[Future Capture] Stored future answer(s) while waiting for current step: ${correctionCapture.updatedSlugs.join(", ")}`
                 );
-                capturedFutureNote = "I noted the project details you shared and saved them. Please answer this current question so we can continue.";
+                capturedFutureNote = "";
             }
 
             // INVALID ANSWER FLOW
@@ -1796,7 +1806,19 @@ export const guestChat = asyncHandler(async (req, res) => {
             });
 
             // 2. Save Assistant's Feedback Message
-            const feedbackCore = aiResponseContent || "Could you please provide more specific details?";
+            const fallbackFeedbackFromAi = aiResponseContent
+                ? ""
+                : await buildAiGuidedQuestionMessage({
+                    serviceName: service.name,
+                    userLastMessage: userMessageText,
+                    currentQuestion,
+                    nextQuestion: currentQuestion,
+                    answersByQuestionText: buildPersistedAnswersPayload(invalidFlowAnswersBySlug, questions).byQuestionText,
+                    sideReply: "",
+                    bridgeSegments: [],
+                    isInitial: false
+                });
+            const feedbackCore = aiResponseContent || fallbackFeedbackFromAi || formatQuestionWithOptions(currentQuestion);
             const sideReply = buildAgentSideReply({
                 userMessage: userMessageText,
                 answersByQuestionText: buildPersistedAnswersPayload(invalidFlowAnswersBySlug, questions).byQuestionText
@@ -1805,10 +1827,12 @@ export const guestChat = asyncHandler(async (req, res) => {
                 || countOptionLabelsMentioned(feedbackCore, currentQuestion) >= 2
                 ? ""
                 : buildQuickReplyHint(currentQuestion);
-            const feedbackMsg = [sideReply, capturedFutureNote, feedbackCore, quickReplyHint]
-                .map((part) => String(part || "").trim())
-                .filter(Boolean)
-                .join("\n\n");
+            const feedbackMsg = stripNameNotedRecap(
+                [sideReply, capturedFutureNote, feedbackCore, quickReplyHint]
+                    .map((part) => String(part || "").trim())
+                    .filter(Boolean)
+                    .join("\n\n")
+            );
             await prisma.aiGuestMessage.create({
                 data: {
                     sessionId,
@@ -2045,10 +2069,12 @@ export const guestChat = asyncHandler(async (req, res) => {
             );
         } catch (error) {
             console.error("[Proposal] Generation failed:", error?.message || error);
-            responseContent = "I have collected your requirements, but I'm having trouble generating the proposal right now. Please sign up to connect with an expert.";
+            responseContent = "I have saved your requirements, but I cannot generate the proposal right now. Please sign up and connect with an expert.";
         }
         // No input config for final step (or maybe CTA in future)
     }
+
+    responseContent = stripNameNotedRecap(responseContent);
 
     // 5. Save Assistant Message
     console.log(`[Assistant]: ${responseContent}`);
