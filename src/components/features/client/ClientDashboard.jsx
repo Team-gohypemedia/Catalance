@@ -1,37 +1,24 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
 import Send from "lucide-react/dist/esm/icons/send";
-import Star from "lucide-react/dist/esm/icons/star";
-import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import Zap from "lucide-react/dist/esm/icons/zap";
-import X from "lucide-react/dist/esm/icons/x";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import User from "lucide-react/dist/esm/icons/user";
-import Wallet from "lucide-react/dist/esm/icons/wallet";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import Plus from "lucide-react/dist/esm/icons/plus";
-import Calendar from "lucide-react/dist/esm/icons/calendar";
-import Flag from "lucide-react/dist/esm/icons/flag";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +38,11 @@ import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
+import FreelancerDetailsDialog from "@/components/features/client/dashboard/FreelancerDetailsDialog";
+import EditProposalDialog from "@/components/features/client/dashboard/EditProposalDialog";
+import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
+import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
+import ViewProposalDialog from "@/components/features/client/dashboard/ViewProposalDialog";
 import {
   Table,
   TableBody,
@@ -60,11 +52,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 const getProposalStorageKeys = (userId) => {
@@ -171,6 +158,317 @@ const formatBudget = (budget) => {
   const finalValue = hasKSuffix ? numValue * 1000 : numValue;
 
   return `₹${finalValue.toLocaleString("en-IN")}`;
+};
+
+const stripProposalMarkdown = (value = "") =>
+  String(value || "")
+    .replace(/```markdown\n?/gi, "")
+    .replace(/```\n?/g, "")
+    .trim();
+
+const uniqueProposalItems = (items = []) => {
+  const seen = new Set();
+  const result = [];
+  items.forEach((item) => {
+    const normalized = String(item || "").trim();
+    if (!normalized) return;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(normalized);
+  });
+  return result;
+};
+
+const parseProposalSections = (proposal = {}) => {
+  const rawContent = proposal?.summary || proposal?.content || "";
+  const cleanContent = stripProposalMarkdown(rawContent);
+  const lines = cleanContent.split("\n");
+  let overview = "";
+  const objectives = [];
+  const features = [];
+  let currentSection = "";
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const lowerLine = trimmed.toLowerCase();
+
+    if (/project overview:|overview:|summary:/.test(lowerLine)) {
+      currentSection = "overview";
+      const value = trimmed.split(":").slice(1).join(":").trim();
+      if (value) overview = value;
+      return;
+    }
+
+    if (/primary objectives:|objectives:|goals:/.test(lowerLine)) {
+      currentSection = "objectives";
+      return;
+    }
+
+    if (/features|deliverables|scope/.test(lowerLine)) {
+      currentSection = "features";
+      return;
+    }
+
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      const item = trimmed.replace(/^[-*]\s+/, "").trim();
+      if (!item) return;
+      if (currentSection === "objectives") {
+        objectives.push(item);
+      } else if (currentSection === "features") {
+        features.push(item);
+      }
+      return;
+    }
+
+    if (currentSection === "overview") {
+      overview = overview ? `${overview} ${trimmed}` : trimmed;
+    }
+  });
+
+  if (!overview && cleanContent) {
+    overview = cleanContent.slice(0, 220);
+  }
+
+  return {
+    cleanContent,
+    overview: overview.trim(),
+    objectives: uniqueProposalItems(objectives),
+    features: uniqueProposalItems(features),
+  };
+};
+
+const resolveProposalServiceLabel = (proposal = {}) =>
+  proposal?.service ||
+  proposal?.serviceName ||
+  proposal?.serviceKey ||
+  "General";
+
+const formatProposalUpdatedAt = (proposal = {}) => {
+  const timestamp = proposal?.updatedAt || proposal?.createdAt;
+  if (!timestamp) return "Recently";
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) return "Recently";
+  return parsed.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const normalizeFreelancerCardData = (candidate = {}) => {
+  const freelancer = { ...candidate };
+  const rawBio = freelancer.bio || freelancer.about;
+
+  if (typeof rawBio === "string" && rawBio.trim().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawBio);
+      if (!freelancer.location && parsed.location) freelancer.location = parsed.location;
+      if (!freelancer.role && parsed.role) freelancer.role = parsed.role;
+      if (!freelancer.title && parsed.title) freelancer.role = parsed.title;
+      if (!freelancer.rating && parsed.rating) freelancer.rating = parsed.rating;
+      if ((!freelancer.skills || freelancer.skills.length === 0) && parsed.skills) {
+        freelancer.skills = parsed.skills;
+      }
+      if (!freelancer.hourlyRate && parsed.hourlyRate) {
+        freelancer.hourlyRate = parsed.hourlyRate;
+      }
+
+      freelancer.cleanBio =
+        parsed.bio ||
+        parsed.about ||
+        parsed.description ||
+        parsed.summary ||
+        parsed.overview ||
+        parsed.introduction ||
+        parsed.profileSummary ||
+        parsed.shortDescription ||
+        (Array.isArray(parsed.services) && parsed.services.length > 0
+          ? `Experienced in ${parsed.services.join(", ")}`
+          : null) ||
+        "No bio available.";
+    } catch {
+      freelancer.cleanBio = "Overview available in profile.";
+    }
+  } else {
+    freelancer.cleanBio = rawBio || "No bio available for this freelancer.";
+  }
+
+  return freelancer;
+};
+
+const formatRating = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return "N/A";
+  return num.toFixed(1);
+};
+
+const PROPOSAL_STACK_KEYS = [
+  "projectStack",
+  "project_stack",
+  "projectTechStack",
+  "project_tech_stack",
+  "requiredTechStack",
+  "required_tech_stack",
+  "techStack",
+  "tech_stack",
+  "frontendFramework",
+  "frontend_framework",
+  "backendTechnology",
+  "backend_technology",
+  "database",
+];
+
+const PROPOSAL_STACK_TEXT_KEYS = [
+  "projectTitle",
+  "title",
+  "projectNote",
+  "project_note",
+  "projectNotes",
+  "project_notes",
+  "projectRequirement",
+  "project_requirement",
+  "projectRequirements",
+  "project_requirements",
+  "requirements",
+  "description",
+  "summary",
+  "content",
+];
+
+const STACK_DETECTION_PATTERNS = [
+  { label: "Technical SEO", pattern: /\btechnical seo\b/i },
+  { label: "Content SEO", pattern: /\bcontent seo\b/i },
+  { label: "On-Page SEO", pattern: /\bon[\s-]?page seo\b/i },
+  { label: "Off-Page SEO", pattern: /\boff[\s-]?page seo\b/i },
+  { label: "Local SEO", pattern: /\blocal seo\b/i },
+  { label: "Keyword Research", pattern: /\bkeyword research\b/i },
+  { label: "Link Building", pattern: /\blink building\b/i },
+  { label: "Google Search Console", pattern: /\bgoogle search console\b|\bgsc\b/i },
+  { label: "Ahrefs", pattern: /\bahrefs\b/i },
+  { label: "React.js", pattern: /\breact(?:\.js)?\b/i },
+  { label: "Next.js", pattern: /\bnext(?:\.js)?\b/i },
+  { label: "Node.js", pattern: /\bnode(?:\.js)?\b/i },
+  { label: "TypeScript", pattern: /\btypescript\b|\bts\b/i },
+  { label: "JavaScript", pattern: /\bjavascript\b|\bjs\b/i },
+  { label: "PostgreSQL", pattern: /\bpostgres(?:ql)?\b/i },
+  { label: "MySQL", pattern: /\bmysql\b/i },
+  { label: "MongoDB", pattern: /\bmongo(?:db)?\b/i },
+  { label: "Express.js", pattern: /\bexpress(?:\.js)?\b/i },
+  { label: "Tailwind CSS", pattern: /\btailwind\b/i },
+  { label: "Flutter", pattern: /\bflutter\b/i },
+  { label: "React Native", pattern: /\breact native\b/i },
+  { label: "Python", pattern: /\bpython\b|\bdjango\b|\bflask\b|\bfastapi\b/i },
+  { label: "PHP", pattern: /\bphp\b|\blaravel\b/i },
+  { label: "WordPress", pattern: /\bwordpress\b/i },
+  { label: "Shopify", pattern: /\bshopify\b/i },
+  { label: "Firebase", pattern: /\bfirebase\b/i },
+  { label: "Supabase", pattern: /\bsupabase\b/i },
+  { label: "AWS", pattern: /\baws\b|amazon web services/i },
+  { label: "Vercel", pattern: /\bvercel\b/i },
+  { label: "SEO", pattern: /\bseo\b|search engine optimization/i },
+  { label: "Content Marketing", pattern: /\bcontent marketing\b|\bcontent strategy\b/i },
+  { label: "Social Media", pattern: /\bsocial media\b|\bsmm\b/i },
+  { label: "Google Ads", pattern: /\bgoogle ads\b|\bppc\b/i },
+  { label: "Meta Ads", pattern: /\bmeta ads\b|\bfacebook ads\b|\binstagram ads\b/i },
+  { label: "Branding", pattern: /\bbranding\b|brand identity/i },
+];
+
+const normalizeSkillToken = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9#+.]/g, "");
+
+const collectStringValues = (value) => {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectStringValues(item));
+  }
+  if (typeof value === "object") {
+    return Object.values(value).flatMap((item) => collectStringValues(item));
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    return [String(value)];
+  }
+  return [];
+};
+
+const splitSkillValues = (value = "") =>
+  String(value || "")
+    .split(/,|\/|\||\+|;|&|\band\b/gi)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+const collectFreelancerSkillTokens = (freelancer = {}) => {
+  const tokenSet = new Set();
+  const candidates = collectStringValues([
+    freelancer?.matchedTechnologies,
+    freelancer?.matchHighlights,
+    freelancer?.skills,
+    freelancer?.services,
+    freelancer?.profileDetails?.services,
+    freelancer?.profileDetails?.serviceDetails,
+    freelancer?.freelancerProjects,
+  ]);
+
+  candidates.forEach((entry) => {
+    splitSkillValues(entry).forEach((part) => {
+      const normalized = normalizeSkillToken(part);
+      if (normalized) tokenSet.add(normalized);
+    });
+  });
+
+  return tokenSet;
+};
+
+const freelancerMatchesRequiredSkill = (requiredSkill, freelancerSkillTokens) => {
+  const required = normalizeSkillToken(requiredSkill);
+  if (!required) return false;
+  if (freelancerSkillTokens.has(required)) return true;
+
+  for (const token of freelancerSkillTokens) {
+    if (!token || token.length < 3 || required.length < 3) continue;
+    if (token.includes(required) || required.includes(token)) return true;
+  }
+
+  return false;
+};
+
+const extractProjectRequiredSkills = (proposal = {}) => {
+  const collected = [];
+  const seen = new Set();
+
+  const pushSkill = (rawValue) => {
+    const value = String(rawValue || "").trim();
+    if (!value || value.length < 2) return;
+    const key = normalizeSkillToken(value);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    collected.push(value);
+  };
+
+  PROPOSAL_STACK_KEYS.forEach((key) => {
+    collectStringValues(proposal?.[key]).forEach((entry) => {
+      splitSkillValues(entry).forEach(pushSkill);
+    });
+  });
+
+  if (collected.length > 0) {
+    return collected.slice(0, 8);
+  }
+
+  const searchText = PROPOSAL_STACK_TEXT_KEYS.map((key) => proposal?.[key])
+    .filter(Boolean)
+    .join(" ");
+
+  STACK_DETECTION_PATTERNS.forEach(({ label, pattern }) => {
+    if (pattern.test(searchText)) {
+      pushSkill(label);
+    }
+  });
+
+  return collected.slice(0, 8);
 };
 
 const readSavedProposalsFromKeys = (listKey, singleKey) => {
@@ -296,9 +594,6 @@ const hasFreelancerRole = (user = {}) => {
     : [];
   return primaryRole === "FREELANCER" || roles.includes("FREELANCER");
 };
-
-const getFreelancerDisplayRole = (user = {}) =>
-  hasFreelancerRole(user) ? "FREELANCER" : user?.role || "Freelancer";
 
 const shouldHydrateProjectProposal = (project = {}) => {
   const status = String(project?.status || "").toUpperCase();
@@ -541,6 +836,7 @@ const ClientDashboardContent = () => {
   const [showFreelancerSelect, setShowFreelancerSelect] = useState(false);
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
+  const [freelancerSearch, setFreelancerSearch] = useState("");
 
   const savedProposal = useMemo(() => {
     if (!savedProposals.length) return null;
@@ -550,12 +846,112 @@ const ClientDashboardContent = () => {
     );
   }, [savedProposals, activeProposalId]);
 
+  const parsedSavedProposal = useMemo(
+    () => parseProposalSections(savedProposal || {}),
+    [savedProposal],
+  );
+
+  const projectRequiredSkills = useMemo(
+    () => extractProjectRequiredSkills(savedProposal || {}),
+    [savedProposal],
+  );
+
   const rankedSuggestedFreelancers = useMemo(() => {
     if (!Array.isArray(suggestedFreelancers) || suggestedFreelancers.length === 0) {
       return [];
     }
     return rankFreelancersForProposal(suggestedFreelancers, savedProposal);
   }, [suggestedFreelancers, savedProposal]);
+
+  const freelancerSelectionData = useMemo(() => {
+    const sourceProjectId =
+      savedProposal?.syncedProjectId || savedProposal?.projectId || null;
+    const alreadyInvitedIds = new Set();
+
+    if (sourceProjectId) {
+      const currentProject = projects.find((project) => project?.id === sourceProjectId);
+      (currentProject?.proposals || []).forEach((proposal) => {
+        const status = String(proposal?.status || "").toUpperCase();
+        if (proposal?.freelancerId && status === "PENDING") {
+          alreadyInvitedIds.add(proposal.freelancerId);
+        }
+      });
+    }
+
+    const normalized = rankedSuggestedFreelancers.map((entry) =>
+      normalizeFreelancerCardData(entry),
+    );
+    const available = normalized.filter(
+      (freelancer) => !alreadyInvitedIds.has(freelancer.id),
+    );
+
+    return {
+      totalRanked: normalized.length,
+      invitedCount: alreadyInvitedIds.size,
+      available,
+    };
+  }, [
+    rankedSuggestedFreelancers,
+    savedProposal?.syncedProjectId,
+    savedProposal?.projectId,
+    projects,
+  ]);
+
+  const filteredFreelancers = useMemo(() => {
+    const query = String(freelancerSearch || "").trim().toLowerCase();
+    if (!query) return freelancerSelectionData.available;
+
+    return freelancerSelectionData.available.filter((freelancer) => {
+      const searchable = [
+        freelancer.fullName,
+        freelancer.name,
+        freelancer.role,
+        freelancer.cleanBio,
+        ...(Array.isArray(freelancer.skills) ? freelancer.skills : []),
+        ...(Array.isArray(freelancer.matchHighlights)
+          ? freelancer.matchHighlights
+          : []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchable.includes(query);
+    });
+  }, [freelancerSelectionData.available, freelancerSearch]);
+
+  const bestMatchFreelancerIds = useMemo(() => {
+    const scoredFreelancers = freelancerSelectionData.available
+      .map((freelancer) => {
+        const score = Number.isFinite(Number(freelancer?.matchScore))
+          ? Math.round(Number(freelancer.matchScore))
+          : null;
+        if (!freelancer?.id || score === null) return null;
+        return { id: freelancer.id, score };
+      })
+      .filter(Boolean);
+
+    if (scoredFreelancers.length === 0) return new Set();
+
+    const topScore = scoredFreelancers.reduce(
+      (maxScore, freelancer) => Math.max(maxScore, freelancer.score),
+      Number.NEGATIVE_INFINITY,
+    );
+
+    if (!Number.isFinite(topScore) || topScore <= 0) return new Set();
+
+    return new Set(
+      scoredFreelancers
+        .filter((freelancer) => freelancer.score === topScore)
+        .map((freelancer) => freelancer.id),
+    );
+  }, [freelancerSelectionData.available]);
+
+  useEffect(() => {
+    if (!showFreelancerSelect) {
+      setFreelancerSearch("");
+    }
+  }, [showFreelancerSelect]);
 
   // Load projects
   // Load session
@@ -1204,239 +1600,244 @@ const ClientDashboardContent = () => {
                 />
               </div>
 
-              {/* Saved Proposal Section - Show when proposal exists but no projects */}
+              {/* Saved Proposal Workspace */}
               {savedProposal && (
-                <div className="space-y-6">
-                  {savedProposals.length > 1 && (
-                    <div className="flex flex-wrap gap-2">
-                      {savedProposals.map((proposal) => (
-                        <Button
-                          key={proposal.id}
-                          size="sm"
-                          variant={
-                            proposal.id === savedProposal.id
-                              ? "default"
-                              : "outline"
-                          }
-                          onClick={() => {
-                            setActiveProposalId(proposal.id);
-                            persistSavedProposalsToStorage(
-                              savedProposals,
-                              proposal.id,
-                              storageKeys,
-                            );
-                          }}
-                        >
-                          {proposal.projectTitle ||
-                            proposal.service ||
-                            "Proposal"}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                  {/* Proposal Preview */}
-                  <Card className="border-primary/20 bg-primary/5">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
+                <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-background to-background">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
                         <CardTitle className="text-lg font-bold flex items-center gap-2">
                           <Send className="w-5 h-5 text-primary" />
-                          {savedProposals.length > 1
-                            ? "Your Saved Proposals"
-                            : "Your Saved Proposal"}
+                          Proposal Workspace
                         </CardTitle>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-primary"
-                            onClick={() => setShowViewProposal(true)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-primary"
-                            onClick={() => {
-                              setEditForm({
-                                title: savedProposal.projectTitle || "",
-                                summary:
-                                  savedProposal.summary ||
-                                  savedProposal.content ||
-                                  "",
-                                budget: savedProposal.budget || "",
-                                timeline: savedProposal.timeline || "",
-                              });
-                              setShowEditProposal(true);
-                            }}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              if (storageKeys?.singleKey) {
-                                localStorage.removeItem(storageKeys.singleKey);
-                              }
-                              persistSavedProposalState([]);
-                              toast.success("Proposal deleted");
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Review, compare, and send the right proposal faster.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => setShowViewProposal(true)}
+                        >
+                          <Eye className="w-4 h-4" />
+                          View
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => {
+                            setEditForm({
+                              title: savedProposal.projectTitle || "",
+                              summary:
+                                savedProposal.summary ||
+                                savedProposal.content ||
+                                "",
+                              budget: savedProposal.budget || "",
+                              timeline: savedProposal.timeline || "",
+                            });
+                            setShowEditProposal(true);
+                          }}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const remaining = savedProposals.filter(
+                              (proposal) => proposal.id !== savedProposal.id,
+                            );
+                            const nextActiveId = remaining[0]?.id || null;
+                            if (!remaining.length && storageKeys?.singleKey) {
+                              localStorage.removeItem(storageKeys.singleKey);
+                            }
+                            persistSavedProposalState(remaining, nextActiveId);
+                            toast.success("Proposal deleted");
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                      <div className="xl:col-span-4 space-y-3">
+                        <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                            Saved Proposals
+                          </p>
+                          <p className="text-sm font-medium mt-1">
+                            {savedProposals.length} draft
+                            {savedProposals.length > 1 ? "s" : ""} available
+                          </p>
+                        </div>
+                        <div className="max-h-[420px] overflow-y-auto pr-1 space-y-2">
+                          {savedProposals.map((proposal) => {
+                            const isActive = proposal.id === savedProposal.id;
+                            return (
+                              <button
+                                type="button"
+                                key={proposal.id}
+                                onClick={() => {
+                                  setActiveProposalId(proposal.id);
+                                  persistSavedProposalsToStorage(
+                                    savedProposals,
+                                    proposal.id,
+                                    storageKeys,
+                                  );
+                                }}
+                                className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${
+                                  isActive
+                                    ? "border-primary/50 bg-primary/10"
+                                    : "border-border/70 bg-background/70 hover:bg-background"
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-sm font-semibold line-clamp-2">
+                                    {resolveProposalTitle(proposal)}
+                                  </p>
+                                  {isActive && (
+                                    <Badge className="bg-primary text-primary-foreground text-[10px] uppercase tracking-wide">
+                                      Active
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {resolveProposalServiceLabel(proposal)}
+                                </p>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  <Badge variant="outline" className="text-[11px]">
+                                    {formatBudget(proposal.budget)}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-[11px]">
+                                    {proposal.timeline || "Timeline not set"}
+                                  </Badge>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground mt-2">
+                                  Updated {formatProposalUpdatedAt(proposal)}
+                                </p>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <h4 className="font-semibold">
-                          {resolveProposalTitle(savedProposal)}
-                        </h4>
-                        {/* Parsed proposal content */}
-                        {(() => {
-                          const rawContent =
-                            savedProposal.summary ||
-                            savedProposal.content ||
-                            "";
-                          let cleanContent = rawContent
-                            .replace(/```markdown\n?/gi, "")
-                            .replace(/```\n?/g, "")
-                            .trim();
-                          let overview = "";
-                          const objectives = [];
-                          const features = [];
-                          const lines = cleanContent.split("\n");
-                          let currentSection = null;
-                          lines.forEach((line) => {
-                            const trimmed = line.trim();
-                            if (!trimmed) return;
-                            const lowerLine = trimmed.toLowerCase();
-                            if (lowerLine.includes("project overview:")) {
-                              currentSection = "overview";
-                              const value = trimmed
-                                .split(":")
-                                .slice(1)
-                                .join(":")
-                                .trim();
-                              if (value) overview = value;
-                            } else if (
-                              lowerLine.includes("primary objectives:") ||
-                              lowerLine.includes("objectives:")
-                            ) {
-                              currentSection = "objectives";
-                            } else if (
-                              lowerLine.includes("features") ||
-                              lowerLine.includes("deliverables")
-                            ) {
-                              currentSection = "features";
-                            } else if (
-                              trimmed.startsWith("- ") ||
-                              trimmed.startsWith("* ")
-                            ) {
-                              const item = trimmed.replace(/^[-*]\s+/, "");
-                              if (currentSection === "objectives")
-                                objectives.push(item);
-                              else if (currentSection === "features")
-                                features.push(item);
-                            } else if (
-                              currentSection === "overview" &&
-                              !overview
-                            ) {
-                              overview = trimmed;
-                            }
-                          });
-                          return (
-                            <div className="space-y-3">
-                              {overview && (
-                                <p className="text-sm text-muted-foreground">
-                                  {overview.length > 200
-                                    ? overview.slice(0, 200) + "..."
-                                    : overview}
-                                </p>
-                              )}
-                              {objectives.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-medium text-muted-foreground mb-1.5">
-                                    Objectives
-                                  </p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {objectives.slice(0, 3).map((obj, i) => (
-                                      <span
-                                        key={i}
-                                        className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium"
-                                      >
-                                        {obj}
-                                      </span>
-                                    ))}
-                                    {objectives.length > 3 && (
-                                      <span className="text-xs text-muted-foreground">
-                                        +{objectives.length - 3} more
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              {features.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-medium text-muted-foreground mb-1.5">
-                                    Key Features
-                                  </p>
-                                  <ul className="text-sm text-muted-foreground space-y-0.5">
-                                    {features.slice(0, 3).map((feat, i) => (
-                                      <li
-                                        key={i}
-                                        className="flex items-start gap-1.5"
-                                      >
-                                        <span className="text-primary mt-1"></span>
-                                        <span className="line-clamp-1">
-                                          {feat}
-                                        </span>
-                                      </li>
-                                    ))}
-                                    {features.length > 3 && (
-                                      <li className="text-xs text-muted-foreground pl-4">
-                                        +{features.length - 3} more
-                                      </li>
-                                    )}
-                                  </ul>
-                                </div>
-                              )}
-                              {!overview &&
-                                objectives.length === 0 &&
-                                features.length === 0 && (
-                                  <p className="text-sm text-muted-foreground line-clamp-2">
-                                    {cleanContent.slice(0, 150) ||
-                                      "No description"}
-                                  </p>
-                                )}
-                            </div>
-                          );
-                        })()}
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-wrap gap-2 text-sm">
-                            <Badge variant="secondary">
-                              Budget: {formatBudget(savedProposal.budget)}
-                            </Badge>
-                            <Badge variant="secondary">
-                              Timeline: {savedProposal.timeline || "Not set"}
+
+                      <div className="xl:col-span-8 space-y-3">
+                        <div className="rounded-xl border border-border/70 bg-background/70 p-4 space-y-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <h4 className="text-base md:text-lg font-semibold">
+                              {resolveProposalTitle(savedProposal)}
+                            </h4>
+                            <Badge variant="secondary" className="text-xs">
+                              {resolveProposalServiceLabel(savedProposal)}
                             </Badge>
                           </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {parsedSavedProposal.overview ||
+                              parsedSavedProposal.cleanContent ||
+                              "No description added yet."}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                              Budget
+                            </p>
+                            <p className="text-sm font-semibold mt-1">
+                              {formatBudget(savedProposal.budget)}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                              Timeline
+                            </p>
+                            <p className="text-sm font-semibold mt-1">
+                              {savedProposal.timeline || "Not set"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                              Last Updated
+                            </p>
+                            <p className="text-sm font-semibold mt-1">
+                              {formatProposalUpdatedAt(savedProposal)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                              Objectives
+                            </p>
+                            {parsedSavedProposal.objectives.length > 0 ? (
+                              <ul className="space-y-1.5">
+                                {parsedSavedProposal.objectives
+                                  .slice(0, 4)
+                                  .map((objective, index) => (
+                                    <li
+                                      key={`${objective}-${index}`}
+                                      className="text-sm text-foreground/90 leading-snug"
+                                    >
+                                      {objective}
+                                    </li>
+                                  ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                No objectives extracted yet.
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                              Key Features
+                            </p>
+                            {parsedSavedProposal.features.length > 0 ? (
+                              <ul className="space-y-1.5">
+                                {parsedSavedProposal.features
+                                  .slice(0, 4)
+                                  .map((feature, index) => (
+                                    <li
+                                      key={`${feature}-${index}`}
+                                      className="text-sm text-foreground/90 leading-snug"
+                                    >
+                                      {feature}
+                                    </li>
+                                  ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                No features extracted yet.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-1">
                           <Button
                             className="gap-2"
                             onClick={() => setShowFreelancerSelect(true)}
                           >
                             <Send className="w-4 h-4" />
-                            Send
+                            Send Proposal To Freelancer
                           </Button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
               {/* Projects Needing Resend - Show OPEN projects where all proposals were rejected */}
@@ -1914,1146 +2315,86 @@ const ClientDashboardContent = () => {
                 </DialogContent>
               </Dialog>
 
-              {/* Freelancer Selection Dialog */}
-              <Dialog
+              <FreelancerSelectionDialog
                 open={showFreelancerSelect}
                 onOpenChange={setShowFreelancerSelect}
-              >
-                <DialogContent className="max-w-[95vw] w-[95vw] sm:max-w-[85vw] md:max-w-[80vw] lg:max-w-[75vw] h-[85vh] flex flex-col p-6">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-xl">
-                      <Send className="w-5 h-5 text-primary" />
-                      Choose a Freelancer
-                    </DialogTitle>
-                    <DialogDescription>
-                      Select a freelancer to send your proposal:{" "}
-                      <span className="font-medium text-foreground">
-                        {savedProposal?.projectTitle}
-                      </span>
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-y-auto py-6 px-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                      {(() => {
-                        const sourceProjectId =
-                          savedProposal?.syncedProjectId ||
-                          savedProposal?.projectId ||
-                          null;
-                        const alreadyInvitedIds = new Set();
+                savedProposal={savedProposal}
+                freelancerSearch={freelancerSearch}
+                onFreelancerSearchChange={setFreelancerSearch}
+                filteredFreelancers={filteredFreelancers}
+                freelancerSelectionData={freelancerSelectionData}
+                bestMatchFreelancerIds={bestMatchFreelancerIds}
+                projectRequiredSkills={projectRequiredSkills}
+                onViewFreelancer={(freelancer) => {
+                  setViewingFreelancer(freelancer);
+                  setShowFreelancerProfile(true);
+                }}
+                onSendProposal={handleSendClick}
+                collectFreelancerSkillTokens={collectFreelancerSkillTokens}
+                freelancerMatchesRequiredSkill={freelancerMatchesRequiredSkill}
+                generateGradient={generateGradient}
+                formatRating={formatRating}
+              />
 
-                        if (sourceProjectId) {
-                          const currentProject = projects.find(
-                            (project) => project?.id === sourceProjectId,
-                          );
-                          (currentProject?.proposals || []).forEach((prop) => {
-                            const status = String(prop?.status || "").toUpperCase();
-                            if (prop?.freelancerId && status === "PENDING") {
-                              alreadyInvitedIds.add(prop.freelancerId);
-                            }
-                          });
-                        }
-
-                        const availableFreelancers =
-                          rankedSuggestedFreelancers.filter(
-                            (f) => !alreadyInvitedIds.has(f.id),
-                          );
-
-                        if (
-                          availableFreelancers.length === 0 &&
-                          rankedSuggestedFreelancers.length > 0
-                        ) {
-                          return (
-                            <div className="col-span-full text-center py-8 text-muted-foreground">
-                              <p>
-                                All suggested freelancers have already been
-                                invited for this project.
-                              </p>
-                            </div>
-                          );
-                        }
-
-                        return availableFreelancers.length > 0 ? (
-                          availableFreelancers.map((f) => {
-                            // Pre-process freelancer data to handle JSON bio/about
-                            const freelancer = { ...f };
-                            const rawBio = freelancer.bio || freelancer.about;
-
-                            if (
-                              typeof rawBio === "string" &&
-                              rawBio.trim().startsWith("{")
-                            ) {
-                              try {
-                                const parsed = JSON.parse(rawBio);
-                                // Merge parsed fields if top-level fields are missing
-                                if (!freelancer.location && parsed.location)
-                                  freelancer.location = parsed.location;
-                                if (!freelancer.role && parsed.role)
-                                  freelancer.role = parsed.role;
-                                if (!freelancer.title && parsed.title)
-                                  freelancer.role = parsed.title; // Fallback for title
-                                if (!freelancer.rating && parsed.rating)
-                                  freelancer.rating = parsed.rating;
-                                if (
-                                  (!freelancer.skills ||
-                                    freelancer.skills.length === 0) &&
-                                  parsed.skills
-                                )
-                                  freelancer.skills = parsed.skills;
-                                if (!freelancer.hourlyRate && parsed.hourlyRate)
-                                  freelancer.hourlyRate = parsed.hourlyRate;
-
-                                // Set a clean bio description
-                                freelancer.cleanBio =
-                                  parsed.bio ||
-                                  parsed.about ||
-                                  parsed.description ||
-                                  parsed.summary ||
-                                  parsed.overview ||
-                                  parsed.introduction ||
-                                  parsed.profileSummary ||
-                                  parsed.shortDescription ||
-                                  (Array.isArray(parsed.services) &&
-                                  parsed.services.length > 0
-                                    ? `Experienced in ${parsed.services.join(
-                                        ", ",
-                                      )}`
-                                    : null) ||
-                                  "No bio available.";
-                              } catch (e) {
-                                freelancer.cleanBio =
-                                  "Overview available in profile.";
-                              }
-                            } else {
-                              freelancer.cleanBio =
-                                rawBio ||
-                                "No bio available for this freelancer.";
-                            }
-
-                            return (
-                              <div
-                                key={freelancer.id}
-                                className="relative flex flex-col items-center bg-card rounded-xl shadow-sm border border-border/40 overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer h-full min-h-[320px]"
-                                onClick={() => {
-                                  setViewingFreelancer(freelancer);
-                                  setShowFreelancerProfile(true);
-                                }}
-                              >
-                                {/* Dynamic Gradient Header */}
-                                <div
-                                  className="w-full h-32 flex items-center justify-center transition-all duration-500"
-                                  style={{
-                                    background: generateGradient(
-                                      freelancer.id || freelancer.name,
-                                    ),
-                                  }}
-                                ></div>
-
-                                {/* Avatar */}
-                                <div className="absolute top-16">
-                                  <div className="rounded-full">
-                                    <Avatar className="w-28 h-28 bg-card">
-                                      <AvatarImage
-                                        src={freelancer.avatar}
-                                        className="object-cover"
-                                      />
-                                      <AvatarFallback className="bg-primary/20 text-primary text-3xl font-bold">
-                                        {(
-                                          freelancer.fullName ||
-                                          freelancer.name ||
-                                          "F"
-                                        ).charAt(0)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  </div>
-                                </div>
-
-                                {/* Body */}
-                                <div className="mt-14 px-4 pb-6 w-full flex flex-col items-center text-center flex-1">
-                                  <h3 className="text-2xl font-bold mt-2 text-foreground">
-                                    {freelancer.fullName || freelancer.name}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground font-medium mb-5">
-                                    {getFreelancerDisplayRole(freelancer)}
-                                  </p>
-
-                                  {(typeof freelancer.matchScore === "number" ||
-                                    (Array.isArray(freelancer.matchReasons) &&
-                                      freelancer.matchReasons.length > 0) ||
-                                    (Array.isArray(freelancer.matchHighlights) &&
-                                      freelancer.matchHighlights.length > 0)) && (
-                                    <div className="mb-4 space-y-1.5">
-                                      {typeof freelancer.matchScore === "number" && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
-                                        >
-                                          {freelancer.matchScore}% match
-                                        </Badge>
-                                      )}
-                                      {Array.isArray(freelancer.matchReasons) &&
-                                        freelancer.matchReasons.length > 0 && (
-                                          <p className="text-[11px] text-muted-foreground font-medium px-2">
-                                            {freelancer.matchReasons[0]}
-                                          </p>
-                                        )}
-                                      {Array.isArray(freelancer.matchHighlights) &&
-                                        freelancer.matchHighlights.length > 0 && (
-                                          <p className="text-[11px] text-primary font-medium">
-                                            Match:{" "}
-                                            {freelancer.matchHighlights
-                                              .slice(0, 2)
-                                              .join(", ")}
-                                          </p>
-                                        )}
-                                    </div>
-                                  )}
-
-                                  {/* Skills Row */}
-                                  <div className="flex flex-wrap justify-center gap-2 mb-4 px-2 min-h-[40px]">
-                                    {Array.isArray(freelancer.skills) &&
-                                    freelancer.skills.length > 0 ? (
-                                      freelancer.skills
-                                        .slice(0, 3)
-                                        .map((skill, idx) => (
-                                          <Badge
-                                            key={idx}
-                                            variant="secondary"
-                                            className="bg-primary/5 hover:bg-primary/10 text-primary border-primary/10 transition-colors"
-                                          >
-                                            {skill}
-                                          </Badge>
-                                        ))
-                                    ) : (
-                                      <span className="text-sm text-muted-foreground">
-                                        No specific skills listed
-                                      </span>
-                                    )}
-                                    {Array.isArray(freelancer.skills) &&
-                                      freelancer.skills.length > 3 && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs text-muted-foreground border-dashed"
-                                        >
-                                          +{freelancer.skills.length - 3} more
-                                        </Badge>
-                                      )}
-                                  </div>
-
-                                  {/* Project Link with Hover Preview */}
-                                  {(() => {
-                                    let project = null;
-                                    if (
-                                      Array.isArray(
-                                        freelancer.portfolioProjects,
-                                      ) &&
-                                      freelancer.portfolioProjects.length > 0
-                                    ) {
-                                      project =
-                                        freelancer.portfolioProjects.find(
-                                          (p) => p.link || p.url,
-                                        );
-                                    } else if (
-                                      typeof freelancer.portfolio ===
-                                        "string" &&
-                                      freelancer.portfolio.startsWith("[")
-                                    ) {
-                                      try {
-                                        const parsed = JSON.parse(
-                                          freelancer.portfolio,
-                                        );
-                                        if (Array.isArray(parsed))
-                                          project = parsed.find(
-                                            (p) => p.link || p.url,
-                                          );
-                                      } catch (e) {}
-                                    }
-
-                                    if (
-                                      project &&
-                                      (project.link || project.url)
-                                    ) {
-                                      return (
-                                        <div className="mb-6 flex flex-col items-center gap-2">
-                                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                            Projects
-                                          </p>
-                                          <HoverCard>
-                                            <HoverCardTrigger asChild>
-                                              <a
-                                                href={
-                                                  project.link || project.url
-                                                }
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium max-w-[200px]"
-                                                onClick={(e) =>
-                                                  e.stopPropagation()
-                                                }
-                                              >
-                                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                                                <span className="truncate">
-                                                  {project.title ||
-                                                    "View Project"}
-                                                </span>
-                                              </a>
-                                            </HoverCardTrigger>
-                                            <HoverCardContent
-                                              className="w-64 p-0 overflow-hidden"
-                                              align="center"
-                                            >
-                                              {project.image ||
-                                              project.imageUrl ||
-                                              project.thumbnail ? (
-                                                <div className="w-full aspect-video bg-muted relative">
-                                                  <img
-                                                    src={
-                                                      project.image ||
-                                                      project.imageUrl ||
-                                                      project.thumbnail
-                                                    }
-                                                    alt={
-                                                      project.title ||
-                                                      "Project preview"
-                                                    }
-                                                    className="w-full h-full object-cover"
-                                                  />
-                                                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                                                    <p className="text-white text-xs font-bold truncate">
-                                                      {project.title ||
-                                                        "Project Preview"}
-                                                    </p>
-                                                  </div>
-                                                </div>
-                                              ) : (
-                                                <div className="p-3">
-                                                  <p className="font-semibold text-sm">
-                                                    {project.title ||
-                                                      "Project Link"}
-                                                  </p>
-                                                  <p className="text-xs text-muted-foreground break-all mt-1">
-                                                    {project.link ||
-                                                      project.url}
-                                                  </p>
-                                                </div>
-                                              )}
-                                            </HoverCardContent>
-                                          </HoverCard>
-                                        </div>
-                                      );
-                                    }
-                                    return <div className="mb-6"></div>; // Spacer if no project
-                                  })()}
-                                  {/* Action Buttons */}
-                                  <div className="flex gap-4 w-full px-4 mt-auto mb-6">
-                                    <Button
-                                      className="flex-1 bg-[#FFD700] hover:bg-[#F0C800] text-black font-bold rounded-full h-11 shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSendClick(freelancer);
-                                      }}
-                                    >
-                                      <Send className="w-4 h-4" />
-                                      Send Proposal
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <Card className="col-span-full">
-                            <CardContent className="p-8 text-center text-muted-foreground">
-                              No freelancers available. Check back later!
-                            </CardContent>
-                          </Card>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowFreelancerSelect(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Freelancer Profile Dialog */}
-              <Dialog
+              <FreelancerProfileDialog
                 open={showFreelancerProfile}
                 onOpenChange={setShowFreelancerProfile}
-              >
-                <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-6">
-                  {viewingFreelancer && (
-                    <>
-                      <DialogHeader>
-                        <div className="flex items-start gap-4">
-                          <Avatar className="w-16 h-16 border-2 border-primary/10">
-                            <AvatarImage
-                              src={viewingFreelancer.avatar}
-                              alt={viewingFreelancer.fullName}
-                            />
-                            <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                              {(
-                                viewingFreelancer.fullName ||
-                                viewingFreelancer.name
-                              )?.charAt(0) || "F"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                              {viewingFreelancer.fullName ||
-                                viewingFreelancer.name}
-                              {viewingFreelancer.rating && (
-                                <div className="flex items-center text-sm font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                                  <Star className="w-3.5 h-3.5 mr-1 fill-current" />
-                                  {viewingFreelancer.rating}
-                                </div>
-                              )}
-                            </DialogTitle>
-                            <DialogDescription className="text-base font-medium text-foreground/80 mt-1">
-                              {viewingFreelancer.role || "Freelancer"}
-                            </DialogDescription>
+                viewingFreelancer={viewingFreelancer}
+              />
 
-                            <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
-                              {viewingFreelancer.location && (
-                                <span className="flex items-center">
-                                  <MapPin className="w-3.5 h-3.5 mr-1" />
-                                  {viewingFreelancer.location}
-                                </span>
-                              )}
-                              {viewingFreelancer.hourlyRate && (
-                                <span className="flex items-center">
-                                  <Wallet className="w-3.5 h-3.5 mr-1" />
-                                  {viewingFreelancer.hourlyRate}/hr
-                                </span>
-                              )}
-                              {viewingFreelancer.experience && (
-                                <span className="flex items-center">
-                                  <Briefcase className="w-3.5 h-3.5 mr-1" />
-                                  {viewingFreelancer.experience} Exp.
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {/* Send Proposal Button Removed as per request */}
-                        </div>
-                      </DialogHeader>
-
-                      <div className="flex-1 overflow-y-auto py-6 space-y-8 pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                        {/* Bio */}
-                        <div>
-                          <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                            <User className="w-5 h-5 text-primary" /> About
-                          </h4>
-                          <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                            {viewingFreelancer.cleanBio || "No bio available."}
-                          </p>
-                        </div>
-
-                        {/* Skills */}
-                        {Array.isArray(viewingFreelancer.skills) &&
-                          viewingFreelancer.skills.length > 0 && (
-                            <div>
-                              <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                <Zap className="w-5 h-5 text-primary" /> Skills
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {viewingFreelancer.skills.map((skill, i) => (
-                                  <Badge
-                                    key={i}
-                                    variant="secondary"
-                                    className="px-3 py-1"
-                                  >
-                                    {skill}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                        {/* Languages */}
-                        {Array.isArray(viewingFreelancer.languages) &&
-                          viewingFreelancer.languages.length > 0 && (
-                            <div>
-                              <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                <MessageCircle className="w-5 h-5 text-primary" />{" "}
-                                Languages
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {viewingFreelancer.languages.map((lang, i) => (
-                                  <Badge
-                                    key={i}
-                                    variant="outline"
-                                    className="px-3 py-1"
-                                  >
-                                    {lang}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                        {/* Portfolio Projects */}
-                        {(() => {
-                          // Try to get projects from portfolioProjects array or parse portfolio string
-                          let projects = [];
-                          if (
-                            Array.isArray(
-                              viewingFreelancer.portfolioProjects,
-                            ) &&
-                            viewingFreelancer.portfolioProjects.length > 0
-                          ) {
-                            projects = viewingFreelancer.portfolioProjects;
-                          } else if (
-                            typeof viewingFreelancer.portfolio === "string" &&
-                            viewingFreelancer.portfolio.startsWith("[")
-                          ) {
-                            try {
-                              projects = JSON.parse(
-                                viewingFreelancer.portfolio,
-                              );
-                            } catch (e) {}
-                          } else if (
-                            Array.isArray(viewingFreelancer.portfolio)
-                          ) {
-                            projects = viewingFreelancer.portfolio;
-                          }
-
-                          if (projects.length > 0) {
-                            return (
-                              <div>
-                                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                  <Briefcase className="w-5 h-5 text-primary" />{" "}
-                                  Portfolio Projects
-                                </h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                  {projects.map((project, i) => (
-                                    <a
-                                      key={i}
-                                      href={project.link || project.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="block group/card h-full"
-                                    >
-                                      <Card className="overflow-hidden border-border/50 hover:border-primary/20 transition-all h-full relative">
-                                        {project.image ||
-                                        project.imageUrl ||
-                                        project.thumbnail ? (
-                                          <div className="w-full aspect-video bg-muted relative overflow-hidden">
-                                            <img
-                                              src={
-                                                project.image ||
-                                                project.imageUrl ||
-                                                project.thumbnail
-                                              }
-                                              alt={project.title}
-                                              className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
-                                            />
-                                            {/* Optional: Add a subtle overlay so users know it's a link or what it is? User said 'only image' so maybe minimal. 
-                                                I'll add a simple hover name effect just in case, or just leave it clean.*/}
-                                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300">
-                                              <p className="text-white font-medium text-sm truncate">
-                                                {project.title ||
-                                                  "View Project"}
-                                              </p>
-                                            </div>
-                                          </div>
-                                        ) : (
-                                          <div className="w-full aspect-video bg-muted flex items-center justify-center text-muted-foreground p-4 text-center">
-                                            <span className="font-medium text-sm">
-                                              {project.title || "View Project"}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </Card>
-                                    </a>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      <DialogFooter>
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowFreelancerProfile(false)}
-                        >
-                          Close
-                        </Button>
-                      </DialogFooter>
-                    </>
-                  )}
-                </DialogContent>
-              </Dialog>
-
-              {/* View Proposal Dialog */}
-              <Dialog
+              <ViewProposalDialog
                 open={showViewProposal}
                 onOpenChange={setShowViewProposal}
-              >
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-6">
-                  <DialogHeader className="flex-shrink-0 mb-4">
-                    <DialogTitle className="flex items-center gap-3 text-2xl">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <Eye className="w-6 h-6 text-primary" />
-                      </div>
-                      {resolveProposalTitle(savedProposal)}
-                    </DialogTitle>
-                  </DialogHeader>
+                savedProposal={savedProposal}
+                resolveProposalTitle={resolveProposalTitle}
+                formatBudget={formatBudget}
+                onEditProposal={() => {
+                  setShowViewProposal(false);
+                  setEditForm({
+                    title: savedProposal?.projectTitle || "",
+                    summary: savedProposal?.summary || savedProposal?.content || "",
+                    budget: savedProposal?.budget || "",
+                    timeline: savedProposal?.timeline || "",
+                  });
+                  setShowEditProposal(true);
+                }}
+              />
 
-                  <div className="flex-1 overflow-y-auto space-y-8 pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {/* Quick Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm hover:border-primary/20 transition-colors">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-green-500/10 rounded-lg">
-                            <DollarSign className="w-4 h-4 text-green-500" />
-                          </div>
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Estimate Budget
-                          </p>
-                        </div>
-                        <p className="text-xl font-bold text-foreground pl-1">
-                          {formatBudget(savedProposal?.budget)}
-                        </p>
-                      </div>
-
-                      <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm hover:border-blue-500/20 transition-colors">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-blue-500/10 rounded-lg">
-                            <Calendar className="w-4 h-4 text-blue-500" />
-                          </div>
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Timeline
-                          </p>
-                        </div>
-                        <p className="text-xl font-bold text-foreground pl-1">
-                          {savedProposal?.timeline || "Not specified"}
-                        </p>
-                      </div>
-
-                      <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm hover:border-purple-500/20 transition-colors">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="p-2 bg-purple-500/10 rounded-lg">
-                            <Briefcase className="w-4 h-4 text-purple-500" />
-                          </div>
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Service Type
-                          </p>
-                        </div>
-                        <p className="text-xl font-bold text-foreground pl-1 truncate">
-                          {savedProposal?.service ||
-                            savedProposal?.serviceKey ||
-                            "General"}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Parsed Content Sections */}
-                    {(() => {
-                      const rawContent =
-                        savedProposal?.summary || savedProposal?.content || "";
-
-                      // Clean up markdown code block markers
-                      let cleanContent = rawContent
-                        .replace(/```markdown\n?/gi, "")
-                        .replace(/```\n?/g, "")
-                        .trim();
-
-                      // Parse sections from the content
-                      const sections = [];
-                      const lines = cleanContent.split("\n");
-                      let currentSection = {
-                        title: "Overview",
-                        items: [],
-                        content: "",
-                      };
-
-                      lines.forEach((line) => {
-                        const trimmed = line.trim();
-                        if (!trimmed) return;
-
-                        // Check for section headers (various patterns)
-                        const headerMatch = trimmed.match(
-                          /^(?:\*{1,2})?([^:*]+?)(?:\*{1,2})?:\s*(.*)$/,
-                        );
-                        const isListItem =
-                          trimmed.startsWith("- ") || trimmed.startsWith("* ");
-
-                        // Known section headers
-                        const sectionHeaders = [
-                          "project overview",
-                          "primary objectives",
-                          "features",
-                          "deliverables",
-                          "tech stack",
-                          "technology",
-                          "timeline",
-                          "budget",
-                          "scope",
-                          "preferences",
-                          "client name",
-                          "business name",
-                          "service type",
-                          "platform",
-                          "design",
-                          "payment",
-                          "milestones",
-                          "requirements",
-                          "additional notes",
-                        ];
-
-                        if (headerMatch && !isListItem) {
-                          const key = headerMatch[1].toLowerCase().trim();
-                          const value = headerMatch[2].trim();
-
-                          // Skip if it's a known metadata field we display separately
-                          if (
-                            [
-                              "client name",
-                              "business name",
-                              "service type",
-                            ].includes(key)
-                          ) {
-                            return;
-                          }
-
-                          if (sectionHeaders.some((h) => key.includes(h))) {
-                            if (
-                              currentSection.title !== "Overview" ||
-                              currentSection.items.length > 0 ||
-                              currentSection.content
-                            ) {
-                              sections.push({ ...currentSection });
-                            }
-                            currentSection = {
-                              title: headerMatch[1].trim(),
-                              items: [],
-                              content: value,
-                            };
-                          } else if (value) {
-                            currentSection.items.push({
-                              key: headerMatch[1].trim(),
-                              value,
-                            });
-                          }
-                        } else if (isListItem) {
-                          currentSection.items.push({
-                            value: trimmed.replace(/^[-*]\s+/, ""),
-                          });
-                        } else {
-                          if (currentSection.content) {
-                            currentSection.content += " " + trimmed;
-                          } else {
-                            currentSection.content = trimmed;
-                          }
-                        }
-                      });
-
-                      // Push last section
-                      if (
-                        currentSection.items.length > 0 ||
-                        currentSection.content
-                      ) {
-                        sections.push(currentSection);
-                      }
-
-                      if (sections.length === 0) {
-                        return (
-                          <div className="bg-muted/50 rounded-xl p-6">
-                            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                              {cleanContent || "No description available"}
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div className="space-y-6">
-                          {sections.map((section, idx) => (
-                            <div
-                              key={idx}
-                              className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm"
-                            >
-                              <div className="px-6 py-3 bg-muted/30 border-b border-border/50 flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-primary/50" />
-                                <h4 className="font-semibold text-lg tracking-tight">
-                                  {section.title}
-                                </h4>
-                              </div>
-                              <div className="p-6">
-                                {section.content && (
-                                  <p className="text-muted-foreground mb-4 leading-relaxed">
-                                    {section.content}
-                                  </p>
-                                )}
-                                {section.items.length > 0 && (
-                                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {section.items.map((item, i) => (
-                                      <li
-                                        key={i}
-                                        className="flex items-start gap-2 text-sm bg-muted/20 p-2 rounded-md"
-                                      >
-                                        {item.key ? (
-                                          <>
-                                            <span className="font-medium text-foreground min-w-[120px]">
-                                              {item.key}:
-                                            </span>
-                                            <span className="text-muted-foreground">
-                                              {item.value}
-                                            </span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <span className="text-primary mt-1.5">
-                                              •
-                                            </span>
-                                            <span className="text-muted-foreground leading-relaxed">
-                                              {item.value}
-                                            </span>
-                                          </>
-                                        )}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4 gap-2">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={() => setShowViewProposal(false)}
-                      className="gap-2"
-                    >
-                      <X className="w-4 h-4" /> Close
-                    </Button>
-                    <Button
-                      size="lg"
-                      onClick={() => {
-                        setShowViewProposal(false);
-                        setEditForm({
-                          title: savedProposal?.projectTitle || "",
-                          summary:
-                            savedProposal?.summary ||
-                            savedProposal?.content ||
-                            "",
-                          budget: savedProposal?.budget || "",
-                          timeline: savedProposal?.timeline || "",
-                        });
-                        setShowEditProposal(true);
-                      }}
-                      className="gap-2"
-                    >
-                      <Edit2 className="w-4 h-4" /> Edit Proposal
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Edit Proposal Dialog */}
-              <Dialog
+              <EditProposalDialog
                 open={showEditProposal}
                 onOpenChange={setShowEditProposal}
-              >
-                <DialogContent className="max-w-3xl">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Edit2 className="w-5 h-5" />
-                      Edit Proposal
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] p-1">
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">
-                        Project Title
-                      </label>
-                      <Input
-                        value={editForm.title}
-                        onChange={(e) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        placeholder="Project title"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">
-                        Summary / Description
-                      </label>
-                      <Textarea
-                        value={editForm.summary}
-                        onChange={(e) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            summary: e.target.value,
-                          }))
-                        }
-                        placeholder="Project description"
-                        rows={6}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">
-                          Budget
-                        </label>
-                        <Input
-                          value={editForm.budget}
-                          onChange={(e) =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              budget: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g. ₹30,000"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">
-                          Timeline
-                        </label>
-                        <Input
-                          value={editForm.timeline}
-                          onChange={(e) =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              timeline: e.target.value,
-                            }))
-                          }
-                          placeholder="e.g. 2 weeks"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowEditProposal(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (!savedProposal) return;
-                        const updated = {
-                          ...savedProposal,
-                          projectTitle: editForm.title,
-                          summary: editForm.summary,
-                          content: editForm.summary,
-                          budget: editForm.budget,
-                          timeline: editForm.timeline,
-                          updatedAt: new Date().toISOString(),
-                        };
-                        const nextProposals = savedProposals.map((proposal) =>
-                          proposal.id === savedProposal.id
-                            ? normalizeSavedProposal({
-                                ...proposal,
-                                ...updated,
-                              })
-                            : proposal,
-                        );
-                        persistSavedProposalState(
-                          nextProposals,
-                          savedProposal.id,
-                        );
-                        setShowEditProposal(false);
-                        toast.success("Proposal updated!");
-                      }}
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2" /> Save Changes
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                editForm={editForm}
+                setEditForm={setEditForm}
+                onSaveChanges={() => {
+                  if (!savedProposal) return;
+                  const updated = {
+                    ...savedProposal,
+                    projectTitle: editForm.title,
+                    summary: editForm.summary,
+                    content: editForm.summary,
+                    budget: editForm.budget,
+                    timeline: editForm.timeline,
+                    updatedAt: new Date().toISOString(),
+                  };
+                  const nextProposals = savedProposals.map((proposal) =>
+                    proposal.id === savedProposal.id
+                      ? normalizeSavedProposal({
+                          ...proposal,
+                          ...updated,
+                        })
+                      : proposal,
+                  );
+                  persistSavedProposalState(nextProposals, savedProposal.id);
+                  setShowEditProposal(false);
+                  toast.success("Proposal updated!");
+                }}
+              />
 
-              {/* Freelancer Details Dialog */}
-              <Dialog
+              <FreelancerDetailsDialog
                 open={showFreelancerDetails}
                 onOpenChange={setShowFreelancerDetails}
-              >
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <DialogHeader>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="w-16 h-16 border-2 border-primary/20">
-                        <AvatarImage
-                          src={viewFreelancer?.avatar}
-                          alt={viewFreelancer?.fullName || viewFreelancer?.name}
-                        />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                          {(
-                            viewFreelancer?.fullName || viewFreelancer?.name
-                          )?.charAt(0) || "F"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <DialogTitle className="text-2xl font-bold">
-                          {viewFreelancer?.fullName || viewFreelancer?.name}
-                        </DialogTitle>
-                        <p className="text-muted-foreground">
-                          {viewFreelancer?.headline || "Freelancer"}
-                        </p>
-                      </div>
-                    </div>
-                  </DialogHeader>
-
-                  <div className="space-y-6 py-4">
-                    {/* Location Info */}
-                    {viewFreelancer?.location && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Flag className="w-4 h-4" /> {viewFreelancer.location}
-                      </div>
-                    )}
-
-                    {/* About / Bio */}
-                    {viewFreelancer?.about && (
-                      <div>
-                        <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                          <User className="w-4 h-4 text-primary" /> About
-                        </h4>
-                        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                          {viewFreelancer.about}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Skills */}
-                    <div>
-                      <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-primary" /> Skills
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {Array.isArray(viewFreelancer?.skills) &&
-                        viewFreelancer.skills.length > 0 ? (
-                          viewFreelancer.skills.map((skill, idx) => (
-                            <Badge
-                              key={idx}
-                              variant="secondary"
-                              className="px-3 py-1"
-                            >
-                              {skill}
-                            </Badge>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No skills listed
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Services */}
-                    {Array.isArray(viewFreelancer?.services) &&
-                      viewFreelancer.services.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-primary" />{" "}
-                            Services
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {viewFreelancer.services.map((service, idx) => (
-                              <Badge
-                                key={idx}
-                                variant="outline"
-                                className="px-3 py-1"
-                              >
-                                {service}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                    {/* Work Experience */}
-                    {Array.isArray(viewFreelancer?.workExperience) &&
-                      viewFreelancer.workExperience.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-primary" /> Work
-                            Experience
-                          </h4>
-                          <div className="space-y-4">
-                            {viewFreelancer.workExperience.map((exp, idx) => (
-                              <div
-                                key={idx}
-                                className="border-l-2 border-primary/20 pl-4 py-1"
-                              >
-                                <h5 className="font-semibold">{exp.title}</h5>
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  {exp.period}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {exp.description}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                    {/* Portfolio Projects */}
-                    {Array.isArray(viewFreelancer?.portfolioProjects) &&
-                      viewFreelancer.portfolioProjects.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-lg mb-3 flex items-center gap-2">
-                            <ExternalLink className="w-4 h-4 text-primary" />{" "}
-                            Portfolio Projects
-                          </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {viewFreelancer.portfolioProjects.map(
-                              (project, idx) => (
-                                <a
-                                  key={idx}
-                                  href={project.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="group block border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-all"
-                                >
-                                  <div className="aspect-video bg-muted relative">
-                                    {project.image ? (
-                                      <img
-                                        src={project.image}
-                                        alt={project.title}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                                        <ExternalLink className="w-8 h-8" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="p-3">
-                                    <h5 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                                      {project.title || project.link}
-                                    </h5>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {project.link}
-                                    </p>
-                                  </div>
-                                </a>
-                              ),
-                            )}
-                          </div>
-                        </div>
-                      )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-
+                viewFreelancer={viewFreelancer}
+              />
               {/* Active Projects Table - Only show when projects exist */}
               {/* Active Projects Table - IN_PROGRESS & AWAITING_PAYMENT */}
               {(() => {
@@ -3580,4 +2921,6 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
+
+
 
