@@ -54,6 +54,118 @@ const normalizeMarkdownContent = (content = "") =>
         .replace(/\s*```$/i, "")
         .trim();
 
+const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
+const QUESTION_LINE_REGEX = /\?\s*$/;
+
+const parseAssistantMessageLayout = (content = "") => {
+    const normalized = normalizeMarkdownContent(content).replace(/\r/g, "").trim();
+    if (!normalized) {
+        return { contextText: "", questionText: "", options: [] };
+    }
+
+    const lines = normalized
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    const optionEntries = lines
+        .map((line, idx) => {
+            const match = line.match(OPTION_LINE_REGEX);
+            if (!match) return null;
+            return { idx, number: match[1], text: match[2].trim() };
+        })
+        .filter(Boolean);
+
+    let questionIndex = -1;
+    for (let idx = lines.length - 1; idx >= 0; idx -= 1) {
+        if (QUESTION_LINE_REGEX.test(lines[idx])) {
+            questionIndex = idx;
+            break;
+        }
+    }
+
+    if (questionIndex === -1 && optionEntries.length > 0) {
+        const firstOptionIndex = optionEntries[0].idx;
+        for (let idx = firstOptionIndex - 1; idx >= 0; idx -= 1) {
+            if (!OPTION_LINE_REGEX.test(lines[idx])) {
+                questionIndex = idx;
+                break;
+            }
+        }
+    }
+
+    if (questionIndex === -1) {
+        return { contextText: normalized, questionText: "", options: [] };
+    }
+
+    const questionText = lines[questionIndex];
+    const contextText = lines
+        .filter((line, idx) => idx !== questionIndex && !OPTION_LINE_REGEX.test(line))
+        .join("\n\n")
+        .trim();
+
+    return {
+        contextText,
+        questionText,
+        options: optionEntries.map((option) => ({
+            number: option.number,
+            text: option.text
+        }))
+    };
+};
+
+const AssistantMessageBody = ({ content, isDark }) => {
+    const { contextText, questionText, options } = parseAssistantMessageLayout(content);
+    const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
+
+    if (!hasStructuredQuestion) {
+        return (
+            <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            {contextText && (
+                <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                    <ReactMarkdown>{contextText}</ReactMarkdown>
+                </div>
+            )}
+
+            {questionText && (
+                <div className={`rounded-xl border px-3 py-3 ${isDark ? 'border-primary/40 bg-primary/10' : 'border-primary/30 bg-primary/5'}`}>
+                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-primary' : 'text-[#7a6200]'}`}>
+                        Question
+                    </p>
+                    <div className={`mt-1 prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                        <ReactMarkdown>{questionText}</ReactMarkdown>
+                    </div>
+                </div>
+            )}
+
+            {options.length > 0 && (
+                <div className="space-y-2">
+                    {options.map((option) => (
+                        <div
+                            key={`${option.number}-${option.text}`}
+                            className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${isDark ? 'border-white/15 bg-white/[0.04]' : 'border-black/10 bg-[#faf9f5]'}`}
+                        >
+                            <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
+                                {option.number}
+                            </span>
+                            <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                <ReactMarkdown>{option.text}</ReactMarkdown>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const PROPOSAL_META_FIELDS = [
     { key: 'clientName', label: 'Client Name' },
     { key: 'businessName', label: 'Business Name' },
@@ -620,9 +732,7 @@ const GuestAIDemo = () => {
                                                 }`}
                                         >
                                             {msg.role === 'assistant' ? (
-                                                <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
-                                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                                </div>
+                                                <AssistantMessageBody content={msg.content} isDark={isDark} />
                                             ) : (
                                                 msg.content
                                             )}
