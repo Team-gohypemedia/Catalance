@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     Briefcase,
@@ -493,6 +493,42 @@ const GuestAIDemo = () => {
     const hasOptionInput = Array.isArray(inputConfig.options) && inputConfig.options.length > 0;
     const shouldShowTextInput = true;
 
+    const getScrollViewport = useCallback(() => {
+        const scrollRoot = scrollRef.current;
+        if (!scrollRoot) return null;
+
+        if (scrollRoot instanceof HTMLElement && scrollRoot.dataset?.slot === 'scroll-area-viewport') {
+            return scrollRoot;
+        }
+
+        if (typeof scrollRoot.querySelector === 'function') {
+            return (
+                scrollRoot.querySelector('[data-slot="scroll-area-viewport"]') ||
+                scrollRoot.querySelector('[data-radix-scroll-area-viewport]')
+            );
+        }
+
+        return null;
+    }, []);
+
+    const scrollToLatestMessage = useCallback(() => {
+        const viewport = getScrollViewport();
+        if (!viewport) return;
+        viewport.scrollTop = viewport.scrollHeight;
+    }, [getScrollViewport]);
+
+    const focusMessageInput = useCallback(() => {
+        if (!shouldShowTextInput) return;
+        const field = inputRef.current;
+        if (!field || field.disabled) return;
+
+        field.focus({ preventScroll: true });
+        const textLength = typeof field.value === 'string' ? field.value.length : 0;
+        if (typeof field.setSelectionRange === 'function') {
+            field.setSelectionRange(textLength, textLength);
+        }
+    }, [shouldShowTextInput]);
+
     const normalizeOptionToken = (value = '') =>
         String(value || '').trim().toLowerCase();
 
@@ -552,19 +588,29 @@ const GuestAIDemo = () => {
     }, []);
 
     useEffect(() => {
-        if (scrollRef.current) {
-            const scrollElement = scrollRef.current.viewport || scrollRef.current;
-            scrollElement.scrollTop = scrollElement.scrollHeight;
-        }
-    }, [messages, isTyping, inputConfig]);
+        const rafId = window.requestAnimationFrame(() => {
+            scrollToLatestMessage();
+        });
+        return () => window.cancelAnimationFrame(rafId);
+    }, [messages, isTyping, inputConfig, selectedService, scrollToLatestMessage]);
 
     useEffect(() => {
-        if (!isTyping && shouldShowTextInput && inputRef.current) {
-            setTimeout(() => {
-                inputRef.current?.focus();
-            }, 100);
+        if (!isTyping && shouldShowTextInput) {
+            const rafId = window.requestAnimationFrame(() => {
+                focusMessageInput();
+            });
+            const timeoutId = window.setTimeout(() => {
+                focusMessageInput();
+            }, 120);
+
+            return () => {
+                window.cancelAnimationFrame(rafId);
+                window.clearTimeout(timeoutId);
+            };
         }
-    }, [isTyping, shouldShowTextInput, inputConfig]);
+
+        return undefined;
+    }, [messages, isTyping, shouldShowTextInput, inputConfig, selectedService, focusMessageInput]);
 
     useEffect(() => {
         setSelectedOptions([]);
