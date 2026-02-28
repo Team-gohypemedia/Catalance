@@ -17,6 +17,7 @@ import { imageRouter } from "./image.routes.js";
 import { paymentRouter } from "./payment.routes.js";
 import guestRouter from "./guest.routes.js";
 import { contactRouter } from "./contact.routes.js";
+import { marketplaceRouter } from "./marketplace.routes.js";
 
 export const apiRouter = Router();
 
@@ -38,4 +39,4 @@ apiRouter.use("/images", imageRouter);
 apiRouter.use("/payments", paymentRouter);
 apiRouter.use("/guest", guestRouter);
 apiRouter.use("/contact", contactRouter);
-
+apiRouter.use("/marketplace", marketplaceRouter);

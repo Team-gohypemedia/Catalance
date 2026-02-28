@@ -9,6 +9,7 @@ import AdminRoute from "@/components/features/auth/AdminRoute";
 import CataButton from "@/components/common/CataButton";
 
 const Home = lazy(() => import("@/components/pages/Home"));
+const Marketplace = lazy(() => import("@/components/pages/Marketplace"));
 const About = lazy(() => import("@/components/sections/home/About.jsx"));
 const Services = lazy(() => import("@/components/sections/home/Services.jsx"));
 const Contact = lazy(() => import("@/components/sections/home/Contact.jsx"));
@@ -154,6 +155,14 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <Home />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/marketplace"
+              element={
+                <LayoutWithNavbar>
+                  <Marketplace />
                 </LayoutWithNavbar>
               }
             />

@@ -20,6 +20,7 @@ import Moon from "lucide-react/dist/esm/icons/moon";
 
 const navItems = [
   { name: "Home", link: "/" },
+  { name: "Marketplace", link: "/marketplace" },
   { name: "About", link: "/about" },
   { name: "Service", link: "/service" },
   { name: "Blog", link: "/blog" },
