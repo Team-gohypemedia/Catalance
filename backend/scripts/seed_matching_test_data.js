@@ -3,8 +3,9 @@ import { hashPassword } from "../src/modules/users/password.utils.js";
 
 const DEFAULT_TARGET_ACCOUNT_ID = "cmm08ca3d00016c9k7xyc4sab";
 const DEFAULT_FREELANCER_COUNT = 15;
-const MIN_FREELANCER_COUNT = 10;
-const MAX_FREELANCER_COUNT = 20;
+const MIN_FREELANCER_COUNT = 1;
+const MAX_FREELANCER_COUNT = 500;
+const DEFAULT_START_INDEX = 0;
 const PROPOSAL_COUNT = 10;
 const DEFAULT_PASSWORD = "Test@123456";
 
@@ -345,6 +346,35 @@ const LAST_NAMES = [
   "Singh"
 ];
 
+const UNSPLASH_PROFILE_QUERIES = [
+  "indian,professional,portrait,studio",
+  "indian,freelancer,portrait,workspace",
+  "indian,developer,portrait,headshot",
+  "indian,designer,portrait,office",
+  "indian,marketer,portrait,creative"
+];
+
+const UNSPLASH_PROJECT_QUERIES = [
+  "india,tech,workspace,laptop",
+  "india,startup,office,team",
+  "india,software,developer,desk",
+  "india,creative,design,studio",
+  "india,digital,marketing,workspace"
+];
+
+const CITY_LANGUAGE_MAP = {
+  Bengaluru: "Kannada",
+  Delhi: "Hindi",
+  Mumbai: "Marathi",
+  Pune: "Marathi",
+  Hyderabad: "Telugu",
+  Chennai: "Tamil",
+  Kolkata: "Bengali",
+  Ahmedabad: "Gujarati",
+  Jaipur: "Hindi",
+  Indore: "Hindi"
+};
+
 const slugify = (value = "") =>
   String(value || "")
     .toLowerCase()
@@ -359,6 +389,41 @@ const uniqueStrings = (items = []) =>
         .filter(Boolean)
     )
   );
+
+const parseBooleanFlag = (value, fallback = false) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
+  return fallback;
+};
+
+const buildUnsplashUrl = ({ query, width = 900, height = 900, seed = 1 }) => {
+  const normalizedQuery = encodeURIComponent(String(query || "").trim() || "india,portrait");
+  const sig = Math.max(1, Number.parseInt(String(seed || "1"), 10) || 1);
+  return `https://source.unsplash.com/${width}x${height}/?${normalizedQuery}&sig=${sig}`;
+};
+
+const buildAvatarUrl = (seedIndex) => {
+  const query = UNSPLASH_PROFILE_QUERIES[seedIndex % UNSPLASH_PROFILE_QUERIES.length];
+  return buildUnsplashUrl({
+    query,
+    width: 640,
+    height: 640,
+    seed: seedIndex + 11
+  });
+};
+
+const buildProjectImageUrl = ({ service, seedIndex, projectIndex = 0 }) => {
+  const serviceSlug = slugify(service?.title || service?.key || "project");
+  const baseQuery = UNSPLASH_PROJECT_QUERIES[(seedIndex + projectIndex) % UNSPLASH_PROJECT_QUERIES.length];
+  return buildUnsplashUrl({
+    query: `${baseQuery},${serviceSlug}`,
+    width: 1280,
+    height: 720,
+    seed: seedIndex * 7 + projectIndex + 31
+  });
+};
 
 const parseCliArgs = () => {
   const args = process.argv.slice(2);
@@ -384,11 +449,21 @@ const parseCliArgs = () => {
   const freelancerCount = Number.isFinite(requestedFreelancers)
     ? Math.min(Math.max(requestedFreelancers, MIN_FREELANCER_COUNT), MAX_FREELANCER_COUNT)
     : DEFAULT_FREELANCER_COUNT;
+  const requestedStartIndex = Number.parseInt(
+    options.startIndex || options.offset || `${DEFAULT_START_INDEX}`,
+    10
+  );
+  const startIndex = Number.isFinite(requestedStartIndex)
+    ? Math.max(0, requestedStartIndex)
+    : DEFAULT_START_INDEX;
+  const appendMode = parseBooleanFlag(options.append, false);
 
   return {
     targetAccountId,
     proposalOwnerAccountId,
-    freelancerCount
+    freelancerCount,
+    startIndex,
+    appendMode
   };
 };
 
@@ -455,35 +530,95 @@ const buildCoverLetter = (service, sequence, freelancerName) => {
 const buildPortfolioProjects = ({ service, seedIndex }) => {
   const slug = slugify(service.key);
   const base = `https://portfolio-seed-${seedIndex + 1}-${slug}.example.com`;
+  const kickoffImage = buildProjectImageUrl({
+    service,
+    seedIndex,
+    projectIndex: 0
+  });
+  const optimizationImage = buildProjectImageUrl({
+    service,
+    seedIndex,
+    projectIndex: 1
+  });
+  const scaleImage = buildProjectImageUrl({
+    service,
+    seedIndex,
+    projectIndex: 2
+  });
 
   return [
     {
       title: `${service.title} Accelerator ${seedIndex + 1}`,
       description: `Delivered ${service.title.toLowerCase()} execution with measurable quality and growth impact.`,
       link: base,
+      image: kickoffImage,
+      imageUrl: kickoffImage,
+      thumbnail: kickoffImage,
       role: "Lead Specialist",
       timeline: service.timeline,
       budget: service.budget,
       tags: service.specializations.slice(0, 3),
-      techStack: service.technologies.slice(0, 5)
+      techStack: service.technologies.slice(0, 5),
+      outcomes: [
+        "Scope finalized in discovery sprint",
+        "Delivery milestone adherence >95%",
+        "Client QA signoff without blocker carryover"
+      ]
     },
     {
       title: `${service.title} Optimization Sprint ${seedIndex + 1}`,
       description: `Optimization-focused engagement improving delivery velocity and stakeholder visibility.`,
       link: `${base}/sprint`,
+      image: optimizationImage,
+      imageUrl: optimizationImage,
+      thumbnail: optimizationImage,
       role: "Project Owner",
       timeline: "4 weeks",
       budget: Math.round(service.budget * 0.55),
       tags: service.specializations.slice(0, 2),
-      techStack: service.technologies.slice(0, 4)
+      techStack: service.technologies.slice(0, 4),
+      outcomes: [
+        "Delivery cycle time improved by 27%",
+        "Revision loops reduced through quality gates",
+        "Stakeholder status transparency improved"
+      ]
+    },
+    {
+      title: `${service.title} Scale Program ${seedIndex + 1}`,
+      description: `Scale-focused initiative for repeatable operations, reporting, and handover maturity.`,
+      link: `${base}/scale`,
+      image: scaleImage,
+      imageUrl: scaleImage,
+      thumbnail: scaleImage,
+      role: "Engagement Lead",
+      timeline: "6 weeks",
+      budget: Math.round(service.budget * 0.75),
+      tags: service.specializations.slice(0, 3),
+      techStack: service.technologies.slice(0, 5),
+      outcomes: [
+        "Reusable templates and SOPs delivered",
+        "Operational risk register implemented",
+        "Launch playbook and support runbook shared"
+      ]
     }
   ];
 };
 
 const buildServiceDetail = ({ service, seedIndex, city, jobTitle, languages }) => {
   const projects = buildPortfolioProjects({ service, seedIndex });
+  const serviceCover = buildProjectImageUrl({
+    service,
+    seedIndex,
+    projectIndex: 7
+  });
   return {
     serviceDescription: `${service.summary} Focused on reliable delivery, stakeholder communication, and measurable outcomes.`,
+    coverImage: serviceCover,
+    process: [
+      "Discovery and scope lock with clear acceptance criteria",
+      "Execution with weekly checkpoints and KPI tracking",
+      "QA validation, handover docs, and post-launch support"
+    ],
     experienceYears: EXPERIENCE_VALUES[seedIndex % EXPERIENCE_VALUES.length],
     averageProjectPrice: service.priceRange,
     projectComplexity: service.complexity,
@@ -508,7 +643,8 @@ const buildServiceDetail = ({ service, seedIndex, city, jobTitle, languages }) =
       techStack: service.technologies,
       techStackOther: "",
       liveUrl: projects[0].link,
-      readmeUrl: `${projects[0].link}/readme`
+      readmeUrl: `${projects[0].link}/readme`,
+      image: projects[0].image
     },
     projects: projects.map((project, projectIndex) => ({
       ...project,
@@ -520,6 +656,9 @@ const buildServiceDetail = ({ service, seedIndex, city, jobTitle, languages }) =
       budget: project.budget,
       tags: project.tags,
       techStack: project.techStack,
+      image: project.image,
+      imageUrl: project.imageUrl,
+      thumbnail: project.thumbnail,
       sortOrder: projectIndex
     })),
     profileSnapshot: {
@@ -559,6 +698,8 @@ const buildFreelancerProjectRows = ({
       description: primaryProject.description,
       link: primaryProject.link,
       readme: `${primaryProject.link}/readme`,
+      fileName: `${slugify(primaryProject.title || service.title)}.jpg`,
+      fileUrl: primaryProject.image,
       role: "Lead Specialist",
       timeline: service.timeline,
       budget: service.budget,
@@ -588,7 +729,12 @@ const buildWorkExperienceRows = ({ service, seedIndex }) => {
       startDate: `${currentYear - 3}-01-01`,
       endDate: null,
       currentlyWorking: true,
-      description: `Leading ${service.title.toLowerCase()} initiatives for growth-stage businesses.`
+      description: `Leading ${service.title.toLowerCase()} initiatives for growth-stage businesses with KPI-led delivery governance.`,
+      achievements: [
+        "Introduced delivery templates and sprint rituals",
+        "Reduced rework through milestone-level QA checks",
+        "Improved cross-functional collaboration cadence"
+      ]
     },
     {
       title: `${service.title} Specialist`,
@@ -597,9 +743,55 @@ const buildWorkExperienceRows = ({ service, seedIndex }) => {
       startDate: `${currentYear - 5}-01-01`,
       endDate: `${currentYear - 3}-01-01`,
       currentlyWorking: false,
-      description: "Handled delivery, QA handoff, and client operations alignment."
+      description: "Handled delivery, QA handoff, and client operations alignment with clear stakeholder reporting.",
+      achievements: [
+        "Delivered multi-stream projects within timeline",
+        "Established reusable delivery checklists",
+        "Raised client NPS through transparent execution"
+      ]
+    },
+    {
+      title: `${service.title} Associate`,
+      company: `Delivery Collective ${seedIndex + 1}`,
+      location: "India",
+      startDate: `${currentYear - 7}-01-01`,
+      endDate: `${currentYear - 5}-01-01`,
+      currentlyWorking: false,
+      description:
+        "Supported implementation, documentation, and production hardening across client engagements.",
+      achievements: [
+        "Maintained release notes and handover docs",
+        "Contributed to delivery automation efforts",
+        "Supported stakeholder communications and demos"
+      ]
     }
   ];
+};
+
+const resolveSeededFreelancerStartIndex = async (explicitStartIndex = 0, appendMode = false) => {
+  const normalizedStartIndex = Math.max(0, Number(explicitStartIndex) || 0);
+  if (!appendMode) return normalizedStartIndex;
+
+  const existing = await prisma.user.findMany({
+    where: {
+      email: {
+        startsWith: "match.freelancer"
+      }
+    },
+    select: {
+      email: true
+    }
+  });
+
+  const detectedMax = existing.reduce((acc, row) => {
+    const match = String(row?.email || "").match(/^match\.freelancer(\d+)@catalance\.test$/i);
+    if (!match) return acc;
+    const parsed = Number.parseInt(match[1], 10);
+    if (!Number.isFinite(parsed)) return acc;
+    return Math.max(acc, parsed);
+  }, 0);
+
+  return Math.max(normalizedStartIndex, detectedMax);
 };
 
 const ensureTargetFreelancer = async ({ targetAccountId, passwordHash }) => {
@@ -630,7 +822,7 @@ const ensureTargetFreelancer = async ({ targetAccountId, passwordHash }) => {
       onboardingComplete: true,
       isVerified: true,
       phoneNumber: "+91-9000000000",
-      avatar: "https://i.pravatar.cc/300?img=18"
+      avatar: buildAvatarUrl(9001)
     }
   });
 
@@ -664,7 +856,7 @@ const ensureTargetFreelancer = async ({ targetAccountId, passwordHash }) => {
           city: "Bengaluru",
           country: "India",
           languages: ["English", "Hindi"],
-          profilePhoto: "https://i.pravatar.cc/300?img=18"
+          profilePhoto: buildAvatarUrl(9001)
         },
         services: ["web_development", "software_development", "ai_automation"],
         globalIndustryFocus: ["Technology", "Startups"],
@@ -750,7 +942,7 @@ const ensureSeedClient = async ({ passwordHash, proposalOwnerAccountId }) => {
         isVerified: true,
         onboardingComplete: true,
         phoneNumber: "+91-9888800011",
-        avatar: "https://i.pravatar.cc/300?img=26"
+        avatar: buildAvatarUrl(8001)
       }
     });
 
@@ -769,7 +961,7 @@ const ensureSeedClient = async ({ passwordHash, proposalOwnerAccountId }) => {
       isVerified: true,
       onboardingComplete: true,
       phoneNumber: "+91-9888800011",
-      avatar: "https://i.pravatar.cc/300?img=26"
+      avatar: buildAvatarUrl(8001)
     },
     create: {
       email,
@@ -781,7 +973,7 @@ const ensureSeedClient = async ({ passwordHash, proposalOwnerAccountId }) => {
       isVerified: true,
       onboardingComplete: true,
       phoneNumber: "+91-9888800011",
-      avatar: "https://i.pravatar.cc/300?img=26"
+      avatar: buildAvatarUrl(8001)
     }
   });
 
@@ -901,56 +1093,79 @@ const seedServiceProposals = async ({ client, recipients }) => {
   return rows;
 };
 
-const seedFreelancerAccounts = async ({ freelancerCount, passwordHash }) => {
+const seedFreelancerAccounts = async ({
+  freelancerCount,
+  passwordHash,
+  startIndex = DEFAULT_START_INDEX
+}) => {
   const created = [];
 
   for (let i = 0; i < freelancerCount; i += 1) {
-    const primaryService = SERVICE_FIXTURES[(i + 3) % SERVICE_FIXTURES.length];
-    const secondaryService =
-      i % 2 === 0 ? SERVICE_FIXTURES[(i + 9) % SERVICE_FIXTURES.length] : null;
-    const services = secondaryService
-      ? [primaryService, secondaryService]
-      : [primaryService];
-    const uniqueServices = uniqueStrings(services.map((entry) => entry.key))
-      .map((key) => SERVICE_FIXTURES.find((entry) => entry.key === key))
-      .filter(Boolean);
+    const seedIndex = startIndex + i;
+    const primaryService = SERVICE_FIXTURES[(seedIndex + 3) % SERVICE_FIXTURES.length];
+    const uniqueServices = SERVICE_FIXTURES.map((service) => ({ ...service }));
 
-    const city = CITY_POOL[i % CITY_POOL.length];
-    const firstName = FIRST_NAMES[i % FIRST_NAMES.length];
-    const lastName = LAST_NAMES[(i * 2) % LAST_NAMES.length];
+    const city = CITY_POOL[seedIndex % CITY_POOL.length];
+    const firstName = FIRST_NAMES[seedIndex % FIRST_NAMES.length];
+    const lastName = LAST_NAMES[(seedIndex * 2) % LAST_NAMES.length];
     const fullName = `${firstName} ${lastName}`;
-    const email = `match.freelancer${String(i + 1).padStart(2, "0")}@catalance.test`;
-    const phone = `+91-98000${String(10000 + i).slice(-5)}`;
-    const avatar = `https://i.pravatar.cc/300?img=${(i % 70) + 1}`;
-    const jobTitle = `${primaryService.title} Specialist`;
-    const languages = i % 3 === 0 ? ["English", "Hindi", "Marathi"] : ["English", "Hindi"];
-    const reviewCount = 6 + i * 2;
-    const rating = Number((4.1 + (i % 6) * 0.12).toFixed(1));
-    const experienceYears = 2 + (i % 7);
+    const email = `match.freelancer${String(seedIndex + 1).padStart(3, "0")}@catalance.test`;
+    const phone = `+91-980${String(1000000 + seedIndex).slice(-7)}`;
+    const avatar = buildAvatarUrl(seedIndex);
+    const jobTitle = `${primaryService.title} Specialist (Multi-Service)`;
+    const regionalLanguage = CITY_LANGUAGE_MAP[city] || "Hindi";
+    const languages = uniqueStrings(["English", "Hindi", regionalLanguage]);
+    const reviewCount = 8 + seedIndex * 2;
+    const rating = Number((4.1 + (seedIndex % 6) * 0.12).toFixed(1));
+    const experienceYears = 2 + (seedIndex % 9);
+    const portfolioUrl = `https://seed-freelancer-${seedIndex + 1}.example.com`;
+    const summaryParagraph =
+      `Verified freelancer profile for ${primaryService.title}. Focuses on structured execution, measurable outcomes, and proactive communication.`;
     const profileDetails = {
       identity: {
         professionalTitle: jobTitle,
         city,
         country: "India",
         languages,
-        profilePhoto: avatar
+        profilePhoto: avatar,
+        timezone: "Asia/Kolkata"
       },
+      headline: `${primaryService.title} specialist with end-to-end ownership across discovery, execution, and launch.`,
+      overview:
+        "Execution-first freelancer who combines clear communication, delivery discipline, and quality checks for consistent outcomes.",
       services: uniqueServices.map((entry) => entry.key),
       globalIndustryFocus: uniqueStrings(
         uniqueServices.flatMap((entry) => entry.industries)
       ),
       globalIndustryOther: "",
       availability: {
-        weeklyHours: 20 + (i % 4) * 10,
+        weeklyHours: 20 + (seedIndex % 4) * 10,
         timezone: "Asia/Kolkata",
         responseTime: "Within 12 hours"
       },
+      education: [
+        {
+          degree: "Bachelor's Degree",
+          field: "Engineering / Design",
+          institution: `National Institute ${seedIndex % 25}`,
+          year: `${2012 + (seedIndex % 10)}`
+        }
+      ],
+      certifications: [
+        `${primaryService.title} Professional Certificate`,
+        "Project Delivery and Stakeholder Communication",
+        "Quality Assurance and Release Readiness"
+      ],
+      workExperience: buildWorkExperienceRows({
+        service: primaryService,
+        seedIndex
+      }),
       serviceDetails: Object.fromEntries(
         uniqueServices.map((service) => [
           service.key,
           buildServiceDetail({
             service,
-            seedIndex: i,
+            seedIndex,
             city,
             jobTitle,
             languages
@@ -967,10 +1182,31 @@ const seedFreelancerAccounts = async ({ freelancerCount, passwordHash }) => {
       ])
     );
     const portfolioProjects = uniqueServices.flatMap((service) =>
-      buildPortfolioProjects({ service, seedIndex: i })
+      buildPortfolioProjects({ service, seedIndex })
     );
 
-    const status = i % 8 === 0 ? "PENDING_APPROVAL" : "ACTIVE";
+    const status = seedIndex % 8 === 0 ? "PENDING_APPROVAL" : "ACTIVE";
+    const profilePayload = {
+      bio: summaryParagraph,
+      skills,
+      jobTitle,
+      companyName: `Seed Freelancer Studio ${seedIndex + 1}`,
+      location: `${city}, India`,
+      rating,
+      reviewCount,
+      experienceYears,
+      workExperience: buildWorkExperienceRows({
+        service: primaryService,
+        seedIndex
+      }),
+      services: uniqueServices.map((entry) => entry.key),
+      portfolio: portfolioUrl,
+      linkedin: `https://linkedin.com/in/seed-freelancer-${seedIndex + 1}`,
+      github: `https://github.com/seed-freelancer-${seedIndex + 1}`,
+      portfolioProjects,
+      resume: `https://cdn.example.com/resumes/seed-freelancer-${seedIndex + 1}.pdf`,
+      profileDetails
+    };
 
     const user = await prisma.user.upsert({
       where: { email },
@@ -1001,48 +1237,10 @@ const seedFreelancerAccounts = async ({ freelancerCount, passwordHash }) => {
 
     await prisma.freelancerProfile.upsert({
       where: { userId: user.id },
-      update: {
-        bio: `Verified freelancer profile for ${primaryService.title}. Focuses on structured execution, measurable outcomes, and proactive communication.`,
-        skills,
-        jobTitle,
-        companyName: `Seed Freelancer Studio ${i + 1}`,
-        location: `${city}, India`,
-        rating,
-        reviewCount,
-        experienceYears,
-        workExperience: buildWorkExperienceRows({
-          service: primaryService,
-          seedIndex: i
-        }),
-        services: uniqueServices.map((entry) => entry.key),
-        portfolio: `https://seed-freelancer-${i + 1}.example.com`,
-        linkedin: `https://linkedin.com/in/seed-freelancer-${i + 1}`,
-        github: `https://github.com/seed-freelancer-${i + 1}`,
-        portfolioProjects,
-        resume: `https://cdn.example.com/resumes/seed-freelancer-${i + 1}.pdf`,
-        profileDetails
-      },
+      update: profilePayload,
       create: {
         userId: user.id,
-        bio: `Verified freelancer profile for ${primaryService.title}. Focuses on structured execution, measurable outcomes, and proactive communication.`,
-        skills,
-        jobTitle,
-        companyName: `Seed Freelancer Studio ${i + 1}`,
-        location: `${city}, India`,
-        rating,
-        reviewCount,
-        experienceYears,
-        workExperience: buildWorkExperienceRows({
-          service: primaryService,
-          seedIndex: i
-        }),
-        services: uniqueServices.map((entry) => entry.key),
-        portfolio: `https://seed-freelancer-${i + 1}.example.com`,
-        linkedin: `https://linkedin.com/in/seed-freelancer-${i + 1}`,
-        github: `https://github.com/seed-freelancer-${i + 1}`,
-        portfolioProjects,
-        resume: `https://cdn.example.com/resumes/seed-freelancer-${i + 1}.pdf`,
-        profileDetails
+        ...profilePayload
       }
     });
 
@@ -1053,7 +1251,7 @@ const seedFreelancerAccounts = async ({ freelancerCount, passwordHash }) => {
     const projectRows = buildFreelancerProjectRows({
       userId: user.id,
       services: uniqueServices,
-      seedIndex: i,
+      seedIndex,
       jobTitle,
       city,
       languages
@@ -1085,14 +1283,14 @@ const seedFreelancerAccounts = async ({ freelancerCount, passwordHash }) => {
         update: {
           service: service.title,
           serviceDetails: buildMarketplaceDetails(service),
-          isFeatured: i % 5 === 0
+          isFeatured: seedIndex % 5 === 0
         },
         create: {
           freelancerId: user.id,
           serviceKey: service.key,
           service: service.title,
           serviceDetails: buildMarketplaceDetails(service),
-          isFeatured: i % 5 === 0
+          isFeatured: seedIndex % 5 === 0
         }
       });
     }
@@ -1110,11 +1308,21 @@ const seedFreelancerAccounts = async ({ freelancerCount, passwordHash }) => {
 };
 
 const run = async () => {
-  const { targetAccountId, proposalOwnerAccountId, freelancerCount } = parseCliArgs();
+  const {
+    targetAccountId,
+    proposalOwnerAccountId,
+    freelancerCount,
+    startIndex,
+    appendMode
+  } = parseCliArgs();
   const passwordHash = await hashPassword(DEFAULT_PASSWORD);
+  const effectiveStartIndex = await resolveSeededFreelancerStartIndex(
+    startIndex,
+    appendMode
+  );
 
   console.log(
-    `[seed_matching_test_data] Starting with targetAccountId=${targetAccountId}, proposalOwnerAccountId=${proposalOwnerAccountId}, freelancerCount=${freelancerCount}`
+    `[seed_matching_test_data] Starting with targetAccountId=${targetAccountId}, proposalOwnerAccountId=${proposalOwnerAccountId}, freelancerCount=${freelancerCount}, startIndex=${effectiveStartIndex}, appendMode=${appendMode}`
   );
 
   const targetFreelancer = await ensureTargetFreelancer({
@@ -1123,7 +1331,8 @@ const run = async () => {
   });
   const freelancerRows = await seedFreelancerAccounts({
     freelancerCount,
-    passwordHash
+    passwordHash,
+    startIndex: effectiveStartIndex
   });
   const client = await ensureSeedClient({ passwordHash, proposalOwnerAccountId });
 

@@ -68,6 +68,38 @@ const extractAvatarUrl = (value) => {
   return "";
 };
 
+const FREELANCER_UNSPLASH_PROFILE_QUERIES = Object.freeze([
+  "indian,professional,portrait,headshot",
+  "indian,developer,portrait,studio",
+  "indian,designer,portrait,office",
+  "indian,marketer,portrait,creative",
+  "indian,freelancer,portrait,workspace",
+  "india,entrepreneur,portrait,natural-light"
+]);
+
+const hashStringToPositiveInt = (value = "") => {
+  const input = String(value || "");
+  if (!input) return 1;
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash) || 1;
+};
+
+const buildFreelancerUnsplashAvatarUrl = (user = {}) => {
+  const seedSource =
+    user?.id || user?.email || user?.fullName || user?.phoneNumber || "freelancer";
+  const seed = hashStringToPositiveInt(seedSource);
+  const query =
+    FREELANCER_UNSPLASH_PROFILE_QUERIES[
+      seed % FREELANCER_UNSPLASH_PROFILE_QUERIES.length
+    ];
+  const sig = (seed % 9000) + 1;
+  return `https://source.unsplash.com/640x640/?${encodeURIComponent(query)}&sig=${sig}`;
+};
+
 const toProfileDetailsObject = (value) => {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value;
@@ -349,6 +381,8 @@ export const getProfile = asyncHandler(async (req, res) => {
       email: true,
       phone: true,
       phoneNumber: true,
+      role: true,
+      roles: true,
       status: true,
       avatar: true,
       freelancerProfile: true
@@ -374,6 +408,15 @@ export const getProfile = asyncHandler(async (req, res) => {
   let jobTitle = identityJobTitle || freelancerProfile.jobTitle || user.headline || "";
   const identityAvatar = extractAvatarUrl(profileDetails?.identity?.profilePhoto);
   const identityLocation = buildLocationFromIdentity(profileDetails?.identity);
+  const isFreelancerProfile =
+    String(user.role || "").toUpperCase() === "FREELANCER" ||
+    (Array.isArray(user.roles) &&
+      user.roles.some((role) => String(role || "").toUpperCase() === "FREELANCER"));
+  const profileAvatar = user.avatar || identityAvatar || "";
+  const resolvedAvatar =
+    isFreelancerProfile && !profileAvatar
+      ? buildFreelancerUnsplashAvatarUrl(user)
+      : profileAvatar;
 
   // Fix Location " 0" issue and fallback
   let userLocation = identityLocation || freelancerProfile.location || "";
@@ -454,7 +497,7 @@ export const getProfile = asyncHandler(async (req, res) => {
         headline: jobTitle,
         bio: bioText,
         experienceYears: expYears,
-        avatar: user.avatar || identityAvatar || "",
+        avatar: resolvedAvatar,
         available: user.status === "ACTIVE"
       },
       skills: mergedSkills.length ? mergedSkills : fallbackSkills,
@@ -540,6 +583,14 @@ export const saveProfile = asyncHandler(async (req, res) => {
 
   if (hasOwn(payload, "services")) {
     freelancerProfileUpdateData.services = services;
+  }
+  if (hasOwn(payload, "profileDetails")) {
+    freelancerProfileUpdateData.profileDetails =
+      payload.profileDetails &&
+        typeof payload.profileDetails === "object" &&
+        !Array.isArray(payload.profileDetails)
+        ? payload.profileDetails
+        : {};
   }
   if (hasOwn(payload, "portfolioProjects")) {
     freelancerProfileUpdateData.portfolioProjects = portfolioProjects;

@@ -15,7 +15,10 @@ export const createUserSchema = z.object({
 
 export const listUsersSchema = z.object({
   query: z.object({
-    role: userRoleEnum.optional()
+    role: userRoleEnum.optional(),
+    status: z.string().optional(),
+    onboardingComplete: z.union([z.string(), z.boolean()]).optional(),
+    requiredSkills: z.union([z.string(), z.array(z.string())]).optional()
   })
 });
 
