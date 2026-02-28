@@ -38,7 +38,6 @@ import {
   getServiceLabel,
   createServiceDetail,
 } from "@/components/features/freelancer/onboarding/utils";
-import { getFreelancerOnboardingStorageKeys } from "@/components/features/freelancer/onboarding/storage";
 import { useNavigate } from "react-router-dom";
 
 const getBioTextFromObject = (obj) => {
@@ -462,6 +461,122 @@ const initialWorkForm = {
   description: "",
 };
 
+const createEmptyEducationEntry = () => ({
+  school: "",
+  degree: "",
+  field: "",
+  country: "",
+  graduationYear: "",
+});
+
+const collectEducationEntriesFromProfileDetails = (details = {}) => {
+  const profile = details && typeof details === "object" ? details : {};
+  const identity =
+    profile.identity && typeof profile.identity === "object"
+      ? profile.identity
+      : {};
+
+  const candidateLists = [
+    profile.education,
+    profile.educationHistory,
+    identity.education,
+    identity.educationHistory,
+  ].filter(Array.isArray);
+
+  const normalized = candidateLists
+    .flatMap((entries) => entries)
+    .map((entry) => {
+      if (!entry) return null;
+      if (typeof entry === "string") {
+        const school = String(entry).trim();
+        if (!school) return null;
+        return {
+          school,
+          degree: "",
+          field: "",
+          country: "",
+          graduationYear: "",
+        };
+      }
+
+      if (typeof entry !== "object") return null;
+
+      const school = String(
+        entry.school ||
+        entry.institution ||
+        entry.university ||
+        entry.college ||
+        entry.name ||
+        ""
+      ).trim();
+      const degree = String(
+        entry.degree || entry.qualification || entry.program || ""
+      ).trim();
+      const field = String(
+        entry.field ||
+        entry.specialization ||
+        entry.stream ||
+        entry.focus ||
+        entry.subject ||
+        ""
+      ).trim();
+      const country = String(entry.country || entry.location || "").trim();
+      const graduationYear = String(
+        entry.graduationYear || entry.endYear || entry.year || ""
+      ).trim();
+
+      if (!school && !degree && !field && !country && !graduationYear) {
+        return null;
+      }
+
+      return { school, degree, field, country, graduationYear };
+    })
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : [createEmptyEducationEntry()];
+};
+
+const normalizeEducationEntriesForSave = (entries = []) =>
+  (Array.isArray(entries) ? entries : [])
+    .map((entry) => ({
+      school: String(entry?.school || "").trim(),
+      degree: String(entry?.degree || "").trim(),
+      field: String(entry?.field || "").trim(),
+      country: String(entry?.country || "").trim(),
+      graduationYear: String(entry?.graduationYear || "").trim(),
+    }))
+    .filter(
+      (entry) =>
+        entry.school ||
+        entry.degree ||
+        entry.field ||
+        entry.country ||
+        entry.graduationYear
+    );
+
+const createInitialFullProfileForm = () => ({
+  professionalTitle: "",
+  username: "",
+  country: "",
+  city: "",
+  languages: "",
+  otherLanguage: "",
+  role: "",
+  globalIndustryFocus: "",
+  globalIndustryOther: "",
+  hoursPerWeek: "",
+  workingSchedule: "",
+  startTimeline: "",
+  missedDeadlines: "",
+  delayHandling: "",
+  deliveryPolicyAccepted: false,
+  communicationPolicyAccepted: false,
+  acceptInProgressProjects: "",
+  termsAccepted: false,
+  professionalBio: "",
+  education: [createEmptyEducationEntry()],
+});
+
 const FreelancerProfile = () => {
   const navigate = useNavigate();
   const { user, authFetch } = useAuth();
@@ -513,10 +628,8 @@ const FreelancerProfile = () => {
   const [initialData, setInitialData] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  const onboardingStorageKeys = useMemo(
-    () => getFreelancerOnboardingStorageKeys(user),
-    [user?.id, user?.email]
+  const [fullProfileForm, setFullProfileForm] = useState(
+    createInitialFullProfileForm
   );
 
   useEffect(() => {
@@ -930,24 +1043,27 @@ const FreelancerProfile = () => {
   };
 
   // ----- Save to backend -----
-  const handleSave = async () => {
-    if (!personal.email) {
+  const handleSave = async (snapshot = null) => {
+    const currentPersonal = snapshot?.personal ?? personal;
+    const currentPortfolio = snapshot?.portfolio ?? portfolio;
+    const currentSkills = snapshot?.skills ?? skills;
+    const currentWorkExperience = snapshot?.workExperience ?? workExperience;
+    const currentServices = snapshot?.services ?? services;
+    const currentPortfolioProjects =
+      snapshot?.portfolioProjects ?? portfolioProjects;
+    const currentProfileDetails = snapshot?.profileDetails ?? profileDetails;
+
+    if (!currentPersonal.email) {
       toast.error("Cannot save profile", {
         description: "Missing email on your profile.",
       });
-      return;
+      return false;
     }
 
     setIsSaving(true);
 
-    // Validation removed as per user request
-    // const isDeveloper = services.some(s => ...);
-    // if (isDeveloper && !portfolio.githubUrl?.trim()) ...
-
-    const skillsForApi = toUniqueSkillNames(skills);
-
-    // Check if we need to upload an image first
-    let currentAvatarUrl = resolveAvatarUrl(personal.avatar);
+    const skillsForApi = toUniqueSkillNames(currentSkills);
+    let currentAvatarUrl = resolveAvatarUrl(currentPersonal.avatar);
 
     if (selectedFile) {
       setUploadingImage(true);
@@ -967,22 +1083,21 @@ const FreelancerProfile = () => {
 
         const data = await uploadRes.json();
         currentAvatarUrl = data.data.url;
-        console.log("New Avatar URL from upload:", currentAvatarUrl);
       } catch (uploadErr) {
         setIsSaving(false);
         setUploadingImage(false);
         console.error("Image upload failed inside save:", uploadErr);
         toast.error("Failed to upload image. Profile not saved.");
-        return;
+        return false;
       } finally {
         setUploadingImage(false);
       }
     }
 
-    const bioText = normalizeBioValue(personal.bio);
+    const bioText = normalizeBioValue(currentPersonal.bio);
     const existingProfileDetails =
-      profileDetails && typeof profileDetails === "object"
-        ? profileDetails
+      currentProfileDetails && typeof currentProfileDetails === "object"
+        ? currentProfileDetails
         : {};
     const existingIdentity =
       existingProfileDetails.identity &&
@@ -994,7 +1109,7 @@ const FreelancerProfile = () => {
       ...existingProfileDetails,
       identity: {
         ...existingIdentity,
-        professionalTitle: String(personal.headline || "").trim(),
+        professionalTitle: String(currentPersonal.headline || "").trim(),
         username: String(existingIdentity.username || "").trim(),
         ...(currentAvatarUrl ? { profilePhoto: currentAvatarUrl } : {}),
       },
@@ -1002,27 +1117,25 @@ const FreelancerProfile = () => {
 
     const payload = {
       personal: {
-        name: personal.name,
-        email: personal.email,
-        phone: personal.phone,
-        location: personal.location,
-        headline: personal.headline,
+        name: currentPersonal.name,
+        email: currentPersonal.email,
+        phone: currentPersonal.phone,
+        location: currentPersonal.location,
+        headline: currentPersonal.headline,
         bio: bioText,
-        experienceYears: personal.experienceYears,
-        available: personal.available,
-        avatar: currentAvatarUrl, // Use the new real URL or existing
+        experienceYears: currentPersonal.experienceYears,
+        available: currentPersonal.available,
+        avatar: currentAvatarUrl,
       },
       bio: bioText,
       skills: skillsForApi,
-      workExperience,
-      services,
-      portfolio, // Add portfolio to payload
-      resume: portfolio.resume, // Make sure resume is saved at top level if needed
-      portfolioProjects, // Add portfolioProjects to payload
+      workExperience: currentWorkExperience,
+      services: currentServices,
+      portfolio: currentPortfolio,
+      resume: currentPortfolio.resume,
+      portfolioProjects: currentPortfolioProjects,
       profileDetails: profileDetailsForSave,
     };
-
-    console.log("Saving profile payload:", payload);
 
     try {
       const response = await authFetch("/profile", {
@@ -1034,34 +1147,40 @@ const FreelancerProfile = () => {
         toast.error("Save failed", {
           description: "Check backend logs for more details.",
         });
-        return; // Finally block will handle setIsSaving(false)
+        return false;
       }
 
       toast.success("Profile saved", {
         description: "Your profile has been updated successfully.",
       });
 
-      // Update local state to reflect saved changes (esp if avatar changed)
-      const newPersonal = { ...personal, avatar: currentAvatarUrl };
-      setPersonal((prev) => ({ ...prev, avatar: currentAvatarUrl }));
+      const newPersonal = { ...currentPersonal, avatar: currentAvatarUrl };
+      setPersonal(newPersonal);
+      setPortfolio(currentPortfolio);
+      setSkills(currentSkills);
+      setWorkExperience(currentWorkExperience);
+      setServices(currentServices);
+      setPortfolioProjects(currentPortfolioProjects);
       setProfileDetails(profileDetailsForSave);
 
       setInitialData({
         personal: newPersonal,
-        portfolio,
-        skills,
-        workExperience,
-        services,
-        portfolioProjects,
+        portfolio: currentPortfolio,
+        skills: currentSkills,
+        workExperience: currentWorkExperience,
+        services: currentServices,
+        portfolioProjects: currentPortfolioProjects,
         profileDetails: profileDetailsForSave,
       });
       setIsDirty(false);
       setSelectedFile(null);
+      return true;
     } catch (error) {
       console.error("Save failed", error);
       toast.error("Save failed", {
         description: "Something went wrong. Check console for details.",
       });
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -1614,124 +1733,204 @@ const FreelancerProfile = () => {
   };
 
   const openFullProfileEditor = () => {
+    const currentDetails =
+      profileDetails && typeof profileDetails === "object" ? profileDetails : {};
     const identity =
-      profileDetails?.identity && typeof profileDetails.identity === "object"
-        ? profileDetails.identity
+      currentDetails.identity && typeof currentDetails.identity === "object"
+        ? currentDetails.identity
         : {};
     const availability =
-      profileDetails?.availability && typeof profileDetails.availability === "object"
-        ? profileDetails.availability
+      currentDetails.availability &&
+        typeof currentDetails.availability === "object"
+        ? currentDetails.availability
         : {};
     const reliability =
-      profileDetails?.reliability && typeof profileDetails.reliability === "object"
-        ? profileDetails.reliability
-        : {};
-    const rawServiceDetails =
-      profileDetails?.serviceDetails &&
-        typeof profileDetails.serviceDetails === "object"
-        ? profileDetails.serviceDetails
+      currentDetails.reliability && typeof currentDetails.reliability === "object"
+        ? currentDetails.reliability
         : {};
 
-    const selectedServices = Array.from(
-      new Set([
-        ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
-        ...(Array.isArray(services) ? services : []),
-      ])
-    )
-      .map((entry) => String(entry || "").trim())
-      .filter(Boolean);
-
-    const serviceDetailsDraft = selectedServices.reduce((acc, serviceKey) => {
-      const fallback = createServiceDetail();
-      const current =
-        rawServiceDetails?.[serviceKey] &&
-          typeof rawServiceDetails[serviceKey] === "object"
-          ? rawServiceDetails[serviceKey]
-          : {};
-
-      acc[serviceKey] = {
-        ...fallback,
-        ...current,
-        caseStudy: {
-          ...fallback.caseStudy,
-          ...(current?.caseStudy && typeof current.caseStudy === "object"
-            ? current.caseStudy
-            : {}),
-        },
-        groups:
-          current?.groups && typeof current.groups === "object"
-            ? current.groups
-            : {},
-        groupOther:
-          current?.groupOther && typeof current.groupOther === "object"
-            ? current.groupOther
-            : {},
-        projects: Array.isArray(current?.projects) ? current.projects : [],
-      };
-
-      return acc;
-    }, {});
-
-    const profilePhotoUrl =
-      resolveAvatarUrl(identity?.profilePhoto, { allowBlob: true }) ||
-      resolveAvatarUrl(personal.avatar, { allowBlob: true });
-
-    const onboardingDraft = {
+    setFullProfileForm({
       professionalTitle: String(
-        identity?.professionalTitle || personal.headline || ""
+        identity.professionalTitle || personal.headline || ""
       ).trim(),
-      username: String(identity?.username || "").trim(),
-      country: String(identity?.country || "").trim(),
-      city: String(identity?.city || "").trim(),
-      profilePhoto: profilePhotoUrl
-        ? {
-          url: profilePhotoUrl,
-          uploadedUrl: profilePhotoUrl,
-          name: "profile-photo",
-        }
-        : null,
-      languages: Array.isArray(identity?.languages) ? identity.languages : [],
-      otherLanguage: String(identity?.otherLanguage || "").trim(),
-      linkedinUrl: String(
-        identity?.linkedinUrl || portfolio.linkedinUrl || ""
-      ).trim(),
-      portfolioUrl: String(
-        identity?.portfolioUrl || portfolio.portfolioUrl || ""
-      ).trim(),
-      role: String(profileDetails?.role || "").trim(),
-      globalIndustryFocus: Array.isArray(profileDetails?.globalIndustryFocus)
-        ? profileDetails.globalIndustryFocus
-        : [],
-      globalIndustryOther: String(profileDetails?.globalIndustryOther || "").trim(),
-      selectedServices,
-      serviceDetails: serviceDetailsDraft,
-      deliveryPolicyAccepted: Boolean(profileDetails?.deliveryPolicyAccepted),
-      hoursPerWeek: String(availability?.hoursPerWeek || "").trim(),
-      workingSchedule: String(availability?.workingSchedule || "").trim(),
-      startTimeline: String(availability?.startTimeline || "").trim(),
-      missedDeadlines: String(reliability?.missedDeadlines || "").trim(),
-      delayHandling: String(reliability?.delayHandling || "").trim(),
+      username: String(identity.username || "").trim(),
+      country: String(identity.country || "").trim(),
+      city: String(identity.city || "").trim(),
+      languages: (Array.isArray(identity.languages) ? identity.languages : [])
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+        .join(", "),
+      otherLanguage: String(identity.otherLanguage || "").trim(),
+      role: String(currentDetails.role || "").trim(),
+      globalIndustryFocus: (
+        Array.isArray(currentDetails.globalIndustryFocus)
+          ? currentDetails.globalIndustryFocus
+          : []
+      )
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+        .join(", "),
+      globalIndustryOther: String(currentDetails.globalIndustryOther || "").trim(),
+      hoursPerWeek: String(availability.hoursPerWeek || "").trim(),
+      workingSchedule: String(availability.workingSchedule || "").trim(),
+      startTimeline: String(availability.startTimeline || "").trim(),
+      missedDeadlines: String(reliability.missedDeadlines || "").trim(),
+      delayHandling: String(reliability.delayHandling || "").trim(),
+      deliveryPolicyAccepted: Boolean(currentDetails.deliveryPolicyAccepted),
       communicationPolicyAccepted: Boolean(
-        profileDetails?.communicationPolicyAccepted
+        currentDetails.communicationPolicyAccepted
       ),
       acceptInProgressProjects: String(
-        profileDetails?.acceptInProgressProjects || ""
+        currentDetails.acceptInProgressProjects || ""
       ).trim(),
-      termsAccepted: Boolean(profileDetails?.termsAccepted),
+      termsAccepted: Boolean(currentDetails.termsAccepted),
       professionalBio: String(
-        profileDetails?.professionalBio || personal.bio || ""
+        currentDetails.professionalBio || personal.bio || ""
       ).trim(),
-      fullName: String(personal.name || user?.fullName || "").trim(),
-      email: String(personal.email || user?.email || "").trim(),
-      password: "",
+      education: collectEducationEntriesFromProfileDetails(currentDetails),
+    });
+
+    setModalType("fullProfile");
+  };
+
+  const handleFullProfileFieldChange = useCallback((event) => {
+    const { name, value, type, checked } = event.target;
+    setFullProfileForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  }, []);
+
+  const handleEducationFieldChange = useCallback((index, field, value) => {
+    setFullProfileForm((prev) => ({
+      ...prev,
+      education: (Array.isArray(prev.education) ? prev.education : []).map(
+        (entry, rowIndex) =>
+          rowIndex === index ? { ...entry, [field]: value } : entry
+      ),
+    }));
+  }, []);
+
+  const addEducationEntry = useCallback(() => {
+    setFullProfileForm((prev) => ({
+      ...prev,
+      education: [
+        ...(Array.isArray(prev.education) ? prev.education : []),
+        createEmptyEducationEntry(),
+      ],
+    }));
+  }, []);
+
+  const removeEducationEntry = useCallback((index) => {
+    setFullProfileForm((prev) => {
+      const nextEducation = (Array.isArray(prev.education) ? prev.education : [])
+        .filter((_, rowIndex) => rowIndex !== index);
+
+      return {
+        ...prev,
+        education:
+          nextEducation.length > 0
+            ? nextEducation
+            : [createEmptyEducationEntry()],
+      };
+    });
+  }, []);
+
+  const saveFullProfileEditor = async () => {
+    const normalizedUsername = String(fullProfileForm.username || "")
+      .replace(/^@+/, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 30);
+
+    const normalizedLanguages = toUniqueLabels(
+      parseDelimitedValues(fullProfileForm.languages)
+    );
+    const normalizedIndustries = toUniqueLabels(
+      parseDelimitedValues(fullProfileForm.globalIndustryFocus)
+    );
+    const normalizedEducation = normalizeEducationEntriesForSave(
+      fullProfileForm.education
+    );
+
+    const currentDetails =
+      profileDetails && typeof profileDetails === "object" ? profileDetails : {};
+    const currentIdentity =
+      currentDetails.identity && typeof currentDetails.identity === "object"
+        ? currentDetails.identity
+        : {};
+    const currentAvailability =
+      currentDetails.availability &&
+        typeof currentDetails.availability === "object"
+        ? currentDetails.availability
+        : {};
+    const currentReliability =
+      currentDetails.reliability && typeof currentDetails.reliability === "object"
+        ? currentDetails.reliability
+        : {};
+
+    const nextIdentity = {
+      ...currentIdentity,
+      professionalTitle: String(fullProfileForm.professionalTitle || "").trim(),
+      username: normalizedUsername,
+      country: String(fullProfileForm.country || "").trim(),
+      city: String(fullProfileForm.city || "").trim(),
+      languages: normalizedLanguages,
+      otherLanguage: String(fullProfileForm.otherLanguage || "").trim(),
     };
 
-    localStorage.setItem(
-      onboardingStorageKeys.dataKey,
-      JSON.stringify(onboardingDraft)
-    );
-    localStorage.setItem(onboardingStorageKeys.stepKey, "0");
-    navigate("/freelancer/onboarding?mode=edit");
+    const nextProfileDetails = {
+      ...currentDetails,
+      identity: nextIdentity,
+      role: String(fullProfileForm.role || "").trim(),
+      globalIndustryFocus: normalizedIndustries,
+      globalIndustryOther: String(fullProfileForm.globalIndustryOther || "").trim(),
+      availability: {
+        ...currentAvailability,
+        hoursPerWeek: String(fullProfileForm.hoursPerWeek || "").trim(),
+        workingSchedule: String(fullProfileForm.workingSchedule || "").trim(),
+        startTimeline: String(fullProfileForm.startTimeline || "").trim(),
+      },
+      reliability: {
+        ...currentReliability,
+        missedDeadlines: String(fullProfileForm.missedDeadlines || "").trim(),
+        delayHandling: String(fullProfileForm.delayHandling || "").trim(),
+      },
+      deliveryPolicyAccepted: Boolean(fullProfileForm.deliveryPolicyAccepted),
+      communicationPolicyAccepted: Boolean(
+        fullProfileForm.communicationPolicyAccepted
+      ),
+      acceptInProgressProjects: String(
+        fullProfileForm.acceptInProgressProjects || ""
+      ).trim(),
+      termsAccepted: Boolean(fullProfileForm.termsAccepted),
+      professionalBio: String(fullProfileForm.professionalBio || "").trim(),
+      education: normalizedEducation,
+    };
+
+    const nextLocation = [nextIdentity.city, nextIdentity.country]
+      .filter(Boolean)
+      .join(", ");
+    const nextPersonal = {
+      ...personal,
+      headline: nextIdentity.professionalTitle || personal.headline || "",
+      bio: nextProfileDetails.professionalBio || personal.bio || "",
+      location: nextLocation || personal.location || "",
+    };
+
+    const saved = await handleSave({
+      personal: nextPersonal,
+      portfolio,
+      skills,
+      workExperience,
+      services,
+      portfolioProjects,
+      profileDetails: nextProfileDetails,
+    });
+
+    if (saved) {
+      setModalType(null);
+    }
   };
 
   const onboardingIdentity =
@@ -2260,6 +2459,7 @@ const FreelancerProfile = () => {
                 deliveryPolicyLabel={deliveryPolicyLabel}
                 communicationPolicyLabel={communicationPolicyLabel}
                 acceptInProgressProjectsLabel={acceptInProgressProjectsLabel}
+                openFullProfileEditor={openFullProfileEditor}
               />
 
               <ProfileSkillsCard
@@ -2335,6 +2535,8 @@ const FreelancerProfile = () => {
           <div
             className={`w-full rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "viewAllProjects"
               ? "max-w-[60%] h-[90vh] flex flex-col"
+              : modalType === "fullProfile"
+                ? "max-w-5xl max-h-[90vh] overflow-y-auto"
               : modalType === "personal"
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
               : modalType === "onboardingService"
@@ -2873,6 +3075,490 @@ const FreelancerProfile = () => {
                   >
                     Done
                   </button>
+                </div>
+              </>
+            ) : modalType === "fullProfile" ? (
+              <>
+                <div className="space-y-6">
+                  <div>
+                    <h1 className="text-xl font-semibold text-foreground">
+                      Edit Full Profile
+                    </h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Update your onboarding profile details and save directly to
+                      database.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <h2 className="text-sm font-semibold text-foreground">
+                      Identity
+                    </h2>
+                    <div className="mt-3 grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-professional-title"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Professional Title
+                        </Label>
+                        <Input
+                          id="full-professional-title"
+                          name="professionalTitle"
+                          value={fullProfileForm.professionalTitle}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="e.g. Full Stack Developer"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-username"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Username
+                        </Label>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                            @
+                          </span>
+                          <Input
+                            id="full-username"
+                            name="username"
+                            value={fullProfileForm.username}
+                            onChange={handleFullProfileFieldChange}
+                            placeholder="username"
+                            className="h-10 bg-background/70 pl-7"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-country"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Country
+                        </Label>
+                        <Input
+                          id="full-country"
+                          name="country"
+                          value={fullProfileForm.country}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="Country"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-city"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          City
+                        </Label>
+                        <Input
+                          id="full-city"
+                          name="city"
+                          value={fullProfileForm.city}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="City"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label
+                          htmlFor="full-languages"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Languages
+                        </Label>
+                        <Input
+                          id="full-languages"
+                          name="languages"
+                          value={fullProfileForm.languages}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="English, Hindi"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label
+                          htmlFor="full-other-language"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Other Language
+                        </Label>
+                        <Input
+                          id="full-other-language"
+                          name="otherLanguage"
+                          value={fullProfileForm.otherLanguage}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="Optional additional language"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <h2 className="text-sm font-semibold text-foreground">
+                      Work Preferences
+                    </h2>
+                    <div className="mt-3 grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-role"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Work Style
+                        </Label>
+                        <select
+                          id="full-role"
+                          name="role"
+                          value={fullProfileForm.role}
+                          onChange={handleFullProfileFieldChange}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="">Select role</option>
+                          <option value="individual">Individual Freelancer</option>
+                          <option value="agency">Agency / Studio</option>
+                          <option value="part_time">Part-Time Freelancer</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-hours"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Weekly Availability
+                        </Label>
+                        <select
+                          id="full-hours"
+                          name="hoursPerWeek"
+                          value={fullProfileForm.hoursPerWeek}
+                          onChange={handleFullProfileFieldChange}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="">Select availability</option>
+                          <option value="less_than_10">
+                            Less than 10 hours/week
+                          </option>
+                          <option value="10_20">10-20 hours/week</option>
+                          <option value="20_30">20-30 hours/week</option>
+                          <option value="30_plus">30+ hours/week</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-schedule"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Working Schedule
+                        </Label>
+                        <Input
+                          id="full-schedule"
+                          name="workingSchedule"
+                          value={fullProfileForm.workingSchedule}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="e.g. Weekdays"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-start-timeline"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Start Timeline
+                        </Label>
+                        <Input
+                          id="full-start-timeline"
+                          name="startTimeline"
+                          value={fullProfileForm.startTimeline}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="e.g. Immediate"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-missed-deadlines"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Missed Deadlines
+                        </Label>
+                        <Input
+                          id="full-missed-deadlines"
+                          name="missedDeadlines"
+                          value={fullProfileForm.missedDeadlines}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="e.g. Never"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="full-delay-handling"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Delay Handling
+                        </Label>
+                        <Input
+                          id="full-delay-handling"
+                          name="delayHandling"
+                          value={fullProfileForm.delayHandling}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="e.g. Communicate early"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <h2 className="text-sm font-semibold text-foreground">
+                      Policies And Industry Focus
+                    </h2>
+                    <div className="mt-3 grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2 md:col-span-2">
+                        <Label
+                          htmlFor="full-industry-focus"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Industry Focus
+                        </Label>
+                        <Input
+                          id="full-industry-focus"
+                          name="globalIndustryFocus"
+                          value={fullProfileForm.globalIndustryFocus}
+                          onChange={handleFullProfileFieldChange}
+                          placeholder="SaaS, Healthcare, Ecommerce"
+                          className="h-10 bg-background/70"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label
+                          htmlFor="full-accept-projects"
+                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                        >
+                          Take Over In-Progress Projects
+                        </Label>
+                        <select
+                          id="full-accept-projects"
+                          name="acceptInProgressProjects"
+                          value={fullProfileForm.acceptInProgressProjects}
+                          onChange={handleFullProfileFieldChange}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="">Select option</option>
+                          <option value="yes">Yes</option>
+                          <option value="no">No</option>
+                          <option value="open">Open to all</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2.5">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Delivery Policy Accepted
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Confirms delivery terms.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={Boolean(fullProfileForm.deliveryPolicyAccepted)}
+                          onCheckedChange={(checked) =>
+                            setFullProfileForm((prev) => ({
+                              ...prev,
+                              deliveryPolicyAccepted: checked,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2.5">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Communication Policy Accepted
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Confirms communication terms.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={Boolean(
+                            fullProfileForm.communicationPolicyAccepted
+                          )}
+                          onCheckedChange={(checked) =>
+                            setFullProfileForm((prev) => ({
+                              ...prev,
+                              communicationPolicyAccepted: checked,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2.5 md:col-span-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Terms Accepted
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Confirms profile terms and conditions.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={Boolean(fullProfileForm.termsAccepted)}
+                          onCheckedChange={(checked) =>
+                            setFullProfileForm((prev) => ({
+                              ...prev,
+                              termsAccepted: checked,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-sm font-semibold text-foreground">
+                        Education
+                      </h2>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addEducationEntry}
+                      >
+                        <Plus className="mr-1 h-3.5 w-3.5" />
+                        Add
+                      </Button>
+                    </div>
+
+                    <div className="mt-3 space-y-3">
+                      {(Array.isArray(fullProfileForm.education)
+                        ? fullProfileForm.education
+                        : []
+                      ).map((entry, index) => (
+                        <div
+                          key={`education-row-${index}`}
+                          className="rounded-lg border border-border/60 bg-background/50 p-3"
+                        >
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <Input
+                              value={entry.school || ""}
+                              onChange={(event) =>
+                                handleEducationFieldChange(
+                                  index,
+                                  "school",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="School / University"
+                              className="h-10 bg-background/80"
+                            />
+                            <Input
+                              value={entry.degree || ""}
+                              onChange={(event) =>
+                                handleEducationFieldChange(
+                                  index,
+                                  "degree",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Degree"
+                              className="h-10 bg-background/80"
+                            />
+                            <Input
+                              value={entry.field || ""}
+                              onChange={(event) =>
+                                handleEducationFieldChange(
+                                  index,
+                                  "field",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Field / Specialization"
+                              className="h-10 bg-background/80"
+                            />
+                            <Input
+                              value={entry.country || ""}
+                              onChange={(event) =>
+                                handleEducationFieldChange(
+                                  index,
+                                  "country",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Country"
+                              className="h-10 bg-background/80"
+                            />
+                            <Input
+                              value={entry.graduationYear || ""}
+                              onChange={(event) =>
+                                handleEducationFieldChange(
+                                  index,
+                                  "graduationYear",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Graduation Year"
+                              className="h-10 bg-background/80 md:col-span-2"
+                            />
+                          </div>
+                          {(Array.isArray(fullProfileForm.education)
+                            ? fullProfileForm.education.length
+                            : 0) > 1 ? (
+                            <div className="mt-2 flex justify-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeEducationEntry(index)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                Remove
+                              </Button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <Label
+                      htmlFor="full-professional-bio"
+                      className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                    >
+                      Professional Bio
+                    </Label>
+                    <Textarea
+                      id="full-professional-bio"
+                      name="professionalBio"
+                      value={fullProfileForm.professionalBio}
+                      onChange={handleFullProfileFieldChange}
+                      rows={5}
+                      placeholder="Tell clients about your strengths, execution style, and outcomes..."
+                      className="mt-2 min-h-[120px] resize-y bg-background/70"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 border-t border-border/70 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setModalType(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={saveFullProfileEditor}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
                 </div>
               </>
             ) : modalType === "personal" ? (
