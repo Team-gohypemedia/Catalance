@@ -8,11 +8,15 @@ import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { format, parse, isValid } from "date-fns";
 import { cn } from "@/shared/lib/utils";
 import { CalendarIcon } from "lucide-react";
@@ -2331,6 +2335,8 @@ const FreelancerProfile = () => {
           <div
             className={`w-full rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "viewAllProjects"
               ? "max-w-[60%] h-[90vh] flex flex-col"
+              : modalType === "personal"
+                ? "max-w-2xl max-h-[90vh] overflow-y-auto"
               : modalType === "onboardingService"
                 ? "max-w-2xl"
                 : "max-w-md"
@@ -2871,120 +2877,166 @@ const FreelancerProfile = () => {
               </>
             ) : modalType === "personal" ? (
               <>
-                <h1 className="text-lg font-semibold text-foreground">
-                  Edit Personal Details
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Update your public profile information.
-                </p>
+                <div className="space-y-5">
+                  <div>
+                    <h1 className="text-xl font-semibold text-foreground">
+                      Edit Personal Details
+                    </h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Update your public profile information shown to clients.
+                    </p>
+                  </div>
 
-                <div className="mt-4 space-y-4">
-                  <label className="flex items-center justify-between p-3 rounded-2xl border border-border bg-secondary/50 cursor-pointer hover:bg-secondary/70 transition-colors">
-                    <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                      Available for work
-                    </span>
-                    <input
-                      type="checkbox"
-                      name="available"
-                      checked={personal.available || false}
-                      onChange={handlePersonalChange}
-                      className="w-5 h-5 accent-primary rounded cursor-pointer"
-                    />
-                  </label>
-
-                  <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    Headline
-                    <input
-                      name="headline"
-                      value={personal.headline || ""}
-                      onChange={handlePersonalChange}
-                      placeholder="e.g. Full Stack Developer"
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                    />
-                  </label>
-
-                  <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    Years of Experience
-                    <input
-                      name="experienceYears"
-                      type="number"
-                      value={personal.experienceYears || ""}
-                      onChange={handlePersonalChange}
-                      placeholder="e.g. 5"
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                    />
-                  </label>
-
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    Display Name
-                    <input
-                      name="name"
-                      value={personal.name || ""}
-                      onChange={handlePersonalChange}
-                      placeholder="Your Name"
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                    />
-                  </label>
-
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    Username
-                    <div className="relative mt-1">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        @
-                      </span>
-                      <input
-                        value={String(onboardingIdentity?.username || "")}
-                        onChange={handlePersonalUsernameChange}
-                        placeholder="username"
-                        className="w-full rounded-2xl border border-border bg-background py-2 pl-7 pr-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label
+                          htmlFor="freelancer-available-switch"
+                          className="text-sm font-semibold tracking-normal"
+                        >
+                          Available for work
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Show that you are currently open to new projects.
+                        </p>
+                      </div>
+                      <Switch
+                        id="freelancer-available-switch"
+                        checked={Boolean(personal.available)}
+                        onCheckedChange={(checked) =>
+                          setPersonal((prev) => ({ ...prev, available: checked }))
+                        }
                       />
                     </div>
-                  </label>
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                      Phone
-                      <input
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="personal-headline" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Headline
+                      </Label>
+                      <Input
+                        id="personal-headline"
+                        name="headline"
+                        value={personal.headline || ""}
+                        onChange={handlePersonalChange}
+                        placeholder="e.g. Full Stack Developer"
+                        className="h-10 bg-background/70"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="personal-experience" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Years of Experience
+                      </Label>
+                      <Input
+                        id="personal-experience"
+                        name="experienceYears"
+                        type="number"
+                        min="0"
+                        value={personal.experienceYears || ""}
+                        onChange={handlePersonalChange}
+                        placeholder="e.g. 5"
+                        className="h-10 bg-background/70"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="personal-name" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Display Name
+                      </Label>
+                      <Input
+                        id="personal-name"
+                        name="name"
+                        value={personal.name || ""}
+                        onChange={handlePersonalChange}
+                        placeholder="Your Name"
+                        className="h-10 bg-background/70"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="personal-username" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Username
+                      </Label>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          @
+                        </span>
+                        <Input
+                          id="personal-username"
+                          value={String(onboardingIdentity?.username || "")}
+                          onChange={handlePersonalUsernameChange}
+                          placeholder="username"
+                          className="h-10 bg-background/70 pl-7"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="personal-phone" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Phone
+                      </Label>
+                      <Input
+                        id="personal-phone"
                         name="phone"
                         value={personal.phone || ""}
                         onChange={handlePersonalChange}
                         placeholder="+91..."
-                        className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                        className="h-10 bg-background/70"
                       />
-                    </label>
-                    <label className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                      Location
-                      <input
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="personal-location" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Location
+                      </Label>
+                      <Input
+                        id="personal-location"
                         name="location"
                         value={personal.location || ""}
                         onChange={handlePersonalChange}
                         placeholder="City, Country"
-                        className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                        className="h-10 bg-background/70"
                       />
-                    </label>
+                    </div>
                   </div>
 
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground mt-4">
-                    Bio / About Me
-                    <textarea
+                  <div className="space-y-2">
+                    <Label htmlFor="personal-bio" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      Bio / About Me
+                    </Label>
+                    <Textarea
+                      id="personal-bio"
                       name="bio"
                       value={personal.bio || ""}
                       onChange={handlePersonalChange}
-                      rows={4}
-                      placeholder="Tell us about yourself..."
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                      rows={6}
+                      placeholder="Tell clients about your expertise, outcomes, and communication style..."
+                      className="min-h-[140px] resize-y bg-background/70"
                     />
-                  </label>
-                </div>
+                  </div>
 
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    Done
-                  </button>
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
+                    <p className="text-xs text-muted-foreground">
+                      Click <span className="font-medium text-foreground">Update Profile</span> to save all changes.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setModalType(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => setModalType(null)}
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </>
             ) : (
