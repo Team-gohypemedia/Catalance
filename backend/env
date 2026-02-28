@@ -1,0 +1,28 @@
+# Neon PostgreSQL connection (pooled connection string).
+DATABASE_URL="postgresql://neondb_owner:npg_RVI8UbL2HDik@ep-nameless-bar-a1q9980g-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+# Direct connection string (bypasses pooling) for migrations.
+DIRECT_DATABASE_URL="postgresql://neondb_owner:npg_RVI8UbL2HDik@ep-nameless-bar-a1q9980g.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+# Express server port
+PORT=5000
+
+# Comma separated origins or * to allow all
+CORS_ORIGIN=http://localhost:5173,https://www.catalance.in/
+
+# Resend email settings
+RESEND_API_KEY="re_coMrKUTa_LB1zZdNqm6no3y7TM4qMApdq"
+RESEND_FROM_EMAIL="Catalance <noreply@catalance.in>"
+
+# Auth settings
+JWT_SECRET="19765c0d616976b7d984b55c3e97b4ec76d6dff5ebcf3dda7f7674447f63a4aee0d63560719a5ba1df1b72be35c93f1f2eb92a0ee93b7a7eb386c72c316d50cb"
+PASSWORD_PEPPER="h3Q9xZpF7u2Kc8rL0vBnWsTyP4aMdRgJ"
+OPENROUTER_API_KEY="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"
+FIREBASE_PROJECT_ID=catalance-4dc1b
+
+R2_ACCOUNT_ID="53b2da5fe2c15c374544b63fc6d54cb4"
+R2_ACCESS_KEY_ID="4f5cecee02b52031283b58043e98947c"
+R2_SECRET_ACCESS_KEY="b60f4179f65cad9cc55d17b754186dc97a14f4ca4d57b48c088682f14f3cdb01"
+R2_BUCKET_NAME="catalance"
+R2_PUBLIC_URL="assets.catalance.in"
+DIRECT_URL="postgresql://neondb_owner:npg_RVI8UbL2HDik@ep-nameless-bar-a1q9980g.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"

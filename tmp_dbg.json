@@ -1,0 +1,52 @@
+[
+  {
+    "serviceDetails": {
+      "key": "lead_generation",
+      "title": "Lead Generation",
+      "coverImage": "https://assets.catalance.in/freelancers/cmm08ca3d00016c9k7xyc4sab/profile/projects/manual/48282e2b-d5f9-43bb-a17c-036ace695049.jpg",
+      "description": "Generate and qualify leads through outbound, funnels, and CRM workflows."
+    }
+  },
+  {
+    "serviceDetails": {
+      "key": "web_development",
+      "title": "Web Development",
+      "coverImage": "https://assets.catalance.in/freelancers/cmm0d459i00003z3t6su50wyn/profile/projects/manual/5a1bb7a8-be16-4025-abb7-c9e0877bb642.png",
+      "description": "qwertyuiop[lkjhgfdfghjqwertyuiop[lkjhgfdfghjqwertyuiop[lkjhgfdfghjqwertyuiop[lkjhgfdfghjqwertyuiop[lkjhgfdfghjqwertyuiop[lkjhgfdfghjqwertyuiop[lkjhgfdfghj"
+    }
+  },
+  {
+    "serviceDetails": {
+      "key": "seo",
+      "title": "SEO",
+      "coverImage": "/assets/services/seo-cover.jpg",
+      "description": "Improve visibility with technical SEO, content optimization, and keyword strategy."
+    }
+  },
+  {
+    "serviceDetails": {
+      "key": "ai_automation",
+      "title": "AI Automation",
+      "coverImage": "/assets/services/ai-automation-cover.jpg",
+      "description": "Automate business workflows using AI tools, agents, and integrations."
+    }
+  },
+  {
+    "serviceDetails": {
+      "key": "branding",
+      "title": "Branding",
+      "complexity": "medium",
+      "industries": [
+        "Fashion & Apparel",
+        "E-commerce"
+      ],
+      "description": "Create complete brand system including logo, typography, visual language, and messaging tone.",
+      "technologies": [
+        "Figma",
+        "Adobe Illustrator",
+        "Adobe Photoshop"
+      ],
+      "averageProjectPriceRange": "INR 50,000 - 1 Lakh"
+    }
+  }
+]
