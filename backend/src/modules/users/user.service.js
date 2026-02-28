@@ -275,6 +275,94 @@ const parseBooleanFilter = (value) => {
   return undefined;
 };
 
+const normalizeSkillTokenForFilter = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9#+.]/g, "");
+
+const collectStringValuesForFilter = (value) => {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => collectStringValuesForFilter(entry));
+  }
+  if (typeof value === "object") {
+    return Object.values(value).flatMap((entry) => collectStringValuesForFilter(entry));
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    return [String(value)];
+  }
+  return [];
+};
+
+const splitSkillValuesForFilter = (value = "") =>
+  String(value || "")
+    .split(/,|\/|\||\+|;|&|\band\b/gi)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+const parseRequiredSkillFilter = (value) => {
+  const tokens = new Set();
+
+  collectStringValuesForFilter(value).forEach((entry) => {
+    splitSkillValuesForFilter(entry).forEach((part) => {
+      const normalized = normalizeSkillTokenForFilter(part);
+      if (normalized) tokens.add(normalized);
+    });
+  });
+
+  return Array.from(tokens);
+};
+
+const collectFreelancerSkillTokensForFilter = (freelancer = {}) => {
+  const tokenSet = new Set();
+  const profile = resolveFreelancerProfileRecord(freelancer);
+  const candidates = collectStringValuesForFilter([
+    freelancer?.skills,
+    freelancer?.services,
+    freelancer?.profileDetails,
+    freelancer?.freelancerProjects,
+    freelancer?.freelancerProfile,
+    profile?.skills,
+    profile?.services,
+    profile?.profileDetails,
+    profile?.portfolioProjects,
+    profile?.workExperience
+  ]);
+
+  candidates.forEach((entry) => {
+    splitSkillValuesForFilter(entry).forEach((part) => {
+      const normalized = normalizeSkillTokenForFilter(part);
+      if (normalized) tokenSet.add(normalized);
+    });
+  });
+
+  return tokenSet;
+};
+
+const freelancerMatchesRequiredSkills = (requiredSkillTokens = [], freelancer = {}) => {
+  if (!requiredSkillTokens.length) return true;
+
+  const freelancerSkillTokens = collectFreelancerSkillTokensForFilter(freelancer);
+  if (!freelancerSkillTokens.size) return false;
+
+  for (const requiredSkill of requiredSkillTokens) {
+    if (freelancerSkillTokens.has(requiredSkill)) return true;
+
+    for (const freelancerSkill of freelancerSkillTokens) {
+      if (!freelancerSkill || !requiredSkill) continue;
+      if (freelancerSkill.length < 3 || requiredSkill.length < 3) continue;
+      if (
+        freelancerSkill.includes(requiredSkill) ||
+        requiredSkill.includes(freelancerSkill)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 const normalizeProjectLink = (value = "") => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -347,6 +435,38 @@ const extractAvatarUrl = (value) => {
   }
 
   return null;
+};
+
+const FREELANCER_UNSPLASH_PROFILE_QUERIES = Object.freeze([
+  "indian,professional,portrait,headshot",
+  "indian,developer,portrait,studio",
+  "indian,designer,portrait,office",
+  "indian,marketer,portrait,creative",
+  "indian,freelancer,portrait,workspace",
+  "india,entrepreneur,portrait,natural-light"
+]);
+
+const hashStringToPositiveInt = (value = "") => {
+  const input = String(value || "");
+  if (!input) return 1;
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash) || 1;
+};
+
+const buildFreelancerUnsplashAvatarUrl = (user = {}) => {
+  const seedSource =
+    user?.id || user?.email || user?.fullName || user?.phoneNumber || "freelancer";
+  const seed = hashStringToPositiveInt(seedSource);
+  const query =
+    FREELANCER_UNSPLASH_PROFILE_QUERIES[
+      seed % FREELANCER_UNSPLASH_PROFILE_QUERIES.length
+    ];
+  const sig = (seed % 9000) + 1;
+  return `https://source.unsplash.com/640x640/?${encodeURIComponent(query)}&sig=${sig}`;
 };
 
 const USERNAME_REGEX = /^[a-z0-9]{3,20}$/;
@@ -1463,6 +1583,7 @@ const sendPasswordResetEmail = async ({ email, resetUrl }) => {
 export const listUsers = async (filters = {}) => {
   const onboardingComplete = parseBooleanFilter(filters.onboardingComplete);
   const normalizedRoleFilter = normalizeRoleValue(filters.role);
+  const requiredSkillTokens = parseRequiredSkillFilter(filters.requiredSkills);
   const where = {
     status: filters.status || "ACTIVE"
   };
@@ -1489,7 +1610,7 @@ export const listUsers = async (filters = {}) => {
       }
     : undefined;
 
-  const users = await prisma.user.findMany(
+  let users = await prisma.user.findMany(
     withFreelancerProfileInclude({
       where,
       include,
@@ -1498,6 +1619,12 @@ export const listUsers = async (filters = {}) => {
       }
     })
   );
+
+  if (requiredSkillTokens.length > 0) {
+    users = users.filter((user) =>
+      freelancerMatchesRequiredSkills(requiredSkillTokens, user),
+    );
+  }
 
   return users.map(sanitizeUser);
 };
@@ -2324,6 +2451,8 @@ export const sanitizeUser = (user) => {
   const mergedRoles = roles.includes(normalizedRole)
     ? roles
     : [...roles, normalizedRole];
+  const isFreelancerProfile =
+    normalizedRole === "FREELANCER" || mergedRoles.includes("FREELANCER");
   const normalizedSkills = normalizeSkills(resolvedFreelancerProfile.skills, {
     strictTech: true,
     max: 120
@@ -2359,13 +2488,18 @@ export const sanitizeUser = (user) => {
   const normalizedPortfolioProjects = normalizePortfolioProjects(
     resolvedFreelancerProfile.portfolioProjects
   );
+  const resolvedAvatar = safeUser.avatar || identityAvatar || null;
+  const freelancerAvatar =
+    isFreelancerProfile && !resolvedAvatar
+      ? buildFreelancerUnsplashAvatarUrl(safeUser)
+      : resolvedAvatar;
 
   return {
     ...safeUser,
     bio: resolvedFreelancerProfile.bio || null,
     profileDetails: resolvedProfileDetails,
     skills: mergedSkills.length ? mergedSkills : fallbackSkills,
-    avatar: safeUser.avatar || identityAvatar || null,
+    avatar: freelancerAvatar,
     location: identityLocation || resolvedFreelancerProfile.location || null,
     jobTitle: identityJobTitle || resolvedFreelancerProfile.jobTitle || null,
     companyName: resolvedFreelancerProfile.companyName || null,

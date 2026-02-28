@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Send from "lucide-react/dist/esm/icons/send";
 import Zap from "lucide-react/dist/esm/icons/zap";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
@@ -587,6 +587,21 @@ const persistSavedProposalsToStorage = (proposals, activeId, storageKeys) => {
   }
 };
 
+const persistActiveProposalSelection = (proposals, activeId, storageKeys) => {
+  if (typeof window === "undefined") return;
+  const keys = storageKeys || getProposalStorageKeys();
+  if (!Array.isArray(proposals) || proposals.length === 0) {
+    window.localStorage.removeItem(keys.singleKey);
+    return;
+  }
+
+  const active =
+    proposals.find((proposal) => proposal.id === activeId) || proposals[0];
+  if (active) {
+    window.localStorage.setItem(keys.singleKey, JSON.stringify(active));
+  }
+};
+
 const hasFreelancerRole = (user = {}) => {
   const primaryRole = String(user?.role || "").toUpperCase();
   const roles = Array.isArray(user?.roles)
@@ -837,6 +852,13 @@ const ClientDashboardContent = () => {
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
   const [freelancerSearch, setFreelancerSearch] = useState("");
+  const [isFreelancersLoading, setIsFreelancersLoading] = useState(false);
+  const freelancerPoolCacheRef = useRef({
+    userId: null,
+    loaded: false,
+    data: [],
+  });
+  const freelancerPoolPromiseRef = useRef(null);
 
   const savedProposal = useMemo(() => {
     if (!savedProposals.length) return null;
@@ -851,19 +873,93 @@ const ClientDashboardContent = () => {
     [savedProposal],
   );
 
-  const projectRequiredSkills = useMemo(
-    () => extractProjectRequiredSkills(savedProposal || {}),
-    [savedProposal],
-  );
+  const projectRequiredSkills = useMemo(() => {
+    if (!showFreelancerSelect) return [];
+    return extractProjectRequiredSkills(savedProposal || {});
+  }, [showFreelancerSelect, savedProposal]);
+
+  const fetchFreelancerPool = useCallback(async () => {
+    if (!sessionUser?.id) return [];
+
+    const currentCache = freelancerPoolCacheRef.current;
+    if (currentCache.userId === sessionUser.id && currentCache.loaded) {
+      return currentCache.data;
+    }
+
+    if (freelancerPoolPromiseRef.current) {
+      return freelancerPoolPromiseRef.current;
+    }
+
+    freelancerPoolPromiseRef.current = (async () => {
+      const [activeFreelancers, pendingFreelancers] = await Promise.all([
+        listFreelancers({
+          onboardingComplete: "true",
+          status: "ACTIVE",
+        }),
+        listFreelancers({
+          onboardingComplete: "true",
+          status: "PENDING_APPROVAL",
+        }),
+      ]);
+
+      const merged = [...(activeFreelancers || []), ...(pendingFreelancers || [])];
+      const uniqueById = merged.filter(
+        (freelancer, index, self) =>
+          freelancer?.id &&
+          self.findIndex((item) => item?.id === freelancer.id) === index,
+      );
+      const normalized = uniqueById.filter(
+        (freelancer) =>
+          freelancer?.id !== sessionUser.id && hasFreelancerRole(freelancer),
+      );
+
+      freelancerPoolCacheRef.current = {
+        userId: sessionUser.id,
+        loaded: true,
+        data: normalized,
+      };
+
+      return normalized;
+    })();
+
+    try {
+      return await freelancerPoolPromiseRef.current;
+    } finally {
+      freelancerPoolPromiseRef.current = null;
+    }
+  }, [sessionUser?.id]);
+
+  const primeFreelancerPool = useCallback(() => {
+    if (!sessionUser?.id) return;
+    void fetchFreelancerPool().catch((error) => {
+      console.error("Failed to prefetch freelancers:", error);
+    });
+  }, [sessionUser?.id, fetchFreelancerPool]);
+
+  const openFreelancerSelection = useCallback(() => {
+    const cache = freelancerPoolCacheRef.current;
+    const hasCachedPool = cache.userId === sessionUser?.id && cache.loaded;
+    setIsFreelancersLoading(!hasCachedPool);
+    setShowFreelancerSelect(true);
+  }, [sessionUser?.id]);
 
   const rankedSuggestedFreelancers = useMemo(() => {
+    if (!showFreelancerSelect) return [];
     if (!Array.isArray(suggestedFreelancers) || suggestedFreelancers.length === 0) {
       return [];
     }
     return rankFreelancersForProposal(suggestedFreelancers, savedProposal);
-  }, [suggestedFreelancers, savedProposal]);
+  }, [showFreelancerSelect, suggestedFreelancers, savedProposal]);
 
   const freelancerSelectionData = useMemo(() => {
+    if (!showFreelancerSelect) {
+      return {
+        totalRanked: 0,
+        invitedCount: 0,
+        available: [],
+      };
+    }
+
     const sourceProjectId =
       savedProposal?.syncedProjectId || savedProposal?.projectId || null;
     const alreadyInvitedIds = new Set();
@@ -881,23 +977,35 @@ const ClientDashboardContent = () => {
     const normalized = rankedSuggestedFreelancers.map((entry) =>
       normalizeFreelancerCardData(entry),
     );
-    const available = normalized.filter(
+    const matched = projectRequiredSkills.length
+      ? normalized.filter((freelancer) => {
+          const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
+          return projectRequiredSkills.some((requiredSkill) =>
+            freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
+          );
+        })
+      : normalized;
+
+    const available = matched.filter(
       (freelancer) => !alreadyInvitedIds.has(freelancer.id),
     );
 
     return {
-      totalRanked: normalized.length,
+      totalRanked: matched.length,
       invitedCount: alreadyInvitedIds.size,
       available,
     };
   }, [
+    showFreelancerSelect,
     rankedSuggestedFreelancers,
+    projectRequiredSkills,
     savedProposal?.syncedProjectId,
     savedProposal?.projectId,
     projects,
   ]);
 
   const filteredFreelancers = useMemo(() => {
+    if (!showFreelancerSelect) return [];
     const query = String(freelancerSearch || "").trim().toLowerCase();
     if (!query) return freelancerSelectionData.available;
 
@@ -918,7 +1026,7 @@ const ClientDashboardContent = () => {
 
       return searchable.includes(query);
     });
-  }, [freelancerSelectionData.available, freelancerSearch]);
+  }, [showFreelancerSelect, freelancerSelectionData.available, freelancerSearch]);
 
   const bestMatchFreelancerIds = useMemo(() => {
     const scoredFreelancers = freelancerSelectionData.available
@@ -950,8 +1058,37 @@ const ClientDashboardContent = () => {
   useEffect(() => {
     if (!showFreelancerSelect) {
       setFreelancerSearch("");
+      setIsFreelancersLoading(false);
     }
   }, [showFreelancerSelect]);
+
+  useEffect(() => {
+    freelancerPoolPromiseRef.current = null;
+
+    if (!sessionUser?.id) {
+      freelancerPoolCacheRef.current = {
+        userId: null,
+        loaded: false,
+        data: [],
+      };
+      setSuggestedFreelancers([]);
+      return;
+    }
+
+    if (freelancerPoolCacheRef.current.userId !== sessionUser.id) {
+      freelancerPoolCacheRef.current = {
+        userId: sessionUser.id,
+        loaded: false,
+        data: [],
+      };
+      setSuggestedFreelancers([]);
+    }
+  }, [sessionUser?.id]);
+
+  useEffect(() => {
+    if (!sessionUser?.id) return;
+    primeFreelancerPool();
+  }, [sessionUser?.id, primeFreelancerPool]);
 
   // Load projects
   // Load session
@@ -1184,40 +1321,42 @@ const ClientDashboardContent = () => {
     loadChatFreelancers();
   }, []);
 
-  // Load all freelancers for suggestions
+  // Hydrate freelancer suggestions when dialog opens.
   useEffect(() => {
-    if (!sessionUser?.id) return;
+    if (!sessionUser?.id || !showFreelancerSelect) return;
+    let isCurrentRequest = true;
 
-    const loadAllFreelancers = async () => {
+    const hydrateFreelancers = async () => {
+      const cache = freelancerPoolCacheRef.current;
+
+      if (cache.userId === sessionUser.id && cache.loaded) {
+        setSuggestedFreelancers(cache.data);
+        setIsFreelancersLoading(false);
+        return;
+      }
+
+      setIsFreelancersLoading(true);
       try {
-        const [activeFreelancers, pendingFreelancers] = await Promise.all([
-          listFreelancers({
-            onboardingComplete: "true",
-            status: "ACTIVE",
-          }),
-          listFreelancers({
-            onboardingComplete: "true",
-            status: "PENDING_APPROVAL",
-          }),
-        ]);
-
-        const merged = [...(activeFreelancers || []), ...(pendingFreelancers || [])];
-        const uniqueById = merged.filter(
-          (freelancer, index, self) =>
-            freelancer?.id &&
-            self.findIndex((item) => item?.id === freelancer.id) === index,
-        );
-        const normalized = uniqueById.filter(
-          (freelancer) =>
-            freelancer?.id !== sessionUser.id && hasFreelancerRole(freelancer),
-        );
-        setSuggestedFreelancers(normalized);
+        const pool = await fetchFreelancerPool();
+        if (!isCurrentRequest) return;
+        setSuggestedFreelancers(pool);
       } catch (err) {
+        if (!isCurrentRequest) return;
         console.error("Failed to load suggested freelancers:", err);
+        setSuggestedFreelancers([]);
+      } finally {
+        if (isCurrentRequest) {
+          setIsFreelancersLoading(false);
+        }
       }
     };
-    loadAllFreelancers();
-  }, [sessionUser?.id]);
+
+    void hydrateFreelancers();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [sessionUser?.id, showFreelancerSelect, fetchFreelancerPool]);
 
   // Sort projects by date (most recent first)
   const uniqueProjects = useMemo(() => {
@@ -1680,7 +1819,7 @@ const ClientDashboardContent = () => {
                             {savedProposals.length > 1 ? "s" : ""} available
                           </p>
                         </div>
-                        <div className="max-h-[420px] overflow-y-auto pr-1 space-y-2">
+                        <div className="max-h-[420px] overflow-y-auto pr-2 space-y-2 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
                           {savedProposals.map((proposal) => {
                             const isActive = proposal.id === savedProposal.id;
                             return (
@@ -1688,8 +1827,9 @@ const ClientDashboardContent = () => {
                                 type="button"
                                 key={proposal.id}
                                 onClick={() => {
+                                  if (proposal.id === savedProposal.id) return;
                                   setActiveProposalId(proposal.id);
-                                  persistSavedProposalsToStorage(
+                                  persistActiveProposalSelection(
                                     savedProposals,
                                     proposal.id,
                                     storageKeys,
@@ -1828,7 +1968,9 @@ const ClientDashboardContent = () => {
                         <div className="flex justify-end pt-1">
                           <Button
                             className="gap-2"
-                            onClick={() => setShowFreelancerSelect(true)}
+                            onMouseEnter={primeFreelancerPool}
+                            onFocus={primeFreelancerPool}
+                            onClick={openFreelancerSelection}
                           >
                             <Send className="w-4 h-4" />
                             Send Proposal To Freelancer
@@ -2319,6 +2461,7 @@ const ClientDashboardContent = () => {
                 open={showFreelancerSelect}
                 onOpenChange={setShowFreelancerSelect}
                 savedProposal={savedProposal}
+                isLoadingFreelancers={isFreelancersLoading}
                 freelancerSearch={freelancerSearch}
                 onFreelancerSearchChange={setFreelancerSearch}
                 filteredFreelancers={filteredFreelancers}

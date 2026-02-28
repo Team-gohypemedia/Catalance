@@ -757,6 +757,7 @@ const FreelancerProfile = () => {
           workExperience: normalizeWorkExperienceEntries(normalized.workExperience),
           services: loadedServices,
           portfolioProjects: normalized.portfolioProjects || [],
+          profileDetails: loadedProfileDetails,
         });
       } catch (error) {
         console.error("Unable to load profile", error);
@@ -794,6 +795,7 @@ const FreelancerProfile = () => {
             workExperience: [],
             services: [],
             portfolioProjects: [],
+            profileDetails: {},
           });
           setIsDirty(false);
         }
@@ -823,6 +825,7 @@ const FreelancerProfile = () => {
       workExperience,
       services,
       portfolioProjects,
+      profileDetails,
     };
 
     setIsDirty(JSON.stringify(currentData) !== JSON.stringify(initialData));
@@ -833,6 +836,7 @@ const FreelancerProfile = () => {
     workExperience,
     services,
     portfolioProjects,
+    profileDetails,
     initialData,
   ]);
 
@@ -972,6 +976,25 @@ const FreelancerProfile = () => {
     }
 
     const bioText = normalizeBioValue(personal.bio);
+    const existingProfileDetails =
+      profileDetails && typeof profileDetails === "object"
+        ? profileDetails
+        : {};
+    const existingIdentity =
+      existingProfileDetails.identity &&
+        typeof existingProfileDetails.identity === "object"
+        ? existingProfileDetails.identity
+        : {};
+
+    const profileDetailsForSave = {
+      ...existingProfileDetails,
+      identity: {
+        ...existingIdentity,
+        professionalTitle: String(personal.headline || "").trim(),
+        username: String(existingIdentity.username || "").trim(),
+        ...(currentAvatarUrl ? { profilePhoto: currentAvatarUrl } : {}),
+      },
+    };
 
     const payload = {
       personal: {
@@ -992,6 +1015,7 @@ const FreelancerProfile = () => {
       portfolio, // Add portfolio to payload
       resume: portfolio.resume, // Make sure resume is saved at top level if needed
       portfolioProjects, // Add portfolioProjects to payload
+      profileDetails: profileDetailsForSave,
     };
 
     console.log("Saving profile payload:", payload);
@@ -1016,6 +1040,7 @@ const FreelancerProfile = () => {
       // Update local state to reflect saved changes (esp if avatar changed)
       const newPersonal = { ...personal, avatar: currentAvatarUrl };
       setPersonal((prev) => ({ ...prev, avatar: currentAvatarUrl }));
+      setProfileDetails(profileDetailsForSave);
 
       setInitialData({
         personal: newPersonal,
@@ -1024,6 +1049,7 @@ const FreelancerProfile = () => {
         workExperience,
         services,
         portfolioProjects,
+        profileDetails: profileDetailsForSave,
       });
       setIsDirty(false);
       setSelectedFile(null);
@@ -1049,6 +1075,34 @@ const FreelancerProfile = () => {
       [name]: type === "checkbox" ? checked : value,
     }));
   };
+
+  const handlePersonalUsernameChange = useCallback((event) => {
+    const rawValue = String(event.target.value || "");
+    const normalizedUsername = rawValue
+      .replace(/^@+/, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 30);
+
+    setProfileDetails((prev) => {
+      const current =
+        prev && typeof prev === "object" && !Array.isArray(prev) ? prev : {};
+      const currentIdentity =
+        current.identity &&
+          typeof current.identity === "object" &&
+          !Array.isArray(current.identity)
+          ? current.identity
+          : {};
+
+      return {
+        ...current,
+        identity: {
+          ...currentIdentity,
+          username: normalizedUsername,
+        },
+      };
+    });
+  }, []);
 
   // ----- Image Upload Logic -----
   const handleImageUpload = (e) => {
@@ -1224,6 +1278,7 @@ const FreelancerProfile = () => {
           ? {
             ...prev,
             services: nextServices,
+            profileDetails: nextProfileDetails,
           }
           : prev
       );
@@ -1798,10 +1853,10 @@ const FreelancerProfile = () => {
   }, [onboardingServiceDetailMap]);
   const onboardingIdentityLocation = buildLocationFromIdentity(onboardingIdentity);
   const displayHeadline =
+    String(personal.headline || "").trim() ||
     String(onboardingIdentity?.professionalTitle || "").trim() ||
-    personal.headline ||
-    "Senior Full Stack Developer";
-  const displayLocation = onboardingIdentityLocation || personal.location || "";
+    "";
+  const displayLocation = personal.location || onboardingIdentityLocation || "";
   const displayBio =
     String(profileDetails?.professionalBio || "").trim() ||
     normalizeBioValue(personal.bio) ||
@@ -2178,18 +2233,9 @@ const FreelancerProfile = () => {
             handleImageUpload={handleImageUpload}
             displayHeadline={displayHeadline}
             displayLocation={displayLocation}
-            displayBio={displayBio}
-            showExperienceYears={showExperienceYears}
-            experienceYearsLabel={experienceYearsLabel}
-            resolvedLinkedinLink={resolvedLinkedinLink}
-            resolvedPortfolioLink={resolvedPortfolioLink}
-            resumeLink={portfolio.resume}
-            openEditPersonalModal={openEditPersonalModal}
             onboardingIdentity={onboardingIdentity}
             onboardingLanguages={onboardingLanguages}
-            isDirty={isDirty}
-            handleSave={handleSave}
-            isSaving={isSaving}
+            openEditPersonalModal={openEditPersonalModal}
           />
 
           {/* ── Two-column grid ── */}
@@ -2266,6 +2312,19 @@ const FreelancerProfile = () => {
           </div>
         </div>
       </main>
+      {isDirty && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="gap-2 shadow-lg"
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {isSaving ? "Saving..." : "Update Profile"}
+          </Button>
+        </div>
+      )}
       {/* Modal */}
       {modalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
@@ -2865,6 +2924,21 @@ const FreelancerProfile = () => {
                       placeholder="Your Name"
                       className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
                     />
+                  </label>
+
+                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Username
+                    <div className="relative mt-1">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        @
+                      </span>
+                      <input
+                        value={String(onboardingIdentity?.username || "")}
+                        onChange={handlePersonalUsernameChange}
+                        placeholder="username"
+                        className="w-full rounded-2xl border border-border bg-background py-2 pl-7 pr-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      />
+                    </div>
                   </label>
 
                   <div className="grid grid-cols-2 gap-3">
