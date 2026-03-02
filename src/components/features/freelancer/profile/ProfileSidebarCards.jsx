@@ -229,7 +229,7 @@ const ProfileSidebarCards = ({
             className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            Add new
+            Edit Details
           </button>
         </div>
 

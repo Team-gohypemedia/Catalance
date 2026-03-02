@@ -1,11 +1,8 @@
 import Camera from "lucide-react/dist/esm/icons/camera";
-import Edit2 from "lucide-react/dist/esm/icons/edit-2";
-import Eye from "lucide-react/dist/esm/icons/eye";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MapPin from "lucide-react/dist/esm/icons/map-pin";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
-import Share2 from "lucide-react/dist/esm/icons/share-2";
-import { Button } from "@/components/ui/button";
+import Pencil from "lucide-react/dist/esm/icons/pencil";
 
 const ProfileHeroCard = ({
   fileInputRef,
@@ -16,42 +13,20 @@ const ProfileHeroCard = ({
   handleImageUpload,
   displayHeadline,
   displayLocation,
-  resolvedPortfolioLink,
-  resolvedLinkedinLink,
-  resumeLink,
-  openEditPersonalModal,
   onboardingIdentity,
   onboardingLanguages,
-  isDirty,
-  handleSave,
-  isSaving,
+  openEditPersonalModal,
 }) => {
-  const identityTitle =
-    onboardingIdentity?.professionalTitle || displayHeadline || "Add title";
+  const identityTitle = String(
+    onboardingIdentity?.professionalTitle || displayHeadline || ""
+  ).trim();
   const username = String(onboardingIdentity?.username || "").trim();
   const spokenLanguages = Array.isArray(onboardingLanguages)
     ? onboardingLanguages.slice(0, 3)
     : [];
-  const previewLink =
-    resolvedPortfolioLink || resolvedLinkedinLink || resumeLink || "";
-
-  const handleShareProfile = async () => {
-    if (typeof window === "undefined" || !navigator?.clipboard?.writeText) return;
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-    } catch {
-      // Clipboard access can be denied by browser settings.
-    }
-  };
-
-  const handlePreviewProfile = () => {
-    if (!previewLink || typeof window === "undefined") return;
-    window.open(previewLink, "_blank", "noopener,noreferrer");
-  };
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
-      {/* Gradient accent bar */}
       <div
         className="h-1 w-full"
         style={{
@@ -62,9 +37,8 @@ const ProfileHeroCard = ({
       />
 
       <div className="p-5 md:p-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-start gap-5">
-            {/* Avatar with glowing ring */}
+        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+          <div className="flex min-w-0 items-start gap-4 md:gap-5">
             <div
               className="group/avatar relative shrink-0 cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
@@ -96,7 +70,6 @@ const ProfileHeroCard = ({
                 )}
               </div>
 
-              {/* Online indicator */}
               <span
                 className="absolute bottom-0.5 right-0.5 z-10 h-3.5 w-3.5 rounded-full border-2 border-card bg-emerald-500"
                 title="Online"
@@ -126,54 +99,28 @@ const ProfileHeroCard = ({
               />
             </div>
 
-            <div className="min-w-0 space-y-1">
+            <div className="min-w-0 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <h1
-                  className="text-2xl font-bold tracking-tight text-foreground md:text-3xl"
-                  style={{ textWrap: "balance" }}
-                >
+                <h1 className="break-words text-2xl font-bold tracking-tight text-foreground md:text-3xl">
                   {personal.name || "Your Name"}
                 </h1>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg text-muted-foreground transition-colors duration-200 hover:text-foreground"
-                  onClick={openEditPersonalModal}
-                  title="Edit profile"
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                </Button>
                 {username ? (
-                  <span className="rounded-full bg-muted/60 px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
+                  <span className="inline-flex max-w-full items-center rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
                     @{username}
                   </span>
                 ) : null}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-lg font-semibold text-foreground/90 md:text-xl">
-                  {identityTitle}
-                </p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg text-muted-foreground transition-colors duration-200 hover:text-foreground"
-                  onClick={openEditPersonalModal}
-                  title="Edit title"
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <p className="text-lg font-semibold text-foreground/90 md:text-xl">
+                {identityTitle || "Add title"}
+              </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-0.5 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
                   {displayLocation || "Location not set"}
                 </span>
-                <span
-                  className="h-3 w-px bg-border/80"
-                  aria-hidden="true"
-                />
+                <span className="h-3 w-px bg-border/80" aria-hidden="true" />
                 <span className="inline-flex items-center gap-1.5">
                   <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
                   {spokenLanguages.length > 0
@@ -184,43 +131,15 @@ const ProfileHeroCard = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {isDirty ? (
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-                style={{
-                  background:
-                    "linear-gradient(135deg, hsl(var(--primary)), #8b5cf6)",
-                }}
-              >
-                {isSaving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                {isSaving ? "Saving…" : "Save"}
-              </button>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={handleShareProfile}
-              className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98]"
-            >
-              <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Share
-            </button>
-            <button
-              type="button"
-              onClick={handlePreviewProfile}
-              disabled={!previewLink}
-              className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-sm"
-            >
-              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-              Preview
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={openEditPersonalModal}
+            className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            title="Edit profile section"
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+            Edit
+          </button>
         </div>
       </div>
     </div>
