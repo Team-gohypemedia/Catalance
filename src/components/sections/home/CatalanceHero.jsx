@@ -26,6 +26,13 @@ const CatalanceHero = () => {
   }, []);
   const textColor = isDark ? "text-white" : "text-gray-900";
   const subTextColor = isDark ? "text-neutral-300" : "text-gray-600";
+  const cardSurfaceClass = isDark
+    ? "bg-linear-to-bl from-primary/40 via-black to-black border-white/10 shadow-card"
+    : "bg-linear-to-b from-white via-white to-amber-50/70 border-black/10 shadow-[0_16px_48px_rgba(2,6,23,0.08)]";
+  const cardTitleClass = isDark ? "text-white" : "text-neutral-900";
+  const cardBodyClass = isDark ? "text-neutral-300" : "text-neutral-600";
+  const cardFeatureClass = isDark ? "text-neutral-100/90" : "text-neutral-700";
+  const cardEmphasisClass = isDark ? "text-primary" : "text-primary-strong";
 
   return (
     <>
@@ -164,7 +171,7 @@ const CatalanceHero = () => {
 
               {/* Business Card */}
               <Link to="/service" className="block">
-                <div className="group relative p-5 sm:p-6 rounded-3xl flex flex-col bg-black bg-linear-to-bl from-primary/40 via-black to-black text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02]">
+                <div className={`group relative p-5 sm:p-6 rounded-3xl flex flex-col border backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02] ${cardSurfaceClass}`}>
                   <div className="mb-6 flex flex-col items-start">
                     <div className="px-0 py-2">
                       <Briefcase className="w-5 h-5 text-primary" />
@@ -173,11 +180,11 @@ const CatalanceHero = () => {
                       For Businesses
                     </span>
                   </div>
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
+                  <h3 className={`text-2xl sm:text-3xl md:text-4xl font-medium mb-2 leading-tight ${cardTitleClass}`}>
                     Find Talent You Can Count On
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
-                    Work with pre-vetted professionals who deliver quality work, meet deadlines, and communicate clearly. <span className="text-primary dark:text-primary font-semibold">No surprises, no excuses.</span>
+                  <p className={`text-sm mb-6 leading-relaxed min-h-[72px] ${cardBodyClass}`}>
+                    Work with pre-vetted professionals who deliver quality work, meet deadlines, and communicate clearly. <span className={`${cardEmphasisClass} font-semibold`}>No surprises, no excuses.</span>
                   </p>
 
                   {/* Features */}
@@ -186,7 +193,7 @@ const CatalanceHero = () => {
                       <div className="p-1.5 text-primary">
                         <Target className="w-4 h-4" />
                       </div>
-                      <span className="text-sm font-medium text-foreground/90">
+                      <span className={`text-sm font-medium ${cardFeatureClass}`}>
                         Verified expertise
                       </span>
                     </div>
@@ -194,7 +201,7 @@ const CatalanceHero = () => {
                       <div className="p-1.5 text-primary">
                         <Users className="w-4 h-4" />
                       </div>
-                      <span className="text-sm font-medium text-foreground/90">
+                      <span className={`text-sm font-medium ${cardFeatureClass}`}>
                         50K+ professionals
                       </span>
                     </div>
@@ -202,7 +209,7 @@ const CatalanceHero = () => {
                       <div className="p-1.5 text-primary">
                         <ShieldCheck className="w-4 h-4" />
                       </div>
-                      <span className="text-sm font-medium text-foreground/90">
+                      <span className={`text-sm font-medium ${cardFeatureClass}`}>
                         Secure payments
                       </span>
                     </div>
@@ -210,7 +217,7 @@ const CatalanceHero = () => {
                       <div className="p-1.5 text-primary">
                         <Sparkles className="w-4 h-4" />
                       </div>
-                      <span className="text-sm font-medium text-foreground/90">
+                      <span className={`text-sm font-medium ${cardFeatureClass}`}>
                         Dedicated support
                       </span>
                     </div>
@@ -224,7 +231,7 @@ const CatalanceHero = () => {
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                     </Button>
                   </div>
-                  <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-orange-500/0 to-amber-500/0 -z-10 blur-xl" />
+                  <div className={`absolute inset-0 rounded-3xl -z-10 blur-xl ${isDark ? "bg-linear-to-br from-orange-500/0 to-amber-500/0" : "bg-linear-to-br from-amber-200/30 to-white/0"}`} />
                 </div>
               </Link>
 
@@ -250,7 +257,7 @@ const CatalanceHero = () => {
 
               {/* Freelancer Card */}
               <Link to="/signup?role=freelancer" className="block">
-                <div className="group relative p-5 sm:p-6 rounded-3xl flex flex-col bg-black bg-linear-to-bl from-primary/40 via-black to-black text-card-foreground shadow-card backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02]">
+                <div className={`group relative p-5 sm:p-6 rounded-3xl flex flex-col border backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02] ${cardSurfaceClass}`}>
                   <div className="mb-6 flex flex-col items-start">
                     <div className="px-0 py-2">
                       <Zap className="w-5 h-5 text-primary" />
@@ -259,11 +266,11 @@ const CatalanceHero = () => {
                       For Freelancers
                     </span>
                   </div>
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-medium text-foreground mb-2 leading-tight">
+                  <h3 className={`text-2xl sm:text-3xl md:text-4xl font-medium mb-2 leading-tight ${cardTitleClass}`}>
                     Find Clients Who Value Your Work
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-6 leading-relaxed min-h-[72px]">
-                    Join a platform where your skills are respected, payments are protected, and opportunities match your ambitions. <span className="text-primary-strong dark:text-primary font-semibold">
+                  <p className={`text-sm mb-6 leading-relaxed min-h-[72px] ${cardBodyClass}`}>
+                    Join a platform where your skills are respected, payments are protected, and opportunities match your ambitions. <span className={`${cardEmphasisClass} font-semibold`}>
                       No lowball offers, no payment delays.
                     </span>
                   </p>
@@ -274,7 +281,7 @@ const CatalanceHero = () => {
                       <div className="p-1.5 text-primary-strong">
                         <Target className="w-4 h-4" />
                       </div>
-                      <span className="text-sm font-medium text-foreground/90">
+                      <span className={`text-sm font-medium ${cardFeatureClass}`}>
                         0% commission
                       </span>
                     </div>
@@ -282,7 +289,7 @@ const CatalanceHero = () => {
                       <div className="p-1.5 text-primary-strong">
                         <Users className="w-4 h-4" />
                       </div>
-                      <span className="text-sm font-medium text-foreground/90">
+                      <span className={`text-sm font-medium ${cardFeatureClass}`}>
                         Global network
                       </span>
                     </div>
@@ -290,7 +297,7 @@ const CatalanceHero = () => {
                       <div className="p-1.5 text-primary-strong">
                         <ShieldCheck className="w-4 h-4" />
                       </div>
-                      <span className="text-sm font-medium text-foreground/90">
+                      <span className={`text-sm font-medium ${cardFeatureClass}`}>
                         Secure payments
                       </span>
                     </div>
@@ -298,7 +305,7 @@ const CatalanceHero = () => {
                       <div className="p-1.5 text-primary-strong">
                         <TrendingUp className="w-4 h-4" />
                       </div>
-                      <span className="text-sm font-medium text-foreground/90">
+                      <span className={`text-sm font-medium ${cardFeatureClass}`}>
                         Fast hiring
                       </span>
                     </div>
@@ -312,7 +319,7 @@ const CatalanceHero = () => {
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                     </Button>
                   </div>
-                  <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-primary/0 to-primary/0 -z-10 blur-xl" />
+                  <div className={`absolute inset-0 rounded-3xl -z-10 blur-xl ${isDark ? "bg-linear-to-br from-primary/0 to-primary/0" : "bg-linear-to-br from-primary/20 to-transparent"}`} />
                 </div>
               </Link>
             </div>

@@ -33,7 +33,7 @@ const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
   return (
     <div
       onClick={onClick}
-      className={`flex items-end mr-5 cursor-pointer relative z-50 transition-transform duration-1000 ${isDark ? "rotate-180" : "rotate-0"
+      className={`flex items-center cursor-pointer transition-transform duration-1000 ${isDark ? "rotate-180" : "rotate-0"
         }`}
     >
       {isDark ? (
@@ -93,7 +93,7 @@ const Navbar = () => {
           onItemClick={closeMobileMenu}
           isHome={isHome}
         />
-        <div className="flex items-center">
+        <div className="flex shrink-0 items-center gap-3">
           <ThemeButton
             isDark={isDark}
             onClick={handleThemeToggle}

@@ -31,7 +31,13 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
   const borderRadius = useTransform(smoothScrollY, [0, 100], ["0rem", "2rem"]);
 
   // Colors based on theme
-  const startTextColor = isHome ? "#ffffff" : isDark ? "#d4d4d4" : "#525252";
+  const startTextColor = isHome
+    ? isDark
+      ? "#ffffff"
+      : "#1f2937"
+    : isDark
+      ? "#d4d4d4"
+      : "#525252";
   const endTextColor = isDark ? "#d4d4d4" : "#525252";
   const textColor = useTransform(
     smoothScrollY,
@@ -135,7 +141,7 @@ export const NavItems = ({ items, className, onItemClick, textColor }) => {
     <motion.div
       onMouseLeave={() => setHovered(null)}
       className={cn(
-        "absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium transition duration-200 lg:flex lg:space-x-2",
+        "hidden min-w-0 flex-1 flex-row items-center justify-center gap-1 px-4 text-sm font-medium transition duration-200 lg:flex",
         className
       )}
     >
@@ -143,7 +149,7 @@ export const NavItems = ({ items, className, onItemClick, textColor }) => {
         <a
           onMouseEnter={() => setHovered(idx)}
           onClick={onItemClick}
-          className="relative px-4 py-2 transition-colors"
+          className="relative rounded-full px-3 py-2 transition-colors"
           key={`link-${idx}`}
           href={item.link}
         >
