@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import {
   uploadImage,
+  uploadProfileCover,
   uploadProjectImage,
   createProjectPreview,
   uploadChatFile,
@@ -86,6 +87,14 @@ router.post(
   requireAuth,
   projectImageUpload.single("file"),
   uploadProjectImage
+);
+
+// Freelancer profile cover upload endpoint
+router.post(
+  "/profile-cover",
+  requireAuth,
+  projectImageUpload.single("file"),
+  uploadProfileCover
 );
 
 // Auto-fetch project metadata and persist preview image to R2

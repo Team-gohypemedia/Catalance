@@ -20,6 +20,9 @@ const FeaturedProjectsSection = ({
   handleProjectCoverInputChange,
   removeProject,
   onAddProject,
+  onSaveChanges,
+  savingChanges,
+  hasPendingChanges,
   onViewAllProjects,
 }) => {
   return (
@@ -40,6 +43,16 @@ const FeaturedProjectsSection = ({
           >
             <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
             Add Project
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-sm font-semibold"
+            onClick={onSaveChanges}
+            disabled={savingChanges || !hasPendingChanges}
+          >
+            {savingChanges ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+            Save changes
           </Button>
           <button
             className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-primary transition-all duration-200 hover:bg-primary/5 hover:underline"
@@ -169,7 +182,7 @@ const FeaturedProjectsSection = ({
         <div className="flex aspect-video flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/40 bg-muted/5 p-4 text-center transition-colors duration-200 hover:border-primary/20 hover:bg-muted/10">
           <Rocket className="mb-2 h-8 w-8 text-muted-foreground/30" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">
-            No projects added yet. Click "Add Project" to get started.
+            No projects added yet. Click &quot;Add Project&quot; to get started.
           </p>
         </div>
       )}

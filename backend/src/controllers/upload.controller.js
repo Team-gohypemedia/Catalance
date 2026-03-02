@@ -55,6 +55,9 @@ const normalizePathSegment = (value) =>
 const buildFreelancerProfilePrefix = (userId) =>
   `freelancers/${normalizePathSegment(userId)}/profile`;
 
+const toPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
 const inferFileExtension = ({ originalName = "", mimeType = "", fallback = ".bin" }) => {
   const rawName = String(originalName || "").trim();
   let extensionSource = rawName;
@@ -225,6 +228,99 @@ export const uploadImage = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error("R2 Upload Error:", error);
     throw new AppError("Failed to upload image", 500);
+  }
+});
+
+export const uploadProfileCover = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new AppError("No file uploaded", 400);
+  }
+
+  const userId = req.user?.sub;
+  const userEmail = req.user?.email;
+
+  let targetUser = null;
+  if (userId) {
+    targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        freelancerProfile: {
+          select: { profileDetails: true },
+        },
+      },
+    });
+  }
+
+  if (!targetUser && userEmail) {
+    targetUser = await prisma.user.findUnique({
+      where: { email: userEmail },
+      select: {
+        id: true,
+        email: true,
+        freelancerProfile: {
+          select: { profileDetails: true },
+        },
+      },
+    });
+  }
+
+  if (!targetUser) {
+    throw new AppError("User not found for cover upload", 404);
+  }
+
+  const profileDetails = toPlainObject(targetUser.freelancerProfile?.profileDetails);
+  const identity = toPlainObject(profileDetails.identity);
+  const existingCoverImage = String(identity.coverImage || "").trim();
+
+  const file = req.file;
+  const fileExt = inferFileExtension({
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    fallback: ".jpg",
+  });
+  const key = `${buildFreelancerProfilePrefix(targetUser.id)}/cover/${uuidv4()}${fileExt}`;
+
+  try {
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+
+    if (existingCoverImage) {
+      try {
+        const oldKey = extractR2KeyFromUrl(existingCoverImage);
+        if (oldKey && oldKey !== key) {
+          await s3Client.send(
+            new DeleteObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: oldKey,
+            })
+          );
+        }
+      } catch (error) {
+        console.warn(
+          "[uploadProfileCover] Failed to delete old cover image:",
+          error?.message || error
+        );
+      }
+    }
+
+    return res.json({
+      data: {
+        url: buildPublicUrl(key),
+        key,
+        name: file.originalname,
+      },
+    });
+  } catch (error) {
+    console.error("Profile cover upload failed:", error);
+    throw new AppError("Failed to upload profile cover image", 500);
   }
 });
 

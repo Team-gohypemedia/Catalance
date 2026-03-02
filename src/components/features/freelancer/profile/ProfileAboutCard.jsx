@@ -13,7 +13,7 @@ const ProfileAboutCard = ({ bioText, openEditPersonalModal }) => {
           variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-lg text-muted-foreground transition-colors duration-200 hover:text-foreground"
-          onClick={openEditPersonalModal}
+          onClick={() => openEditPersonalModal("about")}
         >
           <Edit2 className="h-4 w-4" />
         </Button>

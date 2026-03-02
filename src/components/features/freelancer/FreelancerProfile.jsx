@@ -1,25 +1,7 @@
-import Plus from "lucide-react/dist/esm/icons/plus";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import Camera from "lucide-react/dist/esm/icons/camera";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { format, parse, isValid } from "date-fns";
-import { cn } from "@/shared/lib/utils";
-import { CalendarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
@@ -31,551 +13,58 @@ import ServicesFromOnboardingCard from "@/components/features/freelancer/profile
 import FeaturedProjectsSection from "@/components/features/freelancer/profile/FeaturedProjectsSection";
 import ProfileSidebarCards from "@/components/features/freelancer/profile/ProfileSidebarCards";
 import ProfileSkillsCard from "@/components/features/freelancer/profile/ProfileSkillsCard";
-import ProjectCoverMedia from "@/components/features/freelancer/profile/ProjectCoverMedia";
+import FullProfileEditorModalContent from "@/components/features/freelancer/profile/modals/FullProfileEditorModalContent";
+import PersonalDetailsModalContent from "@/components/features/freelancer/profile/modals/PersonalDetailsModalContent";
+import WorkExperienceModalContent from "@/components/features/freelancer/profile/modals/WorkExperienceModalContent";
+import EducationModalContent from "@/components/features/freelancer/profile/modals/EducationModalContent";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import {
   getServiceLabel,
   createServiceDetail,
 } from "@/components/features/freelancer/onboarding/utils";
+import { EXPERIENCE_YEARS_OPTIONS } from "@/components/features/freelancer/onboarding/constants";
 import { useNavigate } from "react-router-dom";
 
-const getBioTextFromObject = (obj) => {
-  if (!obj || typeof obj !== "object") return "";
-  const textKeys = ["bio", "about", "description", "summary", "text"];
-  for (const key of textKeys) {
-    if (typeof obj[key] === "string" && obj[key].trim()) {
-      return obj[key];
-    }
-  }
-  const fallback = Object.values(obj).find(
-    (value) => typeof value === "string" && value.trim()
-  );
-  return fallback || "";
-};
-
-const normalizeBioValue = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (
-      trimmed.startsWith("{") &&
-      trimmed.endsWith("}") &&
-      trimmed.length > 2
-    ) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (typeof parsed === "string") {
-          return parsed;
-        }
-        if (typeof parsed === "object" && parsed !== null) {
-          return getBioTextFromObject(parsed);
-        }
-      } catch {
-        // fall through and return the raw string
-      }
-    }
-    if (
-      trimmed.startsWith("[") &&
-      trimmed.endsWith("]") &&
-      trimmed.length > 2
-    ) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed.join(" ").trim();
-        }
-      } catch {
-        //
-      }
-    }
-    return value;
-  }
-  if (typeof value === "object") {
-    return getBioTextFromObject(value);
-  }
-  return String(value);
-};
-
-const TECH_TAG_ACRONYMS = new Set([
-  "ai",
-  "api",
-  "cms",
-  "crm",
-  "css",
-  "db",
-  "erp",
-  "gsc",
-  "ml",
-  "orm",
-  "seo",
-  "sql",
-  "ui",
-  "ux",
-]);
-
-const formatSkillLabel = (value) => {
-  const raw = String(value ?? "")
-    .replace(/[_/]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!raw) return "";
-
-  return raw
-    .split(" ")
-    .map((token) => {
-      const normalized = token.toLowerCase();
-      if (TECH_TAG_ACRONYMS.has(normalized)) {
-        return normalized.toUpperCase();
-      }
-      if (/^[a-z0-9]+$/i.test(token)) {
-        return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
-      }
-      return token;
-    })
-    .join(" ");
-};
-
-const getSkillDedupKey = (value) =>
-  String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
-
-const SKILL_NOISE_VALUES = new Set([
-  "yes",
-  "no",
-  "open",
-  "other",
-  "not set",
-  "individual",
-  "agency",
-  "part time",
-  "part_time",
-  "beginner",
-  "intermediate",
-  "advanced",
-  "small",
-  "medium",
-  "large",
-  "english",
-  "hindi",
-  "spanish",
-  "french",
-  "german",
-  "chinese",
-  "arabic",
-  "bengali",
-  "portuguese",
-  "russian",
-  "japanese",
-  "punjabi",
-  "telugu",
-  "marathi",
-  "tamil",
-  "urdu",
-  "gujarati",
-  "kannada",
-  "malayalam",
-  "italian",
-  "hype",
-  "media",
-  "student",
-  "build",
-  "commerce",
-  "sites",
-  "portfolio",
-  "apps",
-  "powered",
-]);
-
-const SKILL_NOISE_PATTERNS = [
-  /\b(inr|usd|eur|lakh|lakhs|crore)\b/i,
-  /\b(under|over|within|less than|more than)\b/i,
-  /\b(hours?|weeks?|months?|years?)\b/i,
-  /\b(price|pricing|budget|timeline|cost)\b/i,
-  /^\d+(\s*-\s*\d+)?$/,
-  /^\d+\s+\d+$/,
-];
-
-const isNoisySkillTag = (value) => {
-  const normalized = String(value || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!normalized) return true;
-  if (SKILL_NOISE_VALUES.has(normalized)) return true;
-  return SKILL_NOISE_PATTERNS.some((pattern) => pattern.test(normalized));
-};
-
-const toUniqueSkillNames = (rawSkills = []) => {
-  const deduped = new Map();
-
-  (Array.isArray(rawSkills) ? rawSkills : []).forEach((entry) => {
-    const source =
-      typeof entry === "string"
-        ? entry
-        : typeof entry?.name === "string"
-          ? entry.name
-          : String(entry ?? "");
-    const label = formatSkillLabel(source);
-    if (!label) return;
-
-    const key = getSkillDedupKey(label);
-    if (!key || deduped.has(key)) return;
-    deduped.set(key, label);
-  });
-
-  return Array.from(deduped.values());
-};
-
-const toUniqueSkillObjects = (rawSkills = []) =>
-  toUniqueSkillNames(rawSkills)
-    .filter((name) => !isNoisySkillTag(name))
-    .map((name) => ({ name }));
-
-const buildLocationFromIdentity = (identity = {}) => {
-  if (!identity || typeof identity !== "object") return "";
-
-  const city = String(identity.city || "").trim();
-  const country = String(identity.country || "").trim();
-  return [city, country].filter(Boolean).join(", ");
-};
-
-const resolveAvatarUrl = (value, { allowBlob = false } = {}) => {
-  if (!value) return "";
-  if (typeof value === "string") {
-    const url = value.trim();
-    if (!url) return "";
-    if (!allowBlob && url.startsWith("blob:")) return "";
-    return url;
-  }
-  if (typeof value === "object") {
-    return resolveAvatarUrl(
-      value.uploadedUrl || value.url || value.src || value.value || "",
-      { allowBlob }
-    );
-  }
-  return "";
-};
-
-const EXPERIENCE_VALUE_LABELS = {
-  less_than_1: "Less than 1 year",
-  "1_3": "1-3 years",
-  "3_5": "3-5 years",
-  "5_plus": "5+ years",
-};
-
-const ONBOARDING_ROLE_LABELS = {
-  individual: "Individual Freelancer",
-  agency: "Agency / Studio",
-  part_time: "Part-Time Freelancer",
-};
-
-const HOURS_PER_WEEK_LABELS = {
-  less_than_10: "Less than 10 hours/week",
-  "10_20": "10-20 hours/week",
-  "20_30": "20-30 hours/week",
-  "30_plus": "30+ hours/week",
-};
-
-const normalizeValueLabel = (value) => {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "";
-
-  const normalized = raw.toLowerCase();
-  const canonical = normalized
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  if (EXPERIENCE_VALUE_LABELS[canonical]) {
-    return EXPERIENCE_VALUE_LABELS[canonical];
-  }
-  if (normalized === "yes") return "Yes";
-  if (normalized === "no") return "No";
-  if (normalized === "open") return "Open to all";
-
-  return formatSkillLabel(raw);
-};
-
-const formatHoursPerWeekLabel = (value) => {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "";
-
-  const canonical = raw
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  if (HOURS_PER_WEEK_LABELS[canonical]) {
-    return HOURS_PER_WEEK_LABELS[canonical];
-  }
-
-  const normalized = normalizeValueLabel(raw);
-  if (!normalized) return "";
-
-  if (/^(\d+)\s+plus$/i.test(normalized)) {
-    const [, hours] = normalized.match(/^(\d+)\s+plus$/i) || [];
-    return hours ? `${hours}+ hours/week` : normalized;
-  }
-
-  if (/^\d+\s*-\s*\d+$/.test(normalized)) {
-    return `${normalized} hours/week`;
-  }
-
-  if (/\bhours?\b/i.test(normalized)) {
-    return normalized;
-  }
-
-  return normalized;
-};
-
-const normalizePresenceLink = (value = "") => {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (/^[a-z]+:\/\//i.test(raw)) return raw;
-  if (raw.startsWith("/")) return "";
-  return `https://${raw}`;
-};
-
-const normalizeProjectLinkValue = (value = "") => {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-
-  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-
-  try {
-    return new URL(withProtocol).toString();
-  } catch {
-    return withProtocol;
-  }
-};
-
-const hasTextValue = (value) => String(value || "").trim().length > 0;
-
-const collectOnboardingPlatformLinks = (serviceDetailMap = {}) =>
-  Object.values(serviceDetailMap)
-    .flatMap((detail) => {
-      if (!detail || typeof detail !== "object") return [];
-      const links =
-        detail.platformLinks && typeof detail.platformLinks === "object"
-          ? detail.platformLinks
-          : {};
-      return Object.entries(links).map(([key, url]) => ({
-        key: String(key || "").toLowerCase().trim(),
-        url: normalizePresenceLink(url),
-      }));
-    })
-    .filter((entry) => entry.url);
-
-const isPortfolioLikeKey = (key = "") =>
-  key.includes("portfolio") ||
-  key.includes("website") ||
-  key.includes("liveproject") ||
-  key.includes("projectlink") ||
-  key === "github";
-
-const parseDelimitedValues = (value = "") =>
-  String(value || "")
-    .split(/[,\n]/)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-
-const toUniqueLabels = (values = []) =>
-  toUniqueSkillNames(values.map((entry) => normalizeValueLabel(entry)));
-
-const collectServiceSpecializations = (detail = {}) => {
-  const collected = [];
-
-  const groups =
-    detail?.groups && typeof detail.groups === "object" ? detail.groups : {};
-  Object.values(groups).forEach((entry) => {
-    if (Array.isArray(entry)) {
-      collected.push(...entry);
-    }
-  });
-
-  const groupOther =
-    detail?.groupOther && typeof detail.groupOther === "object"
-      ? detail.groupOther
-      : {};
-  Object.values(groupOther).forEach((entry) => {
-    if (Array.isArray(entry)) {
-      collected.push(...entry);
-      return;
-    }
-    if (typeof entry === "string") {
-      collected.push(...parseDelimitedValues(entry));
-    }
-  });
-
-  return toUniqueLabels(collected);
-};
-
-const splitExperienceTitle = (title = "") => {
-  const raw = String(title || "");
-  const separators = [" · ", " • ", " · ", " - "];
-
-  for (const separator of separators) {
-    if (raw.includes(separator)) {
-      const [position, company] = raw.split(separator);
-      return [String(position || "").trim(), String(company || "").trim()];
-    }
-  }
-
-  return [raw.trim(), ""];
-};
-
-const splitExperiencePeriod = (period = "") => {
-  const raw = String(period || "");
-  const separators = [" – ", " – ", " - "];
-
-  for (const separator of separators) {
-    if (raw.includes(separator)) {
-      const [from, to] = raw.split(separator);
-      return [String(from || "").trim(), String(to || "").trim()];
-    }
-  }
-
-  return [raw.trim(), ""];
-};
-
-const normalizeWorkExperienceEntries = (entries = []) =>
-  (Array.isArray(entries) ? entries : [])
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") return null;
-      const title = String(entry.title || "").trim();
-      const period = String(entry.period || "").trim();
-      const description = String(entry.description || "").trim();
-      if (!title && !period && !description) return null;
-      return { title, period, description };
-    })
-    .filter(Boolean);
-
-const initialWorkForm = {
-  company: "",
-  position: "",
-  from: "",
-  to: "",
-  description: "",
-};
-
-const createEmptyEducationEntry = () => ({
-  school: "",
-  degree: "",
-  field: "",
-  country: "",
-  graduationYear: "",
-});
-
-const collectEducationEntriesFromProfileDetails = (details = {}) => {
-  const profile = details && typeof details === "object" ? details : {};
-  const identity =
-    profile.identity && typeof profile.identity === "object"
-      ? profile.identity
-      : {};
-
-  const candidateLists = [
-    profile.education,
-    profile.educationHistory,
-    identity.education,
-    identity.educationHistory,
-  ].filter(Array.isArray);
-
-  const normalized = candidateLists
-    .flatMap((entries) => entries)
-    .map((entry) => {
-      if (!entry) return null;
-      if (typeof entry === "string") {
-        const school = String(entry).trim();
-        if (!school) return null;
-        return {
-          school,
-          degree: "",
-          field: "",
-          country: "",
-          graduationYear: "",
-        };
-      }
-
-      if (typeof entry !== "object") return null;
-
-      const school = String(
-        entry.school ||
-        entry.institution ||
-        entry.university ||
-        entry.college ||
-        entry.name ||
-        ""
-      ).trim();
-      const degree = String(
-        entry.degree || entry.qualification || entry.program || ""
-      ).trim();
-      const field = String(
-        entry.field ||
-        entry.specialization ||
-        entry.stream ||
-        entry.focus ||
-        entry.subject ||
-        ""
-      ).trim();
-      const country = String(entry.country || entry.location || "").trim();
-      const graduationYear = String(
-        entry.graduationYear || entry.endYear || entry.year || ""
-      ).trim();
-
-      if (!school && !degree && !field && !country && !graduationYear) {
-        return null;
-      }
-
-      return { school, degree, field, country, graduationYear };
-    })
-    .filter(Boolean);
-
-  return normalized.length > 0 ? normalized : [createEmptyEducationEntry()];
-};
-
-const normalizeEducationEntriesForSave = (entries = []) =>
-  (Array.isArray(entries) ? entries : [])
-    .map((entry) => ({
-      school: String(entry?.school || "").trim(),
-      degree: String(entry?.degree || "").trim(),
-      field: String(entry?.field || "").trim(),
-      country: String(entry?.country || "").trim(),
-      graduationYear: String(entry?.graduationYear || "").trim(),
-    }))
-    .filter(
-      (entry) =>
-        entry.school ||
-        entry.degree ||
-        entry.field ||
-        entry.country ||
-        entry.graduationYear
-    );
-
-const createInitialFullProfileForm = () => ({
-  professionalTitle: "",
-  username: "",
-  country: "",
-  city: "",
-  languages: "",
-  otherLanguage: "",
-  role: "",
-  globalIndustryFocus: "",
-  globalIndustryOther: "",
-  hoursPerWeek: "",
-  workingSchedule: "",
-  startTimeline: "",
-  missedDeadlines: "",
-  delayHandling: "",
-  deliveryPolicyAccepted: false,
-  communicationPolicyAccepted: false,
-  acceptInProgressProjects: "",
-  termsAccepted: false,
-  professionalBio: "",
-  education: [createEmptyEducationEntry()],
-});
+import {
+  normalizeBioValue,
+  formatSkillLabel,
+  isNoisySkillTag,
+  getSkillDedupKey,
+  toUniqueSkillNames,
+  toUniqueSkillObjects,
+  buildSkillLevelsByKey,
+  buildLocationFromIdentity,
+  resolveAvatarUrl,
+  normalizeValueLabel,
+  ONBOARDING_ROLE_LABELS,
+  formatHoursPerWeekLabel,
+  normalizePresenceLink,
+  normalizeProjectLinkValue,
+  hasTextValue,
+  collectOnboardingPlatformLinks,
+  isPortfolioLikeKey,
+  parseDelimitedValues,
+  toUniqueLabels,
+  collectServiceSpecializations,
+  splitExperienceTitle,
+  splitExperiencePeriod,
+  normalizeWorkExperienceEntries,
+  initialWorkForm,
+  MONTH_OPTIONS,
+  EMPLOYMENT_TYPE_OPTIONS,
+  LOCATION_TYPE_OPTIONS,
+  YEAR_OPTIONS,
+  parseMonthYearParts,
+  buildMonthYearLabel,
+  createEmptyEducationEntry,
+  collectEducationEntriesFromProfileDetails,
+  normalizeEducationEntriesForSave,
+  createInitialFullProfileForm,
+  PERSONAL_EDITOR_SECTIONS,
+  FULL_PROFILE_EDITOR_SECTIONS,
+  normalizeSkillLevel,
+} from "@/components/features/freelancer/profile/freelancerProfileUtils";
 
 const FreelancerProfile = () => {
   const navigate = useNavigate();
@@ -595,8 +84,12 @@ const FreelancerProfile = () => {
     email: "",
     phone: "",
     location: "",
+    headline: "",
     bio: "",
     experienceYears: "",
+    avatar: "",
+    coverImage: "",
+    available: true,
   });
   const [portfolio, setPortfolio] = useState({
     portfolioUrl: "",
@@ -612,6 +105,7 @@ const FreelancerProfile = () => {
   const [serviceProfileForm, setServiceProfileForm] = useState({
     serviceKey: "",
     serviceLabel: "",
+    experienceYears: "",
     serviceDescription: "",
     coverImage: "",
   });
@@ -619,17 +113,28 @@ const FreelancerProfile = () => {
   const [uploadingServiceCover, setUploadingServiceCover] = useState(false);
   const [projectCoverUploadingIndex, setProjectCoverUploadingIndex] =
     useState(null);
-  const [newProjectLoading, setNewProjectLoading] = useState(false);
+  const [, setNewProjectLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingCoverImage, setUploadingCoverImage] = useState(false);
+  const [uploadingResume, setUploadingResume] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedCoverFile, setSelectedCoverFile] = useState(null);
   const fileInputRef = useRef(null);
+  const coverInputRef = useRef(null);
+  const resumeInputRef = useRef(null);
   const projectPreviewAttemptRef = useRef(new Set());
   const [initialData, setInitialData] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fullProfileForm, setFullProfileForm] = useState(
     createInitialFullProfileForm
+  );
+  const [, setPersonalEditorSection] = useState(
+    PERSONAL_EDITOR_SECTIONS.ALL
+  );
+  const [, setFullProfileEditorSection] = useState(
+    FULL_PROFILE_EDITOR_SECTIONS.ALL
   );
 
   useEffect(() => {
@@ -658,6 +163,10 @@ const FreelancerProfile = () => {
         payload.profileDetails?.identity?.profilePhoto,
         { allowBlob: true }
       );
+      const identityCoverImage = resolveAvatarUrl(
+        payload.profileDetails?.identity?.coverImage,
+        { allowBlob: true }
+      );
       const normalizedProfileDetails =
         payload.profileDetails && typeof payload.profileDetails === "object"
           ? payload.profileDetails
@@ -674,6 +183,9 @@ const FreelancerProfile = () => {
         ).trim();
         const personalAvatar =
           resolveAvatarUrl(payload.personal?.avatar) || identityAvatar;
+        const personalCoverImage =
+          resolveAvatarUrl(payload.personal?.coverImage, { allowBlob: true }) ||
+          identityCoverImage;
         let location = payload.personal?.location || "";
         if (location && location.endsWith(" 0")) {
           location = location.slice(0, -2);
@@ -684,6 +196,7 @@ const FreelancerProfile = () => {
           personal: {
             ...payload.personal,
             avatar: personalAvatar,
+            coverImage: personalCoverImage,
             location: location || identityLocation,
             headline: payload.personal?.headline || identityTitle || "",
           },
@@ -720,6 +233,9 @@ const FreelancerProfile = () => {
           bio: payload.bio ?? "",
           experienceYears: payload.experienceYears ?? "",
           avatar: resolveAvatarUrl(payload.avatar) || identityAvatar,
+          coverImage:
+            resolveAvatarUrl(payload.coverImage, { allowBlob: true }) ||
+            identityCoverImage,
           available:
             payload.status !== undefined ? payload.status === "ACTIVE" : true,
         },
@@ -739,6 +255,8 @@ const FreelancerProfile = () => {
 
     const loadProfile = async () => {
       setProfileLoading(true);
+      setSelectedFile(null);
+      setSelectedCoverFile(null);
 
       if (!user) {
         if (!active) return;
@@ -752,6 +270,7 @@ const FreelancerProfile = () => {
           bio: "",
           experienceYears: "",
           avatar: "",
+          coverImage: "",
           available: false,
         });
         setPortfolio({
@@ -826,6 +345,10 @@ const FreelancerProfile = () => {
           loadedProfileDetails?.identity?.profilePhoto,
           { allowBlob: true }
         );
+        const identityFallbackCoverImage = resolveAvatarUrl(
+          loadedProfileDetails?.identity?.coverImage,
+          { allowBlob: true }
+        );
 
         const loadedPersonal = {
           name: normalized.personal?.name ?? user?.fullName ?? user?.name ?? "",
@@ -841,6 +364,12 @@ const FreelancerProfile = () => {
             resolveAvatarUrl(normalized.personal?.avatar, { allowBlob: true }) ||
             identityFallbackAvatar ||
             "",
+          coverImage:
+            resolveAvatarUrl(normalized.personal?.coverImage, {
+              allowBlob: true,
+            }) ||
+            identityFallbackCoverImage ||
+            "",
           available: normalized.personal?.available ?? true,
         };
 
@@ -852,7 +381,8 @@ const FreelancerProfile = () => {
         };
 
         const loadedSkills = toUniqueSkillObjects(
-          Array.isArray(normalized.skills) ? normalized.skills : []
+          Array.isArray(normalized.skills) ? normalized.skills : [],
+          loadedProfileDetails?.skillLevels
         );
 
         setPersonal(loadedPersonal);
@@ -889,6 +419,7 @@ const FreelancerProfile = () => {
             bio: "",
             experienceYears: "",
             avatar: resolveAvatarUrl(user?.avatar, { allowBlob: true }) || "",
+            coverImage: "",
             available: true,
           };
           const fallbackPortfolio = {
@@ -981,7 +512,7 @@ const FreelancerProfile = () => {
       return;
     }
 
-    setSkills((prev) => [...prev, { name }]);
+    setSkills((prev) => [...prev, { name, level: "Intermediate" }]);
     setSkillForm({ name: "" });
     setModalType(null);
   };
@@ -989,6 +520,28 @@ const FreelancerProfile = () => {
   const deleteSkill = (index) => {
     setSkills((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const setSkillLevel = useCallback((index, level) => {
+    const normalizedLevel = normalizeSkillLevel(level);
+    setSkills((prev) =>
+      (Array.isArray(prev) ? prev : []).map((entry, rowIndex) => {
+        if (rowIndex !== index) return entry;
+
+        if (typeof entry === "string") {
+          return {
+            name: formatSkillLabel(entry),
+            level: normalizedLevel,
+          };
+        }
+
+        return {
+          ...(entry && typeof entry === "object" ? entry : {}),
+          name: formatSkillLabel(entry?.name || ""),
+          level: normalizedLevel,
+        };
+      })
+    );
+  }, []);
 
   // ----- Work Experience (add + edit) -----
   const openCreateExperienceModal = () => {
@@ -1000,12 +553,27 @@ const FreelancerProfile = () => {
   const openEditExperienceModal = (item, index) => {
     const [position, company] = splitExperienceTitle(item.title);
     const [from, to] = splitExperiencePeriod(item.period);
+    const parsedFrom = parseMonthYearParts(from);
+    const parsedTo = parseMonthYearParts(to);
+    const isCurrentRole = String(to || "")
+      .trim()
+      .toLowerCase() === "present";
 
     setWorkForm({
       company: company ?? "",
       position: position ?? "",
       from: from ?? "",
       to: to ?? "",
+      startMonth: parsedFrom.month,
+      startYear: parsedFrom.year,
+      endMonth: parsedTo.month,
+      endYear: parsedTo.year,
+      isCurrentRole,
+      location: item?.location ?? "",
+      locationType: item?.locationType ?? "",
+      employmentType: item?.employmentType ?? "",
+      companyWebsite: item?.companyWebsite ?? item?.website ?? "",
+      linkedinUrl: item?.linkedinUrl ?? item?.linkedin ?? "",
       description: item.description ?? "",
     });
 
@@ -1013,35 +581,104 @@ const FreelancerProfile = () => {
     setModalType("work");
   };
 
-  const saveExperience = () => {
-    const { company, position, from, to, description } = workForm;
+  const saveExperience = async () => {
+    const {
+      company,
+      position,
+      startMonth,
+      startYear,
+      endMonth,
+      endYear,
+      isCurrentRole,
+      location,
+      locationType,
+      employmentType,
+      companyWebsite,
+      linkedinUrl,
+      description,
+    } = workForm;
 
-    if (!company.trim() || !position.trim() || !from.trim()) {
-      toast.error("Please fill in Company, Position, and Start Date");
+    if (!company.trim() || !position.trim() || !startMonth || !startYear) {
+      toast.error("Please fill in Title, Company, and Start Date");
       return;
     }
 
-    const toDate = to.trim() || "Present";
-
-    const newItem = {
-      title: `${position.trim()} · ${company.trim()}`,
-      period: `${from.trim()} – ${toDate}`,
-      description: description.trim(),
-    };
-
-    if (editingIndex !== null) {
-      setWorkExperience((prev) =>
-        prev.map((item, idx) => (idx === editingIndex ? newItem : item))
-      );
-    } else {
-      setWorkExperience((prev) => [...prev, newItem]);
+    if (!isCurrentRole && (!endMonth || !endYear)) {
+      toast.error("Please select an end month and year or mark current role.");
+      return;
     }
 
-    setWorkForm(initialWorkForm);
-    setEditingIndex(null);
-    setModalType(null);
+    const fromDate = buildMonthYearLabel(startMonth, startYear);
+    const toDate = isCurrentRole
+      ? "Present"
+      : buildMonthYearLabel(endMonth, endYear);
+
+    const newItem = {
+      title: `${position.trim()} - ${company.trim()}`,
+      period: toDate ? `${fromDate} - ${toDate}` : fromDate,
+      description: description.trim(),
+      from: fromDate,
+      to: toDate,
+      location: String(location || "").trim(),
+      locationType: String(locationType || "").trim(),
+      employmentType: String(employmentType || "").trim(),
+      companyWebsite: normalizePresenceLink(companyWebsite),
+      linkedinUrl: normalizePresenceLink(linkedinUrl),
+    };
+
+    const nextWorkExperience =
+      editingIndex !== null
+        ? workExperience.map((item, idx) =>
+            idx === editingIndex ? newItem : item
+          )
+        : [...workExperience, newItem];
+
+    setWorkExperience(nextWorkExperience);
+    const saved = await handleSave({
+      personal,
+      portfolio,
+      skills,
+      workExperience: nextWorkExperience,
+      services,
+      portfolioProjects,
+      profileDetails,
+    });
+
+    if (saved) {
+      setWorkForm(initialWorkForm);
+      setEditingIndex(null);
+      setModalType(null);
+    }
   };
 
+  const removeExperience = async (index) => {
+    const previousWorkExperience = Array.isArray(workExperience)
+      ? workExperience
+      : [];
+    const nextWorkExperience = previousWorkExperience.filter(
+      (_, rowIndex) => rowIndex !== index
+    );
+
+    setWorkExperience(nextWorkExperience);
+
+    const saved = await handleSave({
+      personal,
+      portfolio,
+      skills,
+      workExperience: nextWorkExperience,
+      services,
+      portfolioProjects,
+      profileDetails,
+    });
+
+    if (!saved) {
+      setWorkExperience(previousWorkExperience);
+    }
+  };
+
+  const openPortfolioModal = () => {
+    setModalType("portfolio");
+  };
   // ----- Save to backend -----
   const handleSave = async (snapshot = null) => {
     const currentPersonal = snapshot?.personal ?? personal;
@@ -1063,34 +700,63 @@ const FreelancerProfile = () => {
     setIsSaving(true);
 
     const skillsForApi = toUniqueSkillNames(currentSkills);
+    const skillLevelsForApi = buildSkillLevelsByKey(currentSkills);
     let currentAvatarUrl = resolveAvatarUrl(currentPersonal.avatar);
+    let currentCoverUrl = resolveAvatarUrl(currentPersonal.coverImage);
 
-    if (selectedFile) {
-      setUploadingImage(true);
+    const uploadToR2 = async (file, endpoint, fallbackMessage) => {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+
+      const uploadRes = await authFetch(endpoint, {
+        method: "POST",
+        body: uploadData,
+      });
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes
+          .json()
+          .catch(() => ({ message: fallbackMessage }));
+        throw new Error(err?.message || fallbackMessage);
+      }
+
+      const data = await uploadRes.json();
+      const uploadedUrl = String(data?.data?.url || "").trim();
+      if (!uploadedUrl) {
+        throw new Error(`${fallbackMessage} (no URL returned)`);
+      }
+      return uploadedUrl;
+    };
+
+    if (selectedFile || selectedCoverFile) {
+      setUploadingImage(Boolean(selectedFile));
+      setUploadingCoverImage(Boolean(selectedCoverFile));
       try {
-        const uploadData = new FormData();
-        uploadData.append("file", selectedFile);
+        const [nextAvatarUrl, nextCoverUrl] = await Promise.all([
+          selectedFile
+            ? uploadToR2(selectedFile, "/upload", "Failed to upload profile image")
+            : Promise.resolve(currentAvatarUrl),
+          selectedCoverFile
+            ? uploadToR2(
+                selectedCoverFile,
+                "/upload/profile-cover",
+                "Failed to upload profile cover image"
+              )
+            : Promise.resolve(currentCoverUrl),
+        ]);
 
-        const uploadRes = await authFetch("/upload", {
-          method: "POST",
-          body: uploadData,
-        });
-
-        if (!uploadRes.ok) {
-          const err = await uploadRes.json();
-          throw new Error(err.message || "Image upload failed");
-        }
-
-        const data = await uploadRes.json();
-        currentAvatarUrl = data.data.url;
+        currentAvatarUrl = nextAvatarUrl;
+        currentCoverUrl = nextCoverUrl;
       } catch (uploadErr) {
         setIsSaving(false);
         setUploadingImage(false);
+        setUploadingCoverImage(false);
         console.error("Image upload failed inside save:", uploadErr);
-        toast.error("Failed to upload image. Profile not saved.");
+        toast.error(uploadErr?.message || "Failed to upload image. Profile not saved.");
         return false;
       } finally {
         setUploadingImage(false);
+        setUploadingCoverImage(false);
       }
     }
 
@@ -1107,11 +773,13 @@ const FreelancerProfile = () => {
 
     const profileDetailsForSave = {
       ...existingProfileDetails,
+      skillLevels: skillLevelsForApi,
       identity: {
         ...existingIdentity,
         professionalTitle: String(currentPersonal.headline || "").trim(),
         username: String(existingIdentity.username || "").trim(),
-        ...(currentAvatarUrl ? { profilePhoto: currentAvatarUrl } : {}),
+        profilePhoto: currentAvatarUrl || "",
+        coverImage: currentCoverUrl || "",
       },
     };
 
@@ -1126,6 +794,7 @@ const FreelancerProfile = () => {
         experienceYears: currentPersonal.experienceYears,
         available: currentPersonal.available,
         avatar: currentAvatarUrl,
+        coverImage: currentCoverUrl,
       },
       bio: bioText,
       skills: skillsForApi,
@@ -1154,7 +823,11 @@ const FreelancerProfile = () => {
         description: "Your profile has been updated successfully.",
       });
 
-      const newPersonal = { ...currentPersonal, avatar: currentAvatarUrl };
+      const newPersonal = {
+        ...currentPersonal,
+        avatar: currentAvatarUrl,
+        coverImage: currentCoverUrl,
+      };
       setPersonal(newPersonal);
       setPortfolio(currentPortfolio);
       setSkills(currentSkills);
@@ -1174,6 +847,7 @@ const FreelancerProfile = () => {
       });
       setIsDirty(false);
       setSelectedFile(null);
+      setSelectedCoverFile(null);
       return true;
     } catch (error) {
       console.error("Save failed", error);
@@ -1186,8 +860,43 @@ const FreelancerProfile = () => {
     }
   };
 
+  const saveSectionChanges = async (overrides = {}) =>
+    handleSave({
+      personal,
+      portfolio,
+      skills,
+      workExperience,
+      services,
+      portfolioProjects,
+      profileDetails,
+      ...overrides,
+    });
+
+  const saveSkillsSection = async () => {
+    await saveSectionChanges();
+  };
+
+  const saveProjectsSection = async () => {
+    await saveSectionChanges();
+  };
+
+  const savePersonalSection = async () => {
+    const saved = await saveSectionChanges();
+    if (saved) {
+      setModalType(null);
+    }
+  };
+
+  const savePortfolioSection = async () => {
+    const saved = await saveSectionChanges();
+    if (saved) {
+      setModalType(null);
+    }
+  };
+
   // ----- Personal Details Edit (Name, Headline, Phone, Location) -----
-  const openEditPersonalModal = () => {
+  const openEditPersonalModal = (section = PERSONAL_EDITOR_SECTIONS.ALL) => {
+    setPersonalEditorSection(section);
     setModalType("personal");
   };
 
@@ -1248,6 +957,107 @@ const FreelancerProfile = () => {
     setPersonal((prev) => ({ ...prev, avatar: objectUrl }));
   };
 
+  const handleCoverImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    e.target.value = "";
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Cover image must be less than 8MB");
+      return;
+    }
+
+    setSelectedCoverFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setPersonal((prev) => ({ ...prev, coverImage: objectUrl }));
+  };
+
+  const handleResumeUpload = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+
+      const allowedMimeTypes = new Set([
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ]);
+      const allowedExtensions = [".pdf", ".doc", ".docx"];
+      const fileName = String(file.name || "").toLowerCase();
+      const hasAllowedExtension = allowedExtensions.some((ext) =>
+        fileName.endsWith(ext)
+      );
+
+      if (!allowedMimeTypes.has(file.type) && !hasAllowedExtension) {
+        toast.error("Only PDF, DOC, and DOCX files are allowed");
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Resume must be less than 5MB");
+        return;
+      }
+
+      setUploadingResume(true);
+      try {
+        const uploadData = new FormData();
+        uploadData.append("file", file);
+
+        const response = await authFetch("/upload/resume", {
+          method: "POST",
+          body: uploadData,
+        });
+
+        if (!response.ok) {
+          const payload = await response
+            .json()
+            .catch(() => ({ message: "Failed to upload resume" }));
+          throw new Error(payload?.message || "Failed to upload resume");
+        }
+
+        const payload = await response.json();
+        const resumeUrl = String(payload?.data?.url || "").trim();
+        if (!resumeUrl) {
+          throw new Error("Resume upload failed: missing URL");
+        }
+
+        setPortfolio((prev) => ({ ...prev, resume: resumeUrl }));
+        setInitialData((prev) =>
+          prev
+            ? {
+                ...prev,
+                portfolio: {
+                  ...(prev.portfolio || {}),
+                  resume: resumeUrl,
+                },
+              }
+            : prev
+        );
+        toast.success("Resume uploaded");
+      } catch (error) {
+        console.error("Resume upload failed:", error);
+        toast.error(error?.message || "Failed to upload resume");
+      } finally {
+        setUploadingResume(false);
+      }
+    },
+    [authFetch]
+  );
+
+  const removeCoverImage = useCallback(() => {
+    setSelectedCoverFile(null);
+    setPersonal((prev) =>
+      prev.coverImage ? { ...prev, coverImage: "" } : prev
+    );
+  }, []);
+
   // ----- Add Custom Service -----
   const [serviceForm, setServiceForm] = useState("");
   const addService = () => {
@@ -1273,6 +1083,7 @@ const FreelancerProfile = () => {
     setServiceProfileForm({
       serviceKey,
       serviceLabel: getServiceLabel(serviceKey),
+      experienceYears: String(detail?.experienceYears || "").trim(),
       serviceDescription: String(
         detail?.serviceDescription || detail?.description || ""
       ).trim(),
@@ -1352,6 +1163,7 @@ const FreelancerProfile = () => {
       [serviceKey]: {
         ...createServiceDetail(),
         ...currentServiceDetail,
+        experienceYears: String(serviceProfileForm.experienceYears || "").trim(),
         serviceDescription: String(
           serviceProfileForm.serviceDescription || ""
         ).trim(),
@@ -1558,31 +1370,6 @@ const FreelancerProfile = () => {
     };
   }, [portfolioProjects, user?.id, fetchProjectPreview]);
 
-  const handleProjectImageChange = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("Project image must be less than 8MB");
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(file);
-    setNewProjectImageFile(file);
-    setNewProjectImagePreview((prev) => {
-      if (prev && prev.startsWith("blob:")) {
-        URL.revokeObjectURL(prev);
-      }
-      return objectUrl;
-    });
-  };
-
   const uploadProjectCoverImage = async (index, file) => {
     if (!file) return;
 
@@ -1732,7 +1519,7 @@ const FreelancerProfile = () => {
     setPortfolioProjects((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const openFullProfileEditor = () => {
+  const openFullProfileEditor = (section = FULL_PROFILE_EDITOR_SECTIONS.ALL) => {
     const currentDetails =
       profileDetails && typeof profileDetails === "object" ? profileDetails : {};
     const identity =
@@ -1748,6 +1535,16 @@ const FreelancerProfile = () => {
       currentDetails.reliability && typeof currentDetails.reliability === "object"
         ? currentDetails.reliability
         : {};
+
+    if (section === FULL_PROFILE_EDITOR_SECTIONS.EDUCATION) {
+      setFullProfileForm((prev) => ({
+        ...prev,
+        education: collectEducationEntriesFromProfileDetails(currentDetails),
+      }));
+      setFullProfileEditorSection(section);
+      setModalType("education");
+      return;
+    }
 
     setFullProfileForm({
       professionalTitle: String(
@@ -1790,6 +1587,7 @@ const FreelancerProfile = () => {
       education: collectEducationEntriesFromProfileDetails(currentDetails),
     });
 
+    setFullProfileEditorSection(section);
     setModalType("fullProfile");
   };
 
@@ -1933,6 +1731,33 @@ const FreelancerProfile = () => {
     }
   };
 
+  const saveEducationSection = async () => {
+    const normalizedEducation = normalizeEducationEntriesForSave(
+      fullProfileForm.education
+    );
+
+    const currentDetails =
+      profileDetails && typeof profileDetails === "object" ? profileDetails : {};
+    const nextProfileDetails = {
+      ...currentDetails,
+      education: normalizedEducation,
+    };
+
+    const saved = await handleSave({
+      personal,
+      portfolio,
+      skills,
+      workExperience,
+      services,
+      portfolioProjects,
+      profileDetails: nextProfileDetails,
+    });
+
+    if (saved) {
+      setModalType(null);
+    }
+  };
+
   const onboardingIdentity =
     profileDetails?.identity && typeof profileDetails.identity === "object"
       ? profileDetails.identity
@@ -2008,6 +1833,7 @@ const FreelancerProfile = () => {
     fallbackLinkedinLink;
   const resolvedGithubLink =
     normalizePresenceLink(portfolio.githubUrl) || fallbackGithubLink;
+  const resolvedResumeLink = normalizePresenceLink(portfolio.resume);
   const onboardingServiceEntries = Array.from(
     new Set([
       ...onboardingServices,
@@ -2064,9 +1890,6 @@ const FreelancerProfile = () => {
     String(profileDetails?.professionalBio || "").trim() ||
     normalizeBioValue(personal.bio) ||
     "";
-  const experienceYearsLabel = String(personal.experienceYears ?? "").trim();
-  const showExperienceYears =
-    Boolean(experienceYearsLabel) && experienceYearsLabel !== "0";
   const effectiveWorkExperience = workExperience;
   const displayPortfolioProjects = useMemo(
     () =>
@@ -2167,6 +1990,7 @@ const FreelancerProfile = () => {
   const policiesCoverage = (3 - policyMissingDetails.length) / 3;
 
   const hasProfilePhoto = Boolean(resolveAvatarUrl(personal.avatar));
+  const hasProfileCover = Boolean(resolveAvatarUrl(personal.coverImage));
   const hasProfessionalTitle = hasTextValue(onboardingIdentity?.professionalTitle);
   const hasProfessionalBio = hasTextValue(
     profileDetails?.professionalBio || personal.bio
@@ -2178,7 +2002,8 @@ const FreelancerProfile = () => {
   const hasIndustryFocus = onboardingGlobalIndustry.length > 0;
 
   const profileCompletionCriteria = [
-    { label: "Profile photo", score: hasProfilePhoto ? 1 : 0, weight: 8 },
+    { label: "Profile photo", score: hasProfilePhoto ? 1 : 0, weight: 4 },
+    { label: "Profile cover", score: hasProfileCover ? 1 : 0, weight: 4 },
     {
       label: "Professional title",
       score: hasProfessionalTitle ? 1 : 0,
@@ -2234,6 +2059,13 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Profile photo",
       detail: "Upload a clear profile image.",
+    });
+  }
+
+  if (!hasProfileCover) {
+    profileCompletionMissingDetails.push({
+      label: "Profile cover",
+      detail: "Add a cover image to strengthen your profile header.",
     });
   }
 
@@ -2426,25 +2258,39 @@ const FreelancerProfile = () => {
       <main className="flex-1 overflow-y-auto pb-20">
         <div className="w-full px-6 py-6 md:py-8">
 
-          {/* ── Full-width hero ── */}
+          {/* â”€â”€ Full-width hero â”€â”€ */}
           <ProfileHeroCard
             fileInputRef={fileInputRef}
+            coverInputRef={coverInputRef}
+            resumeInputRef={resumeInputRef}
             personal={personal}
             setPersonal={setPersonal}
             initials={initials}
             uploadingImage={uploadingImage}
+            uploadingCoverImage={uploadingCoverImage}
+            uploadingResume={uploadingResume}
             handleImageUpload={handleImageUpload}
+            handleCoverImageUpload={handleCoverImageUpload}
+            handleResumeUpload={handleResumeUpload}
+            removeCoverImage={removeCoverImage}
             displayHeadline={displayHeadline}
             displayLocation={displayLocation}
             onboardingIdentity={onboardingIdentity}
             onboardingLanguages={onboardingLanguages}
             openEditPersonalModal={openEditPersonalModal}
+            openPortfolioModal={openPortfolioModal}
+            profileLinks={{
+              portfolio: resolvedPortfolioLink,
+              linkedin: resolvedLinkedinLink,
+              github: resolvedGithubLink,
+              resume: resolvedResumeLink,
+            }}
           />
 
-          {/* ── Two-column grid ── */}
+          {/* â”€â”€ Two-column grid â”€â”€ */}
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
 
-            {/* ── Left: Main content ── */}
+            {/* â”€â”€ Left: Main content â”€â”€ */}
             <div className="min-w-0 space-y-5">
               <ProfileAboutCard
                 bioText={displayBio}
@@ -2465,6 +2311,10 @@ const FreelancerProfile = () => {
               <ProfileSkillsCard
                 skills={skills}
                 deleteSkill={deleteSkill}
+                setSkillLevel={setSkillLevel}
+                onSaveChanges={saveSkillsSection}
+                savingChanges={isSaving}
+                hasPendingChanges={isDirty}
                 openSkillModal={() => setModalType("skill")}
               />
 
@@ -2483,6 +2333,9 @@ const FreelancerProfile = () => {
                 projectCoverUploadingIndex={projectCoverUploadingIndex}
                 handleProjectCoverInputChange={handleProjectCoverInputChange}
                 removeProject={removeProject}
+                onSaveChanges={saveProjectsSection}
+                savingChanges={isSaving}
+                hasPendingChanges={isDirty}
                 onAddProject={() => {
                   resetProjectDraft();
                   setModalType("addProject");
@@ -2491,7 +2344,7 @@ const FreelancerProfile = () => {
               />
             </div>
 
-            {/* ── Right: Sidebar ── */}
+            {/* â”€â”€ Right: Sidebar â”€â”€ */}
             <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
               <ProfileSummaryCards
                 profileCompletionPercent={profileCompletionPercent}
@@ -2507,6 +2360,7 @@ const FreelancerProfile = () => {
                 effectiveWorkExperience={effectiveWorkExperience}
                 workExperience={workExperience}
                 openEditExperienceModal={openEditExperienceModal}
+                removeExperience={removeExperience}
                 splitExperienceTitle={splitExperienceTitle}
                 profileDetails={profileDetails}
                 openFullProfileEditor={openFullProfileEditor}
@@ -2516,19 +2370,6 @@ const FreelancerProfile = () => {
           </div>
         </div>
       </main>
-      {isDirty && (
-        <div className="fixed bottom-6 right-6 z-40">
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="gap-2 shadow-lg"
-          >
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isSaving ? "Saving..." : "Update Profile"}
-          </Button>
-        </div>
-      )}
       {/* Modal */}
       {modalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
@@ -2537,10 +2378,16 @@ const FreelancerProfile = () => {
               ? "max-w-[60%] h-[90vh] flex flex-col"
               : modalType === "fullProfile"
                 ? "max-w-5xl max-h-[90vh] overflow-y-auto"
+              : modalType === "education"
+                ? "max-w-4xl max-h-[90vh] overflow-y-auto"
               : modalType === "personal"
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
               : modalType === "onboardingService"
                 ? "max-w-2xl"
+              : modalType === "work"
+                ? "max-w-2xl max-h-[90vh] overflow-y-auto"
+              : modalType === "portfolio"
+                ? "max-w-2xl max-h-[90vh] overflow-y-auto"
                 : "max-w-md"
               }`}
           >
@@ -2614,88 +2461,179 @@ const FreelancerProfile = () => {
               </>
             ) : modalType === "onboardingService" ? (
               <>
-                <h1 className="text-lg font-semibold text-foreground">
-                  Edit Service Profile
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Update description and cover image for{" "}
-                  <span className="text-foreground font-medium">
-                    {serviceProfileForm.serviceLabel || "this service"}
-                  </span>
-                  .
-                </p>
-                <div className="mt-4 space-y-4">
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    Service Description
-                    <textarea
-                      value={serviceProfileForm.serviceDescription}
+                <div className="space-y-1">
+                  <div>
+                    <h1 className="text-xl font-semibold text-foreground">
+                      Edit Service Profile
+                    </h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Make this service stand out on your profile for{" "}
+                      <span className="font-medium text-foreground">
+                        {serviceProfileForm.serviceLabel || "this service"}
+                      </span>
+                      .
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+                  <label className="block space-y-1.5">
+                    <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                      Experience
+                    </span>
+                    <select
+                      value={serviceProfileForm.experienceYears || ""}
                       onChange={(event) =>
                         setServiceProfileForm((prev) => ({
                           ...prev,
-                          serviceDescription: event.target.value,
+                          experienceYears: event.target.value,
                         }))
                       }
-                      rows={5}
-                      placeholder="Describe what you deliver for this service."
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                    />
+                      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    >
+                      <option value="">Select experience range</option>
+                      {serviceProfileForm.experienceYears &&
+                      !EXPERIENCE_YEARS_OPTIONS.some(
+                        (option) => option.value === serviceProfileForm.experienceYears
+                      ) ? (
+                        <option value={serviceProfileForm.experienceYears}>
+                          {normalizeValueLabel(serviceProfileForm.experienceYears)}
+                        </option>
+                      ) : null}
+                      {EXPERIENCE_YEARS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
 
-                  <div>
-                    <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                      Service Cover Image
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="mt-2 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-xl file:border file:border-border file:bg-card file:px-3 file:py-1 file:text-xs file:font-semibold file:text-foreground"
-                      onChange={handleServiceCoverImageChange}
-                    />
+                  <div className="rounded-md border border-border/70 bg-background/50 px-3 py-2.5">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Profile Status
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-foreground">
+                      {serviceProfileForm.serviceDescription
+                        ? serviceProfileForm.coverImage
+                          ? "Ready to publish"
+                          : "Add a cover image"
+                        : "Add description"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Description + cover improves trust.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-1.5">
+                  <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                    Service Description
+                  </span>
+                  <textarea
+                    value={serviceProfileForm.serviceDescription}
+                    onChange={(event) =>
+                      setServiceProfileForm((prev) => ({
+                        ...prev,
+                        serviceDescription: event.target.value,
+                      }))
+                    }
+                    rows={5}
+                    maxLength={500}
+                    placeholder="Describe the outcomes, process, and what clients can expect."
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                  />
+                  <p className="text-right text-[11px] text-muted-foreground">
+                    {String(serviceProfileForm.serviceDescription || "").length}/500
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <span className="block text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                    Service Cover Image
+                  </span>
+                  <div className="rounded-md border border-border/70 bg-background/50 p-3">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        Recommended: 16:9 image, under 8MB.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingServiceCover}
+                        onClick={() =>
+                          document
+                            .getElementById("onboarding-service-cover-input")
+                            ?.click()
+                        }
+                      >
+                        {uploadingServiceCover ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          "Upload image"
+                        )}
+                      </Button>
+                      <input
+                        id="onboarding-service-cover-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleServiceCoverImageChange}
+                      />
+                    </div>
+
                     {serviceProfileForm.coverImage ? (
-                      <div className="mt-3 overflow-hidden rounded-xl border border-border">
+                      <div className="group relative overflow-hidden rounded-md border border-border/70">
                         <img
                           src={serviceProfileForm.coverImage}
                           alt={`${serviceProfileForm.serviceLabel || "Service"} cover`}
-                          className="h-44 w-full object-cover"
+                          className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                         />
-                        <div className="p-2 border-t border-border bg-background/60 flex justify-end">
-                          <button
+                        <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent p-2">
+                          <Button
                             type="button"
+                            variant="secondary"
+                            size="sm"
                             onClick={() =>
                               setServiceProfileForm((prev) => ({
                                 ...prev,
                                 coverImage: "",
                               }))
                             }
-                            className="rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground hover:bg-muted/40 transition-colors"
                           >
-                            Remove Cover
-                          </button>
+                            Remove cover
+                          </Button>
                         </div>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="flex h-44 items-center justify-center rounded-md border border-dashed border-border/70 bg-background/35 text-xs text-muted-foreground">
+                        No cover selected yet
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="mt-5 flex justify-end gap-3">
-                  <button
+                <div className="mt-5 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={saveOnboardingServiceProfile}
                     disabled={savingServiceProfile || uploadingServiceCover}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                   >
                     {(savingServiceProfile || uploadingServiceCover) && (
-                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     )}
-                    Save
-                  </button>
+                    Save changes
+                  </Button>
                 </div>
               </>
             ) : modalType === "addProject" ? (
@@ -2718,1215 +2656,379 @@ const FreelancerProfile = () => {
                     }
                   }}
                 />
-                <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                  Project Image (Optional)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="mt-2 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-xl file:border file:border-border file:bg-card file:px-3 file:py-1 file:text-xs file:font-semibold file:text-foreground"
-                  onChange={handleProjectImageChange}
-                />
-                {newProjectImagePreview ? (
-                  <div className="mt-3 overflow-hidden rounded-xl border border-border">
-                    <img
-                      src={newProjectImagePreview}
-                      alt="Project preview"
-                      className="h-36 w-full object-cover"
+                <div className="mt-4 space-y-4">
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Title*
+                    </span>
+                    <input
+                      value={workForm.position}
+                      onChange={(event) =>
+                        setWorkForm((prev) => ({
+                          ...prev,
+                          position: event.target.value,
+                        }))
+                      }
+                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                     />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Employment type
+                    </span>
+                    <select
+                      value={workForm.employmentType}
+                      onChange={(event) =>
+                        setWorkForm((prev) => ({
+                          ...prev,
+                          employmentType: event.target.value,
+                        }))
+                      }
+                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    >
+                      <option value="">Select employment type</option>
+                      {workForm.employmentType &&
+                      !EMPLOYMENT_TYPE_OPTIONS.includes(workForm.employmentType) ? (
+                        <option value={workForm.employmentType}>
+                          {workForm.employmentType}
+                        </option>
+                      ) : null}
+                      {EMPLOYMENT_TYPE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Company or organization*
+                    </span>
+                    <input
+                      value={workForm.company}
+                      onChange={(event) =>
+                        setWorkForm((prev) => ({
+                          ...prev,
+                          company: event.target.value,
+                        }))
+                      }
+                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    />
+                  </label>
+
+                  <label className="inline-flex items-center gap-2.5">
+                    <Checkbox
+                      id="current-role"
+                      checked={Boolean(workForm.isCurrentRole)}
+                      onCheckedChange={(checked) =>
+                        setWorkForm((prev) => ({
+                          ...prev,
+                          isCurrentRole: Boolean(checked),
+                          to: checked ? "Present" : "",
+                          endMonth: checked ? "" : prev.endMonth,
+                          endYear: checked ? "" : prev.endYear,
+                        }))
+                      }
+                    />
+                    <span className="text-sm font-medium text-foreground">
+                      I am currently working in this role
+                    </span>
+                  </label>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Start date
+                    </p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm text-muted-foreground">Month*</span>
+                        <select
+                          value={workForm.startMonth}
+                          onChange={(event) =>
+                            setWorkForm((prev) => ({
+                              ...prev,
+                              startMonth: event.target.value,
+                              from: buildMonthYearLabel(event.target.value, prev.startYear),
+                            }))
+                          }
+                          className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                        >
+                          <option value="">Select month</option>
+                          {MONTH_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1.5 block text-sm text-muted-foreground">Year*</span>
+                        <select
+                          value={workForm.startYear}
+                          onChange={(event) =>
+                            setWorkForm((prev) => ({
+                              ...prev,
+                              startYear: event.target.value,
+                              from: buildMonthYearLabel(prev.startMonth, event.target.value),
+                            }))
+                          }
+                          className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                        >
+                          <option value="">Select year</option>
+                          {YEAR_OPTIONS.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
-                ) : null}
-                <div className="mt-5 flex justify-end gap-3">
+
+                  {!workForm.isCurrentRole ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        End date
+                      </p>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="block">
+                          <span className="mb-1.5 block text-sm text-muted-foreground">Month*</span>
+                          <select
+                            value={workForm.endMonth}
+                            onChange={(event) =>
+                              setWorkForm((prev) => ({
+                                ...prev,
+                                endMonth: event.target.value,
+                                to: buildMonthYearLabel(event.target.value, prev.endYear),
+                              }))
+                            }
+                            className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                          >
+                            <option value="">Select month</option>
+                            {MONTH_OPTIONS.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="mb-1.5 block text-sm text-muted-foreground">Year*</span>
+                          <select
+                            value={workForm.endYear}
+                            onChange={(event) =>
+                              setWorkForm((prev) => ({
+                                ...prev,
+                                endYear: event.target.value,
+                                to: buildMonthYearLabel(prev.endMonth, event.target.value),
+                              }))
+                            }
+                            className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                          >
+                            <option value="">Select year</option>
+                            {YEAR_OPTIONS.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Location
+                    </span>
+                    <input
+                      value={workForm.location}
+                      onChange={(event) =>
+                        setWorkForm((prev) => ({
+                          ...prev,
+                          location: event.target.value,
+                        }))
+                      }
+                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Location type
+                    </span>
+                    <select
+                      value={workForm.locationType}
+                      onChange={(event) =>
+                        setWorkForm((prev) => ({
+                          ...prev,
+                          locationType: event.target.value,
+                        }))
+                      }
+                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    >
+                      <option value="">Select location type</option>
+                      {workForm.locationType &&
+                      !LOCATION_TYPE_OPTIONS.includes(workForm.locationType) ? (
+                        <option value={workForm.locationType}>{workForm.locationType}</option>
+                      ) : null}
+                      {LOCATION_TYPE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Pick a location type (ex: remote)
+                    </p>
+                  </label>
+                </div>
+
+                <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
                   <button
                     type="button"
-                    onClick={() => {
-                      resetProjectDraft();
-                      setModalType(null);
-                    }}
+                    onClick={() => setModalType(null)}
                     className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    onClick={handleUrlBlur}
-                    disabled={newProjectLoading || !newProjectUrl.trim()}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    onClick={savePortfolioSection}
+                    disabled={isSaving}
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                   >
-                    {newProjectLoading && (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    )}
-                    Add
-                  </button>
-                </div>
-              </>
-            ) : modalType === "viewAllProjects" ? (
-              <>
-                <h1 className="text-lg font-semibold text-foreground">
-                  All Projects
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {displayPortfolioProjects.length} project
-                  {displayPortfolioProjects.length !== 1 ? "s" : ""} in your
-                  portfolio
-                </p>
-                <div className="mt-4 flex-1 overflow-y-auto">
-                  {displayPortfolioProjects.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      {displayPortfolioProjects.map((project, idx) => (
-                        <div
-                          key={idx}
-                          className="group flex flex-col p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                        >
-                          <div className="w-full h-40 rounded-lg overflow-hidden bg-muted mb-2">
-                            <ProjectCoverMedia
-                              project={project}
-                              containerClassName="h-full w-full"
-                              imageClassName="h-full w-full object-cover"
-                              fallbackTitleClassName="text-xl"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4
-                              className="font-medium text-sm truncate"
-                              title={project.title || project.link}
-                            >
-                              {project.title || "Project"}
-                            </h4>
-                            {project.description ? (
-                              <p
-                                className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed"
-                                title={project.description}
-                              >
-                                {project.description}
-                              </p>
-                            ) : null}
-                            <p
-                              className="mt-1 text-xs text-muted-foreground truncate"
-                              title={project.link}
-                            >
-                              {project.link}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {project.link ? (
-                              <a
-                                href={project.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors text-xs"
-                                title="Visit Project"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                Visit
-                              </a>
-                            ) : (
-                              <span className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-secondary/40 text-muted-foreground/60 text-xs cursor-not-allowed">
-                                <ExternalLink className="w-3 h-3" />
-                                No Link
-                              </span>
-                            )}
-                            <label
-                              htmlFor={`project-cover-modal-${idx}`}
-                              className="flex items-center justify-center gap-1 p-1.5 rounded-lg bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors text-xs cursor-pointer"
-                              title="Upload cover image"
-                            >
-                              {projectCoverUploadingIndex === idx ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Camera className="w-3 h-3" />
-                              )}
-                              Cover
-                            </label>
-                            <input
-                              id={`project-cover-modal-${idx}`}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(event) =>
-                                handleProjectCoverInputChange(idx, event)
-                              }
-                            />
-                            <button
-                              onClick={() => removeProject(idx)}
-                              className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-colors"
-                              title="Remove Project"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p className="text-sm">No projects added yet.</p>
-                      <button
-                        className="mt-2 text-primary text-sm hover:underline"
-                        onClick={() => {
-                          resetProjectDraft();
-                          setModalType("addProject");
-                        }}
-                      >
-                        Add your first project
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-5 flex justify-between">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary"
-                    onClick={() => {
-                      resetProjectDraft();
-                      setModalType("addProject");
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Project
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    Close
+                    {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
+                    Save changes
                   </button>
                 </div>
               </>
             ) : modalType === "portfolio" ? (
               <>
                 <h1 className="text-lg font-semibold text-foreground">
-                  Edit Online Presence
+                  Edit Professional Links
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Update your social and portfolio links.
+                  Update your public links shown in the profile header.
                 </p>
+
                 <div className="mt-4 space-y-4">
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    Portfolio Website
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Portfolio URL
+                    </span>
                     <input
-                      value={portfolio.portfolioUrl}
-                      onChange={(e) =>
+                      value={portfolio.portfolioUrl || ""}
+                      onChange={(event) =>
                         setPortfolio((prev) => ({
                           ...prev,
-                          portfolioUrl: e.target.value,
+                          portfolioUrl: event.target.value,
                         }))
                       }
                       placeholder="https://yourportfolio.com"
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                     />
                   </label>
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    LinkedIn URL
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      LinkedIn URL
+                    </span>
                     <input
-                      value={portfolio.linkedinUrl}
-                      onChange={(e) =>
+                      value={portfolio.linkedinUrl || ""}
+                      onChange={(event) =>
                         setPortfolio((prev) => ({
                           ...prev,
-                          linkedinUrl: e.target.value,
+                          linkedinUrl: event.target.value,
                         }))
                       }
-                      placeholder="https://linkedin.com/..."
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                      placeholder="https://linkedin.com/in/username"
+                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                     />
                   </label>
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                    GitHub URL (Optional)
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      GitHub URL
+                    </span>
                     <input
-                      value={portfolio.githubUrl}
-                      onChange={(e) =>
+                      value={portfolio.githubUrl || ""}
+                      onChange={(event) =>
                         setPortfolio((prev) => ({
                           ...prev,
-                          githubUrl: e.target.value,
+                          githubUrl: event.target.value,
                         }))
                       }
-                      placeholder="https://github.com/..."
-                      className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                      placeholder="https://github.com/username"
+                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                     />
                   </label>
                 </div>
 
-                {/* Resume Upload Section */}
-                <div className="mt-4 pt-4 border-t border-border">
-                  <label className="block text-[11px] uppercase tracking-[0.3em] text-muted-foreground mb-2">
-                    Resume / CV
-                  </label>
-
-                  <div className="flex items-center gap-3">
-                    {/* Hidden File Input */}
-                    <input
-                      type="file"
-                      id="resume-upload"
-                      className="hidden"
-                      accept=".pdf,.doc,.docx"
-                      onChange={async (e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-
-                        // Check size (5MB)
-                        if (file.size > 5 * 1024 * 1024) {
-                          toast.error("File is too large (max 5MB)");
-                          return;
-                        }
-
-                        const formData = new FormData();
-                        formData.append("file", file);
-
-                        const toastId = toast.loading("Uploading resume...");
-
-                        try {
-                          const res = await authFetch("/upload/resume", {
-                            method: "POST",
-                            body: formData,
-                          });
-
-                          if (!res.ok) {
-                            const errorData = await res
-                              .json()
-                              .catch(() => ({}));
-                            throw new Error(
-                              errorData.message || "Upload failed"
-                            );
-                          }
-
-                          const data = await res.json();
-                          const resumeUrl = data.data.url;
-                          const nextPortfolio = {
-                            ...portfolio,
-                            resume: resumeUrl,
-                          };
-
-                          setPortfolio(nextPortfolio);
-
-                          try {
-                            // Save resume URL to profile
-                            const resumeEmail = personal.email || user?.email;
-                            const saveRes = await authFetch("/profile", {
-                              method: "POST",
-                              body: JSON.stringify({
-                                personal: { email: resumeEmail },
-                                resume: resumeUrl,
-                                portfolio: nextPortfolio,
-                              }),
-                            });
-
-                            if (!saveRes.ok) {
-                              throw new Error("Resume save failed");
-                            }
-                            console.log(
-                              "[Resume] Saved to database successfully"
-                            );
-                          } catch (saveErr) {
-                            console.error(saveErr);
-                            toast.error(
-                              "Resume uploaded, but failed to save profile",
-                              { id: toastId }
-                            );
-                            return;
-                          }
-
-                          toast.success("Resume uploaded!", { id: toastId });
-                        } catch (err) {
-                          console.error(err);
-                          toast.error("Failed to upload resume", {
-                            id: toastId,
-                          });
-                        }
-
-                        // Reset input
-                        e.target.value = "";
-                      }}
-                    />
-
-                    {/* Upload Button */}
-                    <label
-                      htmlFor="resume-upload"
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/70 cursor-pointer transition-colors border border-border text-sm font-medium"
-                    >
-                      <Briefcase className="w-4 h-4" />
-                      {portfolio.resume ? "Update Resume" : "Upload Resume"}
-                    </label>
-
-                    {/* View/Download Link if exists */}
-                    {portfolio.resume && (
-                      <a
-                        href={portfolio.resume}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline truncate max-w-[200px]"
-                        title={portfolio.resume}
-                      >
-                        View Current Resume
-                      </a>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1.5 ml-1">
-                    Accepts PDF, DOC, DOCX (Max 5MB)
-                  </p>
-                </div>
-
-                <div className="mt-5 flex justify-end gap-3">
+                <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
                   <button
                     type="button"
                     onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    Done
-                  </button>
-                </div>
-              </>
-            ) : modalType === "fullProfile" ? (
-              <>
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-xl font-semibold text-foreground">
-                      Edit Full Profile
-                    </h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Update your onboarding profile details and save directly to
-                      database.
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                    <h2 className="text-sm font-semibold text-foreground">
-                      Identity
-                    </h2>
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-professional-title"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Professional Title
-                        </Label>
-                        <Input
-                          id="full-professional-title"
-                          name="professionalTitle"
-                          value={fullProfileForm.professionalTitle}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="e.g. Full Stack Developer"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-username"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Username
-                        </Label>
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                            @
-                          </span>
-                          <Input
-                            id="full-username"
-                            name="username"
-                            value={fullProfileForm.username}
-                            onChange={handleFullProfileFieldChange}
-                            placeholder="username"
-                            className="h-10 bg-background/70 pl-7"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-country"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Country
-                        </Label>
-                        <Input
-                          id="full-country"
-                          name="country"
-                          value={fullProfileForm.country}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="Country"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-city"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          City
-                        </Label>
-                        <Input
-                          id="full-city"
-                          name="city"
-                          value={fullProfileForm.city}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="City"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label
-                          htmlFor="full-languages"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Languages
-                        </Label>
-                        <Input
-                          id="full-languages"
-                          name="languages"
-                          value={fullProfileForm.languages}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="English, Hindi"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label
-                          htmlFor="full-other-language"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Other Language
-                        </Label>
-                        <Input
-                          id="full-other-language"
-                          name="otherLanguage"
-                          value={fullProfileForm.otherLanguage}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="Optional additional language"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                    <h2 className="text-sm font-semibold text-foreground">
-                      Work Preferences
-                    </h2>
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-role"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Work Style
-                        </Label>
-                        <select
-                          id="full-role"
-                          name="role"
-                          value={fullProfileForm.role}
-                          onChange={handleFullProfileFieldChange}
-                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                        >
-                          <option value="">Select role</option>
-                          <option value="individual">Individual Freelancer</option>
-                          <option value="agency">Agency / Studio</option>
-                          <option value="part_time">Part-Time Freelancer</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-hours"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Weekly Availability
-                        </Label>
-                        <select
-                          id="full-hours"
-                          name="hoursPerWeek"
-                          value={fullProfileForm.hoursPerWeek}
-                          onChange={handleFullProfileFieldChange}
-                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                        >
-                          <option value="">Select availability</option>
-                          <option value="less_than_10">
-                            Less than 10 hours/week
-                          </option>
-                          <option value="10_20">10-20 hours/week</option>
-                          <option value="20_30">20-30 hours/week</option>
-                          <option value="30_plus">30+ hours/week</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-schedule"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Working Schedule
-                        </Label>
-                        <Input
-                          id="full-schedule"
-                          name="workingSchedule"
-                          value={fullProfileForm.workingSchedule}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="e.g. Weekdays"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-start-timeline"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Start Timeline
-                        </Label>
-                        <Input
-                          id="full-start-timeline"
-                          name="startTimeline"
-                          value={fullProfileForm.startTimeline}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="e.g. Immediate"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-missed-deadlines"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Missed Deadlines
-                        </Label>
-                        <Input
-                          id="full-missed-deadlines"
-                          name="missedDeadlines"
-                          value={fullProfileForm.missedDeadlines}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="e.g. Never"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="full-delay-handling"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Delay Handling
-                        </Label>
-                        <Input
-                          id="full-delay-handling"
-                          name="delayHandling"
-                          value={fullProfileForm.delayHandling}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="e.g. Communicate early"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                    <h2 className="text-sm font-semibold text-foreground">
-                      Policies And Industry Focus
-                    </h2>
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2 md:col-span-2">
-                        <Label
-                          htmlFor="full-industry-focus"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Industry Focus
-                        </Label>
-                        <Input
-                          id="full-industry-focus"
-                          name="globalIndustryFocus"
-                          value={fullProfileForm.globalIndustryFocus}
-                          onChange={handleFullProfileFieldChange}
-                          placeholder="SaaS, Healthcare, Ecommerce"
-                          className="h-10 bg-background/70"
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label
-                          htmlFor="full-accept-projects"
-                          className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                        >
-                          Take Over In-Progress Projects
-                        </Label>
-                        <select
-                          id="full-accept-projects"
-                          name="acceptInProgressProjects"
-                          value={fullProfileForm.acceptInProgressProjects}
-                          onChange={handleFullProfileFieldChange}
-                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                        >
-                          <option value="">Select option</option>
-                          <option value="yes">Yes</option>
-                          <option value="no">No</option>
-                          <option value="open">Open to all</option>
-                        </select>
-                      </div>
-                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2.5">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Delivery Policy Accepted
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Confirms delivery terms.
-                          </p>
-                        </div>
-                        <Switch
-                          checked={Boolean(fullProfileForm.deliveryPolicyAccepted)}
-                          onCheckedChange={(checked) =>
-                            setFullProfileForm((prev) => ({
-                              ...prev,
-                              deliveryPolicyAccepted: checked,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2.5">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Communication Policy Accepted
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Confirms communication terms.
-                          </p>
-                        </div>
-                        <Switch
-                          checked={Boolean(
-                            fullProfileForm.communicationPolicyAccepted
-                          )}
-                          onCheckedChange={(checked) =>
-                            setFullProfileForm((prev) => ({
-                              ...prev,
-                              communicationPolicyAccepted: checked,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2.5 md:col-span-2">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            Terms Accepted
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Confirms profile terms and conditions.
-                          </p>
-                        </div>
-                        <Switch
-                          checked={Boolean(fullProfileForm.termsAccepted)}
-                          onCheckedChange={(checked) =>
-                            setFullProfileForm((prev) => ({
-                              ...prev,
-                              termsAccepted: checked,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <h2 className="text-sm font-semibold text-foreground">
-                        Education
-                      </h2>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addEducationEntry}
-                      >
-                        <Plus className="mr-1 h-3.5 w-3.5" />
-                        Add
-                      </Button>
-                    </div>
-
-                    <div className="mt-3 space-y-3">
-                      {(Array.isArray(fullProfileForm.education)
-                        ? fullProfileForm.education
-                        : []
-                      ).map((entry, index) => (
-                        <div
-                          key={`education-row-${index}`}
-                          className="rounded-lg border border-border/60 bg-background/50 p-3"
-                        >
-                          <div className="grid gap-3 md:grid-cols-2">
-                            <Input
-                              value={entry.school || ""}
-                              onChange={(event) =>
-                                handleEducationFieldChange(
-                                  index,
-                                  "school",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="School / University"
-                              className="h-10 bg-background/80"
-                            />
-                            <Input
-                              value={entry.degree || ""}
-                              onChange={(event) =>
-                                handleEducationFieldChange(
-                                  index,
-                                  "degree",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="Degree"
-                              className="h-10 bg-background/80"
-                            />
-                            <Input
-                              value={entry.field || ""}
-                              onChange={(event) =>
-                                handleEducationFieldChange(
-                                  index,
-                                  "field",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="Field / Specialization"
-                              className="h-10 bg-background/80"
-                            />
-                            <Input
-                              value={entry.country || ""}
-                              onChange={(event) =>
-                                handleEducationFieldChange(
-                                  index,
-                                  "country",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="Country"
-                              className="h-10 bg-background/80"
-                            />
-                            <Input
-                              value={entry.graduationYear || ""}
-                              onChange={(event) =>
-                                handleEducationFieldChange(
-                                  index,
-                                  "graduationYear",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="Graduation Year"
-                              className="h-10 bg-background/80 md:col-span-2"
-                            />
-                          </div>
-                          {(Array.isArray(fullProfileForm.education)
-                            ? fullProfileForm.education.length
-                            : 0) > 1 ? (
-                            <div className="mt-2 flex justify-end">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeEducationEntry(index)}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="mr-1 h-3.5 w-3.5" />
-                                Remove
-                              </Button>
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                    <Label
-                      htmlFor="full-professional-bio"
-                      className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-                    >
-                      Professional Bio
-                    </Label>
-                    <Textarea
-                      id="full-professional-bio"
-                      name="professionalBio"
-                      value={fullProfileForm.professionalBio}
-                      onChange={handleFullProfileFieldChange}
-                      rows={5}
-                      placeholder="Tell clients about your strengths, execution style, and outcomes..."
-                      className="mt-2 min-h-[120px] resize-y bg-background/70"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 border-t border-border/70 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setModalType(null)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={saveFullProfileEditor}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : modalType === "personal" ? (
-              <>
-                <div className="space-y-5">
-                  <div>
-                    <h1 className="text-xl font-semibold text-foreground">
-                      Edit Personal Details
-                    </h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Update your public profile information shown to clients.
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <Label
-                          htmlFor="freelancer-available-switch"
-                          className="text-sm font-semibold tracking-normal"
-                        >
-                          Available for work
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Show that you are currently open to new projects.
-                        </p>
-                      </div>
-                      <Switch
-                        id="freelancer-available-switch"
-                        checked={Boolean(personal.available)}
-                        onCheckedChange={(checked) =>
-                          setPersonal((prev) => ({ ...prev, available: checked }))
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="personal-headline" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Headline
-                      </Label>
-                      <Input
-                        id="personal-headline"
-                        name="headline"
-                        value={personal.headline || ""}
-                        onChange={handlePersonalChange}
-                        placeholder="e.g. Full Stack Developer"
-                        className="h-10 bg-background/70"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="personal-experience" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Years of Experience
-                      </Label>
-                      <Input
-                        id="personal-experience"
-                        name="experienceYears"
-                        type="number"
-                        min="0"
-                        value={personal.experienceYears || ""}
-                        onChange={handlePersonalChange}
-                        placeholder="e.g. 5"
-                        className="h-10 bg-background/70"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="personal-name" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Display Name
-                      </Label>
-                      <Input
-                        id="personal-name"
-                        name="name"
-                        value={personal.name || ""}
-                        onChange={handlePersonalChange}
-                        placeholder="Your Name"
-                        className="h-10 bg-background/70"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="personal-username" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Username
-                      </Label>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          @
-                        </span>
-                        <Input
-                          id="personal-username"
-                          value={String(onboardingIdentity?.username || "")}
-                          onChange={handlePersonalUsernameChange}
-                          placeholder="username"
-                          className="h-10 bg-background/70 pl-7"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="personal-phone" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Phone
-                      </Label>
-                      <Input
-                        id="personal-phone"
-                        name="phone"
-                        value={personal.phone || ""}
-                        onChange={handlePersonalChange}
-                        placeholder="+91..."
-                        className="h-10 bg-background/70"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="personal-location" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Location
-                      </Label>
-                      <Input
-                        id="personal-location"
-                        name="location"
-                        value={personal.location || ""}
-                        onChange={handlePersonalChange}
-                        placeholder="City, Country"
-                        className="h-10 bg-background/70"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="personal-bio" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Bio / About Me
-                    </Label>
-                    <Textarea
-                      id="personal-bio"
-                      name="bio"
-                      value={personal.bio || ""}
-                      onChange={handlePersonalChange}
-                      rows={6}
-                      placeholder="Tell clients about your expertise, outcomes, and communication style..."
-                      className="min-h-[140px] resize-y bg-background/70"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
-                    <p className="text-xs text-muted-foreground">
-                      Click <span className="font-medium text-foreground">Update Profile</span> to save all changes.
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setModalType(null)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={() => setModalType(null)}
-                      >
-                        Done
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <h1 className="text-lg font-semibold text-foreground">
-                  {editingIndex !== null
-                    ? "Edit Work Experience"
-                    : "Add Work Experience"}
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Capture your role, timeline, and the impact you had.
-                </p>
-
-                <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                  Company
-                  <input
-                    value={workForm.company}
-                    onChange={(event) =>
-                      setWorkForm((prev) => ({
-                        ...prev,
-                        company: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                  />
-                </label>
-
-                <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                  Position
-                  <input
-                    value={workForm.position}
-                    onChange={(event) =>
-                      setWorkForm((prev) => ({
-                        ...prev,
-                        position: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                  />
-                </label>
-
-                <div className="mt-3 grid gap-6 sm:grid-cols-2">
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                      From
-                    </span>
-                    <Popover modal={true}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal rounded-2xl border-border bg-background px-3 py-2 h-auto hover:bg-background",
-                            !workForm.from && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {workForm.from ? (
-                            workForm.from
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={(() => {
-                            if (!workForm.from) return undefined;
-                            const d = parse(
-                              workForm.from,
-                              "MMM yyyy",
-                              new Date()
-                            );
-                            return isValid(d) ? d : undefined;
-                          })()}
-                          onSelect={(date) => {
-                            if (date) {
-                              setWorkForm((prev) => ({
-                                ...prev,
-                                from: format(date, "MMM yyyy"),
-                              }));
-                            }
-                          }}
-                          initialFocus
-                          captionLayout="dropdown"
-                          startMonth={new Date(1980, 0)}
-                          endMonth={new Date(2030, 11)}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                        To
-                      </span>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="present"
-                          checked={workForm.to === "Present"}
-                          onCheckedChange={(checked) => {
-                            setWorkForm((prev) => ({
-                              ...prev,
-                              to: checked ? "Present" : "",
-                            }));
-                          }}
-                        />
-                        <label
-                          htmlFor="present"
-                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer text-muted-foreground"
-                        >
-                          Present
-                        </label>
-                      </div>
-                    </div>
-
-                    <Popover modal={true}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          disabled={workForm.to === "Present"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal rounded-2xl border-border bg-background px-3 py-2 h-auto hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed",
-                            !workForm.to && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {workForm.to === "Present" ? (
-                            "Present"
-                          ) : workForm.to ? (
-                            workForm.to
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={(() => {
-                            if (!workForm.to || workForm.to === "Present")
-                              return undefined;
-                            const d = parse(
-                              workForm.to,
-                              "MMM yyyy",
-                              new Date()
-                            );
-                            return isValid(d) ? d : undefined;
-                          })()}
-                          onSelect={(date) => {
-                            if (date) {
-                              setWorkForm((prev) => ({
-                                ...prev,
-                                to: format(date, "MMM yyyy"),
-                              }));
-                            }
-                          }}
-                          initialFocus
-                          captionLayout="dropdown"
-                          startMonth={new Date(1980, 0)}
-                          endMonth={new Date(2030, 11)}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                <label className="mt-3 block text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                  Description
-                  <textarea
-                    value={workForm.description}
-                    onChange={(event) =>
-                      setWorkForm((prev) => ({
-                        ...prev,
-                        description: event.target.value,
-                      }))
-                    }
-                    rows={3}
-                    className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                  />
-                </label>
-
-                <div className="mt-5 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalType(null);
-                      setEditingIndex(null);
-                      setWorkForm(initialWorkForm);
-                    }}
                     className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    onClick={saveExperience}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors"
+                    onClick={savePortfolioSection}
+                    disabled={isSaving}
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                   >
-                    {editingIndex !== null ? "Update" : "Save"}
+                    {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
+                    Save changes
                   </button>
                 </div>
               </>
+            ) : modalType === "fullProfile" ? (
+              <FullProfileEditorModalContent
+                fullProfileForm={fullProfileForm}
+                handleFullProfileFieldChange={handleFullProfileFieldChange}
+                setFullProfileForm={setFullProfileForm}
+                addEducationEntry={addEducationEntry}
+                handleEducationFieldChange={handleEducationFieldChange}
+                removeEducationEntry={removeEducationEntry}
+                saveFullProfileEditor={saveFullProfileEditor}
+                isSaving={isSaving}
+                setModalType={setModalType}
+              />
+            ) : modalType === "education" ? (
+              <EducationModalContent
+                fullProfileForm={fullProfileForm}
+                addEducationEntry={addEducationEntry}
+                handleEducationFieldChange={handleEducationFieldChange}
+                removeEducationEntry={removeEducationEntry}
+                saveEducationSection={saveEducationSection}
+                isSaving={isSaving}
+                setModalType={setModalType}
+                MONTH_OPTIONS={MONTH_OPTIONS}
+                YEAR_OPTIONS={YEAR_OPTIONS}
+              />
+            ) : modalType === "personal" ? (
+              <PersonalDetailsModalContent
+                personal={personal}
+                portfolio={portfolio}
+                onboardingIdentity={onboardingIdentity}
+                handlePersonalChange={handlePersonalChange}
+                handlePersonalUsernameChange={handlePersonalUsernameChange}
+                setPortfolio={setPortfolio}
+                savePersonalSection={savePersonalSection}
+                isSaving={isSaving}
+                setPersonal={setPersonal}
+                setModalType={setModalType}
+              />
+            ) : (
+              <WorkExperienceModalContent
+                editingIndex={editingIndex}
+                workForm={workForm}
+                setWorkForm={setWorkForm}
+                buildMonthYearLabel={buildMonthYearLabel}
+                MONTH_OPTIONS={MONTH_OPTIONS}
+                YEAR_OPTIONS={YEAR_OPTIONS}
+                EMPLOYMENT_TYPE_OPTIONS={EMPLOYMENT_TYPE_OPTIONS}
+                LOCATION_TYPE_OPTIONS={LOCATION_TYPE_OPTIONS}
+                initialWorkForm={initialWorkForm}
+                saveExperience={saveExperience}
+                isSaving={isSaving}
+                setModalType={setModalType}
+                setEditingIndex={setEditingIndex}
+              />
             )}
           </div>
         </div>
@@ -3944,3 +3046,4 @@ const FreelancerProfileWrapper = () => {
 };
 
 export default FreelancerProfileWrapper;
+

@@ -28,8 +28,8 @@ const ProfileOnboardingSnapshotCard = ({
           variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
-          onClick={openFullProfileEditor}
-          title="Edit full profile details"
+          onClick={() => openFullProfileEditor("workPreferences")}
+          title="Edit work preferences"
         >
           <Edit2 className="h-4 w-4" />
         </Button>
