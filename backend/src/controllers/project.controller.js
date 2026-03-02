@@ -95,9 +95,9 @@ export const createProject = asyncHandler(async (req, res) => {
   // Find a project manager to assign. We prioritize ACTIVE managers and balance the load.
   console.log("Looking for an available Project Manager...");
   const projectManager = await prisma.user.findFirst({
-    where: { 
+    where: {
       role: "PROJECT_MANAGER",
-      status: "ACTIVE" 
+      status: "ACTIVE"
     },
     orderBy: { managedProjects: { _count: 'asc' } }
   });
@@ -161,10 +161,12 @@ export const listProjects = asyncHandler(async (req, res) => {
     // Build query based on role
     let where = {};
 
-    // Project Managers and Admins can see all projects
-    if (user?.role === "PROJECT_MANAGER" || user?.role === "ADMIN") {
-      // No filter - show all projects
+    // Admins can see all projects
+    if (user?.role === "ADMIN") {
       where = {};
+    } else if (user?.role === "PROJECT_MANAGER") {
+      // PMs only see projects assigned to them
+      where = { managerId: userId };
     } else {
       // Clients only see their own projects
       where = { ownerId: userId };
@@ -212,9 +214,9 @@ export const listProjects = asyncHandler(async (req, res) => {
       ...project,
       proposals: Array.isArray(project.proposals)
         ? project.proposals.map((proposal) => ({
-            ...proposal,
-            freelancer: flattenFreelancerProfile(proposal.freelancer)
-          }))
+          ...proposal,
+          freelancer: flattenFreelancerProfile(proposal.freelancer)
+        }))
         : []
     }));
     res.json({ data: hydratedProjects });
@@ -240,24 +242,24 @@ export const getProject = asyncHandler(async (req, res) => {
       },
       proposals: {
         include: {
-            freelancer: {
-              select: {
-                id: true,
-                fullName: true,
-                email: true,
-                avatar: true,
-                freelancerProfile: {
-                  select: {
-                    jobTitle: true,
-                    skills: true,
-                    bio: true,
-                    portfolio: true,
-                    linkedin: true,
-                    github: true
-                  }
+          freelancer: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              avatar: true,
+              freelancerProfile: {
+                select: {
+                  jobTitle: true,
+                  skills: true,
+                  bio: true,
+                  portfolio: true,
+                  linkedin: true,
+                  github: true
                 }
               }
             }
+          }
         },
         orderBy: { createdAt: "desc" }
       },
@@ -277,6 +279,16 @@ export const getProject = asyncHandler(async (req, res) => {
     throw new AppError("Project not found", 404);
   }
 
+  // Enforce PM scope
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
+  });
+
+  if (user?.role === "PROJECT_MANAGER" && project.managerId !== userId) {
+    throw new AppError("Access denied. You are not assigned to this project.", 403);
+  }
+
   // TODO: Add refined permission check if needed (e.g. check if user is owner or freelancer)
   // For now, allow if authenticated (or maybe just restrict to owner?)
   // if (project.ownerId !== userId) { ... }
@@ -284,9 +296,9 @@ export const getProject = asyncHandler(async (req, res) => {
     ...project,
     proposals: Array.isArray(project.proposals)
       ? project.proposals.map((proposal) => ({
-          ...proposal,
-          freelancer: flattenFreelancerProfile(proposal.freelancer)
-        }))
+        ...proposal,
+        freelancer: flattenFreelancerProfile(proposal.freelancer)
+      }))
       : []
   };
 
@@ -322,7 +334,14 @@ export const updateProject = asyncHandler(async (req, res) => {
   );
   const isAcceptedFreelancer = acceptedProposal?.freelancerId === userId;
 
-  if (!isOwner && !isAcceptedFreelancer) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
+  });
+  const isAssignedPM = user?.role === "PROJECT_MANAGER" && existing.managerId === userId;
+  const isAdmin = user?.role === "ADMIN";
+
+  if (!isOwner && !isAcceptedFreelancer && !isAssignedPM && !isAdmin) {
     throw new AppError("Permission denied", 403);
   }
 
@@ -419,7 +438,7 @@ export const payUpfront = asyncHandler(async (req, res) => {
   // Calculate upfront payment based on budget tiers
   const acceptedProposal = project.proposals?.[0];
   const amount = acceptedProposal?.amount || project.budget || 0;
-  
+
   let parts = 2; // Default to 2 parts (< 50k)
   let percentage = 50;
 

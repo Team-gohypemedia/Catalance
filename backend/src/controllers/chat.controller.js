@@ -54,12 +54,21 @@ export const listUserConversations = asyncHandler(async (req, res) => {
       .map((m) => m.conversationId)
       .filter(Boolean);
 
-    // Also get all project conversations (PM can see all)
+    // Find projects assigned to this PM
+    const pmProjects = await prisma.project.findMany({
+      where: { managerId: userId },
+      select: { id: true }
+    });
+
+    // Create an array of potential service keys for these projects
+    const projectServicePrefixes = pmProjects.map((p) => ({ service: { startsWith: `CHAT:${p.id}` } }));
+
+    // Get conversations where the PM sent a message OR it relates to an assigned project
     const allProjectConversations = await prisma.chatConversation.findMany({
       where: {
         OR: [
           { id: { in: conversationIds } },
-          { service: { startsWith: "CHAT:" } }
+          ...(projectServicePrefixes.length > 0 ? projectServicePrefixes : [])
         ]
       },
       orderBy: { updatedAt: "desc" },
@@ -424,6 +433,17 @@ export const getProjectMessages = asyncHandler(async (req, res) => {
       "Access denied. Only Project Managers can access this.",
       403
     );
+  }
+
+  // Enforce PM Scope
+  if (user.role === "PROJECT_MANAGER") {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { managerId: true }
+    });
+    if (!project || project.managerId !== userId) {
+      throw new AppError("Access denied. You are not assigned to this project's chat.", 403);
+    }
   }
 
   const conversations = await prisma.chatConversation.findMany({

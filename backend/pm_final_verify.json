@@ -1,0 +1,66 @@
+[
+  {
+    "email": "pm1@test.com",
+    "role": "PROJECT_MANAGER",
+    "tests": {
+      "projects": {
+        "count": 1,
+        "sampleIds": [
+          "cmm3em75y0002xlze0tjzqzr1"
+        ]
+      },
+      "chats": {
+        "count": 0
+      }
+    }
+  },
+  {
+    "email": "pm2@test.com",
+    "role": "PROJECT_MANAGER",
+    "tests": {
+      "projects": {
+        "count": 1,
+        "sampleIds": [
+          "cmm3em7u10006xlzetly3uxa9"
+        ]
+      },
+      "chats": {
+        "count": 0
+      }
+    }
+  },
+  {
+    "email": "admin_test@example.com",
+    "role": "ADMIN",
+    "tests": {
+      "projects": {
+        "count": 20,
+        "sampleIds": [
+          "cmm3fhp74003dkescvq2qnil6",
+          "cmm3fhoyo0039kescvh3htxh8",
+          "cmm3fhoof0035kesc6n5m0nd3",
+          "cmm3fhog80031kescyh9f2b4q",
+          "cmm3fho7y002xkescj9eds1ek",
+          "cmm3fhnzr002tkescmba46o6p",
+          "cmm3fhnrh002pkescvw73p1su",
+          "cmm3fhnj0002lkesc65u4cvpk",
+          "cmm3fhna9002hkesctzo6sc36",
+          "cmm3fhmvw002dkescb881myen",
+          "cmm3ema130012xlzejh1p2k7t",
+          "cmm3em9t4000yxlzeys4bjth1",
+          "cmm3em9k3000uxlzel3r3keq3",
+          "cmm3em9ar000qxlzej55sc031",
+          "cmm3em91t000mxlzefhsoy97l",
+          "cmm3em8sx000ixlzeb0wssyrn",
+          "cmm3em8jx000exlzehob80h67",
+          "cmm3em899000axlzer895txwg",
+          "cmm3em7u10006xlzetly3uxa9",
+          "cmm3em75y0002xlze0tjzqzr1"
+        ]
+      },
+      "chats": {
+        "count": 0
+      }
+    }
+  }
+]
