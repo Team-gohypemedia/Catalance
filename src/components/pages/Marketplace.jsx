@@ -94,7 +94,8 @@ const Marketplace = () => {
             if (debouncedMinBudget) query.append("minBudget", debouncedMinBudget);
             if (debouncedMaxBudget) query.append("maxBudget", debouncedMaxBudget);
 
-            const res = await fetch(`/api/marketplace?${query.toString()}`);
+            const { API_BASE_URL } = await import("@/shared/lib/api-client");
+            const res = await fetch(`${API_BASE_URL}/marketplace?${query.toString()}`);
             if (!res.ok) throw new Error("Failed to fetch");
             const json = await res.json();
             if (json) {
