@@ -1,0 +1,18 @@
+﻿* main bbe2b5d [origin/main] chore: remove accidentally committed env file containing secrets
+bbe2b5df15cb41353825c36dcab45cb7cbadc574
+bbe2b5df15cb41353825c36dcab45cb7cbadc574
+bbe2b5d chore: remove accidentally committed env file containing secrets
+d143668 feat: Add a marketplace page with search, filtering, and pagination, along with supporting backend routes, controllers, and environment configurations.
+18d0136 Merge branch 'main' of https://github.com/Team-gohypemedia/Catalance
+31a4cc1 feat: enhance API client for local development and add freelancer matching logic
+ebc0bcd feat: add service-aware opening message for guest interactions; enhance first question logic based on user input
+efffa0f updated
+9dbfc35 style: update layout and styling in GlobalDashboardHeader and CatalanceHero components for improved UI consistency
+410bd4d feat: enhance freelancer onboarding with new profile field and UI adjustments; improve contact form handling
+053e7ed fix: update password reset email configuration and enhance sender address handling
+9351e2d Refactor Privacy Policy, Refund Policy, and Terms of Service pages for clarity and consistency; enhance About and Contact sections with new content and form handling; update Navbar logo and API client for contact inquiries.
+dd31528 feat: enhance user registration flow with OTP handling and improved error messages
+f1d61ec Merge branch 'main' of https://github.com/Team-gohypemedia/Catalance
+9ba1914 feat: enhance freelancer profile components with new cards and improved UI
+e6db778 feat: add admin panel functionalities for user and project management, dashboard statistics, and AI service cache invalidation.
+1c86c6c feat: update guest chat and demo components to handle option inputs and improve user interaction

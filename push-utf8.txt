@@ -1,0 +1,43 @@
+﻿git : To https://github
+.com/Team-gohypemedia/C
+atalance.git
+At line:1 char:49
++ ... rigin main; git 
+status > status.txt; 
+git push origin main 
+2> push.txt
++                      
+                    ~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (To https://gi   
+ th...a/Catalance.g    
+it:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+ ! [rejected]        
+main -> main 
+(non-fast-forward)
+error: failed to push 
+some refs to 'https://g
+ithub.com/Team-gohypeme
+dia/Catalance.git'
+hint: Updates were 
+rejected because the 
+tip of your current 
+branch is behind
+hint: its remote 
+counterpart. If you 
+want to integrate the 
+remote changes,
+hint: use 'git pull' 
+before pushing again.
+hint: See the 'Note 
+about fast-forwards' 
+in 'git push --help' 
+for details.
