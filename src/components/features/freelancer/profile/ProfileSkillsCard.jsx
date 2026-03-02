@@ -1,8 +1,17 @@
+import Check from "lucide-react/dist/esm/icons/check";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
+import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+
+const SKILL_LEVEL_OPTIONS = Object.freeze([
+    "Beginner",
+    "Intermediate",
+    "Expert",
+]);
 
 const normalizeSkill = (entry, index) => {
     if (typeof entry === "string") {
@@ -20,9 +29,18 @@ const normalizeSkill = (entry, index) => {
     };
 };
 
-const ProfileSkillsCard = ({ skills, deleteSkill, openSkillModal }) => {
+const ProfileSkillsCard = ({
+    skills,
+    deleteSkill,
+    setSkillLevel,
+    onSaveChanges,
+    savingChanges,
+    hasPendingChanges,
+    openSkillModal,
+}) => {
     const skillCards = (Array.isArray(skills) ? skills : []).map(normalizeSkill);
     const [openMenu, setOpenMenu] = useState(null);
+    const [openMenuView, setOpenMenuView] = useState("actions");
 
     return (
         <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
@@ -30,14 +48,27 @@ const ProfileSkillsCard = ({ skills, deleteSkill, openSkillModal }) => {
                 <h3 className="text-xl font-bold tracking-tight text-foreground">
                     Skills & Expertise
                 </h3>
-                <button
-                    type="button"
-                    onClick={openSkillModal}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted active:scale-[0.98]"
-                >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    Add new
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={openSkillModal}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted active:scale-[0.98]"
+                    >
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Add new
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onSaveChanges}
+                        disabled={savingChanges || !hasPendingChanges}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {savingChanges ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : null}
+                        Save changes
+                    </button>
+                </div>
             </div>
 
             {skillCards.length > 0 ? (
@@ -60,9 +91,15 @@ const ProfileSkillsCard = ({ skills, deleteSkill, openSkillModal }) => {
                                 <div className="relative">
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            setOpenMenu(openMenu === index ? null : index)
-                                        }
+                                        onClick={() => {
+                                            if (openMenu === index) {
+                                                setOpenMenu(null);
+                                                setOpenMenuView("actions");
+                                            } else {
+                                                setOpenMenu(index);
+                                                setOpenMenuView("actions");
+                                            }
+                                        }}
                                         className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
                                         title="Options"
                                     >
@@ -73,20 +110,69 @@ const ProfileSkillsCard = ({ skills, deleteSkill, openSkillModal }) => {
                                         <>
                                             <div
                                                 className="fixed inset-0 z-10"
-                                                onClick={() => setOpenMenu(null)}
+                                                onClick={() => {
+                                                    setOpenMenu(null);
+                                                    setOpenMenuView("actions");
+                                                }}
                                             />
-                                            <div className="absolute right-0 top-8 z-20 min-w-[120px] rounded-lg border border-border/60 bg-card p-1 shadow-lg">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        deleteSkill(index);
-                                                        setOpenMenu(null);
-                                                    }}
-                                                    className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-destructive transition-colors duration-150 hover:bg-destructive/10"
-                                                >
-                                                    <Trash2 className="h-3 w-3" />
-                                                    Remove
-                                                </button>
+                                            <div className="absolute right-0 top-8 z-20 min-w-[170px] rounded-lg border border-border/60 bg-card p-1 shadow-lg">
+                                                {openMenuView === "actions" ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setOpenMenuView("levels")}
+                                                            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-150 hover:bg-muted/60"
+                                                        >
+                                                            <Pencil className="h-3 w-3" />
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                deleteSkill(index);
+                                                                setOpenMenu(null);
+                                                                setOpenMenuView("actions");
+                                                            }}
+                                                            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-destructive transition-colors duration-150 hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                            Remove
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <p className="px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                                                            Skill level
+                                                        </p>
+                                                        {SKILL_LEVEL_OPTIONS.map((levelOption) => (
+                                                            <button
+                                                                key={`${skill.id}-${levelOption}`}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (typeof setSkillLevel === "function") {
+                                                                        setSkillLevel(index, levelOption);
+                                                                    }
+                                                                    setOpenMenu(null);
+                                                                    setOpenMenuView("actions");
+                                                                }}
+                                                                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-150 hover:bg-muted/60"
+                                                            >
+                                                                <span>{levelOption}</span>
+                                                                {skill.level === levelOption ? (
+                                                                    <Check className="h-3.5 w-3.5 text-primary" />
+                                                                ) : null}
+                                                            </button>
+                                                        ))}
+                                                        <div className="my-1 h-px bg-border/60" />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setOpenMenuView("actions")}
+                                                            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-muted/60 hover:text-foreground"
+                                                        >
+                                                            Back
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </>
                                     ) : null}
