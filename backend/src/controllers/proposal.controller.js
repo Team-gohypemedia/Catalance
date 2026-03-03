@@ -12,6 +12,21 @@ const normalizeAmount = (value) => {
   return parsed < 0 ? 0 : parsed;
 };
 
+const FREELANCER_REJECTION_REASON_PRESETS = Object.freeze({
+  budget_not_fit: "Budget does not fit the project scope",
+  timeline_unrealistic: "Timeline is not realistic",
+  scope_unclear: "Project requirements are unclear",
+  skill_mismatch: "Project is outside my current expertise",
+  workload_capacity: "I do not have capacity right now",
+});
+
+const CUSTOM_REJECTION_REASON_KEY = "custom";
+
+const FREELANCER_REJECTION_REASON_KEYS = new Set([
+  ...Object.keys(FREELANCER_REJECTION_REASON_PRESETS),
+  CUSTOM_REJECTION_REASON_KEY,
+]);
+
 export const createProposal = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
 
@@ -179,9 +194,10 @@ export const listProposals = asyncHandler(async (req, res) => {
 
   // Fetch chat conversations to get latest activity
   const serviceKeys = proposals.map(p => {
+    const projectId = p.project.id;
     const ownerId = p.project.ownerId;
     const freelancerId = p.freelancerId;
-    return `CHAT:${ownerId}:${freelancerId}`;
+    return `CHAT:${projectId}:${ownerId}:${freelancerId}`;
   });
 
   const conversations = await prisma.chatConversation.findMany({
@@ -195,7 +211,7 @@ export const listProposals = asyncHandler(async (req, res) => {
   });
 
   const proposalsWithActivity = proposals.map(p => {
-    const key = `CHAT:${p.project.ownerId}:${p.freelancerId}`;
+    const key = `CHAT:${p.project.id}:${p.project.ownerId}:${p.freelancerId}`;
     const chatUpdated = conversationMap.get(key);
     // Use the later of proposal update or chat update
     const lastActivity = chatUpdated ? new Date(chatUpdated) : new Date(p.updatedAt);
@@ -246,7 +262,7 @@ export const deleteProposal = asyncHandler(async (req, res) => {
 export const updateProposalStatus = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   const proposalId = req.params.id;
-  const { status } = req.body || {};
+  const { status, rejectionReason, rejectionReasonKey } = req.body || {};
 
   if (!userId) {
     throw new AppError("Authentication required", 401);
@@ -285,6 +301,43 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
   if (!isOwner && !isFreelancer) {
     throw new AppError("You do not have permission to update this proposal", 403);
   }
+
+  const normalizedReasonKey = String(rejectionReasonKey || "")
+    .trim()
+    .toLowerCase();
+  const trimmedRejectionReason = String(rejectionReason || "").trim();
+  const shouldCollectFreelancerRejectionReason =
+    normalizedStatus === "REJECTED" && isFreelancer;
+
+  if (shouldCollectFreelancerRejectionReason) {
+    if (
+      !normalizedReasonKey ||
+      !FREELANCER_REJECTION_REASON_KEYS.has(normalizedReasonKey)
+    ) {
+      throw new AppError(
+        "Please select a valid rejection reason before rejecting this proposal.",
+        400
+      );
+    }
+
+    if (
+      normalizedReasonKey === CUSTOM_REJECTION_REASON_KEY &&
+      trimmedRejectionReason.length < 3
+    ) {
+      throw new AppError(
+        "Please provide a custom rejection reason (at least 3 characters).",
+        400
+      );
+    }
+  }
+
+  const rejectionReasonForSave = shouldCollectFreelancerRejectionReason
+    ? normalizedReasonKey === CUSTOM_REJECTION_REASON_KEY
+      ? trimmedRejectionReason
+      : trimmedRejectionReason ||
+        FREELANCER_REJECTION_REASON_PRESETS[normalizedReasonKey] ||
+        ""
+    : null;
 
   try {
     // Use a transaction to atomically check and update to prevent race conditions
@@ -328,7 +381,11 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
               id: { not: proposalId },
               status: "PENDING"
             },
-            data: { status: "REJECTED" }
+            data: {
+              status: "REJECTED",
+              rejectionReason: "Another proposal was accepted for this project.",
+              rejectionReasonKey: "system_awarded_to_another",
+            }
           });
         }
 
@@ -377,9 +434,21 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       }
       
       // Now do the update atomically
+      const proposalUpdateData = {
+        status: normalizedStatus,
+      };
+
+      if (normalizedStatus === "REJECTED" && isFreelancer) {
+        proposalUpdateData.rejectionReason = rejectionReasonForSave;
+        proposalUpdateData.rejectionReasonKey = normalizedReasonKey;
+      } else if (normalizedStatus !== "REJECTED") {
+        proposalUpdateData.rejectionReason = null;
+        proposalUpdateData.rejectionReasonKey = null;
+      }
+
       const updated = await tx.proposal.update({
         where: { id: proposalId },
-        data: { status: normalizedStatus },
+        data: proposalUpdateData,
         include: {
           project: { include: { owner: true } },
           freelancer: true
@@ -441,7 +510,38 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       }
     }
 
-    // MARKIFY: If status is ACCEPTED (by freelancer), send an automated chat message to the client.
+    // Notify owner when freelancer rejects a proposal and include reason.
+    if (
+      isFreelancer &&
+      normalizedStatus === "REJECTED" &&
+      proposal.status !== normalizedStatus
+    ) {
+      try {
+        const freelancerName =
+          updated.freelancer?.fullName ||
+          updated.freelancer?.name ||
+          "A freelancer";
+        const reasonLine = rejectionReasonForSave
+          ? ` Reason: ${rejectionReasonForSave}`
+          : "";
+
+        sendNotificationToUser(updated.project.ownerId, {
+          type: "proposal",
+          title: "Proposal Rejected by Freelancer",
+          message: `${freelancerName} declined your proposal for "${updated.project.title}".${reasonLine}`,
+          data: {
+            projectId: updated.projectId,
+            proposalId: updated.id,
+            status: normalizedStatus,
+            rejectionReason: rejectionReasonForSave || null,
+          }
+        });
+      } catch (err) {
+        console.error("Failed to notify client about rejection:", err);
+      }
+    }
+
+    // If status is ACCEPTED by freelancer, notify client and mark project as awaiting payment.
     if (normalizedStatus === "ACCEPTED" && isFreelancer) {
       // Notify the client that freelancer accepted their proposal
       try {
@@ -470,71 +570,6 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
         console.error("Failed to update project status:", projError);
       }
 
-      try {
-        const projectId = updated.projectId;
-        const ownerId = updated.project.ownerId;
-        const freelancerId = updated.freelancerId;
-        const projectTitle = updated.project.title || "Project Chat";
-        
-        // Use new project-based key format: CHAT:PROJECT_ID:CLIENT_ID:FREELANCER_ID
-        const serviceKey = `CHAT:${projectId}:${ownerId}:${freelancerId}`;
-
-        // 2. Find or create conversation
-        let conversation = await prisma.chatConversation.findFirst({
-          where: { service: serviceKey }
-        });
-
-        if (!conversation) {
-          conversation = await prisma.chatConversation.create({
-            data: {
-              service: serviceKey,
-              projectTitle: projectTitle,
-              createdById: freelancerId
-            }
-          });
-        }
-
-        // 3. Create the message with earnings after 30% platform fee
-        const freelancerName = updated.freelancer.fullName || updated.freelancer.name || updated.freelancer.email || "Freelancer";
-        const messageContent = `I have accepted the proposal. Let's start the work!`;
-        const userMessage = await prisma.chatMessage.create({
-          data: {
-            conversationId: conversation.id,
-            senderId: freelancerId,
-            senderName: freelancerName,
-            senderRole: "FREELANCER",
-            role: "user",
-            content: messageContent
-          }
-        });
-
-        // 4. Update conversation timestamp
-        await prisma.chatConversation.update({
-          where: { id: conversation.id },
-          data: { updatedAt: new Date() }
-        });
-
-        // 5. Send notification to client about the new message
-        try {
-          sendNotificationToUser(ownerId, {
-            type: "chat",
-            title: "New Message",
-            message: `${freelancerName}: ${messageContent}`,
-            data: { 
-              conversationId: conversation.id,
-              projectId: projectId,
-              service: serviceKey,
-              senderId: freelancerId
-            }
-          }, false); // No email for chat messages
-        } catch (notifyErr) {
-          console.error("Failed to notify client about auto-message:", notifyErr);
-        }
-        
-      } catch (chatError) {
-        console.error("Failed to send automated acceptance message:", chatError);
-        // Don't fail the request, just log it.
-      }
     }
 
     res.json({ data: updated });

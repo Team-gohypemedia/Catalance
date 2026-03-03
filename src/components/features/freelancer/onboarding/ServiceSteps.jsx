@@ -60,6 +60,16 @@ const stripMinLabelSuffix = (label) =>
         ? label.replace(/\s*\(Min\s*\d+\)\s*$/i, "").trim()
         : label;
 
+const normalizePlatformLinkInput = (value = "") => {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) return "";
+    if (/^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)) return trimmed;
+    if (/^[\w.-]+\.[a-z]{2,}(?:[/?#:]|$)/i.test(trimmed)) {
+        return `https://${trimmed}`;
+    }
+    return trimmed;
+};
+
 // ============================================================================
 // SERVICES SELECTION STEP
 // ============================================================================
@@ -861,9 +871,13 @@ export const ServicePlatformLinksStep = ({
     currentStep,
     renderContinueButton,
 }) => {
-    const selectedServices = Array.isArray(formData.selectedServices)
-        ? formData.selectedServices
-        : [];
+    const selectedServices = Array.from(
+        new Set(
+            (Array.isArray(formData.selectedServices) ? formData.selectedServices : [])
+                .map((serviceKey) => String(serviceKey || "").trim())
+                .filter(Boolean),
+        ),
+    );
 
     const updatePlatformLink = (serviceKey, fieldKey, value) => {
         const detail = formData.serviceDetails?.[serviceKey] || createServiceDetail();
@@ -924,6 +938,12 @@ export const ServicePlatformLinksStep = ({
                                                 onChange={(event) =>
                                                     updatePlatformLink(serviceKey, field.key, event.target.value)
                                                 }
+                                                onBlur={(event) => {
+                                                    const normalized = normalizePlatformLinkInput(event.target.value);
+                                                    if (normalized !== event.target.value) {
+                                                        updatePlatformLink(serviceKey, field.key, normalized);
+                                                    }
+                                                }}
                                                 placeholder={field.placeholder}
                                                 className="pl-9 bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30"
                                             />

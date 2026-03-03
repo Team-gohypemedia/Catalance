@@ -6,6 +6,7 @@ import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import Circle from "lucide-react/dist/esm/icons/circle";
 import Zap from "lucide-react/dist/esm/icons/zap";
 import { motion } from "framer-motion";
 
@@ -76,6 +77,23 @@ const ProjectCard = ({ project }) => {
     typeof project.budget === "number" ? project.budget : Number(project.budget) || 0;
   const deadlineValue =
     project.deadline && typeof project.deadline === "string" ? project.deadline : "";
+  const timelineSteps = [
+    {
+      id: "proposal-accepted",
+      label: "Proposal Accepted",
+      state: "done",
+    },
+    {
+      id: "freelancer-active",
+      label: "Freelance Active",
+      state: project.paymentPending ? "upcoming" : "done",
+    },
+    {
+      id: "pending-payment",
+      label: "Pending your payment",
+      state: project.paymentPending ? "current" : "done",
+    },
+  ];
 
   return (
     <motion.div
@@ -129,6 +147,41 @@ const ProjectCard = ({ project }) => {
                 {deadlineValue || "TBD"}
               </p>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-background/30 p-4">
+            <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/80">
+              Project steps
+            </p>
+            <ol className="mt-3 space-y-2">
+              {timelineSteps.map((step) => {
+                const isDone = step.state === "done";
+                const isCurrent = step.state === "current";
+                const StepIcon = isDone ? CheckCircle2 : isCurrent ? Clock : Circle;
+
+                return (
+                  <li
+                    key={step.id}
+                    className={`flex items-center gap-2 text-sm ${
+                      isDone
+                        ? "text-emerald-400"
+                        : isCurrent
+                        ? "text-amber-300"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <StepIcon className="h-4 w-4 shrink-0" />
+                    <span>{step.label}</span>
+                  </li>
+                );
+              })}
+            </ol>
+
+            {project.paymentPending ? (
+              <p className="mt-3 text-xs text-amber-300/90">
+                Messages will start after upfront payment.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-3">
@@ -190,12 +243,11 @@ const ClientProjectsContent = () => {
             );
             if (!accepted) return null; // only surface projects with an accepted freelancer
             
-            // Exclude projects awaiting payment - they should only appear in dashboard pending payments section
-            // Check both the explicit status AND if no money has been spent yet (spent === 0 or null)
             const rawStatus = (p.status || "").toUpperCase();
-            const hasNoPayment = !p.spent || p.spent === 0;
-            if (rawStatus === "AWAITING_PAYMENT" || hasNoPayment) return null;
-            
+            const spentAmount = Number(p.spent || 0);
+            const paymentPending =
+              rawStatus === "AWAITING_PAYMENT" || spentAmount <= 0;
+
             // Calculate progress - use project.progress if available, default to 0
             const projectProgress = typeof p.progress === "number" 
               ? p.progress 
@@ -203,7 +255,9 @@ const ClientProjectsContent = () => {
             
             // Determine status based on progress
             let displayStatus = "pending";
-            if (projectProgress === 100) {
+            if (paymentPending) {
+              displayStatus = "pending";
+            } else if (projectProgress === 100 || rawStatus === "COMPLETED") {
               displayStatus = "completed";
             } else if (projectProgress > 0) {
               displayStatus = "in-progress";
@@ -220,7 +274,8 @@ const ClientProjectsContent = () => {
               status: displayStatus,
               budget: p.budget || 0,
               deadline: p.deadline || "",
-              progress: projectProgress,
+              progress: paymentPending ? 0 : projectProgress,
+              paymentPending,
             };
           })
           .filter(Boolean);

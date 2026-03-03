@@ -274,6 +274,44 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   res.json({ data: updatedUser });
 });
 
+// Update user verification (KYC) status
+export const updateUserVerification = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { isVerified } = req.body;
+
+  if (typeof isVerified !== "boolean") {
+    throw new Error("isVerified must be a boolean");
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { isVerified },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      status: true,
+      isVerified: true,
+    },
+  });
+
+  try {
+    await sendNotificationToUser(userId, {
+      type: "system",
+      title: isVerified ? "Identity Verified" : "Identity Verification Rejected",
+      message: isVerified
+        ? "Your KYC documents were approved. You can now use payout features."
+        : "Your KYC submission was rejected. Please re-upload valid documents.",
+      data: { isVerified },
+    });
+  } catch (e) {
+    console.error("Failed to notify user about verification change:", e);
+  }
+
+  res.json({ data: updatedUser });
+});
+
 // Get all projects for admin
 export const getProjects = asyncHandler(async (req, res) => {
   try {

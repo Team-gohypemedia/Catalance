@@ -122,6 +122,12 @@ const navConfigs = {
       isActive: true,
     },
     {
+      title: "Payments",
+      url: "/client/payments",
+      icon: CreditCard,
+      isActive: true,
+    },
+    {
       title: "Profile",
       url: "/client/profile",
       icon: User,

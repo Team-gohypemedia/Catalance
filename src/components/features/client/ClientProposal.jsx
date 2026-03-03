@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +11,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +18,6 @@ import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "react-router-dom";
 
 // Helper to format currency
 const formatBudget = (val) => {
@@ -75,7 +72,7 @@ const extractProposalDetails = (proposal) => {
   if (delivery === "Not set" && proposal.content) {
     // Try to extract from content if simple regex matches
     const timelineMatch = proposal.content.match(
-      /Timeline[:\s\-]*(.+?)(?:\n|$)/i
+      /Timeline[:\s-]*(.+?)(?:\n|$)/i
     );
     if (timelineMatch) delivery = timelineMatch[1].trim();
   }
@@ -84,14 +81,19 @@ const extractProposalDetails = (proposal) => {
     budget: formatBudget(budget),
     delivery: delivery,
     statusDisplay:
-      proposal.status === "accepted" ? "In Progress" : "Pending Review",
+      proposal.status === "draft"
+        ? "Draft"
+        : proposal.status === "rejected"
+          ? "Rejected"
+          : "Pending Review",
   };
 };
 
-const ProposalRowCard = ({ proposal, onDelete, onOpen, onChat }) => {
+const ProposalRowCard = ({ proposal, onDelete, onOpen }) => {
   const details = extractProposalDetails(proposal);
 
   const statusColors = {
+    draft: "bg-slate-500/10 text-slate-400 border-slate-300/30",
     accepted: "bg-emerald-500/10 text-emerald-500 border-emerald-200/40",
     sent: "bg-blue-500/10 text-blue-500 border-blue-200/40",
     pending: "bg-amber-500/10 text-amber-500 border-amber-200/40",
@@ -99,6 +101,7 @@ const ProposalRowCard = ({ proposal, onDelete, onOpen, onChat }) => {
   };
 
   const statusLabels = {
+    draft: "DRAFT",
     accepted: "ACCEPTED",
     sent: "SENT",
     pending: "PENDING",
@@ -248,6 +251,8 @@ const mapApiProposal = (proposal = {}) => {
 
 const normalizeProposalStatus = (status = "") => {
   switch (status.toUpperCase()) {
+    case "DRAFT":
+      return "draft";
     case "ACCEPTED":
       return "accepted";
     case "REJECTED":
@@ -261,14 +266,13 @@ const normalizeProposalStatus = (status = "") => {
 };
 
 const ClientProposalContent = () => {
-  const { isAuthenticated, authFetch, user } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated, authFetch } = useAuth();
   const [proposals, setProposals] = useState([]);
   const [activeProposal, setActiveProposal] = useState(null);
   const [isViewing, setIsViewing] = useState(false);
   const [isLoadingProposal, setIsLoadingProposal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState("draft");
 
   const fetchProposals = useCallback(async () => {
     try {
@@ -325,29 +329,21 @@ const ClientProposalContent = () => {
         if (!response.ok) throw new Error("Unable to delete proposal.");
         setProposals((prev) => prev.filter((p) => p.id !== id));
         toast.success("Proposal deleted.");
-      } catch (error) {
+      } catch {
         toast.error("Unable to delete proposal right now.");
       }
     },
     [authFetch]
   );
 
-  const handleChat = useCallback(
-    (proposal) => {
-      if (!proposal.projectId || !proposal.freelancerId) return;
-      // Navigate to messages
-      navigate(
-        `/client/messages?projectId=${proposal.projectId}&freelancerId=${proposal.freelancerId}`
-      );
-    },
-    [navigate]
-  );
-
   const grouped = useMemo(() => {
     return proposals.reduce(
       (acc, proposal) => {
         if (proposal.status === "accepted") {
-          acc.active.push(proposal);
+          return acc;
+        }
+        if (proposal.status === "draft") {
+          acc.draft.push(proposal);
         } else if (proposal.status === "rejected") {
           acc.rejected.push(proposal);
         } else {
@@ -355,7 +351,7 @@ const ClientProposalContent = () => {
         }
         return acc;
       },
-      { active: [], pending: [], rejected: [] }
+      { draft: [], pending: [], rejected: [] }
     );
   }, [proposals]);
 
@@ -400,7 +396,7 @@ const ClientProposalContent = () => {
               Project Proposals
             </h1>
             <p className="text-muted-foreground mt-1">
-              Manage your active proposals and communicate with freelancers.
+              Manage your draft, pending, and rejected proposals.
             </p>
           </div>
           {/* Filter/Sort removed */}
@@ -408,17 +404,17 @@ const ClientProposalContent = () => {
 
         {/* Tabs */}
         <Tabs
-          defaultValue="active"
+          defaultValue="draft"
           value={activeTab}
           onValueChange={setActiveTab}
           className="w-full"
         >
           <TabsList className="bg-transparent p-0 h-auto w-full justify-start gap-4 mb-6">
             <TabsTrigger
-              value="active"
-              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-green-500 data-[state=active]:text-white data-[state=active]:shadow-md"
+              value="draft"
+              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-600 data-[state=active]:text-white data-[state=active]:shadow-md"
             >
-              Active Proposals
+              Draft
             </TabsTrigger>
             <TabsTrigger
               value="pending"
@@ -435,23 +431,23 @@ const ClientProposalContent = () => {
           </TabsList>
 
           <div className="mt-6">
-            <TabsContent value="active" className="m-0 space-y-4">
+            <TabsContent value="draft" className="m-0 space-y-4">
               {isLoading ? (
                 [1, 2].map((i) => (
                   <Skeleton key={i} className="h-40 w-full rounded-xl" />
                 ))
-              ) : grouped.active.length ? (
-                grouped.active.map((p) => (
+              ) : grouped.draft.length ? (
+                grouped.draft.map((p) => (
                   <ProposalRowCard
                     key={p.id}
                     proposal={p}
                     onOpen={handleOpenProposal}
-                    onChat={handleChat}
+                    onDelete={handleDelete}
                   />
                 ))
               ) : (
                 <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-12 text-center text-muted-foreground">
-                  No active contracts found.
+                  No drafts found.
                 </div>
               )}
             </TabsContent>

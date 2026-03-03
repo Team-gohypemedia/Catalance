@@ -489,6 +489,11 @@ const FreelancerChatContent = () => {
         for (const item of items) {
           // Filter: Only show accepted proposals (active projects)
           if (item.status !== "ACCEPTED") continue;
+          const projectStatus = (item.project?.status || "").toUpperCase();
+          const spentAmount = Number(item.project?.spent || 0);
+          const isPaymentPending =
+            projectStatus === "AWAITING_PAYMENT" || spentAmount <= 0;
+          if (isPaymentPending) continue;
 
           const owner = item.project?.owner;
           if (!owner?.id) continue;

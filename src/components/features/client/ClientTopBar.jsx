@@ -26,6 +26,7 @@ export const ClientTopBar = ({ label, title }) => {
     if (pathname.startsWith("/client/proposal/drafts")) return "Proposal Drafts";
     if (pathname.startsWith("/client/proposal")) return "Proposals";
     if (pathname.startsWith("/client/messages")) return "Messages";
+    if (pathname.startsWith("/client/payments")) return "Billing";
     if (pathname.startsWith("/client/project/")) return "Project Detail";
     if (pathname.startsWith("/client/project")) return "Projects";
     return "Dashboard";

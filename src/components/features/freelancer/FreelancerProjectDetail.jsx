@@ -44,6 +44,8 @@ import X from "lucide-react/dist/esm/icons/x";
 import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import Flag from "lucide-react/dist/esm/icons/flag";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
@@ -415,6 +417,15 @@ const FreelancerProjectDetailContent = () => {
     totalPending: 0,
   });
   const fileInputRef = useRef(null);
+  const milestoneFileInputRef = useRef(null);
+  const [milestoneDraft, setMilestoneDraft] = useState({
+    title: "",
+    githubUrl: "",
+    figmaUrl: "",
+    notes: "",
+  });
+  const [milestoneFile, setMilestoneFile] = useState(null);
+  const [isSubmittingMilestone, setIsSubmittingMilestone] = useState(false);
 
   // Dispute Report State
   const [reportOpen, setReportOpen] = useState(false);
@@ -1122,6 +1133,110 @@ const FreelancerProjectDetailContent = () => {
     }
   };
 
+  const handleMilestoneFileChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    setMilestoneFile(file);
+  };
+
+  const normalizeUrl = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+  };
+
+  const submitMilestoneForReview = async () => {
+    if (!conversationId || !authFetch) {
+      toast.error("Chat is not ready yet. Please try again in a moment.");
+      return;
+    }
+
+    const title = milestoneDraft.title.trim();
+    const githubUrl = normalizeUrl(milestoneDraft.githubUrl);
+    const figmaUrl = normalizeUrl(milestoneDraft.figmaUrl);
+    const notes = milestoneDraft.notes.trim();
+
+    if (!title) {
+      toast.error("Add a milestone title before submitting.");
+      return;
+    }
+
+    if (!milestoneFile && !githubUrl && !figmaUrl) {
+      toast.error("Attach a file or add a GitHub/Figma link for review.");
+      return;
+    }
+
+    setIsSubmittingMilestone(true);
+    try {
+      let attachment = null;
+      if (milestoneFile) {
+        const formData = new FormData();
+        formData.append("file", milestoneFile);
+        const uploadResponse = await authFetch("/upload/chat", {
+          method: "POST",
+          body: formData,
+          skipLogoutOn401: true,
+        });
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload milestone file");
+        }
+        const uploadPayload = await uploadResponse.json();
+        const fileUrl = uploadPayload?.data?.url || uploadPayload?.url;
+        attachment = {
+          name: milestoneFile.name,
+          size: milestoneFile.size,
+          type: milestoneFile.type,
+          url: fileUrl,
+        };
+      }
+
+      const lines = [
+        "[Milestone Submission]",
+        `Title: ${title}`,
+      ];
+      if (githubUrl) lines.push(`GitHub: ${githubUrl}`);
+      if (figmaUrl) lines.push(`Figma: ${figmaUrl}`);
+      if (notes) lines.push(`Notes: ${notes}`);
+      const content = lines.join("\n");
+
+      const serviceKey =
+        project?.ownerId && user?.id
+          ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
+          : `project:${project?.id || projectId}`;
+
+      await authFetch(`/chat/conversations/${conversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          service: serviceKey,
+          senderRole: "FREELANCER",
+          senderName: user?.fullName || user?.name || user?.email || "Freelancer",
+          attachment,
+          skipAssistant: true,
+        }),
+      });
+
+      setMilestoneDraft({
+        title: "",
+        githubUrl: "",
+        figmaUrl: "",
+        notes: "",
+      });
+      setMilestoneFile(null);
+      if (milestoneFileInputRef.current) {
+        milestoneFileInputRef.current.value = "";
+      }
+      toast.success("Milestone submitted for PM review.");
+      fetchMessages();
+    } catch (error) {
+      console.error("Failed to submit milestone", error);
+      toast.error(error?.message || "Failed to submit milestone");
+    } finally {
+      setIsSubmittingMilestone(false);
+    }
+  };
+
   const docs = useMemo(() => {
     return messages
       .filter((m) => m.attachment)
@@ -1129,6 +1244,20 @@ const FreelancerProjectDetailContent = () => {
         ...m.attachment,
         createdAt: m.createdAt || m.timestamp,
       }));
+  }, [messages]);
+
+  const submittedMilestones = useMemo(() => {
+    return messages
+      .filter((message) => message.sender === "user")
+      .filter((message) => String(message.text || "").includes("[Milestone Submission]"))
+      .map((message, index) => ({
+        id: message.id || `milestone-${index}`,
+        text: message.text,
+        attachment: message.attachment,
+        createdAt: message.createdAt || message.timestamp,
+      }))
+      .slice(-4)
+      .reverse();
   }, [messages]);
 
   const activeSOP = useMemo(() => {
@@ -2264,6 +2393,127 @@ const FreelancerProjectDetailContent = () => {
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
+              </Card>
+
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                    <Flag className="w-4 h-4" />
+                    Submit Milestone for Review
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    Send deliverables, GitHub links, and Figma files to your PM.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Input
+                    value={milestoneDraft.title}
+                    onChange={(event) =>
+                      setMilestoneDraft((prev) => ({
+                        ...prev,
+                        title: event.target.value,
+                      }))
+                    }
+                    placeholder="Milestone title (required)"
+                    className="h-9 text-sm"
+                  />
+                  <Input
+                    value={milestoneDraft.githubUrl}
+                    onChange={(event) =>
+                      setMilestoneDraft((prev) => ({
+                        ...prev,
+                        githubUrl: event.target.value,
+                      }))
+                    }
+                    placeholder="GitHub link (optional)"
+                    className="h-9 text-sm"
+                  />
+                  <Input
+                    value={milestoneDraft.figmaUrl}
+                    onChange={(event) =>
+                      setMilestoneDraft((prev) => ({
+                        ...prev,
+                        figmaUrl: event.target.value,
+                      }))
+                    }
+                    placeholder="Figma link (optional)"
+                    className="h-9 text-sm"
+                  />
+                  <Textarea
+                    value={milestoneDraft.notes}
+                    onChange={(event) =>
+                      setMilestoneDraft((prev) => ({
+                        ...prev,
+                        notes: event.target.value,
+                      }))
+                    }
+                    placeholder="Notes for PM (scope, QA checklist, known gaps)"
+                    className="min-h-[86px] text-sm"
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-2"
+                      onClick={() => milestoneFileInputRef.current?.click()}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      {milestoneFile ? "Replace file" : "Attach file"}
+                    </Button>
+                    {milestoneFile ? (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {milestoneFile.name}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No file attached</p>
+                    )}
+                    <input
+                      ref={milestoneFileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={handleMilestoneFileChange}
+                      accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.zip"
+                    />
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full gap-2"
+                    disabled={isSubmittingMilestone}
+                    onClick={submitMilestoneForReview}
+                  >
+                    {isSubmittingMilestone ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Flag className="w-4 h-4" />
+                    )}
+                    Submit for PM Review
+                  </Button>
+
+                  {submittedMilestones.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Recent Submissions
+                      </p>
+                      {submittedMilestones.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-md border border-border/60 bg-background/30 p-2"
+                        >
+                          <p className="text-xs text-foreground line-clamp-2">{item.text}</p>
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            {item.createdAt
+                              ? format(new Date(item.createdAt), "MMM d, h:mm a")
+                              : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </CardContent>
               </Card>
 
               {/* Documents - Second */}

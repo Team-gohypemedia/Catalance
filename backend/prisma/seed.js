@@ -16,8 +16,8 @@ const main = async () => {
       fullName: "Catalance Admin",
       passwordHash: defaultPasswordHash,
       role: "ADMIN",
-      bio: "Platform administrator.",
-      skills: []
+      isVerified: true,
+      onboardingComplete: true,
     }
   });
   console.log("Admin user created:", admin.email);
@@ -30,8 +30,6 @@ const main = async () => {
       fullName: "Sample Client",
       passwordHash: defaultPasswordHash,
       role: "CLIENT",
-      bio: "Needs help shipping a new feature.",
-      skills: []
     }
   });
 
@@ -43,8 +41,12 @@ const main = async () => {
       fullName: "Sample Freelancer",
       passwordHash: defaultPasswordHash,
       role: "FREELANCER",
-      bio: "Product designer & front-end developer.",
-      skills: ["React", "TypeScript", "UI/UX"]
+      freelancerProfile: {
+        create: {
+          bio: "Product designer & front-end developer.",
+          skills: ["React", "TypeScript", "UI/UX"],
+        }
+      }
     }
   });
 
@@ -56,8 +58,6 @@ const main = async () => {
       fullName: "Sample Project Manager",
       passwordHash: defaultPasswordHash,
       role: "PROJECT_MANAGER",
-      bio: "Overseeing disputes and project delivery.",
-      skills: ["Management", "Agile", "Conflict Resolution"]
     }
   });
 

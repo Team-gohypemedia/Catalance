@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getDashboardStats, getUsers, updateUserRole, updateUserStatus, getUserDetails, getProjects, getProjectDetails, getServices, upsertService, getServiceQuestions, upsertQuestion, reorderQuestions, deleteQuestion } from "../controllers/admin.controller.js";
+import { getDashboardStats, getUsers, updateUserRole, updateUserStatus, updateUserVerification, getUserDetails, getProjects, getProjectDetails, getServices, upsertService, getServiceQuestions, upsertQuestion, reorderQuestions, deleteQuestion } from "../controllers/admin.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
 
@@ -14,6 +14,7 @@ router.get("/projects", getProjects);
 router.get("/projects/:projectId", getProjectDetails);
 router.patch("/users/:userId/role", updateUserRole);
 router.patch("/users/:userId/status", updateUserStatus);
+router.patch("/users/:userId/verification", updateUserVerification);
 
 // Service Management Routes
 router.get("/services", getServices);

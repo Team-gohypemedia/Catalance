@@ -35,6 +35,58 @@ const serializeMessage = (message) => ({
       : message.createdAt
 });
 
+const parseProjectIdFromChatService = (service = "") => {
+  if (!service || typeof service !== "string") return null;
+  const parts = service.split(":");
+  if (parts.length < 4 || parts[0] !== "CHAT") return null;
+  return parts[1] || null;
+};
+
+const ensureProjectChatAllowed = async ({ serviceKey, userId }) => {
+  const projectId = parseProjectIdFromChatService(serviceKey);
+  if (!projectId) return null;
+  if (!userId) {
+    throw new Error("Authentication required for project chat.");
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      ownerId: true,
+      status: true,
+      spent: true,
+      proposals: {
+        where: { status: "ACCEPTED" },
+        select: { freelancerId: true },
+        take: 1
+      }
+    }
+  });
+
+  if (!project) {
+    throw new Error("Project not found for this chat.");
+  }
+
+  const acceptedFreelancerId = project.proposals?.[0]?.freelancerId || null;
+  const isParticipant =
+    String(userId) === String(project.ownerId) ||
+    (acceptedFreelancerId &&
+      String(userId) === String(acceptedFreelancerId));
+
+  if (!isParticipant) {
+    throw new Error("You do not have access to this chat.");
+  }
+
+  const isPaymentPending =
+    project.status === "AWAITING_PAYMENT" || Number(project.spent || 0) <= 0;
+  if (isPaymentPending) {
+    throw new Error("Chat will start after upfront payment is completed.");
+  }
+
+  return project;
+};
+
 let ioInstance;
 
 
@@ -102,6 +154,7 @@ export const initSocket = (server) => {
       console.log(`[Socket] chat:join request:`, { conversationId, service, senderId, socketId: socket.id });
       try {
         const serviceKey = service ? service.toString().trim() : null;
+        const requesterId = handshakeUserId || senderId || null;
         let conversation = null;
 
         if (conversationId) {
@@ -112,6 +165,10 @@ export const initSocket = (server) => {
 
         if (!conversation) {
           if (serviceKey) {
+            await ensureProjectChatAllowed({
+              serviceKey,
+              userId: requesterId
+            });
             const candidates = await prisma.chatConversation.findMany({
               where: { service: serviceKey },
               include: {
@@ -122,6 +179,11 @@ export const initSocket = (server) => {
             conversation = candidates.find(c => c._count.messages > 0) || candidates[0];
           }
         }
+
+        await ensureProjectChatAllowed({
+          serviceKey: conversation?.service || serviceKey,
+          userId: requesterId
+        });
 
         if (!conversation) {
           // Default to persisted conversation for client/freelancer chat.
@@ -166,7 +228,7 @@ export const initSocket = (server) => {
           fs.appendFileSync(logPath, logEntry);
         } catch (e) { /* ignore */ }
         socket.emit("chat:error", {
-          message: "Unable to join chat. Please try again."
+          message: error?.message || "Unable to join chat. Please try again."
         });
       }
     });
@@ -218,6 +280,7 @@ export const initSocket = (server) => {
 
         try {
           const serviceKey = service ? service.toString().trim() : null;
+          const requesterId = handshakeUserId || senderId || null;
 
           // Persisted client/freelancer chat path
           let conversation = null;
@@ -230,6 +293,10 @@ export const initSocket = (server) => {
 
           if (!conversation) {
             if (serviceKey) {
+              await ensureProjectChatAllowed({
+                serviceKey,
+                userId: requesterId
+              });
               const candidates = await prisma.chatConversation.findMany({
                 where: { service: serviceKey },
                 include: {
@@ -240,6 +307,11 @@ export const initSocket = (server) => {
               conversation = candidates.find(c => c._count.messages > 0) || candidates[0];
             }
           }
+
+          await ensureProjectChatAllowed({
+            serviceKey: conversation?.service || serviceKey,
+            userId: requesterId
+          });
 
           if (!conversation) {
             conversation = await prisma.chatConversation.create({
@@ -300,10 +372,14 @@ export const initSocket = (server) => {
             console.log(`[Socket] Notification recipient: ${recipientId}, sender: ${senderId}`);
 
             if (recipientId && String(recipientId) !== String(senderId)) {
+              const preview =
+                typeof content === "string" && content.trim()
+                  ? content.trim()
+                  : attachment?.name || "Sent an attachment";
               sendNotificationToUser(recipientId, {
                 type: "chat",
                 title: "New Message",
-                message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
+                message: `${senderName || "Someone"}: ${preview.slice(0, 50)}${preview.length > 50 ? "..." : ""}`,
                 data: {
                   conversationId: conversation.id,
                   messageId: userMessage.id,
@@ -325,7 +401,7 @@ export const initSocket = (server) => {
             fs.appendFileSync(logPath, logEntry);
           } catch (e) { /* ignore */ }
           socket.emit("chat:error", {
-            message: "Unable to send message right now."
+            message: error?.message || "Unable to send message right now."
           });
         }
       }

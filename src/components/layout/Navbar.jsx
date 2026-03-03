@@ -23,7 +23,6 @@ const navItems = [
   { name: "Marketplace", link: "/marketplace" },
   { name: "About", link: "/about" },
   { name: "Service", link: "/service" },
-  { name: "Blog", link: "/blog" },
   { name: "Contact", link: "/contact" },
 ];
 

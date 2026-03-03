@@ -1,7 +1,7 @@
 import { memo } from "react";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
-import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
+import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import X from "lucide-react/dist/esm/icons/x";
@@ -120,7 +120,7 @@ const ViewProposalDialog = ({
             <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm hover:border-primary/20 transition-colors">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-green-500/10 rounded-lg">
-                  <DollarSign className="w-4 h-4 text-green-500" />
+                  <IndianRupee className="w-4 h-4 text-green-500" />
                 </div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Estimate Budget

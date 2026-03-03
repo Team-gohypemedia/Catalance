@@ -1,16 +1,19 @@
+import Camera from "lucide-react/dist/esm/icons/camera";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import ProfileHeroCard from "@/components/features/freelancer/profile/ProfileHeroCard";
 import ProfileSummaryCards from "@/components/features/freelancer/profile/ProfileSummaryCards";
-import ProfileAboutCard from "@/components/features/freelancer/profile/ProfileAboutCard";
 import ProfileOnboardingSnapshotCard from "@/components/features/freelancer/profile/ProfileOnboardingSnapshotCard";
 import ServicesFromOnboardingCard from "@/components/features/freelancer/profile/ServicesFromOnboardingCard";
 import FeaturedProjectsSection from "@/components/features/freelancer/profile/FeaturedProjectsSection";
+import ProjectCoverMedia from "@/components/features/freelancer/profile/ProjectCoverMedia";
 import ProfileSidebarCards from "@/components/features/freelancer/profile/ProfileSidebarCards";
 import ProfileSkillsCard from "@/components/features/freelancer/profile/ProfileSkillsCard";
 import FullProfileEditorModalContent from "@/components/features/freelancer/profile/modals/FullProfileEditorModalContent";
@@ -100,6 +103,8 @@ const FreelancerProfile = () => {
   const [portfolioProjects, setPortfolioProjects] = useState([]); // [{ link, image, title }]
   const [profileDetails, setProfileDetails] = useState({});
   const [newProjectUrl, setNewProjectUrl] = useState("");
+  const [newProjectTitle, setNewProjectTitle] = useState("");
+  const [newProjectDescription, setNewProjectDescription] = useState("");
   const [newProjectImageFile, setNewProjectImageFile] = useState(null);
   const [newProjectImagePreview, setNewProjectImagePreview] = useState("");
   const [serviceProfileForm, setServiceProfileForm] = useState({
@@ -113,7 +118,7 @@ const FreelancerProfile = () => {
   const [uploadingServiceCover, setUploadingServiceCover] = useState(false);
   const [projectCoverUploadingIndex, setProjectCoverUploadingIndex] =
     useState(null);
-  const [, setNewProjectLoading] = useState(false);
+  const [newProjectLoading, setNewProjectLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingCoverImage, setUploadingCoverImage] = useState(false);
@@ -373,10 +378,42 @@ const FreelancerProfile = () => {
           available: normalized.personal?.available ?? true,
         };
 
+        const loadedServiceDetailMap =
+          loadedProfileDetails?.serviceDetails &&
+            typeof loadedProfileDetails.serviceDetails === "object"
+            ? loadedProfileDetails.serviceDetails
+            : {};
+        const loadedOnboardingPlatformLinks = collectOnboardingPlatformLinks(
+          loadedServiceDetailMap
+        );
+        const loadedFallbackPortfolioLink =
+          loadedOnboardingPlatformLinks.find((entry) =>
+            isPortfolioLikeKey(entry.key)
+          )?.url || "";
+        const loadedFallbackLinkedinLink =
+          loadedOnboardingPlatformLinks.find((entry) =>
+            entry.key.includes("linkedin")
+          )?.url || "";
+        const loadedFallbackGithubLink =
+          loadedOnboardingPlatformLinks.find((entry) =>
+            entry.key.includes("github")
+          )?.url || "";
+
         const loadedPortfolio = {
-          portfolioUrl: normalized.portfolio?.portfolioUrl || "",
-          linkedinUrl: normalized.portfolio?.linkedinUrl || "",
-          githubUrl: normalized.portfolio?.githubUrl || "",
+          portfolioUrl:
+            normalizePresenceLink(normalized.portfolio?.portfolioUrl) ||
+            normalizePresenceLink(loadedProfileDetails?.identity?.portfolioUrl) ||
+            loadedFallbackPortfolioLink ||
+            "",
+          linkedinUrl:
+            normalizePresenceLink(normalized.portfolio?.linkedinUrl) ||
+            normalizePresenceLink(loadedProfileDetails?.identity?.linkedinUrl) ||
+            loadedFallbackLinkedinLink ||
+            "",
+          githubUrl:
+            normalizePresenceLink(normalized.portfolio?.githubUrl) ||
+            loadedFallbackGithubLink ||
+            "",
           resume: normalized.portfolio?.resume || normalized.resume || "",
         };
 
@@ -679,8 +716,24 @@ const FreelancerProfile = () => {
   const openPortfolioModal = () => {
     setModalType("portfolio");
   };
+
+  const buildProfileSnapshot = (overrides = {}) => ({
+    personal: overrides.personal ?? personal,
+    portfolio: overrides.portfolio ?? portfolio,
+    skills: overrides.skills ?? skills,
+    workExperience: overrides.workExperience ?? workExperience,
+    services: overrides.services ?? services,
+    portfolioProjects: overrides.portfolioProjects ?? portfolioProjects,
+    profileDetails: overrides.profileDetails ?? profileDetails,
+  });
+
   // ----- Save to backend -----
-  const handleSave = async (snapshot = null) => {
+  const handleSave = async (snapshot = null, options = {}) => {
+    const {
+      avatarFileOverride = null,
+      coverFileOverride = null,
+      suppressSuccessToast = false,
+    } = options || {};
     const currentPersonal = snapshot?.personal ?? personal;
     const currentPortfolio = snapshot?.portfolio ?? portfolio;
     const currentSkills = snapshot?.skills ?? skills;
@@ -703,6 +756,8 @@ const FreelancerProfile = () => {
     const skillLevelsForApi = buildSkillLevelsByKey(currentSkills);
     let currentAvatarUrl = resolveAvatarUrl(currentPersonal.avatar);
     let currentCoverUrl = resolveAvatarUrl(currentPersonal.coverImage);
+    const avatarFileToUpload = avatarFileOverride || selectedFile;
+    const coverFileToUpload = coverFileOverride || selectedCoverFile;
 
     const uploadToR2 = async (file, endpoint, fallbackMessage) => {
       const uploadData = new FormData();
@@ -728,20 +783,24 @@ const FreelancerProfile = () => {
       return uploadedUrl;
     };
 
-    if (selectedFile || selectedCoverFile) {
-      setUploadingImage(Boolean(selectedFile));
-      setUploadingCoverImage(Boolean(selectedCoverFile));
+    if (avatarFileToUpload || coverFileToUpload) {
+      setUploadingImage(Boolean(avatarFileToUpload));
+      setUploadingCoverImage(Boolean(coverFileToUpload));
       try {
         const [nextAvatarUrl, nextCoverUrl] = await Promise.all([
-          selectedFile
-            ? uploadToR2(selectedFile, "/upload", "Failed to upload profile image")
-            : Promise.resolve(currentAvatarUrl),
-          selectedCoverFile
+          avatarFileToUpload
             ? uploadToR2(
-                selectedCoverFile,
-                "/upload/profile-cover",
-                "Failed to upload profile cover image"
-              )
+              avatarFileToUpload,
+              "/upload",
+              "Failed to upload profile image"
+            )
+            : Promise.resolve(currentAvatarUrl),
+          coverFileToUpload
+            ? uploadToR2(
+              coverFileToUpload,
+              "/upload/profile-cover",
+              "Failed to upload profile cover image"
+            )
             : Promise.resolve(currentCoverUrl),
         ]);
 
@@ -773,6 +832,7 @@ const FreelancerProfile = () => {
 
     const profileDetailsForSave = {
       ...existingProfileDetails,
+      professionalBio: bioText,
       skillLevels: skillLevelsForApi,
       identity: {
         ...existingIdentity,
@@ -813,15 +873,23 @@ const FreelancerProfile = () => {
       });
 
       if (!response.ok) {
+        const errorPayload = await response
+          .json()
+          .catch(() => ({ message: `Request failed with status ${response.status}` }));
         toast.error("Save failed", {
-          description: "Check backend logs for more details.",
+          description:
+            errorPayload?.message ||
+            errorPayload?.error ||
+            `Request failed with status ${response.status}.`,
         });
         return false;
       }
 
-      toast.success("Profile saved", {
-        description: "Your profile has been updated successfully.",
-      });
+      if (!suppressSuccessToast) {
+        toast.success("Profile saved", {
+          description: "Your profile has been updated successfully.",
+        });
+      }
 
       const newPersonal = {
         ...currentPersonal,
@@ -852,7 +920,8 @@ const FreelancerProfile = () => {
     } catch (error) {
       console.error("Save failed", error);
       toast.error("Save failed", {
-        description: "Something went wrong. Check console for details.",
+        description:
+          error?.message || "Something went wrong. Check console for details.",
       });
       return false;
     } finally {
@@ -944,6 +1013,11 @@ const FreelancerProfile = () => {
     // Reset input so same file can be selected again if needed
     e.target.value = "";
 
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error("File size must be less than 5MB");
       return;
@@ -954,7 +1028,29 @@ const FreelancerProfile = () => {
 
     // Show local preview immediately
     const objectUrl = URL.createObjectURL(file);
-    setPersonal((prev) => ({ ...prev, avatar: objectUrl }));
+    const nextPersonal = {
+      ...personal,
+      avatar: objectUrl,
+    };
+    setPersonal((prev) => {
+      if (prev.avatar && prev.avatar.startsWith("blob:")) {
+        URL.revokeObjectURL(prev.avatar);
+      }
+      return {
+        ...prev,
+        avatar: objectUrl,
+      };
+    });
+
+    // Persist avatar immediately so page refresh does not revert to the old image.
+    void handleSave(buildProfileSnapshot({ personal: nextPersonal }), {
+      avatarFileOverride: file,
+      suppressSuccessToast: true,
+    }).then((saved) => {
+      if (saved) {
+        toast.success("Profile image updated");
+      }
+    });
   };
 
   const handleCoverImageUpload = (e) => {
@@ -975,7 +1071,29 @@ const FreelancerProfile = () => {
 
     setSelectedCoverFile(file);
     const objectUrl = URL.createObjectURL(file);
-    setPersonal((prev) => ({ ...prev, coverImage: objectUrl }));
+    const nextPersonal = {
+      ...personal,
+      coverImage: objectUrl,
+    };
+    setPersonal((prev) => {
+      if (prev.coverImage && prev.coverImage.startsWith("blob:")) {
+        URL.revokeObjectURL(prev.coverImage);
+      }
+      return {
+        ...prev,
+        coverImage: objectUrl,
+      };
+    });
+
+    // Persist cover immediately so refresh keeps the latest image.
+    void handleSave(buildProfileSnapshot({ personal: nextPersonal }), {
+      coverFileOverride: file,
+      suppressSuccessToast: true,
+    }).then((saved) => {
+      if (saved) {
+        toast.success("Profile cover updated");
+      }
+    });
   };
 
   const handleResumeUpload = useCallback(
@@ -1230,6 +1348,8 @@ const FreelancerProfile = () => {
   // ----- Portfolio Projects Logic -----
   const resetProjectDraft = () => {
     setNewProjectUrl("");
+    setNewProjectTitle("");
+    setNewProjectDescription("");
     setNewProjectImageFile(null);
     setNewProjectImagePreview((prev) => {
       if (prev && prev.startsWith("blob:")) {
@@ -1237,6 +1357,24 @@ const FreelancerProfile = () => {
       }
       return "";
     });
+    setNewProjectLoading(false);
+  };
+
+  const getProjectTitleFallback = (projectUrl = "") => {
+    const normalizedUrl = normalizeProjectLinkValue(projectUrl);
+    if (!normalizedUrl) return "Project";
+
+    try {
+      const parsed = new URL(normalizedUrl);
+      return parsed.hostname.replace(/^www\./i, "") || "Project";
+    } catch {
+      return (
+        normalizedUrl
+          .replace(/^https?:\/\//i, "")
+          .split("/")[0]
+          .trim() || "Project"
+      );
+    }
   };
 
   const fetchProjectPreview = useCallback(
@@ -1427,9 +1565,91 @@ const FreelancerProfile = () => {
     uploadProjectCoverImage(index, file);
   };
 
+  const handleNewProjectImageChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Project image must be less than 8MB");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setNewProjectImageFile(file);
+    setNewProjectImagePreview((prev) => {
+      if (prev && prev.startsWith("blob:")) {
+        URL.revokeObjectURL(prev);
+      }
+      return objectUrl;
+    });
+  };
+
+  const clearNewProjectImageDraft = () => {
+    setNewProjectImageFile(null);
+    setNewProjectImagePreview((prev) => {
+      if (prev && prev.startsWith("blob:")) {
+        URL.revokeObjectURL(prev);
+      }
+      return "";
+    });
+  };
+
   const handleUrlBlur = async () => {
     const rawUrl = String(newProjectUrl || "").trim();
     if (!rawUrl) return;
+
+    const normalizedUrl = normalizeProjectLinkValue(rawUrl);
+    if (!normalizedUrl) {
+      toast.error("Enter a valid project URL");
+      return;
+    }
+
+    setNewProjectLoading(true);
+
+    try {
+      const previewData = await fetchProjectPreview(normalizedUrl);
+      const resolvedUrl = normalizeProjectLinkValue(previewData?.url || normalizedUrl);
+      const resolvedTitle = String(previewData?.title || "").trim();
+      const resolvedDescription = String(previewData?.description || "").trim();
+      const resolvedImage = resolveAvatarUrl(previewData?.image, {
+        allowBlob: true,
+      });
+
+      setNewProjectUrl(resolvedUrl);
+      setNewProjectTitle((prev) => {
+        if (String(prev || "").trim()) return prev;
+        return resolvedTitle || getProjectTitleFallback(resolvedUrl);
+      });
+      setNewProjectDescription((prev) => {
+        if (String(prev || "").trim()) return prev;
+        return resolvedDescription;
+      });
+      if (
+        !newProjectImageFile &&
+        !String(newProjectImagePreview || "").trim() &&
+        resolvedImage
+      ) {
+        setNewProjectImagePreview(resolvedImage);
+      }
+    } catch (error) {
+      console.warn("Project metadata fetch failed:", error);
+    } finally {
+      setNewProjectLoading(false);
+    }
+  };
+
+  const handleAddProject = async () => {
+    const rawUrl = String(newProjectUrl || "").trim();
+    if (!rawUrl) {
+      toast.error("Project URL is required");
+      return;
+    }
 
     let normalizedUrl = normalizeProjectLinkValue(rawUrl);
     if (!normalizedUrl) {
@@ -1438,78 +1658,82 @@ const FreelancerProfile = () => {
     }
 
     const normalizedUrlKey = normalizedUrl.toLowerCase();
-    const hasDuplicate = portfolioProjects.some(
+    const hasDuplicate = (Array.isArray(portfolioProjects) ? portfolioProjects : []).some(
       (project) =>
         normalizeProjectLinkValue(project?.link).toLowerCase() === normalizedUrlKey
     );
-
     if (hasDuplicate) {
       toast.error("Project already added");
       return;
     }
 
     setNewProjectLoading(true);
-
     try {
-      let previewTitle = "";
-      let previewImage = null;
-      let previewDescription = "";
-
       const previewData = await fetchProjectPreview(normalizedUrl);
-      if (previewData) {
-        normalizedUrl = previewData.url || normalizedUrl;
-        previewTitle = previewData.title || "";
-        previewImage = previewData.image || null;
-        previewDescription = String(previewData.description || "").trim();
-      }
+      normalizedUrl = normalizeProjectLinkValue(previewData?.url || normalizedUrl);
 
+      let projectImage = resolveAvatarUrl(newProjectImagePreview, {
+        allowBlob: true,
+      });
       if (newProjectImageFile) {
-        try {
-          const uploadData = new FormData();
-          uploadData.append("file", newProjectImageFile);
+        const uploadData = new FormData();
+        uploadData.append("file", newProjectImageFile);
 
-          const uploadResponse = await authFetch("/upload/project-image", {
-            method: "POST",
-            body: uploadData,
-          });
+        const uploadResponse = await authFetch("/upload/project-image", {
+          method: "POST",
+          body: uploadData,
+        });
 
-          if (uploadResponse.ok) {
-            const uploadPayload = await uploadResponse.json();
-            if (uploadPayload?.data?.url) {
-              previewImage = uploadPayload.data.url;
-            }
-          } else {
-            const errPayload = await uploadResponse
-              .json()
-              .catch(() => ({ message: "Failed to upload project image" }));
-            throw new Error(
-              errPayload?.message || "Failed to upload project image"
-            );
-          }
-        } catch (error) {
-          console.error("Project image upload failed:", error);
-          toast.error("Failed to upload project image");
+        if (!uploadResponse.ok) {
+          const errPayload = await uploadResponse
+            .json()
+            .catch(() => ({ message: "Failed to upload project image" }));
+          throw new Error(errPayload?.message || "Failed to upload project image");
         }
+
+        const uploadPayload = await uploadResponse.json();
+        const uploadedUrl = String(uploadPayload?.data?.url || "").trim();
+        if (!uploadedUrl) {
+          throw new Error("Invalid project image response");
+        }
+        projectImage = uploadedUrl;
+      } else if (!projectImage) {
+        projectImage = resolveAvatarUrl(previewData?.image, { allowBlob: true });
       }
 
-      const fallbackTitle =
-        previewTitle ||
-        normalizedUrl.replace(/^https?:\/\//, "").split("/")[0] ||
-        "Project";
+      const finalTitle =
+        String(newProjectTitle || previewData?.title || "").trim() ||
+        getProjectTitleFallback(normalizedUrl);
+      const finalDescription = String(
+        newProjectDescription || previewData?.description || ""
+      ).trim();
 
-      setPortfolioProjects((prev) => [
-        ...prev,
+      const nextProjects = [
+        ...(Array.isArray(portfolioProjects) ? portfolioProjects : []),
         {
           link: normalizedUrl,
-          image: previewImage,
-          title: fallbackTitle,
-          description: previewDescription,
+          image: projectImage || null,
+          title: finalTitle,
+          description: finalDescription,
         },
-      ]);
+      ];
 
-      toast.success("Project added!");
-      resetProjectDraft();
-      setModalType(null);
+      const saved = await saveSectionChanges({
+        portfolioProjects: nextProjects,
+      });
+
+      if (saved) {
+        toast.success("Project added");
+        resetProjectDraft();
+        setModalType(null);
+        return;
+      }
+
+      setPortfolioProjects(nextProjects);
+      toast.error("Project added locally. Click Save changes to persist.");
+    } catch (error) {
+      console.error("Failed to add project:", error);
+      toast.error(error?.message || "Failed to add project");
     } finally {
       setNewProjectLoading(false);
     }
@@ -1885,12 +2109,18 @@ const FreelancerProfile = () => {
     String(personal.headline || "").trim() ||
     String(onboardingIdentity?.professionalTitle || "").trim() ||
     "";
-  const displayLocation = personal.location || onboardingIdentityLocation || "";
   const displayBio =
     String(profileDetails?.professionalBio || "").trim() ||
     normalizeBioValue(personal.bio) ||
     "";
+  const displayLocation = personal.location || onboardingIdentityLocation || "";
   const effectiveWorkExperience = workExperience;
+  const normalizedWorkExperience = normalizeWorkExperienceEntries(
+    effectiveWorkExperience
+  );
+  const normalizedEducationEntries = collectEducationEntriesFromProfileDetails(
+    profileDetails
+  );
   const displayPortfolioProjects = useMemo(
     () =>
       (Array.isArray(portfolioProjects) ? portfolioProjects : []).map(
@@ -1924,6 +2154,13 @@ const FreelancerProfile = () => {
       ),
     [portfolioProjects, onboardingProjectDescriptionMap]
   );
+  const hasProjectChanges = useMemo(() => {
+    const currentProjects = Array.isArray(portfolioProjects) ? portfolioProjects : [];
+    const initialProjects = Array.isArray(initialData?.portfolioProjects)
+      ? initialData.portfolioProjects
+      : [];
+    return JSON.stringify(currentProjects) !== JSON.stringify(initialProjects);
+  }, [portfolioProjects, initialData?.portfolioProjects]);
   const serviceEntriesMissingDescription = onboardingServiceEntries.filter(
     ({ detail }) =>
       !hasTextValue(detail?.serviceDescription || detail?.description)
@@ -1963,19 +2200,36 @@ const FreelancerProfile = () => {
     .map((item) => item.label);
   const missingProfileLinkCount = Math.max(0, 2 - availableProfileLinkLabels.length);
   const linkCoverage = Math.min(availableProfileLinkLabels.length, 2) / 2;
+  const hasResumeUploaded = Boolean(resolvedResumeLink);
+  const hasWorkExperienceEntries = normalizedWorkExperience.length > 0;
+  const hasEducationEntries = normalizedEducationEntries.some((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    return (
+      hasTextValue(entry.school) ||
+      hasTextValue(entry.degree) ||
+      hasTextValue(entry.field) ||
+      hasTextValue(entry.country) ||
+      hasTextValue(entry.startMonth) ||
+      hasTextValue(entry.startYear) ||
+      hasTextValue(entry.endMonth) ||
+      hasTextValue(entry.endYear) ||
+      hasTextValue(entry.graduationYear) ||
+      hasTextValue(entry.grade) ||
+      hasTextValue(entry.activities)
+    );
+  });
 
+  // Treat weekly hours + start timeline as core availability requirements.
+  // Working schedule remains optional and is shown as a helpful detail.
   const availabilityMissingDetails = [];
   if (!hasTextValue(onboardingAvailability?.hoursPerWeek)) {
     availabilityMissingDetails.push("weekly hours");
-  }
-  if (!hasTextValue(onboardingAvailability?.workingSchedule)) {
-    availabilityMissingDetails.push("working schedule");
   }
   if (!hasTextValue(onboardingAvailability?.startTimeline)) {
     availabilityMissingDetails.push("start timeline");
   }
   const availabilityCoverage =
-    (3 - availabilityMissingDetails.length) / 3;
+    (2 - availabilityMissingDetails.length) / 2;
 
   const policyMissingDetails = [];
   if (!profileDetails?.deliveryPolicyAccepted) {
@@ -1989,8 +2243,15 @@ const FreelancerProfile = () => {
   }
   const policiesCoverage = (3 - policyMissingDetails.length) / 3;
 
-  const hasProfilePhoto = Boolean(resolveAvatarUrl(personal.avatar));
-  const hasProfileCover = Boolean(resolveAvatarUrl(personal.coverImage));
+  const profilePhotoUrl = resolveAvatarUrl(personal.avatar);
+  const profileCoverUrl =
+    resolveAvatarUrl(personal.coverImage) ||
+    resolveAvatarUrl(onboardingIdentity?.coverImage) ||
+    resolveAvatarUrl(profileDetails?.identity?.coverImage);
+  const hasProfilePhoto = Boolean(profilePhotoUrl);
+  // If a dedicated cover is missing, accept profile photo as fallback so users
+  // are not blocked by an extra image requirement.
+  const hasProfileCover = Boolean(profileCoverUrl || profilePhotoUrl);
   const hasProfessionalTitle = hasTextValue(onboardingIdentity?.professionalTitle);
   const hasProfessionalBio = hasTextValue(
     profileDetails?.professionalBio || personal.bio
@@ -2044,6 +2305,21 @@ const FreelancerProfile = () => {
       label: "Featured project",
       score: hasFeaturedProject ? 1 : 0,
       weight: 8,
+    },
+    {
+      label: "Resume uploaded",
+      score: hasResumeUploaded ? 1 : 0,
+      weight: 6,
+    },
+    {
+      label: "Work experience",
+      score: hasWorkExperienceEntries ? 1 : 0,
+      weight: 6,
+    },
+    {
+      label: "Education history",
+      score: hasEducationEntries ? 1 : 0,
+      weight: 6,
     },
     {
       label: "Industry focus",
@@ -2152,6 +2428,27 @@ const FreelancerProfile = () => {
     });
   }
 
+  if (!hasResumeUploaded) {
+    profileCompletionMissingDetails.push({
+      label: "Resume uploaded",
+      detail: "Upload your resume so clients can quickly review your profile.",
+    });
+  }
+
+  if (!hasWorkExperienceEntries) {
+    profileCompletionMissingDetails.push({
+      label: "Work experience",
+      detail: "Add at least one work experience entry.",
+    });
+  }
+
+  if (!hasEducationEntries) {
+    profileCompletionMissingDetails.push({
+      label: "Education history",
+      detail: "Add your education details (school, degree, or year).",
+    });
+  }
+
   if (!hasIndustryFocus) {
     profileCompletionMissingDetails.push({
       label: "Industry focus",
@@ -2170,8 +2467,20 @@ const FreelancerProfile = () => {
     (total, item) => total + item.score * item.weight,
     0
   );
+  const profileCompletionTotalWeight = profileCompletionCriteria.reduce(
+    (total, item) => total + item.weight,
+    0
+  );
   const profileCompletionPercent = Math.round(
-    Math.max(0, Math.min(100, profileCompletionRawScore))
+    Math.max(
+      0,
+      Math.min(
+        100,
+        profileCompletionTotalWeight > 0
+          ? (profileCompletionRawScore / profileCompletionTotalWeight) * 100
+          : 0
+      )
+    )
   );
   const completedCompletionSections = profileCompletionCriteria.filter(
     (item) => item.score >= 0.999
@@ -2274,6 +2583,7 @@ const FreelancerProfile = () => {
             handleResumeUpload={handleResumeUpload}
             removeCoverImage={removeCoverImage}
             displayHeadline={displayHeadline}
+            displayBio={displayBio}
             displayLocation={displayLocation}
             onboardingIdentity={onboardingIdentity}
             onboardingLanguages={onboardingLanguages}
@@ -2292,11 +2602,6 @@ const FreelancerProfile = () => {
 
             {/* â”€â”€ Left: Main content â”€â”€ */}
             <div className="min-w-0 space-y-5">
-              <ProfileAboutCard
-                bioText={displayBio}
-                openEditPersonalModal={openEditPersonalModal}
-              />
-
               <ProfileOnboardingSnapshotCard
                 workModelLabel={onboardingRoleLabel}
                 availabilityLabel={onboardingHoursLabel}
@@ -2333,9 +2638,7 @@ const FreelancerProfile = () => {
                 projectCoverUploadingIndex={projectCoverUploadingIndex}
                 handleProjectCoverInputChange={handleProjectCoverInputChange}
                 removeProject={removeProject}
-                onSaveChanges={saveProjectsSection}
-                savingChanges={isSaving}
-                hasPendingChanges={isDirty}
+                hasPendingChanges={hasProjectChanges}
                 onAddProject={() => {
                   resetProjectDraft();
                   setModalType("addProject");
@@ -2375,7 +2678,7 @@ const FreelancerProfile = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
           <div
             className={`w-full rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "viewAllProjects"
-              ? "max-w-[60%] h-[90vh] flex flex-col"
+              ? "max-w-6xl h-[90vh] flex flex-col"
               : modalType === "fullProfile"
                 ? "max-w-5xl max-h-[90vh] overflow-y-auto"
               : modalType === "education"
@@ -2457,6 +2760,176 @@ const FreelancerProfile = () => {
                   >
                     Add
                   </button>
+                </div>
+              </>
+            ) : modalType === "viewAllProjects" ? (
+              <>
+                <div className="flex items-start justify-between gap-4 border-b border-border/70 pb-4">
+                  <div>
+                    <h1 className="text-xl font-semibold text-foreground">
+                      All Featured Projects
+                    </h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Manage every project in your profile portfolio.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      resetProjectDraft();
+                      setModalType("addProject");
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add project
+                  </Button>
+                </div>
+
+                <div className="mt-4 flex-1 overflow-y-auto pr-1">
+                  {displayPortfolioProjects.length > 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {displayPortfolioProjects.map((project, idx) => {
+                        const projectLink = normalizeProjectLinkValue(project?.link);
+                        const projectHost = getProjectTitleFallback(projectLink || "");
+                        const projectTitle = String(
+                          project?.title || projectHost || "Project"
+                        ).trim();
+                        const projectDescription = String(
+                          project?.description || ""
+                        ).trim();
+
+                        return (
+                          <article
+                            key={`project-modal-${projectLink || projectTitle}-${idx}`}
+                            className="overflow-hidden rounded-xl border border-border/70 bg-background/50"
+                          >
+                            <div className="relative aspect-[16/9] overflow-hidden">
+                              <ProjectCoverMedia
+                                project={project}
+                                containerClassName="h-full w-full"
+                                imageClassName="h-full w-full object-cover"
+                                fallbackTitleClassName="text-3xl"
+                              />
+                              <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5 rounded-full border border-white/25 bg-black/45 p-1.5 backdrop-blur-sm">
+                                {projectLink ? (
+                                  <a
+                                    href={projectLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-105"
+                                    title="Open project"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </a>
+                                ) : null}
+                                <label
+                                  htmlFor={`project-cover-modal-${idx}`}
+                                  className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-105"
+                                  title="Upload cover image"
+                                >
+                                  {projectCoverUploadingIndex === idx ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Camera className="h-3.5 w-3.5" />
+                                  )}
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => removeProject(idx)}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-white transition-transform hover:scale-105"
+                                  title="Remove project"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                              <input
+                                id={`project-cover-modal-${idx}`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(event) =>
+                                  handleProjectCoverInputChange(idx, event)
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2 p-3">
+                              <h2
+                                className="line-clamp-1 text-sm font-semibold text-foreground"
+                                title={projectTitle}
+                              >
+                                {projectTitle}
+                              </h2>
+                              {projectLink ? (
+                                <a
+                                  href={projectLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="line-clamp-1 text-xs text-primary hover:underline"
+                                  title={projectLink}
+                                >
+                                  {projectHost}
+                                </a>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">
+                                  No live link provided
+                                </p>
+                              )}
+                              {projectDescription ? (
+                                <p
+                                  className="line-clamp-3 text-xs leading-relaxed text-muted-foreground"
+                                  title={projectDescription}
+                                >
+                                  {projectDescription}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">
+                                  Add a short project description for better trust.
+                                </p>
+                              )}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex min-h-[260px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-background/35 px-6 text-center">
+                      <p className="text-base font-semibold text-foreground">
+                        No projects yet
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Add your first project to start showcasing your work.
+                      </p>
+                      <Button
+                        type="button"
+                        className="mt-4"
+                        onClick={() => {
+                          resetProjectDraft();
+                          setModalType("addProject");
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add project
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setModalType(null)}
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={saveProjectsSection}
+                    disabled={isSaving || !hasProjectChanges}
+                  >
+                    {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    Save changes
+                  </Button>
                 </div>
               </>
             ) : modalType === "onboardingService" ? (
@@ -2642,257 +3115,139 @@ const FreelancerProfile = () => {
                   Add Project
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Enter a project URL to add it to your portfolio.
+                  Add a live link, then optional details to showcase your work.
                 </p>
-                <input
-                  value={newProjectUrl}
-                  onChange={(e) => setNewProjectUrl(e.target.value)}
-                  placeholder="https://yourproject.com"
-                  className="mt-4 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleUrlBlur();
-                    }
-                  }}
-                />
                 <div className="mt-4 space-y-4">
                   <label className="block">
                     <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Title*
+                      Live URL*
+                    </span>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        value={newProjectUrl}
+                        onChange={(event) => setNewProjectUrl(event.target.value)}
+                        onBlur={handleUrlBlur}
+                        placeholder="https://yourproject.com"
+                        className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 shrink-0"
+                        onClick={handleUrlBlur}
+                        disabled={newProjectLoading}
+                      >
+                        {newProjectLoading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : null}
+                        Fetch details
+                      </Button>
+                    </div>
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Project title
                     </span>
                     <input
-                      value={workForm.position}
-                      onChange={(event) =>
-                        setWorkForm((prev) => ({
-                          ...prev,
-                          position: event.target.value,
-                        }))
-                      }
+                      value={newProjectTitle}
+                      onChange={(event) => setNewProjectTitle(event.target.value)}
+                      placeholder="Ex: Markify"
                       className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                     />
                   </label>
 
                   <label className="block">
                     <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Employment type
+                      Description
                     </span>
-                    <select
-                      value={workForm.employmentType}
-                      onChange={(event) =>
-                        setWorkForm((prev) => ({
-                          ...prev,
-                          employmentType: event.target.value,
-                        }))
-                      }
-                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    >
-                      <option value="">Select employment type</option>
-                      {workForm.employmentType &&
-                      !EMPLOYMENT_TYPE_OPTIONS.includes(workForm.employmentType) ? (
-                        <option value={workForm.employmentType}>
-                          {workForm.employmentType}
-                        </option>
-                      ) : null}
-                      {EMPLOYMENT_TYPE_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Company or organization*
-                    </span>
-                    <input
-                      value={workForm.company}
-                      onChange={(event) =>
-                        setWorkForm((prev) => ({
-                          ...prev,
-                          company: event.target.value,
-                        }))
-                      }
-                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    <textarea
+                      value={newProjectDescription}
+                      onChange={(event) => setNewProjectDescription(event.target.value)}
+                      rows={4}
+                      maxLength={320}
+                      placeholder="What this project does and the impact it created."
+                      className="w-full rounded-xl border border-border/70 bg-card/70 px-3 py-2.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                     />
-                  </label>
-
-                  <label className="inline-flex items-center gap-2.5">
-                    <Checkbox
-                      id="current-role"
-                      checked={Boolean(workForm.isCurrentRole)}
-                      onCheckedChange={(checked) =>
-                        setWorkForm((prev) => ({
-                          ...prev,
-                          isCurrentRole: Boolean(checked),
-                          to: checked ? "Present" : "",
-                          endMonth: checked ? "" : prev.endMonth,
-                          endYear: checked ? "" : prev.endYear,
-                        }))
-                      }
-                    />
-                    <span className="text-sm font-medium text-foreground">
-                      I am currently working in this role
-                    </span>
+                    <p className="mt-1 text-right text-xs text-muted-foreground">
+                      {String(newProjectDescription || "").length}/320
+                    </p>
                   </label>
 
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Start date
-                    </p>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="block">
-                        <span className="mb-1.5 block text-sm text-muted-foreground">Month*</span>
-                        <select
-                          value={workForm.startMonth}
-                          onChange={(event) =>
-                            setWorkForm((prev) => ({
-                              ...prev,
-                              startMonth: event.target.value,
-                              from: buildMonthYearLabel(event.target.value, prev.startYear),
-                            }))
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Cover image (optional)
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            document.getElementById("new-project-image-input")?.click()
                           }
-                          className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                         >
-                          <option value="">Select month</option>
-                          {MONTH_OPTIONS.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="block">
-                        <span className="mb-1.5 block text-sm text-muted-foreground">Year*</span>
-                        <select
-                          value={workForm.startYear}
-                          onChange={(event) =>
-                            setWorkForm((prev) => ({
-                              ...prev,
-                              startYear: event.target.value,
-                              from: buildMonthYearLabel(prev.startMonth, event.target.value),
-                            }))
-                          }
-                          className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                        >
-                          <option value="">Select year</option>
-                          {YEAR_OPTIONS.map((option) => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  </div>
-
-                  {!workForm.isCurrentRole ? (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">
-                        End date
-                      </p>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <label className="block">
-                          <span className="mb-1.5 block text-sm text-muted-foreground">Month*</span>
-                          <select
-                            value={workForm.endMonth}
-                            onChange={(event) =>
-                              setWorkForm((prev) => ({
-                                ...prev,
-                                endMonth: event.target.value,
-                                to: buildMonthYearLabel(event.target.value, prev.endYear),
-                              }))
-                            }
-                            className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                          Upload image
+                        </Button>
+                        {newProjectImagePreview ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearNewProjectImageDraft}
                           >
-                            <option value="">Select month</option>
-                            {MONTH_OPTIONS.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="block">
-                          <span className="mb-1.5 block text-sm text-muted-foreground">Year*</span>
-                          <select
-                            value={workForm.endYear}
-                            onChange={(event) =>
-                              setWorkForm((prev) => ({
-                                ...prev,
-                                endYear: event.target.value,
-                                to: buildMonthYearLabel(prev.endMonth, event.target.value),
-                              }))
-                            }
-                            className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                          >
-                            <option value="">Select year</option>
-                            {YEAR_OPTIONS.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        </label>
+                            Remove
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
-                  ) : null}
-
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Location
-                    </span>
                     <input
-                      value={workForm.location}
-                      onChange={(event) =>
-                        setWorkForm((prev) => ({
-                          ...prev,
-                          location: event.target.value,
-                        }))
-                      }
-                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      id="new-project-image-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleNewProjectImageChange}
                     />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Location type
-                    </span>
-                    <select
-                      value={workForm.locationType}
-                      onChange={(event) =>
-                        setWorkForm((prev) => ({
-                          ...prev,
-                          locationType: event.target.value,
-                        }))
-                      }
-                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    >
-                      <option value="">Select location type</option>
-                      {workForm.locationType &&
-                      !LOCATION_TYPE_OPTIONS.includes(workForm.locationType) ? (
-                        <option value={workForm.locationType}>{workForm.locationType}</option>
-                      ) : null}
-                      {LOCATION_TYPE_OPTIONS.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Pick a location type (ex: remote)
-                    </p>
-                  </label>
+                    {newProjectImagePreview ? (
+                      <div className="overflow-hidden rounded-xl border border-border/70">
+                        <img
+                          src={newProjectImagePreview}
+                          alt="Project preview"
+                          className="h-44 w-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-border/70 bg-background/35 text-sm text-muted-foreground">
+                        No cover selected
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
-                  <button
+                  <Button
                     type="button"
-                    onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                    variant="outline"
+                    onClick={() => {
+                      resetProjectDraft();
+                      setModalType(null);
+                    }}
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    onClick={savePortfolioSection}
-                    disabled={isSaving}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                    onClick={handleAddProject}
+                    disabled={newProjectLoading}
                   >
-                    {isSaving && <Loader2 className="w-3 h-3 animate-spin" />}
-                    Save changes
-                  </button>
+                    {newProjectLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )}
+                    Add project
+                  </Button>
                 </div>
               </>
             ) : modalType === "portfolio" ? (
@@ -3010,7 +3365,6 @@ const FreelancerProfile = () => {
                 setPortfolio={setPortfolio}
                 savePersonalSection={savePersonalSection}
                 isSaving={isSaving}
-                setPersonal={setPersonal}
                 setModalType={setModalType}
               />
             ) : (
