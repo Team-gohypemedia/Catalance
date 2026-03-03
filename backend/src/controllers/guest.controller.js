@@ -996,14 +996,15 @@ Task:
 4) If options exist, show them as numbered list using exact labels.
 `;
 
-const followupTaskBlock = `
+    const followupTaskBlock = `
 Task:
-1) Briefly acknowledge what user just shared.
-2) Briefly summarize previous flow in one sentence.
-3) If options exist, give one soft suggestion/recommendation for this next question.
-4) If user seems unsure/confused, add 1-2 short guidance bullet points before asking.
-5) Ask the required next question naturally (rephrase it; do not copy it verbatim).
-6) If options exist, show them as numbered list using the exact labels provided.
+1) Act like a human expert casually chatting with a client.
+2) Enthusiastically acknowledge their last answer in 2-3 sentences.
+3) Explain briefly why their choice is a great idea for their project.
+4) If options exist, give a thoughtful recommendation for this next question and explain why naturally.
+5) If user seems unsure/confused, add helpful guidance before asking.
+6) Ask the required next question naturally (rephrase it; do not copy it verbatim).
+7) If options exist, show them as numbered list using the exact labels provided.
 `;
 
     const prompt = `
@@ -1020,27 +1021,30 @@ Context from earlier answers:
 ${answersContext || "- none yet"}
 
 Helper phrases you may reuse naturally:
-- side_reply: ${JSON.stringify(sideReply)}
-- hints: ${JSON.stringify(guidanceHints)}
+    - side_reply: ${JSON.stringify(sideReply)}
+    - hints: ${JSON.stringify(guidanceHints)}
 
 ${isInitial ? startTaskBlock : followupTaskBlock}
 
-Rules:
-- Keep it human and conversational, not robotic.
+    Rules:
+    - Keep it highly human, conversational, and engaging. Avoid being overly brief.
+- Provide thoughtful, slightly longer responses MUST be a minimum of 3 to 4 sentences BEFORE asking the question. This applies to every message.
+- NEVER sound like a robot or a questionnaire form. Do NOT use phrases like "I noted that", "It's helpful to know", "This helps me guide you", "So far you have shared", or "Before we continue".
+- Act like you are having a normal conversation with a friend about their project.
 - Use the same language style as the user last message.
-- Use simple English with short, clear sentences.
-- Keep the tone polite and friendly in every response.
+- Use simple English with clear sentences.
+- Keep the tone polite, friendly, and enthusiastic in every response.
 - Do not skip or replace the required next question.
 - Do not ask extra unrelated questions.
 - If options are provided for the required next question, ask user to choose from those options.
 - Do not say "type below" or ask for free-text when options are present.
-- Keep under 190 words.
+- Keep under 300 words.
 
 Return strict JSON only:
-{
-  "message": "final assistant message"
-}
-`;
+    {
+        "message": "final assistant message"
+    }
+    `;
 
     try {
         const aiResponse = await chatWithAI(
@@ -1051,22 +1055,24 @@ Return strict JSON only:
 
         if (!aiResponse?.success) return "";
         const parsedMessage = parseMessageFieldFromJson(aiResponse.message);
-        if (!parsedMessage) return "";
-
-        if (!/[?؟]/.test(parsedMessage)) {
+        if (!parsedMessage) {
+            console.error("[buildAiGuidedQuestionMessage] AI Response gave empty or invalid parsed message.", aiResponse);
             return "";
         }
+
+        // We removed the strict question mark test because the AI might naturally end with a colon like "Please choose an option below:"
 
         if (hasOptions) {
             const optionLabels = getQuestionOptionLabels(nextQuestion);
             if (!hasNumberedOptionsInMessage(parsedMessage)) {
                 const cleanedMessage = stripExistingOptionLines(parsedMessage, optionLabels);
-                return `${cleanedMessage}\n\n${optionLabelsText}`;
+                return `${cleanedMessage} \n\n${optionLabelsText} `;
             }
         }
 
         return parsedMessage;
-    } catch {
+    } catch (e) {
+        console.error("[buildAiGuidedQuestionMessage] Fatal error:", e);
         return "";
     }
 };
@@ -1233,7 +1239,7 @@ const applyExtractedAnswerUpdates = ({
         const targetIndex = questionIndexBySlug.get(slug);
         if (Number.isInteger(targetIndex)) {
             console.log(
-                `${logPrefix} Updated "${slug}" at step ${targetIndex} (confidence=${normalizedConfidence.toFixed(2)})`
+                `${logPrefix} Updated "${slug}" at step ${targetIndex} (confidence = ${normalizedConfidence.toFixed(2)})`
             );
         }
     }
@@ -1282,7 +1288,7 @@ const parseAnswerExtractionResponse = (rawMessage) => {
         extracted,
         extracted.replace(/\*\*/g, ""),
         extracted
-            .replace(/^\s*```(?:json)?\s*/i, "")
+            .replace(/^\s*```(?: json) ?\s */i, "")
             .replace(/\s*```\s*$/i, ""),
         raw,
         raw.replace(/\*\*/g, "")
@@ -1671,12 +1677,14 @@ export const guestChat = asyncHandler(async (req, res) => {
               2) Give one recommendation and why it fits their known context.
               3) Then ask the Current Question again so we can continue the flow.
               4) If Current Question has options, include them as numbered list (1., 2., 3.).
-            - If VALID: Acknowledge the answer briefly and enthusiastically, then ask the "Next Question in Script" naturally. 
-              (Example: "That sounds great! Now, [Next Question]?")
+            - If VALID: Acknowledge the answer enthusiastically, providing a short but thoughtful conversational response (MUST be a minimum of 2-3 full sentences) relating to their answer before asking the "Next Question in Script" naturally.
+              (Example: "That sounds great! Having a strong custom theme really helps your brand stand out. This will make your site look completely unique. Now, [Next Question]?")
               (If it's the final question, just say "Thanks! Let me put that together for you.")
+            - If INVALID: Politely ask for clarification or the specific details needed. But be sure to write a warm, friendly response of at least 2 sentences before re-asking the question.
+              - EXCEPTION: For name questions, ask for "name" only in a natural way. Never ask for "full name" or "real full name".
             - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
-            - Keep wording polite, friendly, and in simple English.
-            - Keep sentences short and easy to understand.
+            - Keep wording polite, friendly, and engaging.
+            - Aim for slightly longer, more conversational and engaging responses (must be 3-5 sentences total for the entire message) rather than extremely brief ones.
 
             Return ONLY a raw JSON object (double quotes only) with this structure:
             {
@@ -1728,7 +1736,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             console.log("[Validation Parse Fallback]:", validationResult);
         }
 
-            if (!validationResult.isValid) {
+        if (!validationResult.isValid) {
             if (validationResult.status === "info_request") {
                 const questionBlock = formatQuestionWithOptions(currentQuestion);
                 if (

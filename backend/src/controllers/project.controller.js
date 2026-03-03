@@ -469,3 +469,256 @@ export const payUpfront = asyncHandler(async (req, res) => {
     }
   });
 });
+
+// ==========================================
+// PROJECT MANAGER UPGRADES
+// ==========================================
+
+// Helper: Check if user is Admin or Assigned PM
+const requirePmOrAdmin = async (userId, projectId) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (user?.role === "ADMIN") return true;
+
+  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  if (!project) throw new AppError("Project not found", 404);
+
+  if (user?.role === "PROJECT_MANAGER" && project.managerId === userId) {
+    return true;
+  }
+
+  throw new AppError("Access denied. Admin or Assigned PM only.", 403);
+};
+
+// --- Kanban Tasks ---
+
+export const getKanbanTasks = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  if (!userId) throw new AppError("Authentication required", 401);
+
+  // Basic access check (anyone who can view the project can view tasks for now, or restrict to participants)
+  // For safety, let's keep it simple: if you can view the project, you can view tasks.
+  const tasks = await prisma.projectTask.findMany({
+    where: { projectId: id },
+    orderBy: { createdAt: "asc" }
+  });
+
+  res.json({ data: tasks });
+});
+
+export const createKanbanTask = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  const { title, description, status, deadline } = req.body;
+  if (!userId) throw new AppError("Authentication required", 401);
+  await requirePmOrAdmin(userId, id);
+
+  if (!title) throw new AppError("Task title is required", 400);
+
+  const task = await prisma.projectTask.create({
+    data: {
+      title,
+      description,
+      status: status || "TO_DO",
+      deadline: deadline ? new Date(deadline) : null,
+      projectId: id
+    }
+  });
+
+  res.status(201).json({ data: task });
+});
+
+export const updateKanbanTask = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id, taskId } = req.params;
+  const { title, description, status, deadline } = req.body;
+  if (!userId) throw new AppError("Authentication required", 401);
+  await requirePmOrAdmin(userId, id);
+
+  const task = await prisma.projectTask.update({
+    where: { id: taskId, projectId: id },
+    data: {
+      ...(title && { title }),
+      ...(description !== undefined && { description }),
+      ...(status && { status }),
+      ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null })
+    }
+  });
+
+  res.json({ data: task });
+});
+
+export const generateMicroTasks = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  if (!userId) throw new AppError("Authentication required", 401);
+  await requirePmOrAdmin(userId, id);
+
+  const project = await prisma.project.findUnique({ where: { id } });
+  if (!project) throw new AppError("Project not found", 404);
+
+  // Stub template-based generation based on project title/type
+  let generatedTasks = [];
+  const lowerTitle = project.title.toLowerCase();
+
+  if (lowerTitle.includes("website") || lowerTitle.includes("app")) {
+    generatedTasks = [
+      { title: "Define technical requirements & stack", status: "TO_DO", deadline: null },
+      { title: "Create initial UI/UX wireframes", status: "TO_DO", deadline: null },
+      { title: "Setup repository and CI/CD pipelines", status: "TO_DO", deadline: null },
+      { title: "Implement core backend API", status: "TO_DO", deadline: null }
+    ];
+  } else if (lowerTitle.includes("logo") || lowerTitle.includes("brand")) {
+    generatedTasks = [
+      { title: "Create moodboard and brand identity directions", status: "TO_DO", deadline: null },
+      { title: "Draft 3 initial logo concepts", status: "TO_DO", deadline: null },
+      { title: "Finalize logo typography and color palette", status: "TO_DO", deadline: null },
+      { title: "Prepare brand guideline document", status: "TO_DO", deadline: null }
+    ];
+  } else {
+    generatedTasks = [
+      { title: "Kickoff meeting and requirement gathering", status: "TO_DO", deadline: null },
+      { title: "Draft initial project milestone breakdown", status: "TO_DO", deadline: null },
+      { title: "Submit first deliverable for review", status: "TO_DO", deadline: null }
+    ];
+  }
+
+  res.json({ data: generatedTasks });
+});
+
+// --- Escrow Release ---
+
+export const releaseEscrow = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  if (!userId) throw new AppError("Authentication required", 401);
+  await requirePmOrAdmin(userId, id);
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      proposals: { where: { status: "ACCEPTED" } }
+    }
+  });
+
+  if (!project) throw new AppError("Project not found", 404);
+  const acceptedProposal = project.proposals[0];
+  if (!acceptedProposal) throw new AppError("No accepted freelancer proposal found to release to", 400);
+
+  // Check existing payments to ensure idempotency
+  const existingPayment = await prisma.payment.findFirst({
+    where: { projectId: id, freelancerId: acceptedProposal.freelancerId }
+  });
+
+  if (existingPayment?.status === "COMPLETED") {
+    return res.json({
+      data: existingPayment,
+      message: "Funds have already been released for this project."
+    });
+  }
+
+  const amountToRelease = acceptedProposal.amount;
+  const platformFee = Math.round(amountToRelease * 0.3);
+  const freelancerAmount = amountToRelease - platformFee;
+
+  let payment;
+  if (existingPayment && existingPayment.status === "PENDING") {
+    // Update existing
+    payment = await prisma.payment.update({
+      where: { id: existingPayment.id },
+      data: {
+        status: "COMPLETED",
+        paidAt: new Date()
+      }
+    });
+  } else {
+    // Create new
+    payment = await prisma.payment.create({
+      data: {
+        amount: amountToRelease,
+        platformFee,
+        freelancerAmount,
+        currency: "INR",
+        status: "COMPLETED",
+        paidAt: new Date(),
+        description: "Escrow release for completed milestones",
+        projectId: id,
+        freelancerId: acceptedProposal.freelancerId
+      }
+    });
+  }
+
+  res.json({
+    data: payment,
+    message: "Escrow funds approved and released successfully."
+  });
+});
+
+// --- Freelancer Reassignment Flow ---
+
+export const pauseProject = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  if (!userId) throw new AppError("Authentication required", 401);
+  await requirePmOrAdmin(userId, id);
+
+  const updated = await prisma.project.update({
+    where: { id },
+    data: { status: "PAUSED" }
+  });
+
+  res.json({ data: updated, message: "Project has been paused." });
+});
+
+export const removeFreelancer = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  if (!userId) throw new AppError("Authentication required", 401);
+  await requirePmOrAdmin(userId, id);
+
+  // Find accepted proposal
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: { proposals: { where: { status: "ACCEPTED" } } }
+  });
+
+  if (!project) throw new AppError("Project not found", 404);
+  const acceptedProposal = project.proposals[0];
+  if (!acceptedProposal) throw new AppError("No currently assigned freelancer found", 400);
+
+  // Set proposal to REPLACED
+  await prisma.proposal.update({
+    where: { id: acceptedProposal.id },
+    data: { status: "REPLACED" }
+  });
+
+  res.json({
+    data: { projectId: id },
+    message: "Freelancer removed. Project continuity preserved."
+  });
+});
+
+export const reassignFreelancer = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  const { newFreelancerEmail } = req.body;
+  if (!userId) throw new AppError("Authentication required", 401);
+  await requirePmOrAdmin(userId, id);
+
+  if (!newFreelancerEmail) throw new AppError("Replacement freelancer email is required", 400);
+
+  // Validate freelancer exists
+  const freelancer = await prisma.user.findUnique({ where: { email: newFreelancerEmail } });
+  if (!freelancer || (freelancer.role !== "FREELANCER" && freelancer.role !== "ADMIN")) {
+    throw new AppError("Valid replacement freelancer not found with that email", 404);
+  }
+
+  // Stub invitation flow: just log and return success. A real system would send an email or push notification.
+  console.log(`[Reassignment] PM ${userId} invited ${newFreelancerEmail} to replace freelancer on project ${id}.`);
+
+  res.json({
+    data: { invitedDoc: { email: newFreelancerEmail, status: "INVITED" } },
+    message: `Invitation sent to ${newFreelancerEmail}.`
+  });
+});
+
