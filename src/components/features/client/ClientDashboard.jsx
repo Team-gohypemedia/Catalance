@@ -54,6 +54,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
+const MIN_FREELANCER_MATCH_SCORE = 50;
+
 const getProposalStorageKeys = (userId) => {
   const suffix = userId ? `:${userId}` : "";
   return {
@@ -986,9 +988,12 @@ const ClientDashboardContent = () => {
         })
       : normalized;
 
-    const available = matched.filter(
-      (freelancer) => !alreadyInvitedIds.has(freelancer.id),
-    );
+    const available = matched.filter((freelancer) => {
+      if (alreadyInvitedIds.has(freelancer.id)) return false;
+      const matchScore = Number(freelancer?.matchScore);
+      if (!Number.isFinite(matchScore)) return false;
+      return Math.round(matchScore) >= MIN_FREELANCER_MATCH_SCORE;
+    });
 
     return {
       totalRanked: matched.length,

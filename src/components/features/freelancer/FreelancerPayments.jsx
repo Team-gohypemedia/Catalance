@@ -6,12 +6,17 @@ import CircleDollarSign from "lucide-react/dist/esm/icons/circle-dollar-sign";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import ArrowDownLeft from "lucide-react/dist/esm/icons/arrow-down-left";
+import Landmark from "lucide-react/dist/esm/icons/landmark";
+import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 const formatCurrency = (value = 0) =>
   new Intl.NumberFormat("en-IN", {
@@ -21,6 +26,7 @@ const formatCurrency = (value = 0) =>
   }).format(Number(value) || 0);
 
 const toUpper = (value = "") => String(value).trim().toUpperCase();
+const isAwaitingDeposit = (status = "") => toUpper(status) === "AWAITING_PAYMENT";
 
 const metricCardClass =
   "border border-border/60 bg-card/80 shadow-[0_12px_45px_-35px_rgba(0,0,0,0.8)]";
@@ -34,8 +40,8 @@ const getDateLabel = (value) => {
   }).format(date);
 };
 
-const PaymentRowStatus = ({ isCompleted }) => {
-  if (isCompleted) {
+const PaymentRowStatus = ({ statusType }) => {
+  if (statusType === "received") {
     return (
       <Badge
         variant="outline"
@@ -46,12 +52,23 @@ const PaymentRowStatus = ({ isCompleted }) => {
     );
   }
 
+  if (statusType === "awaiting_deposit") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-rose-500/30 bg-rose-500/10 text-rose-500"
+      >
+        Awaiting Deposit
+      </Badge>
+    );
+  }
+
   return (
     <Badge
       variant="outline"
       className="border-amber-500/30 bg-amber-500/10 text-amber-500"
     >
-      Pending
+      In Escrow
     </Badge>
   );
 };
@@ -64,8 +81,14 @@ const FreelancerPaymentsContent = () => {
     totalShare: 0,
     receivedShare: 0,
     pendingShare: 0,
+    escrowShare: 0,
+    awaitingDepositShare: 0,
+    availableToWithdraw: 0,
     activeContracts: 0,
   });
+  const [isPayoutConnected, setIsPayoutConnected] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [lastWithdrawalAt, setLastWithdrawalAt] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -87,6 +110,8 @@ const FreelancerPaymentsContent = () => {
             const share = Math.round(gross * 0.7);
             const projectStatus = toUpper(proposal.project?.status);
             const completed = projectStatus === "COMPLETED";
+            const awaitingDeposit = isAwaitingDeposit(projectStatus);
+            const inEscrow = !completed && !awaitingDeposit;
 
             return {
               id: proposal.id,
@@ -100,6 +125,14 @@ const FreelancerPaymentsContent = () => {
               freelancerShare: share,
               receivedAmount: completed ? share : 0,
               pendingAmount: completed ? 0 : share,
+              escrowAmount: inEscrow ? share : 0,
+              awaitingDepositAmount: awaitingDeposit ? share : 0,
+              statusType: completed
+                ? "received"
+                : awaitingDeposit
+                ? "awaiting_deposit"
+                : "escrow",
+              projectStatus,
               isCompleted: completed,
               updatedAt:
                 proposal.project?.updatedAt ||
@@ -119,6 +152,9 @@ const FreelancerPaymentsContent = () => {
             acc.totalShare += row.freelancerShare;
             acc.receivedShare += row.receivedAmount;
             acc.pendingShare += row.pendingAmount;
+            acc.escrowShare += row.escrowAmount;
+            acc.awaitingDepositShare += row.awaitingDepositAmount;
+            acc.availableToWithdraw += row.receivedAmount;
             if (!row.isCompleted) acc.activeContracts += 1;
             return acc;
           },
@@ -126,6 +162,9 @@ const FreelancerPaymentsContent = () => {
             totalShare: 0,
             receivedShare: 0,
             pendingShare: 0,
+            escrowShare: 0,
+            awaitingDepositShare: 0,
+            availableToWithdraw: 0,
             activeContracts: 0,
           }
         );
@@ -139,6 +178,9 @@ const FreelancerPaymentsContent = () => {
           totalShare: 0,
           receivedShare: 0,
           pendingShare: 0,
+          escrowShare: 0,
+          awaitingDepositShare: 0,
+          availableToWithdraw: 0,
           activeContracts: 0,
         });
       } finally {
@@ -154,6 +196,37 @@ const FreelancerPaymentsContent = () => {
     if (count === 1) return "1 payout";
     return `${count} payouts`;
   }, [rows.length]);
+
+  const handleConnectPayoutAccount = () => {
+    setIsPayoutConnected(true);
+    toast.success(
+      "Payout account connected. Replace this action with Stripe Connect onboarding."
+    );
+  };
+
+  const handleWithdraw = async () => {
+    if (!isPayoutConnected) {
+      toast.error("Connect your payout account before requesting a withdrawal.");
+      return;
+    }
+    if (summary.availableToWithdraw <= 0) {
+      toast.error("No available balance to withdraw yet.");
+      return;
+    }
+
+    setIsWithdrawing(true);
+    try {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 900);
+      });
+      setLastWithdrawalAt(new Date());
+      toast.success(
+        "Withdrawal requested. Wire this action to Stripe Connect or PayPal Payouts."
+      );
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
@@ -221,9 +294,14 @@ const FreelancerPaymentsContent = () => {
                 {isLoading ? (
                   <Skeleton className="mt-4 h-8 w-36" />
                 ) : (
-                  <p className="mt-4 text-2xl font-black text-foreground">
-                    {formatCurrency(summary.pendingShare)}
-                  </p>
+                  <div className="mt-3 space-y-1">
+                    <p className="text-2xl font-black text-foreground">
+                      {formatCurrency(summary.pendingShare)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Escrow: {formatCurrency(summary.escrowShare)}
+                    </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -245,6 +323,94 @@ const FreelancerPaymentsContent = () => {
                 )}
               </CardContent>
             </Card>
+          </section>
+
+          <section className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-[0_12px_50px_-40px_rgba(0,0,0,0.85)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Withdrawal</h2>
+                <p className="text-sm text-muted-foreground">
+                  Connect your payout account, then withdraw available balance.
+                </p>
+              </div>
+              <Badge
+                variant={isPayoutConnected ? "default" : "secondary"}
+                className={isPayoutConnected ? "bg-emerald-500 text-white" : ""}
+              >
+                {isPayoutConnected ? "Payout account connected" : "Account not connected"}
+              </Badge>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <Card className="border-border/50 bg-background/40">
+                <CardContent className="p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Available to withdraw
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-emerald-500">
+                    {formatCurrency(summary.availableToWithdraw)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/50 bg-background/40">
+                <CardContent className="p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Pending in escrow
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-amber-500">
+                    {formatCurrency(summary.escrowShare)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/50 bg-background/40">
+                <CardContent className="p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Awaiting client deposit
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-rose-500">
+                    {formatCurrency(summary.awaitingDepositShare)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant={isPayoutConnected ? "outline" : "default"}
+                className="gap-2"
+                onClick={handleConnectPayoutAccount}
+              >
+                <Landmark className="h-4 w-4" />
+                {isPayoutConnected ? "Manage payout account" : "Connect payout account"}
+              </Button>
+              <Button
+                type="button"
+                className="gap-2"
+                onClick={handleWithdraw}
+                disabled={
+                  isLoading ||
+                  isWithdrawing ||
+                  !isPayoutConnected ||
+                  summary.availableToWithdraw <= 0
+                }
+              >
+                {isWithdrawing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowUpRight className="h-4 w-4" />
+                )}
+                Withdraw Available Balance
+              </Button>
+            </div>
+            {lastWithdrawalAt ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Last withdrawal request:{" "}
+                {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(
+                  lastWithdrawalAt
+                )}
+              </p>
+            ) : null}
           </section>
 
           <section className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-[0_12px_50px_-40px_rgba(0,0,0,0.85)]">
@@ -307,7 +473,7 @@ const FreelancerPaymentsContent = () => {
                           {formatCurrency(row.freelancerShare)}
                         </td>
                         <td className="px-2 py-3">
-                          <PaymentRowStatus isCompleted={row.isCompleted} />
+                          <PaymentRowStatus statusType={row.statusType} />
                         </td>
                         <td className="px-2 py-3 text-muted-foreground">
                           {getDateLabel(row.updatedAt)}

@@ -1,18 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { io } from "socket.io-client";
 import format from "date-fns/format";
-import isToday from "date-fns/isToday";
-import isYesterday from "date-fns/isYesterday";
-import isSameDay from "date-fns/isSameDay";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { ManagerTopBar } from "./ManagerTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
-import { useNotifications } from "@/shared/context/NotificationContext";
 import { useSearchParams } from "react-router-dom";
-import { SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shared/lib/api-client";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Send from "lucide-react/dist/esm/icons/send";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
-import UserIcon from "lucide-react/dist/esm/icons/user";
 import { cn } from "@/shared/lib/utils";
 
 const formatTime = (value) => {
@@ -32,9 +24,54 @@ const formatTime = (value) => {
     }
 };
 
+const getAudienceMeta = (conversation, messages = []) => {
+    const service = String(conversation?.service || "");
+    const hasClient = messages.some((msg) => msg?.senderRole === "CLIENT");
+    const hasFreelancer = messages.some((msg) => msg?.senderRole === "FREELANCER");
+
+    if (service.startsWith("PM_FREELANCER:")) {
+        return {
+            key: "freelancer_private",
+            label: "Freelancer Side-Channel",
+            className: "bg-green-50 text-green-700 border-green-200",
+            helper: "Private PM context with freelancer coordination.",
+        };
+    }
+    if (hasClient && hasFreelancer) {
+        return {
+            key: "tri_party",
+            label: "Client + Freelancer",
+            className: "bg-blue-50 text-blue-700 border-blue-200",
+            helper: "Shared channel visible to delivery stakeholders.",
+        };
+    }
+    if (hasClient) {
+        return {
+            key: "client",
+            label: "Client Channel",
+            className: "bg-blue-50 text-blue-700 border-blue-200",
+            helper: "Client-facing updates and approvals.",
+        };
+    }
+    if (hasFreelancer) {
+        return {
+            key: "freelancer",
+            label: "Freelancer Channel",
+            className: "bg-green-50 text-green-700 border-green-200",
+            helper: "Execution-focused discussion with freelancer.",
+        };
+    }
+
+    return {
+        key: "unknown",
+        label: "Unlabeled",
+        className: "bg-muted text-muted-foreground border-border",
+        helper: "No participant signals yet. Send first message to establish context.",
+    };
+};
+
 const ManagerChatContent = () => {
-    const { user, authFetch, token } = useAuth();
-    const { socket: notificationSocket } = useNotifications();
+    const { user, authFetch } = useAuth();
     const [searchParams] = useSearchParams();
     const [conversationId, setConversationId] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -43,6 +80,7 @@ const ManagerChatContent = () => {
     const [conversations, setConversations] = useState([]);
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [audienceFilter, setAudienceFilter] = useState("all");
     const messagesEndRef = useRef(null);
 
     // Load conversations
@@ -58,7 +96,14 @@ const ManagerChatContent = () => {
                     // Select first conversation or from query params
                     const paramProjectId = searchParams.get("projectId");
                     if (paramProjectId) {
-                        const matching = convs.find(c => c.projectId === paramProjectId);
+                        const matching = convs.find((c) => {
+                            if (c.projectId === paramProjectId) return true;
+                            const service = String(c?.service || "");
+                            return (
+                                service.startsWith(`CHAT:${paramProjectId}:`) ||
+                                service.startsWith(`PM_FREELANCER:${paramProjectId}:`)
+                            );
+                        });
                         if (matching) {
                             setSelectedConversation(matching);
                             setConversationId(matching.id);
@@ -159,6 +204,21 @@ const ManagerChatContent = () => {
         return null;
     };
 
+    const selectedAudience = useMemo(
+        () => getAudienceMeta(selectedConversation, messages),
+        [selectedConversation, messages]
+    );
+
+    const visibleMessages = useMemo(() => {
+        if (audienceFilter === "all") return messages;
+        return messages.filter((message) => {
+            if (message?.senderRole === "PROJECT_MANAGER") return true;
+            if (audienceFilter === "client") return message?.senderRole === "CLIENT";
+            if (audienceFilter === "freelancer") return message?.senderRole === "FREELANCER";
+            return true;
+        });
+    }, [messages, audienceFilter]);
+
     if (loading) {
         return (
             <div className="flex flex-col h-screen w-full">
@@ -188,28 +248,43 @@ const ManagerChatContent = () => {
                             </div>
                         ) : (
                             <div className="p-2 space-y-1">
-                                {conversations.map(conv => (
-                                    <button
-                                        key={conv.id}
-                                        onClick={() => {
-                                            setSelectedConversation(conv);
-                                            setConversationId(conv.id);
-                                        }}
-                                        className={cn(
-                                            "w-full text-left p-3 rounded-lg transition",
-                                            selectedConversation?.id === conv.id
-                                                ? "bg-primary/10 border border-primary/20"
-                                                : "hover:bg-muted/50"
-                                        )}
-                                    >
-                                        <p className="font-medium text-sm line-clamp-1">
-                                            {conv.projectTitle || conv.service || "Chat"}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            {conv.lastMessage?.content?.slice(0, 30) || "No messages yet"}...
-                                        </p>
-                                    </button>
-                                ))}
+                                {conversations.map((conv) => {
+                                    const audienceMeta = getAudienceMeta(
+                                        conv,
+                                        conv?.lastMessage ? [conv.lastMessage] : []
+                                    );
+
+                                    return (
+                                        <button
+                                            key={conv.id}
+                                            onClick={() => {
+                                                setSelectedConversation(conv);
+                                                setConversationId(conv.id);
+                                            }}
+                                            className={cn(
+                                                "w-full text-left p-3 rounded-lg transition",
+                                                selectedConversation?.id === conv.id
+                                                    ? "bg-primary/10 border border-primary/20"
+                                                    : "hover:bg-muted/50"
+                                            )}
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="font-medium text-sm line-clamp-1">
+                                                    {conv.projectTitle || conv.service || "Chat"}
+                                                </p>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`text-[10px] ${audienceMeta.className}`}
+                                                >
+                                                    {audienceMeta.label}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                                {conv.lastMessage?.content || "No messages yet"}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </ScrollArea>
@@ -228,14 +303,53 @@ const ManagerChatContent = () => {
                                 </Avatar>
                                 <div>
                                     <h3 className="font-semibold">{selectedConversation.projectTitle || selectedConversation.service || "Chat"}</h3>
-                                    <p className="text-xs text-muted-foreground">Project conversation</p>
+                                    <div className="mt-0.5 flex items-center gap-2">
+                                        <p className="text-xs text-muted-foreground">{selectedAudience.helper}</p>
+                                        <Badge variant="outline" className={`text-[10px] ${selectedAudience.className}`}>
+                                            {selectedAudience.label}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <div className="ml-auto flex items-center gap-1 rounded-md border p-1">
+                                    <Button
+                                        type="button"
+                                        variant={audienceFilter === "all" ? "default" : "ghost"}
+                                        size="sm"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={() => setAudienceFilter("all")}
+                                    >
+                                        All
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={audienceFilter === "client" ? "default" : "ghost"}
+                                        size="sm"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={() => setAudienceFilter("client")}
+                                    >
+                                        Client
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={audienceFilter === "freelancer" ? "default" : "ghost"}
+                                        size="sm"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={() => setAudienceFilter("freelancer")}
+                                    >
+                                        Freelancer
+                                    </Button>
                                 </div>
                             </div>
 
                             {/* Messages */}
                             <ScrollArea className="flex-1 min-h-0 p-4">
                                 <div className="space-y-4">
-                                    {messages.map((msg, idx) => {
+                                    {visibleMessages.length === 0 ? (
+                                        <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                                            No messages for this audience filter yet.
+                                        </div>
+                                    ) : null}
+                                    {visibleMessages.map((msg, idx) => {
                                         const isOwn = msg.senderId === user?.id;
                                         return (
                                             <div

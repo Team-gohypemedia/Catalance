@@ -16,6 +16,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +30,16 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // --- Helper Components & Functions ---
+const REJECTION_REASON_OPTIONS = [
+  { value: "budget_not_fit", label: "Budget does not fit the project scope" },
+  { value: "timeline_unrealistic", label: "Timeline is not realistic" },
+  { value: "scope_unclear", label: "Project requirements are unclear" },
+  { value: "skill_mismatch", label: "Project is outside my current expertise" },
+  { value: "workload_capacity", label: "I do not have capacity right now" },
+  { value: "custom", label: "Other (write a custom reason)" },
+];
+
+const CUSTOM_REJECTION_REASON_KEY = "custom";
 
 /**
  * Extracts key details (Budget, Timeline) from the proposal text content.
@@ -193,6 +206,7 @@ const mapApiProposal = (proposal = {}) => {
     // Display budget as 30% less (Platform Fee deduction) for freelancer view?
     // User logic: proposal.amount ? Math.floor(Number(proposal.amount) * 0.7) : null
     budget: proposal.amount ? Math.floor(Number(proposal.amount) * 0.7) : null,
+    rejectionReason: String(proposal.rejectionReason || "").trim(),
     content:
       proposal.content ||
       proposal.description ||
@@ -282,6 +296,12 @@ const ProposalRowCard = ({ proposal, onOpen, onDelete }) => {
             <p className="text-base font-bold text-foreground">{timeline}</p>
           </div>
         </div>
+
+        {proposal.status === "rejected" && proposal.rejectionReason ? (
+          <div className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            Reason: {proposal.rejectionReason}
+          </div>
+        ) : null}
       </div>
 
       {/* Right Action Section */}
@@ -317,6 +337,9 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [isRejectReasonStep, setIsRejectReasonStep] = useState(false);
+  const [rejectReasonKey, setRejectReasonKey] = useState("");
+  const [rejectCustomReason, setRejectCustomReason] = useState("");
 
   // Tab State
   const [activeTab, setActiveTab] = useState("active");
@@ -375,15 +398,34 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
     [authFetch, selectedProposal]
   );
 
-  const handleStatusChange = async (id, nextStatus) => {
+  const resetRejectReasonState = useCallback(() => {
+    setIsRejectReasonStep(false);
+    setRejectReasonKey("");
+    setRejectCustomReason("");
+  }, []);
+
+  const handleStatusChange = async (
+    id,
+    nextStatus,
+    rejectionReason = "",
+    rejectionReasonKeyValue = ""
+  ) => {
     setProcessingId(id);
     const apiStatus = nextStatus.toUpperCase();
 
     try {
+      const bodyPayload = { status: apiStatus };
+      if (apiStatus === "REJECTED") {
+        bodyPayload.rejectionReason = String(rejectionReason || "").trim();
+        bodyPayload.rejectionReasonKey = String(
+          rejectionReasonKeyValue || ""
+        ).trim();
+      }
+
       const response = await authFetch(`/proposals/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: apiStatus }),
+        body: JSON.stringify(bodyPayload),
       });
 
       if (!response.ok) throw new Error("Status update failed");
@@ -392,7 +434,14 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
       setProposals((prev) =>
         prev.map((p) =>
           p.id === id
-            ? { ...p, status: normalizeProposalStatus(nextStatus) }
+            ? {
+                ...p,
+                status: normalizeProposalStatus(nextStatus),
+                rejectionReason:
+                  apiStatus === "REJECTED"
+                    ? String(rejectionReason || "").trim()
+                    : p.rejectionReason,
+              }
             : p
         )
       );
@@ -402,6 +451,10 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
         setSelectedProposal((prev) => ({
           ...prev,
           status: normalizeProposalStatus(nextStatus),
+          rejectionReason:
+            apiStatus === "REJECTED"
+              ? String(rejectionReason || "").trim()
+              : prev?.rejectionReason || "",
         }));
       }
 
@@ -413,6 +466,42 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
       setProcessingId(null);
     }
   };
+
+  const handleConfirmReject = useCallback(async () => {
+    if (!selectedProposal?.id) return;
+    const selectedReason = REJECTION_REASON_OPTIONS.find(
+      (option) => option.value === rejectReasonKey
+    );
+    if (!selectedReason) {
+      toast.error("Please select a reason for rejection.");
+      return;
+    }
+
+    const finalReason =
+      rejectReasonKey === CUSTOM_REJECTION_REASON_KEY
+        ? String(rejectCustomReason || "").trim()
+        : selectedReason.label;
+
+    if (!finalReason) {
+      toast.error("Please add your custom rejection reason.");
+      return;
+    }
+
+    await handleStatusChange(
+      selectedProposal.id,
+      "rejected",
+      finalReason,
+      rejectReasonKey
+    );
+    setSelectedProposal(null);
+    resetRejectReasonState();
+  }, [
+    handleStatusChange,
+    rejectCustomReason,
+    rejectReasonKey,
+    resetRejectReasonState,
+    selectedProposal,
+  ]);
 
   // Grouping
   const grouped = useMemo(() => {
@@ -537,7 +626,12 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
       {/* Dialog */}
       <Dialog
         open={!!selectedProposal}
-        onOpenChange={(open) => !open && setSelectedProposal(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedProposal(null);
+            resetRejectReasonState();
+          }
+        }}
       >
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0">
           <DialogHeader className="p-6 pb-2">
@@ -589,36 +683,131 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
               </h4>
               <ProposalContentRenderer content={selectedProposal?.content} />
             </div>
+
+            {selectedProposal?.status === "rejected" &&
+            selectedProposal?.rejectionReason ? (
+              <div className="rounded-lg border border-red-500/25 bg-red-500/10 p-4">
+                <h4 className="text-sm font-semibold text-red-200">
+                  Rejection reason
+                </h4>
+                <p className="mt-1 text-sm text-red-100">
+                  {selectedProposal.rejectionReason}
+                </p>
+              </div>
+            ) : null}
+
+            {selectedProposal?.status === "pending" && isRejectReasonStep ? (
+              <div className="rounded-lg border border-border/60 bg-card/60 p-4 space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">
+                    Why are you rejecting this proposal?
+                  </h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Choose one reason or select custom and write your own.
+                  </p>
+                </div>
+
+                <RadioGroup
+                  value={rejectReasonKey}
+                  onValueChange={setRejectReasonKey}
+                  className="space-y-2"
+                >
+                  {REJECTION_REASON_OPTIONS.map((option) => (
+                    <div
+                      key={option.value}
+                      className="flex items-start gap-2 rounded-md border border-border/50 px-3 py-2"
+                    >
+                      <RadioGroupItem
+                        id={`reject-reason-${option.value}`}
+                        value={option.value}
+                        className="mt-0.5"
+                      />
+                      <Label
+                        htmlFor={`reject-reason-${option.value}`}
+                        className="cursor-pointer text-sm text-foreground"
+                      >
+                        {option.label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+
+                {rejectReasonKey === CUSTOM_REJECTION_REASON_KEY ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="reject-custom-reason" className="text-xs">
+                      Custom message
+                    </Label>
+                    <Textarea
+                      id="reject-custom-reason"
+                      rows={3}
+                      maxLength={300}
+                      value={rejectCustomReason}
+                      onChange={(event) =>
+                        setRejectCustomReason(event.target.value)
+                      }
+                      placeholder="Write your reason..."
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <DialogFooter className="p-6 pt-2 border-t bg-card/50">
-            <Button variant="outline" onClick={() => setSelectedProposal(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedProposal(null);
+                resetRejectReasonState();
+              }}
+            >
               Close
             </Button>
             {selectedProposal?.status === "pending" && (
               <>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    handleStatusChange(selectedProposal.id, "rejected");
-                    setSelectedProposal(null);
-                  }}
-                  disabled={processingId === selectedProposal.id}
-                >
-                  Reject
-                </Button>
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => {
-                    handleStatusChange(selectedProposal.id, "accepted");
-                    setSelectedProposal(null);
-                  }}
-                  disabled={processingId === selectedProposal.id}
-                >
-                  {processingId === selectedProposal.id
-                    ? "Accepting..."
-                    : "Accept Proposal"}
-                </Button>
+                {isRejectReasonStep ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={resetRejectReasonState}
+                      disabled={processingId === selectedProposal.id}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleConfirmReject}
+                      disabled={processingId === selectedProposal.id}
+                    >
+                      {processingId === selectedProposal.id
+                        ? "Rejecting..."
+                        : "Confirm Reject"}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => setIsRejectReasonStep(true)}
+                      disabled={processingId === selectedProposal.id}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => {
+                        handleStatusChange(selectedProposal.id, "accepted");
+                        setSelectedProposal(null);
+                        resetRejectReasonState();
+                      }}
+                      disabled={processingId === selectedProposal.id}
+                    >
+                      {processingId === selectedProposal.id
+                        ? "Accepting..."
+                        : "Accept Proposal"}
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </DialogFooter>

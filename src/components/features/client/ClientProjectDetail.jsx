@@ -27,6 +27,7 @@ import Upload from "lucide-react/dist/esm/icons/upload";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/features/appointments/BookAppointment";
@@ -344,6 +345,8 @@ const ProjectDashboard = () => {
   const [time, setTime] = useState("");
 
   const [serverAvailableSlots, setServerAvailableSlots] = useState([]);
+  const [deliverableReviews, setDeliverableReviews] = useState({});
+  const [reviewingDeliverableId, setReviewingDeliverableId] = useState(null);
 
   useEffect(() => {
     if (!date || !authFetch) return;
@@ -769,10 +772,19 @@ const ProjectDashboard = () => {
   // Chat & Conversation Logic
   const [conversationId, setConversationId] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const isChatLockedUntilPayment = useMemo(() => {
+    const status = String(project?.status || "").toUpperCase();
+    const spent = Number(project?.spent || 0);
+    return status === "AWAITING_PAYMENT" || spent <= 0;
+  }, [project?.status, project?.spent]);
 
   // 1. Ensure Conversation Exists
   useEffect(() => {
     if (!project?.id || !authFetch) return;
+    if (isChatLockedUntilPayment) {
+      setConversationId(null);
+      return;
+    }
 
     let key = `project:${project.id}`;
     // Check for accepted proposal to sync with DM chat
@@ -823,7 +835,7 @@ const ProjectDashboard = () => {
       }
     };
     initChat();
-  }, [project, authFetch, user]);
+  }, [project, authFetch, user, isChatLockedUntilPayment]);
 
   // 2. Fetch Messages
   useEffect(() => {
@@ -880,6 +892,10 @@ const ProjectDashboard = () => {
   }, [conversationId, authFetch]);
 
   const handleSendMessage = async () => {
+    if (isChatLockedUntilPayment) {
+      toast.error("Please complete upfront payment to start messages.");
+      return;
+    }
     if (!input.trim() || !conversationId) return;
 
     const tempId = Date.now().toString();
@@ -930,6 +946,10 @@ const ProjectDashboard = () => {
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
+    if (isChatLockedUntilPayment) {
+      toast.error("Please complete upfront payment to start messages.");
+      return;
+    }
     if (file && conversationId) {
       // Capture current input text to send with file
       const textContent = input;
@@ -1017,9 +1037,44 @@ const ProjectDashboard = () => {
     }
   };
 
+  const handleDeliverableDecision = async (deliverableId, decision) => {
+    if (!deliverableId) return;
+    setReviewingDeliverableId(deliverableId);
+    try {
+      // Local state for now. Wire this to a Milestone/Deliverable API once available.
+      await new Promise((resolve) => {
+        setTimeout(resolve, 250);
+      });
+      setDeliverableReviews((prev) => ({
+        ...prev,
+        [deliverableId]: decision,
+      }));
+      toast.success(
+        decision === "approved"
+          ? "Deliverable approved. PM and freelancer can proceed."
+          : "Revision requested. Team has been notified."
+      );
+    } finally {
+      setReviewingDeliverableId(null);
+    }
+  };
+
   const docs = useMemo(() => {
     return messages.filter((m) => m.attachment).map((m) => m.attachment);
   }, [messages]);
+
+  const deliverableQueue = useMemo(() => {
+    return docs.map((doc, index) => {
+      const stableId = `${doc?.url || doc?.name || "deliverable"}-${index}`;
+      return {
+        id: stableId,
+        name: doc?.name || `Deliverable ${index + 1}`,
+        url: doc?.url,
+        size: doc?.size,
+        status: deliverableReviews[stableId] || "pending",
+      };
+    });
+  }, [docs, deliverableReviews]);
 
   // ... (SOP and Progress logic remains same) ...
 
@@ -1773,38 +1828,54 @@ const ProjectDashboard = () => {
                     );
                   })}
                 </CardContent>
-                <div className="border-t border-border/60 p-3 flex gap-2">
-                  <Input
-                    placeholder="Type your message..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                    className="h-9 text-sm bg-muted border-border/60"
-                  />
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    size="sm"
-                    variant="outline"
-                    className="h-9 w-9 p-0 border-border/60"
-                    title="Upload document"
-                  >
-                    <Upload className="w-4 h-4" />
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    size="sm"
-                    variant="default"
-                    className="h-9 w-9 p-0"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
+                <div className="border-t border-border/60 p-3 space-y-2">
+                  {isChatLockedUntilPayment ? (
+                    <div className="w-full rounded-md border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                      Pending your payment. Messages will start after upfront payment.
+                    </div>
+                  ) : null}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={
+                        isChatLockedUntilPayment
+                          ? "Complete payment to unlock chat"
+                          : "Type your message..."
+                      }
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={(e) =>
+                        e.key === "Enter" && handleSendMessage()
+                      }
+                      className="h-9 text-sm bg-muted border-border/60"
+                      disabled={isChatLockedUntilPayment || isSending}
+                    />
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      size="sm"
+                      variant="outline"
+                      className="h-9 w-9 p-0 border-border/60"
+                      title="Upload document"
+                      disabled={isChatLockedUntilPayment || isSending}
+                    >
+                      <Upload className="w-4 h-4" />
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      size="sm"
+                      variant="default"
+                      className="h-9 w-9 p-0"
+                      disabled={isChatLockedUntilPayment || isSending}
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </Card>
 
@@ -1837,6 +1908,102 @@ const ProjectDashboard = () => {
                       No documents attached yet. Upload project documentation
                       here.
                     </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base text-foreground">
+                    Deliverables Approval
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    Review freelancer submissions and approve or request revisions.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {deliverableQueue.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No deliverables submitted yet. Uploaded project files will appear here.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {deliverableQueue.map((deliverable) => (
+                        <div
+                          key={deliverable.id}
+                          className="rounded-lg border border-border/60 bg-background/30 p-3 space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">
+                                {deliverable.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {deliverable.size || "File"}
+                              </p>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={
+                                deliverable.status === "approved"
+                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                  : deliverable.status === "revision_requested"
+                                  ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                                  : "border-border/60"
+                              }
+                            >
+                              {deliverable.status === "approved"
+                                ? "Approved"
+                                : deliverable.status === "revision_requested"
+                                ? "Revision Requested"
+                                : "Pending Review"}
+                            </Badge>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {deliverable.url ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-xs"
+                                asChild
+                              >
+                                <a href={deliverable.url} target="_blank" rel="noopener noreferrer">
+                                  Open
+                                </a>
+                              </Button>
+                            ) : null}
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs"
+                              disabled={reviewingDeliverableId === deliverable.id}
+                              onClick={() =>
+                                handleDeliverableDecision(deliverable.id, "approved")
+                              }
+                            >
+                              {reviewingDeliverableId === deliverable.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs"
+                              disabled={reviewingDeliverableId === deliverable.id}
+                              onClick={() =>
+                                handleDeliverableDecision(
+                                  deliverable.id,
+                                  "revision_requested"
+                                )
+                              }
+                            >
+                              Request Revisions
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import {
@@ -25,13 +26,29 @@ import Globe from "lucide-react/dist/esm/icons/globe";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import Camera from "lucide-react/dist/esm/icons/camera";
+import Bell from "lucide-react/dist/esm/icons/bell";
+import Star from "lucide-react/dist/esm/icons/star";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import Link2 from "lucide-react/dist/esm/icons/link-2";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import { Switch } from "@/components/ui/switch";
 
 const ClientProfileContent = () => {
   const { user, authFetch, refreshUser } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = React.useRef(null);
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    projectUpdates: true,
+    messages: true,
+    milestoneReviews: true,
+    smsAlerts: false,
+  });
+  const [completedProjects, setCompletedProjects] = useState([]);
+  const [reviewDrafts, setReviewDrafts] = useState({});
+  const [submittingReviews, setSubmittingReviews] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -92,8 +109,56 @@ const ClientProfileContent = () => {
           parsedBio.website ||
           "",
       });
+
+      const persistedPrefs = parsedBio.notificationPrefs;
+      if (persistedPrefs && typeof persistedPrefs === "object") {
+        setNotificationPrefs((prev) => ({
+          ...prev,
+          ...persistedPrefs,
+        }));
+      }
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!authFetch) return;
+
+    let isMounted = true;
+    const loadCompletedProjects = async () => {
+      try {
+        const response = await authFetch("/projects");
+        const payload = await response.json().catch(() => null);
+        if (!isMounted) return;
+
+        const projects = Array.isArray(payload?.data) ? payload.data : [];
+        const completed = projects.filter(
+          (project) => String(project.status || "").toUpperCase() === "COMPLETED"
+        );
+
+        setCompletedProjects(completed);
+        setReviewDrafts((prev) => {
+          const next = { ...prev };
+          completed.forEach((project) => {
+            if (!next[project.id]) {
+              next[project.id] = {
+                freelancerRating: 0,
+                managerRating: 0,
+                feedback: "",
+              };
+            }
+          });
+          return next;
+        });
+      } catch (error) {
+        console.error("Failed to load completed projects for review", error);
+      }
+    };
+
+    loadCompletedProjects();
+    return () => {
+      isMounted = false;
+    };
+  }, [authFetch]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -161,6 +226,7 @@ const ClientProfileContent = () => {
         companyName: formData.companyName,
         website: formData.website,
         bio: formData.bio,
+        notificationPrefs,
       };
 
       const response = await authFetch("/profile", {
@@ -180,6 +246,46 @@ const ClientProfileContent = () => {
       toast.error(error.message || "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleNotificationToggle = (key, checked) => {
+    setNotificationPrefs((prev) => ({
+      ...prev,
+      [key]: checked,
+    }));
+  };
+
+  const handleReviewDraftChange = (projectId, key, value) => {
+    setReviewDrafts((prev) => ({
+      ...prev,
+      [projectId]: {
+        freelancerRating: 0,
+        managerRating: 0,
+        feedback: "",
+        ...prev[projectId],
+        [key]: value,
+      },
+    }));
+  };
+
+  const handleSubmitReview = async (projectId) => {
+    const review = reviewDrafts[projectId];
+    if (!review) return;
+    if (!review.freelancerRating || !review.managerRating) {
+      toast.error("Rate both freelancer and project manager before submitting.");
+      return;
+    }
+
+    setSubmittingReviews(true);
+    try {
+      // Placeholder persistence. Connect this to a dedicated review endpoint.
+      await new Promise((resolve) => {
+        setTimeout(resolve, 400);
+      });
+      toast.success("Review submitted");
+    } finally {
+      setSubmittingReviews(false);
     }
   };
 
@@ -387,6 +493,256 @@ const ClientProfileContent = () => {
                     </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/60 bg-card/40 backdrop-blur-md shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  Billing & Payments
+                </CardTitle>
+                <CardDescription>
+                  Open your billing hub to manage cards, receipts, and escrow visibility.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border border-border/60 bg-background/40 p-4">
+                  <p className="text-sm font-semibold text-foreground">Customer Portal</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Use secure hosted checkout and card management for PCI compliance.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    onClick={() => navigate("/client/payments")}
+                    className="gap-2"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Open Billing Hub
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() =>
+                      toast.info(
+                        "Wire this action to your Stripe Customer Portal session endpoint."
+                      )
+                    }
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Launch Customer Portal
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/60 bg-card/40 backdrop-blur-md shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-primary" />
+                  Notification Preferences
+                </CardTitle>
+                <CardDescription>
+                  Control where project, milestone, and chat alerts are delivered.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Project updates</p>
+                    <p className="text-xs text-muted-foreground">
+                      Status changes, approvals, and timeline updates
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.projectUpdates}
+                    onCheckedChange={(checked) =>
+                      handleNotificationToggle("projectUpdates", checked)
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Messages</p>
+                    <p className="text-xs text-muted-foreground">
+                      New chat messages from freelancer or project manager
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.messages}
+                    onCheckedChange={(checked) =>
+                      handleNotificationToggle("messages", checked)
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Milestone review reminders</p>
+                    <p className="text-xs text-muted-foreground">
+                      Nudges when deliverables are waiting for approval
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.milestoneReviews}
+                    onCheckedChange={(checked) =>
+                      handleNotificationToggle("milestoneReviews", checked)
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">SMS alerts</p>
+                    <p className="text-xs text-muted-foreground">
+                      Critical disputes and payment alerts by SMS
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.smsAlerts}
+                    onCheckedChange={(checked) =>
+                      handleNotificationToggle("smsAlerts", checked)
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/60 bg-card/40 backdrop-blur-md shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-primary" />
+                  Post-Project Reviews
+                </CardTitle>
+                <CardDescription>
+                  Rate freelancer execution and project manager communication after delivery.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {completedProjects.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
+                    Completed projects will appear here for reviews.
+                  </div>
+                ) : (
+                  completedProjects.slice(0, 3).map((project) => {
+                    const draft = reviewDrafts[project.id] || {
+                      freelancerRating: 0,
+                      managerRating: 0,
+                      feedback: "",
+                    };
+                    return (
+                      <div
+                        key={project.id}
+                        className="rounded-lg border border-border/60 bg-background/40 p-4 space-y-3"
+                      >
+                        <p className="text-sm font-semibold text-foreground">
+                          {project.title || "Completed project"}
+                        </p>
+
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Freelancer rating
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: 5 }).map((_, index) => {
+                              const score = index + 1;
+                              const active = draft.freelancerRating >= score;
+                              return (
+                                <Button
+                                  key={`freelancer-${project.id}-${score}`}
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() =>
+                                    handleReviewDraftChange(
+                                      project.id,
+                                      "freelancerRating",
+                                      score
+                                    )
+                                  }
+                                >
+                                  <Star
+                                    className={`h-4 w-4 ${
+                                      active ? "text-amber-500 fill-amber-500" : "text-muted-foreground"
+                                    }`}
+                                  />
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Project manager rating
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: 5 }).map((_, index) => {
+                              const score = index + 1;
+                              const active = draft.managerRating >= score;
+                              return (
+                                <Button
+                                  key={`manager-${project.id}-${score}`}
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() =>
+                                    handleReviewDraftChange(
+                                      project.id,
+                                      "managerRating",
+                                      score
+                                    )
+                                  }
+                                >
+                                  <Star
+                                    className={`h-4 w-4 ${
+                                      active ? "text-amber-500 fill-amber-500" : "text-muted-foreground"
+                                    }`}
+                                  />
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`feedback-${project.id}`}>Feedback</Label>
+                          <Textarea
+                            id={`feedback-${project.id}`}
+                            value={draft.feedback}
+                            onChange={(event) =>
+                              handleReviewDraftChange(
+                                project.id,
+                                "feedback",
+                                event.target.value
+                              )
+                            }
+                            placeholder="Share what went well and what can improve."
+                            className="min-h-[90px] bg-background/50"
+                          />
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => handleSubmitReview(project.id)}
+                          disabled={submittingReviews}
+                        >
+                          {submittingReviews ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Link2 className="h-4 w-4" />
+                          )}
+                          Submit Review
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
 

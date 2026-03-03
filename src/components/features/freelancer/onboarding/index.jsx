@@ -1185,7 +1185,7 @@ const FreelancerMultiStepForm = () => {
             case "deliveryPolicy":
                 return "Delivery policy";
             case "communicationPolicy":
-                return "Communication policy";
+                return "Terms and conditions";
             default: {
                 const fallback =
                     step.key ||
@@ -1752,7 +1752,7 @@ const FreelancerMultiStepForm = () => {
             case "delayHandling":
                 return data.delayHandling ? "" : "Please select how you handle delays.";
             case "communicationPolicy":
-                return data.communicationPolicyAccepted ? "" : "Please accept the communication policy.";
+                return data.communicationPolicyAccepted ? "" : "Please accept the Freelancer Agreement and terms and conditions.";
             case "acceptInProgressProjects":
                 return data.acceptInProgressProjects ? "" : "Please select an option.";
             case "bio":
@@ -2279,7 +2279,7 @@ const FreelancerMultiStepForm = () => {
                     />
                 );
             case "communicationPolicy":
-                return <CommunicationPolicyStep formData={formData} updateFormField={updateFormField} />;
+                return <CommunicationPolicyStep updateFormField={updateFormField} queueAdvance={queueAdvance} />;
             case "acceptInProgressProjects":
                 return <AcceptInProgressProjectsStep formData={formData} updateFormField={updateFormField} />;
             case "bio":

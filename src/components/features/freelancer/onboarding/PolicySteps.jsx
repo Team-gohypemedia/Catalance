@@ -1,18 +1,11 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-import {
-    HOURS_PER_WEEK_OPTIONS,
-    WORKING_SCHEDULE_OPTIONS,
-    START_TIMELINE_OPTIONS,
-    DEADLINE_HISTORY_OPTIONS,
-    DELAY_HANDLING_OPTIONS,
-    IN_PROGRESS_PROJECT_OPTIONS,
-} from "./constants";
+import { IN_PROGRESS_PROJECT_OPTIONS } from "./constants";
 import { StepHeader, OptionCard } from "./sub-components";
 
 // ============================================================================
@@ -43,7 +36,7 @@ export const SingleSelectStep = ({ title, subtitle, options, value, onSelect, co
 // DELIVERY POLICY STEP
 // ============================================================================
 
-export const DeliveryPolicyStep = ({ formData, updateFormField }) => (
+export const DeliveryPolicyStep = ({ formData: _formData, updateFormField }) => (
     <div className="space-y-6">
         <StepHeader
             title="Do You Agree To Catalance Delivery & Revision SOP?"
@@ -54,12 +47,12 @@ export const DeliveryPolicyStep = ({ formData, updateFormField }) => (
                 Catalance maintains standardized delivery and revision policies to ensure fairness, transparency, and dispute
                 protection for both clients and freelancers.
             </p>
-            <div className="space-y-2 text-sm text-white/70">
-                <p>• Up to 3 revisions included per milestone</p>
-                <p>• Scope changes handled through milestone modification SOP</p>
-                <p>• Final deliverables submitted through Catalance milestone system</p>
-                <p>• Reporting and updates follow platform workflow</p>
-            </div>
+            <ul className="space-y-2 text-sm text-white/70 list-disc pl-5">
+                <li>Up to 3 revisions included per milestone.</li>
+                <li>Scope changes are handled through milestone modification SOP.</li>
+                <li>Final deliverables are submitted through the Catalance milestone system.</li>
+                <li>Reporting and updates follow the platform workflow.</li>
+            </ul>
         </div>
 
         <button
@@ -76,34 +69,281 @@ export const DeliveryPolicyStep = ({ formData, updateFormField }) => (
 // COMMUNICATION POLICY STEP
 // ============================================================================
 
-export const CommunicationPolicyStep = ({ formData, updateFormField }) => (
-    <div className="space-y-6">
-        <StepHeader
-            title="Do You Agree To Catalance Communication Policy?"
-            subtitle="Required To Continue"
-        />
-        <div className="rounded-xl border border-white/10 bg-accent dark:bg-accent p-6 space-y-4">
-            <p className="text-white/70 text-sm">
-                To ensure project transparency, client protection, and freelancer dispute coverage, all communication must remain
-                within Catalance.
-            </p>
-            <div className="space-y-2 text-sm text-white/70">
-                <p>• All project discussions must remain inside Catalance</p>
-                <p>• External contact sharing is restricted during active projects</p>
-                <p>• Project updates must follow Catalance reporting SOP</p>
-                <p>• Freelancers must maintain response time within 12 hours</p>
-            </div>
-        </div>
+export const CommunicationPolicyStep = ({ updateFormField, queueAdvance }) => {
+    const agreementRef = useRef(null);
+    const [hasReachedEnd, setHasReachedEnd] = useState(false);
+    const [isAgreeing, setIsAgreeing] = useState(false);
 
-        <button
-            type="button"
-            onClick={() => updateFormField("communicationPolicyAccepted", true, 0)}
-            className="w-full md:w-auto md:px-12 mx-auto block py-4 rounded-xl font-medium transition-all duration-200 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-        >
-            Agree & Continue
-        </button>
-    </div>
-);
+    const handleAgreementScroll = () => {
+        const agreementNode = agreementRef.current;
+        if (!agreementNode) return;
+
+        const reachedEnd =
+            agreementNode.scrollTop + agreementNode.clientHeight >= agreementNode.scrollHeight - 8;
+        if (reachedEnd) {
+            setHasReachedEnd(true);
+        }
+    };
+
+    useEffect(() => {
+        const agreementNode = agreementRef.current;
+        if (!agreementNode) return;
+
+        if (agreementNode.scrollHeight <= agreementNode.clientHeight + 8) {
+            setHasReachedEnd(true);
+        }
+    }, []);
+
+    const handleAgreeAndContinue = () => {
+        if (!hasReachedEnd || isAgreeing) return;
+
+        setIsAgreeing(true);
+        updateFormField("communicationPolicyAccepted", true);
+        queueAdvance(250, true);
+    };
+
+    return (
+        <div className="space-y-6">
+            <StepHeader
+                title="Freelancer Agreement & Terms And Conditions"
+                subtitle="Read Completely And Scroll To The End To Continue"
+            />
+
+            <div
+                ref={agreementRef}
+                onScroll={handleAgreementScroll}
+                className="rounded-xl border border-white/10 bg-accent dark:bg-accent p-6 space-y-4 max-h-[420px] overflow-y-auto"
+            >
+                <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-primary">Freelancer Agreement</h3>
+                    <p className="text-sm font-medium text-white">Catalance</p>
+                    <p className="text-sm text-white/70">
+                        This Freelancer Agreement (&quot;Agreement&quot;) governs the relationship between Catalance
+                        (&quot;Company&quot;) and the independent freelancer (&quot;Freelancer&quot;) engaged for project-based
+                        services.
+                    </p>
+                    <p className="text-sm text-white/70">
+                        By accepting any project, assignment, or task from Catalance, the Freelancer
+                        acknowledges that they have read, understood, and agreed to the terms outlined below.
+                    </p>
+                </div>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">1. Engagement & Scope of Work</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>The Freelancer is engaged on a project-by-project basis.</li>
+                        <li>
+                            Each project will have a defined scope, timeline, deliverables, and compensation
+                            agreed upon prior to commencement.
+                        </li>
+                        <li>
+                            The Freelancer agrees to perform services professionally, diligently, and in
+                            accordance with the instructions provided by Catalance.
+                        </li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">2. Project Completion & Payment</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>
+                            Payment shall be made only upon successful completion and final approval of the
+                            assigned project, as per the agreed scope, timeline, and quality standards.
+                        </li>
+                        <li>
+                            If the Freelancer fails to complete the project, misses deadlines without prior
+                            written approval, or delivers incomplete, plagiarized, or substandard work,
+                            Catalance shall not be liable to make any payment (partial or full).
+                        </li>
+                        <li>
+                            Payment will be processed only after internal review and formal approval by
+                            Catalance.
+                        </li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">3. No Advance Payments</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>
+                            Catalance does not provide advance or upfront payments unless explicitly agreed in
+                            writing.
+                        </li>
+                        <li>All payments are strictly subject to final approval of completed deliverables.</li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">4. Ownership & Intellectual Property</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>
+                            Upon full payment, all rights, title, and interest in the completed work shall
+                            transfer exclusively to Catalance.
+                        </li>
+                        <li>
+                            The Freelancer confirms that all work delivered will be original and free from
+                            third-party claims or copyright infringement.
+                        </li>
+                        <li>Catalance will not use unfinished or unpaid work.</li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">5. Quality Standards & Revisions</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>
+                            The Freelancer must adhere strictly to project briefs, brand guidelines, technical
+                            specifications, and revision instructions.
+                        </li>
+                        <li>
+                            Catalance reserves the right to request reasonable revisions to ensure quality
+                            standards are met.
+                        </li>
+                        <li>Revisions must be completed within the specified timeframe.</li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">6. Communication & Deadlines</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>The Freelancer must maintain timely and professional communication.</li>
+                        <li>Any anticipated delay must be communicated in advance.</li>
+                        <li>
+                            Deadline extensions are subject to approval at the sole discretion of Catalance.
+                            Failure to communicate delays may result in project termination without payment.
+                        </li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">7. Confidentiality</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>
+                            The Freelancer agrees to maintain strict confidentiality of all project materials,
+                            strategies, client information, credentials, and proprietary data.
+                        </li>
+                        <li>
+                            Confidential information shall not be disclosed, reused, or shared without prior
+                            written consent.
+                        </li>
+                        <li>This obligation continues even after termination of engagement.</li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">8. Non-Solicitation & Non-Compete</h4>
+                    <div className="space-y-1 text-sm text-white/70">
+                        <p className="font-medium text-white/85">8.1 Non-Solicitation of Clients</p>
+                        <p>
+                            The Freelancer agrees that during the engagement period and for 12 months after
+                            completion or termination of any project, they shall not:
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>
+                                Directly or indirectly approach, solicit, or accept work from any client
+                                introduced by Catalance.
+                            </li>
+                            <li>
+                                Establish independent business relationships with Catalance clients.
+                            </li>
+                            <li>Circumvent Catalance for direct or indirect benefit.</li>
+                        </ul>
+                        <p>
+                            All client relationships initiated through Catalance remain the exclusive property
+                            of Catalance.
+                        </p>
+                        <p className="font-medium text-white/85">8.2 Non-Solicitation of Team Members</p>
+                        <p>
+                            The Freelancer shall not recruit, hire, or engage any Catalance employee or
+                            contractor for independent work during engagement and for 12 months thereafter.
+                        </p>
+                        <p className="font-medium text-white/85">8.3 Conflict of Interest</p>
+                        <p>The Freelancer must disclose any potential conflict of interest in writing.</p>
+                    </div>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">9. Termination</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>
+                            Catalance reserves the right to terminate any project or engagement if the
+                            Freelancer fails to meet agreed requirements.
+                        </li>
+                        <li>In case of termination due to non-performance, no payment shall be due.</li>
+                        <li>
+                            Catalance may terminate engagement at its discretion in case of misconduct, breach
+                            of confidentiality, or violation of this Agreement.
+                        </li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">10. Independent Contractor Status</h4>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>The Freelancer is engaged as an independent contractor.</li>
+                        <li>
+                            Nothing in this Agreement creates an employment, partnership, or joint venture
+                            relationship.
+                        </li>
+                        <li>
+                            The Freelancer is responsible for their own taxes, compliance, and statutory
+                            obligations.
+                        </li>
+                    </ul>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">11. Limitation of Liability</h4>
+                    <p className="text-sm text-white/70">
+                        Catalance shall not be liable for any indirect, incidental, or consequential damages
+                        arising from project engagement. Total liability, if any, shall not exceed the agreed
+                        project fee.
+                    </p>
+                </section>
+
+                <section className="space-y-2">
+                    <h4 className="text-sm font-semibold text-white">12. Acceptance of Agreement</h4>
+                    <p className="text-sm text-white/70">
+                        By accepting any assignment or continuing work with Catalance, the Freelancer confirms
+                        that:
+                    </p>
+                    <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+                        <li>They have read and understood this Agreement.</li>
+                        <li>They agree to comply with all terms and conditions stated herein.</li>
+                        <li>This Agreement is binding upon acceptance of work.</li>
+                    </ul>
+                </section>
+
+                <p className="rounded-lg border border-white/10 bg-primary-foreground px-4 py-3 text-sm text-white/80">
+                    I have read, understood, and agree to the Freelancer Agreement and Terms &
+                    Conditions of Catalance. I acknowledge that this agreement is legally binding upon
+                    accepting any project assignment.
+                </p>
+            </div>
+
+            <p className="text-center text-xs text-white/60">
+                {hasReachedEnd
+                    ? "You can now agree and continue."
+                    : "Scroll to the end of the agreement to enable the button."}
+            </p>
+
+            <button
+                type="button"
+                onClick={handleAgreeAndContinue}
+                disabled={!hasReachedEnd || isAgreeing}
+                className={cn(
+                    "w-full md:w-auto md:px-12 mx-auto flex items-center justify-center gap-2 py-4 rounded-xl font-medium transition-all duration-200 shadow-lg",
+                    !hasReachedEnd || isAgreeing
+                        ? "bg-primary/40 text-primary-foreground/70 cursor-not-allowed shadow-primary/10"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
+                )}
+            >
+                {isAgreeing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {isAgreeing ? "Agreeing..." : "Agree & Continue"}
+            </button>
+        </div>
+    );
+};
 
 // ============================================================================
 // ACCEPT IN-PROGRESS PROJECTS STEP
@@ -186,6 +426,3 @@ export const OtpVerificationStep = ({ formData, otp, setOtp, isSubmitting }) => 
         )}
     </div>
 );
-
-
-

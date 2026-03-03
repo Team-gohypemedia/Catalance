@@ -512,6 +512,11 @@ const ClientChatContent = () => {
         for (const item of items) {
           // Filter: Only show accepted proposals (active projects)
           if (item.status !== "ACCEPTED") continue;
+          const projectStatus = (item.project?.status || "").toUpperCase();
+          const spentAmount = Number(item.project?.spent || 0);
+          const isPaymentPending =
+            projectStatus === "AWAITING_PAYMENT" || spentAmount <= 0;
+          if (isPaymentPending) continue;
 
           const freelancer = item.freelancer;
           if (!freelancer?.id) continue;

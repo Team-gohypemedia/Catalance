@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -21,7 +21,11 @@ import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import UserPlus from "lucide-react/dist/esm/icons/user-plus";
+import Activity from "lucide-react/dist/esm/icons/activity";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import Gauge from "lucide-react/dist/esm/icons/gauge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 
 let cachedFreelancers = null;
 let cachedFreelancersPromise = null;
@@ -55,6 +59,7 @@ export const ProjectManagerDashboardContent = () => {
     const [searchParams] = useSearchParams();
     const view = searchParams.get("view");
     const [disputes, setDisputes] = useState([]);
+    const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -73,32 +78,105 @@ export const ProjectManagerDashboardContent = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const fetchDisputes = async () => {
+    const fetchDashboardData = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await authFetch("/disputes");
-            const data = await res.json();
-            if (res.ok) {
-                setDisputes(data.data || []);
+            const [disputesRes, projectsRes] = await Promise.all([
+                authFetch("/disputes"),
+                authFetch("/projects"),
+            ]);
+
+            const disputesData = await disputesRes.json().catch(() => null);
+            const projectsData = await projectsRes.json().catch(() => null);
+
+            if (disputesRes.ok) {
+                setDisputes(disputesData?.data || []);
             } else {
                 toast.error("Failed to load disputes");
             }
+
+            if (projectsRes.ok) {
+                setProjects(Array.isArray(projectsData?.data) ? projectsData.data : []);
+            }
         } catch (e) {
-            toast.error("Error loading disputes");
+            toast.error("Error loading dashboard data");
             console.error(e);
         } finally {
             setLoading(false);
         }
-    };
+    }, [authFetch]);
 
     useEffect(() => {
-        fetchDisputes();
-    }, [authFetch]);
+        fetchDashboardData();
+    }, [fetchDashboardData]);
 
     // Group disputes by status
     const openDisputes = disputes.filter(d => d.status === 'OPEN');
     const inProgressDisputes = disputes.filter(d => d.status === 'IN_PROGRESS');
     const resolvedDisputes = disputes.filter(d => d.status === 'RESOLVED');
+
+    const managedProjects = useMemo(() => {
+        const list = Array.isArray(projects) ? projects : [];
+        const byManager = list.filter(
+            (project) =>
+                String(project?.managerId || project?.manager?.id || "") ===
+                String(user?.id || "")
+        );
+        const source = byManager.length > 0 ? byManager : list;
+        return source.filter((project) =>
+            ["OPEN", "IN_PROGRESS", "AWAITING_PAYMENT", "PAUSED"].includes(
+                String(project?.status || "").toUpperCase()
+            )
+        );
+    }, [projects, user?.id]);
+
+    const projectTracker = useMemo(() => {
+        const disputeByProjectId = new Map();
+        disputes.forEach((dispute) => {
+            if (dispute?.projectId) {
+                disputeByProjectId.set(dispute.projectId, dispute);
+            }
+        });
+
+        return managedProjects.map((project) => {
+            const budget = Number(project?.budget || 0);
+            const spent = Number(project?.spent || 0);
+            const burnRate = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+            const progress = Number(project?.progress || 0);
+            const dispute = disputeByProjectId.get(project?.id);
+            const disputeStatus = String(dispute?.status || "").toUpperCase();
+
+            let health = "GREEN";
+            if (disputeStatus === "OPEN") {
+                health = "RED";
+            } else if (disputeStatus === "IN_PROGRESS" || progress < 20) {
+                health = "YELLOW";
+            }
+
+            const phaseLabel =
+                progress >= 95
+                    ? "Delivery"
+                    : progress >= 70
+                    ? "QA / Review"
+                    : progress >= 40
+                    ? "Development"
+                    : progress > 0
+                    ? "Discovery"
+                    : "Kickoff";
+
+            return {
+                id: project?.id,
+                title: project?.title || "Untitled Project",
+                progress,
+                phaseLabel,
+                burnRate,
+                budget,
+                spent,
+                health,
+                disputeStatus,
+            };
+        });
+    }, [managedProjects, disputes]);
 
     return (
         <div className="flex flex-col min-h-screen w-full">
@@ -123,7 +201,7 @@ export const ProjectManagerDashboardContent = () => {
                                 <Video className="w-4 h-4 mr-2" />
                                 {isSidebarOpen ? "Hide Meetings" : "Show Meetings"}
                             </Button>
-                            <Button onClick={fetchDisputes} variant="outline" size="sm" className="gap-2">
+                            <Button onClick={fetchDashboardData} variant="outline" size="sm" className="gap-2">
                                 <Clock className="w-4 h-4" />
                                 Refresh Data
                             </Button>
@@ -138,6 +216,7 @@ export const ProjectManagerDashboardContent = () => {
                             {!view && (
                                 <>
                                     <PMOverview disputes={disputes} />
+                                    <PMProjectTracker projects={projectTracker} />
                                     <Separator />
                                 </>
                             )}
@@ -159,7 +238,7 @@ export const ProjectManagerDashboardContent = () => {
                                                         <DisputeCard
                                                             key={dispute.id}
                                                             dispute={dispute}
-                                                            onUpdate={fetchDisputes}
+                                                            onUpdate={fetchDashboardData}
                                                         />
                                                     ))
                                                 ) : (
@@ -181,7 +260,7 @@ export const ProjectManagerDashboardContent = () => {
                                             <DisputeCard
                                                 key={dispute.id}
                                                 dispute={dispute}
-                                                onUpdate={fetchDisputes}
+                                                onUpdate={fetchDashboardData}
                                                 readOnly={true}
                                             />
                                         ))}
@@ -220,7 +299,6 @@ const PMOverview = ({ disputes }) => {
 
     const resolvedCount = disputes.filter(d => d.status === 'RESOLVED').length;
     const pendingCount = disputes.filter(d => ['OPEN', 'IN_PROGRESS'].includes(d.status)).length;
-    const totalCount = disputes.length;
 
 
     const metrics = [
@@ -265,6 +343,111 @@ const PMOverview = ({ disputes }) => {
     );
 };
 
+const PMProjectTracker = ({ projects }) => {
+    const totals = useMemo(() => {
+        return projects.reduce(
+            (acc, project) => {
+                if (project.health === "GREEN") acc.green += 1;
+                if (project.health === "YELLOW") acc.yellow += 1;
+                if (project.health === "RED") acc.red += 1;
+                return acc;
+            },
+            { green: 0, yellow: 0, red: 0 }
+        );
+    }, [projects]);
+
+    return (
+        <section className="space-y-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-semibold">Healthy Project Tracker</h2>
+                    <p className="text-sm text-muted-foreground">
+                        Monitor active projects before they escalate into disputes.
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                    <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30">
+                        Green {totals.green}
+                    </Badge>
+                    <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/30">
+                        Yellow {totals.yellow}
+                    </Badge>
+                    <Badge className="bg-rose-500/15 text-rose-500 border-rose-500/30">
+                        Red {totals.red}
+                    </Badge>
+                </div>
+            </div>
+
+            {projects.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                    No active managed projects found.
+                </div>
+            ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                    {projects.slice(0, 6).map((project) => {
+                        const healthBadgeClass =
+                            project.health === "GREEN"
+                                ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                                : project.health === "YELLOW"
+                                ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                                : "bg-rose-500/15 text-rose-500 border-rose-500/30";
+
+                        return (
+                            <Card key={project.id} className="border-border/60">
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="space-y-1">
+                                            <CardTitle className="text-base leading-tight line-clamp-1">
+                                                {project.title}
+                                            </CardTitle>
+                                            <CardDescription className="text-xs">
+                                                Current phase: {project.phaseLabel}
+                                            </CardDescription>
+                                        </div>
+                                        <Badge className={healthBadgeClass}>{project.health}</Badge>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div>
+                                        <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                                            <span className="inline-flex items-center gap-1">
+                                                <Activity className="h-3.5 w-3.5" />
+                                                Progress
+                                            </span>
+                                            <span>{Math.round(project.progress)}%</span>
+                                        </div>
+                                        <Progress value={project.progress} className="h-2" />
+                                    </div>
+                                    <div>
+                                        <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                                            <span className="inline-flex items-center gap-1">
+                                                <Gauge className="h-3.5 w-3.5" />
+                                                Budget burn rate
+                                            </span>
+                                            <span>{project.burnRate}%</span>
+                                        </div>
+                                        <Progress value={Math.min(project.burnRate, 100)} className="h-2" />
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                        <span className="inline-flex items-center gap-1">
+                                            <TrendingUp className="h-3.5 w-3.5" />
+                                            Spent vs Budget
+                                        </span>
+                                        <span>
+                                            ₹{Number(project.spent || 0).toLocaleString("en-IN")} / ₹
+                                            {Number(project.budget || 0).toLocaleString("en-IN")}
+                                        </span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+            )}
+        </section>
+    );
+};
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Check from "lucide-react/dist/esm/icons/check";
 import X from "lucide-react/dist/esm/icons/x";
@@ -283,7 +466,7 @@ const UpcomingMeetingsSidebar = ({ disputes }) => {
     const [appointments, setAppointments] = useState([]);
     const [loadingAppointments, setLoadingAppointments] = useState(false);
 
-    const fetchAppointments = async () => {
+    const fetchAppointments = useCallback(async () => {
         setLoadingAppointments(true);
         try {
             const res = await authFetch("/appointments");
@@ -296,11 +479,11 @@ const UpcomingMeetingsSidebar = ({ disputes }) => {
         } finally {
             setLoadingAppointments(false);
         }
-    };
+    }, [authFetch]);
 
     useEffect(() => {
         fetchAppointments();
-    }, []);
+    }, [fetchAppointments]);
 
     // Combine Disputes (meetings) and Approved Appointments
     const upcomingDisputeMeetings = disputes
@@ -378,7 +561,7 @@ const UpcomingMeetingsSidebar = ({ disputes }) => {
             } else {
                 toast.error("Failed to update appointment");
             }
-        } catch (e) {
+        } catch {
             toast.error("Error updating appointment");
         }
     };
@@ -820,7 +1003,6 @@ const DisputeCard = ({ dispute, onUpdate, readOnly = false }) => {
     const [meetingDate, setMeetingDate] = useState(dispute.meetingDate ? new Date(dispute.meetingDate).toISOString().slice(0, 16) : "");
     const [resolution, setResolution] = useState(dispute.resolutionNotes || "");
     const [status, setStatus] = useState(dispute.status);
-    const [showProposal, setShowProposal] = useState(false);
     const [platform, setPlatform] = useState(() => {
         if (!dispute.meetingLink) return "google";
         if (dispute.meetingLink.includes("zoom")) return "zoom";
@@ -879,7 +1061,7 @@ const DisputeCard = ({ dispute, onUpdate, readOnly = false }) => {
             } else {
                 toast.error("Failed to reassign project");
             }
-        } catch (e) {
+        } catch {
             toast.error("Error reassigning project");
         } finally {
             setLoading(false);
@@ -936,7 +1118,7 @@ const DisputeCard = ({ dispute, onUpdate, readOnly = false }) => {
             } else {
                 toast.error("Failed to update project");
             }
-        } catch (e) {
+        } catch {
             toast.error("Error updating project");
         } finally {
             setLoading(false);
@@ -984,7 +1166,7 @@ const DisputeCard = ({ dispute, onUpdate, readOnly = false }) => {
             <CardContent className="flex-1 space-y-4 text-sm">
                 <div className="bg-muted/30 p-2 rounded-md">
                     <p className="text-muted-foreground line-clamp-3 text-xs italic">
-                        "{dispute.description}"
+                        {dispute.description}
                     </p>
                 </div>
 

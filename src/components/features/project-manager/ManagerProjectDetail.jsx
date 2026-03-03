@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { ManagerTopBar } from "./ManagerTopBar";
@@ -41,13 +41,12 @@ import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
-import Calendar from "lucide-react/dist/esm/icons/calendar";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import Send from "lucide-react/dist/esm/icons/send";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Settings from "lucide-react/dist/esm/icons/settings";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
-import { SOP_TEMPLATES, getSopFromTitle } from "@/shared/data/sopTemplates";
+import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { KanbanBoard } from "./KanbanBoard";
 import { FreelancerReassignStepper } from "./FreelancerReassignStepper";
 
@@ -112,7 +111,6 @@ const ManagerProjectDetailContent = () => {
   const [showDescription, setShowDescription] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
 
   // PM Upgrades State
@@ -122,13 +120,7 @@ const ManagerProjectDetailContent = () => {
   const [reassignOpen, setReassignOpen] = useState(false);
   const [escrowReleasing, setEscrowReleasing] = useState(false);
 
-  useEffect(() => {
-    fetchProject();
-    fetchMessages();
-    fetchTasks();
-  }, [projectId]);
-
-  const fetchProject = async () => {
+  const fetchProject = useCallback(async () => {
     try {
       const res = await authFetch(`/projects/${projectId}`);
       const data = await res.json();
@@ -140,25 +132,22 @@ const ManagerProjectDetailContent = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authFetch, projectId]);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const res = await authFetch(`/chat/projects/${projectId}/messages`);
       const data = await res.json();
 
       if (res.ok && data?.data) {
         setMessages(data.data.messages || []);
-        if (data.data.conversation?.id) {
-          setConversationId(data.data.conversation.id);
-        }
       }
     } catch (err) {
       console.error("Failed to fetch messages:", err);
     }
-  };
+  }, [authFetch, projectId]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       setTasksLoading(true);
       const res = await authFetch(`/projects/${projectId}/tasks`);
@@ -171,7 +160,13 @@ const ManagerProjectDetailContent = () => {
     } finally {
       setTasksLoading(false);
     }
-  };
+  }, [authFetch, projectId]);
+
+  useEffect(() => {
+    fetchProject();
+    fetchMessages();
+    fetchTasks();
+  }, [fetchProject, fetchMessages, fetchTasks]);
 
   // --- Kanban Handlers ---
   const handleAddTask = async (taskData) => {

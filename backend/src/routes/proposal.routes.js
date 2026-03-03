@@ -33,7 +33,11 @@ proposalRouter.post(
 
 const updateProposalStatusSchema = z.object({
   params: z.object({ id: z.string().min(1) }),
-  body: z.object({ status: z.string().min(1) })
+  body: z.object({
+    status: z.string().min(1),
+    rejectionReason: z.string().max(300).optional(),
+    rejectionReasonKey: z.string().max(64).optional(),
+  })
 });
 
 proposalRouter.patch(

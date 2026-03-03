@@ -230,6 +230,8 @@ model Proposal {
   coverLetter  String         @db.Text
   amount       Int
   status       ProposalStatus @default(PENDING)
+  rejectionReason    String?  @db.Text
+  rejectionReasonKey String?
   budgetReminderSent Boolean  @default(false)
   freelancer   User           @relation(fields: [freelancerId], references: [id])
   freelancerId String

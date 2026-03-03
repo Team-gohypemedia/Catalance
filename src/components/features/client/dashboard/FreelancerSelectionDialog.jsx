@@ -146,6 +146,9 @@ const FreelancerSelectionDialog = ({
             <Badge variant="outline">
               Ranked {freelancerSelectionData.totalRanked}
             </Badge>
+            <Badge variant="outline" className="text-muted-foreground">
+              50%+ match only
+            </Badge>
             {freelancerSelectionData.invitedCount > 0 && (
               <Badge variant="outline" className="text-muted-foreground">
                 Invited {freelancerSelectionData.invitedCount}
@@ -410,17 +413,10 @@ const FreelancerSelectionDialog = ({
 
                       <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-lg bg-white/[0.02] p-2">
                         {budgetFit !== null && (
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px] font-semibold text-foreground/90">
-                              <span>Budget fit</span>
-                              <span>{budgetFit}%</span>
-                            </div>
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/35">
-                              <div
-                                className="h-full rounded-full bg-primary transition-[width] duration-300"
-                                style={{ width: `${Math.max(0, Math.min(100, budgetFit))}%` }}
-                              />
-                            </div>
+                          <div>
+                            <p className="text-[11px] font-semibold text-foreground/90">
+                              Budget fit: {Math.max(0, Math.min(100, budgetFit))}%
+                            </p>
                           </div>
                         )}
                         {portfolioProjects.length > 0 && (

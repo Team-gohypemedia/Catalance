@@ -8,6 +8,63 @@ const normalizeService = (service = "") => {
   return service.toString().trim();
 };
 
+const parseProjectIdFromChatService = (service = "") => {
+  if (!service || typeof service !== "string") return null;
+  const parts = service.split(":");
+  if (parts.length < 4 || parts[0] !== "CHAT") return null;
+  return parts[1] || null;
+};
+
+const ensureProjectChatAccess = async ({
+  serviceKey = null,
+  conversationService = null,
+  userId = null
+}) => {
+  const sourceService = conversationService || serviceKey || "";
+  const projectId = parseProjectIdFromChatService(sourceService);
+  if (!projectId) return null;
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      ownerId: true,
+      status: true,
+      spent: true,
+      proposals: {
+        where: { status: "ACCEPTED" },
+        select: { freelancerId: true },
+        take: 1
+      }
+    }
+  });
+
+  if (!project) {
+    throw new AppError("Project not found for this chat.", 404);
+  }
+
+  const acceptedFreelancerId = project.proposals?.[0]?.freelancerId || null;
+  const isParticipant =
+    String(userId) === String(project.ownerId) ||
+    (acceptedFreelancerId &&
+      String(userId) === String(acceptedFreelancerId));
+
+  if (!isParticipant) {
+    throw new AppError("You do not have permission to access this chat.", 403);
+  }
+
+  const isPaymentPending =
+    project.status === "AWAITING_PAYMENT" || Number(project.spent || 0) <= 0;
+  if (isPaymentPending) {
+    throw new AppError(
+      "Chat will start after upfront payment is completed.",
+      403
+    );
+  }
+
+  return project;
+};
+
 const serializeMessage = (message) => ({
   id: message.id,
   conversationId: message.conversationId,
@@ -109,7 +166,11 @@ export const listUserConversations = asyncHandler(async (req, res) => {
   // Regular flow for Clients/Freelancers
   const proposals = await prisma.proposal.findMany({
     where: {
-      project: { ownerId: userId },
+      project: {
+        ownerId: userId,
+        status: { not: "AWAITING_PAYMENT" },
+        spent: { gt: 0 }
+      },
       freelancerId: { not: userId },
       status: { in: ["ACCEPTED"] }
     },
@@ -223,6 +284,13 @@ export const createConversation = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
+  if (serviceKey) {
+    await ensureProjectChatAccess({
+      serviceKey,
+      userId: createdById
+    });
+  }
+
   let conversation = null;
 
   if (serviceKey) {
@@ -277,6 +345,11 @@ export const createConversation = asyncHandler(async (req, res) => {
     });
   }
 
+  await ensureProjectChatAccess({
+    conversationService: conversation.service,
+    userId: createdById
+  });
+
   res.status(201).json({ data: conversation });
 });
 
@@ -294,6 +367,11 @@ export const getConversationMessages = asyncHandler(async (req, res) => {
   if (!conversation) {
     throw new AppError("Conversation not found", 404);
   }
+
+  await ensureProjectChatAccess({
+    conversationService: conversation.service,
+    userId: req.user?.sub
+  });
 
   const messages = await prisma.chatMessage.findMany({
     where: { conversationId },
@@ -330,6 +408,15 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
   }
 
   const serviceKey = normalizeService(service);
+  const actorUserId = req.user?.sub;
+
+  if (serviceKey) {
+    await ensureProjectChatAccess({
+      serviceKey,
+      userId: actorUserId
+    });
+  }
+
   let conversation = null;
 
   if (conversationId) {
@@ -358,6 +445,11 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
       }
     });
   }
+
+  await ensureProjectChatAccess({
+    conversationService: conversation.service,
+    userId: actorUserId
+  });
 
   const userMessage = await prisma.chatMessage.create({
     data: {
@@ -393,10 +485,14 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
     }
 
     if (recipientId && String(recipientId) !== String(actualSenderId)) {
+      const preview =
+        typeof content === "string" && content.trim()
+          ? content.trim()
+          : attachment?.name || "Sent an attachment";
       sendNotificationToUser(recipientId, {
         type: "chat",
         title: "New Message",
-        message: `${senderName || "Someone"}: ${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`,
+        message: `${senderName || "Someone"}: ${preview.slice(0, 50)}${preview.length > 50 ? "..." : ""}`,
         data: {
           conversationId: conversation.id,
           messageId: userMessage.id,

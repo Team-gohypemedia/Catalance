@@ -36,6 +36,9 @@ const AIChat = lazy(() => import("@/components/features/ai/AIChat.jsx"));
 const ClientProfile = lazy(
   () => import("@/components/features/client/ClientProfile.jsx"),
 );
+const ClientPayments = lazy(
+  () => import("@/components/features/client/ClientPayments.jsx"),
+);
 const ProjectManagerDashboard = lazy(
   () => import("@/components/features/project-manager/ProjectManagerDashboard"),
 );
@@ -366,6 +369,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <ClientProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/payments"
+              element={
+                <ProtectedRoute>
+                  <ClientPayments />
                 </ProtectedRoute>
               }
             />
