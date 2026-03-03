@@ -19,6 +19,8 @@ import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { useTheme } from '@/components/providers/theme-provider';
 import { request } from '@/shared/lib/api-client';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/shared/context/AuthContext';
 
 const CAPABILITY_ITEMS = [
     'Instant requirement gathering',
@@ -26,6 +28,15 @@ const CAPABILITY_ITEMS = [
     'AI proposal generation',
     '24/7 guided consultation',
 ];
+
+const getProposalStorageKeys = (userId) => {
+    const suffix = userId ? `:${userId}` : "";
+    return {
+        listKey: `markify:savedProposals${suffix}`,
+        singleKey: `markify:savedProposal${suffix}`,
+        syncedKey: `markify:savedProposalSynced${suffix}`,
+    };
+};
 
 const unwrapPayload = (value) => {
     if (!value || typeof value !== 'object') return value;
@@ -472,6 +483,8 @@ const ProposalPreview = ({ content, isDark }) => {
 const GuestAIDemo = () => {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
+    const navigate = useNavigate();
+    const { user } = useAuth();
 
     const [services, setServices] = useState([]);
     const [servicesError, setServicesError] = useState("");
@@ -729,6 +742,54 @@ const GuestAIDemo = () => {
         }
     };
 
+    const handleProceed = (proposalContent) => {
+        const parsed = parseProposalContent(proposalContent);
+        const projectTitle = parsed.fields?.serviceType || parsed.fields?.businessName || "AI Generated Proposal";
+        
+        const now = new Date().toISOString();
+        const { listKey, singleKey, syncedKey } = getProposalStorageKeys(user?.id);
+        const proposalToSave = {
+            id: `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            projectTitle,
+            service: parsed.fields?.serviceType || "General services",
+            serviceKey: parsed.fields?.serviceType || "",
+            summary: proposalContent,
+            content: proposalContent,
+            budget: parsed.fields?.budget || "",
+            timeline: parsed.fields?.launchTimeline || "",
+            ownerId: user?.id || null,
+            syncedProjectId: null,
+            syncedAt: null,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        // Load existing proposals
+        let existingProposals = [];
+        try {
+            const stored = localStorage.getItem(listKey);
+            if (stored) existingProposals = JSON.parse(stored);
+        } catch {}
+
+        existingProposals.push(proposalToSave);
+        localStorage.setItem(listKey, JSON.stringify(existingProposals));
+        localStorage.setItem(singleKey, JSON.stringify(proposalToSave));
+        if (syncedKey) localStorage.removeItem(syncedKey);
+
+        if (user) {
+            if (user.role === "CLIENT") {
+                toast.success("Proposal saved! Redirecting to dashboard...");
+                navigate("/client");
+            } else {
+                toast.info("Please create a client account to proceed with this proposal.");
+                navigate("/signup?role=client", { state: { redirectTo: "/client", fromProposal: true } });
+            }
+        } else {
+            toast.success("Proposal saved! Please create an account to continue.");
+            navigate("/signup?role=client", { state: { redirectTo: "/client", fromProposal: true } });
+        }
+    };
+
     if (loading && !selectedService) {
         return (
             <div className={`flex min-h-screen items-center justify-center ${isDark ? 'bg-black' : 'bg-[#fbfbfa]'}`}>
@@ -921,6 +982,14 @@ const GuestAIDemo = () => {
                                                 Generated Proposal
                                             </div>
                                             <ProposalPreview content={msg.content} isDark={isDark} />
+                                            <div className={`mt-6 pt-5 flex justify-end ${isDark ? 'border-t border-primary/20' : 'border-t border-primary/20'}`}>
+                                                <Button 
+                                                    onClick={() => handleProceed(msg.content)}
+                                                    className="w-full sm:w-auto px-8 py-2.5 rounded-xl font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98]"
+                                                >
+                                                    Find Freelancer for this proposal
+                                                </Button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div
