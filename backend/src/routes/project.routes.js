@@ -11,3 +11,26 @@ projectRouter.post("/", requireAuth, validateResource(createProjectSchema), crea
 projectRouter.get("/:id", requireAuth, getProject);
 projectRouter.patch("/:id", requireAuth, updateProject);
 projectRouter.post("/:id/pay-upfront", requireAuth, payUpfront);
+
+// Project Manager Upgrade Routes
+import {
+    getKanbanTasks,
+    createKanbanTask,
+    updateKanbanTask,
+    generateMicroTasks,
+    releaseEscrow,
+    pauseProject,
+    removeFreelancer,
+    reassignFreelancer
+} from "../controllers/project.controller.js";
+
+projectRouter.get("/:id/tasks", requireAuth, getKanbanTasks);
+projectRouter.post("/:id/tasks", requireAuth, createKanbanTask);
+projectRouter.patch("/:id/tasks/:taskId", requireAuth, updateKanbanTask);
+projectRouter.post("/:id/tasks/generate", requireAuth, generateMicroTasks);
+
+projectRouter.post("/:id/escrow/release", requireAuth, releaseEscrow);
+
+projectRouter.post("/:id/pause", requireAuth, pauseProject);
+projectRouter.post("/:id/remove-freelancer", requireAuth, removeFreelancer);
+projectRouter.post("/:id/reassign-freelancer", requireAuth, reassignFreelancer);
