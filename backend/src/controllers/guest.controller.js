@@ -1055,11 +1055,12 @@ Return strict JSON only:
 
         if (!aiResponse?.success) return "";
         const parsedMessage = parseMessageFieldFromJson(aiResponse.message);
-        if (!parsedMessage) return "";
-
-        if (!/[?؟]/.test(parsedMessage)) {
+        if (!parsedMessage) {
+            console.error("[buildAiGuidedQuestionMessage] AI Response gave empty or invalid parsed message.", aiResponse);
             return "";
         }
+
+        // We removed the strict question mark test because the AI might naturally end with a colon like "Please choose an option below:"
 
         if (hasOptions) {
             const optionLabels = getQuestionOptionLabels(nextQuestion);
@@ -1070,7 +1071,8 @@ Return strict JSON only:
         }
 
         return parsedMessage;
-    } catch {
+    } catch (e) {
+        console.error("[buildAiGuidedQuestionMessage] Fatal error:", e);
         return "";
     }
 };
