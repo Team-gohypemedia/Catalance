@@ -227,6 +227,16 @@ const normalizeProjectLink = (value = "") => {
     return `https://${raw}`;
 };
 
+const normalizePlatformLinkInput = (value = "") => {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) return "";
+    if (/^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)) return trimmed;
+    if (/^[\w.-]+\.[a-z]{2,}(?:[/?#:]|$)/i.test(trimmed)) {
+        return `https://${trimmed}`;
+    }
+    return trimmed;
+};
+
 const buildLocationLabel = ({ city, country }) =>
     [String(city || "").trim(), String(country || "").trim()]
         .filter(Boolean)
@@ -587,7 +597,14 @@ const FreelancerMultiStepForm = () => {
         sequence.push({ key: "services", type: "services" });
         sequence.push({ key: "niche-preference", type: "nichePreference" });
 
-        const totalSelectedServices = formData.selectedServices.length;
+        const selectedServices = Array.from(
+            new Set(
+                (Array.isArray(formData.selectedServices) ? formData.selectedServices : [])
+                    .map((serviceKey) => normalizeOnboardingServiceKey(serviceKey))
+                    .filter(Boolean),
+            ),
+        );
+        const totalSelectedServices = selectedServices.length;
         if (totalSelectedServices > 0) {
             sequence.push({
                 key: "services-platform-links",
@@ -595,7 +612,7 @@ const FreelancerMultiStepForm = () => {
             });
         }
 
-        formData.selectedServices.forEach((serviceKey, index) => {
+        selectedServices.forEach((serviceKey, index) => {
             sequence.push({
                 key: `svc-${serviceKey}-welcome`,
                 type: "serviceWelcome",
@@ -658,7 +675,7 @@ const FreelancerMultiStepForm = () => {
         });
 
         if (totalSelectedServices > 0) {
-            const lastServiceKey = formData.selectedServices[totalSelectedServices - 1];
+            const lastServiceKey = selectedServices[totalSelectedServices - 1];
             sequence.push({
                 key: "services-end",
                 type: "serviceEnd",
@@ -899,8 +916,8 @@ const FreelancerMultiStepForm = () => {
     }, []);
 
     // ── Helpers ─────────────────────────────────────────────────────────
-    const queueAdvance = (delay = 0) => {
-        if (!flowSettings.autoAdvance) return;
+    const queueAdvance = (delay = 0, force = false) => {
+        if (!force && !flowSettings.autoAdvance) return;
         if (advanceTimerRef.current) {
             clearTimeout(advanceTimerRef.current);
         }
@@ -1179,7 +1196,14 @@ const FreelancerMultiStepForm = () => {
     }, []);
 
     const selectedServicesForSettings = useMemo(
-        () => (Array.isArray(formData.selectedServices) ? formData.selectedServices : []),
+        () =>
+            Array.from(
+                new Set(
+                    (Array.isArray(formData.selectedServices) ? formData.selectedServices : [])
+                        .map((serviceKey) => normalizeOnboardingServiceKey(serviceKey))
+                        .filter(Boolean),
+                ),
+            ),
         [formData.selectedServices],
     );
     const availableServicesForSettings = useMemo(() => {
@@ -1259,7 +1283,7 @@ const FreelancerMultiStepForm = () => {
     }, [steps]);
 
     const handleAddServiceFromSettings = useCallback(() => {
-        const nextServiceKey = String(settingsServiceToAdd || "").trim();
+        const nextServiceKey = normalizeOnboardingServiceKey(settingsServiceToAdd);
         if (!nextServiceKey) return;
 
         if (selectedServicesForSettings.includes(nextServiceKey)) {
@@ -1269,7 +1293,14 @@ const FreelancerMultiStepForm = () => {
 
         setFormData((prev) => ({
             ...prev,
-            selectedServices: [...(Array.isArray(prev.selectedServices) ? prev.selectedServices : []), nextServiceKey],
+            selectedServices: Array.from(
+                new Set([
+                    ...(Array.isArray(prev.selectedServices) ? prev.selectedServices : [])
+                        .map((serviceKey) => normalizeOnboardingServiceKey(serviceKey))
+                        .filter(Boolean),
+                    nextServiceKey,
+                ]),
+            ),
             serviceDetails: {
                 ...(prev.serviceDetails || {}),
                 [nextServiceKey]: prev.serviceDetails?.[nextServiceKey] || createServiceDetail(),
@@ -1465,7 +1496,7 @@ const FreelancerMultiStepForm = () => {
             .map((field) => ({
                 key: field.key,
                 label: field.label,
-                value: String(platformLinks[field.key] || "").trim(),
+                value: normalizePlatformLinkInput(platformLinks[field.key]),
             }))
             .filter((entry) => Boolean(entry.value));
 
@@ -1473,9 +1504,9 @@ const FreelancerMultiStepForm = () => {
             return "At least one valid link is mandatory.";
         }
 
-        const invalidLink = providedLinks.find((entry) => !isValidUrl(entry.value));
-        if (invalidLink) {
-            return `Please enter a valid URL for ${invalidLink.label}.`;
+        const hasAtLeastOneValidLink = providedLinks.some((entry) => isValidUrl(entry.value));
+        if (!hasAtLeastOneValidLink) {
+            return "Please add at least one valid URL (e.g., https://example.com).";
         }
 
         return "";
@@ -1483,7 +1514,13 @@ const FreelancerMultiStepForm = () => {
 
     const validateAllSelectedServicePlatformLinks = useCallback((data) => {
         const selectedServices = Array.isArray(data?.selectedServices)
-            ? data.selectedServices
+            ? Array.from(
+                new Set(
+                    data.selectedServices
+                        .map((serviceKey) => normalizeOnboardingServiceKey(serviceKey))
+                        .filter(Boolean),
+                ),
+            )
             : [];
 
         if (selectedServices.length === 0) {
@@ -1510,12 +1547,20 @@ const FreelancerMultiStepForm = () => {
     const hasSingleChoice = (options = []) => Array.isArray(options) && options.length === 1;
 
     const toggleServiceSelection = (serviceKey) => {
-        const current = formData.selectedServices;
-        const exists = current.includes(serviceKey);
+        const normalizedServiceKey = normalizeOnboardingServiceKey(serviceKey);
+        if (!normalizedServiceKey) return;
+        const current = Array.from(
+            new Set(
+                (Array.isArray(formData.selectedServices) ? formData.selectedServices : [])
+                    .map((entry) => normalizeOnboardingServiceKey(entry))
+                    .filter(Boolean),
+            ),
+        );
+        const exists = current.includes(normalizedServiceKey);
 
         const next = exists
-            ? current.filter((item) => item !== serviceKey)
-            : [...current, serviceKey];
+            ? current.filter((item) => item !== normalizedServiceKey)
+            : [...current, normalizedServiceKey];
 
         setFormData((prev) => ({ ...prev, selectedServices: next }));
 
@@ -1962,13 +2007,20 @@ const FreelancerMultiStepForm = () => {
 
     // ── Render helpers ──────────────────────────────────────────────────
     const renderServiceMeta = (serviceKey) => {
-        const totalServices = formData.selectedServices.length;
+        const selectedServices = Array.from(
+            new Set(
+                (Array.isArray(formData.selectedServices) ? formData.selectedServices : [])
+                    .map((entry) => normalizeOnboardingServiceKey(entry))
+                    .filter(Boolean),
+            ),
+        );
+        const totalServices = selectedServices.length;
         if (totalServices <= 1) return "";
 
-        const index = formData.selectedServices.indexOf(serviceKey);
+        const index = selectedServices.indexOf(normalizeOnboardingServiceKey(serviceKey));
         if (index === -1) return "";
 
-        const label = getServiceLabel(serviceKey);
+        const label = getServiceLabel(normalizeOnboardingServiceKey(serviceKey));
         return `${index + 1} of ${totalServices}: ${label}`;
     };
 
@@ -2000,7 +2052,7 @@ const FreelancerMultiStepForm = () => {
                 <div className="relative mx-auto max-w-4xl px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 flex justify-center">
                     <button
                         type="button"
-                        onClick={() => queueAdvance(0)}
+                        onClick={() => queueAdvance(0, true)}
                         disabled={disabled}
                         className={cn(
                             "pointer-events-auto min-w-[180px] px-8 py-3 rounded-xl font-semibold transition-all",

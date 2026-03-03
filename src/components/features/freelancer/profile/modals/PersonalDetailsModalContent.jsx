@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 const PersonalDetailsModalContent = ({
@@ -13,7 +12,6 @@ const PersonalDetailsModalContent = ({
   setPortfolio,
   savePersonalSection,
   isSaving,
-  setPersonal,
   setModalType,
 }) => {
   return (
@@ -25,29 +23,6 @@ const PersonalDetailsModalContent = ({
         <p className="mt-1 text-sm text-muted-foreground">
           Update your public profile information shown to clients.
         </p>
-      </div>
-
-      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <Label
-              htmlFor="freelancer-available-switch"
-              className="text-sm font-semibold tracking-normal"
-            >
-              Available for work
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Show that you are currently open to new projects.
-            </p>
-          </div>
-          <Switch
-            id="freelancer-available-switch"
-            checked={Boolean(personal.available)}
-            onCheckedChange={(checked) =>
-              setPersonal((prev) => ({ ...prev, available: checked }))
-            }
-          />
-        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

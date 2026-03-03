@@ -385,10 +385,23 @@ export const getServicePlatformProfileFields = (serviceKey) => {
         ];
 
     const fieldsByKey = new Map();
+    const labels = new Set();
     sourceFields.forEach((field) => {
         const key = String(field?.key || "").trim();
-        if (!key || fieldsByKey.has(key)) return;
-        fieldsByKey.set(key, field);
+        const label = String(field?.label || "").trim();
+        const normalizedKey = key.toLowerCase();
+        const normalizedLabel = label.toLowerCase();
+
+        if (!key) return;
+        if (fieldsByKey.has(normalizedKey)) return;
+        if (normalizedLabel && labels.has(normalizedLabel)) return;
+
+        fieldsByKey.set(normalizedKey, {
+            ...field,
+            key,
+            label,
+        });
+        if (normalizedLabel) labels.add(normalizedLabel);
     });
 
     return Array.from(fieldsByKey.values());
