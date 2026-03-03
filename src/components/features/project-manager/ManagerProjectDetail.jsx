@@ -45,7 +45,11 @@ import Calendar from "lucide-react/dist/esm/icons/calendar";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import Send from "lucide-react/dist/esm/icons/send";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Settings from "lucide-react/dist/esm/icons/settings";
+import Wallet from "lucide-react/dist/esm/icons/wallet";
 import { SOP_TEMPLATES, getSopFromTitle } from "@/shared/data/sopTemplates";
+import { KanbanBoard } from "./KanbanBoard";
+import { FreelancerReassignStepper } from "./FreelancerReassignStepper";
 
 const getPhaseIcon = (status) => {
   switch (status) {
@@ -68,9 +72,8 @@ const getStatusBadge = (status) => {
   };
   return (
     <Badge
-      className={`${
-        colors[status] || "bg-gray-500"
-      } text-white text-xs px-2 py-0.5`}
+      className={`${colors[status] || "bg-gray-500"
+        } text-white text-xs px-2 py-0.5`}
     >
       {status?.replace(/_/g, " ")}
     </Badge>
@@ -112,9 +115,17 @@ const ManagerProjectDetailContent = () => {
   const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
 
+  // PM Upgrades State
+  const [kanbanTasks, setKanbanTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [generatingTasks, setGeneratingTasks] = useState(false);
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [escrowReleasing, setEscrowReleasing] = useState(false);
+
   useEffect(() => {
     fetchProject();
     fetchMessages();
+    fetchTasks();
   }, [projectId]);
 
   const fetchProject = async () => {
@@ -145,6 +156,128 @@ const ManagerProjectDetailContent = () => {
     } catch (err) {
       console.error("Failed to fetch messages:", err);
     }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      setTasksLoading(true);
+      const res = await authFetch(`/projects/${projectId}/tasks`);
+      const data = await res.json();
+      if (res.ok && data?.data) {
+        setKanbanTasks(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  // --- Kanban Handlers ---
+  const handleAddTask = async (taskData) => {
+    try {
+      const res = await authFetch(`/projects/${projectId}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(taskData)
+      });
+      if (res.ok) {
+        toast.success("Task added");
+        fetchTasks();
+      } else throw new Error("Failed to add task");
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleUpdateTask = async (taskId, updates) => {
+    try {
+      const res = await authFetch(`/projects/${projectId}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        fetchTasks();
+      } else throw new Error("Failed to update task");
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleStatusChange = async (taskId, newStatus) => {
+    // Optimistic update
+    setKanbanTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    await handleUpdateTask(taskId, { status: newStatus });
+  };
+
+  const handleGenerateTasks = async () => {
+    try {
+      setGeneratingTasks(true);
+      const res = await authFetch(`/projects/${projectId}/tasks/generate`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data?.data?.length > 0) {
+        // Automatically save the generated tasks
+        for (const task of data.data) {
+          await authFetch(`/projects/${projectId}/tasks`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(task)
+          });
+        }
+        toast.success(`Generated ${data.data.length} micro-tasks`);
+        fetchTasks();
+      } else {
+        toast.error("Failed to generate tasks");
+      }
+    } catch (err) {
+      toast.error("Error generating tasks: " + err.message);
+    } finally {
+      setGeneratingTasks(false);
+    }
+  };
+
+  // --- Escrow Handler ---
+  const handleReleaseEscrow = async () => {
+    if (!window.confirm("Are you sure you want to approve and release escrow funds to the freelancer?")) return;
+    try {
+      setEscrowReleasing(true);
+      const res = await authFetch(`/projects/${projectId}/escrow/release`, {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || "Funds released successfully");
+      } else {
+        toast.error(data.message || "Failed to release funds");
+      }
+    } catch (err) {
+      toast.error("Error releasing funds: " + err.message);
+    } finally {
+      setEscrowReleasing(false);
+    }
+  };
+
+  // --- Reassignment Handlers ---
+  const handlePauseProject = async () => {
+    const res = await authFetch(`/projects/${projectId}/pause`, { method: "POST" });
+    if (!res.ok) throw new Error("Failed to pause project");
+    await fetchProject();
+  };
+
+  const handleRemoveFreelancer = async () => {
+    const res = await authFetch(`/projects/${projectId}/remove-freelancer`, { method: "POST" });
+    if (!res.ok) throw new Error("Failed to remove freelancer");
+    await fetchProject();
+  };
+
+  const handleInviteReplacement = async (email) => {
+    const res = await authFetch(`/projects/${projectId}/reassign-freelancer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newFreelancerEmail: email })
+    });
+    if (!res.ok) throw new Error("Failed to send invite");
   };
 
   // Get accepted proposal for freelancer info
@@ -204,8 +337,8 @@ const ManagerProjectDetailContent = () => {
   const freelancerPay = acceptedProposal?.amount
     ? Math.round(acceptedProposal.amount * 0.7)
     : project?.budget
-    ? Math.round(project.budget * 0.7)
-    : 0;
+      ? Math.round(project.budget * 0.7)
+      : 0;
 
   // Determine SOP based on project title
   const activeSOP = useMemo(() => {
@@ -330,14 +463,25 @@ const ManagerProjectDetailContent = () => {
                 Created on {formatDate(project?.createdAt)}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDescription(true)}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              View Description
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReassignOpen(true)}
+                className="text-orange-600 border-orange-200 hover:bg-orange-50"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Reassign Freelancer
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDescription(true)}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View Description
+              </Button>
+            </div>
           </div>
 
           {/* Overview Stats */}
@@ -395,25 +539,22 @@ const ManagerProjectDetailContent = () => {
             </Card>
 
             <Card
-              className={`border shadow-sm backdrop-blur ${
-                disputeCount > 0
-                  ? "border-red-500/50 bg-red-500/5"
-                  : "border-border/60 bg-card/80"
-              }`}
+              className={`border shadow-sm backdrop-blur ${disputeCount > 0
+                ? "border-red-500/50 bg-red-500/5"
+                : "border-border/60 bg-card/80"
+                }`}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Disputes</CardTitle>
                 <AlertTriangle
-                  className={`h-4 w-4 ${
-                    disputeCount > 0 ? "text-red-500" : "text-muted-foreground"
-                  }`}
+                  className={`h-4 w-4 ${disputeCount > 0 ? "text-red-500" : "text-muted-foreground"
+                    }`}
                 />
               </CardHeader>
               <CardContent>
                 <div
-                  className={`text-2xl font-semibold ${
-                    disputeCount > 0 ? "text-red-500" : ""
-                  }`}
+                  className={`text-2xl font-semibold ${disputeCount > 0 ? "text-red-500" : ""
+                    }`}
                 >
                   {disputeCount}
                 </div>
@@ -427,6 +568,22 @@ const ManagerProjectDetailContent = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
+
+              {/* Kanban Task Board (NEW) */}
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardContent className="p-4 md:p-6">
+                  <KanbanBoard
+                    tasks={kanbanTasks}
+                    loading={tasksLoading}
+                    onAddTask={handleAddTask}
+                    onUpdateTask={handleUpdateTask}
+                    onStatusChange={handleStatusChange}
+                    onGenerateTasks={handleGenerateTasks}
+                    generatingTasks={generatingTasks}
+                  />
+                </CardContent>
+              </Card>
+
               {/* Project Phases */}
               <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="pb-3">
@@ -462,8 +619,8 @@ const ManagerProjectDetailContent = () => {
                             {phase.status === "in-progress"
                               ? "In Progress"
                               : phase.status === "completed"
-                              ? "Completed"
-                              : "Pending"}
+                                ? "Completed"
+                                : "Pending"}
                           </Badge>
                         </div>
                         <Progress value={phase.progress} className="h-2" />
@@ -527,8 +684,8 @@ const ManagerProjectDetailContent = () => {
                               {phaseGroup.phaseStatus === "completed"
                                 ? "Completed"
                                 : phaseGroup.phaseStatus === "in-progress"
-                                ? "In Progress"
-                                : "Pending"}
+                                  ? "In Progress"
+                                  : "Pending"}
                             </Badge>
                           </div>
                         </AccordionTrigger>
@@ -545,11 +702,10 @@ const ManagerProjectDetailContent = () => {
                                   <Circle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                                 )}
                                 <span
-                                  className={`flex-1 text-sm ${
-                                    task.status === "completed"
-                                      ? "line-through text-muted-foreground"
-                                      : ""
-                                  }`}
+                                  className={`flex-1 text-sm ${task.status === "completed"
+                                    ? "line-through text-muted-foreground"
+                                    : ""
+                                    }`}
                                 >
                                   {task.title}
                                 </span>
@@ -587,18 +743,16 @@ const ManagerProjectDetailContent = () => {
                       {messages.map((msg) => (
                         <div
                           key={msg.id}
-                          className={`p-3 rounded-lg space-y-1 ${
-                            msg.senderRole === "PROJECT_MANAGER"
-                              ? "bg-primary/10 border border-primary/20 ml-4"
-                              : "bg-muted/30 mr-4"
-                          }`}
+                          className={`p-3 rounded-lg space-y-1 ${msg.senderRole === "PROJECT_MANAGER"
+                            ? "bg-primary/10 border border-primary/20 ml-4"
+                            : "bg-muted/30 mr-4"
+                            }`}
                         >
                           <p
-                            className={`text-xs font-medium ${
-                              msg.senderRole === "PROJECT_MANAGER"
-                                ? "text-primary"
-                                : "text-muted-foreground"
-                            }`}
+                            className={`text-xs font-medium ${msg.senderRole === "PROJECT_MANAGER"
+                              ? "text-primary"
+                              : "text-muted-foreground"
+                              }`}
                           >
                             {msg.senderName || "User"}
                           </p>
@@ -688,6 +842,30 @@ const ManagerProjectDetailContent = () => {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Escrow Controls */}
+              <Card className="border border-green-500/30 bg-green-500/5 shadow-sm backdrop-blur">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <Wallet className="h-5 w-5" />
+                    Escrow & Payout
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Review completed milestones and release funds to the freelancer securely. Only release funds when work passes verification.
+                  </p>
+                  <Button
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    onClick={handleReleaseEscrow}
+                    disabled={escrowReleasing || !freelancer}
+                  >
+                    {escrowReleasing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Approve & Release Funds
+                  </Button>
+                </CardContent>
+              </Card>
+
             </div>
           </div>
 
@@ -702,6 +880,16 @@ const ManagerProjectDetailContent = () => {
               </DialogDescription>
             </DialogContent>
           </Dialog>
+
+          {/* Freelancer Reassign Stepper */}
+          <FreelancerReassignStepper
+            open={reassignOpen}
+            onOpenChange={setReassignOpen}
+            onPauseProject={handlePauseProject}
+            onRemoveFreelancer={handleRemoveFreelancer}
+            onInviteReplacement={handleInviteReplacement}
+            currentFreelancer={freelancer}
+          />
         </div>
       </div>
     </div>
