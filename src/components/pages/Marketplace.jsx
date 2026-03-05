@@ -383,134 +383,136 @@ const Marketplace = () => {
 
                                     return (
                                         <motion.div variants={itemVariants} key={item.id} className="h-full">
-                                            <Card className="group relative h-full cursor-pointer flex flex-col border border-gray-200/60 dark:border-border/40 bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1.5 hover:border-primary/50 hover:bg-card/80 transition-all duration-300 overflow-hidden rounded-2xl">
-                                                {/* Image Box */}
-                                                <div className="w-full h-40 relative shrink-0 overflow-hidden bg-muted">
-                                                    {image ? (
-                                                        <>
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 opacity-60"></div>
-                                                            <img src={image} alt={item.service} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 opacity-60"></div>
-                                                            <img
-                                                                src={[
-                                                                    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop",
-                                                                    "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&h=400&fit=crop"
-                                                                ][Math.abs(item.id.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0)) % 12]}
-                                                                alt={item.service}
-                                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out fallback-img"
-                                                                onError={(e) => {
-                                                                    e.target.style.display = 'none';
-                                                                    e.target.nextElementSibling.style.display = 'flex';
-                                                                }}
-                                                            />
-                                                            <div className={cn("hidden w-full h-full flex-col items-center justify-center bg-gradient-to-br absolute inset-0 z-0", placeholderGradient)}>
-                                                                <ImageIcon className="w-10 h-10 text-white/30 mb-2 drop-shadow-md" />
-                                                                <span className="text-[10px] uppercase tracking-widest text-white/50 font-bold drop-shadow-sm">No Preview</span>
+                                            <Link to={`/marketplace/service/${item.id}`} className="block h-full group relative">
+                                                <Card className="h-full cursor-pointer flex flex-col border border-gray-200/60 dark:border-border/40 bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1.5 hover:border-primary/50 hover:bg-card/80 transition-all duration-300 overflow-hidden rounded-2xl">
+                                                    {/* Image Box */}
+                                                    <div className="w-full h-40 relative shrink-0 overflow-hidden bg-muted">
+                                                        {image ? (
+                                                            <>
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 opacity-60"></div>
+                                                                <img src={image} alt={item.service} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 opacity-60"></div>
+                                                                <img
+                                                                    src={[
+                                                                        "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop",
+                                                                        "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&h=400&fit=crop"
+                                                                    ][Math.abs(item.id.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0)) % 12]}
+                                                                    alt={item.service}
+                                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out fallback-img"
+                                                                    onError={(e) => {
+                                                                        e.target.style.display = 'none';
+                                                                        e.target.nextElementSibling.style.display = 'flex';
+                                                                    }}
+                                                                />
+                                                                <div className={cn("hidden w-full h-full flex-col items-center justify-center bg-gradient-to-br absolute inset-0 z-0", placeholderGradient)}>
+                                                                    <ImageIcon className="w-10 h-10 text-white/30 mb-2 drop-shadow-md" />
+                                                                    <span className="text-[10px] uppercase tracking-widest text-white/50 font-bold drop-shadow-sm">No Preview</span>
+                                                                </div>
+                                                            </>
+                                                        )}
+
+                                                        {categoryLabel && (
+                                                            <Badge variant="secondary" className="absolute top-3 left-3 z-20 bg-background/90 text-foreground backdrop-blur-md shadow-sm border-white/10 font-medium px-2.5 py-0.5">
+                                                                {categoryLabel}
+                                                            </Badge>
+                                                        )}
+
+                                                        <button
+                                                            onClick={(e) => toggleFavorite(e, item.id)}
+                                                            aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                                                            className="absolute top-3 right-3 z-30 p-2 rounded-full bg-background/50 hover:bg-background/90 backdrop-blur-sm transition-all duration-300 shadow-sm border border-border/50 group/heart"
+                                                        >
+                                                            <Heart className={cn("w-4 h-4 transition-transform duration-300 group-hover/heart:scale-110 active:scale-90", isFavorite ? "fill-red-500 text-red-500" : "text-foreground/70")} />
+                                                        </button>
+
+                                                        {item.isFeatured && (
+                                                            <Badge className="absolute top-[44px] left-3 z-20 bg-emerald-500 text-white backdrop-blur-md shadow-sm border-none flex items-center gap-1 font-semibold">
+                                                                <Sparkles className="w-3 h-3" /> Featured
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Content Area */}
+                                                    <CardContent className="p-5 flex flex-col flex-1 justify-between">
+                                                        <div className="space-y-3.5">
+                                                            <div className="flex items-center gap-3">
+                                                                {item.freelancer?.avatar ? (
+                                                                    <img src={item.freelancer.avatar} alt={authorName} className="w-7 h-7 rounded-full object-cover ring-2 ring-background shadow-xs" />
+                                                                ) : (
+                                                                    <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center ring-2 ring-background shadow-xs">
+                                                                        <User className="w-4 h-4 text-muted-foreground" />
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-1 font-bold text-base text-foreground group-hover:text-primary transition-colors leading-tight">
+                                                                        <span className="truncate">{authorName}</span>
+                                                                        {item.freelancer?.isVerified && <CheckCircle2 className="w-4 h-4 text-blue-500" />}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
+                                                                        <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                                                                        <span className="text-foreground tracking-tight">{rating}</span>
+                                                                        <span>({reviews})</span>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                        </>
-                                                    )}
+                                                            <h3 className="font-medium text-muted-foreground text-sm line-clamp-2 leading-snug transition-colors">
+                                                                {item.service || "Untitled Service"}
+                                                            </h3>
 
-                                                    {categoryLabel && (
-                                                        <Badge variant="secondary" className="absolute top-3 left-3 z-20 bg-background/90 text-foreground backdrop-blur-md shadow-sm border-white/10 font-medium px-2.5 py-0.5">
-                                                            {categoryLabel}
-                                                        </Badge>
-                                                    )}
+                                                            {item.bio && (
+                                                                <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                                                                    {item.bio}
+                                                                </p>
+                                                            )}
 
-                                                    <button
-                                                        onClick={(e) => toggleFavorite(e, item.id)}
-                                                        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-                                                        className="absolute top-3 right-3 z-30 p-2 rounded-full bg-background/50 hover:bg-background/90 backdrop-blur-sm transition-all duration-300 shadow-sm border border-border/50 group/heart"
-                                                    >
-                                                        <Heart className={cn("w-4 h-4 transition-transform duration-300 group-hover/heart:scale-110 active:scale-90", isFavorite ? "fill-red-500 text-red-500" : "text-foreground/70")} />
-                                                    </button>
-
-                                                    {item.isFeatured && (
-                                                        <Badge className="absolute top-[44px] left-3 z-20 bg-emerald-500 text-white backdrop-blur-md shadow-sm border-none flex items-center gap-1 font-semibold">
-                                                            <Sparkles className="w-3 h-3" /> Featured
-                                                        </Badge>
-                                                    )}
-                                                </div>
-
-                                                {/* Content Area */}
-                                                <CardContent className="p-5 flex flex-col flex-1 justify-between">
-                                                    <div className="space-y-3.5">
-                                                        <div className="flex items-center gap-3">
-                                                            {item.freelancer?.avatar ? (
-                                                                <img src={item.freelancer.avatar} alt={authorName} className="w-7 h-7 rounded-full object-cover ring-2 ring-background shadow-xs" />
-                                                            ) : (
-                                                                <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center ring-2 ring-background shadow-xs">
-                                                                    <User className="w-4 h-4 text-muted-foreground" />
+                                                            {item.techStack && item.techStack.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                                                    {item.techStack.slice(0, 3).map((tech, i) => (
+                                                                        <Badge key={i} variant="outline" className="text-[10px] py-0 px-2 bg-muted/30 text-muted-foreground border-gray-200/60 dark:border-border/60 font-medium">
+                                                                            {tech}
+                                                                        </Badge>
+                                                                    ))}
+                                                                    {item.techStack.length > 3 && (
+                                                                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-muted/30 text-muted-foreground border-gray-200/60 dark:border-border/60 font-medium">
+                                                                            +{item.techStack.length - 3}
+                                                                        </Badge>
+                                                                    )}
                                                                 </div>
                                                             )}
-                                                            <div className="flex flex-col">
-                                                                <div className="flex items-center gap-1 font-bold text-base text-foreground group-hover:text-primary transition-colors leading-tight">
-                                                                    <span className="truncate">{authorName}</span>
-                                                                    {item.freelancer?.isVerified && <CheckCircle2 className="w-4 h-4 text-blue-500" />}
-                                                                </div>
-                                                                <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
-                                                                    <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                                                                    <span className="text-foreground tracking-tight">{rating}</span>
-                                                                    <span>({reviews})</span>
+                                                        </div>
+                                                        <div className="mt-5 pt-4 border-t border-border/50 flex flex-col gap-3 group/btn relative z-10">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted/50 py-1 px-2 rounded-md">
+                                                                    <Clock className="w-3.5 h-3.5" />
+                                                                    {deliveryText} delivery
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        <h3 className="font-medium text-muted-foreground text-sm line-clamp-2 leading-snug transition-colors">
-                                                            {item.service || "Untitled Service"}
-                                                        </h3>
-
-                                                        {item.bio && (
-                                                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                                                                {item.bio}
-                                                            </p>
-                                                        )}
-
-                                                        {item.techStack && item.techStack.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1.5 pt-1">
-                                                                {item.techStack.slice(0, 3).map((tech, i) => (
-                                                                    <Badge key={i} variant="outline" className="text-[10px] py-0 px-2 bg-muted/30 text-muted-foreground border-gray-200/60 dark:border-border/60 font-medium">
-                                                                        {tech}
-                                                                    </Badge>
-                                                                ))}
-                                                                {item.techStack.length > 3 && (
-                                                                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-muted/30 text-muted-foreground border-gray-200/60 dark:border-border/60 font-medium">
-                                                                        +{item.techStack.length - 3}
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="mt-5 pt-4 border-t border-border/50 flex flex-col gap-3 group/btn">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted/50 py-1 px-2 rounded-md">
-                                                                <Clock className="w-3.5 h-3.5" />
-                                                                {deliveryText} delivery
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block mb-1">Starts From</span>
+                                                                    <span className="text-foreground font-extrabold text-[15px] tracking-tight">{priceDisplay}</span>
+                                                                </div>
+                                                                <Button variant="outline" size="sm" className="h-8 shadow-sm text-xs font-semibold rounded-full bg-primary/5 border border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/30 pointer-events-none">
+                                                                    View
+                                                                </Button>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block mb-1">Starts From</span>
-                                                                <span className="text-foreground font-extrabold text-[15px] tracking-tight">{priceDisplay}</span>
-                                                            </div>
-                                                            <Button variant="outline" size="sm" className="h-8 shadow-sm text-xs font-semibold rounded-full bg-primary/5 border border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/30">
-                                                                View
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
+                                                    </CardContent>
+                                                </Card>
+                                            </Link>
                                         </motion.div>
                                     )
                                 })}

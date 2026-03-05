@@ -139,6 +139,7 @@ const FeesPricing = lazy(() => import("@/components/pages/FeesPricing"));
 const Security = lazy(() => import("@/components/pages/Security"));
 const ContactUs = lazy(() => import("@/components/pages/ContactUs"));
 const GuestAIDemo = lazy(() => import("@/components/pages/GuestAIDemo"));
+const ServiceDetails = lazy(() => import("@/components/pages/ServiceDetails"));
 
 const RouteFallback = () => (
   <div className="flex min-h-screen items-center justify-center">
@@ -166,6 +167,14 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <Marketplace />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/marketplace/service/:id"
+              element={
+                <LayoutWithNavbar>
+                  <ServiceDetails />
                 </LayoutWithNavbar>
               }
             />
