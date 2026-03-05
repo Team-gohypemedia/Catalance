@@ -346,6 +346,36 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       
       // Check AGAIN inside transaction to prevent race conditions
       if (normalizedStatus === "ACCEPTED") {
+        // Serialize acceptance attempts per project to guarantee only one winner.
+        // Advisory lock avoids coupling to a physical table name in raw SQL.
+        const lockRows = await tx.$queryRaw`
+          SELECT pg_try_advisory_xact_lock(481516, hashtext(${proposal.projectId})) AS "locked"
+        `;
+        const hasLock = Array.isArray(lockRows) && lockRows[0]?.locked === true;
+
+        if (!hasLock) {
+          throw new AppError(
+            "Another acceptance is already being processed for this project. Please retry.",
+            409
+          );
+        }
+
+        const currentProposal = await tx.proposal.findUnique({
+          where: { id: proposalId },
+          select: { status: true }
+        });
+
+        if (!currentProposal) {
+          throw new AppError("Proposal not found", 404);
+        }
+
+        if (["REJECTED", "REPLACED"].includes(currentProposal.status)) {
+          throw new AppError(
+            "This proposal is no longer available to accept.",
+            409
+          );
+        }
+
         const existingAccepted = await tx.proposal.findFirst({
           where: {
             projectId: proposal.projectId,
