@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +18,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
+import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router-dom";
 
 // Helper to format currency
 const formatBudget = (val) => {
@@ -80,8 +84,11 @@ const extractProposalDetails = (proposal) => {
   return {
     budget: formatBudget(budget),
     delivery: delivery,
+    requiresPayment: Boolean(proposal.requiresPayment),
     statusDisplay:
-      proposal.status === "draft"
+      proposal.requiresPayment
+        ? "Awaiting Payment"
+        : proposal.status === "draft"
         ? "Draft"
         : proposal.status === "rejected"
           ? "Rejected"
@@ -89,7 +96,7 @@ const extractProposalDetails = (proposal) => {
   };
 };
 
-const ProposalRowCard = ({ proposal, onDelete, onOpen }) => {
+const ProposalRowCard = ({ proposal, onDelete, onOpen, onPay, isPaying }) => {
   const details = extractProposalDetails(proposal);
 
   const statusColors = {
@@ -192,7 +199,24 @@ const ProposalRowCard = ({ proposal, onDelete, onOpen }) => {
               </div>
             </Button>
 
-            {onDelete && (
+            {proposal.requiresPayment && onPay ? (
+              <Button
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold border-none rounded-lg"
+                onClick={() => onPay(proposal)}
+                disabled={isPaying}
+              >
+                <div className="flex items-center gap-2">
+                  {isPaying ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="w-4 h-4" />
+                  )}
+                  {isPaying ? "Processing..." : "Approve & Pay"}
+                </div>
+              </Button>
+            ) : null}
+
+            {onDelete && !proposal.requiresPayment ? (
               <Button
                 className="w-full bg-card hover:bg-card/80 border border-border/40 text-foreground hover:text-destructive rounded-lg"
                 onClick={() => onDelete(proposal.id)}
@@ -202,7 +226,7 @@ const ProposalRowCard = ({ proposal, onDelete, onOpen }) => {
                   Delete
                 </div>
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
       </CardContent>
@@ -218,6 +242,12 @@ const mapApiProposal = (proposal = {}) => {
     proposal.freelancerName ||
     "Freelancer";
   const freelancerAvatar = proposal.freelancer?.avatar || proposal.avatar || "";
+  const projectStatus = String(proposal.project?.status || "").toUpperCase();
+  const spentAmount = Number(proposal.project?.spent || 0);
+  const requiresPayment =
+    projectStatus === "AWAITING_PAYMENT" &&
+    String(proposal.status || "").toUpperCase() === "ACCEPTED" &&
+    spentAmount <= 0;
 
   return {
     id: proposal.id,
@@ -246,6 +276,8 @@ const mapApiProposal = (proposal = {}) => {
       "",
     budget: proposal.budget || proposal.project?.budget,
     timeline: proposal.timeline || proposal.project?.timeline,
+    projectStatus,
+    requiresPayment,
   };
 };
 
@@ -266,13 +298,21 @@ const normalizeProposalStatus = (status = "") => {
 };
 
 const ClientProposalContent = () => {
-  const { isAuthenticated, authFetch } = useAuth();
+  const { isAuthenticated, authFetch, user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [proposals, setProposals] = useState([]);
   const [activeProposal, setActiveProposal] = useState(null);
   const [isViewing, setIsViewing] = useState(false);
   const [isLoadingProposal, setIsLoadingProposal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("draft");
+  const [processingPaymentProposalId, setProcessingPaymentProposalId] =
+    useState(null);
+  const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
+
+  const deepLinkProjectId = searchParams.get("projectId");
+  const deepLinkTab = (searchParams.get("tab") || "").toLowerCase();
+  const deepLinkAction = (searchParams.get("action") || "").toLowerCase();
 
   const fetchProposals = useCallback(async () => {
     try {
@@ -301,6 +341,10 @@ const ClientProposalContent = () => {
       setIsLoading(false);
     }
   }, [authFetch]);
+
+  useEffect(() => {
+    setHasHandledDeepLink(false);
+  }, [deepLinkProjectId, deepLinkTab, deepLinkAction]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -336,10 +380,102 @@ const ClientProposalContent = () => {
     [authFetch]
   );
 
+  const handleApproveAndPay = useCallback(
+    async (proposal) => {
+      if (!proposal?.projectId) {
+        toast.error("Project reference missing for this proposal.");
+        return;
+      }
+
+      setProcessingPaymentProposalId(proposal.id);
+
+      try {
+        const orderRes = await authFetch(
+          `/projects/${proposal.projectId}/pay-upfront/order`,
+          { method: "POST" }
+        );
+        const orderPayload = await orderRes.json().catch(() => null);
+
+        if (!orderRes.ok) {
+          if (orderRes.status === 503) {
+            const fallbackRes = await authFetch(
+              `/projects/${proposal.projectId}/pay-upfront`,
+              { method: "POST" }
+            );
+            const fallbackPayload = await fallbackRes.json().catch(() => null);
+            if (!fallbackRes.ok) {
+              throw new Error(fallbackPayload?.message || "Payment failed.");
+            }
+            toast.success(
+              fallbackPayload?.data?.message ||
+                "Payment completed. Project is now active."
+            );
+            await fetchProposals();
+            return;
+          }
+          throw new Error(orderPayload?.message || "Unable to start payment.");
+        }
+
+        const orderData = orderPayload?.data || {};
+        const paymentProof = await openRazorpayCheckout({
+          key: orderData.key,
+          amountPaise: orderData.amountPaise,
+          currency: orderData.currency || "INR",
+          orderId: orderData.orderId,
+          description: `Upfront payment for ${orderData.projectTitle || "project"}`,
+          prefill: {
+            email: user?.email || "",
+            name: user?.fullName || "",
+            contact: user?.phone || user?.phoneNumber || "",
+          },
+          notes: {
+            projectId: orderData.projectId,
+          },
+        });
+
+        const verifyRes = await authFetch(
+          `/projects/${proposal.projectId}/pay-upfront/verify`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(paymentProof),
+          }
+        );
+        const verifyPayload = await verifyRes.json().catch(() => null);
+
+        if (!verifyRes.ok) {
+          throw new Error(verifyPayload?.message || "Payment verification failed.");
+        }
+
+        toast.success(
+          verifyPayload?.data?.message || "Payment completed. Project is now active."
+        );
+        await fetchProposals();
+      } catch (error) {
+        console.error("Failed to approve and pay:", error);
+        toast.error(error?.message || "Payment failed. Please try again.");
+      } finally {
+        setProcessingPaymentProposalId(null);
+      }
+    },
+    [authFetch, fetchProposals, user]
+  );
+
+  const scopedProposals = useMemo(() => {
+    if (!deepLinkProjectId) return proposals;
+    return proposals.filter(
+      (proposal) => String(proposal.projectId) === String(deepLinkProjectId)
+    );
+  }, [deepLinkProjectId, proposals]);
+
   const grouped = useMemo(() => {
-    return proposals.reduce(
+    return scopedProposals.reduce(
       (acc, proposal) => {
-        if (proposal.status === "accepted") {
+        if (proposal.status === "accepted" && !proposal.requiresPayment) {
+          return acc;
+        }
+        if (proposal.status === "accepted" && proposal.requiresPayment) {
+          acc.pending.push(proposal);
           return acc;
         }
         if (proposal.status === "draft") {
@@ -353,7 +489,7 @@ const ClientProposalContent = () => {
       },
       { draft: [], pending: [], rejected: [] }
     );
-  }, [proposals]);
+  }, [scopedProposals]);
 
   const handleOpenProposal = useCallback(
     async (proposal) => {
@@ -382,6 +518,58 @@ const ClientProposalContent = () => {
     },
     [authFetch]
   );
+
+  useEffect(() => {
+    if (!deepLinkProjectId || isLoading || hasHandledDeepLink) {
+      return;
+    }
+
+    const relatedProposals = proposals.filter(
+      (proposal) => String(proposal.projectId) === String(deepLinkProjectId)
+    );
+
+    if (!relatedProposals.length) {
+      setHasHandledDeepLink(true);
+      return;
+    }
+
+    const tabByStatus = (status) => {
+      if (status === "draft") return "draft";
+      if (status === "rejected") return "rejected";
+      return "pending";
+    };
+
+    const validTabs = new Set(["draft", "pending", "rejected"]);
+    const inferredTab = tabByStatus(relatedProposals[0]?.status);
+    const targetTab = validTabs.has(deepLinkTab) ? deepLinkTab : inferredTab;
+    setActiveTab(targetTab);
+
+    if (deepLinkAction === "view") {
+      const proposalForTab =
+        relatedProposals.find((proposal) => tabByStatus(proposal.status) === targetTab) ||
+        relatedProposals[0];
+
+      if (proposalForTab) {
+        handleOpenProposal(proposalForTab);
+      }
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("action");
+      setSearchParams(nextParams, { replace: true });
+    }
+
+    setHasHandledDeepLink(true);
+  }, [
+    deepLinkAction,
+    deepLinkProjectId,
+    deepLinkTab,
+    handleOpenProposal,
+    hasHandledDeepLink,
+    isLoading,
+    proposals,
+    searchParams,
+    setSearchParams,
+  ]);
 
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
@@ -464,6 +652,8 @@ const ClientProposalContent = () => {
                     proposal={p}
                     onOpen={handleOpenProposal}
                     onDelete={handleDelete}
+                    onPay={handleApproveAndPay}
+                    isPaying={processingPaymentProposalId === p.id}
                   />
                 ))
               ) : (
