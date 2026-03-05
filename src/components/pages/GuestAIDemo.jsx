@@ -1037,7 +1037,7 @@ const GuestAIDemo = () => {
                         </div>
                     </motion.div>
 
-                    <div className="mt-9 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="mt-11 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <h2 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-[#181711]'}`}>
                                 Choose Your Service
@@ -1053,9 +1053,9 @@ const GuestAIDemo = () => {
                         </span>
                     </div>
 
-                    <div className="relative mt-6">
+                    <div className="relative mt-8 px-1 sm:px-2 md:px-3">
                         <div className={`pointer-events-none absolute inset-x-8 top-5 h-24 blur-3xl ${isDark ? 'bg-primary/10' : 'bg-primary/15'}`} />
-                        <div className="relative grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="relative mx-auto grid max-w-[1260px] grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 xl:grid-cols-3">
                         {services.length === 0 ? (
                             <div className="md:col-span-2 xl:col-span-3">
                                 <Card className={`rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white shadow-sm'}`}>
@@ -1081,11 +1081,11 @@ const GuestAIDemo = () => {
                                     initial={{ opacity: 0, y: 12 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: Math.min(index * 0.04, 0.25) }}
-                                    whileHover={{ y: -5 }}
+                                    whileHover={{ y: -4 }}
                                     whileTap={{ scale: 0.995 }}
                                 >
                                     <Card
-                                        className={`group relative h-full cursor-pointer overflow-hidden rounded-2xl border transition-all duration-300 ${isDark
+                                        className={`group relative mx-auto h-full w-full max-w-[390px] cursor-pointer overflow-hidden rounded-2xl border transition-all duration-300 ${isDark
                                             ? 'border-white/10 bg-white/[0.04] hover:-translate-y-1 hover:border-primary/55 hover:bg-white/[0.07] hover:shadow-[0_24px_50px_-25px_rgba(242,204,13,0.42)]'
                                             : 'border-black/10 bg-white hover:border-primary/50 hover:shadow-[0_20px_45px_-28px_rgba(20,20,20,0.30)]'
                                             }`}
@@ -1095,27 +1095,27 @@ const GuestAIDemo = () => {
                                             ? 'bg-[radial-gradient(circle_at_80%_15%,rgba(242,204,13,0.22),transparent_42%)]'
                                             : 'bg-[radial-gradient(circle_at_80%_15%,rgba(242,204,13,0.24),transparent_44%)]'
                                             }`} />
-                                        <CardHeader className="relative pb-4">
-                                            <div className="mb-4 flex items-start justify-between gap-3">
-                                                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                                    <Briefcase className="h-5 w-5" />
+                                        <CardHeader className="relative space-y-2 px-5 pb-2 pt-5">
+                                            <div className="mb-3 flex items-start justify-between gap-3">
+                                                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
+                                                    <Briefcase className="h-4 w-4" />
                                                 </div>
-                                                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'border border-primary/35 bg-primary/10 text-primary' : 'border border-primary/30 bg-primary/10 text-[#181711]'}`}>
+                                                <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'border border-primary/35 bg-primary/10 text-primary' : 'border border-primary/30 bg-primary/10 text-[#181711]'}`}>
                                                     AI Guided
                                                 </span>
                                             </div>
-                                            <CardTitle className={`text-2xl leading-tight ${isDark ? 'text-white' : 'text-[#181711]'}`}>{service.name}</CardTitle>
-                                            <CardDescription className={`mt-2 min-h-[3.4rem] text-[16px] leading-relaxed ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                                            <CardTitle className={`text-[1.75rem] leading-tight ${isDark ? 'text-white' : 'text-[#181711]'}`}>{service.name}</CardTitle>
+                                            <CardDescription className={`mt-1 min-h-[2.8rem] text-[15px] leading-relaxed ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
                                                 {service.description || `Start a ${service.name} consultation`}
                                             </CardDescription>
                                         </CardHeader>
-                                        <CardContent className="relative pt-0">
-                                            <div className={`mt-2 flex items-center justify-between border-t pt-4 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-                                                <div className={`inline-flex items-center gap-2 text-base font-semibold ${isDark ? 'text-primary' : 'text-[#181711]'}`}>
+                                        <CardContent className="relative px-5 pb-5 pt-0">
+                                            <div className={`mt-1 flex items-center justify-between border-t pt-3.5 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                                <div className={`inline-flex items-center gap-2 text-[15px] font-semibold ${isDark ? 'text-primary' : 'text-[#181711]'}`}>
                                                     Start consultation
                                                     <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                                                 </div>
-                                                <span className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                <span className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                     0{index + 1}
                                                 </span>
                                             </div>
