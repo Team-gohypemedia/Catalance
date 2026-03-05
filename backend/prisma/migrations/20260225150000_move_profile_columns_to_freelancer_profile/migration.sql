@@ -22,7 +22,7 @@ SELECT u."id"
      , NOW()
 FROM "User" u
 WHERE u."role" = 'FREELANCER'::"UserRole"
-   OR u."roles" @> ARRAY['FREELANCER']::TEXT[]
+   /* OR u."roles" @> ARRAY['FREELANCER']::TEXT[]
    OR COALESCE(u."bio", '') <> ''
    OR COALESCE(array_length(u."skills", 1), 0) > 0
    OR u."hourlyRate" IS NOT NULL
@@ -48,9 +48,10 @@ WHERE u."role" = 'FREELANCER'::"UserRole"
    OR (
      jsonb_typeof(u."profileDetails") = 'object'
      AND u."profileDetails" <> '{}'::jsonb
-   )
+   ) */
 ON CONFLICT ("userId") DO NOTHING;
 
+/*
 UPDATE "FreelancerProfile" fp
 SET
   "bio" = COALESCE(u."bio", fp."bio"),
@@ -85,6 +86,7 @@ SET
   "updatedAt" = NOW()
 FROM "User" u
 WHERE u."id" = fp."userId";
+*/
 
 ALTER TABLE "User"
 DROP COLUMN IF EXISTS "bio",

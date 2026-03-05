@@ -1,29 +1,87 @@
 import { useState, useEffect } from "react";
-import { Star, MessageCircle, RefreshCw, Send } from "lucide-react";
+import { Star, MessageCircle, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/shared/lib/utils";
+
+
+const StarSelector = ({ value, onChange }) => (
+    <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+            <button
+                key={star}
+                type="button"
+                onClick={() => onChange(star)}
+                className="focus:outline-none p-0.5 hover:scale-110 transition-transform"
+                aria-label={`Rate ${star} star${star !== 1 ? "s" : ""}`}
+            >
+                <Star
+                    className={cn(
+                        "w-6 h-6 transition-colors",
+                        value >= star ? "fill-yellow-400 text-yellow-400" : "fill-transparent text-border"
+                    )}
+                />
+            </button>
+        ))}
+    </div>
+);
+
+const ReviewCard = ({ review }) => {
+    const formatDate = (d) =>
+        new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+    const initials = review.clientName?.charAt(0)?.toUpperCase() || "?";
+
+    return (
+        <div className="p-5 rounded-2xl bg-card border border-border/40 shadow-sm hover:shadow-md hover:border-border/60 transition-all duration-200">
+            <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-bold text-sm flex items-center justify-center ring-2 ring-background shrink-0">
+                        {initials}
+                    </div>
+                    <div>
+                        <p className="font-semibold text-sm text-foreground leading-none">{review.clientName}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{formatDate(review.createdAt)}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-0.5 shrink-0">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                            key={star}
+                            className={cn(
+                                "w-3.5 h-3.5",
+                                review.rating >= star ? "fill-yellow-400 text-yellow-400" : "fill-transparent text-border"
+                            )}
+                        />
+                    ))}
+                </div>
+            </div>
+            <p className="text-sm text-foreground/80 leading-relaxed">{review.comment}</p>
+        </div>
+    );
+};
 
 const ReviewsList = ({ serviceId, initialStats }) => {
     const [reviews, setReviews] = useState([]);
     const [stats, setStats] = useState(initialStats || { averageRating: 0, reviewCount: 0 });
     const [loading, setLoading] = useState(true);
-
-    const [newReview, setNewReview] = useState({ clientName: "", rating: 5, comment: "" });
+    const [form, setForm] = useState({ clientName: "", rating: 5, comment: "" });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [submitted, setSubmitted] = useState(false);
 
     const fetchReviews = async () => {
         setLoading(true);
         try {
             const { API_BASE_URL } = await import("@/shared/lib/api-client");
-            const res = await fetch(`${API_BASE_URL}/marketplace/${serviceId}/reviews?limit=10`);
+            const res = await fetch(`${API_BASE_URL}/marketplace/${serviceId}/reviews?limit=20`);
             if (res.ok) {
                 const json = await res.json();
                 setReviews(json.data || []);
             }
         } catch (err) {
-            console.error("Failed to fetch reviews", err);
+            console.error("Failed to fetch reviews:", err);
         } finally {
             setLoading(false);
         }
@@ -37,32 +95,27 @@ const ReviewsList = ({ serviceId, initialStats }) => {
         e.preventDefault();
         setError(null);
         setSubmitting(true);
-
         try {
             const { API_BASE_URL } = await import("@/shared/lib/api-client");
             const res = await fetch(`${API_BASE_URL}/marketplace/${serviceId}/reviews`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newReview)
+                body: JSON.stringify(form),
             });
 
             if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.message || "Failed to submit review");
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.message || "Failed to post review");
             }
 
             const json = await res.json();
-            setReviews(prev => [json.data, ...prev]);
-
-            // Recompute stats locally for instant feedback
-            const totalRating = (stats.averageRating * stats.reviewCount) + json.data.rating;
+            setReviews((prev) => [json.data, ...prev]);
             const newCount = stats.reviewCount + 1;
-            setStats({
-                averageRating: Number((totalRating / newCount).toFixed(1)),
-                reviewCount: newCount
-            });
-
-            setNewReview({ clientName: "", rating: 5, comment: "" });
+            const newAvg = ((stats.averageRating * stats.reviewCount) + json.data.rating) / newCount;
+            setStats({ averageRating: Number(newAvg.toFixed(1)), reviewCount: newCount });
+            setForm({ clientName: "", rating: 5, comment: "" });
+            setSubmitted(true);
+            setTimeout(() => setSubmitted(false), 3000);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -70,107 +123,148 @@ const ReviewsList = ({ serviceId, initialStats }) => {
         }
     };
 
-    const formatDate = (dateString) => {
-        const d = new Date(dateString);
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    };
-
     return (
-        <section className="space-y-8 pt-8 border-t border-border/30">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">Client Reviews</h2>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 text-yellow-600 dark:text-yellow-500 rounded-full text-sm font-semibold">
-                    <Star className="w-4 h-4 fill-current" />
-                    <span>{stats.averageRating} ({stats.reviewCount})</span>
+        <section className="space-y-6 bg-card/50 border border-border/40 rounded-2xl p-6 md:p-8 shadow-sm backdrop-blur-sm">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-border/40">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-yellow-400/10 flex items-center justify-center shrink-0">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-400" />
+                    </div>
+                    <h2 className="text-lg font-bold tracking-tight text-foreground">
+                        Client Reviews
+                    </h2>
                 </div>
+                {stats.reviewCount > 0 && (
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-400/10 px-3 py-1 rounded-full">
+                        <Star className="w-3.5 h-3.5 fill-current" />
+                        {stats.averageRating}
+                        <span className="text-muted-foreground font-normal">({stats.reviewCount})</span>
+                    </div>
+                )}
             </div>
 
-            {/* Write a Review */}
-            <form onSubmit={handleSubmit} className="bg-card/30 p-5 rounded-2xl border border-border/50 space-y-4">
-                <h3 className="font-semibold mb-2">Leave a Review</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                        <label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your Name</label>
-                        <Input
-                            required
-                            placeholder="John Doe"
-                            value={newReview.clientName}
-                            onChange={e => setNewReview(p => ({ ...p, clientName: e.target.value }))}
-                            className="bg-background/50"
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Rating (1-5)</label>
-                        <div className="flex items-center h-10 gap-1 bg-background/50 px-3 rounded-md border border-input">
-                            {[1, 2, 3, 4, 5].map(star => (
-                                <button
-                                    key={star}
-                                    type="button"
-                                    onClick={() => setNewReview(p => ({ ...p, rating: star }))}
-                                    className="p-1 focus:outline-none hover:scale-110 transition-transform"
-                                >
-                                    <Star className={`w-5 h-5 ${newReview.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-border fill-transparent'}`} />
-                                </button>
+            {/* Aggregate Rating Summary bar — only when reviews exist */}
+            {stats.reviewCount > 0 && (
+                <div className="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-2xl bg-yellow-400/5 border border-yellow-400/15">
+                    {/* Big score */}
+                    <div className="flex flex-col items-center gap-1 shrink-0">
+                        <span className="text-5xl font-extrabold text-foreground tracking-tight">{stats.averageRating}</span>
+                        <div className="flex gap-0.5" aria-label={`Average rating: ${stats.averageRating} out of 5`}>
+                            {[1, 2, 3, 4, 5].map(s => (
+                                <Star key={s} className={cn("w-4 h-4", stats.averageRating >= s ? "fill-yellow-400 text-yellow-400" : "fill-transparent text-border")} />
                             ))}
                         </div>
+                        <span className="text-xs text-muted-foreground">{stats.reviewCount} {stats.reviewCount === 1 ? "review" : "reviews"}</span>
+                    </div>
+                    {/* Bar breakdown per star (computed from current reviews array) */}
+                    <div className="flex-1 w-full space-y-1.5">
+                        {[5, 4, 3, 2, 1].map(star => {
+                            const count = reviews.filter(r => r.rating === star).length;
+                            const pct = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0;
+                            return (
+                                <div key={star} className="flex items-center gap-2 text-xs">
+                                    <span className="w-4 text-right text-muted-foreground font-medium shrink-0">{star}</span>
+                                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 shrink-0" aria-hidden="true" />
+                                    <div className="flex-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+                                        <div className="h-full bg-yellow-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                    </div>
+                                    <span className="w-8 text-muted-foreground shrink-0">{pct}%</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Review</label>
-                    <Textarea
-                        required
-                        minLength={5}
-                        placeholder="Share your experience..."
-                        value={newReview.comment}
-                        onChange={e => setNewReview(p => ({ ...p, comment: e.target.value }))}
-                        className="bg-background/50 min-h-[100px] resize-none"
-                    />
-                </div>
+            )}
 
-                {error && <p className="text-sm text-red-500">{error}</p>}
+            <div className="rounded-2xl border border-border/40 bg-muted/10 p-5">
+                <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                    Leave a Review
+                </h3>
 
-                <div className="flex justify-end">
-                    <Button type="submit" disabled={submitting} className="rounded-full px-6">
-                        {submitting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                        Post Review
-                    </Button>
-                </div>
-            </form>
-
-            {/* List */}
-            <div className="space-y-4">
-                {loading ? (
-                    <div className="flex justify-center p-8"><RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-                ) : reviews.length === 0 ? (
-                    <div className="text-center py-10 bg-muted/20 border border-border/30 border-dashed rounded-2xl flex flex-col items-center">
-                        <MessageCircle className="w-10 h-10 text-muted-foreground/40 mb-3" />
-                        <h4 className="font-medium text-foreground">No reviews yet</h4>
-                        <p className="text-sm text-muted-foreground">Be the first to share your experience!</p>
+                {submitted ? (
+                    <div className="py-6 text-center flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-1">
+                            <Star className="w-6 h-6 text-emerald-500 fill-emerald-500" />
+                        </div>
+                        <p className="font-semibold text-sm">Thank you for your review!</p>
+                        <p className="text-xs text-muted-foreground">Your feedback helps others discover great services.</p>
                     </div>
                 ) : (
-                    <div className="grid gap-4">
-                        {reviews.map(review => (
-                            <div key={review.id} className="p-5 rounded-2xl bg-card border border-border/40 shadow-sm transition-shadow hover:shadow-md">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shadow-inner">
-                                            {review.clientName?.charAt(0)?.toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold text-sm leading-none">{review.clientName}</h4>
-                                            <span className="text-[10px] text-muted-foreground font-medium">{formatDate(review.createdAt)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                        {[1, 2, 3, 4, 5].map(star => (
-                                            <Star key={star} className={`w-3.5 h-3.5 ${review.rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-border fill-transparent'}`} />
-                                        ))}
-                                    </div>
-                                </div>
-                                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap pl-10">
-                                    {review.comment}
-                                </p>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Your Name</label>
+                                <Input
+                                    required
+                                    placeholder="John Doe"
+                                    value={form.clientName}
+                                    onChange={(e) => setForm((p) => ({ ...p, clientName: e.target.value }))}
+                                    className="bg-background/60 h-10 rounded-xl border-border/50"
+                                />
                             </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Rating</label>
+                                <div className="flex items-center h-10">
+                                    <StarSelector value={form.rating} onChange={(r) => setForm((p) => ({ ...p, rating: r }))} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Your Review</label>
+                            <Textarea
+                                required
+                                minLength={5}
+                                placeholder="Describe your experience working with this freelancer..."
+                                value={form.comment}
+                                onChange={(e) => setForm((p) => ({ ...p, comment: e.target.value }))}
+                                className="bg-background/60 min-h-[100px] resize-none rounded-xl border-border/50"
+                            />
+                        </div>
+
+                        {error && (
+                            <p className="text-xs text-red-500 bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
+                        )}
+
+                        <div className="flex justify-end">
+                            <Button
+                                type="submit"
+                                disabled={submitting || !form.clientName.trim() || !form.comment.trim()}
+                                className="rounded-xl gap-2 px-5"
+                            >
+                                {submitting ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Posting…</>
+                                ) : (
+                                    <><Send className="w-4 h-4" /> Post Review</>
+                                )}
+                            </Button>
+                        </div>
+                    </form>
+                )}
+            </div>
+
+            {/* Reviews List */}
+            <div>
+                {loading ? (
+                    <div className="flex justify-center items-center py-10 gap-2 text-muted-foreground text-sm">
+                        <Loader2 className="w-5 h-5 animate-spin" /> Loading reviews…
+                    </div>
+                ) : reviews.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 rounded-2xl border border-dashed border-border/40 bg-muted/10 text-center gap-3">
+                        <div className="w-14 h-14 rounded-2xl bg-yellow-400/10 flex items-center justify-center">
+                            <Star className="w-7 h-7 text-yellow-400/60" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-sm text-foreground">No reviews yet</p>
+                            <p className="text-xs text-muted-foreground mt-1">Be the first to share your experience with this service.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {reviews.map((review) => (
+                            <ReviewCard key={review.id} review={review} />
                         ))}
                     </div>
                 )}

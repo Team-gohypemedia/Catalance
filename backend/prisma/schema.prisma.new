@@ -1,0 +1,498 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+
+enum UserRole {
+  CLIENT
+  FREELANCER
+  ADMIN
+  PROJECT_MANAGER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_APPROVAL
+}
+
+enum ProjectStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  AWAITING_PAYMENT
+  COMPLETED
+  PAUSED
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  REPLACED
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum ProjectTaskStatus {
+  TO_DO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  fullName     String
+  phoneNumber  String?
+  passwordHash String
+  role         UserRole   @default(FREELANCER)
+  roles        String[]   @default([])
+  status       UserStatus @default(ACTIVE)
+  resetPasswordToken   String?   @unique
+  resetPasswordExpires DateTime?
+  fcmToken     String?    // Firebase Cloud Messaging token for push notifications
+  otpCode      String?
+  otpExpires   DateTime?
+  onboardingComplete Boolean @default(false)
+  isVerified   Boolean    @default(false)
+  suspendedAt  DateTime?  // Track when user was suspended for 90-day deletion countdown
+  phone        String?    // Contact number
+  avatar       String?    // Profile image URL
+  clientProfile ClientProfile?
+  freelancerProfile FreelancerProfile?
+  freelancerProjects FreelancerProject[]
+  marketplace     Marketplace[]
+
+
+  ownedProjects Project[] @relation("ProjectOwner")
+  managedProjects Project[] @relation("ProjectManager")
+  proposals    Proposal[]
+  createdChats ChatConversation[] @relation("ChatCreator")
+  sentMessages ChatMessage[]      @relation("ChatSender")
+  raisedDisputes Dispute[] @relation("DisputeRaiser")
+  managedDisputes Dispute[] @relation("DisputeManager")
+
+  notifications Notification[]
+  availabilitySlots ManagerAvailability[] @relation("ManagerAvailability")
+  bookedAppointments Appointment[] @relation("AppointmentBooker")
+  managedAppointments Appointment[] @relation("AppointmentManager")
+  payments Payment[] @relation("FreelancerPayments")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model FreelancerProfile {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio            String?  @db.Text
+  skills         String[] @default([])
+  jobTitle       String?
+  companyName    String?
+  location       String?
+  rating         Decimal? @db.Decimal(3, 1) @default(0)
+  reviewCount    Int      @default(0)
+  experienceYears Int?    @default(0)
+  workExperience Json?    @default("[]")
+  services       String[] @default([])
+  portfolio      String?
+  linkedin       String?
+  github         String?
+  portfolioProjects Json? @default("[]")
+  resume         String?
+  profileDetails Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ClientProfile {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileDetails Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Marketplace {
+  id           String   @id @default(cuid())
+  freelancerId String
+  freelancer   User     @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  serviceKey   String   @default("")
+  service      String   @default("")
+  serviceDetails Json   @default("{}")
+  isFeatured   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  reviews      Review[]
+
+  @@unique([freelancerId, serviceKey])
+  @@unique([freelancerId, service])
+  @@index([serviceKey])
+  @@index([freelancerId])
+  @@index([isFeatured])
+}
+
+model Review {
+  id          String      @id @default(cuid())
+  serviceId   String
+  service     Marketplace @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  clientName  String
+  rating      Int
+  comment     String      @db.Text
+  createdAt   DateTime    @default(now())
+
+  @@index([serviceId])
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  title           String
+  description     String        @db.Text
+  budget          Int?
+  status          ProjectStatus @default(DRAFT)
+  progress        Int           @default(0)
+  spent           Int           @default(0)
+  completedTasks  Json          @default("[]")
+  verifiedTasks   Json          @default("[]")
+  notes           String?       @db.Text
+  owner           User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  ownerId         String
+  manager         User?         @relation("ProjectManager", fields: [managerId], references: [id])
+  managerId       String?
+
+  proposals       Proposal[]
+  disputes        Dispute[]
+  appointments    Appointment[]
+  payments        Payment[]
+  tasks           ProjectTask[]
+  externalLink    String?       // Project link (e.g. markify.io)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("OnGoingProjects")
+}
+
+model FreelancerProject {
+  id           String   @id @default(cuid())
+  freelancerId String
+  freelancer   User     @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  serviceKey   String?
+  serviceName  String?
+  professionalTitle          String?
+  languages                  String[] @default([])
+  industriesOrNiches         String[] @default([])
+  yearsOfExperienceInService String?
+  serviceSpecializations     String[] @default([])
+  activeTechnologies         String[] @default([])
+  averageProjectPriceRange   String?
+  projectComplexityLevel     String?
+  acceptInProgressProjects   String?
+  title        String
+  description  String?  @db.Text
+  link         String?
+  readme       String?
+  fileName     String?
+  fileUrl      String?
+  role         String?
+  timeline     String?
+  budget       Int?
+  tags         String[] @default([])
+  techStack    String[] @default([])
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([freelancerId])
+  @@index([freelancerId, serviceKey])
+  @@map("MatchingProjects")
+}
+
+model CompletedProject {
+  id               String   @id @default(cuid())
+  ongoingProjectId String?
+  title            String
+  description      String?  @db.Text
+  budget           Int?
+  spent            Int      @default(0)
+  ownerId          String?
+  managerId        String?
+  completedAt      DateTime @default(now())
+  archivedData     Json?    @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([ongoingProjectId])
+  @@index([ownerId])
+  @@index([managerId])
+  @@map("CompletedProjects")
+}
+
+model Proposal {
+  id           String         @id @default(cuid())
+  coverLetter  String         @db.Text
+  amount       Int
+  status       ProposalStatus @default(PENDING)
+  rejectionReason    String?  @db.Text
+  rejectionReasonKey String?
+  budgetReminderSent Boolean  @default(false)
+  freelancer   User           @relation(fields: [freelancerId], references: [id])
+  freelancerId String
+  project      Project        @relation(fields: [projectId], references: [id])
+  projectId    String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Dispute {
+  id              String        @id @default(cuid())
+  description     String        @db.Text
+  status          DisputeStatus @default(OPEN)
+  resolutionNotes String?       @db.Text
+  meetingLink     String?
+  meetingDate     DateTime?
+  meetingReminderSent Boolean @default(false)
+  
+  projectId       String
+  project         Project       @relation(fields: [projectId], references: [id])
+  
+  raisedById      String
+  raisedBy        User          @relation("DisputeRaiser", fields: [raisedById], references: [id])
+  
+  managerId       String?
+  manager         User?         @relation("DisputeManager", fields: [managerId], references: [id])
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model ServiceCatalog {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  schemaVersion String?
+  currency      String?
+  payload       Json
+  sourceFile    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ChatConversation {
+  id          String        @id @default(cuid())
+  service     String?
+  projectTitle String?
+  createdBy   User?         @relation("ChatCreator", fields: [createdById], references: [id])
+  createdById String?
+  messages    ChatMessage[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ChatMessage {
+  id              String           @id @default(cuid())
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId  String
+  sender          User?            @relation("ChatSender", fields: [senderId], references: [id])
+  senderId        String?
+  senderName      String?
+  senderRole      String?
+  role            String           @default("user")
+  content         String?          @db.Text
+  attachment      Json?            // store { name, size, type, url? }
+  deleted         Boolean          @default(false)
+  readAt          DateTime?
+  createdAt       DateTime         @default(now())
+  @@index([conversationId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   @default("general")
+  title     String
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  data      Json?    // Extra data like link, relatedId etc.
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum AppointmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model ManagerAvailability {
+  id          String   @id @default(cuid())
+  managerId   String
+  manager     User     @relation("ManagerAvailability", fields: [managerId], references: [id])
+  date        DateTime @db.Date
+  startHour   Int      // 0-23 (e.g., 10 for 10:00 AM)
+  endHour     Int      // 0-23 (e.g., 11 for 11:00 AM)
+  isBooked    Boolean  @default(false)
+  isEnabled   Boolean  @default(true)
+  remark      String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([managerId, date, startHour])
+  @@index([managerId, date])
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  title           String
+  description     String?           @db.Text
+  date            DateTime          @db.Date
+  startHour       Int               // 0-23
+  endHour         Int               // 0-23
+  status          AppointmentStatus @default(PENDING)
+  meetingLink     String?
+  
+  // Who booked the appointment
+  bookedById      String
+  bookedBy        User              @relation("AppointmentBooker", fields: [bookedById], references: [id])
+  
+  // Which manager's slot
+  managerId       String
+  manager         User              @relation("AppointmentManager", fields: [managerId], references: [id])
+  
+  // Optional: related project
+  projectId       String?
+  project         Project?          @relation(fields: [projectId], references: [id])
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([managerId, date])
+  @@index([bookedById])
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  amount           Int           // Total amount from client
+  platformFee      Int           @default(0) // 30% platform fee
+  freelancerAmount Int           // Amount after fee (70%)
+  currency         String        @default("INR")
+  status           PaymentStatus @default(PENDING)
+  description      String?       @db.Text
+  
+  // Relations
+  projectId        String
+  project          Project       @relation(fields: [projectId], references: [id])
+  
+  freelancerId     String
+  freelancer       User          @relation("FreelancerPayments", fields: [freelancerId], references: [id])
+  
+  // Timestamps
+  paidAt           DateTime?     // When payment was released to freelancer
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  
+  @@index([freelancerId])
+  @@index([projectId])
+}
+
+model Service {
+  id          String   @id @default(cuid()) 
+  slug        String   @unique // e.g. "branding", "web-dev"
+  name        String
+  description String?
+  icon        String?  // Optional icon name
+  active      Boolean  @default(true)
+  
+  minBudget   Int?     @default(0)
+  currency    String   @default("INR")
+
+  questions   ServiceQuestion[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ServiceQuestion {
+  id          String   @id @default(cuid())
+  
+  slug        String   // The 'id' from JSON (e.g., 'project_requirements')
+  
+  text        String   @db.Text
+  type        String   // 'input', 'single_option', 'multi_option'
+  
+  order       Int      @default(0)
+  
+  required    Boolean  @default(true)
+  
+  options     Json?    // [{ "label": "Red", "value": "red" }, ...]
+  logic       Json?    // [{ "condition": "equals", "value": "x", "nextQuestionSlug": "y" }]
+
+  subtitle    String?  // Context for AI
+  saveResponse Boolean @default(false) // Flag to save response for special handling
+  nextQuestionSlug String? // Default next question if logic doesn't override
+
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId   String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([serviceId, slug])
+}
+
+model AiGuestSession {
+  id          String           @id @default(cuid())
+  serviceId   String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  currentStep Int              @default(0)
+  answers     Json?            @default("{}")
+  messages    AiGuestMessage[]
+}
+
+
+
+model AiGuestMessage {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   AiGuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String // "user" or "assistant"
+  content   String         @db.Text
+  createdAt DateTime       @default(now())
+}
+
+model ProjectTask {
+  id          String            @id @default(cuid())
+  title       String
+  description String?           @db.Text
+  status      ProjectTaskStatus @default(TO_DO)
+  deadline    DateTime?
+  
+  projectId   String
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([projectId])
+}
