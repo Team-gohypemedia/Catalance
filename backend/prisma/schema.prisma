@@ -134,6 +134,7 @@ model Marketplace {
   isFeatured   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  reviews      Review[]
 
   @@unique([freelancerId, serviceKey])
   @@unique([freelancerId, service])
@@ -482,4 +483,16 @@ model ProjectTask {
   updatedAt   DateTime          @updatedAt
 
   @@index([projectId])
+}
+
+model Review {
+  id          String      @id @default(cuid())
+  serviceId   String
+  service     Marketplace @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  clientName  String
+  rating      Int
+  comment     String      @db.Text
+  createdAt   DateTime    @default(now())
+
+  @@index([serviceId])
 }
