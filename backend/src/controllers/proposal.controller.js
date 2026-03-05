@@ -346,6 +346,36 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       
       // Check AGAIN inside transaction to prevent race conditions
       if (normalizedStatus === "ACCEPTED") {
+        // Serialize acceptance attempts per project to guarantee only one winner.
+        // Advisory lock avoids coupling to a physical table name in raw SQL.
+        const lockRows = await tx.$queryRaw`
+          SELECT pg_try_advisory_xact_lock(481516, hashtext(${proposal.projectId})) AS "locked"
+        `;
+        const hasLock = Array.isArray(lockRows) && lockRows[0]?.locked === true;
+
+        if (!hasLock) {
+          throw new AppError(
+            "Another acceptance is already being processed for this project. Please retry.",
+            409
+          );
+        }
+
+        const currentProposal = await tx.proposal.findUnique({
+          where: { id: proposalId },
+          select: { status: true }
+        });
+
+        if (!currentProposal) {
+          throw new AppError("Proposal not found", 404);
+        }
+
+        if (["REJECTED", "REPLACED"].includes(currentProposal.status)) {
+          throw new AppError(
+            "This proposal is no longer available to accept.",
+            409
+          );
+        }
+
         const existingAccepted = await tx.proposal.findFirst({
           where: {
             projectId: proposal.projectId,
@@ -388,49 +418,6 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
             }
           });
         }
-
-
-        // --- NEW: Clean up Sibling Projects (duplicates from invites) ---
-        // 1. Re-fetch current project details inside transaction to be safe
-        const currentProject = await tx.project.findUnique({
-          where: { id: proposal.projectId },
-          select: { title: true, ownerId: true }
-        });
-
-        if (currentProject) {
-          const searchTitle = currentProject.title.trim();
-          console.log(`[Proposal] Cleanup Check: owner=${currentProject.ownerId}, title="${searchTitle}"`);
-          
-          // 2. Find siblings with case-insensitive title match
-          const siblingProjects = await tx.project.findMany({
-            where: {
-              ownerId: currentProject.ownerId,
-              title: { equals: searchTitle, mode: 'insensitive' },
-              id: { not: proposal.projectId },
-              status: { in: ["OPEN", "DRAFT"] }
-            },
-            select: { id: true }
-          });
-
-          console.log(`[Proposal] Found ${siblingProjects.length} sibling projects to delete.`);
-
-          if (siblingProjects.length > 0) {
-            const siblingIds = siblingProjects.map(p => p.id);
-            
-            // 3. Delete related data
-            await tx.proposal.deleteMany({
-              where: { projectId: { in: siblingIds } }
-            });
-            await tx.project.deleteMany({
-              where: { id: { in: siblingIds } }
-            });
-            console.log(`[Proposal] Successfully deleted siblings: ${siblingIds.join(", ")}`);
-          }
-        }
-
-
-
-        // -------------------------------------------------------------
       }
       
       // Now do the update atomically
@@ -450,7 +437,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
         where: { id: proposalId },
         data: proposalUpdateData,
         include: {
-          project: { include: { owner: true } },
+          project: true,
           freelancer: true
         }
       });
@@ -460,7 +447,46 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
         rejectedFreelancerIds,
         projectTitle: updated.project?.title || "the project"
       };
+    }, {
+      maxWait: 10000,
+      timeout: 20000,
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
+
+    // Cleanup duplicate sibling projects outside the transaction to avoid tx expiry (P2028).
+    if (normalizedStatus === "ACCEPTED") {
+      try {
+        const ownerId = updated.project?.ownerId || proposal.project?.ownerId;
+        const searchTitle = String(updated.project?.title || proposal.project?.title || "").trim();
+
+        if (ownerId && searchTitle) {
+          const siblingProjects = await prisma.project.findMany({
+            where: {
+              ownerId,
+              title: { equals: searchTitle, mode: "insensitive" },
+              id: { not: proposal.projectId },
+              status: { in: ["OPEN", "DRAFT"] },
+            },
+            select: { id: true },
+          });
+
+          if (siblingProjects.length > 0) {
+            const siblingIds = siblingProjects.map((p) => p.id);
+            await prisma.proposal.deleteMany({
+              where: { projectId: { in: siblingIds } },
+            });
+            await prisma.project.deleteMany({
+              where: { id: { in: siblingIds } },
+            });
+            console.log(
+              `[Proposal] Cleanup removed sibling projects: ${siblingIds.join(", ")}`
+            );
+          }
+        }
+      } catch (cleanupError) {
+        console.error("Failed to cleanup sibling projects:", cleanupError);
+      }
+    }
     
     // Send notifications to freelancers whose proposals were auto-rejected
     if (rejectedFreelancerIds && rejectedFreelancerIds.length > 0) {
@@ -586,6 +612,13 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       throw new AppError("Invalid proposal status value", 400);
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2028") {
+        throw new AppError(
+          "Proposal update timed out while processing acceptance. Please retry.",
+          409,
+          { code: error.code, meta: error.meta }
+        );
+      }
       throw new AppError(`Database error (${error.code}) updating proposal`, 500, {
         code: error.code,
         meta: error.meta

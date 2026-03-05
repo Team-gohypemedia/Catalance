@@ -8,6 +8,8 @@ import Clock from "lucide-react/dist/esm/icons/clock";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import Zap from "lucide-react/dist/esm/icons/zap";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { motion } from "framer-motion";
 
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
@@ -17,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
+import { toast } from "sonner";
 
 // Skeleton for project cards while loading
 const ProjectCardSkeleton = () => (
@@ -70,7 +74,67 @@ const statusConfig = {
   },
 };
 
-const ProjectCard = ({ project }) => {
+const normalizeClientProjects = (remote = []) =>
+  remote
+    .map((p) => {
+      const proposals = Array.isArray(p.proposals) ? p.proposals : [];
+      const accepted = proposals.find(
+        (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
+      );
+      const pending = proposals
+        .filter((pr) => (pr.status || "").toUpperCase() === "PENDING")
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+
+      if (!accepted && pending.length === 0) return null;
+
+      const rawStatus = (p.status || "").toUpperCase();
+      const spentAmount = Number(p.spent || 0);
+      const awaitingFreelancerAcceptance = !accepted;
+      const paymentPending =
+        Boolean(accepted) && rawStatus === "AWAITING_PAYMENT" && spentAmount <= 0;
+      const projectProgress = typeof p.progress === "number" ? p.progress : 0;
+
+      let displayStatus = "pending";
+      if (!awaitingFreelancerAcceptance) {
+        if (paymentPending) displayStatus = "pending";
+        else if (projectProgress === 100 || rawStatus === "COMPLETED")
+          displayStatus = "completed";
+        else if (projectProgress > 0) displayStatus = "in-progress";
+      }
+
+      const acceptedFreelancerName =
+        accepted?.freelancer?.fullName ||
+        accepted?.freelancer?.name ||
+        accepted?.freelancer?.email;
+      const pendingFreelancerName =
+        pending[0]?.freelancer?.fullName ||
+        pending[0]?.freelancer?.name ||
+        pending[0]?.freelancer?.email;
+      const freelancerLabel = accepted
+        ? acceptedFreelancerName || "Freelancer"
+        : pending.length > 1
+          ? `${pending.length} invited freelancers`
+          : pendingFreelancerName || "Invited freelancer";
+
+      return {
+        id: p.id,
+        title: p.title || "Project",
+        freelancer: freelancerLabel,
+        status: displayStatus,
+        budget: p.budget || 0,
+        deadline: p.deadline || "",
+        progress:
+          awaitingFreelancerAcceptance || paymentPending ? 0 : projectProgress,
+        paymentPending,
+        awaitingFreelancerAcceptance,
+      };
+    })
+    .filter(Boolean);
+
+const ProjectCard = ({ project, onPay, isPaying }) => {
   const config = statusConfig[project.status] || statusConfig.pending;
   const StatusIcon = config.icon;
   const budgetValue =
@@ -78,21 +142,41 @@ const ProjectCard = ({ project }) => {
   const deadlineValue =
     project.deadline && typeof project.deadline === "string" ? project.deadline : "";
   const timelineSteps = [
-    {
-      id: "proposal-accepted",
-      label: "Proposal Accepted",
-      state: "done",
-    },
-    {
-      id: "freelancer-active",
-      label: "Freelance Active",
-      state: project.paymentPending ? "upcoming" : "done",
-    },
-    {
-      id: "pending-payment",
-      label: "Pending your payment",
-      state: project.paymentPending ? "current" : "done",
-    },
+    ...(project.awaitingFreelancerAcceptance
+      ? [
+          {
+            id: "proposal-sent",
+            label: "Proposal Sent",
+            state: "done",
+          },
+          {
+            id: "freelancer-acceptance",
+            label: "Freelancer Acceptance",
+            state: "current",
+          },
+          {
+            id: "client-payment",
+            label: "Client Payment",
+            state: "upcoming",
+          },
+        ]
+      : [
+          {
+            id: "proposal-accepted",
+            label: "Proposal Accepted",
+            state: "done",
+          },
+          {
+            id: "freelancer-active",
+            label: "Freelance Active",
+            state: project.paymentPending ? "upcoming" : "done",
+          },
+          {
+            id: "pending-payment",
+            label: "Pending your payment",
+            state: project.paymentPending ? "current" : "done",
+          },
+        ]),
   ];
 
   return (
@@ -108,7 +192,9 @@ const ProjectCard = ({ project }) => {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 space-y-1">
               <p className="text-xs uppercase tracking-[0.35em] text-primary/70">
-                Active project
+                {project.awaitingFreelancerAcceptance
+                  ? "Proposal in review"
+                  : "Active project"}
               </p>
               <h3 className="line-clamp-2 text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-primary">
                 {project.title}
@@ -177,6 +263,12 @@ const ProjectCard = ({ project }) => {
               })}
             </ol>
 
+            {project.awaitingFreelancerAcceptance ? (
+              <p className="mt-3 text-xs text-amber-300/90">
+                Waiting for freelancer acceptance.
+              </p>
+            ) : null}
+
             {project.paymentPending ? (
               <p className="mt-3 text-xs text-amber-300/90">
                 Messages will start after upfront payment.
@@ -204,18 +296,52 @@ const ProjectCard = ({ project }) => {
             </div>
           </div>
 
-          <Button
-            asChild
-            className={`mt-auto w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}>
-            <Link to={`/client/project/${project.id}`}>
-              View details
-              <motion.div
-                animate={{ x: [0, 6, 0] }}
-                transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}>
-                <ArrowRight className="h-4 w-4" />
-              </motion.div>
-            </Link>
-          </Button>
+          <div className="mt-auto space-y-2">
+            {project.paymentPending && onPay ? (
+              <Button
+                onClick={() => onPay(project)}
+                disabled={isPaying}
+                className="w-full gap-2 rounded-full bg-primary py-5 font-semibold text-primary-foreground transition-all duration-200 hover:bg-primary/90"
+              >
+                {isPaying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
+                {isPaying ? "Processing..." : "Approve & Pay"}
+              </Button>
+            ) : null}
+
+            {project.awaitingFreelancerAcceptance ? (
+              <Button
+                asChild
+                variant="outline"
+                className="w-full gap-2 rounded-full border-border/60 bg-card/50 py-5 font-semibold text-foreground hover:bg-card/70"
+              >
+                <Link
+                  to={`/client/proposal?projectId=${encodeURIComponent(project.id)}&tab=pending&action=view`}
+                >
+                  Review Proposal
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : null}
+
+            <Button
+              asChild
+              className={`w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}
+            >
+              <Link to={`/client/project/${project.id}`}>
+                View details
+                <motion.div
+                  animate={{ x: [0, 6, 0] }}
+                  transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </motion.div>
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
@@ -226,6 +352,7 @@ const ClientProjectsContent = () => {
   const { authFetch, isAuthenticated } = useAuth();
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [processingProjectId, setProcessingProjectId] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -236,50 +363,7 @@ const ClientProjectsContent = () => {
         const response = await authFetch("/projects");
         const payload = await response.json().catch(() => null);
         const remote = Array.isArray(payload?.data) ? payload.data : [];
-        const normalized = remote
-          .map((p) => {
-            const accepted = (p.proposals || []).find(
-              (pr) => (pr.status || "").toUpperCase() === "ACCEPTED"
-            );
-            if (!accepted) return null; // only surface projects with an accepted freelancer
-            
-            const rawStatus = (p.status || "").toUpperCase();
-            const spentAmount = Number(p.spent || 0);
-            const paymentPending =
-              rawStatus === "AWAITING_PAYMENT" || spentAmount <= 0;
-
-            // Calculate progress - use project.progress if available, default to 0
-            const projectProgress = typeof p.progress === "number" 
-              ? p.progress 
-              : 0;
-            
-            // Determine status based on progress
-            let displayStatus = "pending";
-            if (paymentPending) {
-              displayStatus = "pending";
-            } else if (projectProgress === 100 || rawStatus === "COMPLETED") {
-              displayStatus = "completed";
-            } else if (projectProgress > 0) {
-              displayStatus = "in-progress";
-            }
-
-            return {
-              id: p.id,
-              title: p.title || "Project",
-              freelancer:
-                accepted.freelancer?.fullName ||
-                accepted.freelancer?.name ||
-                accepted.freelancer?.email ||
-                "Freelancer",
-              status: displayStatus,
-              budget: p.budget || 0,
-              deadline: p.deadline || "",
-              progress: paymentPending ? 0 : projectProgress,
-              paymentPending,
-            };
-          })
-          .filter(Boolean);
-        setProjects(normalized);
+        setProjects(normalizeClientProjects(remote));
       } catch (error) {
         console.error("Failed to load projects from API:", error);
       } finally {
@@ -289,6 +373,72 @@ const ClientProjectsContent = () => {
 
     fetchProjects();
   }, [authFetch, isAuthenticated]);
+
+  const handleApproveAndPay = async (project) => {
+    if (!project?.id) return;
+
+    setProcessingProjectId(project.id);
+    try {
+      const orderRes = await authFetch(`/projects/${project.id}/pay-upfront/order`, {
+        method: "POST",
+      });
+      const orderPayload = await orderRes.json().catch(() => null);
+
+      if (!orderRes.ok) {
+        if (orderRes.status === 503) {
+          const fallbackRes = await authFetch(`/projects/${project.id}/pay-upfront`, {
+            method: "POST",
+          });
+          const fallbackPayload = await fallbackRes.json().catch(() => null);
+          if (!fallbackRes.ok) {
+            throw new Error(fallbackPayload?.message || "Payment failed");
+          }
+          toast.success(
+            fallbackPayload?.data?.message || "Payment completed. Project is now active."
+          );
+          const refresh = await authFetch("/projects");
+          const payload = await refresh.json().catch(() => null);
+          const remote = Array.isArray(payload?.data) ? payload.data : [];
+          setProjects(normalizeClientProjects(remote));
+          return;
+        }
+        throw new Error(orderPayload?.message || "Unable to initiate payment");
+      }
+
+      const orderData = orderPayload?.data || {};
+      const paymentProof = await openRazorpayCheckout({
+        key: orderData.key,
+        amountPaise: orderData.amountPaise,
+        currency: orderData.currency || "INR",
+        orderId: orderData.orderId,
+        description: `Upfront payment for ${orderData.projectTitle || "project"}`,
+      });
+
+      const verifyRes = await authFetch(`/projects/${project.id}/pay-upfront/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentProof),
+      });
+      const verifyPayload = await verifyRes.json().catch(() => null);
+      if (!verifyRes.ok) {
+        throw new Error(verifyPayload?.message || "Payment verification failed");
+      }
+
+      toast.success(
+        verifyPayload?.data?.message || "Payment completed. Project is now active."
+      );
+
+      const response = await authFetch("/projects");
+      const payload = await response.json().catch(() => null);
+      const remote = Array.isArray(payload?.data) ? payload.data : [];
+      setProjects(normalizeClientProjects(remote));
+    } catch (error) {
+      console.error("Project payment failed:", error);
+      toast.error(error?.message || "Failed to process payment");
+    } finally {
+      setProcessingProjectId(null);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
@@ -316,12 +466,17 @@ const ClientProjectsContent = () => {
               [1, 2, 3].map((i) => <ProjectCardSkeleton key={i} />)
             ) : projects.length ? (
               projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onPay={handleApproveAndPay}
+                  isPaying={processingProjectId === project.id}
+                />
               ))
             ) : (
               <Card className="border-dashed">
                 <CardContent className="p-6 text-muted-foreground">
-                  No projects yet. Accepted proposals will appear here.
+                  No projects yet. Pending and accepted proposals will appear here.
                 </CardContent>
               </Card>
             )}

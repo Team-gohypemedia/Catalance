@@ -2,6 +2,9 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
+import { env } from "../config/env.js";
+import { getRazorpayClient, hasRazorpayCredentials } from "../lib/razorpay.js";
+import crypto from "crypto";
 
 const MAX_INT = 2147483647; // PostgreSQL INT4 upper bound
 
@@ -400,6 +403,222 @@ export const updateProject = asyncHandler(async (req, res) => {
   }
 });
 
+const getProjectForUpfrontPayment = async (projectId) => {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      proposals: {
+        where: { status: "ACCEPTED" },
+        include: { freelancer: true },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  return project;
+};
+
+const assertProjectOwnerCanPay = (project, userId) => {
+  if (project.ownerId !== userId) {
+    throw new AppError("Only the project owner can make payments", 403);
+  }
+
+  const hasBeenPaid = Number(project.spent || 0) > 0;
+  if (hasBeenPaid) {
+    throw new AppError("Payment has already been made for this project", 400);
+  }
+};
+
+const resolveUpfrontPaymentPlan = (project) => {
+  const acceptedProposal = project.proposals?.[0];
+  if (!acceptedProposal) {
+    throw new AppError("No accepted proposal found for this project", 400);
+  }
+
+  const amount = normalizeAmount(acceptedProposal.amount || project.budget || 0);
+  if (amount <= 0) {
+    throw new AppError("Invalid project amount for payment", 400);
+  }
+
+  let parts = 2; // < 50k
+  let percentage = 50;
+
+  if (amount > 200000) {
+    parts = 4; // >2L
+    percentage = 25;
+  } else if (amount >= 50000) {
+    parts = 3; // 50k-2L
+    percentage = 33;
+  }
+
+  const upfrontPayment = Math.round(amount / parts);
+
+  return {
+    acceptedProposal,
+    amount,
+    parts,
+    percentage,
+    upfrontPayment,
+  };
+};
+
+const buildRazorpaySignature = ({ orderId, paymentId }) =>
+  crypto
+    .createHmac("sha256", env.RAZORPAY_API_SECRET || "")
+    .update(`${orderId}|${paymentId}`)
+    .digest("hex");
+
+export const createUpfrontPaymentOrder = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  if (!hasRazorpayCredentials()) {
+    throw new AppError(
+      "Razorpay is not configured. Set RAZORPAY_API_KEY and RAZORPAY_API_SECRET on backend.",
+      503
+    );
+  }
+
+  const razorpay = getRazorpayClient();
+  if (!razorpay) {
+    throw new AppError("Unable to initialize Razorpay client", 503);
+  }
+
+  const project = await getProjectForUpfrontPayment(id);
+  assertProjectOwnerCanPay(project, userId);
+  const plan = resolveUpfrontPaymentPlan(project);
+
+  const receipt = `upfront_${id.slice(-10)}_${Date.now()}`.slice(0, 40);
+  const order = await razorpay.orders.create({
+    amount: plan.upfrontPayment * 100,
+    currency: "INR",
+    receipt,
+    notes: {
+      projectId: id,
+      ownerId: userId,
+      freelancerId: plan.acceptedProposal.freelancerId,
+      paymentType: "upfront",
+    },
+  });
+
+  res.json({
+    data: {
+      key: env.RAZORPAY_API_KEY,
+      orderId: order.id,
+      amount: plan.upfrontPayment,
+      amountPaise: order.amount,
+      currency: order.currency,
+      percentage: plan.percentage,
+      projectId: id,
+      projectTitle: project.title,
+    },
+  });
+});
+
+export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body || {};
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  if (!hasRazorpayCredentials()) {
+    throw new AppError("Razorpay is not configured on backend", 503);
+  }
+
+  if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+    throw new AppError("Missing Razorpay verification payload", 400);
+  }
+
+  const razorpay = getRazorpayClient();
+  if (!razorpay) {
+    throw new AppError("Unable to initialize Razorpay client", 503);
+  }
+
+  const project = await getProjectForUpfrontPayment(id);
+  assertProjectOwnerCanPay(project, userId);
+  const plan = resolveUpfrontPaymentPlan(project);
+
+  const expectedSignature = buildRazorpaySignature({
+    orderId: razorpayOrderId,
+    paymentId: razorpayPaymentId,
+  });
+
+  if (expectedSignature !== razorpaySignature) {
+    throw new AppError("Invalid Razorpay payment signature", 400);
+  }
+
+  const [orderDetails, paymentDetails] = await Promise.all([
+    razorpay.orders.fetch(razorpayOrderId),
+    razorpay.payments.fetch(razorpayPaymentId),
+  ]);
+
+  if (!orderDetails || !paymentDetails) {
+    throw new AppError("Unable to validate payment details from Razorpay", 400);
+  }
+
+  if (String(paymentDetails.order_id || "") !== String(razorpayOrderId)) {
+    throw new AppError("Payment does not belong to this Razorpay order", 400);
+  }
+
+  const orderProjectId = String(orderDetails?.notes?.projectId || "");
+  if (orderProjectId !== String(id)) {
+    throw new AppError("Razorpay order does not belong to this project", 400);
+  }
+
+  if (Number(orderDetails.amount || 0) !== plan.upfrontPayment * 100) {
+    throw new AppError("Paid amount does not match required upfront amount", 400);
+  }
+
+  if (!["authorized", "captured"].includes(String(paymentDetails.status || ""))) {
+    throw new AppError("Payment is not completed yet. Please try again.", 400);
+  }
+
+  const updatedProject = await prisma.project.update({
+    where: { id },
+    data: {
+      spent: plan.upfrontPayment,
+      status: "IN_PROGRESS",
+    },
+  });
+
+  try {
+    await sendNotificationToUser(plan.acceptedProposal.freelancerId, {
+      type: "payment",
+      title: "Upfront Payment Completed",
+      message: `Client completed upfront payment for "${project.title}". Project is now active.`,
+      data: {
+        projectId: id,
+        paymentId: razorpayPaymentId,
+      },
+    });
+  } catch (notificationError) {
+    console.error("Failed to notify freelancer after payment:", notificationError);
+  }
+
+  res.json({
+    data: {
+      project: updatedProject,
+      paymentAmount: plan.upfrontPayment,
+      message: `${plan.percentage}% upfront payment completed. Project is now active.`,
+      payment: {
+        orderId: razorpayOrderId,
+        paymentId: razorpayPaymentId,
+        status: paymentDetails.status,
+      },
+    },
+  });
+});
+
 // Pay 50% upfront to activate project
 export const payUpfront = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
@@ -408,55 +627,22 @@ export const payUpfront = asyncHandler(async (req, res) => {
   if (!userId) {
     throw new AppError("Authentication required", 401);
   }
-
-  // Find the project
-  const project = await prisma.project.findUnique({
-    where: { id },
-    include: {
-      proposals: {
-        where: { status: "ACCEPTED" },
-        include: { freelancer: true }
-      }
-    }
-  });
-
-  if (!project) {
-    throw new AppError("Project not found", 404);
+  if (hasRazorpayCredentials()) {
+    throw new AppError(
+      "Direct payment is disabled when Razorpay is configured. Use the Razorpay checkout flow.",
+      400
+    );
   }
 
-  // Only owner can pay
-  if (project.ownerId !== userId) {
-    throw new AppError("Only the project owner can make payments", 403);
-  }
-
-  // Project must not have been paid yet (spent === 0 or null) OR be in AWAITING_PAYMENT status
-  const hasBeenPaid = project.spent && project.spent > 0;
-  if (hasBeenPaid) {
-    throw new AppError("Payment has already been made for this project", 400);
-  }
-
-  // Calculate upfront payment based on budget tiers
-  const acceptedProposal = project.proposals?.[0];
-  const amount = acceptedProposal?.amount || project.budget || 0;
-
-  let parts = 2; // Default to 2 parts (< 50k)
-  let percentage = 50;
-
-  if (amount > 200000) {
-    parts = 4; // 2L - 10L+
-    percentage = 25;
-  } else if (amount >= 50000) {
-    parts = 3; // 50k - 2L
-    percentage = 33;
-  }
-
-  const upfrontPayment = Math.round(amount / parts);
+  const project = await getProjectForUpfrontPayment(id);
+  assertProjectOwnerCanPay(project, userId);
+  const plan = resolveUpfrontPaymentPlan(project);
 
   // Update project: set spent and change status to IN_PROGRESS
   const updatedProject = await prisma.project.update({
     where: { id },
     data: {
-      spent: upfrontPayment,
+      spent: plan.upfrontPayment,
       status: "IN_PROGRESS"
     }
   });
@@ -464,8 +650,8 @@ export const payUpfront = asyncHandler(async (req, res) => {
   res.json({
     data: {
       project: updatedProject,
-      paymentAmount: upfrontPayment,
-      message: `${percentage}% upfront payment processed. Project is now active.`
+      paymentAmount: plan.upfrontPayment,
+      message: `${plan.percentage}% upfront payment processed. Project is now active.`
     }
   });
 });

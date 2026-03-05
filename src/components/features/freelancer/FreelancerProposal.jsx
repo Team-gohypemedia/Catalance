@@ -428,7 +428,13 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
         body: JSON.stringify(bodyPayload),
       });
 
-      if (!response.ok) throw new Error("Status update failed");
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => null);
+        throw new Error(
+          errorPayload?.message ||
+            `Status update failed (${response.status})`
+        );
+      }
 
       // Update local state
       setProposals((prev) =>
@@ -461,7 +467,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
       toast.success(`Proposal marked as ${nextStatus}`);
     } catch (error) {
       console.error("Status update error:", error);
-      toast.error("Could not update status");
+      toast.error(error?.message || "Could not update status");
     } finally {
       setProcessingId(null);
     }

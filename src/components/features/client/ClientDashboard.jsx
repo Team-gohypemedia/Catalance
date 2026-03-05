@@ -34,6 +34,7 @@ import {
   fetchChatConversations,
   API_BASE_URL,
 } from "@/shared/lib/api-client";
+import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
@@ -1538,19 +1539,72 @@ const ClientDashboardContent = () => {
     if (!projectToPay) return;
     setIsProcessingPayment(true);
     try {
-      const res = await authFetch(`/projects/${projectToPay.id}/pay-upfront`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Payment failed");
+      const orderRes = await authFetch(
+        `/projects/${projectToPay.id}/pay-upfront/order`,
+        {
+          method: "POST",
+        },
+      );
+      const orderPayload = await orderRes.json().catch(() => null);
+      if (!orderRes.ok) {
+        if (orderRes.status === 503) {
+          const fallbackRes = await authFetch(
+            `/projects/${projectToPay.id}/pay-upfront`,
+            { method: "POST" },
+          );
+          const fallbackPayload = await fallbackRes.json().catch(() => null);
+          if (!fallbackRes.ok) {
+            throw new Error(fallbackPayload?.message || "Payment failed");
+          }
+          toast.success(
+            fallbackPayload?.data?.message ||
+              "Payment processed successfully! Project is now active.",
+          );
+          setShowPaymentConfirm(false);
+          setProjectToPay(null);
+          await loadProjects();
+          return;
+        }
+        throw new Error(orderPayload?.message || "Unable to initiate payment");
       }
 
-      toast.success("Payment processed successfully! Project is now active.");
+      const orderData = orderPayload?.data || {};
+      const paymentProof = await openRazorpayCheckout({
+        key: orderData.key,
+        amountPaise: orderData.amountPaise,
+        currency: orderData.currency || "INR",
+        orderId: orderData.orderId,
+        description: `Upfront payment for ${orderData.projectTitle || "project"}`,
+        prefill: {
+          email: sessionUser?.email || "",
+          name: sessionUser?.fullName || "",
+          contact: sessionUser?.phone || sessionUser?.phoneNumber || "",
+        },
+        notes: {
+          projectId: orderData.projectId,
+        },
+      });
+
+      const verifyRes = await authFetch(
+        `/projects/${projectToPay.id}/pay-upfront/verify`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paymentProof),
+        },
+      );
+      const verifyPayload = await verifyRes.json().catch(() => null);
+      if (!verifyRes.ok) {
+        throw new Error(verifyPayload?.message || "Payment verification failed");
+      }
+
+      toast.success(
+        verifyPayload?.data?.message ||
+          "Payment processed successfully! Project is now active.",
+      );
       setShowPaymentConfirm(false);
       setProjectToPay(null);
-      // Refresh projects to update status
-      loadProjects();
+      await loadProjects();
     } catch (error) {
       console.error("Payment error:", error);
       toast.error(error.message || "Failed to process payment");
@@ -2851,7 +2905,7 @@ const ClientDashboardContent = () => {
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {(() => {
-                                    // Check if any pending proposal is older than 24 hours
+                                    // Compute available actions for this proposal row
                                     const pendingProposals = (
                                       project.proposals || []
                                     ).filter(
@@ -2859,6 +2913,13 @@ const ClientDashboardContent = () => {
                                         (p.status || "").toUpperCase() ===
                                         "PENDING",
                                     );
+                                    const hasAnyProposalAction =
+                                      pendingProposals.length > 0 ||
+                                      (project.proposals || []).some(
+                                        (p) =>
+                                          (p.status || "").toUpperCase() ===
+                                          "ACCEPTED",
+                                      );
                                     const twentyFourHoursAgo =
                                       Date.now() - 24 * 60 * 60 * 1000;
                                     const hasOldPendingProposal =
@@ -2868,7 +2929,15 @@ const ClientDashboardContent = () => {
                                           twentyFourHoursAgo,
                                       );
 
-                                    // Only show Budget button if proposal is pending >24hrs, otherwise show nothing
+                                    if (!hasAnyProposalAction) {
+                                      return (
+                                        <span className="text-xs text-muted-foreground">
+                                          No action
+                                        </span>
+                                      );
+                                    }
+
+                                    // Keep budget escalation for stale pending invites
                                     if (hasOldPendingProposal) {
                                       return (
                                         <Button
@@ -2885,10 +2954,20 @@ const ClientDashboardContent = () => {
                                         </Button>
                                       );
                                     }
+
                                     return (
-                                      <span className="text-xs text-muted-foreground">
-                                        Waiting...
-                                      </span>
+                                      <Button
+                                        size="sm"
+                                        className="h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate(
+                                            `/client/proposal?projectId=${encodeURIComponent(project.id)}&tab=pending&action=view`,
+                                          );
+                                        }}
+                                      >
+                                        Take Action
+                                      </Button>
                                     );
                                   })()}
                                 </TableCell>
