@@ -43,6 +43,7 @@ UPDATE "Projects"
 SET "serviceKey" = 'web_development'
 WHERE "serviceKey" IN ('website_ui_ux', 'web-development');
 
+/*
 UPDATE "User" u
 SET "services" = COALESCE(
   ARRAY(
@@ -142,3 +143,4 @@ WHERE jsonb_typeof(u."profileDetails") = 'object'
     (u."profileDetails"->'serviceDetails') ? 'website_ui_ux'
     OR (u."profileDetails"->'serviceDetails') ? 'web-development'
   );
+*/

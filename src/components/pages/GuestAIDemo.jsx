@@ -8,6 +8,8 @@ import {
     Bot,
     User,
     Send,
+    Mic,
+    MicOff,
     Sparkles,
     ShieldCheck
 } from 'lucide-react';
@@ -15,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { useTheme } from '@/components/providers/theme-provider';
@@ -27,6 +31,12 @@ const CAPABILITY_ITEMS = [
     'Quote-ready scope capture',
     'AI proposal generation',
     '24/7 guided consultation',
+];
+
+const DEMO_HIGHLIGHTS = [
+    'Live AI conversation',
+    'Proposal-ready output',
+    'No setup needed',
 ];
 
 const getProposalStorageKeys = (userId) => {
@@ -63,6 +73,17 @@ const normalizeMarkdownContent = (content = "") =>
     String(content)
         .replace(/^```(?:markdown)?\s*/i, "")
         .replace(/\s*```$/i, "")
+        .trim();
+
+const appendSpeechTranscript = (
+    baseInput = '',
+    finalTranscript = '',
+    interimTranscript = '',
+) =>
+    [baseInput, finalTranscript, interimTranscript]
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .join(' ')
         .trim();
 
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
@@ -496,9 +517,14 @@ const GuestAIDemo = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [inputConfig, setInputConfig] = useState({ type: 'text', options: [] });
     const [selectedOptions, setSelectedOptions] = useState([]);
+    const [isListening, setIsListening] = useState(false);
+    const [isSpeechSupported, setIsSpeechSupported] = useState(false);
 
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
+    const recognitionRef = useRef(null);
+    const speechBaseInputRef = useRef("");
+    const speechFinalRef = useRef("");
     const normalizedInputType = (inputConfig.type || 'text').toLowerCase();
     const isMultiInput = normalizedInputType === 'multi_select'
         || normalizedInputType === 'multi_option'
@@ -629,6 +655,141 @@ const GuestAIDemo = () => {
         setSelectedOptions([]);
     }, [inputConfig.type, inputConfig.options]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setIsSpeechSupported(false);
+            recognitionRef.current = null;
+            return undefined;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.lang = navigator.language || 'en-US';
+
+        recognition.onstart = () => {
+            setIsListening(true);
+        };
+
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; i += 1) {
+                const result = event.results[i];
+                const transcript = result?.[0]?.transcript || '';
+                if (result.isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                speechFinalRef.current = [speechFinalRef.current, finalTranscript]
+                    .filter(Boolean)
+                    .join(' ')
+                    .trim();
+            }
+
+            setInput(
+                appendSpeechTranscript(
+                    speechBaseInputRef.current,
+                    speechFinalRef.current,
+                    interimTranscript
+                )
+            );
+        };
+
+        recognition.onerror = (event) => {
+            setIsListening(false);
+            const error = event?.error;
+            if (error === 'not-allowed' || error === 'service-not-allowed') {
+                toast.error('Microphone access is blocked. Please allow microphone access in your browser settings.');
+                return;
+            }
+            if (error === 'audio-capture') {
+                toast.error('No microphone detected. Please connect a microphone and try again.');
+                return;
+            }
+            if (error === 'no-speech') {
+                toast.info('No speech detected. Please try again.');
+                return;
+            }
+            if (error === 'aborted') {
+                return;
+            }
+            toast.error('Unable to use voice input right now.');
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+            setInput(
+                appendSpeechTranscript(
+                    speechBaseInputRef.current,
+                    speechFinalRef.current,
+                    ''
+                )
+            );
+        };
+
+        recognitionRef.current = recognition;
+        setIsSpeechSupported(true);
+
+        return () => {
+            recognition.onstart = null;
+            recognition.onresult = null;
+            recognition.onerror = null;
+            recognition.onend = null;
+            try {
+                recognition.stop();
+            } catch {
+                // Ignore cleanup errors from browser speech API quirks.
+            }
+            recognitionRef.current = null;
+        };
+    }, []);
+
+    const toggleVoiceInput = useCallback(() => {
+        const recognition = recognitionRef.current;
+        if (!recognition || !isSpeechSupported) {
+            toast.error("Voice input isn't supported in this browser.");
+            return;
+        }
+
+        if (isTyping) return;
+
+        if (isListening) {
+            try {
+                recognition.stop();
+            } catch {
+                // Ignore stop errors; onend/onerror handlers reset UI state.
+            }
+            return;
+        }
+
+        speechBaseInputRef.current = input;
+        speechFinalRef.current = '';
+
+        try {
+            recognition.start();
+        } catch (error) {
+            const isInvalidState = error?.name === 'InvalidStateError' || /already started/i.test(error?.message || '');
+            if (isInvalidState) {
+                try {
+                    recognition.stop();
+                } catch {
+                    // Ignore stop fallback errors.
+                }
+            }
+            toast.error('Unable to start voice input.');
+        }
+    }, [input, isListening, isSpeechSupported, isTyping]);
+
     const fetchServices = async () => {
         try {
             setServicesError("");
@@ -704,6 +865,14 @@ const GuestAIDemo = () => {
 
         if ((!isArrayPayload && !textPayload.trim()) || (isArrayPayload && normalizedArray.length === 0) || !sessionId || isTyping) return;
 
+        if (isListening && recognitionRef.current) {
+            try {
+                recognitionRef.current.stop();
+            } catch {
+                // Ignore stop errors before sending.
+            }
+        }
+
         const userMsg = { role: 'user', content: textPayload };
         setMessages(prev => [...prev, userMsg]);
         setInput("");
@@ -769,7 +938,9 @@ const GuestAIDemo = () => {
         try {
             const stored = localStorage.getItem(listKey);
             if (stored) existingProposals = JSON.parse(stored);
-        } catch {}
+        } catch {
+            // Ignore malformed localStorage payloads and continue with a new list.
+        }
 
         existingProposals.push(proposalToSave);
         localStorage.setItem(listKey, JSON.stringify(existingProposals));
@@ -792,46 +963,102 @@ const GuestAIDemo = () => {
 
     if (loading && !selectedService) {
         return (
-            <div className={`flex min-h-screen items-center justify-center ${isDark ? 'bg-black' : 'bg-[#fbfbfa]'}`}>
-                <div className="flex flex-col items-center gap-3">
-                    <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <p className={isDark ? 'text-sm text-slate-300' : 'text-sm text-slate-600'}>
-                        Loading AI workspace...
-                    </p>
+            <>
+                <Navbar />
+                <div className={`flex min-h-screen items-center justify-center px-4 pb-10 pt-28 ${isDark ? 'bg-black' : 'bg-[#fbfbfa]'}`}>
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        <p className={isDark ? 'text-sm text-slate-300' : 'text-sm text-slate-600'}>
+                            Loading AI workspace...
+                        </p>
+                    </div>
                 </div>
-            </div>
+                <Footer />
+            </>
         );
     }
 
     if (!selectedService) {
         return (
-            <div className={`min-h-screen ${isDark
-                ? 'bg-black bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.10),transparent_55%)]'
-                : 'bg-[#fbfbfa] bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.14),transparent_58%)]'
-                } px-4 py-8 md:px-8 md:py-10`}
-            >
+            <>
+                <Navbar />
+                <div className={`relative min-h-screen overflow-hidden ${isDark
+                    ? 'bg-black bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.10),transparent_55%)]'
+                    : 'bg-[#fbfbfa] bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.14),transparent_58%)]'
+                    } px-4 pb-10 pt-28 md:px-8 md:pb-12 md:pt-32`}
+                >
+                <div className={`pointer-events-none absolute inset-x-0 top-0 h-64 ${isDark
+                    ? 'bg-[linear-gradient(180deg,rgba(242,204,13,0.10),transparent)]'
+                    : 'bg-[linear-gradient(180deg,rgba(242,204,13,0.12),transparent)]'
+                    }`} />
+                <div className={`pointer-events-none absolute right-[-120px] top-28 h-72 w-72 rounded-full blur-3xl ${isDark
+                    ? 'bg-primary/10'
+                    : 'bg-primary/15'
+                    }`} />
                 <div className="mx-auto max-w-7xl">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`rounded-3xl border p-7 md:p-10 ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white shadow-sm'}`}
+                        className={`relative overflow-hidden rounded-3xl border p-7 md:p-10 ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white shadow-sm'}`}
                     >
-                        <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-                            <Sparkles className="h-3.5 w-3.5" />
-                            AI Demo
+                        <div className={`pointer-events-none absolute inset-0 ${isDark
+                            ? 'bg-[linear-gradient(112deg,rgba(255,255,255,0.05)_0%,transparent_46%,rgba(242,204,13,0.16)_100%)]'
+                            : 'bg-[linear-gradient(112deg,rgba(255,255,255,0.80)_0%,transparent_46%,rgba(242,204,13,0.22)_100%)]'
+                            }`} />
+                        <div className={`pointer-events-none absolute -right-20 top-8 h-52 w-52 rounded-full blur-3xl ${isDark ? 'bg-primary/20' : 'bg-primary/25'}`} />
+
+                        <div className="relative">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                AI Demo
+                            </div>
+                            <h1 className={`mt-4 text-4xl font-bold tracking-tight md:text-6xl ${isDark ? 'text-white' : 'text-[#181711]'}`}>
+                                Build your project brief with
+                                <span className="block bg-gradient-to-r from-primary via-[#f8de72] to-primary bg-clip-text text-transparent">
+                                    Catalance AI
+                                </span>
+                            </h1>
+                            <p className={`mt-4 max-w-3xl text-base md:text-xl ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                                Pick a service, answer guided questions, and get a structured proposal generated in chat.
+                            </p>
+                            <div className="mt-7 flex flex-wrap gap-2.5">
+                                {DEMO_HIGHLIGHTS.map((item) => (
+                                    <span
+                                        key={item}
+                                        className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold ${isDark
+                                            ? 'border border-white/15 bg-white/[0.04] text-slate-100'
+                                            : 'border border-black/10 bg-white text-slate-700'
+                                            }`}
+                                    >
+                                        {item}
+                                    </span>
+                                ))}
+                            </div>
                         </div>
-                        <h1 className={`mt-4 text-3xl font-bold tracking-tight md:text-5xl ${isDark ? 'text-white' : 'text-[#181711]'}`}>
-                            Build your project brief with Catalance AI
-                        </h1>
-                        <p className={`mt-3 max-w-3xl text-base md:text-lg ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                            Pick a service, answer guided questions, and get a structured proposal generated in chat.
-                        </p>
                     </motion.div>
 
-                    <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="mt-11 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h2 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-[#181711]'}`}>
+                                Choose Your Service
+                            </h2>
+                            <p className={`mt-1 text-sm ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                                {services.length > 0
+                                    ? `${services.length} services ready for guided consultation`
+                                    : 'Select a service to begin your AI consultation'}
+                            </p>
+                        </div>
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${isDark ? 'border border-white/15 bg-white/[0.03] text-slate-200' : 'border border-black/10 bg-white text-slate-600'}`}>
+                            Tap any card to start
+                        </span>
+                    </div>
+
+                    <div className="relative mt-8 px-1 sm:px-2 md:px-3">
+                        <div className={`pointer-events-none absolute inset-x-8 top-5 h-24 blur-3xl ${isDark ? 'bg-primary/10' : 'bg-primary/15'}`} />
+                        <div className="relative mx-auto grid max-w-[1260px] grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 xl:grid-cols-3">
                         {services.length === 0 ? (
                             <div className="md:col-span-2 xl:col-span-3">
-                                <Card className={`rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white'}`}>
+                                <Card className={`rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white shadow-sm'}`}>
                                     <CardHeader>
                                         <CardTitle className={isDark ? 'text-white' : 'text-[#181711]'}>
                                             Services unavailable
@@ -855,36 +1082,54 @@ const GuestAIDemo = () => {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: Math.min(index * 0.04, 0.25) }}
                                     whileHover={{ y: -4 }}
+                                    whileTap={{ scale: 0.995 }}
                                 >
                                     <Card
-                                        className={`h-full cursor-pointer rounded-2xl border transition-all ${isDark
-                                            ? 'border-white/10 bg-white/[0.04] hover:border-primary/50 hover:bg-white/[0.07]'
-                                            : 'border-black/10 bg-white hover:border-primary/50'
+                                        className={`group relative mx-auto h-full w-full max-w-[390px] cursor-pointer overflow-hidden rounded-2xl border transition-all duration-300 ${isDark
+                                            ? 'border-white/10 bg-white/[0.04] hover:-translate-y-1 hover:border-primary/55 hover:bg-white/[0.07] hover:shadow-[0_24px_50px_-25px_rgba(242,204,13,0.42)]'
+                                            : 'border-black/10 bg-white hover:border-primary/50 hover:shadow-[0_20px_45px_-28px_rgba(20,20,20,0.30)]'
                                             }`}
                                         onClick={() => handleServiceSelect(service)}
                                     >
-                                        <CardHeader>
-                                            <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                                <Briefcase className="h-5 w-5" />
+                                        <div className={`pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${isDark
+                                            ? 'bg-[radial-gradient(circle_at_80%_15%,rgba(242,204,13,0.22),transparent_42%)]'
+                                            : 'bg-[radial-gradient(circle_at_80%_15%,rgba(242,204,13,0.24),transparent_44%)]'
+                                            }`} />
+                                        <CardHeader className="relative space-y-2 px-5 pb-2 pt-5">
+                                            <div className="mb-3 flex items-start justify-between gap-3">
+                                                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
+                                                    <Briefcase className="h-4 w-4" />
+                                                </div>
+                                                <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'border border-primary/35 bg-primary/10 text-primary' : 'border border-primary/30 bg-primary/10 text-[#181711]'}`}>
+                                                    AI Guided
+                                                </span>
                                             </div>
-                                            <CardTitle className={`text-xl ${isDark ? 'text-white' : 'text-[#181711]'}`}>{service.name}</CardTitle>
-                                            <CardDescription className={isDark ? 'text-[#bab59c]' : 'text-slate-600'}>
+                                            <CardTitle className={`text-[1.75rem] leading-tight ${isDark ? 'text-white' : 'text-[#181711]'}`}>{service.name}</CardTitle>
+                                            <CardDescription className={`mt-1 min-h-[2.8rem] text-[15px] leading-relaxed ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
                                                 {service.description || `Start a ${service.name} consultation`}
                                             </CardDescription>
                                         </CardHeader>
-                                        <CardContent>
-                                            <div className={`inline-flex items-center gap-2 text-sm font-semibold ${isDark ? 'text-primary' : 'text-[#181711]'}`}>
-                                                Start consultation
-                                                <ArrowRight className="h-4 w-4" />
+                                        <CardContent className="relative px-5 pb-5 pt-0">
+                                            <div className={`mt-1 flex items-center justify-between border-t pt-3.5 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                                <div className={`inline-flex items-center gap-2 text-[15px] font-semibold ${isDark ? 'text-primary' : 'text-[#181711]'}`}>
+                                                    Start consultation
+                                                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                                                </div>
+                                                <span className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                    0{index + 1}
+                                                </span>
                                             </div>
                                         </CardContent>
                                     </Card>
                                 </motion.div>
                             ))
                         )}
+                        </div>
                     </div>
                 </div>
-            </div>
+                </div>
+                <Footer />
+            </>
         );
     }
 
@@ -947,10 +1192,13 @@ const GuestAIDemo = () => {
                             </div>
                             <div>
                                 <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>AI Assistant</h2>
-                                <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-500'}`}>Guided consultation</p>
+                                <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-500'}`}>
+                                    {selectedService?.name} - Guided consultation
+                                </p>
                             </div>
                         </div>
-                        <span className="inline-flex items-center rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
                             Active
                         </span>
                     </div>
@@ -1055,19 +1303,43 @@ const GuestAIDemo = () => {
                 <div className={`border-t p-4 md:px-6 md:py-5 ${isDark ? 'border-white/10 bg-black/35' : 'border-black/10 bg-white/90'}`}>
                     <div className="mx-auto max-w-4xl space-y-3">
                         {shouldShowTextInput && (
-                            <form onSubmit={handleSendMessage} className="relative">
+                            <form
+                                onSubmit={handleSendMessage}
+                                className={`relative rounded-2xl border p-2 ${isDark
+                                    ? 'border-white/12 bg-white/[0.03]'
+                                    : 'border-black/10 bg-[#fbfbfa]'
+                                    }`}
+                            >
                                 <Input
                                     ref={inputRef}
                                     autoFocus
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     placeholder="Type your message..."
-                                    className={`h-14 rounded-2xl pr-14 text-base ${isDark
-                                        ? 'border-white/15 bg-white/[0.06] text-white placeholder:text-slate-400'
-                                        : 'border-black/15 bg-white text-slate-900 placeholder:text-slate-400'
+                                    className={`h-12 rounded-xl ${isSpeechSupported ? 'pr-24' : 'pr-14'} text-base ${isDark
+                                        ? 'border-0 bg-transparent text-white placeholder:text-slate-400'
+                                        : 'border-0 bg-transparent text-slate-900 placeholder:text-slate-400'
                                         }`}
                                     disabled={isTyping}
                                 />
+                                {isSpeechSupported && (
+                                    <Button
+                                        size="icon"
+                                        type="button"
+                                        onClick={toggleVoiceInput}
+                                        disabled={isTyping}
+                                        aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                                        title={isListening ? 'Stop voice input' : 'Start voice input'}
+                                        className={`absolute right-14 top-2 h-10 w-10 rounded-xl ${isListening
+                                            ? 'animate-pulse bg-primary text-primary-foreground hover:bg-primary/90'
+                                            : isDark
+                                                ? 'border border-white/20 bg-white/[0.08] text-slate-200 hover:bg-white/[0.14]'
+                                                : 'border border-black/15 bg-white text-slate-700 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                                    </Button>
+                                )}
                                 <Button
                                     size="icon"
                                     type="submit"

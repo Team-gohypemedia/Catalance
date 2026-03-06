@@ -143,6 +143,18 @@ model Marketplace {
   @@index([isFeatured])
 }
 
+model Review {
+  id          String      @id @default(cuid())
+  serviceId   String
+  service     Marketplace @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  clientName  String
+  rating      Int
+  comment     String      @db.Text
+  createdAt   DateTime    @default(now())
+
+  @@index([serviceId])
+}
+
 model Project {
   id              String        @id @default(cuid())
   title           String
@@ -483,16 +495,4 @@ model ProjectTask {
   updatedAt   DateTime          @updatedAt
 
   @@index([projectId])
-}
-
-model Review {
-  id          String      @id @default(cuid())
-  serviceId   String
-  service     Marketplace @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  clientName  String
-  rating      Int
-  comment     String      @db.Text
-  createdAt   DateTime    @default(now())
-
-  @@index([serviceId])
 }

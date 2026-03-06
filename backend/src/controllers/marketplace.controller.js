@@ -597,3 +597,97 @@ export const getMarketplace = asyncHandler(async (req, res) => {
     },
   });
 });
+
+export const getServiceById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const service = await prisma.marketplace.findUnique({
+    where: { id },
+    include: {
+      freelancer: {
+        select: {
+          id: true,
+          fullName: true,
+          avatar: true,
+          isVerified: true,
+          freelancerProfile: true
+        }
+      }
+    }
+  });
+
+  if (!service) {
+    throw new AppError("Service not found", 404);
+  }
+
+  const reviewStats = await prisma.review.aggregate({
+    where: { serviceId: id },
+    _avg: { rating: true },
+    _count: { id: true }
+  });
+
+  const averageRating = reviewStats._avg.rating ? Number(reviewStats._avg.rating.toFixed(1)) : 0;
+  const reviewCount = reviewStats._count.id;
+
+  res.json({
+    data: {
+      ...service,
+      averageRating,
+      reviewCount
+    }
+  });
+});
+
+export const getServiceReviews = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const limitNumber = parseInt(req.query.limit, 10) || 10;
+  const pageNumber = parseInt(req.query.page, 10) || 1;
+  const skip = (pageNumber - 1) * limitNumber;
+
+  const reviews = await prisma.review.findMany({
+    where: { serviceId: id },
+    orderBy: { createdAt: "desc" },
+    take: limitNumber,
+    skip
+  });
+
+  const total = await prisma.review.count({ where: { serviceId: id } });
+
+  res.json({
+    data: reviews,
+    total,
+    page: pageNumber,
+    limit: limitNumber,
+    totalPages: Math.ceil(total / limitNumber)
+  });
+});
+
+export const createServiceReview = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  let { clientName, rating, comment } = req.body;
+
+  clientName = clientName?.trim();
+  comment = comment?.trim();
+
+  if (!clientName) throw new AppError("Client Name is required", 400);
+  if (!rating || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new AppError("Rating must be an integer between 1 and 5", 400);
+  }
+  if (!comment || comment.length < 5) {
+    throw new AppError("Comment must be at least 5 characters long", 400);
+  }
+
+  const service = await prisma.marketplace.findUnique({ where: { id } });
+  if (!service) throw new AppError("Service not found", 404);
+
+  const newReview = await prisma.review.create({
+    data: {
+      serviceId: id,
+      clientName,
+      rating,
+      comment
+    }
+  });
+
+  res.status(201).json({ data: newReview });
+});

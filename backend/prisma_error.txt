@@ -1,0 +1,40 @@
+﻿Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "public" at "ep-nameless-bar-a1q9980g.ap-southeast-1.aws.neon.tech"
+
+node.exe : Error: P3006
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Error: P3006:   
+ String) [], Remote    
+Exception
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+
+Migration `202602251500
+00_move_profile_columns
+_to_freelancer_profile`
+ failed to apply 
+cleanly to the shadow 
+database. 
+Error:
+column u.jobTitle does 
+not exist
+   0: schema_core::stat
+e::DevDiagnostic
+             at schema-
+engine\core\src\state.r
+s:276
+

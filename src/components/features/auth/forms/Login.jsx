@@ -40,7 +40,7 @@ const getGoogleAvatarFromFirebaseUser = (firebaseUser) => {
   if (!firebaseUser) return "";
   const providerPhoto = Array.isArray(firebaseUser.providerData)
     ? firebaseUser.providerData.find((entry) => Boolean(entry?.photoURL))
-        ?.photoURL || ""
+      ?.photoURL || ""
     : "";
   return normalizeAvatarUrl(firebaseUser.photoURL || providerPhoto || "");
 };
@@ -92,6 +92,16 @@ function Login({ className, ...props }) {
 
   const { login: setAuthSession } = useAuth();
 
+  // Read ?redirect= query param (set by Service Details CTA flow)
+  const redirectParam = searchParams.get("redirect");
+  const openMessageParam = searchParams.get("openMessage");
+  // Build the full return URL, including openMessage if it was set
+  const buildReturnUrl = () => {
+    if (!redirectParam) return null;
+    const extra = openMessageParam ? `?openMessage=${openMessageParam}` : "";
+    return `${redirectParam}${extra}`;
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({
@@ -135,7 +145,7 @@ function Login({ className, ...props }) {
       toast.success("Logged in successfully.");
       setFormData(initialFormState);
       const nextRole = authPayload?.user?.role?.toUpperCase();
-      const redirectTo = location?.state?.redirectTo;
+      const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
       const normalizedRequestedRole =
         requestedRole === "CLIENT" || requestedRole === "FREELANCER"
           ? requestedRole
@@ -185,7 +195,7 @@ function Login({ className, ...props }) {
       toast.success(`Welcome, ${authPayload?.user?.fullName || "User"}!`);
 
       const nextRole = authPayload?.user?.role?.toUpperCase();
-      const redirectTo = location?.state?.redirectTo;
+      const redirectTo = buildReturnUrl() || location?.state?.redirectTo;
       const requestedRole =
         typeof selectedRole === "string"
           ? selectedRole.toUpperCase()
