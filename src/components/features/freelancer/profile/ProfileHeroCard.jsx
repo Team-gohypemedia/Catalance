@@ -185,8 +185,10 @@ const ProfileHeroCard = ({
               </div>
             </div>
             <div
-              className={`absolute -bottom-1 -right-1 z-10 rounded-full border border-border/70 bg-background p-1.5 shadow-sm transition-opacity duration-200 ${
-                uploadingImage ? "opacity-100" : "opacity-0 group-hover/avatar:opacity-100"
+              className={`absolute bottom-1 right-1 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background shadow-sm transition-all duration-200 ${
+                uploadingImage
+                  ? "opacity-100 scale-100"
+                  : "opacity-0 scale-95 group-hover/avatar:opacity-100 group-hover/avatar:scale-100"
               }`}
             >
               {uploadingImage ? (
@@ -319,3 +321,4 @@ const ProfileHeroCard = ({
 };
 
 export default ProfileHeroCard;
+

@@ -699,7 +699,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
         await sendNotificationToUser(updated.project.ownerId, {
           type: "proposal",
           title: "Proposal Accepted! 🎉",
-          message: `${freelancerName} has accepted your proposal for "${updated.project.title}".`,
+          message: `${freelancerName} has accepted your proposal for "${updated.project.title}". Pay the initial 20% to start the project.`,
           data: { 
             projectId: updated.projectId, 
             proposalId: updated.id,
@@ -752,3 +752,4 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
     throw error;
   }
 });
+

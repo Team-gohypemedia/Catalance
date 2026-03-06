@@ -1,6 +1,7 @@
-import { asyncHandler } from "../utils/async-handler.js";
+﻿import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { attachProjectPaymentPlan, resolveProjectPaymentPlan } from "../modules/projects/project-payment-plan.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { env } from "../config/env.js";
 import { getRazorpayClient, hasRazorpayCredentials } from "../lib/razorpay.js";
@@ -19,8 +20,8 @@ const normalizeAmount = (value) => {
   if (typeof value === "string") {
     // Strip currency, commas, and pull the first number if a range is provided.
     const sanitized = value
-      .replace(/[₹,$\s]/g, "")
-      .replace(/[–—]/g, "-");
+      .replace(/[â‚¹,$\s]/g, "")
+      .replace(/[â€“â€”]/g, "-");
 
     const rangePart = sanitized.includes("-")
       ? sanitized.split("-")[0]
@@ -46,10 +47,10 @@ const normalizeBudget = (value) => {
   }
 
   if (typeof value === "string") {
-    // Handle currency symbols, commas, and ranges like "₹60,001–1,00,000"
+    // Handle currency symbols, commas, and ranges like "â‚¹60,001â€“1,00,000"
     const sanitized = value
-      .replace(/[₹,\s]/g, "")
-      .replace(/[–—]/g, "-"); // normalize dash variants
+      .replace(/[â‚¹,\s]/g, "")
+      .replace(/[â€“â€”]/g, "-"); // normalize dash variants
 
     const rangePart = sanitized.includes("-")
       ? sanitized.split("-")[0]
@@ -80,8 +81,22 @@ const flattenFreelancerProfile = (freelancer = null) => {
     bio: profile.bio || null,
     portfolio: profile.portfolio || null,
     linkedin: profile.linkedin || null,
-    github: profile.github || null
+    github: profile.github || null,
   };
+};
+
+const hydrateProjectForResponse = (project) => {
+  if (!project || typeof project !== "object") return project;
+
+  return attachProjectPaymentPlan({
+    ...project,
+    proposals: Array.isArray(project.proposals)
+      ? project.proposals.map((proposal) => ({
+          ...proposal,
+          freelancer: flattenFreelancerProfile(proposal.freelancer),
+        }))
+      : [],
+  });
 };
 
 const PROJECT_MANAGER_SELECT = {
@@ -91,20 +106,18 @@ const PROJECT_MANAGER_SELECT = {
   phone: true,
   avatar: true,
   status: true,
-  role: true
+  role: true,
 };
 
 const findLeastLoadedActiveProjectManager = async () =>
   prisma.user.findFirst({
     where: {
       role: "PROJECT_MANAGER",
-      status: "ACTIVE"
+      status: "ACTIVE",
     },
     orderBy: { managedProjects: { _count: "asc" } },
-    select: PROJECT_MANAGER_SELECT
+    select: PROJECT_MANAGER_SELECT,
   });
-
-// ... (previous imports)
 
 export const createProject = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
@@ -114,8 +127,7 @@ export const createProject = asyncHandler(async (req, res) => {
   }
 
   const { title, description, budget, status, proposal } = req.body;
-  /* Automatic Project Manager Assignment */
-  // Find a project manager to assign. We prioritize ACTIVE managers and balance the load.
+
   console.log("Looking for an available Project Manager...");
   const projectManager = await findLeastLoadedActiveProjectManager();
   console.log(`Assigning Project Manager: ${projectManager ? projectManager.id : "None found"}`);
@@ -128,8 +140,8 @@ export const createProject = asyncHandler(async (req, res) => {
       status: status || "DRAFT",
       progress: 0,
       ownerId: userId,
-      managerId: projectManager?.id // Assign if available
-    }
+      managerId: projectManager?.id,
+    },
   });
 
   let createdProposal = null;
@@ -143,16 +155,16 @@ export const createProject = asyncHandler(async (req, res) => {
         amount: normalizeAmount(proposal.amount),
         status: proposal.status || "PENDING",
         freelancerId,
-        projectId: project.id
-      }
+        projectId: project.id,
+      },
     });
   }
 
   res.status(201).json({
     data: {
       project,
-      proposal: createdProposal
-    }
+      proposal: createdProposal,
+    },
   });
 });
 
@@ -169,23 +181,18 @@ export const listProjects = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Get user role to determine what projects to show
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true }
+      select: { role: true },
     });
 
-    // Build query based on role
     let where = {};
 
-    // Admins can see all projects
     if (user?.role === "ADMIN") {
       where = {};
     } else if (user?.role === "PROJECT_MANAGER") {
-      // PMs only see projects assigned to them
       where = { managerId: userId };
     } else {
-      // Clients only see their own projects
       where = { ownerId: userId };
     }
 
@@ -193,7 +200,7 @@ export const listProjects = asyncHandler(async (req, res) => {
       where,
       include: {
         owner: {
-          select: { id: true, fullName: true, email: true }
+          select: { id: true, fullName: true, email: true },
         },
         proposals: {
           include: {
@@ -210,32 +217,25 @@ export const listProjects = asyncHandler(async (req, res) => {
                     bio: true,
                     portfolio: true,
                     linkedin: true,
-                    github: true
-                  }
-                }
-              }
-            }
+                    github: true,
+                  },
+                },
+              },
+            },
           },
-          orderBy: { createdAt: "desc" }
+          orderBy: { createdAt: "desc" },
         },
         disputes: {
-          select: { id: true, status: true }
+          select: { id: true, status: true },
         },
         _count: {
-          select: { proposals: true }
-        }
+          select: { proposals: true },
+        },
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
     });
-    const hydratedProjects = projects.map((project) => ({
-      ...project,
-      proposals: Array.isArray(project.proposals)
-        ? project.proposals.map((proposal) => ({
-          ...proposal,
-          freelancer: flattenFreelancerProfile(proposal.freelancer)
-        }))
-        : []
-    }));
+
+    const hydratedProjects = projects.map((project) => hydrateProjectForResponse(project));
     res.json({ data: hydratedProjects });
   } catch (error) {
     console.error("Error listing projects:", error);
@@ -255,7 +255,7 @@ export const getProject = asyncHandler(async (req, res) => {
     where: { id },
     include: {
       owner: {
-        select: { id: true, fullName: true, email: true }
+        select: { id: true, fullName: true, email: true },
       },
       proposals: {
         include: {
@@ -272,24 +272,24 @@ export const getProject = asyncHandler(async (req, res) => {
                   bio: true,
                   portfolio: true,
                   linkedin: true,
-                  github: true
-                }
-              }
-            }
-          }
+                  github: true,
+                },
+              },
+            },
+          },
         },
-        orderBy: { createdAt: "desc" }
+        orderBy: { createdAt: "desc" },
       },
       manager: {
-        select: PROJECT_MANAGER_SELECT
+        select: PROJECT_MANAGER_SELECT,
       },
       disputes: {
-        select: { id: true, status: true }
+        select: { id: true, status: true },
       },
       _count: {
-        select: { proposals: true }
-      }
-    }
+        select: { proposals: true },
+      },
+    },
   });
 
   if (!project) {
@@ -307,50 +307,36 @@ export const getProject = asyncHandler(async (req, res) => {
       if (project.managerId !== fallbackManager.id) {
         await prisma.project.update({
           where: { id: project.id },
-          data: { managerId: fallbackManager.id }
+          data: { managerId: fallbackManager.id },
         });
       }
 
       project = {
         ...project,
         managerId: fallbackManager.id,
-        manager: fallbackManager
+        manager: fallbackManager,
       };
     } else {
       project = {
         ...project,
         managerId: null,
-        manager: null
+        manager: null,
       };
     }
   }
 
-  // Enforce PM scope
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true }
+    select: { role: true },
   });
 
   if (user?.role === "PROJECT_MANAGER" && project.managerId !== userId) {
     throw new AppError("Access denied. You are not assigned to this project.", 403);
   }
 
-  // TODO: Add refined permission check if needed (e.g. check if user is owner or freelancer)
-  // For now, allow if authenticated (or maybe just restrict to owner?)
-  // if (project.ownerId !== userId) { ... }
-  const hydratedProject = {
-    ...project,
-    proposals: Array.isArray(project.proposals)
-      ? project.proposals.map((proposal) => ({
-        ...proposal,
-        freelancer: flattenFreelancerProfile(proposal.freelancer)
-      }))
-      : []
-  };
-
+  const hydratedProject = hydrateProjectForResponse(project);
   res.json({ data: hydratedProject });
 });
-
 export const updateProject = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   const { id } = req.params;
@@ -437,7 +423,12 @@ export const updateProject = asyncHandler(async (req, res) => {
       }
     }
 
-    res.json({ data: project });
+    const hydratedProject = hydrateProjectForResponse({
+      ...project,
+      proposals: Array.isArray(existing.proposals) ? existing.proposals : [],
+    });
+
+    res.json({ data: hydratedProject });
   } catch (error) {
     console.error("Update project error:", error);
     console.error("Error code:", error.code);
@@ -468,43 +459,22 @@ const assertProjectOwnerCanPay = (project, userId) => {
   if (project.ownerId !== userId) {
     throw new AppError("Only the project owner can make payments", 403);
   }
-
-  const hasBeenPaid = Number(project.spent || 0) > 0;
-  if (hasBeenPaid) {
-    throw new AppError("Payment has already been made for this project", 400);
-  }
 };
 
-const resolveUpfrontPaymentPlan = (project) => {
-  const acceptedProposal = project.proposals?.[0];
-  if (!acceptedProposal) {
-    throw new AppError("No accepted proposal found for this project", 400);
+const resolveDueInstallmentForPayment = (project) => {
+  const paymentPlan = resolveProjectPaymentPlan(project, {
+    requireAcceptedProposal: true,
+  });
+  const installment = paymentPlan?.nextDueInstallment;
+
+  if (!installment) {
+    throw new AppError("No client payment is due for this project right now", 400);
   }
-
-  const amount = normalizeAmount(acceptedProposal.amount || project.budget || 0);
-  if (amount <= 0) {
-    throw new AppError("Invalid project amount for payment", 400);
-  }
-
-  let parts = 2; // < 50k
-  let percentage = 50;
-
-  if (amount > 200000) {
-    parts = 4; // >2L
-    percentage = 25;
-  } else if (amount >= 50000) {
-    parts = 3; // 50k-2L
-    percentage = 33;
-  }
-
-  const upfrontPayment = Math.round(amount / parts);
 
   return {
-    acceptedProposal,
-    amount,
-    parts,
-    percentage,
-    upfrontPayment,
+    acceptedProposal: project.proposals?.[0],
+    paymentPlan,
+    installment,
   };
 };
 
@@ -536,18 +506,20 @@ export const createUpfrontPaymentOrder = asyncHandler(async (req, res) => {
 
   const project = await getProjectForUpfrontPayment(id);
   assertProjectOwnerCanPay(project, userId);
-  const plan = resolveUpfrontPaymentPlan(project);
+  const { acceptedProposal, paymentPlan, installment } =
+    resolveDueInstallmentForPayment(project);
 
-  const receipt = `upfront_${id.slice(-10)}_${Date.now()}`.slice(0, 40);
+  const receipt = `payment_${installment.sequence}_${id.slice(-8)}_${Date.now()}`.slice(0, 40);
   const order = await razorpay.orders.create({
-    amount: plan.upfrontPayment * 100,
+    amount: installment.amount * 100,
     currency: "INR",
     receipt,
     notes: {
       projectId: id,
       ownerId: userId,
-      freelancerId: plan.acceptedProposal.freelancerId,
-      paymentType: "upfront",
+      freelancerId: acceptedProposal.freelancerId,
+      paymentType: installment.key,
+      paymentSequence: String(installment.sequence),
     },
   });
 
@@ -555,10 +527,12 @@ export const createUpfrontPaymentOrder = asyncHandler(async (req, res) => {
     data: {
       key: env.RAZORPAY_API_KEY,
       orderId: order.id,
-      amount: plan.upfrontPayment,
+      amount: installment.amount,
       amountPaise: order.amount,
       currency: order.currency,
-      percentage: plan.percentage,
+      percentage: installment.percentage,
+      installment,
+      paymentPlan,
       projectId: id,
       projectTitle: project.title,
     },
@@ -589,7 +563,8 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
 
   const project = await getProjectForUpfrontPayment(id);
   assertProjectOwnerCanPay(project, userId);
-  const plan = resolveUpfrontPaymentPlan(project);
+  const { acceptedProposal, paymentPlan, installment } =
+    resolveDueInstallmentForPayment(project);
 
   const expectedSignature = buildRazorpaySignature({
     orderId: razorpayOrderId,
@@ -613,35 +588,64 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
     throw new AppError("Payment does not belong to this Razorpay order", 400);
   }
 
-  const orderProjectId = String(orderDetails?.notes?.projectId || "");
-  if (orderProjectId !== String(id)) {
+  if (String(orderDetails?.notes?.projectId || "") !== String(id)) {
     throw new AppError("Razorpay order does not belong to this project", 400);
   }
 
-  if (Number(orderDetails.amount || 0) !== plan.upfrontPayment * 100) {
-    throw new AppError("Paid amount does not match required upfront amount", 400);
+  if (String(orderDetails?.notes?.paymentSequence || "") !== String(installment.sequence)) {
+    throw new AppError("Razorpay order does not match the payment installment due", 400);
+  }
+
+  if (Number(orderDetails.amount || 0) !== installment.amount * 100) {
+    throw new AppError("Paid amount does not match the required installment", 400);
   }
 
   if (!["authorized", "captured"].includes(String(paymentDetails.status || ""))) {
     throw new AppError("Payment is not completed yet. Please try again.", 400);
   }
 
-  const updatedProject = await prisma.project.update({
+  const nextSpentAmount = Math.min(
+    paymentPlan.totalAmount,
+    paymentPlan.paidAmount + installment.amount
+  );
+  const nextStatus =
+    installment.sequence === 1
+      ? "IN_PROGRESS"
+      : nextSpentAmount >= paymentPlan.totalAmount && paymentPlan.completedPhaseCount >= 4
+      ? "COMPLETED"
+      : project.status;
+
+  const updatedProjectRecord = await prisma.project.update({
     where: { id },
     data: {
-      spent: plan.upfrontPayment,
-      status: "IN_PROGRESS",
+      spent: nextSpentAmount,
+      status: nextStatus,
     },
   });
 
+  const updatedProject = hydrateProjectForResponse({
+    ...project,
+    ...updatedProjectRecord,
+    spent: nextSpentAmount,
+    status: nextStatus,
+  });
+
+  const paymentMessage =
+    installment.sequence === 1
+      ? `Initial 20% payment completed. "${project.title}" is now active.`
+      : installment.sequence === 2
+      ? `40% payment completed after phase 2 for "${project.title}".`
+      : `Final 40% payment completed for "${project.title}".`;
+
   try {
-    await sendNotificationToUser(plan.acceptedProposal.freelancerId, {
+    await sendNotificationToUser(acceptedProposal.freelancerId, {
       type: "payment",
-      title: "Upfront Payment Completed",
-      message: `Client completed upfront payment for "${project.title}". Project is now active.`,
+      title: "Client Payment Completed",
+      message: paymentMessage,
       data: {
         projectId: id,
         paymentId: razorpayPaymentId,
+        installmentSequence: installment.sequence,
       },
     });
   } catch (notificationError) {
@@ -651,8 +655,10 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
   res.json({
     data: {
       project: updatedProject,
-      paymentAmount: plan.upfrontPayment,
-      message: `${plan.percentage}% upfront payment completed. Project is now active.`,
+      paymentAmount: installment.amount,
+      installment,
+      paymentPlan: updatedProject.paymentPlan,
+      message: paymentMessage,
       payment: {
         orderId: razorpayOrderId,
         paymentId: razorpayPaymentId,
@@ -662,7 +668,6 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
   });
 });
 
-// Pay 50% upfront to activate project
 export const payUpfront = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   const { id } = req.params;
@@ -679,25 +684,55 @@ export const payUpfront = asyncHandler(async (req, res) => {
 
   const project = await getProjectForUpfrontPayment(id);
   assertProjectOwnerCanPay(project, userId);
-  const plan = resolveUpfrontPaymentPlan(project);
+  const { paymentPlan, installment } = resolveDueInstallmentForPayment(project);
 
-  // Update project: set spent and change status to IN_PROGRESS
-  const updatedProject = await prisma.project.update({
+  const nextSpentAmount = Math.min(
+    paymentPlan.totalAmount,
+    paymentPlan.paidAmount + installment.amount
+  );
+  const nextStatus =
+    installment.sequence === 1
+      ? "IN_PROGRESS"
+      : nextSpentAmount >= paymentPlan.totalAmount && paymentPlan.completedPhaseCount >= 4
+      ? "COMPLETED"
+      : project.status;
+
+  const updatedProjectRecord = await prisma.project.update({
     where: { id },
     data: {
-      spent: plan.upfrontPayment,
-      status: "IN_PROGRESS"
-    }
+      spent: nextSpentAmount,
+      status: nextStatus,
+    },
   });
+
+  const updatedProject = hydrateProjectForResponse({
+    ...project,
+    ...updatedProjectRecord,
+    spent: nextSpentAmount,
+    status: nextStatus,
+  });
+
+  const message =
+    installment.sequence === 1
+      ? `Initial 20% payment processed. "${project.title}" is now active.`
+      : installment.sequence === 2
+      ? `40% payment processed after phase 2 for "${project.title}".`
+      : `Final 40% payment processed for "${project.title}".`;
 
   res.json({
     data: {
       project: updatedProject,
-      paymentAmount: plan.upfrontPayment,
-      message: `${plan.percentage}% upfront payment processed. Project is now active.`
-    }
+      paymentAmount: installment.amount,
+      installment,
+      paymentPlan: updatedProject.paymentPlan,
+      message,
+    },
   });
 });
+
+export const createProjectPaymentOrder = createUpfrontPaymentOrder;
+export const verifyProjectPayment = verifyUpfrontPayment;
+export const payProjectInstallment = payUpfront;
 
 // ==========================================
 // PROJECT MANAGER UPGRADES
@@ -950,4 +985,12 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
     message: `Invitation sent to ${newFreelancerEmail}.`
   });
 });
+
+
+
+
+
+
+
+
 

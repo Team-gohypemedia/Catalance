@@ -35,6 +35,7 @@ import FullProfileEditorModalContent from "@/components/features/freelancer/prof
 import PersonalDetailsModalContent from "@/components/features/freelancer/profile/modals/PersonalDetailsModalContent";
 import WorkExperienceModalContent from "@/components/features/freelancer/profile/modals/WorkExperienceModalContent";
 import EducationModalContent from "@/components/features/freelancer/profile/modals/EducationModalContent";
+import ProfileImageCropDialog from "@/components/features/freelancer/onboarding/ProfileImageCropDialog";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import {
@@ -83,6 +84,20 @@ import {
   FULL_PROFILE_EDITOR_SECTIONS,
   normalizeSkillLevel,
 } from "@/components/features/freelancer/profile/freelancerProfileUtils";
+
+const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
+
+const formatFileSize = (bytes) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const exponent = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  );
+  const value = bytes / 1024 ** exponent;
+  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+};
 
 const FreelancerProfile = () => {
   const navigate = useNavigate();
@@ -142,12 +157,14 @@ const FreelancerProfile = () => {
   const [uploadingResume, setUploadingResume] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedCoverFile, setSelectedCoverFile] = useState(null);
+  const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
+  const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
   const fileInputRef = useRef(null);
   const coverInputRef = useRef(null);
   const resumeInputRef = useRef(null);
   const projectPreviewAttemptRef = useRef(new Set());
   const [initialData, setInitialData] = useState(null);
-  const [isDirty, setIsDirty] = useState(false);
+
   const [isSaving, setIsSaving] = useState(false);
   const [fullProfileForm, setFullProfileForm] = useState(
     createInitialFullProfileForm
@@ -307,7 +324,7 @@ const FreelancerProfile = () => {
         setWorkExperience([]);
         setServices([]);
         setInitialData(null);
-        setIsDirty(false);
+
         setProfileLoading(false);
         return;
       }
@@ -499,7 +516,7 @@ const FreelancerProfile = () => {
             portfolioProjects: [],
             profileDetails: {},
           });
-          setIsDirty(false);
+  
         }
       } finally {
         if (active) setProfileLoading(false);
@@ -513,37 +530,24 @@ const FreelancerProfile = () => {
     };
   }, [user, authFetch]);
 
-  useEffect(() => {
-    if (!initialData) return;
-
-    const currentData = {
-      personal: {
-        ...personal,
-        // Ensure bio is normalized for comparison just in case
-        bio: normalizeBioValue(personal.bio),
-      },
-      portfolio,
-      skills,
-      workExperience,
-      services,
-      portfolioProjects,
-      profileDetails,
-    };
-
-    setIsDirty(JSON.stringify(currentData) !== JSON.stringify(initialData));
-  }, [
-    personal,
-    portfolio,
-    skills,
-    workExperience,
-    services,
-    portfolioProjects,
-    profileDetails,
-    initialData,
-  ]);
 
   // ----- Skills -----
-  const addSkill = () => {
+  const saveSkillsImmediately = async (nextSkills, previousSkills) => {
+    const saved = await saveSectionChanges(
+      { skills: nextSkills },
+      { suppressSuccessToast: true }
+    );
+
+    if (!saved) {
+      setSkills(previousSkills);
+    }
+
+    return saved;
+  };
+
+  const addSkill = async () => {
+    if (isSaving) return;
+
     const name = formatSkillLabel(skillForm.name);
     if (!name) return;
     if (isNoisySkillTag(name)) {
@@ -554,7 +558,8 @@ const FreelancerProfile = () => {
     const nextKey = getSkillDedupKey(name);
     if (!nextKey) return;
 
-    const exists = skills.some((entry) => {
+    const previousSkills = Array.isArray(skills) ? skills : [];
+    const exists = previousSkills.some((entry) => {
       const currentName =
         typeof entry === "string" ? entry : entry?.name;
       return getSkillDedupKey(currentName) === nextKey;
@@ -566,36 +571,48 @@ const FreelancerProfile = () => {
       return;
     }
 
-    setSkills((prev) => [...prev, { name, level: "Intermediate" }]);
+    const nextSkills = [...previousSkills, { name, level: "Intermediate" }];
+    setSkills(nextSkills);
     setSkillForm({ name: "" });
     setModalType(null);
+    await saveSkillsImmediately(nextSkills, previousSkills);
   };
 
-  const deleteSkill = (index) => {
-    setSkills((prev) => prev.filter((_, i) => i !== index));
+  const deleteSkill = async (index) => {
+    if (isSaving) return;
+
+    const previousSkills = Array.isArray(skills) ? skills : [];
+    const nextSkills = previousSkills.filter((_, rowIndex) => rowIndex !== index);
+
+    setSkills(nextSkills);
+    await saveSkillsImmediately(nextSkills, previousSkills);
   };
 
-  const setSkillLevel = useCallback((index, level) => {
+  const setSkillLevel = async (index, level) => {
+    if (isSaving) return;
+
     const normalizedLevel = normalizeSkillLevel(level);
-    setSkills((prev) =>
-      (Array.isArray(prev) ? prev : []).map((entry, rowIndex) => {
-        if (rowIndex !== index) return entry;
+    const previousSkills = Array.isArray(skills) ? skills : [];
+    const nextSkills = previousSkills.map((entry, rowIndex) => {
+      if (rowIndex !== index) return entry;
 
-        if (typeof entry === "string") {
-          return {
-            name: formatSkillLabel(entry),
-            level: normalizedLevel,
-          };
-        }
-
+      if (typeof entry === "string") {
         return {
-          ...(entry && typeof entry === "object" ? entry : {}),
-          name: formatSkillLabel(entry?.name || ""),
+          name: formatSkillLabel(entry),
           level: normalizedLevel,
         };
-      })
-    );
-  }, []);
+      }
+
+      return {
+        ...(entry && typeof entry === "object" ? entry : {}),
+        name: formatSkillLabel(entry?.name || ""),
+        level: normalizedLevel,
+      };
+    });
+
+    setSkills(nextSkills);
+    await saveSkillsImmediately(nextSkills, previousSkills);
+  };
 
   // ----- Work Experience (add + edit) -----
   const openCreateExperienceModal = () => {
@@ -930,7 +947,7 @@ const FreelancerProfile = () => {
         portfolioProjects: currentPortfolioProjects,
         profileDetails: profileDetailsForSave,
       });
-      setIsDirty(false);
+
       setSelectedFile(null);
       setSelectedCoverFile(null);
       return true;
@@ -946,21 +963,20 @@ const FreelancerProfile = () => {
     }
   };
 
-  const saveSectionChanges = async (overrides = {}) =>
-    handleSave({
-      personal,
-      portfolio,
-      skills,
-      workExperience,
-      services,
-      portfolioProjects,
-      profileDetails,
-      ...overrides,
-    });
-
-  const saveSkillsSection = async () => {
-    await saveSectionChanges();
-  };
+  const saveSectionChanges = async (overrides = {}, options = {}) =>
+    handleSave(
+      {
+        personal,
+        portfolio,
+        skills,
+        workExperience,
+        services,
+        portfolioProjects,
+        profileDetails,
+        ...overrides,
+      },
+      options
+    );
 
   const saveProjectsSection = async () => {
     await saveSectionChanges();
@@ -1022,33 +1038,53 @@ const FreelancerProfile = () => {
     });
   }, []);
 
-  // ----- Image Upload Logic -----
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const closeProfileCropDialog = useCallback(() => {
+    setIsProfileCropOpen(false);
+    setPendingProfilePhotoFile(null);
+  }, []);
 
-    // Reset input so same file can be selected again if needed
-    e.target.value = "";
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select a valid image file");
+  const handleProfilePhotoSelect = (file) => {
+    if (!(typeof File !== "undefined" && file instanceof File)) {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be less than 5MB");
+    if (!String(file.type || "").startsWith("image/")) {
+      toast.error("Please select an image file.");
       return;
     }
 
-    // Store file for later upload
-    setSelectedFile(file);
+    if (file.size > PROFILE_PHOTO_PICK_MAX_BYTES) {
+      toast.error(
+        `Selected image is ${formatFileSize(file.size)}. Please choose an image under ${formatFileSize(
+          PROFILE_PHOTO_PICK_MAX_BYTES
+        )} before cropping.`
+      );
+      return;
+    }
 
-    // Show local preview immediately
-    const objectUrl = URL.createObjectURL(file);
+    setPendingProfilePhotoFile(file);
+    setIsProfileCropOpen(true);
+  };
+
+  const handleProfilePhotoCropped = async (croppedFile) => {
+    if (!(typeof File !== "undefined" && croppedFile instanceof File)) {
+      toast.error("Unable to process profile image.");
+      return false;
+    }
+
+    if (croppedFile.size > AVATAR_UPLOAD_MAX_BYTES) {
+      toast.error(
+        `Cropped image is ${formatFileSize(croppedFile.size)}. Please crop tighter and try again.`
+      );
+      return false;
+    }
+
+    const objectUrl = URL.createObjectURL(croppedFile);
     const nextPersonal = {
       ...personal,
       avatar: objectUrl,
     };
+
     setPersonal((prev) => {
       if (prev.avatar && prev.avatar.startsWith("blob:")) {
         URL.revokeObjectURL(prev.avatar);
@@ -1059,15 +1095,26 @@ const FreelancerProfile = () => {
       };
     });
 
-    // Persist avatar immediately so page refresh does not revert to the old image.
-    void handleSave(buildProfileSnapshot({ personal: nextPersonal }), {
-      avatarFileOverride: file,
+    const saved = await handleSave(buildProfileSnapshot({ personal: nextPersonal }), {
+      avatarFileOverride: croppedFile,
       suppressSuccessToast: true,
-    }).then((saved) => {
-      if (saved) {
-        toast.success("Profile image updated");
-      }
     });
+
+    if (!saved) {
+      return false;
+    }
+
+    closeProfileCropDialog();
+    toast.success("Profile image updated");
+    return true;
+  };
+
+  // ----- Image Upload Logic -----
+  const handleImageUpload = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    handleProfilePhotoSelect(file);
   };
 
   const handleCoverImageUpload = (e) => {
@@ -2696,9 +2743,7 @@ const FreelancerProfile = () => {
                 skills={skills}
                 deleteSkill={deleteSkill}
                 setSkillLevel={setSkillLevel}
-                onSaveChanges={saveSkillsSection}
                 savingChanges={isSaving}
-                hasPendingChanges={isDirty}
                 openSkillModal={() => setModalType("skill")}
               />
 
@@ -2805,9 +2850,10 @@ const FreelancerProfile = () => {
                   <button
                     type="button"
                     onClick={addSkill}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors"
+                    disabled={isSaving || !formatSkillLabel(skillForm.name)}
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background transition-colors hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Add
+                    {isSaving ? "Saving..." : "Add"}
                   </button>
                 </div>
               </>
@@ -3653,6 +3699,13 @@ const FreelancerProfile = () => {
           </div>
         </div>
       )}
+      <ProfileImageCropDialog
+        open={isProfileCropOpen}
+        file={pendingProfilePhotoFile}
+        maxUploadBytes={AVATAR_UPLOAD_MAX_BYTES}
+        onApply={handleProfilePhotoCropped}
+        onCancel={closeProfileCropDialog}
+      />
     </div>
   );
 };

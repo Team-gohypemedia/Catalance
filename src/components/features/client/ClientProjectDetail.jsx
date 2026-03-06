@@ -21,6 +21,7 @@ import Headset from "lucide-react/dist/esm/icons/headset";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Send from "lucide-react/dist/esm/icons/send";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import FileText from "lucide-react/dist/esm/icons/file-text";
@@ -63,6 +64,7 @@ import isToday from "date-fns/isToday";
 import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
 import { cn } from "@/shared/lib/utils";
+import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import {
   Tooltip,
   TooltipContent,
@@ -336,6 +338,7 @@ const ProjectDashboard = () => {
   const [serverAvailableSlots, setServerAvailableSlots] = useState([]);
   const [deliverableReviews, setDeliverableReviews] = useState({});
   const [reviewingDeliverableId, setReviewingDeliverableId] = useState(null);
+  const [isProcessingInstallment, setIsProcessingInstallment] = useState(false);
 
   useEffect(() => {
     if (!date || !authFetch) {
@@ -799,11 +802,19 @@ const ProjectDashboard = () => {
         payload.notificationMeta = notificationMeta;
       }
 
-      await authFetch(`/projects/${project.id}`, {
+      const updateRes = await authFetch(`/projects/${project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      if (updateRes.ok) {
+        const refreshRes = await authFetch(`/projects/${project.id}`);
+        const refreshPayload = await refreshRes.json().catch(() => null);
+        if (refreshRes.ok && refreshPayload?.data) {
+          setProject(refreshPayload.data);
+        }
+      }
     } catch (error) {
       console.error("Failed to update project progress:", error);
     }
@@ -932,7 +943,7 @@ const ProjectDashboard = () => {
 
   const handleSendMessage = async () => {
     if (isChatLockedUntilPayment) {
-      toast.error("Please complete upfront payment to start messages.");
+      toast.error("Please complete the initial 20% payment to start messages.");
       return;
     }
     if (!input.trim() || !conversationId) return;
@@ -986,7 +997,7 @@ const ProjectDashboard = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (isChatLockedUntilPayment) {
-      toast.error("Please complete upfront payment to start messages.");
+      toast.error("Please complete the initial 20% payment to start messages.");
       return;
     }
     if (file && conversationId) {
@@ -1098,6 +1109,31 @@ const ProjectDashboard = () => {
     }
   };
 
+  const handlePayDueInstallment = async () => {
+    if (!project?.id || !dueInstallment) return;
+
+    setIsProcessingInstallment(true);
+    try {
+      const paymentResult = await processProjectInstallmentPayment({
+        authFetch,
+        projectId: project.id,
+        description: `${dueInstallment.label} for ${project.title || "project"}`,
+      });
+
+      toast.success(paymentResult?.message || "Payment completed successfully.");
+
+      const refreshRes = await authFetch(`/projects/${project.id}`);
+      const refreshPayload = await refreshRes.json().catch(() => null);
+      if (refreshRes.ok && refreshPayload?.data) {
+        setProject(refreshPayload.data);
+      }
+    } catch (error) {
+      console.error("Failed to pay project installment:", error);
+      toast.error(error?.message || "Failed to process payment");
+    } finally {
+      setIsProcessingInstallment(false);
+    }
+  };
   const docs = useMemo(() => {
     return messages.filter((m) => m.attachment).map((m) => m.attachment);
   }, [messages]);
@@ -1136,6 +1172,13 @@ const ProjectDashboard = () => {
     [spentBudget, totalBudget]
   );
 
+  const paymentPlan = useMemo(() => {
+    return project?.paymentPlan && typeof project.paymentPlan === "object"
+      ? project.paymentPlan
+      : null;
+  }, [project]);
+
+  const dueInstallment = paymentPlan?.nextDueInstallment || null;
   const freelancer = useMemo(() => {
     return project?.proposals?.find((p) => p.status === "ACCEPTED")?.freelancer;
   }, [project]);
@@ -1844,7 +1887,7 @@ const ProjectDashboard = () => {
                 <div className="border-t border-border/60 p-3 space-y-2">
                   {isChatLockedUntilPayment ? (
                     <div className="w-full rounded-md border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                      Pending your payment. Messages will start after upfront payment.
+                      Pending your payment. Messages will start after the initial 20% payment.
                     </div>
                   ) : null}
                   <div className="flex gap-2">
@@ -2050,6 +2093,88 @@ const ProjectDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                    <CreditCard className="w-4 h-4" />
+                    Payment Schedule
+                  </CardTitle>
+                  <CardDescription>
+                    20% to start, 40% after phase 2, and the final 40% after phase 4.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {Array.isArray(paymentPlan?.installments) && paymentPlan.installments.length > 0 ? (
+                    <div className="space-y-2">
+                      {paymentPlan.installments.map((installment) => (
+                        <div
+                          key={installment.sequence}
+                          className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-3"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {installment.label}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {installment.percentage}% of project budget
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-foreground">
+                              INR {Number(installment.amount || 0).toLocaleString()}
+                            </p>
+                            <Badge variant={installment.isDue ? "secondary" : "outline"}>
+                              {installment.isPaid
+                                ? "Paid"
+                                : installment.isDue
+                                ? "Due now"
+                                : "Scheduled"}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Payment schedule will appear once a proposal is accepted.
+                    </p>
+                  )}
+
+                  {dueInstallment ? (
+                    <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        Current payment due: {dueInstallment.label}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Pay {dueInstallment.percentage}% now to keep the project billing on schedule.
+                      </p>
+                      <Button
+                        className="mt-3 w-full gap-2"
+                        disabled={isProcessingInstallment}
+                        onClick={handlePayDueInstallment}
+                      >
+                        {isProcessingInstallment ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CreditCard className="h-4 w-4" />
+                        )}
+                        {isProcessingInstallment
+                          ? "Processing..."
+                          : `Pay ${dueInstallment.percentage}%`}
+                      </Button>
+                    </div>
+                  ) : paymentPlan?.isFullyPaid ? (
+                    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+                      All scheduled client payments are complete.
+                    </div>
+                  ) : paymentPlan ? (
+                    <div className="rounded-lg border border-border/60 bg-background/50 p-3 text-sm text-muted-foreground">
+                      No payment is due right now. The next installment will unlock automatically when its phase gate is complete.
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+
             </div>
           </div>
         </div>
@@ -2275,3 +2400,10 @@ const ProjectDashboard = () => {
 const ClientProjectDetail = () => <ProjectDashboard />;
 
 export default ClientProjectDetail;
+
+
+
+
+
+
+

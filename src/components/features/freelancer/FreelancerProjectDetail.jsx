@@ -1548,7 +1548,7 @@ const FreelancerProjectDetailContent = () => {
                   Waiting for Client Approval
                 </h2>
                 <p className="text-muted-foreground leading-relaxed font-medium">
-                  We are waiting for the client to complete the upfront payment
+                  We are waiting for the client to complete the initial 20% payment
                   for{" "}
                   <span className="font-semibold text-foreground">
                     {project.title}
@@ -2834,3 +2834,4 @@ const FreelancerProjectDetail = () => {
 };
 
 export default FreelancerProjectDetail;
+

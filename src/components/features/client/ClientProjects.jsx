@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
+import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { toast } from "sonner";
 
 // Skeleton for project cards while loading
@@ -85,24 +85,27 @@ const normalizeClientProjects = (remote = []) =>
         .filter((pr) => (pr.status || "").toUpperCase() === "PENDING")
         .sort(
           (a, b) =>
-            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime()
         );
 
       if (!accepted && pending.length === 0) return null;
 
       const rawStatus = (p.status || "").toUpperCase();
-      const spentAmount = Number(p.spent || 0);
       const awaitingFreelancerAcceptance = !accepted;
-      const paymentPending =
-        Boolean(accepted) && rawStatus === "AWAITING_PAYMENT" && spentAmount <= 0;
+      const paymentPlan =
+        p.paymentPlan && typeof p.paymentPlan === "object" ? p.paymentPlan : null;
+      const dueInstallment = paymentPlan?.nextDueInstallment || null;
+      const initialPaymentPending = Boolean(accepted) && dueInstallment?.sequence === 1;
       const projectProgress = typeof p.progress === "number" ? p.progress : 0;
 
       let displayStatus = "pending";
       if (!awaitingFreelancerAcceptance) {
-        if (paymentPending) displayStatus = "pending";
-        else if (projectProgress === 100 || rawStatus === "COMPLETED")
+        if (rawStatus === "COMPLETED" || paymentPlan?.isFullyPaid || projectProgress === 100) {
           displayStatus = "completed";
-        else if (projectProgress > 0) displayStatus = "in-progress";
+        } else if (projectProgress > 0 || rawStatus === "IN_PROGRESS") {
+          displayStatus = "in-progress";
+        }
       }
 
       const acceptedFreelancerName =
@@ -127,9 +130,12 @@ const normalizeClientProjects = (remote = []) =>
         budget: p.budget || 0,
         deadline: p.deadline || "",
         progress:
-          awaitingFreelancerAcceptance || paymentPending ? 0 : projectProgress,
-        paymentPending,
+          awaitingFreelancerAcceptance || initialPaymentPending ? 0 : projectProgress,
+        paymentPending: Boolean(dueInstallment),
+        initialPaymentPending,
         awaitingFreelancerAcceptance,
+        paymentPlan,
+        dueInstallment,
       };
     })
     .filter(Boolean);
@@ -169,12 +175,12 @@ const ProjectCard = ({ project, onPay, isPaying }) => {
           {
             id: "freelancer-active",
             label: "Freelance Active",
-            state: project.paymentPending ? "upcoming" : "done",
+            state: project.initialPaymentPending ? "upcoming" : "done",
           },
           {
             id: "pending-payment",
             label: "Pending your payment",
-            state: project.paymentPending ? "current" : "done",
+            state: project.initialPaymentPending ? "current" : "done",
           },
         ]),
   ];
@@ -269,9 +275,15 @@ const ProjectCard = ({ project, onPay, isPaying }) => {
               </p>
             ) : null}
 
-            {project.paymentPending ? (
+            {project.initialPaymentPending ? (
               <p className="mt-3 text-xs text-amber-300/90">
-                Messages will start after upfront payment.
+                Messages will start after the initial 20% payment.
+              </p>
+            ) : null}
+
+            {project.paymentPending && !project.initialPaymentPending ? (
+              <p className="mt-3 text-xs text-amber-300/90">
+                Payment due: {project.dueInstallment?.label} ({project.dueInstallment?.percentage}%).
               </p>
             ) : null}
           </div>
@@ -308,7 +320,7 @@ const ProjectCard = ({ project, onPay, isPaying }) => {
                 ) : (
                   <CreditCard className="h-4 w-4" />
                 )}
-                {isPaying ? "Processing..." : "Approve & Pay"}
+                {isPaying ? "Processing..." : project.dueInstallment ? `Pay ${project.dueInstallment.percentage}%` : "Pay now"}
               </Button>
             ) : null}
 
@@ -379,53 +391,16 @@ const ClientProjectsContent = () => {
 
     setProcessingProjectId(project.id);
     try {
-      const orderRes = await authFetch(`/projects/${project.id}/pay-upfront/order`, {
-        method: "POST",
+      const paymentResult = await processProjectInstallmentPayment({
+        authFetch,
+        projectId: project.id,
+        description: `${project.dueInstallment?.label || "Project payment"} for ${
+          project.title || "project"
+        }`,
       });
-      const orderPayload = await orderRes.json().catch(() => null);
-
-      if (!orderRes.ok) {
-        if (orderRes.status === 503) {
-          const fallbackRes = await authFetch(`/projects/${project.id}/pay-upfront`, {
-            method: "POST",
-          });
-          const fallbackPayload = await fallbackRes.json().catch(() => null);
-          if (!fallbackRes.ok) {
-            throw new Error(fallbackPayload?.message || "Payment failed");
-          }
-          toast.success(
-            fallbackPayload?.data?.message || "Payment completed. Project is now active."
-          );
-          const refresh = await authFetch("/projects");
-          const payload = await refresh.json().catch(() => null);
-          const remote = Array.isArray(payload?.data) ? payload.data : [];
-          setProjects(normalizeClientProjects(remote));
-          return;
-        }
-        throw new Error(orderPayload?.message || "Unable to initiate payment");
-      }
-
-      const orderData = orderPayload?.data || {};
-      const paymentProof = await openRazorpayCheckout({
-        key: orderData.key,
-        amountPaise: orderData.amountPaise,
-        currency: orderData.currency || "INR",
-        orderId: orderData.orderId,
-        description: `Upfront payment for ${orderData.projectTitle || "project"}`,
-      });
-
-      const verifyRes = await authFetch(`/projects/${project.id}/pay-upfront/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(paymentProof),
-      });
-      const verifyPayload = await verifyRes.json().catch(() => null);
-      if (!verifyRes.ok) {
-        throw new Error(verifyPayload?.message || "Payment verification failed");
-      }
 
       toast.success(
-        verifyPayload?.data?.message || "Payment completed. Project is now active."
+        paymentResult?.message || "Payment completed successfully."
       );
 
       const response = await authFetch("/projects");
@@ -496,4 +471,10 @@ const ClientProjects = () => {
 };
 
 export default ClientProjects;
+
+
+
+
+
+
 

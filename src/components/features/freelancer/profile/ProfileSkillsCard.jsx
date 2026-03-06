@@ -1,4 +1,3 @@
-import Check from "lucide-react/dist/esm/icons/check";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
@@ -33,9 +32,7 @@ const ProfileSkillsCard = ({
     skills,
     deleteSkill,
     setSkillLevel,
-    onSaveChanges,
     savingChanges,
-    hasPendingChanges,
     openSkillModal,
 }) => {
     const skillCards = (Array.isArray(skills) ? skills : []).map(normalizeSkill);
@@ -48,25 +45,21 @@ const ProfileSkillsCard = ({
                 <h3 className="text-xl font-bold tracking-tight text-foreground">
                     Skills & Expertise
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                    {savingChanges ? (
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Saving...
+                        </span>
+                    ) : null}
                     <button
                         type="button"
                         onClick={openSkillModal}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted active:scale-[0.98]"
+                        disabled={savingChanges}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <Plus className="h-4 w-4" aria-hidden="true" />
                         Add new
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onSaveChanges}
-                        disabled={savingChanges || !hasPendingChanges}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {savingChanges ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : null}
-                        Save changes
                     </button>
                 </div>
             </div>
@@ -91,6 +84,7 @@ const ProfileSkillsCard = ({
                                 <div className="relative">
                                     <button
                                         type="button"
+                                        disabled={savingChanges}
                                         onClick={() => {
                                             if (openMenu === index) {
                                                 setOpenMenu(null);
@@ -100,7 +94,7 @@ const ProfileSkillsCard = ({
                                                 setOpenMenuView("actions");
                                             }
                                         }}
-                                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+                                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                                         title="Options"
                                     >
                                         <MoreHorizontal className="h-4 w-4" />
@@ -120,20 +114,22 @@ const ProfileSkillsCard = ({
                                                     <>
                                                         <button
                                                             type="button"
+                                                            disabled={savingChanges}
                                                             onClick={() => setOpenMenuView("levels")}
-                                                            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-150 hover:bg-muted/60"
+                                                            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-150 hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
                                                         >
                                                             <Pencil className="h-3 w-3" />
                                                             Edit
                                                         </button>
                                                         <button
                                                             type="button"
+                                                            disabled={savingChanges}
                                                             onClick={() => {
                                                                 deleteSkill(index);
                                                                 setOpenMenu(null);
                                                                 setOpenMenuView("actions");
                                                             }}
-                                                            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-destructive transition-colors duration-150 hover:bg-destructive/10"
+                                                            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-destructive transition-colors duration-150 hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"
                                                         >
                                                             <Trash2 className="h-3 w-3" />
                                                             Remove
@@ -148,6 +144,7 @@ const ProfileSkillsCard = ({
                                                             <button
                                                                 key={`${skill.id}-${levelOption}`}
                                                                 type="button"
+                                                                disabled={savingChanges}
                                                                 onClick={() => {
                                                                     if (typeof setSkillLevel === "function") {
                                                                         setSkillLevel(index, levelOption);
@@ -155,11 +152,11 @@ const ProfileSkillsCard = ({
                                                                     setOpenMenu(null);
                                                                     setOpenMenuView("actions");
                                                                 }}
-                                                                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-150 hover:bg-muted/60"
+                                                                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-150 hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
                                                             >
                                                                 <span>{levelOption}</span>
                                                                 {skill.level === levelOption ? (
-                                                                    <Check className="h-3.5 w-3.5 text-primary" />
+                                                                    <span className="h-2.5 w-2.5 rounded-full bg-primary" />
                                                                 ) : null}
                                                             </button>
                                                         ))}
