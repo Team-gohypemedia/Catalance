@@ -4,6 +4,9 @@ import {
     Briefcase,
     ArrowRight,
     ArrowLeft,
+    PanelLeftClose,
+    PanelLeftOpen,
+    LogIn,
     User,
     Send,
     Mic,
@@ -32,6 +35,7 @@ import { getSession } from '@/shared/lib/auth-storage';
 import cataLogo from '@/assets/logos/logo.svg';
 
 const GUEST_CHAT_STORAGE_KEY = 'markify:guestAiSessions:v1';
+const GUEST_CHAT_SIDEBAR_SIZE_KEY = 'markify:guestAiSidebarSize:v1';
 const MAX_PREVIOUS_CHAT_ITEMS = 30;
 const ATTACHMENT_TOKEN_PREFIX = '[[ATTACHMENT]]';
 const ATTACHMENT_TOKEN_REGEX = /^\[\[ATTACHMENT\]\]([^|]+)\|([^|]+)\|([^|]*)\|(\d+)$/;
@@ -68,6 +72,17 @@ const safeParseArray = (value) => {
 const readStoredGuestSessions = () => {
     if (!isBrowser) return [];
     return safeParseArray(window.localStorage.getItem(GUEST_CHAT_STORAGE_KEY));
+};
+
+const readStoredSidebarSize = () => {
+    if (!isBrowser) return 'large';
+    const value = window.localStorage.getItem(GUEST_CHAT_SIDEBAR_SIZE_KEY);
+    return value === 'small' ? 'small' : 'large';
+};
+
+const writeStoredSidebarSize = (size = 'large') => {
+    if (!isBrowser) return;
+    window.localStorage.setItem(GUEST_CHAT_SIDEBAR_SIZE_KEY, size === 'small' ? 'small' : 'large');
 };
 
 const writeStoredGuestSessions = (sessions = []) => {
@@ -216,6 +231,19 @@ const getProposalStorageKeys = (userId) => {
     };
 };
 
+const PROPOSAL_LIST_STORAGE_PREFIX = 'markify:savedProposals';
+
+const readAllStoredGeneratedProposalRows = () => {
+    if (!isBrowser) return [];
+    const rows = [];
+    for (let idx = 0; idx < window.localStorage.length; idx += 1) {
+        const key = window.localStorage.key(idx);
+        if (!key || !key.startsWith(PROPOSAL_LIST_STORAGE_PREFIX)) continue;
+        rows.push(...safeParseArray(window.localStorage.getItem(key)));
+    }
+    return rows;
+};
+
 const toProposalFingerprint = (content = '') =>
     String(content || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
@@ -243,7 +271,8 @@ const readStoredGeneratedProposals = (userId) => {
     const scopedRows = safeParseArray(window.localStorage.getItem(scopedKey));
 
     if (!userId) {
-        return sortStoredGeneratedProposals(scopedRows);
+        const allStoredRows = readAllStoredGeneratedProposalRows();
+        return sortStoredGeneratedProposals([...scopedRows, ...allStoredRows]);
     }
 
     const guestKey = getProposalStorageKeys(null).listKey;
@@ -757,7 +786,7 @@ const GuestAIDemo = () => {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
     const [services, setServices] = useState([]);
     const [servicesError, setServicesError] = useState("");
@@ -771,6 +800,7 @@ const GuestAIDemo = () => {
     const [selectedOptions, setSelectedOptions] = useState([]);
     const [isListening, setIsListening] = useState(false);
     const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+    const [sidebarSize, setSidebarSize] = useState(() => readStoredSidebarSize());
     const [previousChats, setPreviousChats] = useState(() => readStoredGuestSessions());
     const [generatedProposals, setGeneratedProposals] = useState(() => readStoredGeneratedProposals(user?.id));
     const [selectedProposalPreview, setSelectedProposalPreview] = useState(null);
@@ -785,12 +815,21 @@ const GuestAIDemo = () => {
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
     const normalizedInputType = (inputConfig.type || 'text').toLowerCase();
+    const isSidebarCompact = sidebarSize === 'small';
     const isMultiInput = normalizedInputType === 'multi_select'
         || normalizedInputType === 'multi_option'
         || normalizedInputType === 'grouped_multi_select';
     const hasOptionInput = Array.isArray(inputConfig.options) && inputConfig.options.length > 0;
     const shouldShowTextInput = true;
     const visiblePreviousChats = previousChats.filter((chat) => chat?.sessionId);
+    const isUserLoggedIn = Boolean(isAuthenticated && user);
+    const userDisplayName = user?.fullName || user?.name || "Logged-in user";
+    const userDisplayEmail = user?.email || "";
+    const userAvatar = user?.avatar || user?.profileImage || user?.image || "";
+    const sidebarServiceDescription = truncateText(
+        selectedService?.description || '',
+        isSidebarCompact ? 75 : 120
+    );
 
     const refreshPreviousChats = useCallback(() => {
         setPreviousChats(readStoredGuestSessions());
@@ -799,6 +838,14 @@ const GuestAIDemo = () => {
     const refreshGeneratedProposals = useCallback(() => {
         setGeneratedProposals(readStoredGeneratedProposals(user?.id));
     }, [user?.id]);
+
+    const toggleSidebarSize = useCallback(() => {
+        setSidebarSize((previous) => {
+            const next = previous === 'small' ? 'large' : 'small';
+            writeStoredSidebarSize(next);
+            return next;
+        });
+    }, []);
 
     const persistCurrentSessionSummary = useCallback((history) => {
         if (!sessionId || !selectedService) return;
@@ -1630,26 +1677,45 @@ const GuestAIDemo = () => {
             : 'bg-[#fbfbfa] bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.14),transparent_55%)]'
             }`}
         >
-            <aside className={`hidden w-80 shrink-0 border-r p-6 md:flex md:flex-col ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white/80'}`}>
-                <Button
-                    variant="ghost"
-                    className={`mb-6 w-fit rounded-full ${isDark ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
-                    onClick={handleBackToServices}
-                >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to services
-                </Button>
-
-                <div className={`mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
-                    <img src={cataLogo} alt="CATA AI logo" className="h-8 w-8 object-contain" />
+            <aside className={`hidden shrink-0 border-r p-5 transition-[width] duration-300 md:flex md:flex-col ${isSidebarCompact ? 'w-[17.5rem]' : 'w-[21rem]'} ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white/80'}`}>
+                <div className="mb-4 flex items-center justify-between gap-2">
+                    <Button
+                        variant="ghost"
+                        className={`w-fit rounded-full px-2.5 ${isDark ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
+                        onClick={handleBackToServices}
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        <span className={isSidebarCompact ? 'text-xs' : 'text-sm'}>Back to services</span>
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleSidebarSize}
+                        className={`h-8 w-8 rounded-lg border ${isDark ? 'border-white/15 text-slate-200 hover:bg-white/10' : 'border-black/10 text-slate-700 hover:bg-slate-100'}`}
+                        title={isSidebarCompact ? 'Expand sidebar' : 'Make sidebar compact'}
+                        aria-label={isSidebarCompact ? 'Expand sidebar' : 'Make sidebar compact'}
+                    >
+                        {isSidebarCompact ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                    </Button>
                 </div>
-                <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-[#181711]'}`}>{selectedService.name}</h2>
-                <p className={`mt-2 text-sm leading-relaxed ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                    {selectedService.description}
-                </p>
 
-                <div className="mt-8 flex min-h-0 flex-1 flex-col gap-4">
-                    <div className={`flex min-h-0 flex-[1.35] flex-col rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                <div className="mb-4 flex items-start gap-3">
+                    <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/15'} ${isSidebarCompact ? 'h-10 w-10' : 'h-12 w-12'}`}>
+                        <img src={cataLogo} alt="CATA AI logo" className={`${isSidebarCompact ? 'h-6 w-6' : 'h-8 w-8'} object-contain`} />
+                    </div>
+                    <div className="min-w-0">
+                        <h2 className={`truncate font-bold leading-tight ${isSidebarCompact ? 'text-lg' : 'text-xl'} ${isDark ? 'text-white' : 'text-[#181711]'}`}>
+                            {selectedService.name}
+                        </h2>
+                        <p className={`mt-1 text-[10px] leading-4 ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                            {sidebarServiceDescription || 'Guided consultation'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4">
+                    <div className={`flex min-h-0 flex-[1.05] flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
                         <div className="mb-3 flex items-center justify-between gap-2">
                             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
                                 <Sparkles className="h-3.5 w-3.5" />
@@ -1660,7 +1726,7 @@ const GuestAIDemo = () => {
                             </span>
                         </div>
                         {generatedProposals.length === 0 ? (
-                            <p className={`text-sm ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                            <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
                                 No proposals generated yet.
                             </p>
                         ) : (
@@ -1671,7 +1737,7 @@ const GuestAIDemo = () => {
                                             key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
                                             type="button"
                                             onClick={() => handleOpenProposalPreview(proposal)}
-                                            className={`group w-full rounded-xl border px-3 py-2.5 text-left transition-all duration-200 ${isDark
+                                            className={`group w-full rounded-xl border px-3 py-2 text-left transition-all duration-200 ${isDark
                                                 ? 'border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] hover:border-primary/35 hover:bg-white/[0.06]'
                                                 : 'border-black/10 bg-[#fbfbfa] hover:border-primary/35 hover:bg-slate-100/85'
                                                 }`}
@@ -1685,7 +1751,7 @@ const GuestAIDemo = () => {
                                                     {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
                                                 </span>
                                             </div>
-                                            <p className={`mt-1 truncate text-base font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                            <p className={`mt-1 truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                                 {proposal.projectTitle || 'AI Generated Proposal'}
                                             </p>
                                             {(proposal.budget || proposal.timeline) && (
@@ -1709,13 +1775,13 @@ const GuestAIDemo = () => {
                         )}
                     </div>
 
-                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
                         <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
                             <History className="h-3.5 w-3.5" />
                             Previous chats
                         </div>
                         {visiblePreviousChats.length === 0 ? (
-                            <p className={`text-sm ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                            <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
                                 No previous chats yet.
                             </p>
                         ) : (
@@ -1747,7 +1813,7 @@ const GuestAIDemo = () => {
                                                         disabled={isLoadingHistory || isCurrent}
                                                         className={`min-w-0 rounded-md px-2 py-1.5 text-left ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}`}
                                                     >
-                                                        <p className={`truncate text-sm ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                                                        <p className={`truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                                                             {compactPreview || 'No preview available'}
                                                         </p>
                                                     </button>
@@ -1775,6 +1841,58 @@ const GuestAIDemo = () => {
                             </ScrollArea>
                         )}
                     </div>
+                </div>
+
+                <div className={`mt-4 shrink-0 rounded-xl border ${isSidebarCompact ? 'p-2.5' : 'p-3'} ${isDark ? 'border-white/12 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                    {isAuthLoading ? (
+                        <div className="flex items-center gap-2">
+                            <span className={`h-2.5 w-2.5 animate-pulse rounded-full ${isDark ? 'bg-slate-400' : 'bg-slate-500'}`} />
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Checking login status...
+                            </p>
+                        </div>
+                    ) : isUserLoggedIn ? (
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-white/20 bg-white/10' : 'border-black/10 bg-slate-100'}`}>
+                                    {userAvatar ? (
+                                        <img src={userAvatar} alt={userDisplayName} className="h-full w-full object-cover" />
+                                    ) : (
+                                        <User className={`h-4 w-4 ${isDark ? 'text-slate-200' : 'text-slate-600'}`} />
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className={`truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                        {userDisplayName}
+                                    </p>
+                                    <p className={`truncate text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        {userDisplayEmail || 'Authenticated user'}
+                                    </p>
+                                </div>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
+                                className={`mt-3 w-full rounded-xl ${isDark
+                                    ? 'border-white/20 bg-white/[0.03] text-slate-100 hover:bg-white/10'
+                                    : 'border-black/10 bg-white text-slate-700 hover:bg-slate-100'
+                                    }`}
+                            >
+                                <LogIn className="mr-2 h-4 w-4" />
+                                Login with another account
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            type="button"
+                            onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
+                            className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Login
+                        </Button>
+                    )}
                 </div>
             </aside>
 
