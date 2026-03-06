@@ -31,8 +31,37 @@ const getDashboardPath = (role) => {
   return "/client";
 };
 
-const AuthButtons = ({ visible, isHome, isDark, isAuthenticated, dashboardPath }) => {
+const getDisplayName = (user) =>
+  user?.fullName || user?.name || user?.email?.split("@")[0] || "Profile";
+
+const getInitials = (value) => {
+  const parts = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return "P";
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 1).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const AuthButtons = ({
+  visible,
+  isHome,
+  isDark,
+  isAuthenticated,
+  dashboardPath,
+  user,
+}) => {
   const forceWhite = isHome && isDark && !visible;
+  const displayName = getDisplayName(user);
+  const initials = getInitials(displayName);
 
   if (isAuthenticated) {
     return (
@@ -41,10 +70,22 @@ const AuthButtons = ({ visible, isHome, isDark, isAuthenticated, dashboardPath }
           as={Link}
           to={dashboardPath}
           className={cn(
-            forceWhite ? "text-white border-white/20 hover:bg-white/10" : ""
+            "inline-flex items-center gap-2 !text-black",
+            forceWhite ? "border-white/20 hover:bg-white/10" : ""
           )}
         >
-          Dashboard
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-xs font-bold text-primary">
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={displayName}
+                className="h-full w-full rounded-full object-cover"
+              />
+            ) : (
+              initials
+            )}
+          </span>
+          <span className="max-w-32 truncate text-black">{displayName}</span>
         </NavbarButton>
       </div>
     );
@@ -96,6 +137,7 @@ const Navbar = () => {
             isDark={isDark}
             isAuthenticated={isAuthenticated}
             dashboardPath={dashboardPath}
+            user={user}
           />
         </div>
       </NavBody>
@@ -122,10 +164,21 @@ const Navbar = () => {
             <NavbarButton
               as={Link}
               to={dashboardPath}
-              className="w-full mt-4"
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 !text-black"
               onClick={closeMobileMenu}
             >
-              Dashboard
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-xs font-bold text-primary">
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={getDisplayName(user)}
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  getInitials(getDisplayName(user))
+                )}
+              </span>
+              <span className="truncate text-black">{getDisplayName(user)}</span>
             </NavbarButton>
           ) : (
             <>

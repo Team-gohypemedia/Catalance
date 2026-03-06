@@ -1,11 +1,26 @@
 import Camera from "lucide-react/dist/esm/icons/camera";
+import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import ProfileHeroCard from "@/components/features/freelancer/profile/ProfileHeroCard";
@@ -105,8 +120,10 @@ const FreelancerProfile = () => {
   const [newProjectUrl, setNewProjectUrl] = useState("");
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [newProjectServiceKey, setNewProjectServiceKey] = useState("");
   const [newProjectImageFile, setNewProjectImageFile] = useState(null);
   const [newProjectImagePreview, setNewProjectImagePreview] = useState("");
+  const [editingProjectIndex, setEditingProjectIndex] = useState(null);
   const [serviceProfileForm, setServiceProfileForm] = useState({
     serviceKey: "",
     serviceLabel: "",
@@ -494,7 +511,7 @@ const FreelancerProfile = () => {
     return () => {
       active = false;
     };
-  }, [user?.id, user?.email, authFetch, user?.fullName, user?.name]);
+  }, [user, authFetch]);
 
   useEffect(() => {
     if (!initialData) return;
@@ -1350,7 +1367,9 @@ const FreelancerProfile = () => {
     setNewProjectUrl("");
     setNewProjectTitle("");
     setNewProjectDescription("");
+    setNewProjectServiceKey("");
     setNewProjectImageFile(null);
+    setEditingProjectIndex(null);
     setNewProjectImagePreview((prev) => {
       if (prev && prev.startsWith("blob:")) {
         URL.revokeObjectURL(prev);
@@ -1358,6 +1377,22 @@ const FreelancerProfile = () => {
       return "";
     });
     setNewProjectLoading(false);
+  };
+
+  const openAddProjectModal = () => {
+    resetProjectDraft();
+    setModalType("addProject");
+  };
+
+  const openEditProject = (project, index) => {
+    resetProjectDraft();
+    setEditingProjectIndex(index);
+    setNewProjectUrl(String(project?.link || "").trim());
+    setNewProjectTitle(String(project?.title || "").trim());
+    setNewProjectDescription(String(project?.description || "").trim());
+    setNewProjectServiceKey(String(project?.serviceKey || "").trim());
+    setNewProjectImagePreview(resolveAvatarUrl(project?.image, { allowBlob: true }) || "");
+    setModalType("addProject");
   };
 
   const getProjectTitleFallback = (projectUrl = "") => {
@@ -1645,6 +1680,8 @@ const FreelancerProfile = () => {
   };
 
   const handleAddProject = async () => {
+    const isEditingProject = editingProjectIndex !== null;
+    const currentProjects = Array.isArray(portfolioProjects) ? portfolioProjects : [];
     const rawUrl = String(newProjectUrl || "").trim();
     if (!rawUrl) {
       toast.error("Project URL is required");
@@ -1658,8 +1695,9 @@ const FreelancerProfile = () => {
     }
 
     const normalizedUrlKey = normalizedUrl.toLowerCase();
-    const hasDuplicate = (Array.isArray(portfolioProjects) ? portfolioProjects : []).some(
-      (project) =>
+    const hasDuplicate = currentProjects.some(
+      (project, index) =>
+        index !== editingProjectIndex &&
         normalizeProjectLinkValue(project?.link).toLowerCase() === normalizedUrlKey
     );
     if (hasDuplicate) {
@@ -1708,32 +1746,37 @@ const FreelancerProfile = () => {
         newProjectDescription || previewData?.description || ""
       ).trim();
 
-      const nextProjects = [
-        ...(Array.isArray(portfolioProjects) ? portfolioProjects : []),
-        {
-          link: normalizedUrl,
-          image: projectImage || null,
-          title: finalTitle,
-          description: finalDescription,
-        },
-      ];
+      const nextProject = {
+        ...(isEditingProject ? currentProjects[editingProjectIndex] || {} : {}),
+        link: normalizedUrl,
+        image: projectImage || null,
+        title: finalTitle,
+        description: finalDescription,
+        serviceKey: String(newProjectServiceKey || "").trim(),
+      };
+      const nextProjects = isEditingProject
+        ? currentProjects.map((project, index) =>
+          index === editingProjectIndex ? nextProject : project
+        )
+        : [...currentProjects, nextProject];
+      const successMessage = isEditingProject ? "Project updated" : "Project added";
 
       const saved = await saveSectionChanges({
         portfolioProjects: nextProjects,
       });
 
       if (saved) {
-        toast.success("Project added");
+        toast.success(successMessage);
         resetProjectDraft();
         setModalType(null);
         return;
       }
 
       setPortfolioProjects(nextProjects);
-      toast.error("Project added locally. Click Save changes to persist.");
+      toast.error(`${successMessage} locally. Click Save changes to persist.`);
     } catch (error) {
-      console.error("Failed to add project:", error);
-      toast.error(error?.message || "Failed to add project");
+      console.error("Failed to save project:", error);
+      toast.error(error?.message || "Failed to save project");
     } finally {
       setNewProjectLoading(false);
     }
@@ -2030,11 +2073,14 @@ const FreelancerProfile = () => {
     : "Not set yet";
   const acceptInProgressProjectsLabel =
     normalizeValueLabel(profileDetails?.acceptInProgressProjects) || "Not set yet";
-  const onboardingServiceDetailMap =
-    profileDetails?.serviceDetails &&
-      typeof profileDetails.serviceDetails === "object"
-      ? profileDetails.serviceDetails
-      : {};
+  const onboardingServiceDetailMap = useMemo(
+    () =>
+      profileDetails?.serviceDetails &&
+        typeof profileDetails.serviceDetails === "object"
+        ? profileDetails.serviceDetails
+        : {},
+    [profileDetails?.serviceDetails]
+  );
   const onboardingPlatformLinks = collectOnboardingPlatformLinks(
     onboardingServiceDetailMap
   );
@@ -2070,6 +2116,22 @@ const FreelancerProfile = () => {
       serviceKey,
       detail: onboardingServiceDetailMap?.[serviceKey] || {},
     }));
+  const linkableServiceOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...onboardingServiceEntries.map((entry) => entry?.serviceKey),
+          ...(Array.isArray(services) ? services : []),
+        ])
+      )
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+        .map((serviceKey) => ({
+          value: serviceKey,
+          label: getServiceLabel(serviceKey),
+        })),
+    [onboardingServiceEntries, services]
+  );
   const onboardingProjectDescriptionMap = useMemo(() => {
     const map = new Map();
 
@@ -2161,6 +2223,23 @@ const FreelancerProfile = () => {
       : [];
     return JSON.stringify(currentProjects) !== JSON.stringify(initialProjects);
   }, [portfolioProjects, initialData?.portfolioProjects]);
+  const isEditingProjectDraft = editingProjectIndex !== null;
+  const draftProjectHost = getProjectTitleFallback(newProjectUrl || "");
+  const draftProjectHostLabel =
+    draftProjectHost && draftProjectHost !== "Project"
+      ? draftProjectHost
+      : "yourproject.com";
+  const draftProjectTitle =
+    String(newProjectTitle || "").trim() ||
+    (draftProjectHost && draftProjectHost !== "Project"
+      ? draftProjectHost
+      : "Project title");
+  const draftProjectDescription =
+    String(newProjectDescription || "").trim() ||
+    "Add a concise summary explaining what the project does, who it serves, and the impact it creates.";
+  const selectedProjectServiceLabel = newProjectServiceKey
+    ? getServiceLabel(newProjectServiceKey)
+    : "Not linked to a service";
   const serviceEntriesMissingDescription = onboardingServiceEntries.filter(
     ({ detail }) =>
       !hasTextValue(detail?.serviceDescription || detail?.description)
@@ -2625,6 +2704,7 @@ const FreelancerProfile = () => {
 
               <ServicesFromOnboardingCard
                 onboardingServiceEntries={onboardingServiceEntries}
+                portfolioProjects={displayPortfolioProjects}
                 getServiceLabel={getServiceLabel}
                 resolveAvatarUrl={resolveAvatarUrl}
                 collectServiceSpecializations={collectServiceSpecializations}
@@ -2638,11 +2718,9 @@ const FreelancerProfile = () => {
                 projectCoverUploadingIndex={projectCoverUploadingIndex}
                 handleProjectCoverInputChange={handleProjectCoverInputChange}
                 removeProject={removeProject}
+                onEditProject={openEditProject}
                 hasPendingChanges={hasProjectChanges}
-                onAddProject={() => {
-                  resetProjectDraft();
-                  setModalType("addProject");
-                }}
+                onAddProject={openAddProjectModal}
                 onViewAllProjects={() => setModalType("viewAllProjects")}
               />
             </div>
@@ -2678,7 +2756,7 @@ const FreelancerProfile = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
           <div
             className={`w-full rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "viewAllProjects"
-              ? "max-w-6xl h-[90vh] flex flex-col"
+              ? "max-w-6xl h-[90vh] overflow-hidden flex flex-col"
               : modalType === "fullProfile"
                 ? "max-w-5xl max-h-[90vh] overflow-y-auto"
               : modalType === "education"
@@ -2691,6 +2769,8 @@ const FreelancerProfile = () => {
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
               : modalType === "portfolio"
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
+              : modalType === "addProject"
+                ? "max-w-[1040px] overflow-hidden"
                 : "max-w-md"
               }`}
           >
@@ -2764,30 +2844,37 @@ const FreelancerProfile = () => {
               </>
             ) : modalType === "viewAllProjects" ? (
               <>
-                <div className="flex items-start justify-between gap-4 border-b border-border/70 pb-4">
-                  <div>
-                    <h1 className="text-xl font-semibold text-foreground">
-                      All Featured Projects
-                    </h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Manage every project in your profile portfolio.
-                    </p>
+                <div className="border-b border-border/70 pb-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                          All Featured Projects
+                        </h1>
+                        <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                          {displayPortfolioProjects.length}{" "}
+                          {displayPortfolioProjects.length === 1 ? "project" : "projects"}
+                        </span>
+                        {hasProjectChanges ? (
+                          <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+                            Unsaved changes
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1.5 text-sm text-muted-foreground">
+                        Manage every project in your profile portfolio.
+                      </p>
+                    </div>
+                    <Button type="button" onClick={openAddProjectModal}>
+                      <Plus className="h-4 w-4" />
+                      Add project
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      resetProjectDraft();
-                      setModalType("addProject");
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add project
-                  </Button>
                 </div>
 
-                <div className="mt-4 flex-1 overflow-y-auto pr-1">
+                <div className="mt-4 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                   {displayPortfolioProjects.length > 0 ? (
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
                       {displayPortfolioProjects.map((project, idx) => {
                         const projectLink = normalizeProjectLinkValue(project?.link);
                         const projectHost = getProjectTitleFallback(projectLink || "");
@@ -2797,50 +2884,79 @@ const FreelancerProfile = () => {
                         const projectDescription = String(
                           project?.description || ""
                         ).trim();
+                        const projectServiceLabel = project?.serviceKey
+                          ? getServiceLabel(project.serviceKey)
+                          : "Featured work";
 
                         return (
                           <article
                             key={`project-modal-${projectLink || projectTitle}-${idx}`}
-                            className="overflow-hidden rounded-xl border border-border/70 bg-background/50"
+                            className="group overflow-hidden rounded-[22px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
                           >
-                            <div className="relative aspect-[16/9] overflow-hidden">
+                            <div className="relative h-40 overflow-hidden lg:h-44">
                               <ProjectCoverMedia
                                 project={project}
                                 containerClassName="h-full w-full"
                                 imageClassName="h-full w-full object-cover"
                                 fallbackTitleClassName="text-3xl"
                               />
-                              <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5 rounded-full border border-white/25 bg-black/45 p-1.5 backdrop-blur-sm">
-                                {projectLink ? (
-                                  <a
-                                    href={projectLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-105"
-                                    title="Open project"
+                              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.08),rgba(2,6,23,0.52)_72%,rgba(7,7,10,0.86)_100%)]" />
+                              <div className="absolute right-3 top-3 z-10">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-background text-foreground opacity-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition-all duration-200 translate-y-1 pointer-events-none group-hover:translate-y-0 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto hover:scale-105 hover:bg-background hover:text-primary"
+                                      title="Project actions"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="w-44 border-white/10 bg-background text-foreground"
                                   >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                  </a>
-                                ) : null}
-                                <label
-                                  htmlFor={`project-cover-modal-${idx}`}
-                                  className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-105"
-                                  title="Upload cover image"
-                                >
-                                  {projectCoverUploadingIndex === idx ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Camera className="h-3.5 w-3.5" />
-                                  )}
-                                </label>
-                                <button
-                                  type="button"
-                                  onClick={() => removeProject(idx)}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-white transition-transform hover:scale-105"
-                                  title="Remove project"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                                    {projectLink ? (
+                                      <DropdownMenuItem asChild>
+                                        <a
+                                          href={projectLink}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="cursor-pointer"
+                                        >
+                                          <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                                          Open project
+                                        </a>
+                                      </DropdownMenuItem>
+                                    ) : null}
+                                    <DropdownMenuItem onSelect={() => openEditProject(project, idx)}>
+                                      <Edit2 className="h-3.5 w-3.5 text-primary" />
+                                      Edit details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onSelect={(event) => {
+                                        event.preventDefault();
+                                        document
+                                          .getElementById(`project-cover-modal-${idx}`)
+                                          ?.click();
+                                      }}
+                                    >
+                                      {projectCoverUploadingIndex === idx ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                      ) : (
+                                        <Camera className="h-3.5 w-3.5 text-primary" />
+                                      )}
+                                      Upload cover
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      variant="destructive"
+                                      onSelect={() => removeProject(idx)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      Remove project
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                               <input
                                 id={`project-cover-modal-${idx}`}
@@ -2852,40 +2968,57 @@ const FreelancerProfile = () => {
                                 }
                               />
                             </div>
-                            <div className="space-y-2 p-3">
-                              <h2
-                                className="line-clamp-1 text-sm font-semibold text-foreground"
-                                title={projectTitle}
+                            <div className="space-y-2.5 px-4 pb-4 pt-3">
+                              <div className="min-h-[3.5rem]">
+                                <h2
+                                  className="line-clamp-1 text-base font-semibold tracking-tight text-foreground"
+                                  title={projectTitle}
+                                >
+                                  {projectTitle}
+                                </h2>
+                                {projectLink ? (
+                                  <a
+                                    href={projectLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-1 line-clamp-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/85 hover:underline"
+                                    title={projectLink}
+                                  >
+                                    {projectHost}
+                                  </a>
+                                ) : (
+                                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                                    Link not added
+                                  </p>
+                                )}
+                              </div>
+                              <p
+                                className="min-h-[4rem] line-clamp-3 text-sm leading-6 text-white/68"
+                                title={projectDescription || ""}
                               >
-                                {projectTitle}
-                              </h2>
-                              {projectLink ? (
-                                <a
-                                  href={projectLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="line-clamp-1 text-xs text-primary hover:underline"
-                                  title={projectLink}
-                                >
-                                  {projectHost}
-                                </a>
-                              ) : (
-                                <p className="text-xs text-muted-foreground">
-                                  No live link provided
-                                </p>
-                              )}
-                              {projectDescription ? (
-                                <p
-                                  className="line-clamp-3 text-xs leading-relaxed text-muted-foreground"
-                                  title={projectDescription}
-                                >
-                                  {projectDescription}
-                                </p>
-                              ) : (
-                                <p className="text-xs text-muted-foreground">
-                                  Add a short project description for better trust.
-                                </p>
-                              )}
+                                {projectDescription ||
+                                  "Add a short project description so clients can quickly understand the scope and outcome."}
+                              </p>
+                              <div className="flex items-center justify-between gap-3 border-t border-white/6 pt-3">
+                                <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
+                                  {projectServiceLabel}
+                                </span>
+                                {projectLink ? (
+                                  <a
+                                    href={projectLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition-all duration-200 hover:bg-primary hover:text-primary-foreground"
+                                  >
+                                    Open
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </a>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.045] px-2.5 py-1.5 text-xs text-white/40">
+                                    Link missing
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </article>
                         );
@@ -2902,10 +3035,7 @@ const FreelancerProfile = () => {
                       <Button
                         type="button"
                         className="mt-4"
-                        onClick={() => {
-                          resetProjectDraft();
-                          setModalType("addProject");
-                        }}
+                        onClick={openAddProjectModal}
                       >
                         <Plus className="h-4 w-4" />
                         Add project
@@ -3111,121 +3241,257 @@ const FreelancerProfile = () => {
               </>
             ) : modalType === "addProject" ? (
               <>
-                <h1 className="text-lg font-semibold text-foreground">
-                  Add Project
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Add a live link, then optional details to showcase your work.
-                </p>
-                <div className="mt-4 space-y-4">
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Live URL*
-                    </span>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <input
-                        value={newProjectUrl}
-                        onChange={(event) => setNewProjectUrl(event.target.value)}
-                        onBlur={handleUrlBlur}
-                        placeholder="https://yourproject.com"
-                        className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11 shrink-0"
-                        onClick={handleUrlBlur}
-                        disabled={newProjectLoading}
-                      >
-                        {newProjectLoading ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : null}
-                        Fetch details
-                      </Button>
+                <div className="border-b border-border/70 pb-4">
+                  <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                    {isEditingProjectDraft ? "Update featured project" : "Create featured project"}
+                  </span>
+                  <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                    <div className="max-w-[34rem]">
+                      <h1 className="text-[1.85rem] font-semibold tracking-tight text-foreground">
+                        {isEditingProjectDraft ? "Edit Project" : "Add Project"}
+                      </h1>
+                      <p className="mt-1.5 text-sm leading-5 text-muted-foreground">
+                        {isEditingProjectDraft
+                          ? "Refresh the link, copy, service mapping, and cover so this project stays aligned with your profile."
+                          : "Add a polished portfolio project with a live URL, strong summary, service mapping, and cover image preview."}
+                      </p>
                     </div>
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Project title
-                    </span>
-                    <input
-                      value={newProjectTitle}
-                      onChange={(event) => setNewProjectTitle(event.target.value)}
-                      placeholder="Ex: Markify"
-                      className="h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                      Description
-                    </span>
-                    <textarea
-                      value={newProjectDescription}
-                      onChange={(event) => setNewProjectDescription(event.target.value)}
-                      rows={4}
-                      maxLength={320}
-                      placeholder="What this project does and the impact it created."
-                      className="w-full rounded-xl border border-border/70 bg-card/70 px-3 py-2.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    />
-                    <p className="mt-1 text-right text-xs text-muted-foreground">
-                      {String(newProjectDescription || "").length}/320
-                    </p>
-                  </label>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Cover image (optional)
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            document.getElementById("new-project-image-input")?.click()
-                          }
-                        >
-                          Upload image
-                        </Button>
-                        {newProjectImagePreview ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearNewProjectImageDraft}
-                          >
-                            Remove
-                          </Button>
-                        ) : null}
+                    <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[300px]">
+                      <div className="rounded-2xl border border-white/8 bg-background/45 px-3 py-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/80">
+                          Linked service
+                        </p>
+                        <p className="mt-1 text-sm font-medium leading-5 text-foreground">
+                          {selectedProjectServiceLabel}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/8 bg-background/45 px-3 py-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/80">
+                          Preview status
+                        </p>
+                        <p className="mt-1 text-sm font-medium leading-5 text-foreground">
+                          {newProjectImagePreview ? "Cover ready" : "Awaiting cover"}
+                        </p>
                       </div>
                     </div>
-                    <input
-                      id="new-project-image-input"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleNewProjectImageChange}
-                    />
-                    {newProjectImagePreview ? (
-                      <div className="overflow-hidden rounded-xl border border-border/70">
-                        <img
-                          src={newProjectImagePreview}
-                          alt="Project preview"
-                          className="h-44 w-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-border/70 bg-background/35 text-sm text-muted-foreground">
-                        No cover selected
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
+                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_300px]">
+                  <div className="space-y-4">
+                    <section className="rounded-[24px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-4">
+                      <div className="mb-3">
+                        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
+                          Project Details
+                        </h2>
+                        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                          Add the live URL first, then refine the content clients will see on your profile.
+                        </p>
+                      </div>
+
+                      <div className="space-y-3.5">
+                        <label className="block">
+                          <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                            Live URL*
+                          </span>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <input
+                              value={newProjectUrl}
+                              onChange={(event) => setNewProjectUrl(event.target.value)}
+                              onBlur={handleUrlBlur}
+                              placeholder="https://yourproject.com"
+                              className="h-10 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-10 shrink-0"
+                              onClick={handleUrlBlur}
+                              disabled={newProjectLoading}
+                            >
+                              {newProjectLoading ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              Fetch details
+                            </Button>
+                          </div>
+                        </label>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <label className="block">
+                            <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                              Project title
+                            </span>
+                            <input
+                              value={newProjectTitle}
+                              onChange={(event) => setNewProjectTitle(event.target.value)}
+                              placeholder="Enter project title"
+                              className="h-10 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                            />
+                          </label>
+
+                          <label className="block">
+                            <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                              Link to service
+                            </span>
+                            <Select
+                              modal={false}
+                              value={newProjectServiceKey || "__none__"}
+                              onValueChange={(value) =>
+                                setNewProjectServiceKey(value === "__none__" ? "" : value)
+                              }
+                            >
+                              <SelectTrigger className="h-10 w-full rounded-xl border-border/70 bg-card/70 px-3 text-[15px] text-foreground shadow-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/60">
+                                <SelectValue placeholder="Not linked to a service" />
+                              </SelectTrigger>
+                              <SelectContent className="border-border/70 bg-background text-foreground">
+                                <SelectItem value="__none__">Not linked to a service</SelectItem>
+                                {linkableServiceOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              This project will appear under the selected service card.
+                            </p>
+                          </label>
+                        </div>
+
+                        <label className="block">
+                          <div className="mb-1.5 flex items-center justify-between gap-3">
+                            <span className="block text-sm font-medium text-muted-foreground">
+                              Description
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {String(newProjectDescription || "").length}/320
+                            </span>
+                          </div>
+                          <textarea
+                            value={newProjectDescription}
+                            onChange={(event) => setNewProjectDescription(event.target.value)}
+                            rows={4}
+                            maxLength={320}
+                            placeholder="What this project does and the impact it created."
+                            className="w-full rounded-xl border border-border/70 bg-card/70 px-3 py-2.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                          />
+                        </label>
+                      </div>
+                    </section>
+                  </div>
+
+                  <div className="space-y-4">
+                    <section className="rounded-[24px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
+                            Cover & Preview
+                          </h2>
+                          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                            Upload a strong visual for the project card.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9"
+                            onClick={() =>
+                              document.getElementById("new-project-image-input")?.click()
+                            }
+                          >
+                            <Camera className="h-3.5 w-3.5" />
+                            {newProjectImagePreview ? "Replace" : "Upload"}
+                          </Button>
+                          {newProjectImagePreview ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-9"
+                              onClick={clearNewProjectImageDraft}
+                            >
+                              Remove
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <input
+                        id="new-project-image-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleNewProjectImageChange}
+                      />
+
+                      <div className="mt-3 overflow-hidden rounded-[22px] border border-white/8 bg-background/45">
+                        <div className="relative h-40 overflow-hidden border-b border-white/8 bg-background/60">
+                          {newProjectImagePreview ? (
+                            <img
+                              src={newProjectImagePreview}
+                              alt="Project preview"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_55%)] px-6 text-center">
+                              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                                <Camera className="h-5 w-5 text-primary" />
+                              </span>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">
+                                  No cover selected
+                                </p>
+                                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                  Use a clean screenshot or branded visual.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2.5 p-3.5">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
+                              Card preview
+                            </p>
+                            <h3 className="mt-1.5 line-clamp-2 text-base font-semibold tracking-tight text-foreground">
+                              {draftProjectTitle}
+                            </h3>
+                            <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">
+                              {draftProjectHostLabel}
+                            </p>
+                          </div>
+
+                          <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">
+                            {draftProjectDescription}
+                          </p>
+
+                          <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-foreground/80">
+                              {selectedProjectServiceLabel}
+                            </span>
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                                String(newProjectUrl || "").trim()
+                                  ? "border-primary/25 bg-primary/10 text-primary"
+                                  : "border-white/8 bg-white/[0.04] text-muted-foreground"
+                              }`}
+                            >
+                              {String(newProjectUrl || "").trim()
+                                ? "Live URL attached"
+                                : "Add URL to fetch details"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -3243,10 +3509,10 @@ const FreelancerProfile = () => {
                   >
                     {newProjectLoading ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
+                    ) : !isEditingProjectDraft ? (
                       <Plus className="h-3.5 w-3.5" />
-                    )}
-                    Add project
+                    ) : null}
+                    {isEditingProjectDraft ? "Save changes" : "Add project"}
                   </Button>
                 </div>
               </>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Card,
@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Circle from "lucide-react/dist/esm/icons/circle";
@@ -28,13 +27,12 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/features/appointments/BookAppointment";
 import { Input } from "@/components/ui/input";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
-import { SOP_TEMPLATES, getSopFromTitle } from "@/shared/data/sopTemplates";
+import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
   Accordion,
@@ -215,23 +213,6 @@ const getPhaseIcon = (status) => {
   }
 };
 
-const getStatusBadge = (status) => {
-  const variants = {
-    completed: "default",
-    "in-progress": "secondary",
-    pending: "outline",
-  };
-  return variants[status] || "outline";
-};
-
-const mapStatus = (status = "") => {
-  const normalized = status.toString().toUpperCase();
-  if (normalized === "COMPLETED") return "completed";
-  if (normalized === "IN_PROGRESS" || normalized === "OPEN")
-    return "in-progress";
-  return "pending";
-};
-
 const FreelancerInfoCard = ({ freelancer }) => {
   if (!freelancer) return null;
 
@@ -399,7 +380,7 @@ const ProjectDashboard = () => {
     if (isToday) {
       slots = slots.filter((slot) => {
         const [time, period] = slot.split(" ");
-        let [hours, minutes] = time.split(":").map(Number);
+        let [hours] = time.split(":").map(Number);
         if (period === "PM" && hours !== 12) hours += 12;
         if (period === "AM" && hours === 12) hours = 0;
         return hours > currentHour;
@@ -896,59 +877,58 @@ const ProjectDashboard = () => {
     initChat();
   }, [project, authFetch, user, isChatLockedUntilPayment]);
 
+  const fetchMessages = useCallback(async () => {
+    if (!conversationId || !authFetch) return;
+    try {
+      const res = await authFetch(
+        `/chat/conversations/${conversationId}/messages`
+      );
+      const payload = await res.json().catch(() => null);
+      const msgs = payload?.data?.messages || [];
+
+      const mapped = msgs.map((m) => {
+        const isMe =
+          (user?.id && m.senderId === user.id) || m.senderRole === "CLIENT";
+        return {
+          id: m.id,
+          sender:
+            m.role === "assistant" ? "assistant" : isMe ? "user" : "other",
+          text: m.content,
+          timestamp: new Date(m.createdAt),
+          createdAt: m.createdAt,
+          readAt: m.readAt,
+          attachment: m.attachment,
+          senderName: m.senderName,
+        };
+      });
+
+      setMessages((prev) => {
+        const pending = prev.filter((m) => m.pending);
+        const backendSignatures = new Set(
+          mapped.map(
+            (m) => `${m.sender}:${m.text}:${m.attachment?.name || ""}`
+          )
+        );
+
+        const stillPending = pending.filter((p) => {
+          const signature = `${p.sender}:${p.text}:${p.attachment?.name || ""}`;
+          return !backendSignatures.has(signature);
+        });
+        return [...mapped, ...stillPending];
+      });
+    } catch (e) {
+      console.error("Fetch messages error:", e);
+    }
+  }, [conversationId, authFetch, user?.id]);
+
   // 2. Fetch Messages
   useEffect(() => {
     if (!conversationId || !authFetch) return;
-    const fetchMessages = async () => {
-      try {
-        const res = await authFetch(
-          `/chat/conversations/${conversationId}/messages`
-        );
-        const payload = await res.json().catch(() => null);
-        const msgs = payload?.data?.messages || [];
-
-        const mapped = msgs.map((m) => {
-          const isMe =
-            (user?.id && m.senderId === user.id) || m.senderRole === "CLIENT";
-          return {
-            id: m.id,
-            sender:
-              m.role === "assistant" ? "assistant" : isMe ? "user" : "other",
-            text: m.content,
-            timestamp: new Date(m.createdAt),
-            createdAt: m.createdAt, // Needed for date logic
-            readAt: m.readAt, // Needed for receipts
-            attachment: m.attachment, // { name, size, type, url? }
-            senderName: m.senderName,
-          };
-        });
-        // Merge logic: Use backend data but preserve local pending messages if not yet in backend
-        setMessages((prev) => {
-          const pending = prev.filter((m) => m.pending);
-          // Dedupe based on signature (sender + text + attachment name) as ID changes
-          const backendSignatures = new Set(
-            mapped.map(
-              (m) => `${m.sender}:${m.text}:${m.attachment?.name || ""}`
-            )
-          );
-
-          const stillPending = pending.filter((p) => {
-            const signature = `${p.sender}:${p.text}:${
-              p.attachment?.name || ""
-            }`;
-            return !backendSignatures.has(signature);
-          });
-          return [...mapped, ...stillPending];
-        });
-      } catch (e) {
-        console.error("Fetch messages error:", e);
-      }
-    };
     fetchMessages();
     // Poll every 5s for new messages (simple real-time)
     const interval = setInterval(fetchMessages, 5000);
     return () => clearInterval(interval);
-  }, [conversationId, authFetch]);
+  }, [conversationId, authFetch, fetchMessages]);
 
   const handleSendMessage = async () => {
     if (isChatLockedUntilPayment) {
@@ -1231,36 +1211,6 @@ const ProjectDashboard = () => {
     });
   }, [activeSOP, verifiedTaskIds]);
 
-  // Handle phase click to update progress
-  const handlePhaseClick = (phaseIndex) => {
-    // Determine the progress value required to complete THIS phase
-    const phases = activeSOP.phases;
-    const step = 100 / phases.length;
-
-    // If clicking the current phase, verify if we should complete it or uncomplete it?
-    // Simplified logic: Clicking a phase completes it (and all before it).
-    // If it's already complete, maybe doing nothing or toggle?
-    // Let's assume clicking sets the progress to the end of that phase.
-
-    const targetProgress = Math.round((phaseIndex + 1) * step);
-
-    // Logic refinement: if I click the last completed phase, maybe I want to undo it?
-    // Let's stick to "Click to complete up to here".
-    updateProjectProgress(targetProgress);
-  };
-
-  const visiblePhases = useMemo(() => {
-    let foundCurrent = false;
-    return derivedPhases.filter((phase) => {
-      if (foundCurrent) return false;
-      if (phase.status !== "completed") {
-        foundCurrent = true;
-        return true;
-      }
-      return true;
-    });
-  }, [derivedPhases]);
-
   // Find the current active phase (first non-completed phase)
   const currentActivePhase = useMemo(() => {
     return (
@@ -1403,7 +1353,7 @@ const ProjectDashboard = () => {
   const handleVerifyTask = async (
     uniqueKey,
     taskTitle,
-    isCurrentlyVerified
+    _isCurrentlyVerified
   ) => {
     setVerifyConfirmOpen(false);
     setPendingVerifyTask(null);
@@ -1454,9 +1404,6 @@ const ProjectDashboard = () => {
     );
   };
 
-  const completedPhases = derivedPhases.filter(
-    (p) => p.status === "completed"
-  ).length;
   const pageTitle = project?.title
     ? `Project: ${project.title}`
     : "Project Dashboard";
@@ -1849,7 +1796,7 @@ const ProjectDashboard = () => {
                                       alt={
                                         message.attachment.name || "Attachment"
                                       }
-                                      className="max-w-[180px] max-h-[180px] rounded-lg object-cover"
+                                      className="max-w-45 max-h-45 rounded-lg object-cover"
                                     />
                                   </a>
                                 ) : (
@@ -1865,7 +1812,7 @@ const ProjectDashboard = () => {
                                   >
                                     <FileText className="h-4 w-4 shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate max-w-[140px]">
+                                      <p className="text-xs font-medium truncate max-w-35">
                                         {message.attachment.name || "File"}
                                       </p>
                                     </div>
@@ -2207,7 +2154,7 @@ const ProjectDashboard = () => {
                 placeholder="Add a note..."
                 value={issueText}
                 onChange={(e) => setIssueText(e.target.value)}
-                className="min-h-[100px] whitespace-pre-wrap break-all"
+                className="min-h-25 whitespace-pre-wrap break-all"
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -2225,7 +2172,7 @@ const ProjectDashboard = () => {
                         type="button"
                         variant="outline"
                         className={cn(
-                          "w-[240px] justify-start text-left font-normal",
+                          "w-60 justify-start text-left font-normal",
                           !date && "text-muted-foreground"
                         )}
                       >
@@ -2236,7 +2183,7 @@ const ProjectDashboard = () => {
                     <PopoverContent
                       container={reportDialogContentRef.current ?? undefined}
                       align="start"
-                      className="w-auto p-0 z-[70]"
+                      className="w-auto p-0 z-70"
                     >
                       <Calendar
                         mode="single"
@@ -2258,7 +2205,7 @@ const ProjectDashboard = () => {
                     </PopoverContent>
                   </Popover>
 
-                  <div className="w-[140px]">
+                  <div className="w-35">
                     <select
                       value={time}
                       onChange={(event) => setTime(event.target.value)}

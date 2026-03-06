@@ -99,7 +99,7 @@ export const ServicesStep = ({
                             type="button"
                             onClick={() => toggleServiceSelection(option.value)}
                             className={cn(
-                                "group flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 relative overflow-hidden min-h-[120px]",
+                                "group flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 relative overflow-hidden min-h-30",
                                 isSelected
                                     ? "border-primary/50 bg-primary/5 shadow-md shadow-primary/5"
                                     : "border-white/10 bg-accent dark:bg-accent hover:border-primary/30 hover:bg-white/10"
@@ -249,7 +249,7 @@ export const ServiceCaseFieldStep = ({
                     <SelectTrigger className="w-full bg-accent dark:bg-accent border-white/10 text-white p-6 rounded-xl">
                         <SelectValue placeholder="Select an option" />
                     </SelectTrigger>
-                    <SelectContent className="bg-accent/60 backdrop-blur-xl border-white/10 text-foreground max-h-[300px]">
+                    <SelectContent className="bg-accent/60 backdrop-blur-xl border-white/10 text-foreground max-h-75">
                         {options.map((option) => (
                             <SelectItem key={option.value || option} value={option.value || option} className="focus:bg-white/10 focus:text-white cursor-pointer">
                                 {option.label || option}
@@ -420,7 +420,7 @@ export const ServiceCaseFieldStep = ({
                     value={value}
                     onChange={(e) => updateServiceCaseField(serviceKey, field.key, e.target.value)}
                     placeholder={field.placeholder}
-                    className="bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30 min-h-[140px] rounded-xl p-4"
+                    className="bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30 min-h-35 rounded-xl p-4"
                 />
             ) : (
                 <Input
@@ -559,7 +559,7 @@ export const ServiceAveragePriceStep = ({
                 <SelectTrigger className="w-full bg-accent dark:bg-accent border-white/10 text-white p-6 rounded-xl">
                     <SelectValue placeholder="Select a price range" />
                 </SelectTrigger>
-                <SelectContent className="bg-accent/60 backdrop-blur-xl border-white/10 text-foreground max-h-[300px]">
+                <SelectContent className="bg-accent/60 backdrop-blur-xl border-white/10 text-foreground max-h-75">
                     {AVERAGE_PROJECT_PRICE_OPTIONS.map((option) => (
                         <SelectItem
                             key={option.value}
@@ -1015,7 +1015,7 @@ export const ServiceProfileStep = ({
                         )
                     }
                     placeholder={`Describe what you deliver in ${getServiceLabel(serviceKey)}.`}
-                    className="bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30 min-h-[120px]"
+                    className="bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30 min-h-30"
                 />
             </div>
 
@@ -1303,7 +1303,7 @@ export const ServiceProjectDetailsStep = ({
                                 value={project.title || ""}
                                 onChange={(e) => updateProject(index, "title", e.target.value)}
                                 placeholder="e.g. E-commerce Platform Redesign"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-10.5!"
                             />
                         </div>
 
@@ -1314,7 +1314,7 @@ export const ServiceProjectDetailsStep = ({
                                 value={project.description || ""}
                                 onChange={(e) => updateProject(index, "description", e.target.value)}
                                 placeholder="Briefly describe the project and its goals..."
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[100px]"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-25"
                             />
                         </div>
 
@@ -1329,7 +1329,7 @@ export const ServiceProjectDetailsStep = ({
                                         value={project.link || ""}
                                         onChange={(e) => updateProject(index, "link", e.target.value)}
                                         placeholder="https://..."
-                                        className="pl-9 !h-[42px] bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30"
+                                        className="pl-9 h-10.5! bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30"
                                     />
                                 </div>
                             </div>
@@ -1350,7 +1350,7 @@ export const ServiceProjectDetailsStep = ({
                                 />
                                 <label
                                     htmlFor={`project-file-${serviceKey}-${index}`}
-                                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all h-[42px]"
+                                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 cursor-pointer transition-all h-10.5"
                                 >
                                     <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                                         <Upload className="w-3 h-3 text-white/70" />
@@ -1382,7 +1382,7 @@ export const ServiceProjectDetailsStep = ({
                                     value={project.role || ""}
                                     onValueChange={(value) => updateProject(index, "role", value)}
                                 >
-                                    <SelectTrigger className="w-full !h-[42px] bg-white/5 border-white/10 text-white">
+                                    <SelectTrigger className="w-full h-10.5! bg-white/5 border-white/10 text-white">
                                         <SelectValue placeholder="Select role" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
@@ -1405,7 +1405,7 @@ export const ServiceProjectDetailsStep = ({
                                         value={project.readme || ""}
                                         onChange={(e) => updateProject(index, "readme", e.target.value)}
                                         placeholder="https://github.com/your-username/your-repo/blob/main/README.md"
-                                        className="pl-9 !h-[42px] bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30"
+                                        className="pl-9 h-10.5! bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30"
                                     />
                                 </div>
                             </div>
@@ -1420,7 +1420,7 @@ export const ServiceProjectDetailsStep = ({
                                     value={project.timeline || ""}
                                     onValueChange={(value) => updateProject(index, "timeline", value)}
                                 >
-                                    <SelectTrigger className="w-full !h-[42px] bg-white/5 border-white/10 text-white">
+                                    <SelectTrigger className="w-full h-10.5! bg-white/5 border-white/10 text-white">
                                         <SelectValue placeholder="Select duration" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
@@ -1443,7 +1443,7 @@ export const ServiceProjectDetailsStep = ({
                                         updateProject(index, "budget", value);
                                     }}
                                     placeholder="e.g. 5000"
-                                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-10.5!"
                                 />
                             </div>
                         </div>
@@ -1515,7 +1515,7 @@ const TagsInput = ({ value, onChange }) => {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type a tag/keyword and press Enter..."
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-10.5!"
                 />
                 <button
                     type="button"
@@ -1528,7 +1528,7 @@ const TagsInput = ({ value, onChange }) => {
                     }}
                     disabled={!inputValue.trim()}
                     className={cn(
-                        "px-4 py-2 rounded-xl font-semibold transition-all h-[42px]",
+                        "px-4 py-2 rounded-xl font-semibold transition-all h-10.5",
                         inputValue.trim()
                             ? "bg-white/10 text-white hover:bg-white/20"
                             : "bg-white/5 text-white/40 cursor-not-allowed"
@@ -1621,12 +1621,12 @@ const TechStackSelect = ({ value, onChange }) => {
                         onFocus={() => setOpen(true)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type to search or add technologies..."
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 !h-[42px]"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-10.5!"
                     />
 
                     {open && inputValue.trim() && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1A1A] border border-white/10 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                            <div className="max-h-[200px] overflow-y-auto">
+                            <div className="max-h-50 overflow-y-auto">
                                 {filteredOptions.length > 0 ? (
                                     filteredOptions.map((tech) => (
                                         <button
@@ -1664,7 +1664,7 @@ const TechStackSelect = ({ value, onChange }) => {
                     }}
                     disabled={!inputValue.trim()}
                     className={cn(
-                        "px-4 py-2 rounded-xl font-semibold transition-all shrink-0 h-[42px]",
+                        "px-4 py-2 rounded-xl font-semibold transition-all shrink-0 h-10.5",
                         inputValue.trim()
                             ? "bg-white/10 text-white hover:bg-white/20"
                             : "bg-white/5 text-white/40 cursor-not-allowed"

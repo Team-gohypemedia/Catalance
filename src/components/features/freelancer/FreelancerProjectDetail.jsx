@@ -341,7 +341,7 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
             </div>
           ) : (
             // Display Mode
-            <div className="group relative min-h-[24px] flex items-center">
+            <div className="group relative min-h-6 flex items-center">
               {displayLink ? (
                 <a
                   href={displayLink}
@@ -2375,7 +2375,7 @@ const FreelancerProjectDetailContent = () => {
                                       alt={
                                         message.attachment.name || "Attachment"
                                       }
-                                      className="max-w-[180px] max-h-[180px] rounded-lg object-cover"
+                                      className="max-w-45 max-h-45 rounded-lg object-cover"
                                     />
                                   </a>
                                 ) : (
@@ -2391,7 +2391,7 @@ const FreelancerProjectDetailContent = () => {
                                   >
                                     <FileText className="h-4 w-4 shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate max-w-[140px]">
+                                      <p className="text-xs font-medium truncate max-w-35">
                                         {message.attachment.name || "File"}
                                       </p>
                                     </div>
@@ -2508,7 +2508,7 @@ const FreelancerProjectDetailContent = () => {
                       }))
                     }
                     placeholder="Notes for PM (scope, QA checklist, known gaps)"
-                    className="min-h-[86px] text-sm"
+                    className="min-h-21.5 text-sm"
                   />
 
                   <div className="flex items-center gap-2">
@@ -2711,7 +2711,7 @@ const FreelancerProjectDetailContent = () => {
                 placeholder="Add a note..."
                 value={issueText}
                 onChange={(e) => setIssueText(e.target.value)}
-                className="min-h-[100px] whitespace-pre-wrap break-all"
+                className="min-h-25 whitespace-pre-wrap break-all"
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -2729,7 +2729,7 @@ const FreelancerProjectDetailContent = () => {
                         type="button"
                         variant="outline"
                         className={cn(
-                          "w-[240px] justify-start text-left font-normal",
+                          "w-60 justify-start text-left font-normal",
                           !date && "text-muted-foreground"
                         )}
                       >
@@ -2740,7 +2740,7 @@ const FreelancerProjectDetailContent = () => {
                     <PopoverContent
                       container={reportDialogContentRef.current ?? undefined}
                       align="start"
-                      className="w-auto p-0 z-[70]"
+                      className="w-auto p-0 z-70"
                     >
                       <Calendar
                         mode="single"
@@ -2762,7 +2762,7 @@ const FreelancerProjectDetailContent = () => {
                     </PopoverContent>
                   </Popover>
 
-                  <div className="w-[140px]">
+                  <div className="w-35">
                     <select
                       value={time}
                       onChange={(event) => setTime(event.target.value)}

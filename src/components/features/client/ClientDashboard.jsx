@@ -32,14 +32,12 @@ import { rankFreelancersForProposal } from "@/shared/lib/freelancer-matching";
 import {
   listFreelancers,
   fetchChatConversations,
-  API_BASE_URL,
 } from "@/shared/lib/api-client";
 import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
-import FreelancerDetailsDialog from "@/components/features/client/dashboard/FreelancerDetailsDialog";
 import EditProposalDialog from "@/components/features/client/dashboard/EditProposalDialog";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
@@ -53,8 +51,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 const MIN_FREELANCER_MATCH_SCORE = 50;
 const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);
 const CLOSED_PROJECT_STATUSES = new Set(["COMPLETED", "PAUSED"]);
@@ -715,7 +711,7 @@ const BudgetChart = ({ percentage, remaining, spent }) => {
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-4">
-          <div className="relative w-24 h-24 flex-shrink-0">
+          <div className="relative w-24 h-24 shrink-0">
             <svg
               className="w-full h-full transform -rotate-90"
               viewBox="0 0 36 36"
@@ -813,7 +809,7 @@ const ClientDashboardContent = () => {
   const [projects, setProjects] = useState([]);
   const [freelancers, setFreelancers] = useState([]); // Chat freelancers
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]); // All freelancers for suggestions
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [savedProposals, setSavedProposals] = useState([]);
   const [activeProposalId, setActiveProposalId] = useState(null);
@@ -823,7 +819,7 @@ const ClientDashboardContent = () => {
     try {
       const stored = localStorage.getItem("markify:dismissedExpiredProposals");
       return stored ? JSON.parse(stored) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   });
@@ -837,8 +833,6 @@ const ClientDashboardContent = () => {
     budget: "",
     timeline: "",
   });
-  const [viewFreelancer, setViewFreelancer] = useState(null);
-  const [showFreelancerDetails, setShowFreelancerDetails] = useState(false);
   const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
   const [projectToPay, setProjectToPay] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -1122,23 +1116,23 @@ const ClientDashboardContent = () => {
     persistSavedProposalsToStorage(proposals, activeId, storageKeys);
   }, [sessionUser?.id, storageKeys]);
 
-  const persistSavedProposalState = (
-    nextProposals,
-    preferredActiveId = null,
-  ) => {
-    const normalized = Array.isArray(nextProposals)
-      ? nextProposals.map(normalizeSavedProposal)
-      : [];
-    const resolvedActiveId = resolveActiveProposalId(
-      normalized,
-      preferredActiveId,
-      activeProposalId,
-    );
-    setSavedProposals(normalized);
-    setActiveProposalId(resolvedActiveId);
-    persistSavedProposalsToStorage(normalized, resolvedActiveId, storageKeys);
-    return resolvedActiveId;
-  };
+  const persistSavedProposalState = useCallback(
+    (nextProposals, preferredActiveId = null) => {
+      const normalized = Array.isArray(nextProposals)
+        ? nextProposals.map(normalizeSavedProposal)
+        : [];
+      const resolvedActiveId = resolveActiveProposalId(
+        normalized,
+        preferredActiveId,
+        activeProposalId,
+      );
+      setSavedProposals(normalized);
+      setActiveProposalId(resolvedActiveId);
+      persistSavedProposalsToStorage(normalized, resolvedActiveId, storageKeys);
+      return resolvedActiveId;
+    },
+    [activeProposalId, storageKeys],
+  );
 
   useEffect(() => {
     if (!authFetch || !sessionUser?.id || sessionUser?.role !== "CLIENT")
@@ -1214,11 +1208,12 @@ const ClientDashboardContent = () => {
     savedProposals,
     activeProposalId,
     isSyncingDrafts,
+    persistSavedProposalState,
   ]);
 
   // Load projects
   // Load projects function
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     if (!authFetch) return;
     try {
       setIsLoading(true);
@@ -1269,11 +1264,11 @@ const ClientDashboardContent = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [authFetch]);
 
   useEffect(() => {
     loadProjects();
-  }, [authFetch]);
+  }, [loadProjects]);
 
   useEffect(() => {
     if (!Array.isArray(projects) || projects.length === 0) return;
@@ -1319,7 +1314,7 @@ const ClientDashboardContent = () => {
     if (merged.length === savedProposals.length) return;
 
     persistSavedProposalState(merged, activeProposalId);
-  }, [projects, savedProposals, activeProposalId]);
+  }, [projects, savedProposals, activeProposalId, persistSavedProposalState]);
 
   // Load freelancers
   // Load freelancers (chat conversations)
@@ -1848,7 +1843,7 @@ const ClientDashboardContent = () => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
-        <div className="max-w-[1600px] mx-auto">
+        <div className="max-w-400 mx-auto">
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Left Column - Main Content */}
             <div className="flex-1 min-w-0 flex flex-col gap-8">
@@ -1859,7 +1854,7 @@ const ClientDashboardContent = () => {
                     {greeting}, {firstName}
                   </h1>
                   <p className="text-muted-foreground font-medium">
-                    Here's what's happening in your Executive Control Room
+                    Here&apos;s what&apos;s happening in your Executive Control Room
                     today.
                   </p>
                 </div>
@@ -1900,9 +1895,15 @@ const ClientDashboardContent = () => {
                 />
               </div>
 
+              <BudgetChart
+                percentage={budgetPercentage}
+                remaining={Math.max(metrics.totalBudget - metrics.totalSpent, 0)}
+                spent={metrics.totalSpent}
+              />
+
               {/* Saved Proposal Workspace */}
               {savedProposal && (
-                <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-background to-background">
+                <Card className="border-primary/25 bg-linear-to-br from-primary/10 via-background to-background">
                   <CardHeader className="pb-3">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
@@ -1980,7 +1981,7 @@ const ClientDashboardContent = () => {
                             {savedProposals.length > 1 ? "s" : ""} available
                           </p>
                         </div>
-                        <div className="max-h-[420px] overflow-y-auto pr-2 space-y-2 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+                        <div className="max-h-105 overflow-y-auto pr-2 space-y-2 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
                           {savedProposals.map((proposal) => {
                             const isActive = proposal.id === savedProposal.id;
                             return (
@@ -2694,11 +2695,6 @@ const ClientDashboardContent = () => {
                 }}
               />
 
-              <FreelancerDetailsDialog
-                open={showFreelancerDetails}
-                onOpenChange={setShowFreelancerDetails}
-                viewFreelancer={viewFreelancer}
-              />
               {/* Active Projects Table - Only show when projects exist */}
               {/* Active Projects Table - IN_PROGRESS & AWAITING_PAYMENT */}
               {(() => {
@@ -3085,7 +3081,7 @@ const ClientDashboardContent = () => {
             </div>
 
             {/* Right Sidebar */}
-            <div className="lg:w-[360px] flex-shrink-0 flex flex-col gap-6">
+            <div className="lg:w-90 shrink-0 flex flex-col gap-6">
               {/* Action Center */}
               <Card className="rounded-xl bg-zinc-100 dark:bg-zinc-900/50 text-foreground border-border/50 shadow-sm">
                 <CardHeader className="pb-2">
@@ -3196,14 +3192,14 @@ const ClientDashboardContent = () => {
                             }
                           >
                             <div
-                              className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
+                              className={`absolute -left-3.75 top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
                                 idx === 0
                                   ? "bg-primary"
                                   : "bg-muted-foreground/50"
                               }`}
                             />
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
-                              <span className="text-xs font-bold text-muted-foreground w-16 flex-shrink-0">
+                              <span className="text-xs font-bold text-muted-foreground w-16 shrink-0">
                                 {new Date(
                                   project.updatedAt || project.createdAt,
                                 ).toLocaleTimeString([], {

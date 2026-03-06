@@ -164,7 +164,7 @@ const FreelancerSelectionDialog = ({
   formatRating,
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="h-[78vh] w-[94vw] max-w-[1200px] p-3 sm:p-4 flex flex-col">
+    <DialogContent className="h-[78vh] w-[94vw] max-w-300 p-3 sm:p-4 flex flex-col">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-lg">
           <Send className="w-5 h-5 text-primary" />
@@ -220,7 +220,7 @@ const FreelancerSelectionDialog = ({
                       {Array.from({ length: 6 }).map((_, index) => (
                         <Card
                           key={`freelancer-loading-${index}`}
-                          className="h-[452px] rounded-[20px] border border-border/60 bg-card/90 p-2.5"
+                          className="h-113 rounded-[20px] border border-border/60 bg-card/90 p-2.5"
                         >
                           <Skeleton className="h-28 w-full rounded-xl" />
                           <div className="mt-10 space-y-2">
@@ -312,7 +312,7 @@ const FreelancerSelectionDialog = ({
                 return (
                   <Card
                     key={freelancer.id}
-                    className="group relative flex h-[452px] cursor-pointer flex-col overflow-hidden rounded-[20px] border border-border/65 bg-card/95 p-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(0,0,0,0.2)]"
+                    className="group relative flex h-113 cursor-pointer flex-col overflow-hidden rounded-[20px] border border-border/65 bg-card/95 p-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(0,0,0,0.2)]"
                     onClick={() => onViewFreelancer(freelancer)}
                   >
                     <div
@@ -327,13 +327,13 @@ const FreelancerSelectionDialog = ({
                             className="h-full w-full object-cover"
                             loading="lazy"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/24 to-black/52" />
+                          <div className="absolute inset-0 bg-linear-to-b from-black/5 via-black/24 to-black/52" />
                           <div className="absolute inset-0 bg-[radial-gradient(120%_96%_at_0%_0%,rgba(255,255,255,0.28),transparent_48%),radial-gradient(100%_90%_at_100%_0%,rgba(255,255,255,0.18),transparent_50%)]" />
                         </div>
                       ) : (
                         <div className="absolute inset-0 overflow-hidden rounded-xl">
                           <div className="absolute inset-0 bg-[radial-gradient(90%_120%_at_100%_0%,rgba(255,255,255,0.2),transparent_55%)]" />
-                          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/38 via-black/12 to-transparent" />
+                          <div className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-black/38 via-black/12 to-transparent" />
                         </div>
                       )}
                       {isBestMatch && (
@@ -342,7 +342,7 @@ const FreelancerSelectionDialog = ({
                           Best Match
                         </div>
                       )}
-                      <Avatar className="absolute -bottom-10 left-3 z-10 h-[82px] w-[82px] border-4 border-card shadow-md">
+                      <Avatar className="absolute -bottom-10 left-3 z-10 h-20.5 w-20.5 border-4 border-card shadow-md">
                         <AvatarImage
                           src={freelancer.avatar}
                           alt={displayName}
@@ -380,7 +380,7 @@ const FreelancerSelectionDialog = ({
                         </div>
                       </div>
 
-                      <div className="mt-2 rounded-lg bg-white/[0.03] p-2">
+                      <div className="mt-2 rounded-lg bg-white/3 p-2">
                         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
                           Project Skills Match
                         </p>
@@ -403,7 +403,7 @@ const FreelancerSelectionDialog = ({
                         </div>
                       </div>
 
-                      <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-lg bg-white/[0.02] p-2">
+                      <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-lg bg-white/2 p-2">
                         {budgetFit !== null && (
                           <div>
                             <p className="text-[11px] font-semibold text-foreground/90">
