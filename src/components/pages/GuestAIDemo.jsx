@@ -4,7 +4,6 @@ import {
     Briefcase,
     ArrowRight,
     ArrowLeft,
-    Bot,
     User,
     Send,
     Mic,
@@ -14,7 +13,8 @@ import {
     Paperclip,
     X,
     Image as ImageIcon,
-    FileText
+    FileText,
+    Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,6 +29,7 @@ import { API_BASE_URL, request } from '@/shared/lib/api-client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { getSession } from '@/shared/lib/auth-storage';
+import cataLogo from '@/assets/logos/logo.svg';
 
 const GUEST_CHAT_STORAGE_KEY = 'markify:guestAiSessions:v1';
 const MAX_PREVIOUS_CHAT_ITEMS = 30;
@@ -96,6 +97,14 @@ const upsertStoredGuestSession = (entry = {}) => {
         .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
         .slice(0, MAX_PREVIOUS_CHAT_ITEMS);
 
+    writeStoredGuestSessions(nextSessions);
+    return nextSessions;
+};
+
+const removeStoredGuestSession = (sessionId = '') => {
+    if (!sessionId) return readStoredGuestSessions();
+    const existing = readStoredGuestSessions();
+    const nextSessions = existing.filter((item) => item.sessionId !== sessionId);
     writeStoredGuestSessions(nextSessions);
     return nextSessions;
 };
@@ -1337,6 +1346,27 @@ const GuestAIDemo = () => {
         setInputConfig({ type: 'text', options: [] });
     };
 
+    const handleDeletePreviousChat = (event, chatMeta) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const targetSessionId = chatMeta?.sessionId;
+        if (!targetSessionId) return;
+
+        const nextSessions = removeStoredGuestSession(targetSessionId);
+        setPreviousChats(nextSessions);
+
+        if (targetSessionId === sessionId) {
+            if (selectedService) {
+                handleServiceSelect(selectedService);
+            } else {
+                handleBackToServices();
+            }
+        }
+
+        toast.success('Chat removed');
+    };
+
     if (loading && !selectedService) {
         return (
             <>
@@ -1525,8 +1555,8 @@ const GuestAIDemo = () => {
                     Back to services
                 </Button>
 
-                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                    <Briefcase className="h-5 w-5" />
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                    <img src={cataLogo} alt="CATA AI logo" className="h-8 w-8 object-contain" />
                 </div>
                 <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-[#181711]'}`}>{selectedService.name}</h2>
                 <p className={`mt-2 text-sm leading-relaxed ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
@@ -1549,12 +1579,9 @@ const GuestAIDemo = () => {
                                 const isLoadingHistory = loadingHistoryId === chat.sessionId;
 
                                 return (
-                                    <button
+                                    <div
                                         key={chat.sessionId}
-                                        type="button"
-                                        onClick={() => handleLoadPreviousChat(chat)}
-                                        disabled={isLoadingHistory || isCurrent}
-                                        className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${isCurrent
+                                        className={`relative rounded-xl border transition ${isCurrent
                                             ? isDark
                                                 ? 'border-primary/40 bg-primary/10'
                                                 : 'border-primary/40 bg-primary/10'
@@ -1563,21 +1590,41 @@ const GuestAIDemo = () => {
                                                 : 'border-black/10 bg-[#fbfbfa] hover:bg-slate-100/80'
                                             }`}
                                     >
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className={`truncate text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                {chat.serviceName || selectedService.name}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleLoadPreviousChat(chat)}
+                                            disabled={isLoadingHistory || isCurrent}
+                                            className="w-full px-3 py-2.5 pr-10 text-left"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className={`truncate text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                    {chat.serviceName || selectedService.name}
+                                                </p>
+                                                <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {formatPreviousChatTime(chat.updatedAt)}
+                                                </span>
+                                            </div>
+                                            <p className={`mt-1 line-clamp-2 text-sm ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                                                {chat.preview || 'No preview available'}
                                             </p>
-                                            <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {formatPreviousChatTime(chat.updatedAt)}
-                                            </span>
-                                        </div>
-                                        <p className={`mt-1 line-clamp-2 text-sm ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
-                                            {chat.preview || 'No preview available'}
-                                        </p>
-                                        <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {isLoadingHistory ? 'Loading...' : `${chat.messageCount || 0} messages`}
-                                        </p>
-                                    </button>
+                                            <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {isLoadingHistory ? 'Loading...' : `${chat.messageCount || 0} messages`}
+                                            </p>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(event) => handleDeletePreviousChat(event, chat)}
+                                            disabled={isLoadingHistory}
+                                            className={`absolute bottom-2.5 right-2.5 rounded-md p-1 transition ${isDark
+                                                ? 'text-slate-400 hover:bg-white/10 hover:text-red-300'
+                                                : 'text-slate-500 hover:bg-slate-200 hover:text-red-600'
+                                                }`}
+                                            aria-label="Delete previous chat"
+                                            title="Delete chat"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -1599,11 +1646,11 @@ const GuestAIDemo = () => {
                                     <ArrowLeft className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                <Bot className="h-5 w-5" />
+                            <div className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                <img src={cataLogo} alt="CATA AI logo" className="h-6 w-6 object-contain" />
                             </div>
                             <div>
-                                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>AI Assistant</h2>
+                                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>CATA AI</h2>
                                 <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-500'}`}>
                                     {selectedService?.name} - Guided consultation
                                 </p>
@@ -1634,8 +1681,8 @@ const GuestAIDemo = () => {
                                     className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     {msg.role === 'assistant' && (
-                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                            <Bot className="h-4 w-4" />
+                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                            <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
                                         </div>
                                     )}
 
@@ -1755,8 +1802,8 @@ const GuestAIDemo = () => {
                                 animate={{ opacity: 1 }}
                                 className="flex items-start gap-3"
                             >
-                                <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                    <Bot className="h-4 w-4" />
+                                <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                    <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
                                 </div>
                                 <div className={`flex items-center gap-2 rounded-2xl rounded-tl-none border p-4 ${isDark ? 'border-white/10 bg-white/[0.05]' : 'border-black/10 bg-white'}`}>
                                     <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
