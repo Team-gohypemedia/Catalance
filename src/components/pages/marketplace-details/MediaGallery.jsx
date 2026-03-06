@@ -4,9 +4,12 @@ import { cn } from "@/shared/lib/utils";
 
 const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-500/30 to-indigo-900/60", categoryLabel = "" }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [imageErrors, setImageErrors] = useState({});
 
     const nextImage = () => setCurrentIndex((prev) => (prev + 1) % images.length);
     const prevImage = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+
+    const hasError = imageErrors[currentIndex];
 
     // Premium empty state with category-specific gradient
     if (!images || images.length === 0) {
@@ -40,23 +43,25 @@ const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-
                     key={currentIndex}
                     src={images[currentIndex]}
                     alt={`${serviceName} - ${currentIndex + 1}`}
-                    className="w-full h-full object-cover transition-all duration-500 ease-in-out group-hover:scale-[1.02]"
+                    className={cn(
+                        "w-full h-full object-cover transition-all duration-500 ease-in-out group-hover:scale-[1.02]",
+                        hasError && "hidden"
+                    )}
                     loading="lazy"
-                    onError={(e) => {
-                        e.target.style.display = "none";
-                        e.target.nextElementSibling.style.display = "flex";
-                    }}
+                    onError={() => setImageErrors(prev => ({ ...prev, [currentIndex]: true }))}
                 />
                 {/* Fallback when image fails to load */}
-                <div
-                    className={cn(
-                        "hidden w-full h-full bg-gradient-to-br items-center justify-center flex-col gap-3 text-white/50 absolute inset-0",
-                        categoryGradient
-                    )}
-                >
-                    <ImageIcon className="w-10 h-10" />
-                    <span className="text-xs font-medium">Image unavailable</span>
-                </div>
+                {hasError && (
+                    <div
+                        className={cn(
+                            "w-full h-full bg-gradient-to-br flex items-center justify-center flex-col gap-3 text-white/50 absolute inset-0",
+                            categoryGradient
+                        )}
+                    >
+                        <ImageIcon className="w-10 h-10" />
+                        <span className="text-xs font-medium">Image unavailable</span>
+                    </div>
+                )}
 
                 {/* Bottom gradient overlay */}
                 <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
@@ -119,7 +124,18 @@ const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-
                             )}
                             aria-label={`Thumbnail ${idx + 1}`}
                         >
-                            <img src={img} alt="" className="w-full h-full object-cover" />
+                            {imageErrors[idx] ? (
+                                <div className={cn("w-full h-full bg-gradient-to-br flex items-center justify-center text-white/30", categoryGradient)}>
+                                    <ImageIcon className="w-5 h-5" />
+                                </div>
+                            ) : (
+                                <img
+                                    src={img}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    onError={() => setImageErrors(prev => ({ ...prev, [idx]: true }))}
+                                />
+                            )}
                         </button>
                     ))}
                 </div>

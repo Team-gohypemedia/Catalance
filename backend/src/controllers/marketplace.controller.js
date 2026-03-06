@@ -1,4 +1,5 @@
 import { asyncHandler } from "../utils/async-handler.js";
+import { AppError } from "../utils/app-error.js";
 import { prisma } from "../lib/prisma.js";
 
 const DEFAULT_PAGE_LIMIT = 20;
@@ -438,12 +439,12 @@ const scoreCandidate = (candidate, query, weights) => {
 
   const matchScore = toFixedScore(
     scoreBreakdown.relevance * weights.relevance +
-      scoreBreakdown.specialization * weights.specialization +
-      scoreBreakdown.industry * weights.industry +
-      scoreBreakdown.technology * weights.technology +
-      scoreBreakdown.budgetFlex * weights.budgetFlex +
-      scoreBreakdown.experience * weights.experience +
-      scoreBreakdown.reliability * weights.reliability
+    scoreBreakdown.specialization * weights.specialization +
+    scoreBreakdown.industry * weights.industry +
+    scoreBreakdown.technology * weights.technology +
+    scoreBreakdown.budgetFlex * weights.budgetFlex +
+    scoreBreakdown.experience * weights.experience +
+    scoreBreakdown.reliability * weights.reliability
   );
 
   const rating = toNumber(candidate.freelancer?.freelancerProfile?.rating, 0);
@@ -601,7 +602,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
 export const getServiceById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const service = await prisma.marketplace.findUnique({
+  let service = await prisma.marketplace.findUnique({
     where: { id },
     include: {
       freelancer: {
@@ -615,6 +616,53 @@ export const getServiceById = asyncHandler(async (req, res) => {
       }
     }
   });
+
+  if (!service) {
+    const fp = await prisma.freelancerProject.findUnique({
+      where: { id },
+      include: {
+        freelancer: {
+          select: {
+            id: true,
+            fullName: true,
+            avatar: true,
+            isVerified: true,
+            freelancerProfile: true
+          }
+        }
+      }
+    });
+
+    if (fp) {
+      const profile = fp.freelancer?.freelancerProfile || {};
+      const techStack = uniqueValues([
+        ...(fp.techStack || []),
+        ...(fp.activeTechnologies || []),
+      ]);
+      const normalizedBudget = fp.budget === null ? null : toNumber(fp.budget, 0);
+
+      service = {
+        id: fp.id,
+        freelancerId: fp.freelancerId,
+        serviceKey: fp.serviceKey || "",
+        service: fp.serviceName || fp.title || "Freelancer Service",
+        serviceDetails: {
+          minBudget: normalizedBudget,
+          maxBudget: normalizedBudget,
+          averageProjectPriceRange: fp.averageProjectPriceRange || null,
+          techStack,
+          bio: profile.bio || fp.description || "",
+          description: fp.description || profile.bio || "",
+          industriesOrNiches: Array.isArray(fp.industriesOrNiches) ? fp.industriesOrNiches : [],
+          serviceSpecializations: Array.isArray(fp.serviceSpecializations) ? fp.serviceSpecializations : [],
+        },
+        isFeatured: false,
+        createdAt: fp.createdAt,
+        updatedAt: fp.updatedAt,
+        freelancer: fp.freelancer
+      };
+    }
+  }
 
   if (!service) {
     throw new AppError("Service not found", 404);
@@ -677,7 +725,10 @@ export const createServiceReview = asyncHandler(async (req, res) => {
     throw new AppError("Comment must be at least 5 characters long", 400);
   }
 
-  const service = await prisma.marketplace.findUnique({ where: { id } });
+  let service = await prisma.marketplace.findUnique({ where: { id } });
+  if (!service) {
+    service = await prisma.freelancerProject.findUnique({ where: { id } });
+  }
   if (!service) throw new AppError("Service not found", 404);
 
   const newReview = await prisma.review.create({
