@@ -216,6 +216,90 @@ const getProposalStorageKeys = (userId) => {
     };
 };
 
+const toProposalFingerprint = (content = '') =>
+    String(content || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+const sortStoredGeneratedProposals = (proposals = []) =>
+    [...(Array.isArray(proposals) ? proposals : [])]
+        .filter((proposal) => proposal && typeof proposal === 'object')
+        .reduce((acc, proposal) => {
+            const fp = proposal?.fingerprint
+                || toProposalFingerprint(proposal?.content || proposal?.summary || proposal?.projectTitle || '');
+            if (!fp) return acc;
+            if (acc.seen.has(fp)) return acc;
+            acc.seen.add(fp);
+            acc.rows.push({ ...proposal, fingerprint: fp });
+            return acc;
+        }, { seen: new Set(), rows: [] }).rows
+        .sort(
+            (a, b) =>
+                new Date(b.updatedAt || b.createdAt || 0).getTime()
+                - new Date(a.updatedAt || a.createdAt || 0).getTime()
+        );
+
+const readStoredGeneratedProposals = (userId) => {
+    if (!isBrowser) return [];
+    const scopedKey = getProposalStorageKeys(userId).listKey;
+    const scopedRows = safeParseArray(window.localStorage.getItem(scopedKey));
+
+    if (!userId) {
+        return sortStoredGeneratedProposals(scopedRows);
+    }
+
+    const guestKey = getProposalStorageKeys(null).listKey;
+    const guestRows = safeParseArray(window.localStorage.getItem(guestKey));
+    return sortStoredGeneratedProposals([...scopedRows, ...guestRows]);
+};
+
+const upsertStoredGeneratedProposal = (proposalContent, userId) => {
+    if (!isBrowser) return [];
+
+    const normalizedContent = normalizeMarkdownContent(proposalContent);
+    if (!normalizedContent || !isProposalMessage(normalizedContent)) {
+        return readStoredGeneratedProposals(userId);
+    }
+
+    const parsed = parseProposalContent(normalizedContent);
+    const now = new Date().toISOString();
+    const fingerprint = toProposalFingerprint(normalizedContent);
+    const { listKey, singleKey, syncedKey } = getProposalStorageKeys(userId);
+    const existingProposals = safeParseArray(window.localStorage.getItem(listKey));
+    const existingIndex = existingProposals.findIndex((proposal) => {
+        const existingFingerprint = proposal?.fingerprint
+            || toProposalFingerprint(proposal?.content || proposal?.summary || proposal?.projectTitle || '');
+        return existingFingerprint === fingerprint;
+    });
+
+    const proposalToSave = {
+        id: existingProposals[existingIndex]?.id || `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        projectTitle: parsed.fields?.serviceType || parsed.fields?.businessName || "AI Generated Proposal",
+        service: parsed.fields?.serviceType || "General services",
+        serviceKey: parsed.fields?.serviceType || "",
+        summary: normalizedContent,
+        content: normalizedContent,
+        budget: parsed.fields?.budget || "",
+        timeline: parsed.fields?.launchTimeline || "",
+        ownerId: userId || null,
+        syncedProjectId: existingProposals[existingIndex]?.syncedProjectId || null,
+        syncedAt: existingProposals[existingIndex]?.syncedAt || null,
+        createdAt: existingProposals[existingIndex]?.createdAt || now,
+        updatedAt: now,
+        fingerprint,
+    };
+
+    if (existingIndex >= 0) {
+        existingProposals[existingIndex] = proposalToSave;
+    } else {
+        existingProposals.push(proposalToSave);
+    }
+
+    const sortedProposals = sortStoredGeneratedProposals(existingProposals);
+    window.localStorage.setItem(listKey, JSON.stringify(sortedProposals));
+    window.localStorage.setItem(singleKey, JSON.stringify(proposalToSave));
+    if (syncedKey) window.localStorage.removeItem(syncedKey);
+    return readStoredGeneratedProposals(userId);
+};
+
 const unwrapPayload = (value) => {
     if (!value || typeof value !== 'object') return value;
     if ('data' in value && value.data !== undefined && value.data !== null) {
@@ -688,6 +772,8 @@ const GuestAIDemo = () => {
     const [isListening, setIsListening] = useState(false);
     const [isSpeechSupported, setIsSpeechSupported] = useState(false);
     const [previousChats, setPreviousChats] = useState(() => readStoredGuestSessions());
+    const [generatedProposals, setGeneratedProposals] = useState(() => readStoredGeneratedProposals(user?.id));
+    const [selectedProposalPreview, setSelectedProposalPreview] = useState(null);
     const [loadingHistoryId, setLoadingHistoryId] = useState(null);
     const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
@@ -709,6 +795,10 @@ const GuestAIDemo = () => {
     const refreshPreviousChats = useCallback(() => {
         setPreviousChats(readStoredGuestSessions());
     }, []);
+
+    const refreshGeneratedProposals = useCallback(() => {
+        setGeneratedProposals(readStoredGeneratedProposals(user?.id));
+    }, [user?.id]);
 
     const persistCurrentSessionSummary = useCallback((history) => {
         if (!sessionId || !selectedService) return;
@@ -823,6 +913,21 @@ const GuestAIDemo = () => {
     useEffect(() => {
         refreshPreviousChats();
     }, [refreshPreviousChats]);
+
+    useEffect(() => {
+        refreshGeneratedProposals();
+    }, [refreshGeneratedProposals]);
+
+    useEffect(() => {
+        const latestProposalMessage = [...messages]
+            .reverse()
+            .find((message) => message?.role === 'assistant' && isProposalMessage(message?.content || ''));
+
+        if (!latestProposalMessage?.content) return;
+
+        const nextProposals = upsertStoredGeneratedProposal(latestProposalMessage.content, user?.id);
+        setGeneratedProposals(nextProposals);
+    }, [messages, user?.id]);
 
     useEffect(() => {
         if (!sessionId || !selectedService || messages.length === 0) return;
@@ -1287,40 +1392,8 @@ const GuestAIDemo = () => {
     };
 
     const handleProceed = (proposalContent) => {
-        const parsed = parseProposalContent(proposalContent);
-        const projectTitle = parsed.fields?.serviceType || parsed.fields?.businessName || "AI Generated Proposal";
-        
-        const now = new Date().toISOString();
-        const { listKey, singleKey, syncedKey } = getProposalStorageKeys(user?.id);
-        const proposalToSave = {
-            id: `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-            projectTitle,
-            service: parsed.fields?.serviceType || "General services",
-            serviceKey: parsed.fields?.serviceType || "",
-            summary: proposalContent,
-            content: proposalContent,
-            budget: parsed.fields?.budget || "",
-            timeline: parsed.fields?.launchTimeline || "",
-            ownerId: user?.id || null,
-            syncedProjectId: null,
-            syncedAt: null,
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        // Load existing proposals
-        let existingProposals = [];
-        try {
-            const stored = localStorage.getItem(listKey);
-            if (stored) existingProposals = JSON.parse(stored);
-        } catch {
-            // Ignore malformed localStorage payloads and continue with a new list.
-        }
-
-        existingProposals.push(proposalToSave);
-        localStorage.setItem(listKey, JSON.stringify(existingProposals));
-        localStorage.setItem(singleKey, JSON.stringify(proposalToSave));
-        if (syncedKey) localStorage.removeItem(syncedKey);
+        const nextProposals = upsertStoredGeneratedProposal(proposalContent, user?.id);
+        setGeneratedProposals(nextProposals);
 
         if (user) {
             if (user.role === "CLIENT") {
@@ -1344,6 +1417,18 @@ const GuestAIDemo = () => {
         setPendingAttachments([]);
         setSelectedOptions([]);
         setInputConfig({ type: 'text', options: [] });
+    };
+
+    const handleOpenProposalPreview = (proposal) => {
+        if (!proposal?.content) {
+            toast.error('Proposal details are not available for this card.');
+            return;
+        }
+        setSelectedProposalPreview(proposal);
+    };
+
+    const handleCloseProposalPreview = () => {
+        setSelectedProposalPreview(null);
     };
 
     const handleDeletePreviousChat = (event, chatMeta) => {
@@ -1563,69 +1648,133 @@ const GuestAIDemo = () => {
                     {selectedService.description}
                 </p>
 
-                <div className={`mt-8 flex min-h-0 flex-1 flex-col rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
-                    <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-                        <History className="h-3.5 w-3.5" />
-                        Previous chats
-                    </div>
-                    {visiblePreviousChats.length === 0 ? (
-                        <p className={`text-sm ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                            No previous chats yet.
-                        </p>
-                    ) : (
-                        <div className="space-y-1.5 overflow-y-auto pr-1">
-                            {visiblePreviousChats.map((chat) => {
-                                const isCurrent = chat.sessionId === sessionId;
-                                const isLoadingHistory = loadingHistoryId === chat.sessionId;
-                                const compactPreview = [chat.serviceName || selectedService.name, chat.preview]
-                                    .filter(Boolean)
-                                    .join(' - ');
-
-                                return (
-                                    <div
-                                        key={chat.sessionId}
-                                        className={`relative rounded-lg border transition ${isCurrent
-                                            ? isDark
-                                                ? 'border-primary/40 bg-primary/10'
-                                                : 'border-primary/40 bg-primary/10'
-                                            : isDark
-                                                ? 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'
-                                                : 'border-black/10 bg-[#fbfbfa] hover:bg-slate-100/80'
-                                            }`}
-                                    >
+                <div className="mt-8 flex min-h-0 flex-1 flex-col gap-4">
+                    <div className={`flex min-h-0 flex-[1.35] flex-col rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Generated proposals
+                            </div>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'border border-white/15 bg-white/10 text-slate-300' : 'border border-black/10 bg-black/5 text-slate-600'}`}>
+                                {generatedProposals.length}
+                            </span>
+                        </div>
+                        {generatedProposals.length === 0 ? (
+                            <p className={`text-sm ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                                No proposals generated yet.
+                            </p>
+                        ) : (
+                            <ScrollArea className="-mr-1 min-h-0 flex-1 pr-1">
+                                <div className="space-y-2 pb-1">
+                                    {generatedProposals.map((proposal, index) => (
                                         <button
+                                            key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
                                             type="button"
-                                            onClick={() => handleLoadPreviousChat(chat)}
-                                            disabled={isLoadingHistory || isCurrent}
-                                            className="w-full px-3 py-2 pr-10 text-left"
+                                            onClick={() => handleOpenProposalPreview(proposal)}
+                                            className={`group w-full rounded-xl border px-3 py-2.5 text-left transition-all duration-200 ${isDark
+                                                ? 'border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] hover:border-primary/35 hover:bg-white/[0.06]'
+                                                : 'border-black/10 bg-[#fbfbfa] hover:border-primary/35 hover:bg-slate-100/85'
+                                                }`}
+                                            title="Open proposal details"
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <p className={`truncate text-sm ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
-                                                    {compactPreview || 'No preview available'}
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className={`truncate text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                    {proposal.service || selectedService?.name || 'Proposal'}
                                                 </p>
                                                 <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    {isLoadingHistory ? 'Loading...' : formatPreviousChatTime(chat.updatedAt)}
+                                                    {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
                                                 </span>
                                             </div>
+                                            <p className={`mt-1 truncate text-base font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                                {proposal.projectTitle || 'AI Generated Proposal'}
+                                            </p>
+                                            {(proposal.budget || proposal.timeline) && (
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {proposal.budget && (
+                                                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-white/15 text-slate-300' : 'border-black/10 text-slate-600'}`}>
+                                                            {proposal.budget}
+                                                        </span>
+                                                    )}
+                                                    {proposal.timeline && (
+                                                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-white/15 text-slate-300' : 'border-black/10 text-slate-600'}`}>
+                                                            {proposal.timeline}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={(event) => handleDeletePreviousChat(event, chat)}
-                                            disabled={isLoadingHistory}
-                                            className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 transition ${isDark
-                                                ? 'text-slate-400 hover:bg-white/10 hover:text-red-300'
-                                                : 'text-slate-500 hover:bg-slate-200 hover:text-red-600'
-                                                }`}
-                                            aria-label="Delete previous chat"
-                                            title="Delete chat"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </button>
-                                    </div>
-                                );
-                            })}
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        )}
+                    </div>
+
+                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                        <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                            <History className="h-3.5 w-3.5" />
+                            Previous chats
                         </div>
-                    )}
+                        {visiblePreviousChats.length === 0 ? (
+                            <p className={`text-sm ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                                No previous chats yet.
+                            </p>
+                        ) : (
+                            <ScrollArea className="-mr-1 min-h-0 flex-1 pr-1">
+                                <div className="space-y-1.5 pb-1 pr-3">
+                                    {visiblePreviousChats.map((chat) => {
+                                        const isCurrent = chat.sessionId === sessionId;
+                                        const isLoadingHistory = loadingHistoryId === chat.sessionId;
+                                        const compactPreview = [chat.serviceName || selectedService.name, chat.preview]
+                                            .filter(Boolean)
+                                            .join(' - ');
+
+                                        return (
+                                            <div
+                                                key={chat.sessionId}
+                                                className={`relative rounded-lg border transition ${isCurrent
+                                                    ? isDark
+                                                        ? 'border-primary/40 bg-primary/10'
+                                                        : 'border-primary/40 bg-primary/10'
+                                                    : isDark
+                                                    ? 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'
+                                                    : 'border-black/10 bg-[#fbfbfa] hover:bg-slate-100/80'
+                                                    }`}
+                                            >
+                                                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-2 py-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleLoadPreviousChat(chat)}
+                                                        disabled={isLoadingHistory || isCurrent}
+                                                        className={`min-w-0 rounded-md px-2 py-1.5 text-left ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}`}
+                                                    >
+                                                        <p className={`truncate text-sm ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                                                            {compactPreview || 'No preview available'}
+                                                        </p>
+                                                    </button>
+                                                    <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {isLoadingHistory ? 'Loading...' : formatPreviousChatTime(chat.updatedAt)}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(event) => handleDeletePreviousChat(event, chat)}
+                                                        disabled={isLoadingHistory}
+                                                        className={`relative z-30 shrink-0 rounded-md border p-1.5 shadow-sm transition ${isDark
+                                                            ? 'border-red-300/30 bg-red-500/10 text-red-200 hover:border-red-300/55 hover:bg-red-500/20 hover:text-red-100'
+                                                            : 'border-red-300 bg-red-50 text-red-600 hover:border-red-400 hover:bg-red-100 hover:text-red-700'
+                                                            }`}
+                                                        aria-label="Delete previous chat"
+                                                        title="Delete chat"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </ScrollArea>
+                        )}
+                    </div>
                 </div>
             </aside>
 
@@ -1932,6 +2081,46 @@ const GuestAIDemo = () => {
                     </div>
                 </div>
             </section>
+
+            {selectedProposalPreview && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+                    <div className={`max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${isDark
+                        ? 'border-white/15 bg-[#0d0d0d]'
+                        : 'border-black/10 bg-white'
+                        }`}>
+                        <div className={`flex items-center justify-between border-b px-5 py-3 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                            <div>
+                                <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {selectedProposalPreview.service || 'Proposal'}
+                                </p>
+                                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>
+                                    {selectedProposalPreview.projectTitle || 'AI Generated Proposal'}
+                                </h3>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full"
+                                onClick={handleCloseProposalPreview}
+                                aria-label="Close proposal preview"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="max-h-[calc(88vh-64px)] overflow-y-auto px-5 py-4">
+                            <ProposalPreview content={selectedProposalPreview.content} isDark={isDark} />
+                            <div className={`mt-6 flex justify-end border-t pt-4 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                <Button
+                                    onClick={() => handleProceed(selectedProposalPreview.content)}
+                                    className="w-full sm:w-auto rounded-xl bg-primary px-8 py-2.5 font-semibold text-primary-foreground hover:bg-primary/90"
+                                >
+                                    Find Freelancer for this proposal
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
