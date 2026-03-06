@@ -1573,15 +1573,18 @@ const GuestAIDemo = () => {
                             No previous chats yet.
                         </p>
                     ) : (
-                        <div className="space-y-2 overflow-y-auto pr-1">
+                        <div className="space-y-1.5 overflow-y-auto pr-1">
                             {visiblePreviousChats.map((chat) => {
                                 const isCurrent = chat.sessionId === sessionId;
                                 const isLoadingHistory = loadingHistoryId === chat.sessionId;
+                                const compactPreview = [chat.serviceName || selectedService.name, chat.preview]
+                                    .filter(Boolean)
+                                    .join(' - ');
 
                                 return (
                                     <div
                                         key={chat.sessionId}
-                                        className={`relative rounded-xl border transition ${isCurrent
+                                        className={`relative rounded-lg border transition ${isCurrent
                                             ? isDark
                                                 ? 'border-primary/40 bg-primary/10'
                                                 : 'border-primary/40 bg-primary/10'
@@ -1594,28 +1597,22 @@ const GuestAIDemo = () => {
                                             type="button"
                                             onClick={() => handleLoadPreviousChat(chat)}
                                             disabled={isLoadingHistory || isCurrent}
-                                            className="w-full px-3 py-2.5 pr-10 text-left"
+                                            className="w-full px-3 py-2 pr-10 text-left"
                                         >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <p className={`truncate text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                    {chat.serviceName || selectedService.name}
+                                            <div className="flex items-center gap-2">
+                                                <p className={`truncate text-sm ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                                                    {compactPreview || 'No preview available'}
                                                 </p>
                                                 <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    {formatPreviousChatTime(chat.updatedAt)}
+                                                    {isLoadingHistory ? 'Loading...' : formatPreviousChatTime(chat.updatedAt)}
                                                 </span>
                                             </div>
-                                            <p className={`mt-1 line-clamp-2 text-sm ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
-                                                {chat.preview || 'No preview available'}
-                                            </p>
-                                            <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {isLoadingHistory ? 'Loading...' : `${chat.messageCount || 0} messages`}
-                                            </p>
                                         </button>
                                         <button
                                             type="button"
                                             onClick={(event) => handleDeletePreviousChat(event, chat)}
                                             disabled={isLoadingHistory}
-                                            className={`absolute bottom-2.5 right-2.5 rounded-md p-1 transition ${isDark
+                                            className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 transition ${isDark
                                                 ? 'text-slate-400 hover:bg-white/10 hover:text-red-300'
                                                 : 'text-slate-500 hover:bg-slate-200 hover:text-red-600'
                                                 }`}
