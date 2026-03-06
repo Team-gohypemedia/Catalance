@@ -10,6 +10,7 @@ import {
   uploadResume
 } from "../controllers/upload.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
+import { optionalAuth } from "../middlewares/optional-auth.js";
 
 const router = Router();
 
@@ -101,7 +102,7 @@ router.post(
 router.post("/project-preview", requireAuth, createProjectPreview);
 
 // Chat file upload endpoint
-router.post("/chat", requireAuth, chatUpload.single("file"), uploadChatFile);
+router.post("/chat", optionalAuth, chatUpload.single("file"), uploadChatFile);
 
 // Delete chat attachment endpoint
 // Delete chat attachment endpoint

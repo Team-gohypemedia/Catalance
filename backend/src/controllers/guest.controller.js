@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
+import { env } from "../config/env.js";
 import { chatWithAI, generateProposalMarkdown } from "../services/ai.service.js";
 
 const GREETING_ONLY_REGEX = /^(hi|hello|hey|yo|hola|good\s*(morning|afternoon|evening))[!.\s]*$/i;
@@ -23,6 +24,471 @@ const FRIENDLY_BRIDGES = [
     "Perfect, we are moving forward well.",
     "Nice, I noted that."
 ];
+const ATTACHMENT_TOKEN_REGEX = /^\[\[ATTACHMENT\]\]([^|]+)\|([^|]+)\|([^|]*)\|(\d+)$/;
+const MAX_ATTACHMENT_ANALYSIS_COUNT = 3;
+const MAX_SINGLE_ATTACHMENT_TEXT_CHARS = 4000;
+const MAX_ATTACHMENT_CONTEXT_CHARS = 9000;
+const MAX_VISION_IMAGE_BYTES = 4 * 1024 * 1024;
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const IMAGE_FILE_REGEX = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
+const PDF_FILE_REGEX = /\.pdf$/i;
+const DOCX_FILE_REGEX = /\.docx$/i;
+const TEXT_FILE_REGEX = /\.(txt|md|csv|json|xml|yaml|yml)$/i;
+let pdfJsModulePromise = null;
+let mammothModulePromise = null;
+
+const safeDecodeURIComponent = (value = "") => {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return String(value || "");
+    }
+};
+
+const parseJsonObjectFromRaw = (raw = "") => {
+    const source = String(raw || "").trim();
+    if (!source) return null;
+
+    const firstBrace = source.indexOf("{");
+    const lastBrace = source.lastIndexOf("}");
+    const extracted = firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace
+        ? source.slice(firstBrace, lastBrace + 1)
+        : source;
+
+    const candidates = [
+        extracted,
+        extracted.replace(/\*\*/g, ""),
+        extracted.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim(),
+    ];
+
+    for (const candidate of candidates) {
+        if (!candidate.startsWith("{") || !candidate.endsWith("}")) continue;
+        try {
+            const parsed = JSON.parse(candidate);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                return parsed;
+            }
+        } catch {
+            // Try next normalization candidate.
+        }
+    }
+
+    return null;
+};
+
+const parseAttachmentTokensFromMessage = (messageText = "") => {
+    const lines = String(messageText || "").replace(/\r/g, "").split("\n");
+    const attachments = [];
+    const plainLines = [];
+
+    for (const rawLine of lines) {
+        const line = String(rawLine || "").trim();
+        const match = line.match(ATTACHMENT_TOKEN_REGEX);
+        if (!match) {
+            plainLines.push(rawLine);
+            continue;
+        }
+
+        const name = safeDecodeURIComponent(match[1] || "") || "Attachment";
+        const url = safeDecodeURIComponent(match[2] || "");
+        const type = safeDecodeURIComponent(match[3] || "");
+        const size = Number.parseInt(match[4] || "0", 10);
+
+        if (!url) continue;
+        attachments.push({
+            name,
+            url,
+            type,
+            size: Number.isFinite(size) ? size : 0,
+        });
+    }
+
+    return {
+        plainText: plainLines.join("\n").trim(),
+        attachments,
+    };
+};
+
+const clipAttachmentText = (text = "", limit = MAX_SINGLE_ATTACHMENT_TEXT_CHARS) =>
+    String(text || "")
+        .split("\0")
+        .join(" ")
+        .replace(/[ \t]+\n/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+        .slice(0, Math.max(0, limit));
+
+const isImageAttachment = (attachment = {}) =>
+    String(attachment?.type || "").startsWith("image/")
+    || IMAGE_FILE_REGEX.test(String(attachment?.name || ""))
+    || IMAGE_FILE_REGEX.test(String(attachment?.url || ""));
+
+const isPdfAttachment = (attachment = {}) =>
+    String(attachment?.type || "").toLowerCase() === "application/pdf"
+    || PDF_FILE_REGEX.test(String(attachment?.name || ""))
+    || PDF_FILE_REGEX.test(String(attachment?.url || ""));
+
+const isDocxAttachment = (attachment = {}) =>
+    String(attachment?.type || "").toLowerCase() === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    || DOCX_FILE_REGEX.test(String(attachment?.name || ""))
+    || DOCX_FILE_REGEX.test(String(attachment?.url || ""));
+
+const isTextAttachment = (attachment = {}) =>
+    String(attachment?.type || "").toLowerCase() === "text/plain"
+    || TEXT_FILE_REGEX.test(String(attachment?.name || ""))
+    || TEXT_FILE_REGEX.test(String(attachment?.url || ""));
+
+const loadPdfJs = async () => {
+    if (!pdfJsModulePromise) {
+        pdfJsModulePromise = import("pdfjs-dist/legacy/build/pdf.mjs");
+    }
+    return pdfJsModulePromise;
+};
+
+const loadMammoth = async () => {
+    if (!mammothModulePromise) {
+        mammothModulePromise = import("mammoth");
+    }
+    return mammothModulePromise;
+};
+
+const fetchAttachmentResponse = async (url) => {
+    const response = await fetch(url, {
+        method: "GET",
+        signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch attachment (${response.status})`);
+    }
+    return response;
+};
+
+const extractPdfTextFromBuffer = async (buffer) => {
+    const pdfJs = await loadPdfJs();
+    const loadingTask = pdfJs.getDocument({ data: new Uint8Array(buffer) });
+    const pdf = await loadingTask.promise;
+    let extracted = "";
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const pageText = (textContent.items || [])
+            .map((item) => String(item?.str || "").trim())
+            .filter(Boolean)
+            .join(" ");
+
+        if (!pageText) continue;
+        extracted = `${extracted}\n${pageText}`.trim();
+        if (extracted.length >= MAX_SINGLE_ATTACHMENT_TEXT_CHARS) break;
+    }
+
+    return clipAttachmentText(extracted);
+};
+
+const extractDocxTextFromBuffer = async (buffer) => {
+    const mammothModule = await loadMammoth();
+    const result = await mammothModule.extractRawText({ buffer });
+    return clipAttachmentText(result?.value || "");
+};
+
+const analyzeImageAttachmentWithVision = async ({ url = "", name = "", type = "" }) => {
+    const apiKey = env.OPENROUTER_API_KEY?.trim();
+    if (!apiKey || !url) return "";
+
+    const model = env.OPENROUTER_MODEL || "openai/gpt-4o";
+    const referer = env.FRONTEND_URL || env.CORS_ORIGIN || "http://localhost:5173";
+    const prompt = [
+        "Analyze this uploaded image for project-requirement discovery.",
+        `File name: ${name || "image"}`,
+        'Return strict JSON: {"summary":"", "visibleText":"", "possibleBrandName":"", "designCues":[]}.',
+        "Keep it concise and practical.",
+    ].join(" ");
+
+    try {
+        const attachmentResponse = await fetchAttachmentResponse(url);
+        const imageMimeTypeFromResponse = String(attachmentResponse.headers.get("content-type") || "")
+            .split(";")[0]
+            .trim()
+            .toLowerCase();
+        const imageMimeType = imageMimeTypeFromResponse || String(type || "image/png").toLowerCase();
+        const imageBuffer = Buffer.from(await attachmentResponse.arrayBuffer());
+
+        if (imageBuffer.length === 0) return "";
+        if (imageBuffer.length > MAX_VISION_IMAGE_BYTES) {
+            console.warn(
+                `[Attachment Vision] Skipped "${name}" because image is larger than ${MAX_VISION_IMAGE_BYTES} bytes.`
+            );
+            return "";
+        }
+
+        // OpenRouter cannot fetch localhost URLs from its cloud infra.
+        // Send the image as a data URL payload instead.
+        const imageDataUrl = `data:${imageMimeType};base64,${imageBuffer.toString("base64")}`;
+
+        const response = await fetch(OPENROUTER_API_URL, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": referer,
+                "X-Title": "Catalance Guest Attachment Analyzer",
+            },
+            body: JSON.stringify({
+                model,
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: prompt },
+                            { type: "image_url", image_url: { url: imageDataUrl } },
+                        ],
+                    },
+                ],
+                temperature: 0.2,
+                max_tokens: 260,
+            }),
+            signal: AbortSignal.timeout(25000),
+        });
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            console.warn(
+                `[Attachment Vision] OpenRouter vision failed (${response.status}): ${data?.error?.message || data?.message || "Unknown error"}`
+            );
+            return "";
+        }
+
+        const rawContentValue = data?.choices?.[0]?.message?.content;
+        const rawContent = typeof rawContentValue === "string"
+            ? rawContentValue
+            : Array.isArray(rawContentValue)
+                ? rawContentValue.map((part) => part?.text || "").join("\n").trim()
+                : "";
+        const parsed = parseJsonObjectFromRaw(rawContent);
+        if (parsed) {
+            const summary = clipAttachmentText(parsed.summary || "", 500);
+            const visibleText = clipAttachmentText(parsed.visibleText || "", 220);
+            const possibleBrandName = clipAttachmentText(parsed.possibleBrandName || "", 120);
+            const designCues = Array.isArray(parsed.designCues)
+                ? parsed.designCues.map((cue) => clipAttachmentText(cue || "", 60)).filter(Boolean).slice(0, 6)
+                : [];
+
+            return [
+                summary ? `Summary: ${summary}` : "",
+                visibleText ? `Visible text: ${visibleText}` : "",
+                possibleBrandName ? `Possible brand/company name: ${possibleBrandName}` : "",
+                designCues.length > 0 ? `Design cues: ${designCues.join(", ")}` : "",
+            ]
+                .filter(Boolean)
+                .join("\n");
+        }
+
+        return clipAttachmentText(rawContent, 600);
+    } catch {
+        return "";
+    }
+};
+
+const extractAttachmentContext = async ({ attachment = {}, index = 0 }) => {
+    const name = String(attachment.name || `Attachment ${index + 1}`).trim();
+    const type = String(attachment.type || "").trim();
+    const descriptor = `[Attachment ${index + 1}] ${name}${type ? ` (${type})` : ""}`;
+
+    try {
+        if (isImageAttachment(attachment)) {
+            const visionSummary = await analyzeImageAttachmentWithVision({
+                url: attachment.url,
+                name,
+                type,
+            });
+
+            return {
+                descriptor,
+                extractedContext: visionSummary
+                    ? `Image analysis:\n${visionSummary}`
+                    : "Image uploaded. Could not extract image details automatically.",
+            };
+        }
+
+        if (isTextAttachment(attachment)) {
+            const response = await fetchAttachmentResponse(attachment.url);
+            const text = clipAttachmentText(await response.text());
+            if (!text) {
+                return {
+                    descriptor,
+                    extractedContext: "Text file uploaded, but no readable text was found.",
+                };
+            }
+            return {
+                descriptor,
+                extractedContext: `Extracted text:\n${text}`,
+            };
+        }
+
+        if (isPdfAttachment(attachment) || isDocxAttachment(attachment)) {
+            const response = await fetchAttachmentResponse(attachment.url);
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const extractedText = isPdfAttachment(attachment)
+                ? await extractPdfTextFromBuffer(buffer)
+                : await extractDocxTextFromBuffer(buffer);
+
+            if (!extractedText) {
+                return {
+                    descriptor,
+                    extractedContext: "Document uploaded, but no readable text was extracted.",
+                };
+            }
+            return {
+                descriptor,
+                extractedContext: `Extracted text:\n${extractedText}`,
+            };
+        }
+    } catch (error) {
+        console.warn(`[Attachment Analysis] Failed for "${name}":`, error?.message || error);
+        return {
+            descriptor,
+            extractedContext: "Attachment uploaded, but extraction failed.",
+        };
+    }
+
+    return {
+        descriptor,
+        extractedContext: "Attachment uploaded. This file type is not currently extractable.",
+    };
+};
+
+const buildAttachmentContextBlock = async ({ attachments = [] }) => {
+    if (!Array.isArray(attachments) || attachments.length === 0) {
+        return "";
+    }
+
+    const limitedAttachments = attachments.slice(0, MAX_ATTACHMENT_ANALYSIS_COUNT);
+    const contextItems = [];
+    for (let idx = 0; idx < limitedAttachments.length; idx += 1) {
+        const insight = await extractAttachmentContext({
+            attachment: limitedAttachments[idx],
+            index: idx,
+        });
+        if (!insight) continue;
+
+        contextItems.push(`${insight.descriptor}\n${insight.extractedContext}`.trim());
+    }
+
+    return clipAttachmentText(contextItems.join("\n\n"), MAX_ATTACHMENT_CONTEXT_CHARS);
+};
+
+const inferAnswerFromAttachmentContext = async ({
+    currentQuestionText = "",
+    userMessageText = "",
+    attachmentContextText = "",
+    serviceName = "",
+}) => {
+    if (!attachmentContextText.trim()) return "";
+    if (NAME_QUESTION_REGEX.test(currentQuestionText || "") && !String(userMessageText || "").trim()) {
+        return "";
+    }
+
+    const inferPrompt = `
+You are extracting a direct questionnaire answer from uploaded file context.
+
+Service: "${serviceName}"
+Current question: "${currentQuestionText}"
+User direct text answer: "${userMessageText}"
+
+Extracted attachment context:
+${attachmentContextText}
+
+Task:
+1) Decide if attachment context provides a direct answer to the current question.
+2) If yes, provide a short final answer text.
+3) If no, return empty answer.
+
+Rules:
+- For person-name questions, do not infer a personal name from a logo/image.
+- For brand/company questions, you may infer a brand name when clearly visible in file content.
+- Keep answer concise and specific.
+
+Return JSON only:
+{
+  "hasAnswer": boolean,
+  "answer": string,
+  "confidence": number
+}
+`;
+
+    try {
+        const response = await chatWithAI(
+            [{ role: "user", content: inferPrompt }],
+            [{ role: "system", content: "You are a JSON-only extractor. Return valid JSON only." }],
+            "system_extractor"
+        );
+        if (!response?.success) return "";
+
+        const parsed = parseJsonObjectFromRaw(response.message);
+        if (!parsed || parsed.hasAnswer !== true) return "";
+
+        const answer = clipAttachmentText(parsed.answer || "", 180);
+        const confidence = Number(parsed.confidence || 0);
+        if (!answer) return "";
+        if (Number.isFinite(confidence) && confidence < 0.58) return "";
+
+        return answer;
+    } catch {
+        return "";
+    }
+};
+
+const buildAttachmentInsightForUser = ({
+    attachments = [],
+    attachmentContextText = "",
+}) => {
+    if (!Array.isArray(attachments) || attachments.length === 0) return "";
+    const context = clipAttachmentText(attachmentContextText, 650);
+    if (!context) return "";
+
+    const lines = context
+        .split("\n")
+        .map((line) => String(line || "").trim())
+        .filter(Boolean);
+
+    const pickByPrefix = (prefix) =>
+        lines.find((line) => line.toLowerCase().startsWith(prefix.toLowerCase()));
+
+    const summaryLine = pickByPrefix("Summary:");
+    const visibleTextLine = pickByPrefix("Visible text:");
+    const possibleBrandLine = pickByPrefix("Possible brand/company name:");
+    const designCuesLine = pickByPrefix("Design cues:");
+    const extractedTextLine = pickByPrefix("Extracted text:");
+
+    const insightParts = [];
+    if (possibleBrandLine) insightParts.push(possibleBrandLine);
+    if (visibleTextLine) insightParts.push(visibleTextLine);
+    if (designCuesLine) insightParts.push(designCuesLine);
+    if (summaryLine) insightParts.push(summaryLine);
+    if (extractedTextLine && !visibleTextLine) {
+        insightParts.push(
+            `Extracted text snippet: ${clipAttachmentText(
+                extractedTextLine.replace(/^Extracted text:\s*/i, ""),
+                160
+            )}`
+        );
+    }
+
+    const fallbackInsight = clipAttachmentText(context, 200);
+    const finalInsight = insightParts.length > 0
+        ? insightParts.join(" | ")
+        : fallbackInsight;
+
+    const fileNames = attachments
+        .map((file) => String(file?.name || "").trim())
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(", ");
+
+    const fileLabel = fileNames || "your uploaded file";
+    return `I analyzed ${fileLabel} and detected: ${finalInsight}`;
+};
 
 const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
     if (!NAME_QUESTION_REGEX.test(questionText || "")) return false;
@@ -1564,13 +2030,16 @@ export const guestChat = asyncHandler(async (req, res) => {
     const messageText = Array.isArray(message)
         ? incomingArray.join(", ")
         : (message ?? "");
-    const trimmedMessageText = messageText.toString().trim();
-    const safeMessageText = incomingArray.length ? incomingArray.join(", ") : trimmedMessageText;
+    const parsedIncomingMessage = parseAttachmentTokensFromMessage(messageText);
+    const trimmedMessageText = parsedIncomingMessage.plainText.toString().trim();
+    const safeMessageText = messageText.toString().trim();
+    const persistedUserMessageContent = safeMessageText || trimmedMessageText;
+    const uploadedAttachments = parsedIncomingMessage.attachments;
 
     console.log(`\n--- [Guest Chat] Session: ${sessionId} ---`);
     console.log(`[User]: ${safeMessageText || message}`);
 
-    if (!sessionId || (!trimmedMessageText && incomingArray.length === 0)) {
+    if (!sessionId || (!trimmedMessageText && incomingArray.length === 0 && uploadedAttachments.length === 0)) {
         throw new AppError("Session ID and message are required", 400);
     }
 
@@ -1601,16 +2070,56 @@ export const guestChat = asyncHandler(async (req, res) => {
     const questions = service.questions;
     const currentStep = session.currentStep;
     const currentQuestion = questions[currentStep];
-    const numericSelection = mapNumericReplyToOptions(currentQuestion, safeMessageText);
-    const userMessageText = numericSelection.matched
+    const numericSelection = mapNumericReplyToOptions(currentQuestion, trimmedMessageText);
+    let userMessageText = numericSelection.matched
         ? numericSelection.normalizedText
-        : safeMessageText;
+        : trimmedMessageText;
 
     if (numericSelection.matched) {
         console.log(
-            `[Numeric Selection] mapped "${safeMessageText}" -> "${userMessageText}"`
+            `[Numeric Selection] mapped "${trimmedMessageText}" -> "${userMessageText}"`
         );
     }
+
+    let attachmentContextText = "";
+    let attachmentInferredAnswer = "";
+    let attachmentInsightNote = "";
+    if (uploadedAttachments.length > 0) {
+        attachmentContextText = await buildAttachmentContextBlock({
+            attachments: uploadedAttachments,
+        });
+        attachmentInsightNote = buildAttachmentInsightForUser({
+            attachments: uploadedAttachments,
+            attachmentContextText,
+        });
+        if (attachmentInsightNote) {
+            console.log(`[Attachment Insight] ${attachmentInsightNote}`);
+        }
+
+        attachmentInferredAnswer = await inferAnswerFromAttachmentContext({
+            currentQuestionText: currentQuestion?.text || "",
+            userMessageText,
+            attachmentContextText,
+            serviceName: service.name,
+        });
+
+        if (!normalizeTextToken(userMessageText) && normalizeTextToken(attachmentInferredAnswer)) {
+            userMessageText = attachmentInferredAnswer;
+            console.log(
+                `[Attachment Inference] inferred answer for "${currentQuestion?.slug || "current-question"}": "${userMessageText}"`
+            );
+        }
+    }
+
+    const userMessageForReasoning = [
+        userMessageText,
+        attachmentContextText
+            ? `Attachment context from uploaded files:\n${attachmentContextText}`
+            : "",
+    ]
+        .filter(Boolean)
+        .join("\n\n")
+        .trim();
 
     const existingAnswersBySlug = getAnswersBySlug(session.answers || {}, questions);
     const correctionIntent = hasCorrectionIntent(userMessageText);
@@ -1624,7 +2133,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     if (currentStep < questions.length) {
         extractedAnswersForMessage = await extractAnswersFromMessage({
             serviceName: service.name,
-            message: userMessageText,
+            message: userMessageForReasoning || userMessageText,
             questions
         });
     }
@@ -1657,7 +2166,9 @@ export const guestChat = asyncHandler(async (req, res) => {
             Current Question Options: ${JSON.stringify(currentQuestionOptions)}
             Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
             User's Answer: "${userMessageText}"
-            
+            Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
+            Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
+             
             Next Question in Script: "${nextQuestionText}"
 
             Task:
@@ -1665,6 +2176,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             - If it's a greeting (hi, hello) but the question expects details -> INVALID.
             - If it's irrelevant/gibberish -> INVALID.
             - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
+            - If direct text is empty but attachment context clearly answers the current question, treat as VALID.
             - Otherwise -> VALID.
 
             2. Generate a Response Message:
@@ -1690,7 +2202,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             {
                 "isValid": boolean,
                 "status": "valid_answer" | "invalid_answer" | "info_request",
-                "message": string // The response to send to the user (error feedback OR next question transition)
+                "message": string, // The response to send to the user (error feedback OR next question transition)
+                "normalizedAnswer": string // For VALID answers, put the final direct answer for the current question (including inferred from attachment). Else empty string.
             }
             Do not use markdown formatting, code fences, or bold text.
         `;
@@ -1708,6 +2221,25 @@ export const guestChat = asyncHandler(async (req, res) => {
             if (parsedValidation) {
                 validationResult = parsedValidation;
                 aiResponseContent = parsedValidation.message;
+
+                // If validator derived a concrete answer from attachment context, use it
+                // so the questionnaire step advances instead of re-asking the same question.
+                const normalizedAnswerFromValidation = clipAttachmentText(
+                    parsedValidation?.normalizedAnswer || "",
+                    180
+                );
+                if (
+                    validationResult.isValid &&
+                    !normalizeTextToken(userMessageText) &&
+                    normalizeTextToken(normalizedAnswerFromValidation)
+                ) {
+                    userMessageText = normalizedAnswerFromValidation;
+                    attachmentInferredAnswer = normalizedAnswerFromValidation;
+                    console.log(
+                        `[Validation Normalized Answer] using "${userMessageText}" for "${currentQuestion?.slug || "current-question"}"`
+                    );
+                }
+
                 console.log(`[Validation Parsed]:`, parsedValidation);
             } else {
                 console.warn("[Validation] Could not parse structured validator output");
@@ -1800,7 +2332,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                     data: {
                         sessionId,
                         role: "user",
-                        content: userMessageText,
+                        content: persistedUserMessageContent,
                     },
                 });
 
@@ -1812,9 +2344,13 @@ export const guestChat = asyncHandler(async (req, res) => {
                     answersByQuestionText: correctedPayload.byQuestionText,
                     serviceName: service.name
                 });
-                const correctionBridge = dependentIndexes.length > 0
+                const correctionBridgeCore = dependentIndexes.length > 0
                     ? `Got it - I updated your earlier answer and adjusted related steps. ${personalizedFollowBridge}`
                     : `Got it - I updated your earlier answer. ${personalizedFollowBridge}`;
+                const correctionBridge = [attachmentInsightNote, correctionBridgeCore]
+                    .map((part) => String(part || "").trim())
+                    .filter(Boolean)
+                    .join("\n\n");
                 const correctionMessage = stripNameNotedRecap(
                     buildFriendlyMessage(followQuestion, correctionBridge)
                 );
@@ -1879,7 +2415,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 data: {
                     sessionId,
                     role: "user",
-                    content: userMessageText,
+                    content: persistedUserMessageContent,
                 },
             });
 
@@ -1906,7 +2442,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 ? ""
                 : buildQuickReplyHint(currentQuestion);
             const feedbackMsg = stripNameNotedRecap(
-                [sideReply, capturedFutureNote, feedbackCore, quickReplyHint]
+                [sideReply, capturedFutureNote, attachmentInsightNote, feedbackCore, quickReplyHint]
                     .map((part) => String(part || "").trim())
                     .filter(Boolean)
                     .join("\n\n")
@@ -1940,7 +2476,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         data: {
             sessionId,
             role: "user",
-            content: userMessageText,
+            content: persistedUserMessageContent,
         },
     });
 
@@ -2042,6 +2578,15 @@ export const guestChat = asyncHandler(async (req, res) => {
             bridgeSegments.push(personalizedBridge);
         }
 
+        if (attachmentInsightNote) {
+            const alreadyIncluded = bridgeSegments.some((segment) =>
+                containsNormalizedText(segment, attachmentInsightNote)
+            );
+            if (!alreadyIncluded) {
+                bridgeSegments.unshift(attachmentInsightNote);
+            }
+        }
+
         if (autoCapturedAnswerSlugs.length > 0) {
             bridgeSegments.push("I have already captured some details from your previous message.");
         }
@@ -2088,7 +2633,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         try {
             const proposalHistory = [
                 ...session.messages.map((m) => ({ role: m.role, content: m.content })),
-                { role: "user", content: userMessageText }
+                { role: "user", content: userMessageForReasoning || userMessageText }
             ];
             const allQuestionSlugs = new Set(questions.map((q) => q.slug).filter(Boolean));
             const extractedFromConversation = await extractAnswersFromConversation({
@@ -2167,7 +2712,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     // Re-fetch messages for complete history or append manually
     const newHistory = [
         ...session.messages.map(m => ({ role: m.role, content: m.content })),
-        { role: "user", content: userMessageText },
+        { role: "user", content: persistedUserMessageContent },
         { role: "assistant", content: responseContent }
     ];
 
