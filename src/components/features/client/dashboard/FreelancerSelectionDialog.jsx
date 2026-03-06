@@ -96,6 +96,55 @@ const getDisplayInitials = (name = "") => {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 };
 
+const resolveImageUrl = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    const url = value.trim();
+    if (!url || url.startsWith("blob:")) return "";
+    return url;
+  }
+  if (typeof value === "object") {
+    return resolveImageUrl(
+      value.uploadedUrl || value.url || value.src || value.value || "",
+    );
+  }
+  return "";
+};
+
+const resolveFreelancerCoverImage = (freelancer = {}) => {
+  const profileDetails =
+    freelancer?.profileDetails && typeof freelancer.profileDetails === "object"
+      ? freelancer.profileDetails
+      : freelancer?.freelancerProfile?.profileDetails &&
+          typeof freelancer.freelancerProfile.profileDetails === "object"
+        ? freelancer.freelancerProfile.profileDetails
+        : {};
+
+  const identity =
+    profileDetails?.identity && typeof profileDetails.identity === "object"
+      ? profileDetails.identity
+      : {};
+
+  const serviceDetails =
+    profileDetails?.serviceDetails &&
+    typeof profileDetails.serviceDetails === "object"
+      ? profileDetails.serviceDetails
+      : {};
+
+  const serviceCoverImage = Object.values(serviceDetails)
+    .filter((detail) => detail && typeof detail === "object")
+    .map((detail) => resolveImageUrl(detail?.coverImage || detail?.image))
+    .find(Boolean);
+
+  return (
+    resolveImageUrl(freelancer?.coverImage) ||
+    resolveImageUrl(freelancer?.personal?.coverImage) ||
+    resolveImageUrl(identity?.coverImage) ||
+    serviceCoverImage ||
+    ""
+  );
+};
+
 const FreelancerSelectionDialog = ({
   open,
   onOpenChange,
@@ -226,12 +275,15 @@ const FreelancerSelectionDialog = ({
                 const displayName =
                   freelancer.fullName || freelancer.name || "Freelancer";
                 const displayInitials = getDisplayInitials(displayName);
+                const coverImage = resolveFreelancerCoverImage(freelancer);
                 const bannerGradient = generateGradient(
                   freelancer.id || freelancer.name,
                 );
                 const bannerStyle = {
-                  backgroundImage: `radial-gradient(125% 120% at 0% 0%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 45%), radial-gradient(95% 110% at 100% 0%, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0) 50%), conic-gradient(from 220deg at 22% 120%, rgba(255,255,255,0.28) 0deg, rgba(255,255,255,0) 95deg, rgba(255,255,255,0.14) 180deg, rgba(255,255,255,0) 260deg, rgba(255,255,255,0.24) 360deg), linear-gradient(160deg, rgba(255,255,255,0.18), rgba(255,255,255,0.02) 38%, rgba(0,0,0,0.12) 92%), linear-gradient(125deg, rgba(255,255,255,0.12), rgba(255,255,255,0) 42%), ${bannerGradient}`,
-                  backgroundBlendMode: "screen,screen,overlay,soft-light,normal,normal",
+                  backgroundImage: `linear-gradient(140deg, rgba(9,11,16,0.14) 0%, rgba(9,11,16,0.38) 100%), radial-gradient(100% 130% at 0% 0%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 52%), radial-gradient(75% 100% at 100% 0%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 55%), ${bannerGradient}`,
+                  backgroundBlendMode: "normal,screen,screen,normal",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
                 };
                 const matchScore = Number.isFinite(Number(freelancer.matchScore))
                   ? Math.round(Number(freelancer.matchScore))
@@ -265,85 +317,25 @@ const FreelancerSelectionDialog = ({
                   >
                     <div
                       className="relative isolate h-28 min-h-28 shrink-0 overflow-visible rounded-xl border border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.36),0_16px_34px_rgba(0,0,0,0.34)]"
-                      style={bannerStyle}
+                      style={coverImage ? undefined : bannerStyle}
                     >
-                      <div className="absolute inset-0 overflow-hidden rounded-xl">
-                        <svg
-                          className="absolute inset-0 h-full w-full opacity-55"
-                          viewBox="0 0 100 36"
-                          preserveAspectRatio="none"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M0 25 C14 13, 26 34, 41 22 C55 12, 68 30, 82 20 C90 15, 96 18, 100 12"
-                            fill="none"
-                            stroke="rgba(255,255,255,0.3)"
-                            strokeWidth="0.6"
-                            strokeLinecap="round"
+                      {coverImage ? (
+                        <div className="absolute inset-0 overflow-hidden rounded-xl">
+                          <img
+                            src={coverImage}
+                            alt={`${displayName} cover image`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
                           />
-                          <path
-                            d="M0 31 C17 22, 30 37, 46 27 C63 17, 78 35, 100 26"
-                            fill="none"
-                            stroke="rgba(255,255,255,0.22)"
-                            strokeWidth="0.5"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M8 6 L36 6"
-                            fill="none"
-                            stroke="rgba(255,255,255,0.34)"
-                            strokeWidth="0.4"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M46 8 L74 8"
-                            fill="none"
-                            stroke="rgba(255,255,255,0.28)"
-                            strokeWidth="0.35"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <div className="absolute -right-12 -top-12 h-28 w-28 rounded-full bg-white/30 blur-2xl transition-transform duration-700 group-hover:scale-110 group-hover:rotate-6" />
-                        <div className="absolute -left-16 -bottom-6 h-24 w-44 rotate-[-14deg] rounded-full bg-black/25 blur-xl transition-transform duration-700 group-hover:-translate-y-1" />
-                        <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-fuchsia-200/20 blur-2xl mix-blend-screen" />
-                        <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[conic-gradient(from_90deg,rgba(255,255,255,0.56),rgba(255,255,255,0.04),rgba(255,255,255,0.52))] opacity-35 blur-xl animate-[spin_16s_linear_infinite]" />
-                        <div className="absolute -left-20 top-4 h-28 w-28 rounded-full border border-white/15 bg-white/[0.03] blur-[1px]" />
-                        <div className="absolute left-[44%] top-[-34px] h-28 w-28 rounded-full border border-white/20 bg-white/[0.06]" />
-                        <div className="absolute left-[63%] top-0 h-full w-px bg-gradient-to-b from-white/55 via-white/15 to-transparent opacity-80" />
-                        <div className="absolute left-[36%] top-0 h-full w-px bg-gradient-to-b from-white/35 via-white/10 to-transparent opacity-70" />
-
-                        <div className="absolute left-3 top-2 h-9 w-9 rounded-full border border-white/25" />
-                        <div className="absolute left-4 top-3 h-7 w-7 rounded-full border border-white/55 bg-white/10 shadow-[0_0_22px_rgba(255,255,255,0.34)]" />
-                        <div className="absolute left-[21px] top-[20px] h-1.5 w-1.5 rounded-full bg-white/90 shadow-[0_0_12px_rgba(255,255,255,0.8)]" />
-
-                        <div className="absolute right-8 top-7 h-11 w-11 rotate-12 rounded-[14px] border border-white/40 bg-white/10 backdrop-blur-sm transition-transform duration-700 group-hover:translate-y-[-2px] group-hover:rotate-[18deg]" />
-                        <div className="absolute right-20 top-4 h-6 w-6 rotate-[18deg] rounded-[8px] border border-white/35 bg-white/[0.08] backdrop-blur-sm transition-transform duration-700 group-hover:translate-y-[2px] group-hover:rotate-[28deg]" />
-                        <div className="absolute right-20 top-4 h-1.5 w-1.5 rounded-full bg-white/90 shadow-[0_0_14px_rgba(255,255,255,0.8)] animate-pulse" />
-                        <div className="absolute left-[38%] top-3 h-9 w-9 rotate-[22deg] border border-white/30 bg-white/[0.09] [clip-path:polygon(25%_5%,75%_5%,100%_50%,75%_95%,25%_95%,0_50%)] transition-transform duration-700 group-hover:rotate-[32deg]" />
-                        <div className="absolute left-[46%] top-[18px] h-6 w-6 rotate-45 border border-white/30 bg-white/[0.05] transition-transform duration-700 group-hover:-translate-y-0.5" />
-                        <div className="absolute left-[52%] top-[10px] h-[2px] w-7 rounded-full bg-gradient-to-r from-transparent via-white/75 to-transparent" />
-                        <div className="absolute left-[56%] top-[11px] h-7 w-[2px] rounded-full bg-gradient-to-b from-white/70 via-white/25 to-transparent" />
-
-                        <div className="absolute right-28 bottom-3 h-8 w-8 rotate-[22deg] border border-white/28 bg-white/[0.08] [clip-path:polygon(50%_0,100%_100%,0_100%)] backdrop-blur-sm transition-transform duration-700 group-hover:translate-y-[-2px]" />
-                        <div className="absolute right-[34%] bottom-2 h-8 w-8 rotate-[14deg] border border-white/25 bg-white/[0.06] [clip-path:polygon(50%_0,100%_50%,50%_100%,0_50%)] transition-transform duration-700 group-hover:translate-y-[-1px] group-hover:rotate-[24deg]" />
-                        <div className="absolute right-[41%] bottom-[18px] h-5 w-5 rounded-full border border-white/30 bg-white/[0.07]" />
-                        <div className="absolute left-16 bottom-3 h-[2px] w-24 rounded-full bg-gradient-to-r from-white/75 via-white/25 to-transparent" />
-                        <div className="absolute left-16 bottom-5 h-[2px] w-16 rounded-full bg-gradient-to-r from-white/55 via-white/20 to-transparent" />
-                        <div className="absolute left-[42%] top-4 h-px w-14 -rotate-12 bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-                        <div className="absolute left-[34%] top-[58%] h-[2px] w-20 -rotate-3 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-                        <div className="absolute left-[35%] top-[62%] h-[2px] w-12 bg-gradient-to-r from-white/45 via-white/18 to-transparent" />
-                        <div className="absolute right-5 top-2 h-[2px] w-8 bg-gradient-to-r from-white/0 via-white/65 to-white/0" />
-                        <div className="absolute right-2 top-3 h-[2px] w-5 bg-gradient-to-r from-transparent via-white/55 to-transparent" />
-
-                        <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(rgba(255,255,255,0.52)_1px,transparent_1px)] [background-size:13px_13px] [mask-image:linear-gradient(to_bottom,white_20%,transparent_84%)]" />
-                        <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_center,rgba(255,255,255,0.9)_0.7px,transparent_0.7px)] [background-size:20px_20px] [mask-image:linear-gradient(to_right,transparent_0%,white_24%,white_74%,transparent_100%)]" />
-                        <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(120deg,rgba(255,255,255,0.22)_0,rgba(255,255,255,0)_26%),linear-gradient(-120deg,rgba(255,255,255,0.16)_0,rgba(255,255,255,0)_30%)]" />
-                        <div className="absolute inset-0 bg-[linear-gradient(112deg,transparent_10%,rgba(255,255,255,0.2)_44%,transparent_70%)] opacity-80 mix-blend-screen animate-[pulse_3.8s_ease-in-out_infinite]" />
-                        <div className="absolute -left-4 top-1 h-7 w-24 rounded-full border border-white/30 bg-white/[0.07] blur-[0.6px]" />
-                        <div className="absolute right-10 top-2 h-9 w-20 rounded-full border border-white/24 bg-white/[0.05] blur-[0.8px]" />
-                        <div className="absolute -left-1/4 top-0 h-full w-[52%] -skew-x-12 bg-gradient-to-r from-transparent via-white/18 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-hover:animate-[pulse_1.6s_ease-in-out_infinite]" />
-                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 via-black/16 to-transparent" />
-                      </div>
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/24 to-black/52" />
+                          <div className="absolute inset-0 bg-[radial-gradient(120%_96%_at_0%_0%,rgba(255,255,255,0.28),transparent_48%),radial-gradient(100%_90%_at_100%_0%,rgba(255,255,255,0.18),transparent_50%)]" />
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 overflow-hidden rounded-xl">
+                          <div className="absolute inset-0 bg-[radial-gradient(90%_120%_at_100%_0%,rgba(255,255,255,0.2),transparent_55%)]" />
+                          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/38 via-black/12 to-transparent" />
+                        </div>
+                      )}
                       {isBestMatch && (
                         <div className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full border border-amber-200/70 bg-[linear-gradient(120deg,rgba(17,24,39,0.82),rgba(88,28,135,0.56))] px-2.5 py-0.5 text-[10px] font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.34),0_0_22px_rgba(251,191,36,0.38)] backdrop-blur-sm">
                           <Star className="h-2.5 w-2.5 fill-current text-amber-300" />

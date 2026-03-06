@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -14,40 +14,42 @@ import {
   NavbarLogo,
   NavbarButton,
 } from "@/components/ui/resizable-navbar-fixed";
-import { useTheme } from "@/components/providers/theme-provider";
-import Sun from "lucide-react/dist/esm/icons/sun";
-import Moon from "lucide-react/dist/esm/icons/moon";
+import { useAuth } from "@/shared/context/AuthContext";
 
 const navItems = [
   { name: "Home", link: "/" },
   { name: "Marketplace", link: "/marketplace" },
-  { name: "About", link: "/about" },
   { name: "Service", link: "/service" },
   { name: "Contact", link: "/contact" },
 ];
 
-const ThemeButton = ({ isDark, onClick, visible, isHome }) => {
-  const forceWhite = isHome && isDark && !visible;
-
-  return (
-    <div
-      onClick={onClick}
-      className={`flex items-center cursor-pointer transition-transform duration-1000 ${isDark ? "rotate-180" : "rotate-0"
-        }`}
-    >
-      {isDark ? (
-        <Sun className="h-6 w-6 text-yellow-500" />
-      ) : (
-        <Moon
-          className={cn("h-6 w-6", forceWhite ? "text-white" : "text-gray-900")}
-        />
-      )}
-    </div>
-  );
+const getDashboardPath = (role) => {
+  const normalizedRole = String(role || "").toUpperCase();
+  if (normalizedRole === "ADMIN") return "/admin";
+  if (normalizedRole === "PROJECT_MANAGER") return "/project-manager";
+  if (normalizedRole === "FREELANCER") return "/freelancer";
+  return "/client";
 };
 
-const AuthButtons = ({ visible, isHome, isDark }) => {
+const AuthButtons = ({ visible, isHome, isDark, isAuthenticated, dashboardPath }) => {
   const forceWhite = isHome && isDark && !visible;
+
+  if (isAuthenticated) {
+    return (
+      <div className="flex items-center gap-2">
+        <NavbarButton
+          as={Link}
+          to={dashboardPath}
+          className={cn(
+            forceWhite ? "text-white border-white/20 hover:bg-white/10" : ""
+          )}
+        >
+          Dashboard
+        </NavbarButton>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2">
       <NavbarButton
@@ -71,16 +73,12 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const isHome = location.pathname === "/";
+  const { user, isAuthenticated } = useAuth();
+  const dashboardPath = useMemo(() => getDashboardPath(user?.role), [user?.role]);
 
   const toggleMobileMenu = () => setMobileOpen((prev) => !prev);
   const closeMobileMenu = () => setMobileOpen(false);
-
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
-  const handleThemeToggle = () => {
-    // Optional: Keep toggle logic if needed globally, but UI reflects dark
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+  const isDark = true;
 
   return (
     <ResizableNavbar isHome={isHome} isDark={isDark}>
@@ -93,13 +91,12 @@ const Navbar = () => {
           isHome={isHome}
         />
         <div className="flex shrink-0 items-center gap-3">
-          <ThemeButton
-            isDark={isDark}
-            onClick={handleThemeToggle}
-            visible={true}
+          <AuthButtons
             isHome={isHome}
+            isDark={isDark}
+            isAuthenticated={isAuthenticated}
+            dashboardPath={dashboardPath}
           />
-          <AuthButtons isHome={isHome} isDark={isDark} />
         </div>
       </NavBody>
 
@@ -121,17 +118,30 @@ const Navbar = () => {
               {item.name}
             </Link>
           ))}
-          <NavbarButton
-            as={Link}
-            to="/login"
-            variant="outline"
-            className="w-full mt-4"
-          >
-            Log In
-          </NavbarButton>
-          <NavbarButton as={Link} to="/get-started" className="w-full">
-            Sign Up
-          </NavbarButton>
+          {isAuthenticated ? (
+            <NavbarButton
+              as={Link}
+              to={dashboardPath}
+              className="w-full mt-4"
+              onClick={closeMobileMenu}
+            >
+              Dashboard
+            </NavbarButton>
+          ) : (
+            <>
+              <NavbarButton
+                as={Link}
+                to="/login"
+                variant="outline"
+                className="w-full mt-4"
+              >
+                Log In
+              </NavbarButton>
+              <NavbarButton as={Link} to="/get-started" className="w-full">
+                Sign Up
+              </NavbarButton>
+            </>
+          )}
         </MobileNavMenu>
       </MobileNav>
     </ResizableNavbar>

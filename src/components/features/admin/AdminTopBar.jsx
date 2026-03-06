@@ -2,16 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
-import BellRing from "lucide-react/dist/esm/icons/bell-ring";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import PanelLeftClose from "lucide-react/dist/esm/icons/panel-left-close";
 import PanelLeftOpen from "lucide-react/dist/esm/icons/panel-left-open";
-import Sun from "lucide-react/dist/esm/icons/sun";
-import Moon from "lucide-react/dist/esm/icons/moon";
 
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
-import { useTheme } from "@/components/providers/theme-provider";
 import { getSession } from "@/shared/lib/auth-storage";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import {
@@ -39,9 +35,8 @@ const formatTimeAgo = (dateString) => {
 
 export const AdminTopBar = ({ label, interactive = true }) => {
   const { state, toggleSidebar } = useSidebar();
-  const { theme, setTheme } = useTheme();
   const [sessionUser, setSessionUser] = useState(null);
-  const { notifications, unreadCount, markAsRead, markAllAsRead, pushEnabled, requestPushPermission } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   useEffect(() => {
     const session = getSession();
@@ -57,13 +52,6 @@ export const AdminTopBar = ({ label, interactive = true }) => {
 
   const sidebarClosed = state === "collapsed";
   const SidebarToggleIcon = sidebarClosed ? PanelLeftOpen : PanelLeftClose;
-  const isDarkMode = theme === "dark";
-  const ThemeIcon = isDarkMode ? Sun : Moon;
-
-  const toggleTheme = () => {
-    if (!interactive) return;
-    setTheme(isDarkMode ? "light" : "dark");
-  };
 
   const handleSidebarToggle = () => {
     if (!interactive) return;
@@ -72,10 +60,6 @@ export const AdminTopBar = ({ label, interactive = true }) => {
 
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
-  };
-
-  const handleEnablePush = async () => {
-    await requestPushPermission();
   };
 
   return (
@@ -155,16 +139,6 @@ export const AdminTopBar = ({ label, interactive = true }) => {
           </PopoverContent>
         </Popover>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-60"
-          onClick={toggleTheme}
-          disabled={!interactive}
-        >
-          <ThemeIcon className="size-4" />
-        </Button>
       </div>
     </div>
   );

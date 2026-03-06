@@ -76,14 +76,6 @@ import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
 import { cn } from "@/shared/lib/utils";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -96,6 +88,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+const DEFAULT_MEETING_TIME_SLOTS = [
+  "09:00 AM",
+  "10:00 AM",
+  "11:00 AM",
+  "12:00 PM",
+  "01:00 PM",
+  "02:00 PM",
+  "03:00 PM",
+  "04:00 PM",
+  "05:00 PM",
+  "06:00 PM",
+];
+
 const ProjectDetailSkeleton = () => (
   <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
     <div className="w-full max-w-full mx-auto space-y-6">
@@ -418,6 +424,7 @@ const FreelancerProjectDetailContent = () => {
   });
   const fileInputRef = useRef(null);
   const milestoneFileInputRef = useRef(null);
+  const reportDialogContentRef = useRef(null);
   const [milestoneDraft, setMilestoneDraft] = useState({
     title: "",
     githubUrl: "",
@@ -434,35 +441,39 @@ const FreelancerProjectDetailContent = () => {
 
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const [availabilityManager, setAvailabilityManager] = useState(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [serverAvailableSlots, setServerAvailableSlots] = useState([]);
 
   useEffect(() => {
-    if (!date || !authFetch) return;
+    if (!date || !authFetch) {
+      setServerAvailableSlots([]);
+      return;
+    }
 
     const fetchAvailability = async () => {
       try {
-        console.log("Fetching availability for date:", date.toISOString());
-        const res = await authFetch(
-          `/disputes/availability?date=${date.toISOString()}`
-        );
-        console.log("Availability response status:", res.status);
+        const query = new URLSearchParams({
+          date: format(date, "yyyy-MM-dd"),
+          projectId: project?.id || projectId,
+        }).toString();
+        const res = await authFetch(`/disputes/availability?${query}`);
         if (res.ok) {
           const payload = await res.json();
-          console.log("Availability payload:", payload);
-          setServerAvailableSlots(payload.data || []);
+          setServerAvailableSlots(Array.isArray(payload.data) ? payload.data : []);
+          setAvailabilityManager(payload.manager || null);
         } else {
-          console.error("Availability fetch failed with status:", res.status);
-          const errorText = await res.text();
-          console.error("Error response:", errorText);
+          setServerAvailableSlots([]);
         }
       } catch (e) {
         console.error("Failed to fetch availability", e);
+        setServerAvailableSlots([]);
       }
     };
     fetchAvailability();
-  }, [date, authFetch]);
+  }, [date, authFetch, project?.id, projectId]);
 
   // Filter time slots based on selected date
   // Filter time slots based on selected date
@@ -489,6 +500,41 @@ const FreelancerProjectDetailContent = () => {
 
     return slots;
   }, [date, serverAvailableSlots]);
+
+  const effectiveTimeSlots = useMemo(() => {
+    if (!date) return [];
+    return availableTimeSlots.length > 0
+      ? availableTimeSlots
+      : DEFAULT_MEETING_TIME_SLOTS;
+  }, [date, availableTimeSlots]);
+
+  useEffect(() => {
+    if (time && !effectiveTimeSlots.includes(time)) {
+      setTime("");
+    }
+  }, [effectiveTimeSlots, time]);
+
+  useEffect(() => {
+    if (!reportOpen) {
+      setDatePopoverOpen(false);
+    }
+  }, [reportOpen]);
+
+  const activeProjectManager = useMemo(() => {
+    if (
+      project?.manager?.role === "PROJECT_MANAGER" &&
+      project?.manager?.status === "ACTIVE"
+    ) {
+      return project.manager;
+    }
+    if (
+      availabilityManager?.role === "PROJECT_MANAGER" &&
+      availabilityManager?.status === "ACTIVE"
+    ) {
+      return availabilityManager;
+    }
+    return null;
+  }, [project?.manager, availabilityManager]);
 
   // Handle reporting a dispute (same logic as client)
   const renderProjectDescription = (options = {}) => {
@@ -752,6 +798,8 @@ const FreelancerProjectDetailContent = () => {
 
     let fullDescription = issueText;
     let meetingDateIso = undefined;
+    let meetingHour = undefined;
+    const meetingDateLocal = date ? format(date, "yyyy-MM-dd") : undefined;
 
     if (date) {
       fullDescription += `\n\nDate of Issue: ${format(date, "PPP")}`;
@@ -764,9 +812,11 @@ const FreelancerProjectDetailContent = () => {
         let [hours, minutes] = timeStr.split(":").map(Number);
         if (period === "PM" && hours !== 12) hours += 12;
         if (period === "AM" && hours === 12) hours = 0;
+        meetingHour = hours;
         combined.setHours(hours, minutes, 0, 0);
       } else {
         combined.setHours(9, 0, 0, 0);
+        meetingHour = 9;
       }
       meetingDateIso = combined.toISOString();
     }
@@ -780,6 +830,8 @@ const FreelancerProjectDetailContent = () => {
           description: fullDescription,
           projectId: project?.id || projectId,
           meetingDate: meetingDateIso,
+          meetingDateLocal,
+          meetingHour,
         }),
       });
       if (res.ok) {
@@ -790,6 +842,7 @@ const FreelancerProjectDetailContent = () => {
         setIssueText("");
         setDate(undefined);
         setTime("");
+        setDatePopoverOpen(false);
       } else {
         toast.error("Failed to raise dispute");
       }
@@ -1529,6 +1582,13 @@ const FreelancerProjectDetailContent = () => {
                   ? "Previewing layout with sample data."
                   : "Track project progress and deliverables in one place."}
               </p>
+              {!isLoading && (
+                <p className="text-xs text-muted-foreground">
+                  {activeProjectManager
+                    ? `Project Catalyst: ${activeProjectManager.fullName}`
+                    : "Project Catalyst: Not assigned yet"}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Popover>
@@ -2600,7 +2660,10 @@ const FreelancerProjectDetailContent = () => {
         </div>
       </div>
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          ref={reportDialogContentRef}
+          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>Contact your Project Catalyst</DialogTitle>
             <DialogDescription>
@@ -2609,12 +2672,12 @@ const FreelancerProjectDetailContent = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {project?.manager && (
+            {activeProjectManager && (
               <div className="bg-muted/50 p-3 rounded-md mb-2 border flex items-center gap-3">
                 <Avatar className="h-10 w-10 border bg-background">
                   <AvatarImage
-                    src={project.manager.avatar}
-                    alt={project.manager.fullName}
+                    src={activeProjectManager.avatar}
+                    alt={activeProjectManager.fullName}
                   />
                   <AvatarFallback className="bg-primary/10 text-primary">
                     PM
@@ -2622,19 +2685,24 @@ const FreelancerProjectDetailContent = () => {
                 </Avatar>
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-foreground mb-1">
-                    {project.manager.fullName}
+                    {activeProjectManager.fullName}
                   </span>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Mail className="w-3 h-3" />
-                    <span>{project.manager.email}</span>
+                    <span>{activeProjectManager.email}</span>
                   </div>
-                  {project.manager.phone && (
+                  {activeProjectManager.phone && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                       <Phone className="w-3 h-3" />
-                      <span>{project.manager.phone}</span>
+                      <span>{activeProjectManager.phone}</span>
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+            {!activeProjectManager && (
+              <div className="rounded-md border border-dashed border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                No active project manager is assigned to this project yet.
               </div>
             )}
             <div className="flex flex-col gap-2">
@@ -2650,56 +2718,83 @@ const FreelancerProjectDetailContent = () => {
               <label className="text-sm font-medium">
                 Project Manager Availability
               </label>
-              <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Popover
+                    open={datePopoverOpen}
+                    onOpenChange={setDatePopoverOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          "w-[240px] justify-start text-left font-normal",
+                          !date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      container={reportDialogContentRef.current ?? undefined}
+                      align="start"
+                      className="w-auto p-0 z-[70]"
+                    >
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={(selectedDate) => {
+                          setDate(selectedDate);
+                          setTime("");
+                          if (selectedDate) {
+                            setDatePopoverOpen(false);
+                          }
+                        }}
+                        initialFocus
+                        disabled={[
+                          { dayOfWeek: [0] },
+                          { before: new Date(new Date().setHours(0, 0, 0, 0)) },
+                        ]}
+                        className="rounded-md"
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <div className="w-[140px]">
+                    <select
+                      value={time}
+                      onChange={(event) => setTime(event.target.value)}
+                      disabled={!date}
                       className={cn(
-                        "w-[240px] justify-start text-left font-normal",
-                        !date && "text-muted-foreground"
+                        "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm",
+                        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none",
+                        "disabled:cursor-not-allowed disabled:opacity-50",
+                        !time && "text-muted-foreground"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      initialFocus
-                      disabled={[
-                        { dayOfWeek: [0] }, // Disable Sundays only (Enable Saturday)
-                        { before: new Date() }, // Disable past dates
-                      ]}
-                      className="rounded-md border"
-                    />
-                  </PopoverContent>
-                </Popover>
-                <div className="flex items-center gap-2">
-                  <Select value={time} onValueChange={setTime}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {availableTimeSlots.length > 0 ? (
-                          availableTimeSlots.map((slot) => (
-                            <SelectItem key={slot} value={slot}>
-                              {slot}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <div className="p-2 text-xs text-muted-foreground text-center">
-                            No slots available
-                          </div>
-                        )}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                      <option value="">
+                        {date
+                          ? effectiveTimeSlots.length > 0
+                            ? "Select time"
+                            : "No slots"
+                          : "Select date first"}
+                      </option>
+                      {effectiveTimeSlots.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+                {date && availableTimeSlots.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Manager has no configured slots for this date. Using default
+                    working-hour options.
+                  </p>
+                )}
               </div>
             </div>
           </div>

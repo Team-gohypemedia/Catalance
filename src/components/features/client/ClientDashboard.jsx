@@ -56,6 +56,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 const MIN_FREELANCER_MATCH_SCORE = 50;
+const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);
+const CLOSED_PROJECT_STATUSES = new Set(["COMPLETED", "PAUSED"]);
 
 const getProposalStorageKeys = (userId) => {
   const suffix = userId ? `:${userId}` : "";
@@ -615,6 +617,7 @@ const hasFreelancerRole = (user = {}) => {
 
 const shouldHydrateProjectProposal = (project = {}) => {
   const status = String(project?.status || "").toUpperCase();
+  if (CLOSED_PROJECT_STATUSES.has(status)) return false;
   const hasProposals =
     Array.isArray(project?.proposals) && project.proposals.length > 0;
   return status === "DRAFT" || hasProposals;
@@ -971,7 +974,10 @@ const ClientDashboardContent = () => {
       const currentProject = projects.find((project) => project?.id === sourceProjectId);
       (currentProject?.proposals || []).forEach((proposal) => {
         const status = String(proposal?.status || "").toUpperCase();
-        if (proposal?.freelancerId && status === "PENDING") {
+        if (
+          proposal?.freelancerId &&
+          PROPOSAL_BLOCKED_STATUSES.has(status)
+        ) {
           alreadyInvitedIds.add(proposal.freelancerId);
         }
       });
@@ -1272,6 +1278,33 @@ const ClientDashboardContent = () => {
   useEffect(() => {
     if (!Array.isArray(projects) || projects.length === 0) return;
 
+    const projectStatusById = new Map(
+      projects
+        .filter((project) => project?.id)
+        .map((project) => [
+          String(project.id),
+          String(project.status || "").toUpperCase(),
+        ]),
+    );
+
+    const withoutClosedProjects = savedProposals.filter((proposal) => {
+      const linkedProjectId = proposal?.syncedProjectId || proposal?.projectId;
+      if (!linkedProjectId) return true;
+      const linkedStatus = projectStatusById.get(String(linkedProjectId));
+      if (!linkedStatus) return true;
+      return !CLOSED_PROJECT_STATUSES.has(linkedStatus);
+    });
+
+    if (withoutClosedProjects.length !== savedProposals.length) {
+      const preferredActiveId = withoutClosedProjects.some(
+        (proposal) => proposal.id === activeProposalId,
+      )
+        ? activeProposalId
+        : withoutClosedProjects[0]?.id || null;
+      persistSavedProposalState(withoutClosedProjects, preferredActiveId);
+      return;
+    }
+
     const projectDerivedProposals = projects
       .filter((project) => shouldHydrateProjectProposal(project))
       .map((project) => mapProjectToSavedProposal(project));
@@ -1450,26 +1483,91 @@ const ClientDashboardContent = () => {
     try {
       setIsSendingProposal(true);
 
-      // Create project from proposal
-      const projectRes = await authFetch("/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: resolveProposalTitle(savedProposal),
-          description: savedProposal.summary || savedProposal.content || "",
-          budget:
-            parseInt(
-              String(savedProposal.budget || "0").replace(/[^0-9]/g, ""),
-            ) || 0,
-          timeline: savedProposal.timeline || "1 month",
-          status: "OPEN",
-        }),
-      });
+      const normalizedBudget =
+        parseInt(String(savedProposal.budget || "0").replace(/[^0-9]/g, "")) ||
+        0;
+      const sourceProjectId =
+        savedProposal?.syncedProjectId || savedProposal?.projectId || null;
+      let project =
+        sourceProjectId && Array.isArray(projects)
+          ? projects.find(
+              (entry) => String(entry?.id) === String(sourceProjectId),
+            )
+          : null;
 
-      if (!projectRes.ok) throw new Error("Failed to create project");
-      const projectData = await projectRes.json();
-      const project = projectData.data.project;
-      if (project?.id && savedProposal?.id) {
+      if (project) {
+        const projectStatus = String(project.status || "").toUpperCase();
+        if (CLOSED_PROJECT_STATUSES.has(projectStatus)) {
+          throw new Error("This project is already completed or paused.");
+        }
+
+        const hasExistingProposalForFreelancer = Array.isArray(project.proposals)
+          ? project.proposals.some((proposal) => {
+              const proposalStatus = String(proposal?.status || "").toUpperCase();
+              return (
+                String(proposal?.freelancerId) === String(freelancer.id) &&
+                PROPOSAL_BLOCKED_STATUSES.has(proposalStatus)
+              );
+            })
+          : false;
+
+        if (hasExistingProposalForFreelancer) {
+          throw new Error("You already sent this proposal to this freelancer.");
+        }
+
+        if (projectStatus === "DRAFT") {
+          const publishRes = await authFetch(`/projects/${project.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: resolveProposalTitle(savedProposal),
+              description: savedProposal.summary || savedProposal.content || "",
+              budget: normalizedBudget,
+              timeline: savedProposal.timeline || "1 month",
+              status: "OPEN",
+            }),
+          });
+
+          if (!publishRes.ok) {
+            throw new Error("Failed to publish project before sending proposal.");
+          }
+
+          const publishPayload = await publishRes.json().catch(() => null);
+          project = publishPayload?.data
+            ? { ...project, ...publishPayload.data }
+            : {
+                ...project,
+                title: resolveProposalTitle(savedProposal),
+                description: savedProposal.summary || savedProposal.content || "",
+                budget: normalizedBudget,
+                timeline: savedProposal.timeline || "1 month",
+                status: "OPEN",
+              };
+        }
+      } else {
+        // Create a project only when this proposal has no synced project yet.
+        const projectRes = await authFetch("/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: resolveProposalTitle(savedProposal),
+            description: savedProposal.summary || savedProposal.content || "",
+            budget: normalizedBudget,
+            timeline: savedProposal.timeline || "1 month",
+            status: "OPEN",
+          }),
+        });
+
+        if (!projectRes.ok) throw new Error("Failed to create project");
+        const projectData = await projectRes.json().catch(() => null);
+        project = projectData?.data?.project || null;
+      }
+
+      if (!project?.id) {
+        throw new Error("Could not resolve project for this proposal.");
+      }
+
+      if (savedProposal?.id) {
         const now = new Date().toISOString();
         const updated = savedProposals.map((proposal) =>
           proposal.id === savedProposal.id
@@ -1491,17 +1589,21 @@ const ClientDashboardContent = () => {
         body: JSON.stringify({
           projectId: project.id,
           freelancerId: freelancer.id,
-          amount:
-            parseInt(
-              String(savedProposal.budget || "0").replace(/[^0-9]/g, ""),
-            ) || 0,
+          amount: normalizedBudget,
           coverLetter: savedProposal.summary || savedProposal.content || "",
         }),
       });
 
-      if (!proposalRes.ok) throw new Error("Failed to send proposal");
+      const proposalPayload = await proposalRes.json().catch(() => null);
+      if (!proposalRes.ok) {
+        throw new Error(proposalPayload?.message || "Failed to send proposal");
+      }
 
-      toast.success(`Proposal sent to ${freelancer.fullName || "freelancer"}!`);
+      toast.success(
+        proposalRes.status === 200
+          ? `Proposal resent to ${freelancer.fullName || "freelancer"}!`
+          : `Proposal sent to ${freelancer.fullName || "freelancer"}!`,
+      );
 
       // Refresh projects so the freelancer is immediately hidden from the list
       await loadProjects();
@@ -1513,7 +1615,7 @@ const ClientDashboardContent = () => {
       setSelectedFreelancer(null);
     } catch (error) {
       console.error("Failed to send proposal:", error);
-      toast.error("Failed to send proposal. Please try again.");
+      toast.error(error?.message || "Failed to send proposal. Please try again.");
     } finally {
       setIsSendingProposal(false);
     }

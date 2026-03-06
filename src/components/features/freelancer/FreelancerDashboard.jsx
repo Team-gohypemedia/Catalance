@@ -24,6 +24,393 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import { consumeFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
 import { Badge } from "@/components/ui/badge";
+import {
+  toUniqueSkillNames,
+  resolveAvatarUrl,
+  normalizePresenceLink,
+  hasTextValue,
+  collectOnboardingPlatformLinks,
+  isPortfolioLikeKey,
+  toUniqueLabels,
+  normalizeWorkExperienceEntries,
+  collectEducationEntriesFromProfileDetails,
+} from "@/components/features/freelancer/profile/freelancerProfileUtils";
+
+const buildFreelancerProfileCompletion = (payload = {}) => {
+  const personal =
+    payload?.personal && typeof payload.personal === "object"
+      ? payload.personal
+      : {};
+  const portfolio =
+    payload?.portfolio && typeof payload.portfolio === "object"
+      ? payload.portfolio
+      : {};
+  const profileDetails =
+    payload?.profileDetails && typeof payload.profileDetails === "object"
+      ? payload.profileDetails
+      : {};
+  const onboardingIdentity =
+    profileDetails?.identity && typeof profileDetails.identity === "object"
+      ? profileDetails.identity
+      : {};
+  const services = Array.isArray(payload?.services) ? payload.services : [];
+  const portfolioProjects = Array.isArray(payload?.portfolioProjects)
+    ? payload.portfolioProjects
+    : [];
+  const onboardingServices = Array.from(
+    new Set([
+      ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
+      ...(Array.isArray(services) ? services : []),
+    ])
+  )
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const onboardingGlobalIndustry = toUniqueLabels([
+    ...(Array.isArray(profileDetails?.globalIndustryFocus)
+      ? profileDetails.globalIndustryFocus
+      : []),
+    profileDetails?.globalIndustryOther || "",
+  ]);
+  const onboardingAvailability =
+    profileDetails?.availability && typeof profileDetails.availability === "object"
+      ? profileDetails.availability
+      : {};
+  const onboardingServiceDetailMap =
+    profileDetails?.serviceDetails &&
+    typeof profileDetails.serviceDetails === "object"
+      ? profileDetails.serviceDetails
+      : {};
+
+  const onboardingPlatformLinks = collectOnboardingPlatformLinks(
+    onboardingServiceDetailMap
+  );
+  const fallbackPortfolioLink =
+    onboardingPlatformLinks.find((entry) => isPortfolioLikeKey(entry.key))?.url ||
+    "";
+  const fallbackLinkedinLink =
+    onboardingPlatformLinks.find((entry) => entry.key.includes("linkedin"))?.url ||
+    "";
+  const fallbackGithubLink =
+    onboardingPlatformLinks.find((entry) => entry.key.includes("github"))?.url ||
+    "";
+  const resolvedPortfolioLink =
+    normalizePresenceLink(portfolio.portfolioUrl) ||
+    normalizePresenceLink(onboardingIdentity?.portfolioUrl) ||
+    fallbackPortfolioLink;
+  const resolvedLinkedinLink =
+    normalizePresenceLink(portfolio.linkedinUrl) ||
+    normalizePresenceLink(onboardingIdentity?.linkedinUrl) ||
+    fallbackLinkedinLink;
+  const resolvedGithubLink =
+    normalizePresenceLink(portfolio.githubUrl) || fallbackGithubLink;
+  const resolvedResumeLink = normalizePresenceLink(portfolio.resume);
+
+  const onboardingServiceEntries = Array.from(
+    new Set([...onboardingServices, ...Object.keys(onboardingServiceDetailMap)])
+  )
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .map((serviceKey) => ({
+      serviceKey,
+      detail: onboardingServiceDetailMap?.[serviceKey] || {},
+    }));
+
+  const serviceEntriesMissingDescription = onboardingServiceEntries.filter(
+    ({ detail }) =>
+      !hasTextValue(detail?.serviceDescription || detail?.description)
+  ).length;
+  const serviceEntriesMissingCover = onboardingServiceEntries.filter(
+    ({ detail }) => !resolveAvatarUrl(detail?.coverImage)
+  ).length;
+  const serviceEntriesWithAnyProfileData = onboardingServiceEntries.filter(
+    ({ detail }) => {
+      const description = String(
+        detail?.serviceDescription || detail?.description || ""
+      ).trim();
+      const coverImage = resolveAvatarUrl(detail?.coverImage);
+      return Boolean(description || coverImage);
+    }
+  ).length;
+  const serviceProfileCoverage = onboardingServiceEntries.length
+    ? serviceEntriesWithAnyProfileData / onboardingServiceEntries.length
+    : 0;
+
+  const uniqueSkillCount = toUniqueSkillNames(
+    (Array.isArray(payload?.skills) ? payload.skills : []).map(
+      (entry) => entry?.name || entry
+    )
+  ).length;
+  const missingSkillCount = Math.max(0, 5 - uniqueSkillCount);
+  const skillsCoverage = Math.min(uniqueSkillCount, 5) / 5;
+
+  const profileLinkCandidates = [
+    { label: "Portfolio", value: resolvedPortfolioLink },
+    { label: "LinkedIn", value: resolvedLinkedinLink },
+    { label: "GitHub", value: resolvedGithubLink },
+  ];
+  const availableProfileLinkLabels = profileLinkCandidates
+    .filter((item) => Boolean(item.value))
+    .map((item) => item.label);
+  const missingProfileLinkLabels = profileLinkCandidates
+    .filter((item) => !item.value)
+    .map((item) => item.label);
+  const missingProfileLinkCount = Math.max(0, 2 - availableProfileLinkLabels.length);
+  const linkCoverage = Math.min(availableProfileLinkLabels.length, 2) / 2;
+
+  const normalizedWorkExperience = normalizeWorkExperienceEntries(
+    Array.isArray(payload?.workExperience) ? payload.workExperience : []
+  );
+  const hasWorkExperienceEntries = normalizedWorkExperience.length > 0;
+  const normalizedEducationEntries = collectEducationEntriesFromProfileDetails(
+    profileDetails
+  );
+  const hasEducationEntries = normalizedEducationEntries.some((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    return (
+      hasTextValue(entry.school) ||
+      hasTextValue(entry.degree) ||
+      hasTextValue(entry.field) ||
+      hasTextValue(entry.country) ||
+      hasTextValue(entry.startMonth) ||
+      hasTextValue(entry.startYear) ||
+      hasTextValue(entry.endMonth) ||
+      hasTextValue(entry.endYear) ||
+      hasTextValue(entry.graduationYear) ||
+      hasTextValue(entry.grade) ||
+      hasTextValue(entry.activities)
+    );
+  });
+
+  const availabilityMissingDetails = [];
+  if (!hasTextValue(onboardingAvailability?.hoursPerWeek)) {
+    availabilityMissingDetails.push("weekly hours");
+  }
+  if (!hasTextValue(onboardingAvailability?.startTimeline)) {
+    availabilityMissingDetails.push("start timeline");
+  }
+  const availabilityCoverage = (2 - availabilityMissingDetails.length) / 2;
+
+  const policyMissingDetails = [];
+  if (!profileDetails?.deliveryPolicyAccepted) {
+    policyMissingDetails.push("delivery policy");
+  }
+  if (!profileDetails?.communicationPolicyAccepted) {
+    policyMissingDetails.push("communication policy");
+  }
+  if (!hasTextValue(profileDetails?.acceptInProgressProjects)) {
+    policyMissingDetails.push("in-progress project preference");
+  }
+  const policiesCoverage = (3 - policyMissingDetails.length) / 3;
+
+  const profilePhotoUrl = resolveAvatarUrl(personal.avatar);
+  const profileCoverUrl =
+    resolveAvatarUrl(personal.coverImage) ||
+    resolveAvatarUrl(onboardingIdentity?.coverImage) ||
+    resolveAvatarUrl(profileDetails?.identity?.coverImage);
+  const hasProfilePhoto = Boolean(profilePhotoUrl);
+  const hasProfileCover = Boolean(profileCoverUrl || profilePhotoUrl);
+  const hasProfessionalTitle = hasTextValue(onboardingIdentity?.professionalTitle);
+  const hasProfessionalBio = hasTextValue(
+    profileDetails?.professionalBio || personal?.bio
+  );
+  const hasCountry = hasTextValue(onboardingIdentity?.country);
+  const hasCity = hasTextValue(onboardingIdentity?.city);
+  const hasSelectedServices = onboardingServiceEntries.length > 0;
+  const hasFeaturedProject = portfolioProjects.length > 0;
+  const hasIndustryFocus = onboardingGlobalIndustry.length > 0;
+
+  const profileCompletionCriteria = [
+    { label: "Profile photo", score: hasProfilePhoto ? 1 : 0, weight: 4 },
+    { label: "Profile cover", score: hasProfileCover ? 1 : 0, weight: 4 },
+    {
+      label: "Professional title",
+      score: hasProfessionalTitle ? 1 : 0,
+      weight: 8,
+    },
+    {
+      label: "Professional bio",
+      score: hasProfessionalBio ? 1 : 0,
+      weight: 10,
+    },
+    {
+      label: "Location details",
+      score: hasCountry && hasCity ? 1 : 0,
+      weight: 8,
+    },
+    {
+      label: "Services selected",
+      score: hasSelectedServices ? 1 : 0,
+      weight: 12,
+    },
+    {
+      label: "Service description/cover",
+      score: serviceProfileCoverage,
+      weight: 10,
+    },
+    {
+      label: "Skills and tech stack",
+      score: skillsCoverage,
+      weight: 10,
+    },
+    {
+      label: "Availability setup",
+      score: availabilityCoverage,
+      weight: 8,
+    },
+    { label: "Profile links", score: linkCoverage, weight: 8 },
+    {
+      label: "Featured project",
+      score: hasFeaturedProject ? 1 : 0,
+      weight: 8,
+    },
+    {
+      label: "Resume uploaded",
+      score: resolvedResumeLink ? 1 : 0,
+      weight: 6,
+    },
+    {
+      label: "Work experience",
+      score: hasWorkExperienceEntries ? 1 : 0,
+      weight: 6,
+    },
+    {
+      label: "Education history",
+      score: hasEducationEntries ? 1 : 0,
+      weight: 6,
+    },
+    {
+      label: "Industry focus",
+      score: hasIndustryFocus ? 1 : 0,
+      weight: 5,
+    },
+    { label: "Policies accepted", score: policiesCoverage, weight: 5 },
+  ];
+
+  const totalWeight = profileCompletionCriteria.reduce(
+    (sum, item) => sum + item.weight,
+    0
+  );
+  const totalScore = profileCompletionCriteria.reduce(
+    (sum, item) => sum + item.score * item.weight,
+    0
+  );
+  const percent = Math.round(
+    Math.max(0, Math.min(100, totalWeight > 0 ? (totalScore / totalWeight) * 100 : 0))
+  );
+
+  const completedSections = profileCompletionCriteria.filter(
+    (item) => item.score >= 0.999
+  ).length;
+  const partialSections = profileCompletionCriteria.filter(
+    (item) => item.score > 0 && item.score < 0.999
+  ).length;
+
+  const missingDetails = [];
+  if (!hasProfilePhoto) {
+    missingDetails.push("Upload a clear profile image.");
+  }
+
+  if (!hasProfileCover) {
+    missingDetails.push("Add a cover image to strengthen your profile header.");
+  }
+
+  if (!hasProfessionalTitle) {
+    missingDetails.push("Add your headline or role title.");
+  }
+
+  if (!hasProfessionalBio) {
+    missingDetails.push("Write a short bio that highlights your expertise.");
+  }
+
+  if (!hasCountry || !hasCity) {
+    const missingLocationParts = [];
+    if (!hasCity) missingLocationParts.push("city");
+    if (!hasCountry) missingLocationParts.push("country");
+    missingDetails.push(`Add your ${missingLocationParts.join(" and ")}.`);
+  }
+
+  if (!hasSelectedServices) {
+    missingDetails.push("Select at least one service you offer.");
+  }
+
+  if (hasSelectedServices && serviceProfileCoverage < 1) {
+    const serviceDetailGaps = [];
+    if (serviceEntriesMissingDescription > 0) {
+      serviceDetailGaps.push(
+        `${serviceEntriesMissingDescription} description${serviceEntriesMissingDescription === 1 ? "" : "s"}`
+      );
+    }
+    if (serviceEntriesMissingCover > 0) {
+      serviceDetailGaps.push(
+        `${serviceEntriesMissingCover} cover image${serviceEntriesMissingCover === 1 ? "" : "s"}`
+      );
+    }
+    missingDetails.push(
+      `Complete ${serviceDetailGaps.join(" and ")} across your selected services.`
+    );
+  }
+
+  if (skillsCoverage < 1) {
+    missingDetails.push(
+      missingSkillCount > 0
+        ? `Add ${missingSkillCount} more skill${missingSkillCount === 1 ? "" : "s"} (target: 5).`
+        : "Add a clearer tech stack with up to 5 key skills."
+    );
+  }
+
+  if (availabilityMissingDetails.length > 0) {
+    missingDetails.push(`Add ${availabilityMissingDetails.join(", ")}.`);
+  }
+
+  if (linkCoverage < 1) {
+    const suggestedLinks = missingProfileLinkLabels.slice(0, 2).join(" or ");
+    missingDetails.push(
+      suggestedLinks
+        ? `Add ${missingProfileLinkCount} more link${missingProfileLinkCount === 1 ? "" : "s"} (suggested: ${suggestedLinks}).`
+        : `Add ${missingProfileLinkCount} more profile link${missingProfileLinkCount === 1 ? "" : "s"}.`
+    );
+  }
+
+  if (!hasFeaturedProject) {
+    missingDetails.push("Add at least one project to your portfolio.");
+  }
+
+  if (!resolvedResumeLink) {
+    missingDetails.push("Upload your resume so clients can quickly review your profile.");
+  }
+
+  if (!hasWorkExperienceEntries) {
+    missingDetails.push("Add at least one work experience entry.");
+  }
+
+  if (!hasEducationEntries) {
+    missingDetails.push("Add your education details (school, degree, or year).");
+  }
+
+  if (!hasIndustryFocus) {
+    missingDetails.push("Select your global industry focus.");
+  }
+
+  if (policyMissingDetails.length > 0) {
+    missingDetails.push(`Review and complete: ${policyMissingDetails.join(", ")}.`);
+  }
+
+  let message = "Complete key sections to improve visibility.";
+  if (percent >= 90) {
+    message = "Your profile is client-ready.";
+  } else if (percent >= 70) {
+    message = "Almost there. Finish a few details to boost trust.";
+  }
+
+  return {
+    percent,
+    message,
+    completedSections,
+    partialSections,
+    totalSections: profileCompletionCriteria.length,
+    missingDetails: missingDetails.slice(0, 4),
+  };
+};
 
 export const DashboardContent = ({ _roleOverride }) => {
   const [sessionUser, setSessionUser] = useState(null);
@@ -41,6 +428,15 @@ export const DashboardContent = ({ _roleOverride }) => {
   const [upcomingMeeting, setUpcomingMeeting] = useState(null);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const [profileCompletion, setProfileCompletion] = useState({
+    percent: 0,
+    message: "Loading profile completion...",
+    completedSections: 0,
+    partialSections: 0,
+    totalSections: 0,
+    missingDetails: [],
+    isLoading: true,
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
@@ -90,6 +486,11 @@ export const DashboardContent = ({ _roleOverride }) => {
     forcedRole !== "CLIENT" &&
     isFreelancerRoute &&
     !isOnboardingComplete;
+  const profileCompletionPercent = Math.max(
+    0,
+    Math.min(100, Number(profileCompletion.percent) || 0)
+  );
+  const profileCompletionComplete = profileCompletionPercent >= 90;
 
   useEffect(() => {
     const session = getSession();
@@ -213,9 +614,41 @@ export const DashboardContent = ({ _roleOverride }) => {
       }
     };
 
+    const loadProfileCompletion = async () => {
+      if (!authFetch || !isFreelancerUser) {
+        setProfileCompletion((previous) => ({
+          ...previous,
+          isLoading: false,
+        }));
+        return;
+      }
+
+      try {
+        const response = await authFetch(`/profile?_t=${Date.now()}`, {
+          suppressToast: true,
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch freelancer profile.");
+        }
+        const payload = await response.json().catch(() => null);
+        const completion = buildFreelancerProfileCompletion(payload?.data || {});
+        setProfileCompletion({
+          ...completion,
+          isLoading: false,
+        });
+      } catch (error) {
+        console.error("Failed to load freelancer profile completion", error);
+        setProfileCompletion((previous) => ({
+          ...previous,
+          isLoading: false,
+        }));
+      }
+    };
+
     loadMetrics();
     loadAppointments();
-  }, [authFetch]);
+    loadProfileCompletion();
+  }, [authFetch, isFreelancerUser]);
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -545,6 +978,61 @@ export const DashboardContent = ({ _roleOverride }) => {
                   </div>
                 );
               })()}
+
+              {/* Pending Proposals Widget */}
+              <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-bold text-lg text-foreground">
+                    Profile Completion
+                  </h3>
+                  <span
+                    className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                      profileCompletionComplete
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-primary/15 text-primary"
+                    }`}
+                  >
+                    {profileCompletionPercent}%
+                  </span>
+                </div>
+
+                <div className="mt-4 h-2 rounded-full bg-secondary/80 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      profileCompletionComplete ? "bg-green-500" : "bg-primary"
+                    }`}
+                    style={{ width: `${profileCompletionPercent}%` }}
+                  />
+                </div>
+
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {profileCompletion.message}
+                </p>
+
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {profileCompletion.completedSections}/{profileCompletion.totalSections} sections completed
+                  {profileCompletion.partialSections > 0
+                    ? ` | ${profileCompletion.partialSections} in progress`
+                    : ""}
+                </p>
+
+                {!profileCompletion.isLoading && profileCompletion.missingDetails.length > 0 ? (
+                  <ul className="mt-3 space-y-1.5">
+                    {profileCompletion.missingDetails.slice(0, 2).map((item, index) => (
+                      <li key={`${item}-${index}`} className="text-xs text-muted-foreground">
+                        • {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                <Button
+                  className="mt-4 w-full font-bold"
+                  onClick={() => navigate("/freelancer/profile")}
+                >
+                  {profileCompletionComplete ? "View Profile" : "Complete Profile"}
+                </Button>
+              </div>
 
               {/* Pending Proposals Widget */}
               <div className="bg-primary/5 dark:bg-card rounded-xl p-8 border border-primary/10 dark:border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] relative overflow-hidden">

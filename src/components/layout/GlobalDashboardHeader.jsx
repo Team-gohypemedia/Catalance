@@ -1,10 +1,7 @@
 import React from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
-import Sun from "lucide-react/dist/esm/icons/sun";
-import Moon from "lucide-react/dist/esm/icons/moon";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/components/providers/theme-provider";
 import { useNavigate } from "react-router-dom";
 import {
   Popover,
@@ -35,7 +32,6 @@ export const DashboardHeader = ({
   ProposalIcon = FileText,
   showProposalButton = true,
 }) => {
-  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const dashboardLabel = userName ? `${userName}'s Dashboard` : "Dashboard";
   const normalizedTabLabel = String(tabLabel || title || "").trim();
@@ -77,19 +73,6 @@ export const DashboardHeader = ({
       </div>
 
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-        </Button>
-
         <Popover>
           <PopoverTrigger asChild>
             <Button

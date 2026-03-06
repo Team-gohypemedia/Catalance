@@ -35,14 +35,30 @@ export const createProposal = asyncHandler(async (req, res) => {
   }
 
   const { projectId, coverLetter, amount, status, freelancerId } = req.body;
+  const normalizedIncomingStatus = String(status || "")
+    .trim()
+    .toUpperCase();
+  const nextStatus = ["PENDING", "ACCEPTED", "REJECTED", "REPLACED"].includes(
+    normalizedIncomingStatus
+  )
+    ? normalizedIncomingStatus
+    : "PENDING";
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { ownerId: true, title: true }
+    select: { ownerId: true, title: true, status: true }
   });
 
   if (!project) {
     throw new AppError("Project not found", 404);
+  }
+
+  const projectStatus = String(project.status || "").toUpperCase();
+  if (["COMPLETED", "PAUSED"].includes(projectStatus)) {
+    throw new AppError(
+      "Cannot send a proposal for a completed or paused project.",
+      409
+    );
   }
 
   const actingFreelancerId = freelancerId || userId;
@@ -56,15 +72,70 @@ export const createProposal = asyncHandler(async (req, res) => {
     );
   }
 
-  const proposal = await prisma.proposal.create({
-    data: {
-      coverLetter,
-      amount: normalizeAmount(amount),
-      status: status || "PENDING",
-      freelancerId: actingFreelancerId,
-      projectId
+  let wasReopened = false;
+  const proposal = await prisma.$transaction(
+    async (tx) => {
+      // Serialize create attempts for the same project+freelancer pair to prevent duplicates.
+      const lockRows = await tx.$queryRaw`
+        SELECT pg_try_advisory_xact_lock(90210, hashtext(${`${projectId}:${actingFreelancerId}`})) AS "locked"
+      `;
+      const hasLock = Array.isArray(lockRows) && lockRows[0]?.locked === true;
+      if (!hasLock) {
+        throw new AppError(
+          "Another proposal request is already being processed. Please retry.",
+          409
+        );
+      }
+
+      const latestExisting = await tx.proposal.findFirst({
+        where: {
+          projectId,
+          freelancerId: actingFreelancerId,
+        },
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      });
+
+      if (latestExisting) {
+        const existingStatus = String(latestExisting.status || "").toUpperCase();
+        if (["PENDING", "ACCEPTED"].includes(existingStatus)) {
+          const message =
+            existingStatus === "ACCEPTED"
+              ? "This freelancer has already accepted a proposal for this project."
+              : "A proposal has already been sent to this freelancer for this project.";
+          throw new AppError(message, 409);
+        }
+
+        if (["REJECTED", "REPLACED"].includes(existingStatus)) {
+          wasReopened = true;
+          return tx.proposal.update({
+            where: { id: latestExisting.id },
+            data: {
+              coverLetter,
+              amount: normalizeAmount(amount),
+              status: nextStatus,
+              rejectionReason: null,
+              rejectionReasonKey: null,
+            },
+          });
+        }
+      }
+
+      return tx.proposal.create({
+        data: {
+          coverLetter,
+          amount: normalizeAmount(amount),
+          status: nextStatus,
+          freelancerId: actingFreelancerId,
+          projectId,
+        },
+      });
+    },
+    {
+      maxWait: 10000,
+      timeout: 20000,
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     }
-  });
+  );
 
   // Determine who should receive the notification:
   // - If CLIENT (project owner) is sending the proposal TO a freelancer -> notify the FREELANCER
@@ -128,7 +199,7 @@ export const createProposal = asyncHandler(async (req, res) => {
     console.log(`[Proposal] Skipping notification - sender is recipient or unknown scenario`);
   }
 
-  res.status(201).json({ data: proposal });
+  res.status(wasReopened ? 200 : 201).json({ data: proposal });
 });
 
 export const getProposal = asyncHandler(async (req, res) => {
@@ -184,7 +255,17 @@ export const listProposals = asyncHandler(async (req, res) => {
       project: {
         include: {
           owner: true,
-          manager: { select: { id: true, fullName: true, email: true, phone: true, avatar: true } }
+          manager: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              status: true,
+              role: true,
+            },
+          }
         }
       },
       freelancer: true
@@ -192,8 +273,51 @@ export const listProposals = asyncHandler(async (req, res) => {
     orderBy: { createdAt: "desc" }
   });
 
+  const proposalStatusPriority = {
+    ACCEPTED: 4,
+    PENDING: 3,
+    REJECTED: 2,
+    REPLACED: 1,
+  };
+
+  // Deduplicate old duplicate rows for the same project+freelancer pair.
+  // Keep the most relevant record (status priority, then latest timestamp).
+  const dedupedMap = new Map();
+  proposals.forEach((proposal) => {
+    const key = `${proposal.projectId}:${proposal.freelancerId}`;
+    const existing = dedupedMap.get(key);
+    if (!existing) {
+      dedupedMap.set(key, proposal);
+      return;
+    }
+
+    const currentPriority =
+      proposalStatusPriority[String(proposal.status || "").toUpperCase()] || 0;
+    const existingPriority =
+      proposalStatusPriority[String(existing.status || "").toUpperCase()] || 0;
+
+    if (currentPriority > existingPriority) {
+      dedupedMap.set(key, proposal);
+      return;
+    }
+    if (currentPriority < existingPriority) {
+      return;
+    }
+
+    const currentTimestamp = new Date(
+      proposal.updatedAt || proposal.createdAt || 0
+    ).getTime();
+    const existingTimestamp = new Date(
+      existing.updatedAt || existing.createdAt || 0
+    ).getTime();
+    if (currentTimestamp >= existingTimestamp) {
+      dedupedMap.set(key, proposal);
+    }
+  });
+  const dedupedProposals = [...dedupedMap.values()];
+
   // Fetch chat conversations to get latest activity
-  const serviceKeys = proposals.map(p => {
+  const serviceKeys = dedupedProposals.map(p => {
     const projectId = p.project.id;
     const ownerId = p.project.ownerId;
     const freelancerId = p.freelancerId;
@@ -210,7 +334,7 @@ export const listProposals = asyncHandler(async (req, res) => {
     if (c.service) conversationMap.set(c.service, c.updatedAt);
   });
 
-  const proposalsWithActivity = proposals.map(p => {
+  const proposalsWithActivity = dedupedProposals.map(p => {
     const key = `CHAT:${p.project.id}:${p.project.ownerId}:${p.freelancerId}`;
     const chatUpdated = conversationMap.get(key);
     // Use the later of proposal update or chat update

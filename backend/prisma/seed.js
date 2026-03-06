@@ -6,6 +6,7 @@ const main = async () => {
   console.log(`Seeding database for ${env.NODE_ENV}...`);
 
   const defaultPasswordHash = await hashPassword("Password123!");
+  const clientPasswordHash = await hashPassword("Password123");
 
   // Create admin user
   const admin = await prisma.user.upsert({
@@ -24,14 +25,17 @@ const main = async () => {
 
   const client = await prisma.user.upsert({
     where: { email: "client@example.com" },
-    update: {},
+    update: {
+      passwordHash: clientPasswordHash,
+    },
     create: {
       email: "client@example.com",
       fullName: "Sample Client",
-      passwordHash: defaultPasswordHash,
+      passwordHash: clientPasswordHash,
       role: "CLIENT",
     }
   });
+  console.log("Client account password reset via seed:", client.email);
 
   const freelancer = await prisma.user.upsert({
     where: { email: "freelancer@example.com" },

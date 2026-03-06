@@ -3,11 +3,31 @@ import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 
+const PROJECT_MANAGER_SELECT = {
+  id: true,
+  fullName: true,
+  email: true,
+  phone: true,
+  avatar: true,
+  status: true,
+  role: true
+};
+
+const findLeastLoadedActiveProjectManager = (dbClient) =>
+  dbClient.user.findFirst({
+    where: {
+      role: "PROJECT_MANAGER",
+      status: "ACTIVE"
+    },
+    orderBy: { managedProjects: { _count: "asc" } },
+    select: PROJECT_MANAGER_SELECT
+  });
+
 export const createDispute = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   if (!userId) throw new AppError("Authentication required", 401);
 
-  const { description, projectId, meetingDate } = req.body;
+  const { description, projectId, meetingDate, meetingDateLocal, meetingHour } = req.body;
 
   if (!description || !projectId) {
     throw new AppError("Description and Project ID are required", 400);
@@ -15,8 +35,32 @@ export const createDispute = asyncHandler(async (req, res) => {
 
   // Transaction to handle availability booking and dispute creation atomically
   const dispute = await prisma.$transaction(async (tx) => {
-    let managerId = undefined;
+    const project = await tx.project.findUnique({
+      where: { id: projectId },
+      include: {
+        manager: {
+          select: PROJECT_MANAGER_SELECT,
+        },
+      },
+    });
+
+    if (!project) {
+      throw new AppError("Project not found", 404);
+    }
+
+    const assignedActiveManagerId =
+      project.manager?.role === "PROJECT_MANAGER" &&
+      project.manager?.status === "ACTIVE"
+        ? project.manager.id
+        : undefined;
+
+    let managerId = assignedActiveManagerId;
     let availabilityId = undefined;
+
+    if (!assignedActiveManagerId && !meetingDate) {
+      const fallbackManager = await findLeastLoadedActiveProjectManager(tx);
+      managerId = fallbackManager?.id;
+    }
 
     // Automatic PM Assignment Logic
     if (meetingDate) {
@@ -25,31 +69,50 @@ export const createDispute = asyncHandler(async (req, res) => {
         throw new AppError("Invalid meeting date format", 400);
       }
 
-      // We need to match the date and hour logic used in getAvailability
-      // Start of day for the date query
-      const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0, 0);
-      const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23, 59, 59, 999);
-      const startHour = dateObj.getHours();
+      const dateKey =
+        typeof meetingDateLocal === "string" && /^\d{4}-\d{2}-\d{2}$/.test(meetingDateLocal)
+          ? meetingDateLocal
+          : meetingDate.slice(0, 10);
+
+      const [year, month, day] = dateKey.split("-").map(Number);
+      const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+
+      const parsedMeetingHour = Number(meetingHour);
+      let startHour = Number.isInteger(parsedMeetingHour)
+        ? parsedMeetingHour
+        : dateObj.getHours();
+      if (!Number.isInteger(startHour) || startHour < 0 || startHour > 23) {
+        throw new AppError("Invalid meeting hour", 400);
+      }
 
       // Find available PMs for this specific slot
       const availableSlots = await tx.managerAvailability.findMany({
         where: {
           date: {
             gte: startOfDay,
-            lte: endOfDay
+            lte: endOfDay,
           },
           startHour: startHour,
-          isBooked: false
-        }
+          isBooked: false,
+          isEnabled: true,
+          ...(assignedActiveManagerId ? { managerId: assignedActiveManagerId } : {}),
+          manager: {
+            role: "PROJECT_MANAGER",
+            status: "ACTIVE",
+          },
+        },
       });
 
       if (availableSlots.length === 0) {
         throw new AppError("The selected time slot is no longer available. Please choose another time.", 409);
       }
 
-      // Randomly select one available PM
-      const randomIndex = Math.floor(Math.random() * availableSlots.length);
-      const selectedSlot = availableSlots[randomIndex];
+      // If project already has an active assigned PM, use their slot.
+      // Otherwise choose among active managers with free slots.
+      const selectedSlot = assignedActiveManagerId
+        ? availableSlots[0]
+        : availableSlots[Math.floor(Math.random() * availableSlots.length)];
       
       managerId = selectedSlot.managerId;
       availabilityId = selectedSlot.id;
@@ -58,6 +121,13 @@ export const createDispute = asyncHandler(async (req, res) => {
       await tx.managerAvailability.update({
         where: { id: availabilityId },
         data: { isBooked: true }
+      });
+    }
+
+    if (managerId && project.managerId !== managerId) {
+      await tx.project.update({
+        where: { id: projectId },
+        data: { managerId }
       });
     }
 
@@ -340,67 +410,114 @@ export const getAvailability = asyncHandler(async (req, res) => {
       return res.status(500).json({ error: "Database not available" });
     }
 
-    const { date } = req.query;
+    const { date, projectId } = req.query;
     
     if (!date) {
       return res.status(400).json({ error: "Date parameter required" });
     }
 
-    console.log("=== getAvailability called ===");
-    console.log("Input date:", date);
+    const targetDateStr =
+      typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? date
+        : String(date).split("T")[0];
 
-    // Parse the incoming date - client sends UTC timestamp
-    const queryDate = new Date(date);
-    console.log("Parsed queryDate:", queryDate.toISOString());
-    
-    // For IST (+5:30), when user picks Dec 27th, it becomes Dec 26 18:30 UTC
-    // So if UTC hour >= 18, add a day to get the intended date
-    let targetDate = new Date(queryDate);
-    if (queryDate.getUTCHours() >= 18) {
-      targetDate.setUTCDate(targetDate.getUTCDate() + 1);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDateStr)) {
+      return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
     }
-    const targetDateStr = targetDate.toISOString().split('T')[0]; // "2025-12-27"
-    console.log("Target date string:", targetDateStr);
+
+    const [year, month, day] = targetDateStr.split("-").map(Number);
+    const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+
+    let assignedManager = null;
+    let assignedManagerId = null;
+
+    if (projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: String(projectId) },
+        include: {
+          manager: {
+            select: PROJECT_MANAGER_SELECT,
+          },
+        },
+      });
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      if (
+        project.manager?.role === "PROJECT_MANAGER" &&
+        project.manager?.status === "ACTIVE"
+      ) {
+        assignedManager = project.manager;
+        assignedManagerId = project.manager.id;
+      } else {
+        const slotBackfill = await prisma.managerAvailability.findFirst({
+          where: {
+            date: {
+              gte: startOfDay,
+              lte: endOfDay
+            },
+            isBooked: false,
+            isEnabled: true,
+            manager: {
+              role: "PROJECT_MANAGER",
+              status: "ACTIVE"
+            }
+          },
+          include: {
+            manager: { select: PROJECT_MANAGER_SELECT }
+          },
+          orderBy: { startHour: "asc" }
+        });
+
+        if (slotBackfill?.manager) {
+          assignedManager = slotBackfill.manager;
+          assignedManagerId = slotBackfill.managerId;
+        } else {
+          const fallbackManager = await findLeastLoadedActiveProjectManager(prisma);
+          assignedManager = fallbackManager || null;
+          assignedManagerId = fallbackManager?.id || null;
+        }
+
+        if (assignedManagerId && project.managerId !== assignedManagerId) {
+          await prisma.project.update({
+            where: { id: project.id },
+            data: { managerId: assignedManagerId }
+          });
+        }
+      }
+    }
 
     // Get ALL unbooked availability slots from DB
-    console.log("About to query managerAvailability...");
     const allSlots = await prisma.managerAvailability.findMany({
-      where: { isBooked: false }
+      where: {
+        isBooked: false,
+        isEnabled: true,
+        ...(assignedManagerId ? { managerId: assignedManagerId } : {}),
+        manager: {
+          role: "PROJECT_MANAGER",
+          status: "ACTIVE",
+        },
+      },
     });
-    console.log("Total unbooked slots from DB:", allSlots.length);
 
     // Filter by date in JavaScript (to avoid Prisma @db.Date issues)
     const matchingSlots = allSlots.filter(slot => {
       const slotDateStr = slot.date.toISOString().split('T')[0];
       return slotDateStr === targetDateStr;
     });
-    console.log("Matching slots for target date:", matchingSlots.length);
 
     if (matchingSlots.length === 0) {
-      console.log("No matching slots found, returning empty array");
-      return res.json({ data: [] });
+      return res.json({ data: [], manager: assignedManager });
     }
 
-    // Get booked hours from disputes
-    const startOfDay = new Date(`${targetDateStr}T00:00:00.000Z`);
-    const endOfDay = new Date(`${targetDateStr}T23:59:59.999Z`);
-    
-    const disputes = await prisma.dispute.findMany({
-      where: {
-        meetingDate: { gte: startOfDay, lte: endOfDay },
-        status: { not: "RESOLVED" }
-      }
-    });
-    console.log("Disputes on that day:", disputes.length);
-    
-    const bookedHours = new Set(disputes.map(d => d.meetingDate?.getUTCHours()));
-
-    // Format to 12-hour time strings
+    // Format to 12-hour time strings (slots are already filtered by isBooked=false)
     const seen = new Set();
     const result = [];
     
     matchingSlots
-      .filter(s => !bookedHours.has(s.startHour))
       .sort((a, b) => a.startHour - b.startHour)
       .forEach(slot => {
         if (!seen.has(slot.startHour)) {
@@ -412,8 +529,7 @@ export const getAvailability = asyncHandler(async (req, res) => {
         }
       });
 
-    console.log("Final result:", result);
-    res.json({ data: result });
+    res.json({ data: result, manager: assignedManager });
   } catch (error) {
     console.error("=== getAvailability ERROR ===");
     console.error(error);

@@ -84,6 +84,26 @@ const flattenFreelancerProfile = (freelancer = null) => {
   };
 };
 
+const PROJECT_MANAGER_SELECT = {
+  id: true,
+  fullName: true,
+  email: true,
+  phone: true,
+  avatar: true,
+  status: true,
+  role: true
+};
+
+const findLeastLoadedActiveProjectManager = async () =>
+  prisma.user.findFirst({
+    where: {
+      role: "PROJECT_MANAGER",
+      status: "ACTIVE"
+    },
+    orderBy: { managedProjects: { _count: "asc" } },
+    select: PROJECT_MANAGER_SELECT
+  });
+
 // ... (previous imports)
 
 export const createProject = asyncHandler(async (req, res) => {
@@ -97,13 +117,7 @@ export const createProject = asyncHandler(async (req, res) => {
   /* Automatic Project Manager Assignment */
   // Find a project manager to assign. We prioritize ACTIVE managers and balance the load.
   console.log("Looking for an available Project Manager...");
-  const projectManager = await prisma.user.findFirst({
-    where: {
-      role: "PROJECT_MANAGER",
-      status: "ACTIVE"
-    },
-    orderBy: { managedProjects: { _count: 'asc' } }
-  });
+  const projectManager = await findLeastLoadedActiveProjectManager();
   console.log(`Assigning Project Manager: ${projectManager ? projectManager.id : "None found"}`);
 
   const project = await prisma.project.create({
@@ -237,7 +251,7 @@ export const getProject = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
-  const project = await prisma.project.findUnique({
+  let project = await prisma.project.findUnique({
     where: { id },
     include: {
       owner: {
@@ -267,7 +281,7 @@ export const getProject = asyncHandler(async (req, res) => {
         orderBy: { createdAt: "desc" }
       },
       manager: {
-        select: { id: true, fullName: true, email: true, phone: true, avatar: true }
+        select: PROJECT_MANAGER_SELECT
       },
       disputes: {
         select: { id: true, status: true }
@@ -280,6 +294,35 @@ export const getProject = asyncHandler(async (req, res) => {
 
   if (!project) {
     throw new AppError("Project not found", 404);
+  }
+
+  const hasActiveAssignedManager =
+    project.manager?.role === "PROJECT_MANAGER" &&
+    project.manager?.status === "ACTIVE";
+
+  if (!hasActiveAssignedManager) {
+    const fallbackManager = await findLeastLoadedActiveProjectManager();
+
+    if (fallbackManager) {
+      if (project.managerId !== fallbackManager.id) {
+        await prisma.project.update({
+          where: { id: project.id },
+          data: { managerId: fallbackManager.id }
+        });
+      }
+
+      project = {
+        ...project,
+        managerId: fallbackManager.id,
+        manager: fallbackManager
+      };
+    } else {
+      project = {
+        ...project,
+        managerId: null,
+        manager: null
+      };
+    }
   }
 
   // Enforce PM scope

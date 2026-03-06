@@ -1230,6 +1230,13 @@ export const ServiceProjectDetailsStep = ({
     renderContinueButton,
     currentStep,
 }) => {
+    const showReadmeField = React.useMemo(() => {
+        const platformFields = getServicePlatformProfileFields(serviceKey);
+        return platformFields.some(
+            (field) => String(field?.key || "").trim().toLowerCase() === "github"
+        );
+    }, [serviceKey]);
+
     const projects = formData.serviceDetails?.[serviceKey]?.projects;
     // Initialize with one empty project if undefined or empty
     React.useEffect(() => {
@@ -1389,19 +1396,20 @@ export const ServiceProjectDetailsStep = ({
                             </div>
                         </div>
 
-                        {/* Project README */}
-                        <div className="space-y-1.5">
-                            <Label className="text-white/70 text-[11px]">Project README URL (Optional)</Label>
-                            <div className="relative">
-                                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                                <Input
-                                    value={project.readme || ""}
-                                    onChange={(e) => updateProject(index, "readme", e.target.value)}
-                                    placeholder="https://github.com/your-username/your-repo/blob/main/README.md"
-                                    className="pl-9 !h-[42px] bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30"
-                                />
+                        {showReadmeField ? (
+                            <div className="space-y-1.5">
+                                <Label className="text-white/70 text-[11px]">Project README URL (Optional)</Label>
+                                <div className="relative">
+                                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                    <Input
+                                        value={project.readme || ""}
+                                        onChange={(e) => updateProject(index, "readme", e.target.value)}
+                                        placeholder="https://github.com/your-username/your-repo/blob/main/README.md"
+                                        className="pl-9 !h-[42px] bg-accent dark:bg-accent border-white/10 text-white placeholder:text-white/30"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        ) : null}
 
                         {/* Timeline & Budget Row */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
