@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
-    Briefcase,
     ArrowRight,
     ArrowLeft,
     PanelLeftClose,
@@ -56,6 +55,89 @@ const DEMO_HIGHLIGHTS = [
     'Proposal-ready output',
     'No setup needed',
 ];
+
+const SERVICE_LOGO_MODULES = import.meta.glob('../../assets/icons/*.png', {
+    eager: true,
+    import: 'default',
+});
+
+const normalizeServiceLogoKey = (value = '') =>
+    String(value || '')
+        .toLowerCase()
+        .replace(/&/g, ' and ')
+        .replace(/[_-]+/g, ' ')
+        .replace(/[^a-z0-9 ]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const SERVICE_LOGOS_BY_KEY = Object.entries(SERVICE_LOGO_MODULES).reduce((acc, [path, source]) => {
+    const fileName = String(path || '').split('/').pop()?.replace(/\.png$/i, '') || '';
+    const key = normalizeServiceLogoKey(fileName);
+    if (key) {
+        acc[key] = source;
+    }
+    return acc;
+}, {});
+
+const SERVICE_LOGO_KEYS = Object.keys(SERVICE_LOGOS_BY_KEY);
+
+const SERVICE_LOGO_ALIASES = {
+    branding: 'branding and brand identity',
+    'branding kit': 'branding and brand identity',
+    'web development': 'website development',
+    website: 'website development',
+    'website uiux': 'website development',
+    'website ui ux': 'website development',
+    seo: 'seo optimization',
+    'seo search engine optimisation': 'seo optimization',
+    'seo search engine optimization': 'seo optimization',
+    'social media marketing organic': 'social media management',
+    'paid advertising performance': 'performance marketing',
+    'performance marketing': 'performance marketing',
+    'app development android ios cross platform': 'app development',
+    'software development web saas custom systems': 'software development',
+    'writing content': 'writing and content',
+    'whatsapp chatbot': 'whatsapp chat bot',
+    'creative design': 'creative and design',
+    'modeling 3d': '3d modeling',
+    'cgi video services': 'cgi video',
+    'crm erp integrated solutions': 'crm and erp solutions',
+    'crm and erp integrated solutions': 'crm and erp solutions',
+};
+
+const isLogoUrl = (value = '') => /^(?:https?:\/\/|\/|data:image\/)/i.test(String(value || '').trim());
+
+const resolveServiceLogoSrc = (service = {}) => {
+    const explicitLogo = [
+        service.logo,
+        service.logoUrl,
+        service.logo_url,
+        service.image,
+        service.imageUrl,
+        service.image_url,
+    ].find((value) => isLogoUrl(value));
+
+    if (explicitLogo) return explicitLogo;
+
+    const candidates = [
+        service.slug,
+        service.id,
+        service.name,
+    ];
+
+    for (const candidate of candidates) {
+        const normalized = normalizeServiceLogoKey(candidate);
+        if (!normalized) continue;
+
+        const mappedKey = SERVICE_LOGO_ALIASES[normalized] || normalized;
+        if (SERVICE_LOGOS_BY_KEY[mappedKey]) return SERVICE_LOGOS_BY_KEY[mappedKey];
+
+        const fuzzyKey = SERVICE_LOGO_KEYS.find((key) => key.includes(mappedKey) || mappedKey.includes(key));
+        if (fuzzyKey) return SERVICE_LOGOS_BY_KEY[fuzzyKey];
+    }
+
+    return cataLogo;
+};
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -1635,8 +1717,14 @@ const GuestAIDemo = () => {
                                             }`} />
                                         <CardHeader className="relative space-y-2 px-5 pb-2 pt-5">
                                             <div className="mb-3 flex items-start justify-between gap-3">
-                                                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                                    <Briefcase className="h-4 w-4" />
+                                                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
+                                                    <img
+                                                        src={resolveServiceLogoSrc(service)}
+                                                        alt={`${service.name || 'Service'} logo`}
+                                                        className="h-10 w-10 object-contain"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                    />
                                                 </div>
                                                 <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'border border-primary/35 bg-primary/10 text-primary' : 'border border-primary/30 bg-primary/10 text-[#181711]'}`}>
                                                     AI Guided
