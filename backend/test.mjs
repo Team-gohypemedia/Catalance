@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); prisma.freelancerProject.findFirst({where: {id: 'cmmadho9h002w151v9obcl28q'}, include: {freelancer: {include: {freelancerProfile: true}}}}).then(x => console.log(JSON.stringify(x, null, 2))).finally(() => prisma.\());

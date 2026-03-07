@@ -461,20 +461,57 @@ const scoreCandidate = (candidate, query, weights) => {
   };
 };
 
+/** Extract cover image strictly from a serviceDetails object (Marketplace table rows) */
+const extractCoverImage = (sd = {}) => {
+  return sd.coverImage || (Array.isArray(sd.images) && sd.images[0]) || sd.image || sd.thumbnail || null;
+};
+
+/** Extract price strictly from a serviceDetails object */
+const extractPrice = (sd = {}) => {
+  const raw = sd.startingPrice ?? sd.minBudget ?? sd.price ?? null;
+  if (raw === null || raw === undefined) return null;
+  const n = toNumber(raw, null);
+  return Number.isFinite(n) ? n : null;
+};
+
 const mapToMarketplaceRow = (candidate) => {
   const profile = candidate.freelancer?.freelancerProfile || {};
-  const techStack = uniqueValues([
-    ...(candidate.techStack || []),
-    ...(candidate.activeTechnologies || []),
+
+  // Canonical serviceDetails comes from Marketplace table row (_mktRow)
+  const mktSd = candidate._mktRow?.serviceDetails || {};
+  const mktId = candidate._mktRow?.id || null;
+
+  // Tools/Technologies extraction logic (Step 1 rules)
+  const tools = uniqueValues([
+    ...(Array.isArray(mktSd.tools) ? mktSd.tools : []),
+    ...(Array.isArray(mktSd.techStack) ? mktSd.techStack : []),
+    ...(Array.isArray(mktSd.technologies) ? mktSd.technologies : []),
+    ...(Array.isArray(mktSd.stack) ? mktSd.stack : []),
   ]);
-  const normalizedBudget = candidate.budget === null ? null : toNumber(candidate.budget, 0);
+
+  // Deliverables (Step 1 rules)
+  const deliverables = uniqueValues([
+    ...(Array.isArray(mktSd.deliverables) ? mktSd.deliverables : []),
+    ...(Array.isArray(mktSd.whatsIncluded) ? mktSd.whatsIncluded : []),
+    ...(Array.isArray(mktSd.includes) ? mktSd.includes : []),
+    ...(Array.isArray(mktSd.features) ? mktSd.features : []),
+  ]);
+
+  // Image: strictly from Marketplace serviceDetails only
+  const image = extractCoverImage(mktSd);
+
+  // Price: from Marketplace serviceDetails only (Remove FreelancerProject budget fallback as per Step 1 hard rules)
+  const startingPrice = extractPrice(mktSd);
+
+  // Delivery: strictly from Marketplace serviceDetails (deliveryTime or deliveryDays)
+  const deliveryTime = mktSd.deliveryTime || mktSd.deliveryDays || null;
 
   return {
-    id: candidate.projectId,
+    id: mktId || candidate.projectId,   // Prefer Marketplace id
     freelancerId: candidate.freelancerId,
     serviceKey: candidate.serviceKey || "",
-    service: candidate.serviceName || candidate.title || "Freelancer Service",
-    isFeatured: false,
+    service: mktSd.title || candidate.serviceName || candidate.title || "Freelancer Service",
+    isFeatured: candidate._mktRow?.isFeatured || false,
     createdAt: candidate.createdAt,
     updatedAt: candidate.updatedAt,
     freelancer: {
@@ -483,18 +520,19 @@ const mapToMarketplaceRow = (candidate) => {
       avatar: candidate.freelancer?.avatar || null,
     },
     serviceDetails: {
-      minBudget: normalizedBudget,
-      maxBudget: normalizedBudget,
-      averageProjectPriceRange: candidate.averageProjectPriceRange || null,
-      techStack,
-      bio: profile.bio || candidate.description || "",
-      description: candidate.description || profile.bio || "",
-      industriesOrNiches: Array.isArray(candidate.industriesOrNiches)
-        ? candidate.industriesOrNiches
-        : [],
-      serviceSpecializations: Array.isArray(candidate.serviceSpecializations)
-        ? candidate.serviceSpecializations
-        : [],
+      ...mktSd,                              // raw Marketplace serviceDetails
+      image,                                 // resolved cover image
+      coverImage: image,                     // alias for frontend
+      startingPrice,                         // resolved price
+      minBudget: startingPrice,
+      techStack: tools,                      // resolved/merged tools
+      tools,
+      deliverables,
+      deliveryTime: deliveryTime || "Not specified",
+      bio: mktSd.bio || mktSd.description || "",
+      description: mktSd.description || mktSd.bio || "",
+      industriesOrNiches: Array.isArray(mktSd.industriesOrNiches) ? mktSd.industriesOrNiches : [],
+      serviceSpecializations: Array.isArray(mktSd.serviceSpecializations) ? mktSd.serviceSpecializations : [],
     },
     rating: candidate.rating,
     reviewCount: candidate.reviewCount,
@@ -556,8 +594,33 @@ export const getMarketplace = asyncHandler(async (req, res) => {
     });
   }
 
+  // Batch-fetch the canonical Marketplace rows for each (freelancerId, serviceKey) pair
+  // These contain real serviceDetails including coverImage, price, deliveryTime, etc.
+  const uniquePairs = tier1Candidates
+    .map(c => ({ freelancerId: c.freelancerId, serviceKey: c.serviceKey }))
+    .filter(p => p.serviceKey);
+
+  const marketplaceRows = await prisma.marketplace.findMany({
+    where: {
+      OR: uniquePairs.map(p => ({ freelancerId: p.freelancerId, serviceKey: p.serviceKey }))
+    },
+    select: { id: true, freelancerId: true, serviceKey: true, serviceDetails: true, isFeatured: true }
+  });
+
+  // Build a lookup map: "freelancerId:serviceKey" → Marketplace row
+  const mktMap = new Map();
+  for (const row of marketplaceRows) {
+    mktMap.set(`${row.freelancerId}:${row.serviceKey}`, row);
+  }
+
+  // Attach mktRow to each candidate so mapToMarketplaceRow can use it
+  const enrichedCandidates = tier1Candidates.map(c => ({
+    ...c,
+    _mktRow: mktMap.get(`${c.freelancerId}:${c.serviceKey}`) || null,
+  }));
+
   const weights = getScoreWeights(query);
-  const scored = tier1Candidates.map((candidate) =>
+  const scored = enrichedCandidates.map((candidate) =>
     scoreCandidate(candidate, query, weights)
   );
 
@@ -617,6 +680,45 @@ export const getServiceById = asyncHandler(async (req, res) => {
     }
   });
 
+  // For Marketplace rows: enrich image from serviceDetails JSON only (no profileDetails)
+  if (service) {
+    const mSd = service.serviceDetails || {};
+    const resolvedImage = extractCoverImage(mSd);
+    const resolvedPrice = extractPrice(mSd);
+    const deliveryTime = mSd.deliveryTime || mSd.deliveryDays || "Not specified";
+
+    const tools = uniqueValues([
+      ...(Array.isArray(mSd.tools) ? mSd.tools : []),
+      ...(Array.isArray(mSd.techStack) ? mSd.techStack : []),
+      ...(Array.isArray(mSd.technologies) ? mSd.technologies : []),
+      ...(Array.isArray(mSd.stack) ? mSd.stack : []),
+    ]);
+
+    const deliverables = uniqueValues([
+      ...(Array.isArray(mSd.deliverables) ? mSd.deliverables : []),
+      ...(Array.isArray(mSd.whatsIncluded) ? mSd.whatsIncluded : []),
+      ...(Array.isArray(mSd.includes) ? mSd.includes : []),
+      ...(Array.isArray(mSd.features) ? mSd.features : []),
+    ]);
+
+    service = {
+      ...service,
+      serviceDetails: {
+        ...mSd,
+        image: resolvedImage,
+        coverImage: resolvedImage,
+        startingPrice: resolvedPrice,
+        minBudget: resolvedPrice,
+        deliveryTime,
+        tools,
+        techStack: tools,
+        deliverables,
+        bio: mSd.bio || mSd.description || "",
+        description: mSd.description || mSd.bio || "",
+      }
+    };
+  }
+
   if (!service) {
     const fp = await prisma.freelancerProject.findUnique({
       where: { id },
@@ -627,7 +729,9 @@ export const getServiceById = asyncHandler(async (req, res) => {
             fullName: true,
             avatar: true,
             isVerified: true,
-            freelancerProfile: true
+            freelancerProfile: {
+              select: { bio: true, skills: true, rating: true, reviewCount: true }
+            }
           }
         }
       }
@@ -635,34 +739,62 @@ export const getServiceById = asyncHandler(async (req, res) => {
 
     if (fp) {
       const profile = fp.freelancer?.freelancerProfile || {};
-      const techStack = uniqueValues([
-        ...(fp.techStack || []),
-        ...(fp.activeTechnologies || []),
+
+      // Look up the canonical Marketplace row for this freelancer+serviceKey
+      const mktRow = fp.serviceKey ? await prisma.marketplace.findFirst({
+        where: { freelancerId: fp.freelancerId, serviceKey: fp.serviceKey },
+        select: { id: true, serviceDetails: true, isFeatured: true }
+      }) : null;
+
+      // Build merged serviceDetails: Marketplace row is canonical, fp fields are fallback
+      const mktSd = mktRow?.serviceDetails || {};
+
+      const tools = uniqueValues([
+        ...(Array.isArray(mktSd.tools) ? mktSd.tools : []),
+        ...(Array.isArray(mktSd.techStack) ? mktSd.techStack : []),
+        ...(Array.isArray(mktSd.technologies) ? mktSd.technologies : []),
+        ...(Array.isArray(mktSd.stack) ? mktSd.stack : []),
       ]);
-      const normalizedBudget = fp.budget === null ? null : toNumber(fp.budget, 0);
+
+      const deliverables = uniqueValues([
+        ...(Array.isArray(mktSd.deliverables) ? mktSd.deliverables : []),
+        ...(Array.isArray(mktSd.whatsIncluded) ? mktSd.whatsIncluded : []),
+        ...(Array.isArray(mktSd.includes) ? mktSd.includes : []),
+        ...(Array.isArray(mktSd.features) ? mktSd.features : []),
+      ]);
+
+      const image = extractCoverImage(mktSd);
+      const startingPrice = extractPrice(mktSd); // No fallback to budget
+      const deliveryTime = mktSd.deliveryTime || mktSd.deliveryDays || "Not specified";
 
       service = {
-        id: fp.id,
+        id: mktRow?.id || fp.id,   // prefer Marketplace id
         freelancerId: fp.freelancerId,
         serviceKey: fp.serviceKey || "",
-        service: fp.serviceName || fp.title || "Freelancer Service",
+        service: mktSd.title || fp.serviceName || fp.title || "Freelancer Service",
         serviceDetails: {
-          minBudget: normalizedBudget,
-          maxBudget: normalizedBudget,
-          averageProjectPriceRange: fp.averageProjectPriceRange || null,
-          techStack,
-          bio: profile.bio || fp.description || "",
-          description: fp.description || profile.bio || "",
-          industriesOrNiches: Array.isArray(fp.industriesOrNiches) ? fp.industriesOrNiches : [],
-          serviceSpecializations: Array.isArray(fp.serviceSpecializations) ? fp.serviceSpecializations : [],
+          ...mktSd,
+          image,
+          coverImage: image,
+          startingPrice,
+          minBudget: startingPrice,
+          techStack: tools,
+          tools,
+          deliverables,
+          deliveryTime,
+          bio: mktSd.bio || mktSd.description || "",
+          description: mktSd.description || mktSd.bio || "",
+          industriesOrNiches: Array.isArray(mktSd.industriesOrNiches) ? mktSd.industriesOrNiches : [],
+          serviceSpecializations: Array.isArray(mktSd.serviceSpecializations) ? mktSd.serviceSpecializations : [],
         },
-        isFeatured: false,
+        isFeatured: mktRow?.isFeatured || false,
         createdAt: fp.createdAt,
         updatedAt: fp.updatedAt,
         freelancer: fp.freelancer
       };
     }
   }
+
 
   if (!service) {
     throw new AppError("Service not found", 404);
@@ -712,12 +844,14 @@ export const getServiceReviews = asyncHandler(async (req, res) => {
 
 export const createServiceReview = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  let { clientName, rating, comment } = req.body;
+  let { rating, comment } = req.body;
 
-  clientName = clientName?.trim();
   comment = comment?.trim();
 
-  if (!clientName) throw new AppError("Client Name is required", 400);
+  // Extract from protected req.user
+  const clientName = req.user.fullName || "Member";
+  const clientId = req.user.id;
+
   if (!rating || !Number.isInteger(rating) || rating < 1 || rating > 5) {
     throw new AppError("Rating must be an integer between 1 and 5", 400);
   }
@@ -735,6 +869,7 @@ export const createServiceReview = asyncHandler(async (req, res) => {
     data: {
       serviceId: id,
       clientName,
+      clientId,
       rating,
       comment
     }

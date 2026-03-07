@@ -1,0 +1,2583 @@
+﻿MARKER_START
+[
+  {
+    "id": "cmmagl2qz0007rf38t4palxu3",
+    "name": "Swarnpriya",
+    "service": "Branding",
+    "serviceKey": "branding",
+    "mktSd": {
+      "key": "branding",
+      "title": "Branding",
+      "coverImage": "/assets/services/branding-cover.jpg",
+      "description": "Build logo, brand identity, and strategic messaging for consistent brand growth."
+    },
+    "profileSd": {
+      "branding": {
+        "groups": {
+          "branding_scope": [
+            "Brand Strategy",
+            "Brand Identity",
+            "Brand Guidelines"
+          ],
+          "branding_approach": [
+            "Market Research Driven",
+            "Visual Identity Driven",
+            "Storytelling Driven"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "file": {
+              "url": "blob:https://catalance.in/30339000-c5d0-4152-894a-368e7f4735fe",
+              "name": "Final Branding kit of DELAN.pdf"
+            },
+            "role": "full_execution",
+            "tags": [
+              "branding",
+              "ecommerce",
+              "brand identity",
+              "women clothing",
+              "logo",
+              "design",
+              "color pallete"
+            ],
+            "title": "Delan",
+            "budget": "20000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "adobe express",
+              "canva",
+              "adobe firefly"
+            ],
+            "description": "this was a women's clothing brand."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://drive.google.com/drive/folders/1b5i4QrYxUaVgD-U4Qap3R70zKvmPpImp"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "Google Docs",
+            "ChatGPT",
+            "WordPress Editor",
+            "Claude",
+            "AI Writing Tools"
+          ],
+          "writing_content_type": [
+            "Blog Writing",
+            "Website Content",
+            "Script Writing"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://drive.google.com/drive/folders/1FW3085SSLGAumpRiowG89-wL2AKJzMF1?usp=sharing",
+            "role": "full_execution",
+            "tags": [
+              "writing",
+              "content",
+              "seo friendly",
+              "video script"
+            ],
+            "title": "script writing",
+            "budget": "10000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "docs"
+            ],
+            "description": "video script writing "
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.sgtu.ac.in/blog"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "paid_advertising": {
+        "groups": {
+          "ads_platforms": [
+            "Meta Ads",
+            "Meta Pixel",
+            "Meta Ads Manager"
+          ],
+          "ads_campaign_types": [
+            "Lead Generation",
+            "Brand Awareness"
+          ],
+          "ads_tracking_tools": [
+            "Meta Ads Manager"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://drive.google.com/drive/folders/1ybKdqa7nVMYmgoZPwkq2yH3PkQJyCSox",
+            "role": "full_execution",
+            "tags": [
+              "ads",
+              "sales",
+              "awareness",
+              "engagement",
+              "leads"
+            ],
+            "title": "sales ads",
+            "budget": "10000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "ads manager"
+            ],
+            "description": "mixed ads objectives"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://drive.google.com/file/d/1dNkLQizuaXutmTjHFyolGRECm7FBdxvG/view?usp=drive_link"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Post Design",
+            "Caption Writing",
+            "Analytics & Reporting",
+            "Other"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Engagement Growth",
+            "Lead Generation"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "LinkedIn",
+            "Pinterest",
+            "Meta Business Suite",
+            "X / Twitter"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://www.instagram.com/gbimedicine/",
+            "role": "full_execution",
+            "tags": [
+              "social media",
+              "posting",
+              "designing",
+              "engagement",
+              "brand awareness",
+              "social media management"
+            ],
+            "title": "Georgian bay integrative medicine",
+            "budget": "60000",
+            "timeline": "3_plus_months",
+            "techStack": [
+              "canva",
+              "meta business suite",
+              "adobe express"
+            ],
+            "description": "its a clinic page"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "social_scope": "posting"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "instagram": "https://www.instagram.com/gbimedicine/ "
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmagl33i0009rf3821piudrm",
+    "name": "Swarnpriya",
+    "service": "Social Media Management",
+    "serviceKey": "social_media_marketing",
+    "mktSd": {
+      "key": "social_media_marketing",
+      "title": "Social Media Management",
+      "coverImage": "/assets/services/social-media-cover.jpg",
+      "description": "Plan and execute social content, engagement, and platform growth campaigns."
+    },
+    "profileSd": {
+      "branding": {
+        "groups": {
+          "branding_scope": [
+            "Brand Strategy",
+            "Brand Identity",
+            "Brand Guidelines"
+          ],
+          "branding_approach": [
+            "Market Research Driven",
+            "Visual Identity Driven",
+            "Storytelling Driven"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "file": {
+              "url": "blob:https://catalance.in/30339000-c5d0-4152-894a-368e7f4735fe",
+              "name": "Final Branding kit of DELAN.pdf"
+            },
+            "role": "full_execution",
+            "tags": [
+              "branding",
+              "ecommerce",
+              "brand identity",
+              "women clothing",
+              "logo",
+              "design",
+              "color pallete"
+            ],
+            "title": "Delan",
+            "budget": "20000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "adobe express",
+              "canva",
+              "adobe firefly"
+            ],
+            "description": "this was a women's clothing brand."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://drive.google.com/drive/folders/1b5i4QrYxUaVgD-U4Qap3R70zKvmPpImp"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "Google Docs",
+            "ChatGPT",
+            "WordPress Editor",
+            "Claude",
+            "AI Writing Tools"
+          ],
+          "writing_content_type": [
+            "Blog Writing",
+            "Website Content",
+            "Script Writing"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://drive.google.com/drive/folders/1FW3085SSLGAumpRiowG89-wL2AKJzMF1?usp=sharing",
+            "role": "full_execution",
+            "tags": [
+              "writing",
+              "content",
+              "seo friendly",
+              "video script"
+            ],
+            "title": "script writing",
+            "budget": "10000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "docs"
+            ],
+            "description": "video script writing "
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.sgtu.ac.in/blog"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "paid_advertising": {
+        "groups": {
+          "ads_platforms": [
+            "Meta Ads",
+            "Meta Pixel",
+            "Meta Ads Manager"
+          ],
+          "ads_campaign_types": [
+            "Lead Generation",
+            "Brand Awareness"
+          ],
+          "ads_tracking_tools": [
+            "Meta Ads Manager"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://drive.google.com/drive/folders/1ybKdqa7nVMYmgoZPwkq2yH3PkQJyCSox",
+            "role": "full_execution",
+            "tags": [
+              "ads",
+              "sales",
+              "awareness",
+              "engagement",
+              "leads"
+            ],
+            "title": "sales ads",
+            "budget": "10000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "ads manager"
+            ],
+            "description": "mixed ads objectives"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://drive.google.com/file/d/1dNkLQizuaXutmTjHFyolGRECm7FBdxvG/view?usp=drive_link"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Post Design",
+            "Caption Writing",
+            "Analytics & Reporting",
+            "Other"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Engagement Growth",
+            "Lead Generation"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "LinkedIn",
+            "Pinterest",
+            "Meta Business Suite",
+            "X / Twitter"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://www.instagram.com/gbimedicine/",
+            "role": "full_execution",
+            "tags": [
+              "social media",
+              "posting",
+              "designing",
+              "engagement",
+              "brand awareness",
+              "social media management"
+            ],
+            "title": "Georgian bay integrative medicine",
+            "budget": "60000",
+            "timeline": "3_plus_months",
+            "techStack": [
+              "canva",
+              "meta business suite",
+              "adobe express"
+            ],
+            "description": "its a clinic page"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "social_scope": "posting"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "instagram": "https://www.instagram.com/gbimedicine/ "
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmagl3fy000brf38uaor30mh",
+    "name": "Swarnpriya",
+    "service": "Performance Marketing / Paid Ads",
+    "serviceKey": "paid_advertising",
+    "mktSd": {
+      "key": "paid_advertising",
+      "title": "Performance Marketing / Paid Ads",
+      "coverImage": "/assets/services/paid-ads-cover.jpg",
+      "description": "Run ROI-focused ad campaigns across major paid media platforms."
+    },
+    "profileSd": {
+      "branding": {
+        "groups": {
+          "branding_scope": [
+            "Brand Strategy",
+            "Brand Identity",
+            "Brand Guidelines"
+          ],
+          "branding_approach": [
+            "Market Research Driven",
+            "Visual Identity Driven",
+            "Storytelling Driven"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "file": {
+              "url": "blob:https://catalance.in/30339000-c5d0-4152-894a-368e7f4735fe",
+              "name": "Final Branding kit of DELAN.pdf"
+            },
+            "role": "full_execution",
+            "tags": [
+              "branding",
+              "ecommerce",
+              "brand identity",
+              "women clothing",
+              "logo",
+              "design",
+              "color pallete"
+            ],
+            "title": "Delan",
+            "budget": "20000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "adobe express",
+              "canva",
+              "adobe firefly"
+            ],
+            "description": "this was a women's clothing brand."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://drive.google.com/drive/folders/1b5i4QrYxUaVgD-U4Qap3R70zKvmPpImp"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "Google Docs",
+            "ChatGPT",
+            "WordPress Editor",
+            "Claude",
+            "AI Writing Tools"
+          ],
+          "writing_content_type": [
+            "Blog Writing",
+            "Website Content",
+            "Script Writing"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://drive.google.com/drive/folders/1FW3085SSLGAumpRiowG89-wL2AKJzMF1?usp=sharing",
+            "role": "full_execution",
+            "tags": [
+              "writing",
+              "content",
+              "seo friendly",
+              "video script"
+            ],
+            "title": "script writing",
+            "budget": "10000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "docs"
+            ],
+            "description": "video script writing "
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.sgtu.ac.in/blog"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "paid_advertising": {
+        "groups": {
+          "ads_platforms": [
+            "Meta Ads",
+            "Meta Pixel",
+            "Meta Ads Manager"
+          ],
+          "ads_campaign_types": [
+            "Lead Generation",
+            "Brand Awareness"
+          ],
+          "ads_tracking_tools": [
+            "Meta Ads Manager"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://drive.google.com/drive/folders/1ybKdqa7nVMYmgoZPwkq2yH3PkQJyCSox",
+            "role": "full_execution",
+            "tags": [
+              "ads",
+              "sales",
+              "awareness",
+              "engagement",
+              "leads"
+            ],
+            "title": "sales ads",
+            "budget": "10000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "ads manager"
+            ],
+            "description": "mixed ads objectives"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://drive.google.com/file/d/1dNkLQizuaXutmTjHFyolGRECm7FBdxvG/view?usp=drive_link"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Post Design",
+            "Caption Writing",
+            "Analytics & Reporting",
+            "Other"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Engagement Growth",
+            "Lead Generation"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "LinkedIn",
+            "Pinterest",
+            "Meta Business Suite",
+            "X / Twitter"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://www.instagram.com/gbimedicine/",
+            "role": "full_execution",
+            "tags": [
+              "social media",
+              "posting",
+              "designing",
+              "engagement",
+              "brand awareness",
+              "social media management"
+            ],
+            "title": "Georgian bay integrative medicine",
+            "budget": "60000",
+            "timeline": "3_plus_months",
+            "techStack": [
+              "canva",
+              "meta business suite",
+              "adobe express"
+            ],
+            "description": "its a clinic page"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "social_scope": "posting"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "instagram": "https://www.instagram.com/gbimedicine/ "
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmagl3sr000drf38xho9g44n",
+    "name": "Swarnpriya",
+    "service": "Writing & Content",
+    "serviceKey": "writing_content",
+    "mktSd": {
+      "key": "writing_content",
+      "title": "Writing & Content",
+      "coverImage": "/assets/services/writing-content-cover.jpg",
+      "description": "Create clear, conversion-driven content for web, blogs, and campaigns."
+    },
+    "profileSd": {
+      "branding": {
+        "groups": {
+          "branding_scope": [
+            "Brand Strategy",
+            "Brand Identity",
+            "Brand Guidelines"
+          ],
+          "branding_approach": [
+            "Market Research Driven",
+            "Visual Identity Driven",
+            "Storytelling Driven"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "file": {
+              "url": "blob:https://catalance.in/30339000-c5d0-4152-894a-368e7f4735fe",
+              "name": "Final Branding kit of DELAN.pdf"
+            },
+            "role": "full_execution",
+            "tags": [
+              "branding",
+              "ecommerce",
+              "brand identity",
+              "women clothing",
+              "logo",
+              "design",
+              "color pallete"
+            ],
+            "title": "Delan",
+            "budget": "20000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "adobe express",
+              "canva",
+              "adobe firefly"
+            ],
+            "description": "this was a women's clothing brand."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://drive.google.com/drive/folders/1b5i4QrYxUaVgD-U4Qap3R70zKvmPpImp"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "Google Docs",
+            "ChatGPT",
+            "WordPress Editor",
+            "Claude",
+            "AI Writing Tools"
+          ],
+          "writing_content_type": [
+            "Blog Writing",
+            "Website Content",
+            "Script Writing"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://drive.google.com/drive/folders/1FW3085SSLGAumpRiowG89-wL2AKJzMF1?usp=sharing",
+            "role": "full_execution",
+            "tags": [
+              "writing",
+              "content",
+              "seo friendly",
+              "video script"
+            ],
+            "title": "script writing",
+            "budget": "10000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "docs"
+            ],
+            "description": "video script writing "
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.sgtu.ac.in/blog"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "paid_advertising": {
+        "groups": {
+          "ads_platforms": [
+            "Meta Ads",
+            "Meta Pixel",
+            "Meta Ads Manager"
+          ],
+          "ads_campaign_types": [
+            "Lead Generation",
+            "Brand Awareness"
+          ],
+          "ads_tracking_tools": [
+            "Meta Ads Manager"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://drive.google.com/drive/folders/1ybKdqa7nVMYmgoZPwkq2yH3PkQJyCSox",
+            "role": "full_execution",
+            "tags": [
+              "ads",
+              "sales",
+              "awareness",
+              "engagement",
+              "leads"
+            ],
+            "title": "sales ads",
+            "budget": "10000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "ads manager"
+            ],
+            "description": "mixed ads objectives"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://drive.google.com/file/d/1dNkLQizuaXutmTjHFyolGRECm7FBdxvG/view?usp=drive_link"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Post Design",
+            "Caption Writing",
+            "Analytics & Reporting",
+            "Other"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Engagement Growth",
+            "Lead Generation"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "LinkedIn",
+            "Pinterest",
+            "Meta Business Suite",
+            "X / Twitter"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://www.instagram.com/gbimedicine/",
+            "role": "full_execution",
+            "tags": [
+              "social media",
+              "posting",
+              "designing",
+              "engagement",
+              "brand awareness",
+              "social media management"
+            ],
+            "title": "Georgian bay integrative medicine",
+            "budget": "60000",
+            "timeline": "3_plus_months",
+            "techStack": [
+              "canva",
+              "meta business suite",
+              "adobe express"
+            ],
+            "description": "its a clinic page"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "social_scope": "posting"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "instagram": "https://www.instagram.com/gbimedicine/ "
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmaopf2j00072v989r058830",
+    "name": "Shreya Pal",
+    "service": "Social Media Management",
+    "serviceKey": "social_media_marketing",
+    "mktSd": {
+      "key": "social_media_marketing",
+      "title": "Social Media Management",
+      "coverImage": "/assets/services/social-media-cover.jpg",
+      "description": "Plan and execute social content, engagement, and platform growth campaigns."
+    },
+    "profileSd": {
+      "crm_erp": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {},
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "branding": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {},
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "lead_generation": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "ChatGPT",
+            "Google Docs",
+            "Surfer SEO",
+            "Claude",
+            "Ahrefs",
+            "Other",
+            "Jasper"
+          ],
+          "writing_content_type": [
+            "Blog Writing",
+            "SEO Content",
+            "Script Writing",
+            "Copywriting",
+            "Website Content"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Seo",
+              "Easy language"
+            ],
+            "title": "Blog Writing  ",
+            "budget": "7000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "Grammarly"
+            ],
+            "description": "I write clear and engaging blogs that inform, educate, and connect with the audience. My focus is on simple language and content that adds real value."
+          },
+          {
+            "role": "full_execution",
+            "tags": [
+              "Content writer",
+              "engaging content",
+              "Seo content writer",
+              "Blog writer"
+            ],
+            "title": "Content writing ",
+            "budget": "7000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "Copy.ai"
+            ],
+            "description": "I write content for social media, ads, and websites that builds brand presence and drives results."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "writing_tools": "Perplexity"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://docs.google.com/document/d/1Uuzw_aQ5BfU6pH2mwI2IVj0OpmjWyOgx28s-ahe33q0/edit?tab=t.wx1r3frv1fw"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "paid_advertising": {
+        "groups": {
+          "ads_platforms": [
+            "Meta Ads",
+            "Meta Ads Manager"
+          ],
+          "ads_campaign_types": [
+            "Lead Generation",
+            "Brand Awareness"
+          ],
+          "ads_tracking_tools": [
+            "Meta Ads Manager"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Real estate",
+              "Sikkim university",
+              "university"
+            ],
+            "title": "Lead generation ",
+            "budget": "15000",
+            "timeline": "1_3_months",
+            "techStack": [
+              "Meta ads manager"
+            ],
+            "description": "I work on lead generation for real estate and universities. My focus is on bringing quality enquiries and improving conversions through targeted campaigns."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "small",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Caption Writing",
+            "Post Design",
+            "Analytics & Reporting",
+            "Community Management"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Lead Generation",
+            "Sales Funnel Content",
+            "Engagement Growth"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "Meta Business Suite",
+            "LinkedIn"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Real estate"
+            ],
+            "title": "Social Media Management ",
+            "budget": "10000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "Sprout social",
+              "canva",
+              "hootsuite"
+            ],
+            "description": "I manage real estate ad campaigns and handle their social media accounts. My focus is on generating quality leads and building a strong online presence."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmaopfft00092v98ac6nvqqj",
+    "name": "Shreya Pal",
+    "service": "Performance Marketing / Paid Ads",
+    "serviceKey": "paid_advertising",
+    "mktSd": {
+      "key": "paid_advertising",
+      "title": "Performance Marketing / Paid Ads",
+      "coverImage": "/assets/services/paid-ads-cover.jpg",
+      "description": "Run ROI-focused ad campaigns across major paid media platforms."
+    },
+    "profileSd": {
+      "crm_erp": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {},
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "branding": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {},
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "lead_generation": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "ChatGPT",
+            "Google Docs",
+            "Surfer SEO",
+            "Claude",
+            "Ahrefs",
+            "Other",
+            "Jasper"
+          ],
+          "writing_content_type": [
+            "Blog Writing",
+            "SEO Content",
+            "Script Writing",
+            "Copywriting",
+            "Website Content"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Seo",
+              "Easy language"
+            ],
+            "title": "Blog Writing  ",
+            "budget": "7000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "Grammarly"
+            ],
+            "description": "I write clear and engaging blogs that inform, educate, and connect with the audience. My focus is on simple language and content that adds real value."
+          },
+          {
+            "role": "full_execution",
+            "tags": [
+              "Content writer",
+              "engaging content",
+              "Seo content writer",
+              "Blog writer"
+            ],
+            "title": "Content writing ",
+            "budget": "7000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "Copy.ai"
+            ],
+            "description": "I write content for social media, ads, and websites that builds brand presence and drives results."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "writing_tools": "Perplexity"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://docs.google.com/document/d/1Uuzw_aQ5BfU6pH2mwI2IVj0OpmjWyOgx28s-ahe33q0/edit?tab=t.wx1r3frv1fw"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "paid_advertising": {
+        "groups": {
+          "ads_platforms": [
+            "Meta Ads",
+            "Meta Ads Manager"
+          ],
+          "ads_campaign_types": [
+            "Lead Generation",
+            "Brand Awareness"
+          ],
+          "ads_tracking_tools": [
+            "Meta Ads Manager"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Real estate",
+              "Sikkim university",
+              "university"
+            ],
+            "title": "Lead generation ",
+            "budget": "15000",
+            "timeline": "1_3_months",
+            "techStack": [
+              "Meta ads manager"
+            ],
+            "description": "I work on lead generation for real estate and universities. My focus is on bringing quality enquiries and improving conversions through targeted campaigns."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "small",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Caption Writing",
+            "Post Design",
+            "Analytics & Reporting",
+            "Community Management"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Lead Generation",
+            "Sales Funnel Content",
+            "Engagement Growth"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "Meta Business Suite",
+            "LinkedIn"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Real estate"
+            ],
+            "title": "Social Media Management ",
+            "budget": "10000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "Sprout social",
+              "canva",
+              "hootsuite"
+            ],
+            "description": "I manage real estate ad campaigns and handle their social media accounts. My focus is on generating quality leads and building a strong online presence."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmaopfsh000b2v98ri0z77ik",
+    "name": "Shreya Pal",
+    "service": "Writing & Content",
+    "serviceKey": "writing_content",
+    "mktSd": {
+      "key": "writing_content",
+      "title": "Writing & Content",
+      "coverImage": "/assets/services/writing-content-cover.jpg",
+      "description": "Create clear, conversion-driven content for web, blogs, and campaigns."
+    },
+    "profileSd": {
+      "crm_erp": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {},
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "branding": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {},
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "lead_generation": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "ChatGPT",
+            "Google Docs",
+            "Surfer SEO",
+            "Claude",
+            "Ahrefs",
+            "Other",
+            "Jasper"
+          ],
+          "writing_content_type": [
+            "Blog Writing",
+            "SEO Content",
+            "Script Writing",
+            "Copywriting",
+            "Website Content"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Seo",
+              "Easy language"
+            ],
+            "title": "Blog Writing  ",
+            "budget": "7000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "Grammarly"
+            ],
+            "description": "I write clear and engaging blogs that inform, educate, and connect with the audience. My focus is on simple language and content that adds real value."
+          },
+          {
+            "role": "full_execution",
+            "tags": [
+              "Content writer",
+              "engaging content",
+              "Seo content writer",
+              "Blog writer"
+            ],
+            "title": "Content writing ",
+            "budget": "7000",
+            "timeline": "less_than_2_weeks",
+            "techStack": [
+              "Copy.ai"
+            ],
+            "description": "I write content for social media, ads, and websites that builds brand presence and drives results."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "writing_tools": "Perplexity"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://docs.google.com/document/d/1Uuzw_aQ5BfU6pH2mwI2IVj0OpmjWyOgx28s-ahe33q0/edit?tab=t.wx1r3frv1fw"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "paid_advertising": {
+        "groups": {
+          "ads_platforms": [
+            "Meta Ads",
+            "Meta Ads Manager"
+          ],
+          "ads_campaign_types": [
+            "Lead Generation",
+            "Brand Awareness"
+          ],
+          "ads_tracking_tools": [
+            "Meta Ads Manager"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Real estate",
+              "Sikkim university",
+              "university"
+            ],
+            "title": "Lead generation ",
+            "budget": "15000",
+            "timeline": "1_3_months",
+            "techStack": [
+              "Meta ads manager"
+            ],
+            "description": "I work on lead generation for real estate and universities. My focus is on bringing quality enquiries and improving conversions through targeted campaigns."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "small",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Caption Writing",
+            "Post Design",
+            "Analytics & Reporting",
+            "Community Management"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Lead Generation",
+            "Sales Funnel Content",
+            "Engagement Growth"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "Meta Business Suite",
+            "LinkedIn"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Real estate"
+            ],
+            "title": "Social Media Management ",
+            "budget": "10000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "Sprout social",
+              "canva",
+              "hootsuite"
+            ],
+            "description": "I manage real estate ad campaigns and handle their social media accounts. My focus is on generating quality leads and building a strong online presence."
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/shaktiassociates.zkr?igsh=aTJhNjNqdzY4aTNt&utm_source=qr"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmd05kw80004ilalkjy4vphh",
+    "name": "Dheeraj Sorout",
+    "service": "Web Development",
+    "serviceKey": "web_development",
+    "mktSd": {
+      "key": "web_development",
+      "title": "Web Development",
+      "coverImage": "/assets/services/web-development-cover.jpg",
+      "description": "Design and develop responsive, high-converting websites and landing pages."
+    },
+    "profileSd": {
+      "ai_automation": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "github": "https://github.com/dheerajsorout/"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "",
+        "serviceDescription": "",
+        "averageProjectPrice": "",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": ""
+      },
+      "web_development": {
+        "groups": {
+          "website_tech_stack": [
+            "React / Next.js",
+            "Node.js",
+            "HTML / CSS / JavaScript"
+          ],
+          "website_specialization": [
+            "SaaS Platforms",
+            "E-commerce"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "team_project",
+            "title": "Book My Influencer",
+            "budget": "7000",
+            "readme": "https://github.com/gohypedevelopers-stack/bookmyinfluencer",
+            "timeline": "1_3_months"
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "liveProjects": "https://github.com/dheerajsorout/"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "small",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmda4ouh000ycrjq0scr2sek",
+    "name": "Bhaskar Gera",
+    "service": "Writing & Content",
+    "serviceKey": "writing_content",
+    "mktSd": {
+      "key": "writing_content",
+      "title": "Writing & Content",
+      "coverImage": "/assets/services/writing-content-cover.jpg",
+      "description": "Create clear, conversion-driven content for web, blogs, and campaigns."
+    },
+    "profileSd": {
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "AI Writing Tools",
+            "Google Docs",
+            "ChatGPT",
+            "Claude",
+            "Jasper",
+            "Notion",
+            "Surfer SEO",
+            "Hemingway",
+            "Hemingway Editor"
+          ],
+          "writing_content_type": [
+            "Website Content",
+            "SEO Content",
+            "Copywriting",
+            "Script Writing",
+            "Other"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Content Strategy",
+              "Youtube Growth",
+              "Instagram Growth",
+              "Social media gorwth",
+              "online presence"
+            ],
+            "title": "Techy Bears Content Strategy",
+            "budget": "120000",
+            "timeline": "3_plus_months",
+            "techStack": [
+              "notion",
+              "Slack",
+              "Docs",
+              "Claude",
+              "Gemini",
+              "Perplexity"
+            ],
+            "description": "Took a tech based Instagram page from 2000 to 10k with multiple reels getting views in millions and took YouTube channel from 15k to 22k.  It is an ongoing project in which I am responsible for the entire content Strategy, YouTube and Instagram Posting scripts, posting schedule and timing and even the captions and tags. "
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "writing_content_type": "Ad Cpy, landing page"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://docs.google.com/document/d/1DaHv2RF6znyC14Rynwp_XW08QwYtC6vIRDT-oZ0lwGs/edit?usp=sharing",
+          "medium": "https://docs.google.com/document/d/1DaHv2RF6znyC14Rynwp_XW08QwYtC6vIRDT-oZ0lwGs/edit?usp=sharing",
+          "substack": "https://docs.google.com/document/d/1DaHv2RF6znyC14Rynwp_XW08QwYtC6vIRDT-oZ0lwGs/edit?usp=sharing",
+          "portfolio": "https://docs.google.com/document/d/1DaHv2RF6znyC14Rynwp_XW08QwYtC6vIRDT-oZ0lwGs/edit?usp=sharing"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Caption Writing",
+            "Community Management",
+            "Analytics & Reporting"
+          ],
+          "social_strategy": [
+            "Engagement Growth",
+            "Brand Awareness Focus",
+            "Lead Generation",
+            "Sales Funnel Content"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "YouTube",
+            "LinkedIn",
+            "Pinterest",
+            "Twitter / X",
+            "Meta Business Suite",
+            "Threads",
+            "Google Analytics 4"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {}
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/techy_bears/?hl=en",
+          "facebook": "https://www.instagram.com/techy_bears/?hl=en",
+          "linkedin": "https://www.instagram.com/techy_bears/?hl=en",
+          "instagram": "https://www.instagram.com/techy_bears/?hl=en"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "id": "cmmda4p6t0010crjq513bfwqr",
+    "name": "Bhaskar Gera",
+    "service": "Social Media Management",
+    "serviceKey": "social_media_marketing",
+    "mktSd": {
+      "key": "social_media_marketing",
+      "title": "Social Media Management",
+      "coverImage": "/assets/services/social-media-cover.jpg",
+      "description": "Plan and execute social content, engagement, and platform growth campaigns."
+    },
+    "profileSd": {
+      "writing_content": {
+        "groups": {
+          "writing_tools": [
+            "Grammarly",
+            "AI Writing Tools",
+            "Google Docs",
+            "ChatGPT",
+            "Claude",
+            "Jasper",
+            "Notion",
+            "Surfer SEO",
+            "Hemingway",
+            "Hemingway Editor"
+          ],
+          "writing_content_type": [
+            "Website Content",
+            "SEO Content",
+            "Copywriting",
+            "Script Writing",
+            "Other"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "role": "full_execution",
+            "tags": [
+              "Content Strategy",
+              "Youtube Growth",
+              "Instagram Growth",
+              "Social media gorwth",
+              "online presence"
+            ],
+            "title": "Techy Bears Content Strategy",
+            "budget": "120000",
+            "timeline": "3_plus_months",
+            "techStack": [
+              "notion",
+              "Slack",
+              "Docs",
+              "Claude",
+              "Gemini",
+              "Perplexity"
+            ],
+            "description": "Took a tech based Instagram page from 2000 to 10k with multiple reels getting views in millions and took YouTube channel from 15k to 22k.  It is an ongoing project in which I am responsible for the entire content Strategy, YouTube and Instagram Posting scripts, posting schedule and timing and even the captions and tags. "
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {
+          "writing_content_type": "Ad Cpy, landing page"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://docs.google.com/document/d/1DaHv2RF6znyC14Rynwp_XW08QwYtC6vIRDT-oZ0lwGs/edit?usp=sharing",
+          "medium": "https://docs.google.com/document/d/1DaHv2RF6znyC14Rynwp_XW08QwYtC6vIRDT-oZ0lwGs/edit?usp=sharing",
+          "substack": "https://docs.google.com/document/d/1DaHv2RF6znyC14Rynwp_XW08QwYtC6vIRDT-oZ0lwGs/edit?usp=sharing",
+          "portfolio": "https://docs.google.com/document/d/1DaHv2RF6znyC14Rynwp_XW08QwYtC6vIRDT-oZ0lwGs/edit?usp=sharing"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Content Planning",
+            "Caption Writing",
+            "Community Management",
+            "Analytics & Reporting"
+          ],
+          "social_strategy": [
+            "Engagement Growth",
+            "Brand Awareness Focus",
+            "Lead Generation",
+            "Sales Funnel Content"
+          ],
+          "social_platforms": [
+            "Instagram",
+            "Facebook",
+            "YouTube",
+            "LinkedIn",
+            "Pinterest",
+            "Twitter / X",
+            "Meta Business Suite",
+            "Threads",
+            "Google Analytics 4"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {}
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://www.instagram.com/techy_bears/?hl=en",
+          "facebook": "https://www.instagram.com/techy_bears/?hl=en",
+          "linkedin": "https://www.instagram.com/techy_bears/?hl=en",
+          "instagram": "https://www.instagram.com/techy_bears/?hl=en"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      }
+    }
+  }
+]
+MARKER_END

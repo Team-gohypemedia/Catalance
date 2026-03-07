@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, Send, Share2, Copy, CheckCheck, Zap, LogIn, Lock } from "lucide-react";
+import { Clock, Send, Share2, Copy, CheckCheck, Zap, LogIn, Lock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -14,20 +14,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 
 // ─── Price formatter ──────────────────────────────────────────────────────────
-const formatPrice = (serviceDetails = {}) => {
-    const raw = serviceDetails.minBudget || serviceDetails.price || serviceDetails.startingPrice;
+const formatPrice = (serviceDetails = {}, titleLabel = "Service Plan") => {
+    const raw = serviceDetails.startingPrice || serviceDetails.minBudget || serviceDetails.price;
     if (raw) {
         const num = Number(raw);
-        if (!isNaN(num) && num > 0) return { label: "Starts at", value: `₹${num.toLocaleString("en-IN")}` };
+        if (!isNaN(num) && num > 0) return { label: titleLabel, value: `₹${num.toLocaleString("en-IN")}` };
     }
-    const rangeStr = serviceDetails.averageProjectPriceRange || serviceDetails.priceRange || "";
-    if (rangeStr) return { label: "From", value: String(rangeStr) };
-    return { label: null, value: "Contact for pricing" };
+    return { label: titleLabel, value: "Contact for pricing" };
 };
 
 const formatDelivery = (serviceDetails = {}) => {
-    const val = serviceDetails.deliveryTime || serviceDetails.turnaround || serviceDetails.timeline;
-    return val ? String(val) : "Flexible";
+    const val = serviceDetails.deliveryTime;
+    return val ? String(val) : "Delivery time not specified";
 };
 
 // ─── Unauthenticated in-modal prompt ─────────────────────────────────────────
@@ -73,8 +71,19 @@ const StickySidebar = ({
     onModalOpenChange,
 }) => {
     const { serviceDetails = {}, freelancer } = service;
-    const price = formatPrice(serviceDetails);
+    const planTitle = service.service || service.serviceName || "Service Plan";
+    const price = formatPrice(serviceDetails, planTitle.length > 25 ? `${planTitle.substring(0, 25)}...` : planTitle);
     const deliveryTime = formatDelivery(serviceDetails);
+
+    // Normalize deliverables (to use in the sidebar similar to revisions/source files)
+    const normalizeDeliverables = (sd = {}) => {
+        const candidates = [sd.deliverables, sd.whatsIncluded, sd.includes, sd.features];
+        for (const c of candidates) {
+            if (Array.isArray(c) && c.length > 0) return c.filter(Boolean);
+        }
+        return [];
+    };
+    const deliverables = normalizeDeliverables(serviceDetails);
 
     // Internal state — used if modal is NOT lifted (fallback), overridden by props when lifted
     const [internalModalOpen, setInternalModalOpen] = useState(false);
@@ -195,66 +204,98 @@ const StickySidebar = ({
     };
 
     return (
-        <div>
-            <Card className="overflow-hidden rounded-3xl border border-border/40 bg-card/70 backdrop-blur-xl shadow-2xl shadow-black/10">
-                {/* Price header strip */}
-                <div className="px-6 pt-6 pb-5 border-b border-border/40">
-                    {price.label && (
-                        <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-1">
-                            {price.label}
+        <div className="flex flex-col gap-3">
+            <Card className="rounded-2xl border border-white/5 bg-[#171717] overflow-hidden">
+                <div className="p-4 pb-3">
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-xl font-bold text-white leading-tight">{price.label}</h3>
+                        <span className="text-xl font-bold text-white leading-tight pl-2">{price.value}</span>
+                    </div>
+
+                    {serviceDetails.description || serviceDetails.bio ? (
+                        <p className="text-[#a1a1aa] text-sm leading-relaxed mb-3 line-clamp-2">
+                            {serviceDetails.description || serviceDetails.bio}
+                        </p>
+                    ) : (
+                        <p className="text-[#a1a1aa] text-sm leading-relaxed mb-3 italic">
+                            No summary provided
                         </p>
                     )}
-                    <p className="text-3xl font-extrabold tracking-tight text-foreground">{price.value}</p>
 
-                    <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground font-medium">
-                        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Clock className="w-4 h-4 text-primary" />
+                    <div className="space-y-2 mb-4">
+                        <div className="flex items-start gap-2 text-[13px] text-[#e4e4e7]">
+                            <Clock className="w-3.5 h-3.5 text-amber-500 mt-0.5" />
+                            <span className="font-medium">{deliveryTime}</span>
                         </div>
-                        <span>{deliveryTime} delivery</span>
-                    </div>
-                </div>
-
-                {/* CTA Buttons */}
-                <div className="p-5 space-y-3">
-                    <Button
-                        size="lg"
-                        className="w-full h-13 rounded-2xl text-base font-bold tracking-tight shadow-lg shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 gap-2"
-                        onClick={handleCTAClick}
-                        aria-label="Contact freelancer about this service"
-                    >
-                        <Zap className="w-4 h-4" />
-                        Contact Freelancer
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className={cn(
-                            "w-full h-11 rounded-2xl text-sm font-semibold border border-border/50 gap-2 transition-all",
-                            copied && "border-emerald-500/50 text-emerald-600 bg-emerald-500/5"
-                        )}
-                        onClick={handleShare}
-                        aria-label="Share this service link"
-                    >
-                        {copied ? <CheckCheck className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                        {copied ? "Copied!" : "Share Service"}
-                    </Button>
-                </div>
-
-                {/* Trust indicators */}
-                <div className="px-5 pb-5">
-                    <div className="w-full bg-muted/30 rounded-2xl p-4 space-y-2.5">
-                        {[
-                            "✓ Response within 24 hours",
-                            "✓ 100% satisfaction guarantee",
-                            "✓ Secure payments",
-                        ].map((point, i) => (
-                            <p key={i} className="text-xs text-muted-foreground font-medium">
-                                {point}
-                            </p>
+                        {deliverables.length > 0 && deliverables.slice(0, 3).map((item, i) => (
+                            <div key={i} className="flex items-start gap-2 text-[13px] text-[#e4e4e7]">
+                                <CheckCheck className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                                <span className="font-medium line-clamp-1">{item}</span>
+                            </div>
                         ))}
+                        {deliverables.length > 3 && (
+                            <div className="text-xs text-[#a1a1aa] pl-6">
+                                + {deliverables.length - 3} more items
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Button
+                            className="w-full h-10 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-full transition-colors text-sm"
+                            onClick={handleCTAClick}
+                        >
+                            Continue ({price.value})
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            className="w-full h-9 text-[#a1a1aa] hover:text-white hover:bg-white/5 rounded-full font-medium text-sm"
+                            onClick={() => {
+                                handleCTAClick();
+                            }}
+                        >
+                            Contact {freelancer?.fullName?.split(' ')[0] || "Freelancer"}
+                        </Button>
                     </div>
                 </div>
+            </Card>
+
+            {/* About the Seller Card - Moved from main content directly to sidebar */}
+            <Card className="rounded-2xl border border-white/5 bg-[#171717] overflow-hidden p-4">
+                <h3 className="text-base font-bold text-white mb-3">About the Seller</h3>
+
+                <div className="flex items-center gap-3 mb-2">
+                    {freelancer?.avatar ? (
+                        <img src={freelancer.avatar} alt={freelancer.fullName} className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                        <div className="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center shrink-0">
+                            <span className="text-base font-bold text-[#a1a1aa]">{freelancer?.fullName?.charAt(0) || 'U'}</span>
+                        </div>
+                    )}
+                    <div>
+                        <div className="font-bold text-white">{freelancer?.fullName || "Anonymous Freelancer"}</div>
+                        {freelancer?.freelancerProfile?.jobTitle && (
+                            <div className="text-xs text-[#a1a1aa] mb-1">{freelancer.freelancerProfile.jobTitle}</div>
+                        )}
+                        <div className="flex items-center gap-1.5 text-xs font-medium mt-1">
+                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                            <span className="text-amber-500">{Number(service?.averageRating || 0) > 0 ? Number(service.averageRating).toFixed(1) : "New"}</span>
+                            {service?.reviewCount > 0 && <span className="text-[#a1a1aa]">({service.reviewCount} reviews)</span>}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="text-[13px] text-[#a1a1aa] leading-snug mb-3 line-clamp-2">
+                    {freelancer?.freelancerProfile?.bio ? (
+                        <p>{freelancer.freelancerProfile.bio}</p>
+                    ) : (
+                        <p className="italic">No biography provided.</p>
+                    )}
+                </div>
+
+                <Button variant="outline" className="w-full h-8 text-[13px] rounded-full border-white/10 bg-transparent text-white hover:bg-white/5">
+                    View Profile
+                </Button>
             </Card>
 
             {/* ── Chat / Auth Modal ──────────────────────────────────────── */}

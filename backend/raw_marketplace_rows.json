@@ -1,0 +1,90 @@
+[
+  {
+    "id": "cmmac4uv000049zd8qiymj2hb",
+    "serviceKey": "web_development",
+    "service": "Web Development",
+    "serviceDetails": {
+      "key": "web_development",
+      "title": "Web Development",
+      "coverImage": "/assets/services/web-development-cover.jpg",
+      "description": "Design and develop responsive, high-converting websites and landing pages."
+    }
+  },
+  {
+    "id": "cmmaciosq0003nf73nwq79g6y",
+    "serviceKey": "branding",
+    "service": "Branding",
+    "serviceDetails": {
+      "key": "branding",
+      "title": "Branding",
+      "coverImage": "/assets/services/branding-cover.jpg",
+      "description": "Build logo, brand identity, and strategic messaging for consistent brand growth."
+    }
+  },
+  {
+    "id": "cmmacip5i0005nf73tqi99rln",
+    "serviceKey": "social_media_marketing",
+    "service": "Social Media Management",
+    "serviceDetails": {
+      "key": "social_media_marketing",
+      "title": "Social Media Management",
+      "coverImage": "/assets/services/social-media-cover.jpg",
+      "description": "Plan and execute social content, engagement, and platform growth campaigns."
+    }
+  },
+  {
+    "id": "cmmacipi90007nf738detcygz",
+    "serviceKey": "creative_design",
+    "service": "Creative & Design",
+    "serviceDetails": {
+      "key": "creative_design",
+      "title": "Creative & Design",
+      "coverImage": "/assets/services/creative-design-cover.jpg",
+      "description": "Design social, brand, and marketing creatives aligned to business goals."
+    }
+  },
+  {
+    "id": "cmmad5oi50007151v0xoj8lod",
+    "serviceKey": "web_development",
+    "service": "Web Development",
+    "serviceDetails": {
+      "key": "web_development",
+      "title": "Web Development",
+      "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/941479a8-7d33-4b4c-bf92-706c86ba1bfe.png",
+      "description": "I am a web developer with 3 years of experience building responsive, user-friendly, and high-performing websites. I have worked on multiple projects using different technologies and always focus on delivering clean code and quality results."
+    }
+  },
+  {
+    "id": "cmmad5onk0009151vewthmpuy",
+    "serviceKey": "branding",
+    "service": "Branding",
+    "serviceDetails": {
+      "key": "branding",
+      "title": "Branding",
+      "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/7d0e2aa6-018c-4a1d-ad93-c5ad96f63e2b.jpeg",
+      "description": "I am a branding specialist with experience in creating strong and impactful brand identities. I help businesses build a clear brand voice, visual identity, and strategy that connects with their audience and leaves a lasting impression."
+    }
+  },
+  {
+    "id": "cmmad5oq7000b151vq676cjo5",
+    "serviceKey": "seo",
+    "service": "SEO",
+    "serviceDetails": {
+      "key": "seo",
+      "title": "SEO",
+      "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/8f5fefb4-0449-4c2b-943c-10afac63dc4f.png",
+      "description": "I am a beginner in SEO with a strong interest in improving website visibility and search rankings. I am learning keyword research, on-page optimization, and SEO best practices to help websites grow organically."
+    }
+  },
+  {
+    "id": "cmmad5otc000d151vpyoaqowd",
+    "serviceKey": "software_development",
+    "service": "Software Development",
+    "serviceDetails": {
+      "key": "software_development",
+      "title": "Software Development",
+      "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/3cd47398-4d48-419c-97b9-3904152828c4.webp",
+      "description": "I am a software developer with experience in building efficient, scalable, and user-focused applications. I work with different technologies to develop reliable solutions and always focus on clean code and quality performance."
+    }
+  }
+]

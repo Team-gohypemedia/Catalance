@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Star, MessageCircle, Loader2, Send } from "lucide-react";
+import { Star, MessageCircle, Loader2, Send, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
+import { useAuth } from "@/shared/context/AuthContext";
+import { useLocation, useNavigate } from "react-router-dom";
 
 
 const StarSelector = ({ value, onChange }) => (
@@ -63,10 +65,14 @@ const ReviewCard = ({ review }) => {
 };
 
 const ReviewsList = ({ serviceId, initialStats }) => {
+    const { isAuthenticated, user } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
+
     const [reviews, setReviews] = useState([]);
     const [stats, setStats] = useState(initialStats || { averageRating: 0, reviewCount: 0 });
     const [loading, setLoading] = useState(true);
-    const [form, setForm] = useState({ clientName: "", rating: 5, comment: "" });
+    const [form, setForm] = useState({ rating: 5, comment: "" });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [submitted, setSubmitted] = useState(false);
@@ -97,9 +103,13 @@ const ReviewsList = ({ serviceId, initialStats }) => {
         setSubmitting(true);
         try {
             const { API_BASE_URL } = await import("@/shared/lib/api-client");
+            const token = localStorage.getItem("freelancer-auth-token") || localStorage.getItem("auth-token");
             const res = await fetch(`${API_BASE_URL}/marketplace/${serviceId}/reviews`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify(form),
             });
 
@@ -113,7 +123,7 @@ const ReviewsList = ({ serviceId, initialStats }) => {
             const newCount = stats.reviewCount + 1;
             const newAvg = ((stats.averageRating * stats.reviewCount) + json.data.rating) / newCount;
             setStats({ averageRating: Number(newAvg.toFixed(1)), reviewCount: newCount });
-            setForm({ clientName: "", rating: 5, comment: "" });
+            setForm({ rating: 5, comment: "" });
             setSubmitted(true);
             setTimeout(() => setSubmitted(false), 3000);
         } catch (err) {
@@ -124,7 +134,7 @@ const ReviewsList = ({ serviceId, initialStats }) => {
     };
 
     return (
-        <section className="space-y-6 bg-card/50 border border-border/40 rounded-2xl p-6 md:p-8 shadow-sm backdrop-blur-sm">
+        <section id="reviews-section" className="space-y-6 bg-card/50 border border-border/40 rounded-2xl p-6 md:p-8 shadow-sm backdrop-blur-sm">
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-border/40">
                 <div className="flex items-center gap-2.5">
@@ -191,17 +201,34 @@ const ReviewsList = ({ serviceId, initialStats }) => {
                         <p className="font-semibold text-sm">Thank you for your review!</p>
                         <p className="text-xs text-muted-foreground">Your feedback helps others discover great services.</p>
                     </div>
+                ) : !isAuthenticated ? (
+                    <div className="py-8 text-center flex flex-col items-center justify-center gap-3 bg-background/30 rounded-2xl border border-dashed border-border/50">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Lock className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-sm">Members Only</p>
+                            <p className="text-xs text-muted-foreground mt-1 px-4 text-balance">Please log in to share your experience and rate this service.</p>
+                        </div>
+                        <Button
+                            className="mt-2 rounded-xl h-10 px-6 font-semibold"
+                            onClick={() => {
+                                const returnPath = location.pathname;
+                                navigate(`/login?redirect=${encodeURIComponent(returnPath)}&openReview=1`);
+                            }}
+                        >
+                            Log in to review
+                        </Button>
+                    </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Your Name</label>
                                 <Input
-                                    required
-                                    placeholder="John Doe"
-                                    value={form.clientName}
-                                    onChange={(e) => setForm((p) => ({ ...p, clientName: e.target.value }))}
-                                    className="bg-background/60 h-10 rounded-xl border-border/50"
+                                    readOnly
+                                    value={user?.fullName || "Member"}
+                                    className="bg-muted/40 h-10 rounded-xl border-border/50 text-muted-foreground cursor-not-allowed font-medium"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -231,7 +258,7 @@ const ReviewsList = ({ serviceId, initialStats }) => {
                         <div className="flex justify-end">
                             <Button
                                 type="submit"
-                                disabled={submitting || !form.clientName.trim() || !form.comment.trim()}
+                                disabled={submitting || !form.comment.trim()}
                                 className="rounded-xl gap-2 px-5"
                             >
                                 {submitting ? (

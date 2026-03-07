@@ -1,0 +1,50 @@
+[
+  {
+    "id": "cmmadho9h002w151v9obcl28q",
+    "service": "Web Development",
+    "serviceKey": "web_development",
+    "image": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/941479a8-7d33-4b4c-bf92-706c86ba1bfe.png",
+    "minBudget": 300000,
+    "delivery": "3_plus_months"
+  },
+  {
+    "id": "cmmadho9h002x151vrlbjnepa",
+    "service": "Web Development",
+    "serviceKey": "web_development",
+    "image": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/941479a8-7d33-4b4c-bf92-706c86ba1bfe.png",
+    "minBudget": 1500000,
+    "delivery": "1_3_months"
+  },
+  {
+    "id": "cmmadho9i002y151vomg4ilcw",
+    "service": "Web Development",
+    "serviceKey": "web_development",
+    "image": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/941479a8-7d33-4b4c-bf92-706c86ba1bfe.png",
+    "minBudget": 1500000,
+    "delivery": "1_3_months"
+  },
+  {
+    "id": "cmmagl1j00002rf388awg9mgf",
+    "service": "Social Media Management",
+    "serviceKey": "social_media_marketing",
+    "image": null,
+    "minBudget": 60000,
+    "delivery": "3_plus_months"
+  },
+  {
+    "id": "cmmagl1j00003rf384caanmfc",
+    "service": "Performance Marketing / Paid Ads",
+    "serviceKey": "paid_advertising",
+    "image": null,
+    "minBudget": 10000,
+    "delivery": "2_4_weeks"
+  },
+  {
+    "id": "cmmagl1j00004rf38p67ucdpt",
+    "service": "Writing & Content",
+    "serviceKey": "writing_content",
+    "image": null,
+    "minBudget": 10000,
+    "delivery": "less_than_2_weeks"
+  }
+]

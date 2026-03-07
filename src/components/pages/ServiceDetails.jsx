@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/shared/context/AuthContext";
-import { ChevronRight, Home, User, CheckCircle2, Star, Wrench, PackageCheck, Layers } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, Star, Clock, FileIcon, Search, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import MediaGallery from "./marketplace-details/MediaGallery";
 import StickySidebar from "./marketplace-details/StickySidebar";
 import ReviewsList from "./marketplace-details/ReviewsList";
-import FreelancerProfile from "./marketplace-details/FreelancerProfile";
 
 // ─── Data Normalization Utilities ───────────────────────────────────────────
 const formatCategory = (cat) => {
@@ -34,17 +33,15 @@ const getCategoryGradient = (category) => {
 /** Normalize images from any serviceDetails key combo */
 const normalizeImages = (sd = {}) => {
     const candidates = [
+        sd.coverImage,
         sd.images,
         sd.gallery,
         sd.media,
-        sd.image ? [sd.image] : null,
-        sd.thumbnail ? [sd.thumbnail] : null,
-        sd.coverImage ? [sd.coverImage] : null,
+        sd.image,
+        sd.thumbnail,
     ];
     for (const c of candidates) {
-        if (Array.isArray(c) && c.length > 0) {
-            return c.filter(Boolean);
-        }
+        if (Array.isArray(c) && c.length > 0) return c.filter(Boolean);
         if (typeof c === "string" && c) return [c];
     }
     return [];
@@ -52,7 +49,7 @@ const normalizeImages = (sd = {}) => {
 
 /** Normalize description */
 const normalizeDescription = (sd = {}) =>
-    sd.description || sd.about || sd.bio || sd.summary || "";
+    sd.description || sd.bio || "";
 
 /** Normalize tools / tech stack */
 const normalizeTools = (sd = {}) => {
@@ -73,8 +70,8 @@ const normalizeDeliverables = (sd = {}) => {
 };
 
 /** Normalize portfolio */
-const normalizePortfolio = (sd = {}, freelancer = {}) => {
-    const candidates = [sd.portfolio, sd.projects, freelancer?.freelancerProfile?.portfolioProjects];
+const normalizePortfolio = (sd = {}) => {
+    const candidates = [sd.portfolio, sd.projects];
     for (const c of candidates) {
         if (Array.isArray(c) && c.length > 0) return c.filter(Boolean);
     }
@@ -148,13 +145,27 @@ const ServiceDetails = () => {
         fetchService();
     }, [id]);
 
-    // ── Auto-open modal after post-login return (openMessage=1) ──
+    // ── Auto-open modal or scroll after post-login return ──
     useEffect(() => {
         const params = new URLSearchParams(location.search);
+        let updated = false;
+
         if (isAuthenticated && params.get("openMessage") === "1" && service) {
             setChatModalOpen(true);
-            // Clean the query param from URL without re-render/navigation
             params.delete("openMessage");
+            updated = true;
+        }
+
+        if (isAuthenticated && params.get("openReview") === "1" && service) {
+            setTimeout(() => {
+                const el = document.getElementById("reviews-section");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+            }, 500);
+            params.delete("openReview");
+            updated = true;
+        }
+
+        if (updated) {
             const newUrl = [location.pathname, params.toString() ? `?${params}` : ""].join("");
             window.history.replaceState({}, "", newUrl);
         }
@@ -228,7 +239,7 @@ const ServiceDetails = () => {
     const description = normalizeDescription(serviceDetails);
     const tools = normalizeTools(serviceDetails);
     const deliverables = normalizeDeliverables(serviceDetails);
-    const portfolio = normalizePortfolio(serviceDetails, freelancer);
+    const portfolio = normalizePortfolio(serviceDetails);
 
     return (
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 max-w-[1200px] min-h-screen relative">
@@ -240,20 +251,7 @@ const ServiceDetails = () => {
                 </div>
             )}
 
-            {/* Breadcrumb */}
-            <nav className="flex items-center text-xs text-muted-foreground mb-6 overflow-x-auto whitespace-nowrap pb-1 gap-1">
-                <Link to="/" className="hover:text-primary transition-colors flex items-center gap-1">
-                    <Home className="w-3 h-3" /> Home
-                </Link>
-                <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-                <Link to="/marketplace" className="hover:text-primary transition-colors">Marketplace</Link>
-                {categoryLabel && (
-                    <>
-                        <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="text-foreground font-medium">{categoryLabel}</span>
-                    </>
-                )}
-            </nav>
+            {/* Removed internal Breadcrumb for clean layout */}
 
             {/* items-start prevents sidebar stretching full height; overflow-x is unset to allow sticky */}
             <div className="flex flex-col lg:flex-row lg:items-start gap-10">
@@ -261,44 +259,40 @@ const ServiceDetails = () => {
                 {/* ── Main Content (70%) ─────────────────────────────────── */}
                 <div className="flex-1 min-w-0 flex flex-col gap-8">
 
-                    {/* Service Header */}
-                    <div className="space-y-5 pb-6 border-b border-border/40">
+                    {/* Service Header - Redesigned to match image */}
+                    <div className="space-y-4 pb-0 border-0">
                         {categoryLabel && (
-                            <Badge variant="secondary" className="rounded-full text-xs font-semibold px-3 py-1">
-                                {categoryLabel}
-                            </Badge>
+                            <div className="flex items-center gap-2 text-sm font-medium text-[#a1a1aa] mb-2">
+                                <span>{categoryLabel}</span>
+                            </div>
                         )}
-                        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground leading-tight">
+
+                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.1]">
                             {service.service || "Untitled Service"}
                         </h1>
 
                         {/* Freelancer + Rating Row */}
-                        <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4 pt-2">
                             <div className="flex items-center gap-2.5">
                                 {freelancer?.avatar ? (
-                                    <img src={freelancer.avatar} alt={authorName} className="w-9 h-9 rounded-full object-cover ring-2 ring-background shadow" />
+                                    <img src={freelancer.avatar} alt={authorName} className="w-10 h-10 rounded-full object-cover" />
                                 ) : (
-                                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center ring-2 ring-background shadow">
-                                        <User className="w-4 h-4 text-muted-foreground" />
+                                    <div className="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center">
+                                        <span className="font-bold text-[#a1a1aa]">{authorName.charAt(0)}</span>
                                     </div>
                                 )}
                                 <div>
-                                    <div className="flex items-center gap-1 font-semibold text-foreground leading-none">
+                                    <div className="flex items-center gap-1.5 font-bold text-white text-sm">
                                         {authorName}
-                                        {freelancer?.isVerified && <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />}
+                                        {freelancer?.isVerified && <span className="bg-amber-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded leading-none">PRO VERIFIED</span>}
                                     </div>
-                                    {freelancer?.freelancerProfile?.jobTitle && (
-                                        <p className="text-xs text-muted-foreground mt-0.5">{freelancer.freelancerProfile.jobTitle}</p>
-                                    )}
                                 </div>
                             </div>
 
-                            <div className="h-4 w-px bg-border/60 hidden sm:block" />
-
-                            <div className="flex items-center gap-1.5 bg-yellow-400/10 text-yellow-600 dark:text-yellow-400 px-3 py-1 rounded-full text-sm font-semibold">
-                                <Star className="w-3.5 h-3.5 fill-current" />
-                                <span>{service.averageRating > 0 ? service.averageRating : "New"}</span>
-                                <span className="text-muted-foreground font-normal">({service.reviewCount} reviews)</span>
+                            <div className="flex items-center gap-1.5 text-sm font-medium">
+                                <svg className="w-4 h-4 text-amber-500 fill-amber-500" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                                <span className="text-amber-500 font-bold">{Number(service?.averageRating || 0) > 0 ? Number(service.averageRating).toFixed(1) : "New"}</span>
+                                <span className="text-[#a1a1aa]">({service.reviewCount || 0} reviews)</span>
                             </div>
                         </div>
                     </div>
@@ -323,65 +317,118 @@ const ServiceDetails = () => {
                         categoryLabel={categoryLabel}
                     />
 
-                    {/* About This Service */}
-                    <SectionCard title="About This Service" icon={<Layers className="w-5 h-5 text-primary" />}>
+                    {/* Tabs Navigation */}
+                    <div className="flex gap-6 border-b border-white/10 overflow-x-auto mt-2">
+                        {["About this service", "Scope of Work", "Reviews", "FAQ"].map((tab, i) => (
+                            <button
+                                key={tab}
+                                className={cn(
+                                    "pb-3 text-sm font-bold whitespace-nowrap transition-colors",
+                                    i === 0
+                                        ? "text-amber-500 border-b-2 border-amber-500"
+                                        : "text-[#a1a1aa] hover:text-white"
+                                )}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Description - Redesigned */}
+                    <div className="text-[#d4d4d8] leading-relaxed space-y-4 text-[15px] pt-4">
                         {description ? (
-                            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                {description}
-                            </div>
+                            <div className="whitespace-pre-wrap">{description}</div>
                         ) : (
-                            <EmptyState message="No description provided yet." subtle />
+                            <p className="italic text-[#a1a1aa]">Not provided yet</p>
                         )}
-                    </SectionCard>
+                    </div>
 
-                    {/* Tools & Tech Stack */}
-                    <SectionCard title="Tech Stack & Tools" icon={<Wrench className="w-5 h-5 text-primary" />}>
-                        {tools.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                                {tools.map((tool, i) => (
-                                    <Badge key={i} variant="secondary" className="rounded-full font-medium bg-secondary/60 border border-border/40 px-3 py-1">
-                                        {tool}
-                                    </Badge>
-                                ))}
-                            </div>
-                        ) : (
-                            <EmptyState message="Tools not specified yet." subtle />
-                        )}
-                    </SectionCard>
-
-                    {/* What's Included */}
-                    <SectionCard title="What's Included" icon={<PackageCheck className="w-5 h-5 text-primary" />}>
-                        {deliverables.length > 0 ? (
-                            <ul className="space-y-2.5">
+                    {/* What's Included Grid */}
+                    <div className="pt-6">
+                        <h2 className="text-xl font-bold text-white mb-4">What's Included</h2>
+                        {deliverables && deliverables.length > 0 ? (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                 {deliverables.map((item, i) => (
-                                    <li key={i} className="flex items-start gap-3 text-sm text-foreground">
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                                        <span>{item}</span>
-                                    </li>
+                                    <div key={i} className="flex flex-col items-center justify-center p-4 rounded-xl border border-white/5 bg-[#171717] gap-2.5 text-center">
+                                        <CheckCircle2 className="w-5 h-5 text-amber-500" />
+                                        <span className="text-sm font-bold text-[#e4e4e7]">{item}</span>
+                                    </div>
                                 ))}
-                            </ul>
+                            </div>
                         ) : (
-                            <EmptyState
-                                message="Deliverables not listed yet."
-                                subtitle="Contact the freelancer for a detailed scope of work."
-                                subtle
-                            />
+                            <div className="p-8 rounded-2xl border border-dashed border-white/5 bg-white/[0.02] text-center">
+                                <p className="text-sm text-[#a1a1aa] font-medium">No specific deliverables listed yet.</p>
+                            </div>
                         )}
-                    </SectionCard>
+                    </div>
 
-                    {/* Freelancer Profile */}
-                    <FreelancerProfile freelancer={freelancer} portfolio={portfolio} />
+                    {/* Technical Stack Pills */}
+                    <div className="pt-6">
+                        <h2 className="text-xl font-bold text-white mb-4">Technical Stack</h2>
+                        {tools && tools.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                                {tools.map((tech, i) => (
+                                    <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full border border-white/5 bg-[#171717]">
+                                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                                        <span className="text-xs font-bold text-white">{tech}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-6 rounded-2xl border border-dashed border-white/5 bg-white/[0.02] text-center">
+                                <p className="text-xs text-[#a1a1aa] font-medium uppercase tracking-wider">No specific tools mentioned.</p>
+                            </div>
+                        )}
+                    </div>
 
-                    {/* Reviews */}
-                    <ReviewsList
-                        serviceId={service.id}
-                        initialStats={{ averageRating: service.averageRating, reviewCount: service.reviewCount }}
-                    />
+                    <div className="pt-8">
+                        <ReviewsList
+                            serviceId={service.id}
+                            initialStats={{ averageRating: service.averageRating, reviewCount: service.reviewCount }}
+                        />
+                    </div>
+
+
+
+                    {/* Portfolio */}
+                    <div className="pt-8 pb-12">
+                        <h2 className="text-xl font-bold text-white mb-4">Portfolio</h2>
+                        {portfolio && portfolio.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {portfolio.slice(0, 6).map((item, i) => {
+                                    const imgUrl = typeof item === "string" ? item : (item.imageUrl || item.image);
+                                    const titleStr = typeof item === "string" ? `Portfolio item ${i + 1}` : (item.title || item.name || `Portfolio item ${i + 1}`);
+                                    return (
+                                        <div key={i} className="group cursor-pointer">
+                                            <div className="aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-[#171717] border border-white/5 flex items-center justify-center">
+                                                {imgUrl ? (
+                                                    <img
+                                                        src={imgUrl}
+                                                        alt={titleStr}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-[#27272a] flex flex-col items-center justify-center text-[#a1a1aa] gap-2">
+                                                        <ImageIcon className="w-6 h-6 opacity-40" />
+                                                        <span className="text-[10px] font-bold tracking-widest uppercase opacity-40">No Image</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <h3 className="text-sm font-bold text-white group-hover:text-amber-500 transition-colors line-clamp-1">{titleStr}</h3>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ) : (
+                            <div className="p-12 rounded-2xl border border-dashed border-white/5 bg-white/[0.02] text-center">
+                                <p className="text-sm text-[#a1a1aa] font-medium">No previous project highlights shared yet.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* ── Sticky Sidebar (30%) — self-start prevents stretching, sticky top-24 stops at natural end ──*/}
                 <div
-                    className="hidden lg:block w-[340px] shrink-0 self-start sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4"
+                    className="hidden lg:block w-[340px] shrink-0 self-start sticky top-24 pb-4"
                     role="complementary"
                     aria-label="Service pricing and contact"
                 >
@@ -398,33 +445,5 @@ const ServiceDetails = () => {
         </div>
     );
 };
-
-// ─── Reusable Section Card ─────────────────────────────────────────────────
-export const SectionCard = ({ title, icon, children, className }) => (
-    <section className={cn(
-        "flex flex-col gap-5 bg-card/50 border border-border/40 rounded-2xl p-6 md:p-8 shadow-sm backdrop-blur-sm",
-        className
-    )}>
-        <div className="flex items-center gap-2.5 pb-4 border-b border-border/40">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                {icon}
-            </div>
-            <h2 className="text-lg font-bold tracking-tight text-foreground">{title}</h2>
-        </div>
-        <div>{children}</div>
-    </section>
-);
-
-// ─── Reusable Empty State ──────────────────────────────────────────────────
-export const EmptyState = ({ message, subtitle, icon: Icon, subtle = false }) => (
-    <div className={cn(
-        "flex flex-col items-center justify-center py-8 text-center rounded-xl",
-        subtle ? "" : "bg-muted/20 border border-dashed border-border/40"
-    )}>
-        {!subtle && (Icon ? <Icon className="w-8 h-8 text-muted-foreground/30 mb-3" /> : null)}
-        <p className="text-sm font-medium text-muted-foreground">{message}</p>
-        {subtitle && <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">{subtitle}</p>}
-    </div>
-);
 
 export default ServiceDetails;

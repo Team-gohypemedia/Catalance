@@ -24,7 +24,7 @@ const useDebounce = (val, delay) => {
     return debouncedValue;
 };
 
-// Generate deterministic beautiful gradients for missing images based on strings
+// Deterministic styling
 const getCategoryGradient = (category) => {
     const gradients = [
         "from-emerald-500/20 to-teal-900/40",
@@ -45,22 +45,18 @@ const formatCategory = (cat) => {
     return cat.split(/[_-]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 };
 
-const getDeterministicRating = (id) => {
-    if (!id) return { rating: "4.8", reviews: 54 };
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-    const normalized = Math.abs(hash) % 100;
-    const rating = 4.3 + (normalized / 100) * 0.7;
-    const reviews = 10 + (normalized * 5);
-    return { rating: rating.toFixed(1), reviews };
+const DELIVERY_LABELS = {
+    less_than_2_weeks: "< 2 weeks",
+    two_weeks: "2 weeks",
+    "2_4_weeks": "2–4 weeks",
+    "1_3_months": "1–3 months",
+    "3_plus_months": "3+ months",
+    rush: "Rush (< 1 week)",
 };
 
-const getDeterministicDelivery = (id) => {
-    if (!id) return "3-5 days";
-    const options = ["1-2 days", "3-5 days", "5-7 days", "7-10 days"];
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-    return options[Math.abs(hash) % options.length];
+const formatDelivery = (raw) => {
+    if (!raw) return null;
+    return DELIVERY_LABELS[raw] || String(raw).replace(/_/g, " ");
 };
 
 const Marketplace = () => {
@@ -357,7 +353,7 @@ const Marketplace = () => {
                                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                             >
                                 {data.map((item) => {
-                                    const rawPrice = item.serviceDetails?.minBudget || item.serviceDetails?.price;
+                                    const rawPrice = item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price;
                                     const rawRange = item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange;
 
                                     let priceDisplay = "Consult for price";
@@ -377,8 +373,10 @@ const Marketplace = () => {
                                     const categoryLabel = formatCategory(item.serviceKey);
                                     const placeholderGradient = getCategoryGradient(item.serviceKey || item.id);
 
-                                    const { rating, reviews } = getDeterministicRating(item.id);
-                                    const deliveryText = getDeterministicDelivery(item.id);
+                                    const ratingNum = Number(item.rating || 0);
+                                    const rating = ratingNum > 0 ? ratingNum.toFixed(1) : "New";
+                                    const reviews = item.reviewCount || 0;
+                                    const deliveryLabel = formatDelivery(item.serviceDetails?.deliveryTime);
                                     const isFavorite = !!favorites[item.id];
 
                                     return (
@@ -386,42 +384,17 @@ const Marketplace = () => {
                                             <Link to={`/marketplace/service/${item.id}`} className="block h-full group relative">
                                                 <Card className="h-full cursor-pointer flex flex-col border border-gray-200/60 dark:border-border/40 bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1.5 hover:border-primary/50 hover:bg-card/80 transition-all duration-300 overflow-hidden rounded-2xl">
                                                     {/* Image Box */}
-                                                    <div className="w-full h-40 relative shrink-0 overflow-hidden bg-muted">
+                                                    <div className="w-full h-40 relative shrink-0 overflow-hidden bg-muted flex items-center justify-center">
                                                         {image ? (
                                                             <>
                                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 opacity-60"></div>
                                                                 <img src={image} alt={item.service} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
                                                             </>
                                                         ) : (
-                                                            <>
-                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 opacity-60"></div>
-                                                                <img
-                                                                    src={[
-                                                                        "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop",
-                                                                        "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&h=400&fit=crop"
-                                                                    ][Math.abs(item.id.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0)) % 12]}
-                                                                    alt={item.service}
-                                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out fallback-img"
-                                                                    onError={(e) => {
-                                                                        e.target.style.display = 'none';
-                                                                        e.target.nextElementSibling.style.display = 'flex';
-                                                                    }}
-                                                                />
-                                                                <div className={cn("hidden w-full h-full flex-col items-center justify-center bg-gradient-to-br absolute inset-0 z-0", placeholderGradient)}>
-                                                                    <ImageIcon className="w-10 h-10 text-white/30 mb-2 drop-shadow-md" />
-                                                                    <span className="text-[10px] uppercase tracking-widest text-white/50 font-bold drop-shadow-sm">No Preview</span>
-                                                                </div>
-                                                            </>
+                                                            <div className={cn("w-full h-full flex flex-col items-center justify-center bg-gradient-to-br absolute inset-0 z-0", placeholderGradient)}>
+                                                                <ImageIcon className="w-10 h-10 text-white/30 mb-2 drop-shadow-md" />
+                                                                <span className="text-[10px] uppercase tracking-widest text-white/50 font-bold drop-shadow-sm">No Preview</span>
+                                                            </div>
                                                         )}
 
                                                         {categoryLabel && (
@@ -494,12 +467,14 @@ const Marketplace = () => {
                                                             )}
                                                         </div>
                                                         <div className="mt-5 pt-4 border-t border-border/50 flex flex-col gap-3 group/btn relative z-10">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted/50 py-1 px-2 rounded-md">
-                                                                    <Clock className="w-3.5 h-3.5" />
-                                                                    {deliveryText} delivery
+                                                            {deliveryLabel && (
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted/50 py-1 px-2 rounded-md">
+                                                                        <Clock className="w-3.5 h-3.5" />
+                                                                        {deliveryLabel} delivery
+                                                                    </div>
                                                                 </div>
-                                                            </div>
+                                                            )}
                                                             <div className="flex items-center justify-between">
                                                                 <div>
                                                                     <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block mb-1">Starts From</span>

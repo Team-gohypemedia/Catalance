@@ -1,0 +1,52 @@
+{
+  "startingPrice": 50000,
+  "minBudget": 50000,
+  "maxBudget": 50000,
+  "averageProjectPriceRange": "INR 10,000 - 25,000",
+  "techStack": [
+    "Photoshop",
+    "After Effects",
+    "Adobe Photoshop",
+    "Canva",
+    "Midjourney",
+    "Adobe InDesign",
+    "Adobe Illustrator",
+    "Illustrator",
+    "Adobe Firefly"
+  ],
+  "bio": "Video Editor & Motion Graphic Designer",
+  "description": "Worked as a Video Editor and Post-Production Artist on the animated web series “Kaali – The Woman Warrior.”\nResponsible for editing episodes, designing theme-based sound effects and background music, applying VFX elements, ensuring visual consistency according to screen and quality standards, and handling final rendering and export for delivery.",
+  "image": null,
+  "deliveryTime": "3_plus_months",
+  "industriesOrNiches": [
+    "Education",
+    "Healthcare",
+    "Food & Beverage",
+    "Technology",
+    "E-commerce",
+    "Real Estate",
+    "Finance",
+    "Beauty & Cosmetics",
+    "Fashion & Apparel",
+    "Personal Brands / Influencers",
+    "Entertainment & Media",
+    "Consulting & Professional Services"
+  ],
+  "serviceSpecializations": [
+    "Photoshop",
+    "After Effects",
+    "Adobe Photoshop",
+    "Canva",
+    "Midjourney",
+    "Adobe InDesign",
+    "Adobe Illustrator",
+    "Illustrator",
+    "Adobe Firefly",
+    "Trend Based",
+    "Brand Guideline Based",
+    "Branding Design",
+    "Social Media Creatives",
+    "Packaging Design",
+    "Ad Creatives"
+  ]
+}

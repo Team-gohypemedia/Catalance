@@ -1,0 +1,58 @@
+[
+  {
+    "id": "cmmadho9h002w151v9obcl28q",
+    "service": "Web Development",
+    "image": "HAS_IMG",
+    "minBudget": 300000,
+    "delivery": "3_plus_months"
+  },
+  {
+    "id": "cmmadho9h002x151vrlbjnepa",
+    "service": "Web Development",
+    "image": "HAS_IMG",
+    "minBudget": 1500000,
+    "delivery": "1_3_months"
+  },
+  {
+    "id": "cmmadho9i002y151vomg4ilcw",
+    "service": "Web Development",
+    "image": "HAS_IMG",
+    "minBudget": 1500000,
+    "delivery": "1_3_months"
+  },
+  {
+    "id": "cmmagl1j00002rf388awg9mgf",
+    "service": "Social Media Management",
+    "image": "null",
+    "minBudget": 60000,
+    "delivery": "3_plus_months"
+  },
+  {
+    "id": "cmmagl1j00003rf384caanmfc",
+    "service": "Performance Marketing / Paid Ads",
+    "image": "null",
+    "minBudget": 10000,
+    "delivery": "2_4_weeks"
+  },
+  {
+    "id": "cmmagl1j00004rf38p67ucdpt",
+    "service": "Writing & Content",
+    "image": "null",
+    "minBudget": 10000,
+    "delivery": "less_than_2_weeks"
+  },
+  {
+    "id": "cmmda4nng000vcrjqfkg92lb7",
+    "service": "Writing & Content",
+    "image": "null",
+    "minBudget": 120000,
+    "delivery": "3_plus_months"
+  },
+  {
+    "id": "cmmd55sgi0001bb3sbms4isda",
+    "service": "Creative & Design",
+    "image": "HAS_IMG",
+    "minBudget": 50000,
+    "delivery": "3_plus_months"
+  }
+]
