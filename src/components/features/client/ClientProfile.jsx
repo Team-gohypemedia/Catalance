@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/shared/context/AuthContext";
+import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
 import { toast } from "sonner";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import User from "lucide-react/dist/esm/icons/user";
@@ -33,13 +34,18 @@ import Link2 from "lucide-react/dist/esm/icons/link-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import { Switch } from "@/components/ui/switch";
 
+const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+
 const ClientProfileContent = () => {
   const { user, authFetch, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const fileInputRef = React.useRef(null);
+  const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
+  const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
+  const fileInputRef = useRef(null);
+  const avatarUrlRef = useRef("");
   const [notificationPrefs, setNotificationPrefs] = useState({
     projectUpdates: true,
     messages: true,
@@ -57,7 +63,34 @@ const ClientProfileContent = () => {
     phoneNumber: "",
     location: "",
     website: "",
+    avatar: "",
   });
+
+  const setAvatarPreview = (nextAvatar) => {
+    setFormData((prev) => {
+      if (
+        prev.avatar &&
+        prev.avatar.startsWith("blob:") &&
+        prev.avatar !== nextAvatar
+      ) {
+        URL.revokeObjectURL(prev.avatar);
+      }
+
+      return { ...prev, avatar: nextAvatar };
+    });
+  };
+
+  useEffect(() => {
+    avatarUrlRef.current = formData.avatar || "";
+  }, [formData.avatar]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarUrlRef.current && avatarUrlRef.current.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarUrlRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -90,24 +123,37 @@ const ClientProfileContent = () => {
         }
       }
 
-      setFormData({
-        fullName: user.fullName || user.name || parsedBio.fullName || "",
-        email: user.email || parsedBio.email || "",
-        bio: bioText,
-        companyName: user.companyName || parsedBio.companyName || "",
-        phoneNumber:
-          user.phoneNumber ||
-          user.phone ||
-          parsedBio.phone ||
-          parsedBio.phoneNumber ||
-          "",
-        location: user.location || parsedBio.location || "",
-        website:
-          user.portfolio?.portfolioUrl ||
-          user.portfolio ||
-          user.website ||
-          parsedBio.website ||
-          "",
+      setFormData((prev) => {
+        const resolvedAvatar = user.avatar || "";
+
+        if (
+          prev.avatar &&
+          prev.avatar.startsWith("blob:") &&
+          prev.avatar !== resolvedAvatar
+        ) {
+          URL.revokeObjectURL(prev.avatar);
+        }
+
+        return {
+          fullName: user.fullName || user.name || parsedBio.fullName || "",
+          email: user.email || parsedBio.email || "",
+          bio: bioText,
+          companyName: user.companyName || parsedBio.companyName || "",
+          phoneNumber:
+            user.phoneNumber ||
+            user.phone ||
+            parsedBio.phone ||
+            parsedBio.phoneNumber ||
+            "",
+          location: user.location || parsedBio.location || "",
+          website:
+            user.portfolio?.portfolioUrl ||
+            user.portfolio ||
+            user.website ||
+            parsedBio.website ||
+            "",
+          avatar: resolvedAvatar,
+        };
       });
 
       const persistedPrefs = parsedBio.notificationPrefs;
@@ -165,24 +211,48 @@ const ClientProfileContent = () => {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
+  const closeProfileCropDialog = () => {
+    setIsProfileCropOpen(false);
+    setPendingProfilePhotoFile(null);
+  };
+
+  const handleProfilePhotoCropped = async (croppedFile) => {
+    if (!(typeof File !== "undefined" && croppedFile instanceof File)) {
+      toast.error("Unable to process profile photo.");
+      return false;
+    }
+
+    if (croppedFile.size > PROFILE_PHOTO_MAX_BYTES) {
+      toast.error("Cropped photo must be 5MB or smaller.");
+      return false;
+    }
+
+    const objectUrl = URL.createObjectURL(croppedFile);
+    setSelectedFile(croppedFile);
+    setAvatarPreview(objectUrl);
+    closeProfileCropDialog();
+    toast.success("Profile photo updated. Save changes to upload it.");
+    return true;
+  };
+
   const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset input so same file can be selected again if needed
     e.target.value = "";
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (!String(file.type || "").startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+
+    if (file.size > PROFILE_PHOTO_MAX_BYTES) {
       toast.error("File size must be less than 5MB");
       return;
     }
 
-    // Store file for later upload
-    setSelectedFile(file);
-
-    // Show local preview immediately
-    const objectUrl = URL.createObjectURL(file);
-    setFormData((prev) => ({ ...prev, avatar: objectUrl }));
+    setPendingProfilePhotoFile(file);
+    setIsProfileCropOpen(true);
   };
 
   const handleSubmit = async (e) => {
@@ -239,6 +309,8 @@ const ClientProfileContent = () => {
         throw new Error(errorData.message || "Failed to update profile");
       }
 
+      setSelectedFile(null);
+      setAvatarPreview(currentAvatarUrl || "");
       toast.success("Profile updated successfully");
       await refreshUser();
     } catch (error) {
@@ -329,7 +401,7 @@ const ClientProfileContent = () => {
                       {formData.fullName?.[0] || "C"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-2 rounded-full shadow-lg ring-2 ring-background opacity-0 translate-y-2 group-hover/avatar:opacity-100 group-hover/avatar:translate-y-0 transition-all duration-300">
+                  <div className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-background opacity-0 scale-95 group-hover/avatar:opacity-100 group-hover/avatar:scale-100 transition-all duration-300">
                     {uploadingImage ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
@@ -767,6 +839,14 @@ const ClientProfileContent = () => {
           </div>
         </div>
       </main>
+
+      <ProfileImageCropDialog
+        open={isProfileCropOpen}
+        file={pendingProfilePhotoFile}
+        maxUploadBytes={PROFILE_PHOTO_MAX_BYTES}
+        onApply={handleProfilePhotoCropped}
+        onCancel={closeProfileCropDialog}
+      />
     </div>
   );
 };
@@ -780,4 +860,5 @@ const ClientProfile = () => {
 };
 
 export default ClientProfile;
+
 

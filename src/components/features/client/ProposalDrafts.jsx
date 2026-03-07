@@ -331,7 +331,13 @@ const ProposalDraftsContent = () => {
         <Badge variant="outline">{totalDrafts} drafts</Badge>
       </div>
 
-      {drafts.length === 0 ? (
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <DraftCardSkeleton key={`draft-skeleton-${index}`} />
+          ))}
+        </div>
+      ) : drafts.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
           No drafts found. Draft a proposal from the chat and it will show up here.
         </div>

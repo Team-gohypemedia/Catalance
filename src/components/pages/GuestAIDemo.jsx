@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
-    Briefcase,
     ArrowRight,
     ArrowLeft,
-    Bot,
+    PanelLeftClose,
+    PanelLeftOpen,
+    LogIn,
     User,
     Send,
     Mic,
@@ -14,7 +15,8 @@ import {
     Paperclip,
     X,
     Image as ImageIcon,
-    FileText
+    FileText,
+    Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,8 +31,10 @@ import { API_BASE_URL, request } from '@/shared/lib/api-client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { getSession } from '@/shared/lib/auth-storage';
+import cataLogo from '@/assets/logos/logo.svg';
 
 const GUEST_CHAT_STORAGE_KEY = 'markify:guestAiSessions:v1';
+const GUEST_CHAT_SIDEBAR_SIZE_KEY = 'markify:guestAiSidebarSize:v1';
 const MAX_PREVIOUS_CHAT_ITEMS = 30;
 const ATTACHMENT_TOKEN_PREFIX = '[[ATTACHMENT]]';
 const ATTACHMENT_TOKEN_REGEX = /^\[\[ATTACHMENT\]\]([^|]+)\|([^|]+)\|([^|]*)\|(\d+)$/;
@@ -52,6 +56,89 @@ const DEMO_HIGHLIGHTS = [
     'No setup needed',
 ];
 
+const SERVICE_LOGO_MODULES = import.meta.glob('../../assets/icons/*.png', {
+    eager: true,
+    import: 'default',
+});
+
+const normalizeServiceLogoKey = (value = '') =>
+    String(value || '')
+        .toLowerCase()
+        .replace(/&/g, ' and ')
+        .replace(/[_-]+/g, ' ')
+        .replace(/[^a-z0-9 ]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const SERVICE_LOGOS_BY_KEY = Object.entries(SERVICE_LOGO_MODULES).reduce((acc, [path, source]) => {
+    const fileName = String(path || '').split('/').pop()?.replace(/\.png$/i, '') || '';
+    const key = normalizeServiceLogoKey(fileName);
+    if (key) {
+        acc[key] = source;
+    }
+    return acc;
+}, {});
+
+const SERVICE_LOGO_KEYS = Object.keys(SERVICE_LOGOS_BY_KEY);
+
+const SERVICE_LOGO_ALIASES = {
+    branding: 'branding and brand identity',
+    'branding kit': 'branding and brand identity',
+    'web development': 'website development',
+    website: 'website development',
+    'website uiux': 'website development',
+    'website ui ux': 'website development',
+    seo: 'seo optimization',
+    'seo search engine optimisation': 'seo optimization',
+    'seo search engine optimization': 'seo optimization',
+    'social media marketing organic': 'social media management',
+    'paid advertising performance': 'performance marketing',
+    'performance marketing': 'performance marketing',
+    'app development android ios cross platform': 'app development',
+    'software development web saas custom systems': 'software development',
+    'writing content': 'writing and content',
+    'whatsapp chatbot': 'whatsapp chat bot',
+    'creative design': 'creative and design',
+    'modeling 3d': '3d modeling',
+    'cgi video services': 'cgi video',
+    'crm erp integrated solutions': 'crm and erp solutions',
+    'crm and erp integrated solutions': 'crm and erp solutions',
+};
+
+const isLogoUrl = (value = '') => /^(?:https?:\/\/|\/|data:image\/)/i.test(String(value || '').trim());
+
+const resolveServiceLogoSrc = (service = {}) => {
+    const explicitLogo = [
+        service.logo,
+        service.logoUrl,
+        service.logo_url,
+        service.image,
+        service.imageUrl,
+        service.image_url,
+    ].find((value) => isLogoUrl(value));
+
+    if (explicitLogo) return explicitLogo;
+
+    const candidates = [
+        service.slug,
+        service.id,
+        service.name,
+    ];
+
+    for (const candidate of candidates) {
+        const normalized = normalizeServiceLogoKey(candidate);
+        if (!normalized) continue;
+
+        const mappedKey = SERVICE_LOGO_ALIASES[normalized] || normalized;
+        if (SERVICE_LOGOS_BY_KEY[mappedKey]) return SERVICE_LOGOS_BY_KEY[mappedKey];
+
+        const fuzzyKey = SERVICE_LOGO_KEYS.find((key) => key.includes(mappedKey) || mappedKey.includes(key));
+        if (fuzzyKey) return SERVICE_LOGOS_BY_KEY[fuzzyKey];
+    }
+
+    return cataLogo;
+};
+
 const isBrowser = typeof window !== 'undefined';
 
 const safeParseArray = (value) => {
@@ -67,6 +154,17 @@ const safeParseArray = (value) => {
 const readStoredGuestSessions = () => {
     if (!isBrowser) return [];
     return safeParseArray(window.localStorage.getItem(GUEST_CHAT_STORAGE_KEY));
+};
+
+const readStoredSidebarSize = () => {
+    if (!isBrowser) return 'large';
+    const value = window.localStorage.getItem(GUEST_CHAT_SIDEBAR_SIZE_KEY);
+    return value === 'small' ? 'small' : 'large';
+};
+
+const writeStoredSidebarSize = (size = 'large') => {
+    if (!isBrowser) return;
+    window.localStorage.setItem(GUEST_CHAT_SIDEBAR_SIZE_KEY, size === 'small' ? 'small' : 'large');
 };
 
 const writeStoredGuestSessions = (sessions = []) => {
@@ -96,6 +194,14 @@ const upsertStoredGuestSession = (entry = {}) => {
         .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
         .slice(0, MAX_PREVIOUS_CHAT_ITEMS);
 
+    writeStoredGuestSessions(nextSessions);
+    return nextSessions;
+};
+
+const removeStoredGuestSession = (sessionId = '') => {
+    if (!sessionId) return readStoredGuestSessions();
+    const existing = readStoredGuestSessions();
+    const nextSessions = existing.filter((item) => item.sessionId !== sessionId);
     writeStoredGuestSessions(nextSessions);
     return nextSessions;
 };
@@ -205,6 +311,104 @@ const getProposalStorageKeys = (userId) => {
         singleKey: `markify:savedProposal${suffix}`,
         syncedKey: `markify:savedProposalSynced${suffix}`,
     };
+};
+
+const PROPOSAL_LIST_STORAGE_PREFIX = 'markify:savedProposals';
+
+const readAllStoredGeneratedProposalRows = () => {
+    if (!isBrowser) return [];
+    const rows = [];
+    for (let idx = 0; idx < window.localStorage.length; idx += 1) {
+        const key = window.localStorage.key(idx);
+        if (!key || !key.startsWith(PROPOSAL_LIST_STORAGE_PREFIX)) continue;
+        rows.push(...safeParseArray(window.localStorage.getItem(key)));
+    }
+    return rows;
+};
+
+const toProposalFingerprint = (content = '') =>
+    String(content || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+const sortStoredGeneratedProposals = (proposals = []) =>
+    [...(Array.isArray(proposals) ? proposals : [])]
+        .filter((proposal) => proposal && typeof proposal === 'object')
+        .reduce((acc, proposal) => {
+            const fp = proposal?.fingerprint
+                || toProposalFingerprint(proposal?.content || proposal?.summary || proposal?.projectTitle || '');
+            if (!fp) return acc;
+            if (acc.seen.has(fp)) return acc;
+            acc.seen.add(fp);
+            acc.rows.push({ ...proposal, fingerprint: fp });
+            return acc;
+        }, { seen: new Set(), rows: [] }).rows
+        .sort(
+            (a, b) =>
+                new Date(b.updatedAt || b.createdAt || 0).getTime()
+                - new Date(a.updatedAt || a.createdAt || 0).getTime()
+        );
+
+const readStoredGeneratedProposals = (userId) => {
+    if (!isBrowser) return [];
+    const scopedKey = getProposalStorageKeys(userId).listKey;
+    const scopedRows = safeParseArray(window.localStorage.getItem(scopedKey));
+
+    if (!userId) {
+        const allStoredRows = readAllStoredGeneratedProposalRows();
+        return sortStoredGeneratedProposals([...scopedRows, ...allStoredRows]);
+    }
+
+    const guestKey = getProposalStorageKeys(null).listKey;
+    const guestRows = safeParseArray(window.localStorage.getItem(guestKey));
+    return sortStoredGeneratedProposals([...scopedRows, ...guestRows]);
+};
+
+const upsertStoredGeneratedProposal = (proposalContent, userId) => {
+    if (!isBrowser) return [];
+
+    const normalizedContent = normalizeMarkdownContent(proposalContent);
+    if (!normalizedContent || !isProposalMessage(normalizedContent)) {
+        return readStoredGeneratedProposals(userId);
+    }
+
+    const parsed = parseProposalContent(normalizedContent);
+    const now = new Date().toISOString();
+    const fingerprint = toProposalFingerprint(normalizedContent);
+    const { listKey, singleKey, syncedKey } = getProposalStorageKeys(userId);
+    const existingProposals = safeParseArray(window.localStorage.getItem(listKey));
+    const existingIndex = existingProposals.findIndex((proposal) => {
+        const existingFingerprint = proposal?.fingerprint
+            || toProposalFingerprint(proposal?.content || proposal?.summary || proposal?.projectTitle || '');
+        return existingFingerprint === fingerprint;
+    });
+
+    const proposalToSave = {
+        id: existingProposals[existingIndex]?.id || `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        projectTitle: parsed.fields?.serviceType || parsed.fields?.businessName || "AI Generated Proposal",
+        service: parsed.fields?.serviceType || "General services",
+        serviceKey: parsed.fields?.serviceType || "",
+        summary: normalizedContent,
+        content: normalizedContent,
+        budget: parsed.fields?.budget || "",
+        timeline: parsed.fields?.launchTimeline || "",
+        ownerId: userId || null,
+        syncedProjectId: existingProposals[existingIndex]?.syncedProjectId || null,
+        syncedAt: existingProposals[existingIndex]?.syncedAt || null,
+        createdAt: existingProposals[existingIndex]?.createdAt || now,
+        updatedAt: now,
+        fingerprint,
+    };
+
+    if (existingIndex >= 0) {
+        existingProposals[existingIndex] = proposalToSave;
+    } else {
+        existingProposals.push(proposalToSave);
+    }
+
+    const sortedProposals = sortStoredGeneratedProposals(existingProposals);
+    window.localStorage.setItem(listKey, JSON.stringify(sortedProposals));
+    window.localStorage.setItem(singleKey, JSON.stringify(proposalToSave));
+    if (syncedKey) window.localStorage.removeItem(syncedKey);
+    return readStoredGeneratedProposals(userId);
 };
 
 const unwrapPayload = (value) => {
@@ -664,7 +868,7 @@ const GuestAIDemo = () => {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
     const [services, setServices] = useState([]);
     const [servicesError, setServicesError] = useState("");
@@ -678,7 +882,10 @@ const GuestAIDemo = () => {
     const [selectedOptions, setSelectedOptions] = useState([]);
     const [isListening, setIsListening] = useState(false);
     const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+    const [sidebarSize, setSidebarSize] = useState(() => readStoredSidebarSize());
     const [previousChats, setPreviousChats] = useState(() => readStoredGuestSessions());
+    const [generatedProposals, setGeneratedProposals] = useState(() => readStoredGeneratedProposals(user?.id));
+    const [selectedProposalPreview, setSelectedProposalPreview] = useState(null);
     const [loadingHistoryId, setLoadingHistoryId] = useState(null);
     const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
@@ -690,15 +897,36 @@ const GuestAIDemo = () => {
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
     const normalizedInputType = (inputConfig.type || 'text').toLowerCase();
+    const isSidebarCompact = sidebarSize === 'small';
     const isMultiInput = normalizedInputType === 'multi_select'
         || normalizedInputType === 'multi_option'
         || normalizedInputType === 'grouped_multi_select';
     const hasOptionInput = Array.isArray(inputConfig.options) && inputConfig.options.length > 0;
     const shouldShowTextInput = true;
     const visiblePreviousChats = previousChats.filter((chat) => chat?.sessionId);
+    const isUserLoggedIn = Boolean(isAuthenticated && user);
+    const userDisplayName = user?.fullName || user?.name || "Logged-in user";
+    const userDisplayEmail = user?.email || "";
+    const userAvatar = user?.avatar || user?.profileImage || user?.image || "";
+    const sidebarServiceDescription = truncateText(
+        selectedService?.description || '',
+        isSidebarCompact ? 75 : 120
+    );
 
     const refreshPreviousChats = useCallback(() => {
         setPreviousChats(readStoredGuestSessions());
+    }, []);
+
+    const refreshGeneratedProposals = useCallback(() => {
+        setGeneratedProposals(readStoredGeneratedProposals(user?.id));
+    }, [user?.id]);
+
+    const toggleSidebarSize = useCallback(() => {
+        setSidebarSize((previous) => {
+            const next = previous === 'small' ? 'large' : 'small';
+            writeStoredSidebarSize(next);
+            return next;
+        });
     }, []);
 
     const persistCurrentSessionSummary = useCallback((history) => {
@@ -814,6 +1042,21 @@ const GuestAIDemo = () => {
     useEffect(() => {
         refreshPreviousChats();
     }, [refreshPreviousChats]);
+
+    useEffect(() => {
+        refreshGeneratedProposals();
+    }, [refreshGeneratedProposals]);
+
+    useEffect(() => {
+        const latestProposalMessage = [...messages]
+            .reverse()
+            .find((message) => message?.role === 'assistant' && isProposalMessage(message?.content || ''));
+
+        if (!latestProposalMessage?.content) return;
+
+        const nextProposals = upsertStoredGeneratedProposal(latestProposalMessage.content, user?.id);
+        setGeneratedProposals(nextProposals);
+    }, [messages, user?.id]);
 
     useEffect(() => {
         if (!sessionId || !selectedService || messages.length === 0) return;
@@ -1278,40 +1521,8 @@ const GuestAIDemo = () => {
     };
 
     const handleProceed = (proposalContent) => {
-        const parsed = parseProposalContent(proposalContent);
-        const projectTitle = parsed.fields?.serviceType || parsed.fields?.businessName || "AI Generated Proposal";
-        
-        const now = new Date().toISOString();
-        const { listKey, singleKey, syncedKey } = getProposalStorageKeys(user?.id);
-        const proposalToSave = {
-            id: `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-            projectTitle,
-            service: parsed.fields?.serviceType || "General services",
-            serviceKey: parsed.fields?.serviceType || "",
-            summary: proposalContent,
-            content: proposalContent,
-            budget: parsed.fields?.budget || "",
-            timeline: parsed.fields?.launchTimeline || "",
-            ownerId: user?.id || null,
-            syncedProjectId: null,
-            syncedAt: null,
-            createdAt: now,
-            updatedAt: now,
-        };
-
-        // Load existing proposals
-        let existingProposals = [];
-        try {
-            const stored = localStorage.getItem(listKey);
-            if (stored) existingProposals = JSON.parse(stored);
-        } catch {
-            // Ignore malformed localStorage payloads and continue with a new list.
-        }
-
-        existingProposals.push(proposalToSave);
-        localStorage.setItem(listKey, JSON.stringify(existingProposals));
-        localStorage.setItem(singleKey, JSON.stringify(proposalToSave));
-        if (syncedKey) localStorage.removeItem(syncedKey);
+        const nextProposals = upsertStoredGeneratedProposal(proposalContent, user?.id);
+        setGeneratedProposals(nextProposals);
 
         if (user) {
             if (user.role === "CLIENT") {
@@ -1335,6 +1546,39 @@ const GuestAIDemo = () => {
         setPendingAttachments([]);
         setSelectedOptions([]);
         setInputConfig({ type: 'text', options: [] });
+    };
+
+    const handleOpenProposalPreview = (proposal) => {
+        if (!proposal?.content) {
+            toast.error('Proposal details are not available for this card.');
+            return;
+        }
+        setSelectedProposalPreview(proposal);
+    };
+
+    const handleCloseProposalPreview = () => {
+        setSelectedProposalPreview(null);
+    };
+
+    const handleDeletePreviousChat = (event, chatMeta) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const targetSessionId = chatMeta?.sessionId;
+        if (!targetSessionId) return;
+
+        const nextSessions = removeStoredGuestSession(targetSessionId);
+        setPreviousChats(nextSessions);
+
+        if (targetSessionId === sessionId) {
+            if (selectedService) {
+                handleServiceSelect(selectedService);
+            } else {
+                handleBackToServices();
+            }
+        }
+
+        toast.success('Chat removed');
     };
 
     if (loading && !selectedService) {
@@ -1473,8 +1717,14 @@ const GuestAIDemo = () => {
                                             }`} />
                                         <CardHeader className="relative space-y-2 px-5 pb-2 pt-5">
                                             <div className="mb-3 flex items-start justify-between gap-3">
-                                                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                                    <Briefcase className="h-4 w-4" />
+                                                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
+                                                    <img
+                                                        src={resolveServiceLogoSrc(service)}
+                                                        alt={`${service.name || 'Service'} logo`}
+                                                        className="h-10 w-10 object-contain"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                    />
                                                 </div>
                                                 <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'border border-primary/35 bg-primary/10 text-primary' : 'border border-primary/30 bg-primary/10 text-[#181711]'}`}>
                                                     AI Guided
@@ -1515,72 +1765,221 @@ const GuestAIDemo = () => {
             : 'bg-[#fbfbfa] bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.14),transparent_55%)]'
             }`}
         >
-            <aside className={`hidden w-80 shrink-0 border-r p-6 md:flex md:flex-col ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white/80'}`}>
-                <Button
-                    variant="ghost"
-                    className={`mb-6 w-fit rounded-full ${isDark ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
-                    onClick={handleBackToServices}
-                >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to services
-                </Button>
-
-                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                    <Briefcase className="h-5 w-5" />
+            <aside className={`hidden shrink-0 border-r p-5 transition-[width] duration-300 md:flex md:flex-col ${isSidebarCompact ? 'w-[17.5rem]' : 'w-[21rem]'} ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white/80'}`}>
+                <div className="mb-4 flex items-center justify-between gap-2">
+                    <Button
+                        variant="ghost"
+                        className={`w-fit rounded-full px-2.5 ${isDark ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
+                        onClick={handleBackToServices}
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        <span className={isSidebarCompact ? 'text-xs' : 'text-sm'}>Back to services</span>
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleSidebarSize}
+                        className={`h-8 w-8 rounded-lg border ${isDark ? 'border-white/15 text-slate-200 hover:bg-white/10' : 'border-black/10 text-slate-700 hover:bg-slate-100'}`}
+                        title={isSidebarCompact ? 'Expand sidebar' : 'Make sidebar compact'}
+                        aria-label={isSidebarCompact ? 'Expand sidebar' : 'Make sidebar compact'}
+                    >
+                        {isSidebarCompact ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                    </Button>
                 </div>
-                <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-[#181711]'}`}>{selectedService.name}</h2>
-                <p className={`mt-2 text-sm leading-relaxed ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                    {selectedService.description}
-                </p>
 
-                <div className={`mt-8 flex min-h-0 flex-1 flex-col rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
-                    <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-                        <History className="h-3.5 w-3.5" />
-                        Previous chats
+                <div className="mb-4 flex items-start gap-3">
+                    <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/15'} ${isSidebarCompact ? 'h-10 w-10' : 'h-12 w-12'}`}>
+                        <img src={cataLogo} alt="CATA AI logo" className={`${isSidebarCompact ? 'h-6 w-6' : 'h-8 w-8'} object-contain`} />
                     </div>
-                    {visiblePreviousChats.length === 0 ? (
-                        <p className={`text-sm ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                            No previous chats yet.
+                    <div className="min-w-0">
+                        <h2 className={`truncate font-bold leading-tight ${isSidebarCompact ? 'text-lg' : 'text-xl'} ${isDark ? 'text-white' : 'text-[#181711]'}`}>
+                            {selectedService.name}
+                        </h2>
+                        <p className={`mt-1 text-[10px] leading-4 ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                            {sidebarServiceDescription || 'Guided consultation'}
                         </p>
-                    ) : (
-                        <div className="space-y-2 overflow-y-auto pr-1">
-                            {visiblePreviousChats.map((chat) => {
-                                const isCurrent = chat.sessionId === sessionId;
-                                const isLoadingHistory = loadingHistoryId === chat.sessionId;
+                    </div>
+                </div>
 
-                                return (
-                                    <button
-                                        key={chat.sessionId}
-                                        type="button"
-                                        onClick={() => handleLoadPreviousChat(chat)}
-                                        disabled={isLoadingHistory || isCurrent}
-                                        className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${isCurrent
-                                            ? isDark
-                                                ? 'border-primary/40 bg-primary/10'
-                                                : 'border-primary/40 bg-primary/10'
-                                            : isDark
-                                                ? 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'
-                                                : 'border-black/10 bg-[#fbfbfa] hover:bg-slate-100/80'
-                                            }`}
-                                    >
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className={`truncate text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                                {chat.serviceName || selectedService.name}
-                                            </p>
-                                            <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                {formatPreviousChatTime(chat.updatedAt)}
-                                            </span>
-                                        </div>
-                                        <p className={`mt-1 line-clamp-2 text-sm ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
-                                            {chat.preview || 'No preview available'}
-                                        </p>
-                                        <p className={`mt-1 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {isLoadingHistory ? 'Loading...' : `${chat.messageCount || 0} messages`}
-                                        </p>
-                                    </button>
-                                );
-                            })}
+                <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4">
+                    <div className={`flex min-h-0 flex-[1.05] flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Generated proposals
+                            </div>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'border border-white/15 bg-white/10 text-slate-300' : 'border border-black/10 bg-black/5 text-slate-600'}`}>
+                                {generatedProposals.length}
+                            </span>
                         </div>
+                        {generatedProposals.length === 0 ? (
+                            <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                                No proposals generated yet.
+                            </p>
+                        ) : (
+                            <ScrollArea className="-mr-1 min-h-0 flex-1 pr-1">
+                                <div className="space-y-2 pb-1">
+                                    {generatedProposals.map((proposal, index) => (
+                                        <button
+                                            key={proposal.id || `${proposal.projectTitle || 'proposal'}-${index}`}
+                                            type="button"
+                                            onClick={() => handleOpenProposalPreview(proposal)}
+                                            className={`group w-full rounded-xl border px-3 py-2 text-left transition-all duration-200 ${isDark
+                                                ? 'border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] hover:border-primary/35 hover:bg-white/[0.06]'
+                                                : 'border-black/10 bg-[#fbfbfa] hover:border-primary/35 hover:bg-slate-100/85'
+                                                }`}
+                                            title="Open proposal details"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className={`truncate text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                    {proposal.service || selectedService?.name || 'Proposal'}
+                                                </p>
+                                                <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {formatPreviousChatTime(proposal.updatedAt || proposal.createdAt)}
+                                                </span>
+                                            </div>
+                                            <p className={`mt-1 truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                                {proposal.projectTitle || 'AI Generated Proposal'}
+                                            </p>
+                                            {(proposal.budget || proposal.timeline) && (
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {proposal.budget && (
+                                                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-white/15 text-slate-300' : 'border-black/10 text-slate-600'}`}>
+                                                            {proposal.budget}
+                                                        </span>
+                                                    )}
+                                                    {proposal.timeline && (
+                                                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-white/15 text-slate-300' : 'border-black/10 text-slate-600'}`}>
+                                                            {proposal.timeline}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        )}
+                    </div>
+
+                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                        <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                            <History className="h-3.5 w-3.5" />
+                            Previous chats
+                        </div>
+                        {visiblePreviousChats.length === 0 ? (
+                            <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                                No previous chats yet.
+                            </p>
+                        ) : (
+                            <ScrollArea className="-mr-1 min-h-0 flex-1 pr-1">
+                                <div className="space-y-1.5 pb-1 pr-3">
+                                    {visiblePreviousChats.map((chat) => {
+                                        const isCurrent = chat.sessionId === sessionId;
+                                        const isLoadingHistory = loadingHistoryId === chat.sessionId;
+                                        const compactPreview = [chat.serviceName || selectedService.name, chat.preview]
+                                            .filter(Boolean)
+                                            .join(' - ');
+
+                                        return (
+                                            <div
+                                                key={chat.sessionId}
+                                                className={`relative rounded-lg border transition ${isCurrent
+                                                    ? isDark
+                                                        ? 'border-primary/40 bg-primary/10'
+                                                        : 'border-primary/40 bg-primary/10'
+                                                    : isDark
+                                                    ? 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'
+                                                    : 'border-black/10 bg-[#fbfbfa] hover:bg-slate-100/80'
+                                                    }`}
+                                            >
+                                                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-2 py-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleLoadPreviousChat(chat)}
+                                                        disabled={isLoadingHistory || isCurrent}
+                                                        className={`min-w-0 rounded-md px-2 py-1.5 text-left ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}`}
+                                                    >
+                                                        <p className={`truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                                                            {compactPreview || 'No preview available'}
+                                                        </p>
+                                                    </button>
+                                                    <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                        {isLoadingHistory ? 'Loading...' : formatPreviousChatTime(chat.updatedAt)}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(event) => handleDeletePreviousChat(event, chat)}
+                                                        disabled={isLoadingHistory}
+                                                        className={`relative z-30 shrink-0 rounded-md border p-1.5 shadow-sm transition ${isDark
+                                                            ? 'border-red-300/30 bg-red-500/10 text-red-200 hover:border-red-300/55 hover:bg-red-500/20 hover:text-red-100'
+                                                            : 'border-red-300 bg-red-50 text-red-600 hover:border-red-400 hover:bg-red-100 hover:text-red-700'
+                                                            }`}
+                                                        aria-label="Delete previous chat"
+                                                        title="Delete chat"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </ScrollArea>
+                        )}
+                    </div>
+                </div>
+
+                <div className={`mt-4 shrink-0 rounded-xl border ${isSidebarCompact ? 'p-2.5' : 'p-3'} ${isDark ? 'border-white/12 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                    {isAuthLoading ? (
+                        <div className="flex items-center gap-2">
+                            <span className={`h-2.5 w-2.5 animate-pulse rounded-full ${isDark ? 'bg-slate-400' : 'bg-slate-500'}`} />
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Checking login status...
+                            </p>
+                        </div>
+                    ) : isUserLoggedIn ? (
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-white/20 bg-white/10' : 'border-black/10 bg-slate-100'}`}>
+                                    {userAvatar ? (
+                                        <img src={userAvatar} alt={userDisplayName} className="h-full w-full object-cover" />
+                                    ) : (
+                                        <User className={`h-4 w-4 ${isDark ? 'text-slate-200' : 'text-slate-600'}`} />
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className={`truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                        {userDisplayName}
+                                    </p>
+                                    <p className={`truncate text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        {userDisplayEmail || 'Authenticated user'}
+                                    </p>
+                                </div>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
+                                className={`mt-3 w-full rounded-xl ${isDark
+                                    ? 'border-white/20 bg-white/[0.03] text-slate-100 hover:bg-white/10'
+                                    : 'border-black/10 bg-white text-slate-700 hover:bg-slate-100'
+                                    }`}
+                            >
+                                <LogIn className="mr-2 h-4 w-4" />
+                                Login with another account
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            type="button"
+                            onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
+                            className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Login
+                        </Button>
                     )}
                 </div>
             </aside>
@@ -1599,11 +1998,11 @@ const GuestAIDemo = () => {
                                     <ArrowLeft className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                <Bot className="h-5 w-5" />
+                            <div className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                <img src={cataLogo} alt="CATA AI logo" className="h-6 w-6 object-contain" />
                             </div>
                             <div>
-                                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>AI Assistant</h2>
+                                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>CATA AI</h2>
                                 <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-500'}`}>
                                     {selectedService?.name} - Guided consultation
                                 </p>
@@ -1634,8 +2033,8 @@ const GuestAIDemo = () => {
                                     className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     {msg.role === 'assistant' && (
-                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                            <Bot className="h-4 w-4" />
+                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                            <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
                                         </div>
                                     )}
 
@@ -1755,8 +2154,8 @@ const GuestAIDemo = () => {
                                 animate={{ opacity: 1 }}
                                 className="flex items-start gap-3"
                             >
-                                <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                    <Bot className="h-4 w-4" />
+                                <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                    <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
                                 </div>
                                 <div className={`flex items-center gap-2 rounded-2xl rounded-tl-none border p-4 ${isDark ? 'border-white/10 bg-white/[0.05]' : 'border-black/10 bg-white'}`}>
                                     <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
@@ -1888,6 +2287,46 @@ const GuestAIDemo = () => {
                     </div>
                 </div>
             </section>
+
+            {selectedProposalPreview && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+                    <div className={`max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${isDark
+                        ? 'border-white/15 bg-[#0d0d0d]'
+                        : 'border-black/10 bg-white'
+                        }`}>
+                        <div className={`flex items-center justify-between border-b px-5 py-3 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                            <div>
+                                <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {selectedProposalPreview.service || 'Proposal'}
+                                </p>
+                                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>
+                                    {selectedProposalPreview.projectTitle || 'AI Generated Proposal'}
+                                </h3>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full"
+                                onClick={handleCloseProposalPreview}
+                                aria-label="Close proposal preview"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="max-h-[calc(88vh-64px)] overflow-y-auto px-5 py-4">
+                            <ProposalPreview content={selectedProposalPreview.content} isDark={isDark} />
+                            <div className={`mt-6 flex justify-end border-t pt-4 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                                <Button
+                                    onClick={() => handleProceed(selectedProposalPreview.content)}
+                                    className="w-full sm:w-auto rounded-xl bg-primary px-8 py-2.5 font-semibold text-primary-foreground hover:bg-primary/90"
+                                >
+                                    Find Freelancer for this proposal
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

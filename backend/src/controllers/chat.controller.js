@@ -57,7 +57,7 @@ const ensureProjectChatAccess = async ({
     project.status === "AWAITING_PAYMENT" || Number(project.spent || 0) <= 0;
   if (isPaymentPending) {
     throw new AppError(
-      "Chat will start after upfront payment is completed.",
+      "Chat will start after the initial 20% payment is completed.",
       403
     );
   }
@@ -585,3 +585,4 @@ export const getProjectMessages = asyncHandler(async (req, res) => {
     }
   });
 });
+

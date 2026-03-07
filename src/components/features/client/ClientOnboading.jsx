@@ -2,8 +2,6 @@
 import { useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import {
-  EvervaultCard,
-  CardPattern,
   generateRandomString,
 } from "@/components/ui/evervault-card";
 import { useMotionValue, useMotionTemplate, motion } from "motion/react";
@@ -434,8 +432,11 @@ const ClientOnboading = () => {
 };
 
 // Memoized Service Card Component to prevent re-renders
-const ServiceCard = memo(
-  ({ feature, selectedServices, multiSelectEnabled, onClick }) => {
+const ServiceCard = memo(function ServiceCard({
+  feature,
+  selectedServices,
+  onClick,
+}) {
     const isSelected = selectedServices.some(
       (item) => item.title === feature.title
     );
@@ -518,7 +519,7 @@ const ServiceCard = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 export default ClientOnboading;

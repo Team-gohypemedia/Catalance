@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import format from "date-fns/format";
 import isToday from "date-fns/isToday";
@@ -13,14 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import Paperclip from "lucide-react/dist/esm/icons/paperclip";
-import Bot from "lucide-react/dist/esm/icons/bot";
-import User from "lucide-react/dist/esm/icons/user";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Clock4 from "lucide-react/dist/esm/icons/clock-4";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
@@ -395,7 +392,7 @@ const ChatArea = ({
 };
 
 const ClientChatContent = () => {
-  const { user, authFetch, token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const { user, authFetch, token, isAuthenticated, isLoading: authLoading } = useAuth();
   const { socket: notificationSocket } = useNotifications();
   const [searchParams] = useSearchParams();
   const [conversationId, setConversationId] = useState(null);
@@ -422,14 +419,14 @@ const ClientChatContent = () => {
     setOnline(false);
   }, [selectedConversation?.serviceKey, selectedConversation?.id]);
 
-  const stopPolling = () => {
+  const stopPolling = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-  };
+  }, []);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
     try {
       if (token && isAuthenticated && authFetch) {
@@ -453,7 +450,7 @@ const ClientChatContent = () => {
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     }
-  };
+  }, [conversationId, token, isAuthenticated, authFetch]);
 
   const emitTyping = () => {
     if (!useSocket || !socketRef.current || !conversationId) return;
@@ -475,11 +472,11 @@ const ClientChatContent = () => {
     }, 1500);
   };
 
-  const startPolling = () => {
+  const startPolling = useCallback(() => {
     stopPolling();
     fetchMessages();
     pollRef.current = setInterval(fetchMessages, 5000);
-  };
+  }, [stopPolling, fetchMessages]);
 
   // Load conversations based on proposals (active freelancers)
   useEffect(() => {
@@ -580,7 +577,15 @@ const ClientChatContent = () => {
     return () => {
       cancelled = true;
     };
-  }, [authFetch, user?.id, token, isAuthenticated, authLoading]);
+  }, [
+    authFetch,
+    user?.id,
+    token,
+    isAuthenticated,
+    authLoading,
+    searchParams,
+    selectedConversation,
+  ]);
 
   useEffect(() => {
     if (!selectedConversation) return;
@@ -632,7 +637,7 @@ const ClientChatContent = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedConversation]);
+  }, [selectedConversation, authFetch, token, isAuthenticated]);
 
   useEffect(() => {
     if (!conversationId || !selectedConversation) return;
@@ -663,7 +668,7 @@ const ClientChatContent = () => {
       }
     });
 
-    socket.on("chat:read_receipt", ({ conversationId: cid, readerId, readAt }) => {
+    socket.on("chat:read_receipt", ({ conversationId: cid, readerId: _readerId, readAt }) => {
        if (cid !== conversationId) return;
        setMessages(prev => prev.map(msg => {
          // Mark all messages sent by ME (or as 'user') as read if reader is someone else
@@ -784,7 +789,7 @@ const ClientChatContent = () => {
       }
       socketRef.current = null;
     };
-  }, [conversationId, selectedConversation, useSocket, user?.id]);
+  }, [conversationId, selectedConversation, useSocket, user?.id, startPolling, stopPolling]);
 
   // Separate effect for global notifications (sorting and unread counts)
   useEffect(() => {

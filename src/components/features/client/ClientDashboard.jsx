@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Send from "lucide-react/dist/esm/icons/send";
@@ -32,14 +32,12 @@ import { rankFreelancersForProposal } from "@/shared/lib/freelancer-matching";
 import {
   listFreelancers,
   fetchChatConversations,
-  API_BASE_URL,
 } from "@/shared/lib/api-client";
-import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
+import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
-import FreelancerDetailsDialog from "@/components/features/client/dashboard/FreelancerDetailsDialog";
 import EditProposalDialog from "@/components/features/client/dashboard/EditProposalDialog";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
@@ -53,8 +51,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-const buildUrl = (path) => `${API_BASE_URL}${path.replace(/^\/api/, "")}`;
 const MIN_FREELANCER_MATCH_SCORE = 50;
 const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);
 const CLOSED_PROJECT_STATUSES = new Set(["COMPLETED", "PAUSED"]);
@@ -107,7 +103,7 @@ const normalizeSavedProposal = (proposal = {}) => {
   if (text) {
     // Match budget with optional 'k' suffix for thousands
     const budgetMatch = text.match(
-      /Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|₹|ƒ,1)?\s*([\d,]+)\s*(k)?/i,
+      /Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|â‚¹|Æ’,1)?\s*([\d,]+)\s*(k)?/i,
     );
     if (budgetMatch) {
       let budgetValue = parseFloat(budgetMatch[1].replace(/,/g, ""));
@@ -146,7 +142,7 @@ const resolveActiveProposalId = (proposals, preferredId, fallbackId) => {
   return proposals[0].id;
 };
 
-// Helper function to format budget as ₹X,XXX
+// Helper function to format budget as â‚¹X,XXX
 const formatBudget = (budget) => {
   if (!budget || budget === "Not set") return "Not set";
 
@@ -162,7 +158,7 @@ const formatBudget = (budget) => {
 
   const finalValue = hasKSuffix ? numValue * 1000 : numValue;
 
-  return `₹${finalValue.toLocaleString("en-IN")}`;
+  return `â‚¹${finalValue.toLocaleString("en-IN")}`;
 };
 
 const stripProposalMarkdown = (value = "") =>
@@ -715,7 +711,7 @@ const BudgetChart = ({ percentage, remaining, spent }) => {
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-4">
-          <div className="relative w-24 h-24 flex-shrink-0">
+          <div className="relative w-24 h-24 shrink-0">
             <svg
               className="w-full h-full transform -rotate-90"
               viewBox="0 0 36 36"
@@ -744,13 +740,13 @@ const BudgetChart = ({ percentage, remaining, spent }) => {
             <div>
               <p className="text-xs text-muted-foreground">Remaining</p>
               <p className="text-sm font-bold">
-                ₹{remaining?.toLocaleString() || 0}
+                â‚¹{remaining?.toLocaleString() || 0}
               </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Spent</p>
               <p className="text-sm font-bold">
-                ₹{spent?.toLocaleString() || 0}
+                â‚¹{spent?.toLocaleString() || 0}
               </p>
             </div>
           </div>
@@ -813,7 +809,7 @@ const ClientDashboardContent = () => {
   const [projects, setProjects] = useState([]);
   const [freelancers, setFreelancers] = useState([]); // Chat freelancers
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]); // All freelancers for suggestions
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [savedProposals, setSavedProposals] = useState([]);
   const [activeProposalId, setActiveProposalId] = useState(null);
@@ -823,7 +819,7 @@ const ClientDashboardContent = () => {
     try {
       const stored = localStorage.getItem("markify:dismissedExpiredProposals");
       return stored ? JSON.parse(stored) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   });
@@ -836,11 +832,7 @@ const ClientDashboardContent = () => {
     summary: "",
     budget: "",
     timeline: "",
-  });
-  const [viewFreelancer, setViewFreelancer] = useState(null);
-  const [showFreelancerDetails, setShowFreelancerDetails] = useState(false);
-  const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
-  const [projectToPay, setProjectToPay] = useState(null);
+  });  const [projectToPay, setProjectToPay] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Increase Budget Dialog State
@@ -1122,23 +1114,23 @@ const ClientDashboardContent = () => {
     persistSavedProposalsToStorage(proposals, activeId, storageKeys);
   }, [sessionUser?.id, storageKeys]);
 
-  const persistSavedProposalState = (
-    nextProposals,
-    preferredActiveId = null,
-  ) => {
-    const normalized = Array.isArray(nextProposals)
-      ? nextProposals.map(normalizeSavedProposal)
-      : [];
-    const resolvedActiveId = resolveActiveProposalId(
-      normalized,
-      preferredActiveId,
-      activeProposalId,
-    );
-    setSavedProposals(normalized);
-    setActiveProposalId(resolvedActiveId);
-    persistSavedProposalsToStorage(normalized, resolvedActiveId, storageKeys);
-    return resolvedActiveId;
-  };
+  const persistSavedProposalState = useCallback(
+    (nextProposals, preferredActiveId = null) => {
+      const normalized = Array.isArray(nextProposals)
+        ? nextProposals.map(normalizeSavedProposal)
+        : [];
+      const resolvedActiveId = resolveActiveProposalId(
+        normalized,
+        preferredActiveId,
+        activeProposalId,
+      );
+      setSavedProposals(normalized);
+      setActiveProposalId(resolvedActiveId);
+      persistSavedProposalsToStorage(normalized, resolvedActiveId, storageKeys);
+      return resolvedActiveId;
+    },
+    [activeProposalId, storageKeys],
+  );
 
   useEffect(() => {
     if (!authFetch || !sessionUser?.id || sessionUser?.role !== "CLIENT")
@@ -1214,11 +1206,12 @@ const ClientDashboardContent = () => {
     savedProposals,
     activeProposalId,
     isSyncingDrafts,
+    persistSavedProposalState,
   ]);
 
   // Load projects
   // Load projects function
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     if (!authFetch) return;
     try {
       setIsLoading(true);
@@ -1249,31 +1242,16 @@ const ClientDashboardContent = () => {
           sessionStorage.setItem("budgetReminderShown", "true");
         }
       }
-
-      // Check for projects awaiting payment (Auto-show popup)
-      const pendingPaymentProject = fetchedProjects.find(
-        (p) => p.status === "AWAITING_PAYMENT",
-      );
-      if (pendingPaymentProject) {
-        setProjectToPay(pendingPaymentProject);
-        // Only show if not already dismissed in this session
-        const hasDismissedPayment = sessionStorage.getItem(
-          `dismissedPayment_${pendingPaymentProject.id}`,
-        );
-        if (!hasDismissedPayment) {
-          setShowPaymentConfirm(true);
-        }
-      }
     } catch (error) {
       console.error("Failed to load projects", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [authFetch]);
 
   useEffect(() => {
     loadProjects();
-  }, [authFetch]);
+  }, [loadProjects]);
 
   useEffect(() => {
     if (!Array.isArray(projects) || projects.length === 0) return;
@@ -1319,7 +1297,7 @@ const ClientDashboardContent = () => {
     if (merged.length === savedProposals.length) return;
 
     persistSavedProposalState(merged, activeProposalId);
-  }, [projects, savedProposals, activeProposalId]);
+  }, [projects, savedProposals, activeProposalId, persistSavedProposalState]);
 
   // Load freelancers
   // Load freelancers (chat conversations)
@@ -1632,86 +1610,36 @@ const ClientDashboardContent = () => {
     }
   };
 
-  const handlePaymentClick = (project) => {
-    setProjectToPay(project);
-    setShowPaymentConfirm(true);
-  };
+  const handlePaymentClick = async (project) => {
+    if (!project?.id) return;
 
-  const processPayment = async () => {
-    if (!projectToPay) return;
+    setProjectToPay(project);
     setIsProcessingPayment(true);
     try {
-      const orderRes = await authFetch(
-        `/projects/${projectToPay.id}/pay-upfront/order`,
-        {
-          method: "POST",
-        },
-      );
-      const orderPayload = await orderRes.json().catch(() => null);
-      if (!orderRes.ok) {
-        if (orderRes.status === 503) {
-          const fallbackRes = await authFetch(
-            `/projects/${projectToPay.id}/pay-upfront`,
-            { method: "POST" },
-          );
-          const fallbackPayload = await fallbackRes.json().catch(() => null);
-          if (!fallbackRes.ok) {
-            throw new Error(fallbackPayload?.message || "Payment failed");
-          }
-          toast.success(
-            fallbackPayload?.data?.message ||
-              "Payment processed successfully! Project is now active.",
-          );
-          setShowPaymentConfirm(false);
-          setProjectToPay(null);
-          await loadProjects();
-          return;
-        }
-        throw new Error(orderPayload?.message || "Unable to initiate payment");
-      }
-
-      const orderData = orderPayload?.data || {};
-      const paymentProof = await openRazorpayCheckout({
-        key: orderData.key,
-        amountPaise: orderData.amountPaise,
-        currency: orderData.currency || "INR",
-        orderId: orderData.orderId,
-        description: `Upfront payment for ${orderData.projectTitle || "project"}`,
+      const paymentResult = await processProjectInstallmentPayment({
+        authFetch,
+        projectId: project.id,
         prefill: {
           email: sessionUser?.email || "",
           name: sessionUser?.fullName || "",
           contact: sessionUser?.phone || sessionUser?.phoneNumber || "",
         },
-        notes: {
-          projectId: orderData.projectId,
-        },
+        description: `${
+          project?.paymentPlan?.nextDueInstallment?.label || "Project payment"
+        } for ${project?.title || "project"}`,
       });
 
-      const verifyRes = await authFetch(
-        `/projects/${projectToPay.id}/pay-upfront/verify`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(paymentProof),
-        },
-      );
-      const verifyPayload = await verifyRes.json().catch(() => null);
-      if (!verifyRes.ok) {
-        throw new Error(verifyPayload?.message || "Payment verification failed");
-      }
-
       toast.success(
-        verifyPayload?.data?.message ||
-          "Payment processed successfully! Project is now active.",
+        paymentResult?.message ||
+          "Payment processed successfully! Project billing has been updated."
       );
-      setShowPaymentConfirm(false);
-      setProjectToPay(null);
       await loadProjects();
     } catch (error) {
       console.error("Payment error:", error);
-      toast.error(error.message || "Failed to process payment");
+      toast.error(error?.message || "Failed to process payment");
     } finally {
       setIsProcessingPayment(false);
+      setProjectToPay(null);
     }
   };
 
@@ -1792,8 +1720,8 @@ const ClientDashboardContent = () => {
       if (storedProposals.length) {
         let updatedAny = false;
         const budgetRegex =
-          /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|₹|ƒ,1)?\s*[\d,]+/gi;
-        const newBudgetText = `Budget\n- ƒ,1${budgetValue.toLocaleString()}`;
+          /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|â‚¹|Æ’,1)?\s*[\d,]+/gi;
+        const newBudgetText = `Budget\n- Æ’,1${budgetValue.toLocaleString()}`;
         const updatedProposals = storedProposals.map((proposal) => {
           const matchesId =
             proposal.projectId && proposal.projectId === budgetProject.id;
@@ -1802,7 +1730,7 @@ const ClientDashboardContent = () => {
           updatedAny = true;
           const next = {
             ...proposal,
-            budget: `ƒ,1${budgetValue.toLocaleString()}`,
+            budget: `Æ’,1${budgetValue.toLocaleString()}`,
             updatedAt: new Date().toISOString(),
           };
           if (next.summary) {
@@ -1821,12 +1749,12 @@ const ClientDashboardContent = () => {
       // Show appropriate message based on whether proposals were rejected
       if (rejectedCount > 0) {
         toast.success(
-          `Budget updated to ₹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`,
+          `Budget updated to â‚¹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`,
         );
       } else {
         // Just updated budget (proposals are still pending, under 48hrs)
         toast.success(
-          `Budget updated to ₹${budgetValue.toLocaleString()}! Freelancers will see the new amount.`,
+          `Budget updated to â‚¹${budgetValue.toLocaleString()}! Freelancers will see the new amount.`,
         );
       }
 
@@ -1848,7 +1776,7 @@ const ClientDashboardContent = () => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
-        <div className="max-w-[1600px] mx-auto">
+        <div className="max-w-400 mx-auto">
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Left Column - Main Content */}
             <div className="flex-1 min-w-0 flex flex-col gap-8">
@@ -1859,7 +1787,7 @@ const ClientDashboardContent = () => {
                     {greeting}, {firstName}
                   </h1>
                   <p className="text-muted-foreground font-medium">
-                    Here's what's happening in your Executive Control Room
+                    Here&apos;s what&apos;s happening in your Executive Control Room
                     today.
                   </p>
                 </div>
@@ -1879,7 +1807,7 @@ const ClientDashboardContent = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatsCard
                   title="Total Spent"
-                  value={`₹${metrics.totalSpent.toLocaleString()}`}
+                  value={`â‚¹${metrics.totalSpent.toLocaleString()}`}
                   trend="Invested so far"
                   trendType="neutral"
                   accentColor="primary"
@@ -1893,16 +1821,22 @@ const ClientDashboardContent = () => {
                 />
                 <StatsCard
                   title="Total Budget"
-                  value={`₹${metrics.totalBudget.toLocaleString()}`}
+                  value={`â‚¹${metrics.totalBudget.toLocaleString()}`}
                   trend="Allocated budget"
                   trendType="neutral"
                   accentColor="green" // Changed to green for budget
                 />
               </div>
 
+              <BudgetChart
+                percentage={budgetPercentage}
+                remaining={Math.max(metrics.totalBudget - metrics.totalSpent, 0)}
+                spent={metrics.totalSpent}
+              />
+
               {/* Saved Proposal Workspace */}
               {savedProposal && (
-                <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-background to-background">
+                <Card className="border-primary/25 bg-linear-to-br from-primary/10 via-background to-background">
                   <CardHeader className="pb-3">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
@@ -1980,7 +1914,7 @@ const ClientDashboardContent = () => {
                             {savedProposals.length > 1 ? "s" : ""} available
                           </p>
                         </div>
-                        <div className="max-h-[420px] overflow-y-auto pr-2 space-y-2 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+                        <div className="max-h-105 overflow-y-auto pr-2 space-y-2 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
                           {savedProposals.map((proposal) => {
                             const isActive = proposal.id === savedProposal.id;
                             return (
@@ -2143,562 +2077,6 @@ const ClientDashboardContent = () => {
                 </Card>
               )}
 
-              {/* Projects Needing Resend - Show OPEN projects where all proposals were rejected */}
-              {(() => {
-                const projectsNeedingResend = uniqueProjects
-                  .filter((p) => {
-                    if (p.status !== "OPEN") return false;
-                    const proposals = p.proposals || [];
-                    if (proposals.length === 0) return false;
-                    // All proposals are rejected (none pending or accepted)
-                    return !proposals.some((prop) =>
-                      ["PENDING", "ACCEPTED"].includes(
-                        (prop.status || "").toUpperCase(),
-                      ),
-                    );
-                  })
-                  .filter((p) => !dismissedProjectIds.includes(p.id));
-
-                // Deduplicate by title - keep only the latest project for each title
-                const latestProjectsNeedingResend = Object.values(
-                  projectsNeedingResend.reduce((acc, project) => {
-                    const currentStored = acc[project.title];
-                    // If no project stored for this title, OR current project is newer than stored one
-                    if (
-                      !currentStored ||
-                      new Date(project.createdAt) >
-                        new Date(currentStored.createdAt)
-                    ) {
-                      acc[project.title] = project;
-                    }
-                    return acc;
-                  }, {}),
-                ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by newest first
-
-                if (latestProjectsNeedingResend.length === 0 || savedProposal)
-                  return null;
-
-                return (
-                  <div className="space-y-6">
-                    {latestProjectsNeedingResend.map((project) => (
-                      <div key={project.id} className="space-y-6">
-                        {/* Proposal Preview Card - Similar to Your Saved Proposal */}
-                        <Card className="border-orange-500/20 bg-orange-500/5">
-                          <CardHeader className="pb-2">
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                <AlertTriangle className="w-5 h-5 text-orange-500" />
-                                Proposal Expired - Resend Required
-                              </CardTitle>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={async () => {
-                                  // Delete all related projects with the same title from the database
-                                  const relatedProjectIds = uniqueProjects
-                                    .filter((p) => p.title === project.title)
-                                    .map((p) => p.id);
-
-                                  // Archive (soft delete) in database to persist across devices
-                                  for (const projectId of relatedProjectIds) {
-                                    try {
-                                      await authFetch(
-                                        `/projects/${projectId}`,
-                                        {
-                                          method: "PATCH",
-                                          headers: {
-                                            "Content-Type": "application/json",
-                                          },
-                                          body: JSON.stringify({
-                                            status: "ARCHIVED",
-                                          }),
-                                        },
-                                      );
-                                    } catch (err) {
-                                      console.error(
-                                        `Failed to archive project ${projectId}:`,
-                                        err,
-                                      );
-                                    }
-                                  }
-
-                                  // Update local list of dismissed IDs
-                                  const newDismissed = [
-                                    ...dismissedProjectIds,
-                                    ...relatedProjectIds,
-                                  ];
-                                  setDismissedProjectIds(newDismissed);
-                                  localStorage.setItem(
-                                    "markify:dismissedExpiredProposals",
-                                    JSON.stringify(newDismissed),
-                                  );
-
-                                  // Refresh projects list
-                                  loadProjects();
-
-                                  toast.success(
-                                    "Expired proposal removed permanently",
-                                  );
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              <h4 className="text-xl font-bold">
-                                {project.title}
-                              </h4>
-                              <p className="text-sm text-muted-foreground line-clamp-2">
-                                {project.description ||
-                                  "No description available."}
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                <Badge variant="secondary">
-                                  Budget: ₹
-                                  {(project.budget || 0).toLocaleString()}
-                                </Badge>
-                                <Badge variant="secondary">
-                                  Timeline: {project.timeline || "Not set"}
-                                </Badge>
-                              </div>
-                              <div className="pt-4 border-t mt-4">
-                                <p className="text-sm text-orange-500 mb-3">
-                                  Your budget is low, please increase the
-                                  budget.
-                                </p>
-                                <Button
-                                  className="w-full gap-2"
-                                  onClick={() => {
-                                    // Create saved proposal from this project
-                                    const newSavedProposal = {
-                                      projectTitle: project.title,
-                                      summary: project.description || "",
-                                      budget: `ƒ,1${(
-                                        project.budget || 0
-                                      ).toLocaleString()}`,
-                                      timeline: project.timeline || "1 month",
-                                      projectId: project.id,
-                                    };
-                                    const normalized = normalizeSavedProposal({
-                                      ...newSavedProposal,
-                                      createdAt: new Date().toISOString(),
-                                    });
-                                    const signature =
-                                      getProposalSignature(normalized);
-                                    const existingIndex =
-                                      savedProposals.findIndex(
-                                        (proposal) =>
-                                          getProposalSignature(proposal) ===
-                                          signature,
-                                      );
-                                    let nextProposals = [];
-                                    let nextActiveId = normalized.id;
-                                    if (existingIndex >= 0) {
-                                      nextProposals = savedProposals.map(
-                                        (proposal, idx) =>
-                                          idx === existingIndex
-                                            ? {
-                                                ...proposal,
-                                                ...normalized,
-                                                id: proposal.id,
-                                              }
-                                            : proposal,
-                                      );
-                                      nextActiveId =
-                                        savedProposals[existingIndex]?.id ||
-                                        normalized.id;
-                                    } else {
-                                      nextProposals = [
-                                        ...savedProposals,
-                                        normalized,
-                                      ];
-                                    }
-                                    persistSavedProposalState(
-                                      nextProposals,
-                                      nextActiveId,
-                                    );
-                                    // Open increase budget dialog
-                                    handleIncreaseBudgetClick(project);
-                                  }}
-                                >
-                                  <TrendingUp className="w-4 h-4" />
-                                  Increase Budget & Resend
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              {/* Confirm Send Dialog */}
-              <Dialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm Send Proposal</DialogTitle>
-                    <DialogDescription>
-                      Are you sure you want to send your proposal to{" "}
-                      {selectedFreelancer?.fullName || selectedFreelancer?.name}
-                      ?
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="p-4 bg-muted rounded-lg">
-                    <p className="font-semibold">
-                      {resolveProposalTitle(savedProposal)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Budget: {formatBudget(savedProposal?.budget)}
-                    </p>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowSendConfirm(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={confirmSend} disabled={isSendingProposal}>
-                      {isSendingProposal ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : (
-                        <Send className="w-4 h-4 mr-2" />
-                      )}
-                      Send Proposal
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Payment Confirmation Dialog */}
-              <Dialog
-                open={showPaymentConfirm}
-                onOpenChange={setShowPaymentConfirm}
-              >
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm Upfront Payment</DialogTitle>
-                    <DialogDescription>
-                      {(() => {
-                        const budget = parseInt(projectToPay?.budget) || 0;
-                        let percentage = "50%";
-                        if (budget > 200000) percentage = "25%";
-                        else if (budget >= 50000) percentage = "33%";
-                        return `This project requires a ${percentage} upfront payment to begin. This amount will be held in escrow.`;
-                      })()}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="p-4 bg-muted/50 rounded-lg space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Project:</span>
-                      <span className="font-medium">{projectToPay?.title}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Total Budget:
-                      </span>
-                      <span>
-                        ₹{(projectToPay?.budget || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="border-t pt-2 flex justify-between font-bold text-lg">
-                      {(() => {
-                        const budget = parseInt(projectToPay?.budget) || 0;
-                        let label = "Pay Now (50%)";
-                        let divisor = 2;
-
-                        if (budget > 200000) {
-                          label = "Pay Now (25%)";
-                          divisor = 4;
-                        } else if (budget >= 50000) {
-                          label = "Pay Now (33%)";
-                          divisor = 3;
-                        }
-
-                        return (
-                          <>
-                            <span>{label}:</span>
-                            <span className="text-primary">
-                              ₹{Math.round(budget / divisor).toLocaleString()}
-                            </span>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowPaymentConfirm(false);
-                        if (projectToPay) {
-                          sessionStorage.setItem(
-                            `dismissedPayment_${projectToPay.id}`,
-                            "true",
-                          );
-                        }
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={processPayment}
-                      disabled={isProcessingPayment}
-                      className="gap-2"
-                    >
-                      {isProcessingPayment ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <CreditCard className="w-4 h-4" />
-                      )}
-                      Confirm Payment
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Increase Budget Dialog */}
-              <Dialog
-                open={showIncreaseBudget}
-                onOpenChange={setShowIncreaseBudget}
-              >
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-primary" />
-                      Increase Project Budget
-                    </DialogTitle>
-                    <DialogDescription>
-                      Increase your budget to attract freelancers faster. Higher
-                      budgets often get accepted sooner.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Project:</span>
-                        <span className="font-medium">
-                          {budgetProject?.title}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Current Budget:
-                        </span>
-                        <span className="font-medium">
-                          ₹{(budgetProject?.budget || 0).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Quick Increase Options */}
-                    <div>
-                      <label className="text-xs font-medium mb-2 block text-muted-foreground">
-                        Quick Increase
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {[10000, 20000, 30000, 50000, 80000].map((amount) => (
-                          <Button
-                            key={amount}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="bg-background hover:bg-primary/10 hover:text-primary hover:border-primary/50 text-xs h-7"
-                            onClick={() => {
-                              const current =
-                                parseInt(budgetProject?.budget) || 0;
-                              setNewBudget(String(current + amount));
-                            }}
-                          >
-                            +{amount >= 1000 ? `${amount / 1000}k` : amount}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">
-                        New Budget (₹)
-                      </label>
-                      <Input
-                        type="text"
-                        value={newBudget}
-                        onChange={(e) =>
-                          setNewBudget(e.target.value.replace(/[^0-9]/g, ""))
-                        }
-                        placeholder="Enter new budget amount"
-                        className="text-lg"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Must be higher than current budget
-                      </p>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowIncreaseBudget(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={updateBudget}
-                      disabled={isUpdatingBudget}
-                      className="gap-2"
-                    >
-                      {isUpdatingBudget ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <TrendingUp className="w-4 h-4" />
-                      )}
-                      Update Budget
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Budget Reminder Popup (shown on login) */}
-              <Dialog
-                open={showBudgetReminder}
-                onOpenChange={setShowBudgetReminder}
-              >
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-orange-500">
-                      <AlertTriangle className="w-5 h-5" />
-                      Budget Increase Recommended
-                    </DialogTitle>
-                    <DialogDescription>
-                      Some of your proposals have been pending for over 24
-                      hours. Consider increasing your budget to attract
-                      freelancers faster.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-3 py-4 max-h-60 overflow-y-auto">
-                    {oldPendingProjects.map((project) => (
-                      <div
-                        key={project.id}
-                        className="p-3 bg-muted/50 rounded-lg flex items-center justify-between gap-3"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {project.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Budget: ₹{(project.budget || 0).toLocaleString()}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-primary text-primary hover:bg-primary/10 shrink-0"
-                          onClick={() => {
-                            setShowBudgetReminder(false);
-                            handleIncreaseBudgetClick(project);
-                          }}
-                        >
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          Increase
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowBudgetReminder(false)}
-                    >
-                      Remind Me Later
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <FreelancerSelectionDialog
-                open={showFreelancerSelect}
-                onOpenChange={setShowFreelancerSelect}
-                savedProposal={savedProposal}
-                isLoadingFreelancers={isFreelancersLoading}
-                freelancerSearch={freelancerSearch}
-                onFreelancerSearchChange={setFreelancerSearch}
-                filteredFreelancers={filteredFreelancers}
-                freelancerSelectionData={freelancerSelectionData}
-                bestMatchFreelancerIds={bestMatchFreelancerIds}
-                projectRequiredSkills={projectRequiredSkills}
-                onViewFreelancer={(freelancer) => {
-                  setViewingFreelancer(freelancer);
-                  setShowFreelancerProfile(true);
-                }}
-                onSendProposal={handleSendClick}
-                collectFreelancerSkillTokens={collectFreelancerSkillTokens}
-                freelancerMatchesRequiredSkill={freelancerMatchesRequiredSkill}
-                generateGradient={generateGradient}
-                formatRating={formatRating}
-              />
-
-              <FreelancerProfileDialog
-                open={showFreelancerProfile}
-                onOpenChange={setShowFreelancerProfile}
-                viewingFreelancer={viewingFreelancer}
-              />
-
-              <ViewProposalDialog
-                open={showViewProposal}
-                onOpenChange={setShowViewProposal}
-                savedProposal={savedProposal}
-                resolveProposalTitle={resolveProposalTitle}
-                formatBudget={formatBudget}
-                onEditProposal={() => {
-                  setShowViewProposal(false);
-                  setEditForm({
-                    title: savedProposal?.projectTitle || "",
-                    summary: savedProposal?.summary || savedProposal?.content || "",
-                    budget: savedProposal?.budget || "",
-                    timeline: savedProposal?.timeline || "",
-                  });
-                  setShowEditProposal(true);
-                }}
-              />
-
-              <EditProposalDialog
-                open={showEditProposal}
-                onOpenChange={setShowEditProposal}
-                editForm={editForm}
-                setEditForm={setEditForm}
-                onSaveChanges={() => {
-                  if (!savedProposal) return;
-                  const updated = {
-                    ...savedProposal,
-                    projectTitle: editForm.title,
-                    summary: editForm.summary,
-                    content: editForm.summary,
-                    budget: editForm.budget,
-                    timeline: editForm.timeline,
-                    updatedAt: new Date().toISOString(),
-                  };
-                  const nextProposals = savedProposals.map((proposal) =>
-                    proposal.id === savedProposal.id
-                      ? normalizeSavedProposal({
-                          ...proposal,
-                          ...updated,
-                        })
-                      : proposal,
-                  );
-                  persistSavedProposalState(nextProposals, savedProposal.id);
-                  setShowEditProposal(false);
-                  toast.success("Proposal updated!");
-                }}
-              />
-
-              <FreelancerDetailsDialog
-                open={showFreelancerDetails}
-                onOpenChange={setShowFreelancerDetails}
-                viewFreelancer={viewFreelancer}
-              />
               {/* Active Projects Table - Only show when projects exist */}
               {/* Active Projects Table - IN_PROGRESS & AWAITING_PAYMENT */}
               {(() => {
@@ -2807,11 +2185,11 @@ const ClientDashboardContent = () => {
                                 </TableCell>
                                 <TableCell>
                                   <span className="text-sm font-medium">
-                                    ₹{(project.budget || 0).toLocaleString()}
+                                    INR {(project.budget || 0).toLocaleString()}
                                   </span>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {project.status === "AWAITING_PAYMENT" ? (
+                                  {project.paymentPlan?.nextDueInstallment ? (
                                     <Button
                                       size="sm"
                                       className="bg-green-600 hover:bg-green-700 text-white h-8 w-full sm:w-auto text-xs sm:text-sm font-medium shadow-sm"
@@ -2820,13 +2198,7 @@ const ClientDashboardContent = () => {
                                         handlePaymentClick(project);
                                       }}
                                     >
-                                      {(() => {
-                                        const budget =
-                                          parseInt(project.budget) || 0;
-                                        if (budget > 200000) return "Pay 25%";
-                                        if (budget >= 50000) return "Pay 33%";
-                                        return "Pay 50%";
-                                      })()}
+                                      {isProcessingPayment && projectToPay?.id === project.id ? "Processing..." : `Pay ${project.paymentPlan.nextDueInstallment.percentage}%`}
                                     </Button>
                                   ) : (
                                     <Button
@@ -3002,7 +2374,7 @@ const ClientDashboardContent = () => {
                                 </TableCell>
                                 <TableCell>
                                   <span className="text-sm font-medium">
-                                    ₹{(project.budget || 0).toLocaleString()}
+                                    â‚¹{(project.budget || 0).toLocaleString()}
                                   </span>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -3085,7 +2457,7 @@ const ClientDashboardContent = () => {
             </div>
 
             {/* Right Sidebar */}
-            <div className="lg:w-[360px] flex-shrink-0 flex flex-col gap-6">
+            <div className="lg:w-90 shrink-0 flex flex-col gap-6">
               {/* Action Center */}
               <Card className="rounded-xl bg-zinc-100 dark:bg-zinc-900/50 text-foreground border-border/50 shadow-sm">
                 <CardHeader className="pb-2">
@@ -3196,14 +2568,14 @@ const ClientDashboardContent = () => {
                             }
                           >
                             <div
-                              className={`absolute -left-[15px] top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
+                              className={`absolute -left-3.75 top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
                                 idx === 0
                                   ? "bg-primary"
                                   : "bg-muted-foreground/50"
                               }`}
                             />
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
-                              <span className="text-xs font-bold text-muted-foreground w-16 flex-shrink-0">
+                              <span className="text-xs font-bold text-muted-foreground w-16 shrink-0">
                                 {new Date(
                                   project.updatedAt || project.createdAt,
                                 ).toLocaleTimeString([], {
@@ -3250,6 +2622,17 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
+
+
+
+
+
+
+
+
+
+
+
 
 
 

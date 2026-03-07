@@ -5,8 +5,11 @@ import {
   getProject,
   updateProject,
   payUpfront,
+  createProjectPaymentOrder,
   createUpfrontPaymentOrder,
+  verifyProjectPayment,
   verifyUpfrontPayment,
+  payProjectInstallment,
 } from "../controllers/project.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 import { validateResource } from "../middlewares/validate-resource.js";
@@ -18,6 +21,9 @@ projectRouter.get("/", requireAuth, listProjects);
 projectRouter.post("/", requireAuth, validateResource(createProjectSchema), createProject);
 projectRouter.get("/:id", requireAuth, getProject);
 projectRouter.patch("/:id", requireAuth, updateProject);
+projectRouter.post("/:id/payments/order", requireAuth, createProjectPaymentOrder);
+projectRouter.post("/:id/payments/verify", requireAuth, verifyProjectPayment);
+projectRouter.post("/:id/payments/direct", requireAuth, payProjectInstallment);
 projectRouter.post("/:id/pay-upfront/order", requireAuth, createUpfrontPaymentOrder);
 projectRouter.post("/:id/pay-upfront/verify", requireAuth, verifyUpfrontPayment);
 projectRouter.post("/:id/pay-upfront", requireAuth, payUpfront);
@@ -44,3 +50,5 @@ projectRouter.post("/:id/escrow/release", requireAuth, releaseEscrow);
 projectRouter.post("/:id/pause", requireAuth, pauseProject);
 projectRouter.post("/:id/remove-freelancer", requireAuth, removeFreelancer);
 projectRouter.post("/:id/reassign-freelancer", requireAuth, reassignFreelancer);
+
+

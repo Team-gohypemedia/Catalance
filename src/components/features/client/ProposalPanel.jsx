@@ -251,8 +251,6 @@ const persistSavedProposals = (proposals, activeId, storageKeys) => {
 };
 
 const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
-    if (!content) return null;
-
     const navigate = useNavigate();
     const { user } = useAuth();
     const storageKeys = useMemo(
@@ -261,7 +259,7 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
     );
 
     const cleanContent = useMemo(() => {
-        return formatProposalContent(content);
+        return formatProposalContent(content || "");
     }, [content]);
 
     // Local state for editing
@@ -278,6 +276,8 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
         () => parseProposalContent(editableContent, activeServiceKey),
         [editableContent, activeServiceKey]
     );
+
+    if (!content) return null;
 
     // Accept and proceed to dashboard - saves to dashboard view only, NOT to drafts
     const handleAccept = () => {

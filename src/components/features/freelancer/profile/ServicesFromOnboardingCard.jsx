@@ -1,6 +1,8 @@
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
+import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
 import { Card } from "@/components/ui/card";
+import { PROJECT_COMPLEXITY_OPTIONS } from "@/components/features/freelancer/onboarding/constants";
 import {
   Carousel,
   CarouselContent,
@@ -18,8 +20,49 @@ const chunkServices = (entries = [], chunkSize = 2) => {
   return pages;
 };
 
+const PROJECT_COMPLEXITY_LABELS = PROJECT_COMPLEXITY_OPTIONS.reduce(
+  (acc, option) => ({
+    ...acc,
+    [option.value]: option.label,
+  }),
+  {}
+);
+
+const normalizeProjectHref = (project) => {
+  const rawValue = String(
+    project?.link || project?.url || project?.projectUrl || project?.website || ""
+  ).trim();
+
+  if (!rawValue) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(rawValue)) {
+    return rawValue;
+  }
+
+  return `https://${rawValue}`;
+};
+
+const getProjectDedupKey = (project, fallbackKey = "") => {
+  const normalizedHref = normalizeProjectHref(project).toLowerCase();
+  if (normalizedHref) {
+    return `link:${normalizedHref}`;
+  }
+
+  const normalizedTitle = String(project?.title || "")
+    .trim()
+    .toLowerCase();
+  if (normalizedTitle) {
+    return `title:${normalizedTitle}`;
+  }
+
+  return fallbackKey;
+};
+
 const ServicesFromOnboardingCard = ({
   onboardingServiceEntries,
+  portfolioProjects,
   getServiceLabel,
   resolveAvatarUrl,
   collectServiceSpecializations,
@@ -30,30 +73,32 @@ const ServicesFromOnboardingCard = ({
   const serviceSlides = chunkServices(onboardingServiceEntries, 2);
 
   return (
-    <Card className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
+    <Card className="relative overflow-visible rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] md:p-6">
       <div
         className="absolute inset-x-0 top-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg, transparent, hsl(var(--primary)), #8b5cf6, transparent)",
+            "linear-gradient(90deg, transparent, hsl(var(--primary)), rgba(56,189,248,0.9), transparent)",
         }}
         aria-hidden="true"
       />
 
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
           <Cpu className="h-4 w-4 text-primary" aria-hidden="true" />
         </span>
         <div>
-          <h3 className="text-lg font-bold text-foreground">Services From Onboarding</h3>
-          <p className="text-xs text-muted-foreground">
-            Compact summary of each service from your onboarding answers.
+          <h3 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
+            Services From Onboarding
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Service cards styled as polished profile showcases.
           </p>
         </div>
       </div>
 
       {onboardingServiceEntries.length > 0 ? (
-        <div className="relative mt-4 px-10">
+        <div className="relative mt-6 px-12 md:px-14 lg:px-16">
           <Carousel
             opts={{
               align: "start",
@@ -61,110 +106,115 @@ const ServicesFromOnboardingCard = ({
             }}
             className="w-full"
           >
-            <CarouselContent className="-ml-4">
-              {serviceSlides.map((slide, slideIndex) => (
-                <CarouselItem
-                  key={`services-slide-${slideIndex}`}
-                  className="basis-full pl-4"
-                >
-                  <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2">
-                    {slide.map(({ serviceKey, detail }) => {
-                      const serviceTitle = getServiceLabel(serviceKey);
-                      const serviceDescription = String(
-                        detail?.serviceDescription || detail?.description || ""
-                      ).trim();
-                      const serviceCoverImage = resolveAvatarUrl(detail?.coverImage);
-                      const hasServiceProfileContent = Boolean(
-                        serviceDescription || serviceCoverImage
-                      );
+            <div className="overflow-hidden rounded-[28px]">
+              <CarouselContent className="-ml-4">
+                {serviceSlides.map((slide, slideIndex) => (
+                  <CarouselItem
+                    key={`services-slide-${slideIndex}`}
+                    className="basis-full pl-4"
+                  >
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      {slide.map(({ serviceKey, detail }) => {
+                    const serviceTitle = getServiceLabel(serviceKey);
+                    const serviceDescription = String(
+                      detail?.serviceDescription || detail?.description || ""
+                    ).trim();
+                    const serviceCoverImage = resolveAvatarUrl(detail?.coverImage);
+                    const hasServiceProfileContent = Boolean(
+                      serviceDescription || serviceCoverImage
+                    );
 
-                      const specializationTags = collectServiceSpecializations(detail);
-                      const nicheTags = toUniqueLabels([
-                        ...(Array.isArray(detail?.niches) ? detail.niches : []),
-                        detail?.otherNiche || "",
-                      ]);
-                      const mergedUniqueTags = Array.from(
-                        new Set([
-                          ...specializationTags.map((tag) => String(tag || "").trim()),
-                          ...nicheTags.map((tag) => String(tag || "").trim()),
-                        ].filter(Boolean))
-                      );
-                      const visibleTags = mergedUniqueTags.slice(0, 8);
-                      const hiddenTagCount = Math.max(
-                        0,
-                        mergedUniqueTags.length - visibleTags.length
-                      );
+                    const specializationTags = collectServiceSpecializations(detail);
+                    const nicheTags = toUniqueLabels([
+                      ...(Array.isArray(detail?.niches) ? detail.niches : []),
+                      detail?.otherNiche || "",
+                    ]);
+                    const mergedUniqueTags = Array.from(
+                      new Set([
+                        ...specializationTags.map((tag) => String(tag || "").trim()),
+                        ...nicheTags.map((tag) => String(tag || "").trim()),
+                      ].filter(Boolean))
+                    );
+                    const visibleTags = mergedUniqueTags.slice(0, 6);
+                    const hiddenTagCount = Math.max(
+                      0,
+                      mergedUniqueTags.length - visibleTags.length
+                    );
 
-                      const projectList = Array.isArray(detail?.projects)
-                        ? detail.projects
-                        : [];
-                      const displayedProjects = projectList.slice(0, 2);
-                      const hiddenProjectCount = Math.max(
-                        0,
-                        projectList.length - displayedProjects.length
-                      );
+                    const linkedFeaturedProjects = (
+                      Array.isArray(portfolioProjects) ? portfolioProjects : []
+                    ).filter(
+                      (project) =>
+                        String(project?.serviceKey || "").trim() === serviceKey
+                    );
+                    const onboardingProjects = Array.isArray(detail?.projects)
+                      ? detail.projects
+                      : [];
+                    const projectList = Array.from(
+                      new Map(
+                        [...linkedFeaturedProjects, ...onboardingProjects].map(
+                          (project, index) => [
+                            getProjectDedupKey(
+                              project,
+                              `${serviceKey}-${index}`
+                            ),
+                            project,
+                          ]
+                        )
+                      ).values()
+                    );
+                    const displayedProjects = projectList.slice(0, 6);
 
-                      const metadataItems = [
-                        {
-                          label: "Level",
-                          value: normalizeValueLabel(detail?.workingLevel) || "Not set",
-                        },
-                        {
-                          label: "Complexity",
-                          value:
-                            normalizeValueLabel(detail?.projectComplexity) || "Not set",
-                        },
-                        {
-                          label: "Avg Price",
-                          value:
-                            normalizeValueLabel(detail?.averageProjectPrice) ||
-                            "Not set",
-                        },
-                        {
-                          label: "Industry",
-                          value: normalizeValueLabel(detail?.industryFocus) || "Not set",
-                        },
-                      ];
+                    const metadataItems = [
+                      {
+                        label: "Complexity",
+                        value:
+                          PROJECT_COMPLEXITY_LABELS[
+                            String(detail?.projectComplexity || "").trim().toLowerCase()
+                          ] || "Not set",
+                      },
+                      {
+                        label: "Avg Price",
+                        value:
+                          normalizeValueLabel(detail?.averageProjectPrice) || "Not set",
+                      },
+                    ];
 
-                      return (
-                        <div
+                    return (
+                        <article
                           key={serviceKey}
-                          className="group flex h-full flex-col gap-3 overflow-hidden rounded-xl border border-border/50 bg-muted/15 p-3.5 transition-colors duration-200 hover:border-border/70"
+                          className="group flex h-full flex-col overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
                         >
-                          <div className="flex items-start gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <h4 className="truncate text-sm font-bold text-foreground">
-                                  {serviceTitle}
-                                </h4>
-                                <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                  {normalizeValueLabel(detail?.experienceYears) ||
-                                    "Experience not set"}
-                                </span>
-                              </div>
+                        <div className="relative h-52 overflow-hidden md:h-56">
+                          {serviceCoverImage ? (
+                            <img
+                              src={serviceCoverImage}
+                              alt={`${serviceTitle} cover`}
+                              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div
+                              className="h-full w-full"
+                              style={{
+                                background:
+                                  "radial-gradient(circle at 18% 18%, rgba(34,211,238,0.22), transparent 18%), radial-gradient(circle at 86% 80%, rgba(14,165,233,0.24), transparent 16%), linear-gradient(180deg, rgba(2,6,23,0.96), rgba(3,7,18,0.98))",
+                              }}
+                            />
+                          )}
 
-                              <p
-                                className={cn(
-                                  "mt-1 text-xs leading-relaxed",
-                                  hasServiceProfileContent
-                                    ? "text-muted-foreground"
-                                    : "text-amber-500/90"
-                                )}
-                              >
-                                {hasServiceProfileContent
-                                  ? "Description and/or cover added"
-                                  : "Missing description or cover"}
-                              </p>
-                            </div>
+                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.18),rgba(2,6,23,0.72)_70%,rgba(7,7,10,0.97)_100%)]" />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_28%)]" />
 
+                          <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-3 p-3.5 md:p-4">
                             <button
                               type="button"
                               onClick={() => openEditServiceProfileModal(serviceKey)}
                               className={cn(
-                                "inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors duration-200",
+                                "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold backdrop-blur-sm transition-colors duration-200",
                                 hasServiceProfileContent
-                                  ? "border-border/50 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                                  : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                                  ? "border-white/10 bg-black/25 text-white/80 hover:bg-black/40 hover:text-white"
+                                  : "border-primary/40 bg-primary/15 text-primary hover:bg-primary/25"
                               )}
                             >
                               <Edit2 className="h-3 w-3" aria-hidden="true" />
@@ -172,119 +222,142 @@ const ServicesFromOnboardingCard = ({
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
-                            <div className="h-24 overflow-hidden rounded-lg border border-border/40 bg-background/40">
-                              {serviceCoverImage ? (
-                                <img
-                                  src={serviceCoverImage}
-                                  alt={`${serviceTitle} cover`}
-                                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-[11px] text-muted-foreground/70">
-                                  No cover yet
-                                </div>
-                              )}
-                            </div>
+                        </div>
 
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {metadataItems.map((item) => (
-                                <div
-                                  key={`${serviceKey}-${item.label}`}
-                                  className="rounded-md border border-border/40 bg-background/30 px-2 py-1.5"
-                                >
-                                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    {item.label}
-                                  </p>
-                                  <p className="truncate text-[11px] font-medium text-foreground/90">
-                                    {item.value}
-                                  </p>
-                                </div>
-                              ))}
+                        <div className="flex flex-1 flex-col space-y-3 px-4 pb-3.5 pt-3 md:px-4.5 md:pb-4 md:pt-3.5">
+                          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                            <div className="min-w-0">
+                              <h4 className="text-base font-semibold tracking-tight text-foreground md:text-lg">
+                                {serviceTitle}
+                              </h4>
+                              <div className="mt-1 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                                <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.65)]" />
+                                {normalizeValueLabel(detail?.experienceYears) ||
+                                  "Experience not set"}
+                              </div>
                             </div>
                           </div>
 
                           <p
                             className={cn(
-                              "text-xs leading-relaxed",
+                              "min-h-[4.5rem] max-h-[4.5rem] max-w-6xl overflow-hidden text-[13px] leading-6",
                               serviceDescription
-                                ? "line-clamp-2 text-foreground/80"
-                                : "italic text-muted-foreground/60"
+                                ? "text-white/68"
+                                : "italic text-white/45"
                             )}
+                            style={{
+                              display: "-webkit-box",
+                              WebkitBoxOrient: "vertical",
+                              WebkitLineClamp: 3,
+                            }}
                           >
-                            {serviceDescription || "No service description added yet."}
+                            {serviceDescription ||
+                              "Add a stronger service description so clients understand your positioning, delivery approach, and outcomes at a glance."}
                           </p>
 
-                          <div className="flex flex-wrap gap-1.5">
-                            {visibleTags.length > 0 ? (
-                              visibleTags.map((tag) => (
-                                <span
-                                  key={`${serviceKey}-tag-${tag}`}
-                                  className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-                                >
-                                  {tag}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-xs text-muted-foreground/60">
-                                No specializations added
-                              </span>
-                            )}
-                            {hiddenTagCount > 0 ? (
-                              <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
-                                +{hiddenTagCount} more
-                              </span>
-                            ) : null}
+                          <div className="grid grid-cols-2 gap-2">
+                            {metadataItems.map((item) => (
+                              <div
+                                key={`${serviceKey}-${item.label}`}
+                                className="rounded-[15px] border border-white/6 bg-white/[0.035] px-3 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                              >
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                                  {item.label}
+                                </p>
+                                <p className="mt-0.5 truncate text-sm font-semibold text-white">
+                                  {item.value}
+                                </p>
+                              </div>
+                            ))}
                           </div>
 
-                          <div className="rounded-lg border border-border/40 bg-background/25 px-2.5 py-2">
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                              Onboarding Projects
+                          <div className="min-h-[5.5rem] border-t border-white/6 pt-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                              Skills &amp; Technologies
                             </p>
-                            {displayedProjects.length > 0 ? (
-                              <div className="mt-1 space-y-1">
-                                {displayedProjects.map((project, index) => (
-                                  <p
-                                    key={`${serviceKey}-project-${index}`}
-                                    className="truncate text-xs text-muted-foreground"
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {visibleTags.length > 0 ? (
+                                visibleTags.map((tag) => (
+                                  <span
+                                    key={`${serviceKey}-tag-${tag}`}
+                                    className="rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-0.5 text-[10px] font-semibold text-white/72"
                                   >
-                                    <span className="font-medium text-foreground/90">
-                                      {project?.title || "Project"}
-                                    </span>
-                                    {project?.timeline
-                                      ? ` | ${normalizeValueLabel(project.timeline)}`
-                                      : ""}
-                                    {project?.budget
-                                      ? ` | ${normalizeValueLabel(project.budget)}`
-                                      : ""}
-                                  </p>
-                                ))}
-                                {hiddenProjectCount > 0 ? (
-                                  <p className="text-[10px] text-muted-foreground">
-                                    +{hiddenProjectCount} more project
-                                    {hiddenProjectCount > 1 ? "s" : ""}
+                                    {tag}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-sm text-white/45">
+                                  No skills added yet.
+                                </span>
+                              )}
+                              {hiddenTagCount > 0 ? (
+                                <span className="rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-0.5 text-[10px] font-semibold text-white/72">
+                                  +{hiddenTagCount}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="mt-auto min-h-[7.75rem] border-t border-white/6 pt-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-semibold text-white/78">
+                                Featured Projects ({projectList.length})
+                              </span>
+                            </div>
+
+                            {displayedProjects.length > 0 ? (
+                              <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-[repeat(4,max-content)]">
+                                {displayedProjects.map((project, index) => {
+                                  const projectHref = normalizeProjectHref(project);
+
+                                  return (
+                                    <div
+                                      key={`${serviceKey}-project-${index}`}
+                                      className="flex items-center gap-0"
+                                    >
+                                      <span className="truncate text-sm font-medium text-primary">
+                                        {project?.title || "Project"}
+                                      </span>
+                                      {projectHref ? (
+                                        <a
+                                          href={projectHref}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex h-5 w-5 flex-none items-center justify-center text-primary transition-opacity duration-200 hover:opacity-80"
+                                          aria-label={`Visit ${project?.title || "project"} website`}
+                                        >
+                                          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                                        </a>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                                {projectList.length > displayedProjects.length ? (
+                                  <p className="text-xs font-medium text-primary/80">
+                                    +{projectList.length - displayedProjects.length} more
                                   </p>
                                 ) : null}
                               </div>
                             ) : (
-                              <p className="mt-1 text-xs text-muted-foreground/60">
+                              <p className="mt-3 text-sm text-white/45">
                                 No projects added yet.
                               </p>
                             )}
                           </div>
                         </div>
+                        </article>
                       );
                     })}
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </div>
 
             {serviceSlides.length > 1 ? (
               <>
-                <CarouselPrevious className="-left-4" />
-                <CarouselNext className="-right-4" />
+                <CarouselPrevious className="!-left-16 md:!-left-16 lg:!-left-18 z-10 size-11 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30" />
+                <CarouselNext className="!-right-16 md:!-right-16 lg:!-right-18 z-10 size-11 border-primary/40 bg-background text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.18),0_12px_28px_rgba(0,0,0,0.18)] hover:scale-105 hover:bg-background hover:text-primary disabled:border-white/8 disabled:bg-white/5 disabled:text-white/30" />
               </>
             ) : null}
           </Carousel>

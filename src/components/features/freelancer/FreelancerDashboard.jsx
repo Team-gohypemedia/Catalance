@@ -709,7 +709,7 @@ export const DashboardContent = ({ _roleOverride }) => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
-        <div className="max-w-[1600px] mx-auto">
+        <div className="max-w-400 mx-auto">
           <div className="flex flex-col lg:flex-row gap-10">
             {/* Left Column (Stats + Pipeline + Table) */}
             <div className="flex-1 min-w-0 flex flex-col gap-10">
@@ -913,7 +913,7 @@ export const DashboardContent = ({ _roleOverride }) => {
             </div>
 
             {/* Right Sidebar - Widgets (Merged) */}
-            <div className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-6">
+            <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6">
               {/* Dynamic Upcoming Meeting Widget (Moved to TOP for visibility) */}
               {/* Dynamic Upcoming Meeting Widget (Moved to TOP for visibility) */}
               {(() => {
@@ -932,7 +932,7 @@ export const DashboardContent = ({ _roleOverride }) => {
                 const timeDisplay = `${upcomingMeeting.startHour}:00 - ${upcomingMeeting.endHour}:00`;
 
                 return (
-                  <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex flex-col items-center justify-center shrink-0 min-w-[240px] relative overflow-hidden">
+                  <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex flex-col items-center justify-center shrink-0 min-w-60 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -mr-6 -mt-6"></div>
                     <h3 className="font-bold text-lg text-foreground mb-2 flex items-center gap-2 relative z-10">
                       <Video className="h-5 w-5 text-primary" />
