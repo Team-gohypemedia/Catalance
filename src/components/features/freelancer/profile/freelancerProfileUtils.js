@@ -1,4 +1,4 @@
-﻿export const getBioTextFromObject = (obj) => {
+export const getBioTextFromObject = (obj) => {
   if (!obj || typeof obj !== "object") return "";
   const textKeys = ["bio", "about", "description", "summary", "text"];
   for (const key of textKeys) {
@@ -167,15 +167,42 @@ export const isNoisySkillTag = (value) => {
   return SKILL_NOISE_PATTERNS.some((pattern) => pattern.test(normalized));
 };
 
+export const MIN_SKILL_LEVEL = 1;
+export const MAX_SKILL_LEVEL = 10;
+export const DEFAULT_SKILL_LEVEL = 6;
+export const SKILL_LEVEL_OPTIONS = Object.freeze(
+  Array.from({ length: MAX_SKILL_LEVEL }, (_, index) => index + MIN_SKILL_LEVEL)
+);
+
+const LEGACY_SKILL_LEVEL_MAP = Object.freeze({
+  beginner: 3,
+  intermediate: DEFAULT_SKILL_LEVEL,
+  expert: 9,
+  advanced: 9,
+});
+
 export const normalizeSkillLevel = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.min(MAX_SKILL_LEVEL, Math.max(MIN_SKILL_LEVEL, Math.round(value)));
+  }
+
   const raw = String(value || "")
     .trim()
     .toLowerCase();
 
-  if (raw === "beginner") return "Beginner";
-  if (raw === "expert" || raw === "advanced") return "Expert";
-  return "Intermediate";
+  if (Object.prototype.hasOwnProperty.call(LEGACY_SKILL_LEVEL_MAP, raw)) {
+    return LEGACY_SKILL_LEVEL_MAP[raw];
+  }
+
+  const parsed = raw.match(/\b(10|[1-9])\b/);
+  if (parsed) {
+    return Math.min(MAX_SKILL_LEVEL, Math.max(MIN_SKILL_LEVEL, Number(parsed[1])));
+  }
+
+  return DEFAULT_SKILL_LEVEL;
 };
+
+export const formatSkillLevelLabel = (value) => `${normalizeSkillLevel(value)}/10`;
 
 export const normalizeSkillLevelMap = (value) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -234,7 +261,9 @@ export const toUniqueSkillObjects = (rawSkills = [], fallbackLevelMap = {}) => {
     .map((name) => {
       const key = getSkillDedupKey(name);
       const level =
-        rawLevelMap[key] || normalizedFallbackLevelMap[key] || "Intermediate";
+        rawLevelMap[key] ||
+        normalizedFallbackLevelMap[key] ||
+        DEFAULT_SKILL_LEVEL;
       return { name, level };
     });
 };
@@ -399,6 +428,15 @@ export const toUniqueLabels = (values = []) =>
 
 export const collectServiceSpecializations = (detail = {}) => {
   const collected = [];
+  const directSkills = Array.isArray(detail?.skillsAndTechnologies)
+    ? detail.skillsAndTechnologies
+    : [];
+  const caseStudyTechStack = Array.isArray(detail?.caseStudy?.techStack)
+    ? detail.caseStudy.techStack
+    : [];
+
+  collected.push(...directSkills);
+  collected.push(...caseStudyTechStack);
 
   const groups =
     detail?.groups && typeof detail.groups === "object" ? detail.groups : {};

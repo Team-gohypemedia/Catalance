@@ -1,4 +1,5 @@
 import Camera from "lucide-react/dist/esm/icons/camera";
+import Check from "lucide-react/dist/esm/icons/check";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -41,8 +42,14 @@ import { useNotifications } from "@/shared/context/NotificationContext";
 import {
   getServiceLabel,
   createServiceDetail,
+  getTechStackOptions,
 } from "@/components/features/freelancer/onboarding/utils";
-import { EXPERIENCE_YEARS_OPTIONS } from "@/components/features/freelancer/onboarding/constants";
+import {
+  AVERAGE_PROJECT_PRICE_OPTIONS,
+  EXPERIENCE_YEARS_OPTIONS,
+  PROJECT_COMPLEXITY_OPTIONS,
+  SERVICE_OPTIONS,
+} from "@/components/features/freelancer/onboarding/constants";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -82,11 +89,74 @@ import {
   createInitialFullProfileForm,
   PERSONAL_EDITOR_SECTIONS,
   FULL_PROFILE_EDITOR_SECTIONS,
+  DEFAULT_SKILL_LEVEL,
+  SKILL_LEVEL_OPTIONS,
+  formatSkillLevelLabel,
   normalizeSkillLevel,
 } from "@/components/features/freelancer/profile/freelancerProfileUtils";
 
 const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
+const CUSTOM_SERVICE_OPTION_VALUE = "__custom__";
+
+const createInitialServiceForm = () => ({
+  selectedServiceKey: "",
+  customServiceName: "",
+});
+
+const createInitialSkillForm = () => ({
+  name: "",
+  level: DEFAULT_SKILL_LEVEL,
+});
+
+const normalizeServiceIdentity = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const resolveCatalogServiceMatch = (value = "") => {
+  const normalizedValue = normalizeServiceIdentity(value);
+  if (!normalizedValue) return null;
+
+  return (
+    SERVICE_OPTIONS.find((option) =>
+      [option.value, option.label].some(
+        (candidate) => normalizeServiceIdentity(candidate) === normalizedValue
+      )
+    ) || null
+  );
+};
+
+const normalizeServiceSkillTags = (values = []) =>
+  toUniqueLabels(values).filter((entry) => !isNoisySkillTag(entry));
+
+const normalizeProjectServiceKeys = (values = []) => {
+  const candidates = Array.isArray(values) ? values : [values];
+  const seen = new Set();
+
+  return candidates.reduce((acc, value) => {
+    const rawValue = String(value || "").trim();
+    const normalizedValue = normalizeServiceIdentity(rawValue);
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      return acc;
+    }
+
+    seen.add(normalizedValue);
+    acc.push(rawValue);
+    return acc;
+  }, []);
+};
+
+const resolveProjectServiceKeys = (project = {}) =>
+  normalizeProjectServiceKeys([
+    ...(Array.isArray(project?.serviceKeys) ? project.serviceKeys : []),
+    project?.serviceKey,
+  ]);
+
+const resolveProjectServiceLabels = (project = {}) =>
+  resolveProjectServiceKeys(project).map((serviceKey) => getServiceLabel(serviceKey));
 
 const formatFileSize = (bytes) => {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -108,7 +178,7 @@ const FreelancerProfile = () => {
   const [skills, setSkills] = useState([]); // [{ name }]
   const [workExperience, setWorkExperience] = useState([]); // {title, period, description}
   const [services, setServices] = useState([]); // string[]
-  const [skillForm, setSkillForm] = useState({ name: "" });
+  const [skillForm, setSkillForm] = useState(createInitialSkillForm);
   const [workForm, setWorkForm] = useState(initialWorkForm);
   const [editingIndex, setEditingIndex] = useState(null); // null = add, number = edit
 
@@ -135,9 +205,10 @@ const FreelancerProfile = () => {
   const [newProjectUrl, setNewProjectUrl] = useState("");
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
-  const [newProjectServiceKey, setNewProjectServiceKey] = useState("");
+  const [newProjectServiceKeys, setNewProjectServiceKeys] = useState([]);
   const [newProjectImageFile, setNewProjectImageFile] = useState(null);
   const [newProjectImagePreview, setNewProjectImagePreview] = useState("");
+  const [isProjectCoverDragActive, setIsProjectCoverDragActive] = useState(false);
   const [editingProjectIndex, setEditingProjectIndex] = useState(null);
   const [serviceProfileForm, setServiceProfileForm] = useState({
     serviceKey: "",
@@ -145,7 +216,11 @@ const FreelancerProfile = () => {
     experienceYears: "",
     serviceDescription: "",
     coverImage: "",
+    averageProjectPrice: "",
+    projectComplexity: "",
+    skillsAndTechnologies: [],
   });
+  const [serviceSkillInput, setServiceSkillInput] = useState("");
   const [savingServiceProfile, setSavingServiceProfile] = useState(false);
   const [uploadingServiceCover, setUploadingServiceCover] = useState(false);
   const [projectCoverUploadingIndex, setProjectCoverUploadingIndex] =
@@ -183,6 +258,29 @@ const FreelancerProfile = () => {
       }
     };
   }, [newProjectImagePreview]);
+
+  useEffect(() => {
+    if (!modalType || typeof window === "undefined") return undefined;
+
+    const { body, documentElement } = document;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyPaddingRight = body.style.paddingRight;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const scrollbarWidth = window.innerWidth - documentElement.clientWidth;
+
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      body.style.paddingRight = previousBodyPaddingRight;
+      documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [modalType]);
 
   // Derive initials for avatar
   const initials =
@@ -566,14 +664,15 @@ const FreelancerProfile = () => {
     });
     if (exists) {
       toast.info("That skill is already in your tech stack.");
-      setSkillForm({ name: "" });
+      setSkillForm(createInitialSkillForm());
       setModalType(null);
       return;
     }
 
-    const nextSkills = [...previousSkills, { name, level: "Intermediate" }];
+    const normalizedLevel = normalizeSkillLevel(skillForm.level);
+    const nextSkills = [...previousSkills, { name, level: normalizedLevel }];
     setSkills(nextSkills);
-    setSkillForm({ name: "" });
+    setSkillForm(createInitialSkillForm());
     setModalType(null);
     await saveSkillsImmediately(nextSkills, previousSkills);
   };
@@ -1241,15 +1340,7 @@ const FreelancerProfile = () => {
   }, []);
 
   // ----- Add Custom Service -----
-  const [serviceForm, setServiceForm] = useState("");
-  const addService = () => {
-    const name = serviceForm.trim();
-    if (name && !services.includes(name)) {
-      setServices((prev) => [...prev, name]);
-    }
-    setServiceForm("");
-    setModalType(null);
-  };
+  const [serviceForm, setServiceForm] = useState(createInitialServiceForm);
 
   const openEditServiceProfileModal = (serviceKey) => {
     const serviceDetails =
@@ -1261,6 +1352,15 @@ const FreelancerProfile = () => {
       serviceDetails?.[serviceKey] && typeof serviceDetails[serviceKey] === "object"
         ? serviceDetails[serviceKey]
         : {};
+    const existingSkillsAndTechnologies = normalizeServiceSkillTags([
+      ...(Array.isArray(detail?.skillsAndTechnologies)
+        ? detail.skillsAndTechnologies
+        : []),
+      ...collectServiceSpecializations(detail),
+      ...(Array.isArray(detail?.caseStudy?.techStack)
+        ? detail.caseStudy.techStack
+        : []),
+    ]);
 
     setServiceProfileForm({
       serviceKey,
@@ -1270,9 +1370,48 @@ const FreelancerProfile = () => {
         detail?.serviceDescription || detail?.description || ""
       ).trim(),
       coverImage: resolveAvatarUrl(detail?.coverImage, { allowBlob: true }),
+      averageProjectPrice: String(
+        detail?.averageProjectPrice || detail?.averagePrice || ""
+      ).trim(),
+      projectComplexity: String(detail?.projectComplexity || "").trim(),
+      skillsAndTechnologies: existingSkillsAndTechnologies,
     });
+    setServiceSkillInput("");
     setModalType("onboardingService");
   };
+
+  const addServiceSkillTag = useCallback((rawValue) => {
+    const parsedValues =
+      typeof rawValue === "string" ? parseDelimitedValues(rawValue) : rawValue;
+    const nextValues = normalizeServiceSkillTags(parsedValues);
+
+    if (!nextValues.length) {
+      return false;
+    }
+
+    setServiceProfileForm((prev) => ({
+      ...prev,
+      skillsAndTechnologies: normalizeServiceSkillTags([
+        ...(Array.isArray(prev.skillsAndTechnologies)
+          ? prev.skillsAndTechnologies
+          : []),
+        ...nextValues,
+      ]),
+    }));
+    setServiceSkillInput("");
+    return true;
+  }, []);
+
+  const removeServiceSkillTag = useCallback((tagToRemove) => {
+    const tagKey = getSkillDedupKey(tagToRemove);
+    setServiceProfileForm((prev) => ({
+      ...prev,
+      skillsAndTechnologies: (Array.isArray(prev.skillsAndTechnologies)
+        ? prev.skillsAndTechnologies
+        : []
+      ).filter((entry) => getSkillDedupKey(entry) !== tagKey),
+    }));
+  }, []);
 
   const handleServiceCoverImageChange = async (event) => {
     const file = event.target.files?.[0];
@@ -1339,6 +1478,23 @@ const FreelancerProfile = () => {
         typeof existingServiceDetails[serviceKey] === "object"
         ? existingServiceDetails[serviceKey]
         : {};
+    const serviceAlreadyExists = Array.from(
+      new Set([
+        ...(Array.isArray(services) ? services : []),
+        ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
+        ...Object.keys(existingServiceDetails),
+      ])
+    ).some(
+      (existingServiceKey) =>
+        normalizeServiceIdentity(existingServiceKey) ===
+        normalizeServiceIdentity(serviceKey)
+    );
+    const nextServiceSkillTags = normalizeServiceSkillTags([
+      ...(Array.isArray(serviceProfileForm.skillsAndTechnologies)
+        ? serviceProfileForm.skillsAndTechnologies
+        : []),
+      ...parseDelimitedValues(serviceSkillInput),
+    ]);
 
     const nextServiceDetails = {
       ...existingServiceDetails,
@@ -1350,6 +1506,14 @@ const FreelancerProfile = () => {
           serviceProfileForm.serviceDescription || ""
         ).trim(),
         coverImage: String(serviceProfileForm.coverImage || "").trim(),
+        averageProjectPrice: String(
+          serviceProfileForm.averageProjectPrice || ""
+        ).trim(),
+        averagePrice: String(serviceProfileForm.averageProjectPrice || "").trim(),
+        projectComplexity: String(
+          serviceProfileForm.projectComplexity || ""
+        ).trim(),
+        skillsAndTechnologies: nextServiceSkillTags,
       },
     };
 
@@ -1399,7 +1563,12 @@ const FreelancerProfile = () => {
           }
           : prev
       );
-      toast.success(`${getServiceLabel(serviceKey)} updated`);
+      toast.success(
+        `${getServiceLabel(serviceKey)} ${
+          serviceAlreadyExists ? "updated" : "added"
+        }`
+      );
+      setServiceSkillInput("");
       setModalType(null);
     } catch (error) {
       console.error("Failed to save onboarding service profile:", error);
@@ -1414,8 +1583,9 @@ const FreelancerProfile = () => {
     setNewProjectUrl("");
     setNewProjectTitle("");
     setNewProjectDescription("");
-    setNewProjectServiceKey("");
+    setNewProjectServiceKeys([]);
     setNewProjectImageFile(null);
+    setIsProjectCoverDragActive(false);
     setEditingProjectIndex(null);
     setNewProjectImagePreview((prev) => {
       if (prev && prev.startsWith("blob:")) {
@@ -1437,9 +1607,30 @@ const FreelancerProfile = () => {
     setNewProjectUrl(String(project?.link || "").trim());
     setNewProjectTitle(String(project?.title || "").trim());
     setNewProjectDescription(String(project?.description || "").trim());
-    setNewProjectServiceKey(String(project?.serviceKey || "").trim());
+    setNewProjectServiceKeys(resolveProjectServiceKeys(project));
     setNewProjectImagePreview(resolveAvatarUrl(project?.image, { allowBlob: true }) || "");
     setModalType("addProject");
+  };
+
+  const toggleProjectServiceSelection = (serviceKey) => {
+    const resolvedServiceKey = String(serviceKey || "").trim();
+    if (!resolvedServiceKey) return;
+
+    setNewProjectServiceKeys((prev) => {
+      const currentValues = normalizeProjectServiceKeys(prev);
+      const normalizedTarget = normalizeServiceIdentity(resolvedServiceKey);
+      const exists = currentValues.some(
+        (entry) => normalizeServiceIdentity(entry) === normalizedTarget
+      );
+
+      if (exists) {
+        return currentValues.filter(
+          (entry) => normalizeServiceIdentity(entry) !== normalizedTarget
+        );
+      }
+
+      return [...currentValues, resolvedServiceKey];
+    });
   };
 
   const getProjectTitleFallback = (projectUrl = "") => {
@@ -1647,9 +1838,7 @@ const FreelancerProfile = () => {
     uploadProjectCoverImage(index, file);
   };
 
-  const handleNewProjectImageChange = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  const handleNewProjectImageFile = (file) => {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
@@ -1663,6 +1852,7 @@ const FreelancerProfile = () => {
     }
 
     const objectUrl = URL.createObjectURL(file);
+    setIsProjectCoverDragActive(false);
     setNewProjectImageFile(file);
     setNewProjectImagePreview((prev) => {
       if (prev && prev.startsWith("blob:")) {
@@ -1672,7 +1862,23 @@ const FreelancerProfile = () => {
     });
   };
 
+  const handleNewProjectImageChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    handleNewProjectImageFile(file);
+  };
+
+  const handleNewProjectImageDrop = (event) => {
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    setIsProjectCoverDragActive(false);
+    if (!file) return;
+    handleNewProjectImageFile(file);
+  };
+
   const clearNewProjectImageDraft = () => {
+    setIsProjectCoverDragActive(false);
     setNewProjectImageFile(null);
     setNewProjectImagePreview((prev) => {
       if (prev && prev.startsWith("blob:")) {
@@ -1793,13 +1999,17 @@ const FreelancerProfile = () => {
         newProjectDescription || previewData?.description || ""
       ).trim();
 
+      const normalizedProjectServiceKeys = normalizeProjectServiceKeys(
+        newProjectServiceKeys
+      );
       const nextProject = {
         ...(isEditingProject ? currentProjects[editingProjectIndex] || {} : {}),
         link: normalizedUrl,
         image: projectImage || null,
         title: finalTitle,
         description: finalDescription,
-        serviceKey: String(newProjectServiceKey || "").trim(),
+        serviceKeys: normalizedProjectServiceKeys,
+        serviceKey: normalizedProjectServiceKeys[0] || "",
       };
       const nextProjects = isEditingProject
         ? currentProjects.map((project, index) =>
@@ -2179,6 +2389,81 @@ const FreelancerProfile = () => {
         })),
     [onboardingServiceEntries, services]
   );
+  const availableServiceOptions = useMemo(() => {
+    const existingServiceKeys = new Set(
+      Array.from(
+        new Set([
+          ...onboardingServiceEntries.map((entry) => entry?.serviceKey),
+          ...(Array.isArray(services) ? services : []),
+        ])
+      )
+        .map((serviceKey) => normalizeServiceIdentity(serviceKey))
+        .filter(Boolean)
+    );
+
+    return SERVICE_OPTIONS.filter(
+      (option) =>
+        !existingServiceKeys.has(normalizeServiceIdentity(option.value))
+    );
+  }, [onboardingServiceEntries, services]);
+  const openAddServiceModal = useCallback(() => {
+    setServiceForm(createInitialServiceForm());
+    setModalType("service");
+  }, []);
+  const addService = useCallback(() => {
+    const selectedServiceKey = String(serviceForm.selectedServiceKey || "").trim();
+    const customServiceName = String(serviceForm.customServiceName || "").trim();
+
+    let nextServiceKey = "";
+    if (
+      selectedServiceKey &&
+      selectedServiceKey !== CUSTOM_SERVICE_OPTION_VALUE
+    ) {
+      nextServiceKey = selectedServiceKey;
+    } else if (customServiceName) {
+      const matchedService = resolveCatalogServiceMatch(customServiceName);
+      nextServiceKey = matchedService?.value || customServiceName;
+    }
+
+    if (!nextServiceKey) {
+      toast.error("Choose a service or enter a custom service name");
+      return;
+    }
+
+    const existingServiceKey = onboardingServiceEntries.find(
+      (entry) =>
+        normalizeServiceIdentity(entry?.serviceKey) ===
+        normalizeServiceIdentity(nextServiceKey)
+    )?.serviceKey;
+
+    setServiceForm(createInitialServiceForm());
+
+    if (existingServiceKey) {
+      toast("Service already exists on your profile. Opening it for editing.");
+      openEditServiceProfileModal(existingServiceKey);
+      return;
+    }
+
+    openEditServiceProfileModal(nextServiceKey);
+  }, [onboardingServiceEntries, openEditServiceProfileModal, serviceForm]);
+  const serviceTechSuggestionOptions = useMemo(() => {
+    const serviceKey = String(serviceProfileForm.serviceKey || "").trim();
+    if (!serviceKey) {
+      return [];
+    }
+
+    const selectedKeys = new Set(
+      (Array.isArray(serviceProfileForm.skillsAndTechnologies)
+        ? serviceProfileForm.skillsAndTechnologies
+        : []
+      ).map((entry) => getSkillDedupKey(entry))
+    );
+
+    return normalizeServiceSkillTags(getTechStackOptions(serviceKey))
+      .filter((entry) => getSkillDedupKey(entry) !== getSkillDedupKey("Other"))
+      .filter((entry) => !selectedKeys.has(getSkillDedupKey(entry)))
+      .slice(0, 8);
+  }, [serviceProfileForm.serviceKey, serviceProfileForm.skillsAndTechnologies]);
   const onboardingProjectDescriptionMap = useMemo(() => {
     const map = new Map();
 
@@ -2234,9 +2519,8 @@ const FreelancerProfile = () => {
     () =>
       (Array.isArray(portfolioProjects) ? portfolioProjects : []).map(
         (project) => {
+          const projectServiceKeys = resolveProjectServiceKeys(project);
           const currentDescription = String(project?.description || "").trim();
-          if (currentDescription) return project;
-
           const projectLink = normalizeProjectLinkValue(project?.link || "");
           const projectTitle = String(project?.title || "")
             .trim()
@@ -2253,11 +2537,11 @@ const FreelancerProfile = () => {
               : "") ||
             "";
 
-          if (!descriptionFromOnboarding) return project;
-
           return {
             ...project,
-            description: descriptionFromOnboarding,
+            serviceKeys: projectServiceKeys,
+            serviceKey: projectServiceKeys[0] || String(project?.serviceKey || "").trim(),
+            description: currentDescription || descriptionFromOnboarding,
           };
         }
       ),
@@ -2271,22 +2555,6 @@ const FreelancerProfile = () => {
     return JSON.stringify(currentProjects) !== JSON.stringify(initialProjects);
   }, [portfolioProjects, initialData?.portfolioProjects]);
   const isEditingProjectDraft = editingProjectIndex !== null;
-  const draftProjectHost = getProjectTitleFallback(newProjectUrl || "");
-  const draftProjectHostLabel =
-    draftProjectHost && draftProjectHost !== "Project"
-      ? draftProjectHost
-      : "yourproject.com";
-  const draftProjectTitle =
-    String(newProjectTitle || "").trim() ||
-    (draftProjectHost && draftProjectHost !== "Project"
-      ? draftProjectHost
-      : "Project title");
-  const draftProjectDescription =
-    String(newProjectDescription || "").trim() ||
-    "Add a concise summary explaining what the project does, who it serves, and the impact it creates.";
-  const selectedProjectServiceLabel = newProjectServiceKey
-    ? getServiceLabel(newProjectServiceKey)
-    : "Not linked to a service";
   const serviceEntriesMissingDescription = onboardingServiceEntries.filter(
     ({ detail }) =>
       !hasTextValue(detail?.serviceDescription || detail?.description)
@@ -2385,6 +2653,43 @@ const FreelancerProfile = () => {
   const hasCountry = hasTextValue(onboardingIdentity?.country);
   const hasCity = hasTextValue(onboardingIdentity?.city);
   const hasSelectedServices = onboardingServiceEntries.length > 0;
+  const isCustomServiceSelected =
+    serviceForm.selectedServiceKey === CUSTOM_SERVICE_OPTION_VALUE;
+  const canAddNewService = Boolean(
+    (serviceForm.selectedServiceKey &&
+      serviceForm.selectedServiceKey !== CUSTOM_SERVICE_OPTION_VALUE) ||
+      String(serviceForm.customServiceName || "").trim()
+  );
+  const hasServiceComplexity = Boolean(
+    String(serviceProfileForm.projectComplexity || "").trim()
+  );
+  const hasServiceAveragePrice = Boolean(
+    String(serviceProfileForm.averageProjectPrice || "").trim()
+  );
+  const hasServiceSkills =
+    (Array.isArray(serviceProfileForm.skillsAndTechnologies)
+      ? serviceProfileForm.skillsAndTechnologies
+      : []
+    ).length > 0;
+  const isDraftingNewService = Boolean(
+    serviceProfileForm.serviceKey &&
+    !onboardingServiceEntries.some(
+      (entry) =>
+        normalizeServiceIdentity(entry?.serviceKey) ===
+        normalizeServiceIdentity(serviceProfileForm.serviceKey)
+    )
+  );
+  const serviceProfileStatusLabel = !serviceProfileForm.serviceDescription
+    ? "Add description"
+    : !serviceProfileForm.coverImage
+      ? "Add a cover image"
+      : !hasServiceAveragePrice
+        ? "Set average price"
+      : !hasServiceComplexity
+        ? "Set complexity"
+        : !hasServiceSkills
+          ? "Add skills & technologies"
+          : "Ready to publish";
   const hasFeaturedProject = portfolioProjects.length > 0;
   const hasIndustryFocus = onboardingGlobalIndustry.length > 0;
 
@@ -2693,7 +2998,7 @@ const FreelancerProfile = () => {
       <main className="flex-1 overflow-y-auto pb-20">
         <div className="w-full px-6 py-6 md:py-8">
 
-          {/* â”€â”€ Full-width hero â”€â”€ */}
+          {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Full-width hero ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
           <ProfileHeroCard
             fileInputRef={fileInputRef}
             coverInputRef={coverInputRef}
@@ -2723,10 +3028,10 @@ const FreelancerProfile = () => {
             }}
           />
 
-          {/* â”€â”€ Two-column grid â”€â”€ */}
+          {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Two-column grid ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
 
-            {/* â”€â”€ Left: Main content â”€â”€ */}
+            {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Left: Main content ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
             <div className="min-w-0 space-y-5">
               <ProfileOnboardingSnapshotCard
                 workModelLabel={onboardingRoleLabel}
@@ -2744,7 +3049,7 @@ const FreelancerProfile = () => {
                 deleteSkill={deleteSkill}
                 setSkillLevel={setSkillLevel}
                 savingChanges={isSaving}
-                openSkillModal={() => setModalType("skill")}
+                openSkillModal={() => { setSkillForm(createInitialSkillForm()); setModalType("skill"); }}
               />
 
               <ServicesFromOnboardingCard
@@ -2756,6 +3061,7 @@ const FreelancerProfile = () => {
                 toUniqueLabels={toUniqueLabels}
                 normalizeValueLabel={normalizeValueLabel}
                 openEditServiceProfileModal={openEditServiceProfileModal}
+                openAddServiceModal={openAddServiceModal}
               />
 
               <FeaturedProjectsSection
@@ -2770,7 +3076,7 @@ const FreelancerProfile = () => {
               />
             </div>
 
-            {/* â”€â”€ Right: Sidebar â”€â”€ */}
+            {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Right: Sidebar ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
             <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
               <ProfileSummaryCards
                 profileCompletionPercent={profileCompletionPercent}
@@ -2800,7 +3106,7 @@ const FreelancerProfile = () => {
       {modalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
           <div
-            className={`w-full rounded-2xl border border-border/70 bg-card/95 backdrop-blur p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "viewAllProjects"
+            className={`w-full border border-border/70 bg-card/95 backdrop-blur shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "addProject" ? "rounded-md p-4 sm:p-5" : "rounded-2xl p-6"} ${modalType === "viewAllProjects"
               ? "max-w-6xl h-[90vh] overflow-hidden flex flex-col"
               : modalType === "fullProfile"
                 ? "max-w-5xl max-h-[90vh] overflow-y-auto"
@@ -2809,7 +3115,7 @@ const FreelancerProfile = () => {
               : modalType === "personal"
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
               : modalType === "onboardingService"
-                ? "max-w-2xl"
+                ? "max-w-2xl max-h-[82vh] overflow-hidden flex flex-col"
               : modalType === "work"
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
               : modalType === "portfolio"
@@ -2825,25 +3131,61 @@ const FreelancerProfile = () => {
                   Add Skill
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Give the skill a name so clients can quickly scan your
-                  strengths.
+                  Give the skill a name and score it on a 1-10 scale so clients can scan your strengths faster.
                 </p>
-                <input
-                  value={skillForm.name}
-                  onChange={(event) =>
-                    setSkillForm((prev) => ({
-                      ...prev,
-                      name: event.target.value,
-                    }))
-                  }
-                  placeholder="Skill name"
-                  className="mt-4 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                />
+                <div className="mt-4 space-y-4">
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Skill name
+                    </span>
+                    <input
+                      value={skillForm.name}
+                      onChange={(event) =>
+                        setSkillForm((prev) => ({
+                          ...prev,
+                          name: event.target.value,
+                        }))
+                      }
+                      placeholder="Skill name"
+                      className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    />
+                  </label>
+                  <label className="block">
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Skill level
+                      </span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                        {formatSkillLevelLabel(skillForm.level)}
+                      </span>
+                    </div>
+                    <Select
+                      value={String(skillForm.level)}
+                      onValueChange={(value) =>
+                        setSkillForm((prev) => ({
+                          ...prev,
+                          level: normalizeSkillLevel(value),
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-11 w-full rounded-xl border-border/70 bg-card/70 px-3 text-[15px] text-foreground shadow-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/60">
+                        <SelectValue placeholder="Choose a skill level" />
+                      </SelectTrigger>
+                      <SelectContent className="border-border/70 bg-background text-foreground">
+                        {SKILL_LEVEL_OPTIONS.map((levelOption) => (
+                          <SelectItem key={levelOption} value={String(levelOption)}>
+                            Level {levelOption}/10
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                </div>
                 <div className="mt-5 flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setModalType(null)}
-                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
+                    className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground transition-colors hover:bg-muted/40"
                   >
                     Cancel
                   </button>
@@ -2860,21 +3202,74 @@ const FreelancerProfile = () => {
             ) : modalType === "service" ? (
               <>
                 <h1 className="text-lg font-semibold text-foreground">
-                  Add Custom Service
+                  Add New Service
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Offer a specialized service not in the default list.
+                  Pick a service from the catalog or add a custom offer, then
+                  fill in its profile details next.
                 </p>
-                <input
-                  value={serviceForm}
-                  onChange={(event) => setServiceForm(event.target.value)}
-                  placeholder="Service name (e.g. Rust Development)"
-                  className="mt-4 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
-                />
+                <div className="mt-4 space-y-4">
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                      Service catalog
+                    </span>
+                    <Select
+                      modal={false}
+                      value={serviceForm.selectedServiceKey || undefined}
+                      onValueChange={(value) =>
+                        setServiceForm((prev) => ({
+                          ...prev,
+                          selectedServiceKey: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-11 w-full rounded-xl border-border/70 bg-card/70 px-3 text-[15px] text-foreground shadow-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/60">
+                        <SelectValue placeholder="Choose a predefined service" />
+                      </SelectTrigger>
+                      <SelectContent className="border-border/70 bg-background text-foreground">
+                        {availableServiceOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value={CUSTOM_SERVICE_OPTION_VALUE}>
+                          Custom service
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {availableServiceOptions.length > 0
+                        ? "Choose from your remaining service catalog options."
+                        : "All catalog services are already on your profile. Add a custom service below."}
+                    </p>
+                  </label>
+
+                  {isCustomServiceSelected ? (
+                    <label className="block">
+                      <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
+                        Custom service name
+                      </span>
+                      <input
+                        value={serviceForm.customServiceName}
+                        onChange={(event) =>
+                          setServiceForm((prev) => ({
+                            ...prev,
+                            customServiceName: event.target.value,
+                          }))
+                        }
+                        placeholder="Service name (e.g. Rust Development)"
+                        className="w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/70"
+                      />
+                    </label>
+                  ) : null}
+                </div>
                 <div className="mt-5 flex justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => setModalType(null)}
+                    onClick={() => {
+                      setServiceForm(createInitialServiceForm());
+                      setModalType(null);
+                    }}
                     className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground hover:bg-muted/40 transition-colors"
                   >
                     Cancel
@@ -2882,9 +3277,10 @@ const FreelancerProfile = () => {
                   <button
                     type="button"
                     onClick={addService}
-                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background hover:bg-primary/85 transition-colors"
+                    disabled={!canAddNewService}
+                    className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-background transition-colors hover:bg-primary/85 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Add
+                    Continue
                   </button>
                 </div>
               </>
@@ -2930,14 +3326,17 @@ const FreelancerProfile = () => {
                         const projectDescription = String(
                           project?.description || ""
                         ).trim();
-                        const projectServiceLabel = project?.serviceKey
-                          ? getServiceLabel(project.serviceKey)
-                          : "Featured work";
+                        const projectServiceLabels = resolveProjectServiceLabels(project);
+                        const visibleProjectServiceLabels = projectServiceLabels.slice(0, 2);
+                        const hiddenProjectServiceLabelCount = Math.max(
+                          0,
+                          projectServiceLabels.length - visibleProjectServiceLabels.length
+                        );
 
                         return (
                           <article
                             key={`project-modal-${projectLink || projectTitle}-${idx}`}
-                            className="group overflow-hidden rounded-[22px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
+                            className="group overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
                           >
                             <div className="relative h-40 overflow-hidden lg:h-44">
                               <ProjectCoverMedia
@@ -3045,10 +3444,28 @@ const FreelancerProfile = () => {
                                 {projectDescription ||
                                   "Add a short project description so clients can quickly understand the scope and outcome."}
                               </p>
-                              <div className="flex items-center justify-between gap-3 border-t border-white/6 pt-3">
-                                <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
-                                  {projectServiceLabel}
-                                </span>
+                              <div className="flex items-start justify-between gap-3 border-t border-white/6 pt-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {visibleProjectServiceLabels.length ? (
+                                    visibleProjectServiceLabels.map((label) => (
+                                      <span
+                                        key={`${projectTitle}-${label}`}
+                                        className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65"
+                                      >
+                                        {label}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
+                                      Featured work
+                                    </span>
+                                  )}
+                                  {hiddenProjectServiceLabelCount > 0 ? (
+                                    <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                                      +{hiddenProjectServiceLabelCount} more
+                                    </span>
+                                  ) : null}
+                                </div>
                                 {projectLink ? (
                                   <a
                                     href={projectLink}
@@ -3109,11 +3526,13 @@ const FreelancerProfile = () => {
                 </div>
               </>
             ) : modalType === "onboardingService" ? (
-              <>
+              <div className="flex min-h-0 flex-1 flex-col">
                 <div className="space-y-1">
                   <div>
                     <h1 className="text-xl font-semibold text-foreground">
-                      Edit Service Profile
+                      {isDraftingNewService
+                        ? "Add Service Profile"
+                        : "Edit Service Profile"}
                     </h1>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Make this service stand out on your profile for{" "}
@@ -3125,143 +3544,286 @@ const FreelancerProfile = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-                  <label className="block space-y-1.5">
+                <div className="subtle-scrollbar mt-4 flex-1 space-y-4 overflow-y-auto pr-2">
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px]">
+                    <label className="block space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                        Experience
+                      </span>
+                      <select
+                        value={serviceProfileForm.experienceYears || ""}
+                        onChange={(event) =>
+                          setServiceProfileForm((prev) => ({
+                            ...prev,
+                            experienceYears: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      >
+                        <option value="">Select experience range</option>
+                        {serviceProfileForm.experienceYears &&
+                        !EXPERIENCE_YEARS_OPTIONS.some(
+                          (option) => option.value === serviceProfileForm.experienceYears
+                        ) ? (
+                          <option value={serviceProfileForm.experienceYears}>
+                            {normalizeValueLabel(serviceProfileForm.experienceYears)}
+                          </option>
+                        ) : null}
+                        {EXPERIENCE_YEARS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                        Complexity
+                      </span>
+                      <select
+                        value={serviceProfileForm.projectComplexity || ""}
+                        onChange={(event) =>
+                          setServiceProfileForm((prev) => ({
+                            ...prev,
+                            projectComplexity: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      >
+                        <option value="">Select complexity level</option>
+                        {PROJECT_COMPLEXITY_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block space-y-1.5 lg:col-span-2">
+                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                        Avg Price
+                      </span>
+                      <select
+                        value={serviceProfileForm.averageProjectPrice || ""}
+                        onChange={(event) =>
+                          setServiceProfileForm((prev) => ({
+                            ...prev,
+                            averageProjectPrice: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      >
+                        <option value="">Select average project price</option>
+                        {serviceProfileForm.averageProjectPrice &&
+                        !AVERAGE_PROJECT_PRICE_OPTIONS.some(
+                          (option) =>
+                            option.value === serviceProfileForm.averageProjectPrice
+                        ) ? (
+                          <option value={serviceProfileForm.averageProjectPrice}>
+                            {normalizeValueLabel(
+                              serviceProfileForm.averageProjectPrice
+                            )}
+                          </option>
+                        ) : null}
+                        {AVERAGE_PROJECT_PRICE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <div className="rounded-md border border-border/70 bg-background/50 px-3 py-2.5 lg:row-span-2">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                        Profile Status
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-foreground">
+                        {serviceProfileStatusLabel}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Description, cover, price, complexity, and skills
+                        complete the card.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
                     <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                      Experience
+                      Service Description
                     </span>
-                    <select
-                      value={serviceProfileForm.experienceYears || ""}
+                    <textarea
+                      value={serviceProfileForm.serviceDescription}
                       onChange={(event) =>
                         setServiceProfileForm((prev) => ({
                           ...prev,
-                          experienceYears: event.target.value,
+                          serviceDescription: event.target.value,
                         }))
                       }
-                      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                    >
-                      <option value="">Select experience range</option>
-                      {serviceProfileForm.experienceYears &&
-                      !EXPERIENCE_YEARS_OPTIONS.some(
-                        (option) => option.value === serviceProfileForm.experienceYears
-                      ) ? (
-                        <option value={serviceProfileForm.experienceYears}>
-                          {normalizeValueLabel(serviceProfileForm.experienceYears)}
-                        </option>
-                      ) : null}
-                      {EXPERIENCE_YEARS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <div className="rounded-md border border-border/70 bg-background/50 px-3 py-2.5">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                      Profile Status
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-foreground">
-                      {serviceProfileForm.serviceDescription
-                        ? serviceProfileForm.coverImage
-                          ? "Ready to publish"
-                          : "Add a cover image"
-                        : "Add description"}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Description + cover improves trust.
+                      rows={4}
+                      maxLength={500}
+                      placeholder="Describe the outcomes, process, and what clients can expect."
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    />
+                    <p className="text-right text-[11px] text-muted-foreground">
+                      {String(serviceProfileForm.serviceDescription || "").length}/500
                     </p>
                   </div>
-                </div>
 
-                <div className="mt-4 space-y-1.5">
-                  <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                    Service Description
-                  </span>
-                  <textarea
-                    value={serviceProfileForm.serviceDescription}
-                    onChange={(event) =>
-                      setServiceProfileForm((prev) => ({
-                        ...prev,
-                        serviceDescription: event.target.value,
-                      }))
-                    }
-                    rows={5}
-                    maxLength={500}
-                    placeholder="Describe the outcomes, process, and what clients can expect."
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                  />
-                  <p className="text-right text-[11px] text-muted-foreground">
-                    {String(serviceProfileForm.serviceDescription || "").length}/500
-                  </p>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  <span className="block text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                    Service Cover Image
-                  </span>
-                  <div className="rounded-md border border-border/70 bg-background/50 p-3">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs text-muted-foreground">
-                        Recommended: 16:9 image, under 8MB.
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={uploadingServiceCover}
-                        onClick={() =>
-                          document
-                            .getElementById("onboarding-service-cover-input")
-                            ?.click()
-                        }
-                      >
-                        {uploadingServiceCover ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          "Upload image"
-                        )}
-                      </Button>
-                      <input
-                        id="onboarding-service-cover-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleServiceCoverImageChange}
-                      />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="block text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                        Skills &amp; Technologies
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        These appear on the service card.
+                      </span>
                     </div>
 
-                    {serviceProfileForm.coverImage ? (
-                      <div className="group relative overflow-hidden rounded-md border border-border/70">
-                        <img
-                          src={serviceProfileForm.coverImage}
-                          alt={`${serviceProfileForm.serviceLabel || "Service"} cover`}
-                          className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                        />
-                        <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent p-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() =>
-                              setServiceProfileForm((prev) => ({
-                                ...prev,
-                                coverImage: "",
-                              }))
+                    <div className="rounded-md border border-border/70 bg-background/50 p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          value={serviceSkillInput}
+                          onChange={(event) => setServiceSkillInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === ",") {
+                              event.preventDefault();
+                              addServiceSkillTag(serviceSkillInput);
                             }
-                          >
-                            Remove cover
-                          </Button>
+                          }}
+                          placeholder="Add a skill, tool, or platform"
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-10 shrink-0"
+                          onClick={() => addServiceSkillTag(serviceSkillInput)}
+                          disabled={!String(serviceSkillInput || "").trim()}
+                        >
+                          Add tag
+                        </Button>
+                      </div>
+
+                      {serviceTechSuggestionOptions.length > 0 ? (
+                        <div className="mt-3">
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                            Suggested
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {serviceTechSuggestionOptions.map((tag) => (
+                              <button
+                                key={`service-tag-suggestion-${tag}`}
+                                type="button"
+                                onClick={() => addServiceSkillTag(tag)}
+                                className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+                              >
+                                {tag}
+                              </button>
+                            ))}
+                          </div>
                         </div>
+                      ) : null}
+
+                      <div className="mt-3 min-h-[2.5rem] rounded-md border border-dashed border-border/70 bg-background/35 p-3">
+                        {(Array.isArray(serviceProfileForm.skillsAndTechnologies)
+                          ? serviceProfileForm.skillsAndTechnologies
+                          : []
+                        ).length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {serviceProfileForm.skillsAndTechnologies.map((tag) => (
+                              <span
+                                key={`service-tag-selected-${tag}`}
+                                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium text-foreground"
+                              >
+                                {tag}
+                                <button
+                                  type="button"
+                                  onClick={() => removeServiceSkillTag(tag)}
+                                  className="text-muted-foreground transition-colors hover:text-foreground"
+                                  aria-label={`Remove ${tag}`}
+                                >
+                                  x
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            No skills or technologies added yet.
+                          </p>
+                        )}
                       </div>
-                    ) : (
-                      <div className="flex h-44 items-center justify-center rounded-md border border-dashed border-border/70 bg-background/35 text-xs text-muted-foreground">
-                        No cover selected yet
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="block text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                      Service Cover Image
+                    </span>
+                    <div className="rounded-md border border-border/70 bg-background/50 p-3">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          Recommended: 16:9 image, under 8MB.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={uploadingServiceCover}
+                          onClick={() =>
+                            document
+                              .getElementById("onboarding-service-cover-input")
+                              ?.click()
+                          }
+                        >
+                          {uploadingServiceCover ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            "Upload image"
+                          )}
+                        </Button>
+                        <input
+                          id="onboarding-service-cover-input"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleServiceCoverImageChange}
+                        />
                       </div>
-                    )}
+
+                      {serviceProfileForm.coverImage ? (
+                        <div className="group relative overflow-hidden rounded-md border border-border/70">
+                          <img
+                            src={serviceProfileForm.coverImage}
+                            alt={`${serviceProfileForm.serviceLabel || "Service"} cover`}
+                            className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] sm:h-36"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/45 to-transparent p-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() =>
+                                setServiceProfileForm((prev) => ({
+                                  ...prev,
+                                  coverImage: "",
+                                }))
+                              }
+                            >
+                              Remove cover
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-border/70 bg-background/35 text-xs text-muted-foreground sm:h-36">
+                          No cover selected yet
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -3269,7 +3831,10 @@ const FreelancerProfile = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setModalType(null)}
+                    onClick={() => {
+                      setServiceSkillInput("");
+                      setModalType(null);
+                    }}
                   >
                     Cancel
                   </Button>
@@ -3281,263 +3846,243 @@ const FreelancerProfile = () => {
                     {(savingServiceProfile || uploadingServiceCover) && (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     )}
-                    Save changes
+                    {isDraftingNewService ? "Add service" : "Save changes"}
                   </Button>
                 </div>
-              </>
+              </div>
             ) : modalType === "addProject" ? (
               <>
-                <div className="border-b border-border/70 pb-4">
-                  <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                <div className="border-b border-border/70 pb-2.5">
+                  <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                     {isEditingProjectDraft ? "Update featured project" : "Create featured project"}
                   </span>
-                  <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-                    <div className="max-w-[34rem]">
-                      <h1 className="text-[1.85rem] font-semibold tracking-tight text-foreground">
-                        {isEditingProjectDraft ? "Edit Project" : "Add Project"}
-                      </h1>
-                      <p className="mt-1.5 text-sm leading-5 text-muted-foreground">
-                        {isEditingProjectDraft
-                          ? "Refresh the link, copy, service mapping, and cover so this project stays aligned with your profile."
-                          : "Add a polished portfolio project with a live URL, strong summary, service mapping, and cover image preview."}
-                      </p>
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[300px]">
-                      <div className="rounded-2xl border border-white/8 bg-background/45 px-3 py-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/80">
-                          Linked service
-                        </p>
-                        <p className="mt-1 text-sm font-medium leading-5 text-foreground">
-                          {selectedProjectServiceLabel}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-white/8 bg-background/45 px-3 py-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/80">
-                          Preview status
-                        </p>
-                        <p className="mt-1 text-sm font-medium leading-5 text-foreground">
-                          {newProjectImagePreview ? "Cover ready" : "Awaiting cover"}
-                        </p>
-                      </div>
-                    </div>
+                  <div className="mt-2 max-w-[38rem]">
+                    <h1 className="text-[1.55rem] font-semibold tracking-tight text-foreground">
+                      {isEditingProjectDraft ? "Edit Project" : "Add Project"}
+                    </h1>
+                    <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
+                      {isEditingProjectDraft
+                        ? "Refresh the link, summary, services, and cover."
+                        : "Add a live URL, short summary, service mapping, and cover image."}
+                    </p>
                   </div>
                 </div>
+                <div className="mt-2.5">
+                  <section className="rounded-md border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3">
+                    <div className="mb-2">
+                      <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
+                        Project Details
+                      </h2>
+                    </div>
 
-                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_300px]">
-                  <div className="space-y-4">
-                    <section className="rounded-[24px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-4">
-                      <div className="mb-3">
-                        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
-                          Project Details
-                        </h2>
-                        <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                          Add the live URL first, then refine the content clients will see on your profile.
-                        </p>
-                      </div>
-
-                      <div className="space-y-3.5">
-                        <label className="block">
-                          <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                            Live URL*
-                          </span>
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <input
-                              value={newProjectUrl}
-                              onChange={(event) => setNewProjectUrl(event.target.value)}
-                              onBlur={handleUrlBlur}
-                              placeholder="https://yourproject.com"
-                              className="h-10 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-10 shrink-0"
-                              onClick={handleUrlBlur}
-                              disabled={newProjectLoading}
-                            >
-                              {newProjectLoading ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : null}
-                              Fetch details
-                            </Button>
-                          </div>
-                        </label>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <label className="block">
-                            <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                              Project title
-                            </span>
-                            <input
-                              value={newProjectTitle}
-                              onChange={(event) => setNewProjectTitle(event.target.value)}
-                              placeholder="Enter project title"
-                              className="h-10 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
-                            />
-                          </label>
-
-                          <label className="block">
-                            <span className="mb-1.5 block text-sm font-medium text-muted-foreground">
-                              Link to service
-                            </span>
-                            <Select
-                              modal={false}
-                              value={newProjectServiceKey || "__none__"}
-                              onValueChange={(value) =>
-                                setNewProjectServiceKey(value === "__none__" ? "" : value)
-                              }
-                            >
-                              <SelectTrigger className="h-10 w-full rounded-xl border-border/70 bg-card/70 px-3 text-[15px] text-foreground shadow-none focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/60">
-                                <SelectValue placeholder="Not linked to a service" />
-                              </SelectTrigger>
-                              <SelectContent className="border-border/70 bg-background text-foreground">
-                                <SelectItem value="__none__">Not linked to a service</SelectItem>
-                                {linkableServiceOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              This project will appear under the selected service card.
-                            </p>
-                          </label>
-                        </div>
-
-                        <label className="block">
-                          <div className="mb-1.5 flex items-center justify-between gap-3">
-                            <span className="block text-sm font-medium text-muted-foreground">
-                              Description
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {String(newProjectDescription || "").length}/320
-                            </span>
-                          </div>
-                          <textarea
-                            value={newProjectDescription}
-                            onChange={(event) => setNewProjectDescription(event.target.value)}
-                            rows={4}
-                            maxLength={320}
-                            placeholder="What this project does and the impact it created."
-                            className="w-full rounded-xl border border-border/70 bg-card/70 px-3 py-2.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    <div className="space-y-2">
+                      <label className="block">
+                        <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
+                          Live URL*
+                        </span>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <input
+                            value={newProjectUrl}
+                            onChange={(event) => setNewProjectUrl(event.target.value)}
+                            onBlur={handleUrlBlur}
+                            placeholder="https://yourproject.com"
+                            className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                           />
-                        </label>
-                      </div>
-                    </section>
-                  </div>
-
-                  <div className="space-y-4">
-                    <section className="rounded-[24px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-foreground/90">
-                            Cover & Preview
-                          </h2>
-                          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                            Upload a strong visual for the project card.
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <Button
                             type="button"
                             variant="outline"
-                            size="sm"
-                            className="h-9"
-                            onClick={() =>
-                              document.getElementById("new-project-image-input")?.click()
-                            }
+                            className="h-9 shrink-0"
+                            onClick={handleUrlBlur}
+                            disabled={newProjectLoading}
                           >
-                            <Camera className="h-3.5 w-3.5" />
-                            {newProjectImagePreview ? "Replace" : "Upload"}
+                            {newProjectLoading ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : null}
+                            Fetch details
                           </Button>
-                          {newProjectImagePreview ? (
-                            <Button
+                        </div>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-0.5 block text-sm font-medium text-muted-foreground">
+                          Project title
+                        </span>
+                        <input
+                          value={newProjectTitle}
+                          onChange={(event) => setNewProjectTitle(event.target.value)}
+                          placeholder="Enter project title"
+                          className="h-9 w-full rounded-md border border-border/70 bg-card/70 px-3 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <div className="mb-0.5 flex items-center justify-between gap-3">
+                          <span className="block text-sm font-medium text-muted-foreground">
+                            Description
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {String(newProjectDescription || "").length}/320
+                          </span>
+                        </div>
+                        <textarea
+                          value={newProjectDescription}
+                          onChange={(event) => setNewProjectDescription(event.target.value)}
+                          rows={2}
+                          maxLength={320}
+                          placeholder="What this project does and the impact it created."
+                          className="min-h-[68px] w-full rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                        />
+                      </label>
+
+                      <div className="block">
+                        <div className="mb-0.5 flex items-center justify-between gap-3">
+                          <span className="block text-sm font-medium text-muted-foreground">
+                            Link to services
+                          </span>
+                          {newProjectServiceKeys.length > 0 ? (
+                            <button
                               type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-9"
-                              onClick={clearNewProjectImageDraft}
+                              className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                              onClick={() => setNewProjectServiceKeys([])}
                             >
-                              Remove
-                            </Button>
+                              Clear all
+                            </button>
                           ) : null}
                         </div>
+                        {linkableServiceOptions.length > 0 ? (
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            {linkableServiceOptions.map((option) => {
+                              const isSelected = newProjectServiceKeys.some(
+                                (entry) =>
+                                  normalizeServiceIdentity(entry) ===
+                                  normalizeServiceIdentity(option.value)
+                              );
+
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  aria-pressed={isSelected}
+                                  onClick={() =>
+                                    toggleProjectServiceSelection(option.value)
+                                  }
+                                  className={`flex min-h-8 items-center justify-between gap-2 rounded-md border px-2.5 py-1 text-left text-[13px] transition-colors ${
+                                    isSelected
+                                      ? "border-primary/45 bg-primary/10 text-foreground"
+                                      : "border-border/70 bg-card/70 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                                  }`}
+                                >
+                                  <span className="leading-4">{option.label}</span>
+                                  <span
+                                    className={`inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-colors ${
+                                      isSelected
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-white/12 bg-transparent text-transparent"
+                                    }`}
+                                  >
+                                    <Check className="h-3 w-3" aria-hidden="true" />
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-md border border-dashed border-border/70 bg-card/40 px-3 py-3 text-sm text-muted-foreground">
+                            Add services first, then you can link this project to one or more service cards.
+                          </div>
+                        )}
                       </div>
 
-                      <input
-                        id="new-project-image-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleNewProjectImageChange}
-                      />
-
-                      <div className="mt-3 overflow-hidden rounded-[22px] border border-white/8 bg-background/45">
-                        <div className="relative h-40 overflow-hidden border-b border-white/8 bg-background/60">
-                          {newProjectImagePreview ? (
-                            <img
-                              src={newProjectImagePreview}
-                              alt="Project preview"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_55%)] px-6 text-center">
-                              <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
-                                <Camera className="h-5 w-5 text-primary" />
-                              </span>
-                              <div>
-                                <p className="text-sm font-medium text-foreground">
-                                  No cover selected
-                                </p>
-                                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                  Use a clean screenshot or branded visual.
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-2.5 p-3.5">
+                      <div className="space-y-1.5 pt-0.5">
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80">
-                              Card preview
-                            </p>
-                            <h3 className="mt-1.5 line-clamp-2 text-base font-semibold tracking-tight text-foreground">
-                              {draftProjectTitle}
-                            </h3>
-                            <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">
-                              {draftProjectHostLabel}
-                            </p>
+                            <span className="block text-sm font-medium text-muted-foreground">
+                              Project cover
+                            </span>
                           </div>
-
-                          <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">
-                            {draftProjectDescription}
-                          </p>
-
-                          <div className="flex flex-wrap gap-2">
-                            <span className="inline-flex items-center rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-foreground/80">
-                              {selectedProjectServiceLabel}
-                            </span>
-                            <span
-                              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                                String(newProjectUrl || "").trim()
-                                  ? "border-primary/25 bg-primary/10 text-primary"
-                                  : "border-white/8 bg-white/[0.04] text-muted-foreground"
-                              }`}
-                            >
-                              {String(newProjectUrl || "").trim()
-                                ? "Live URL attached"
-                                : "Add URL to fetch details"}
-                            </span>
+                          <div className="flex items-center gap-2">
+                            {newProjectImagePreview ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-9"
+                                onClick={clearNewProjectImageDraft}
+                              >
+                                Remove
+                              </Button>
+                            ) : null}
                           </div>
                         </div>
-                      </div>
-                    </section>
-                  </div>
-                </div>
 
-                <div className="mt-4 flex items-center justify-end gap-2.5 border-t border-border/70 pt-4">
+                        <input
+                          id="new-project-image-input"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleNewProjectImageChange}
+                        />
+
+                        <label
+                          htmlFor="new-project-image-input"
+                          role="button"
+                          aria-label="Upload project cover"
+                          tabIndex={0}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              document.getElementById("new-project-image-input")?.click();
+                            }
+                          }}
+                          onDragOver={(event) => {
+                            event.preventDefault();
+                            if (event.dataTransfer) {
+                              event.dataTransfer.dropEffect = "copy";
+                            }
+                            setIsProjectCoverDragActive(true);
+                          }}
+                          onDragLeave={(event) => {
+                            if (event.currentTarget === event.target) {
+                              setIsProjectCoverDragActive(false);
+                            }
+                          }}
+                          onDrop={handleNewProjectImageDrop}
+                          className={`block cursor-pointer overflow-hidden rounded-md border transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60 ${isProjectCoverDragActive ? "border-primary/60 bg-primary/10" : "border-white/8 bg-background/45"}`}
+                        >
+                          <div className="relative h-24 overflow-hidden bg-background/60 sm:h-28">
+                            {newProjectImagePreview ? (
+                              <>
+                                <img
+                                  src={newProjectImagePreview}
+                                  alt="Project cover preview"
+                                  className="h-full w-full object-cover"
+                                />
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 py-2 text-xs font-medium text-white">
+                                  Click or drag and drop to replace
+                                </div>
+                              </>
+                            ) : (
+                              <div className="pointer-events-none flex h-full flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_55%)] px-4 text-center">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
+                                  <Camera className="h-4 w-4 text-primary" />
+                                </span>
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">
+                                    Click or drag and drop a cover image
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                    PNG, JPG, or WebP up to 8MB
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div className="mt-2.5 flex items-center justify-end gap-2.5 border-t border-border/70 pt-2.5">
                   <Button
                     type="button"
                     variant="outline"

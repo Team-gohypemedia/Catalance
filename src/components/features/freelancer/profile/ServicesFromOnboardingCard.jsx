@@ -1,6 +1,7 @@
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import { Card } from "@/components/ui/card";
 import { PROJECT_COMPLEXITY_OPTIONS } from "@/components/features/freelancer/onboarding/constants";
 import {
@@ -60,6 +61,42 @@ const getProjectDedupKey = (project, fallbackKey = "") => {
   return fallbackKey;
 };
 
+const normalizeServiceIdentity = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const resolveProjectServiceKeys = (project = {}) => {
+  const seen = new Set();
+
+  return [
+    ...(Array.isArray(project?.serviceKeys) ? project.serviceKeys : []),
+    project?.serviceKey,
+  ].reduce((acc, value) => {
+    const rawValue = String(value || "").trim();
+    const normalizedValue = normalizeServiceIdentity(rawValue);
+
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      return acc;
+    }
+
+    seen.add(normalizedValue);
+    acc.push(rawValue);
+    return acc;
+  }, []);
+};
+
+const projectMatchesService = (project = {}, serviceKey = "") => {
+  const normalizedTarget = normalizeServiceIdentity(serviceKey);
+  if (!normalizedTarget) return false;
+
+  return resolveProjectServiceKeys(project).some(
+    (value) => normalizeServiceIdentity(value) === normalizedTarget
+  );
+};
+
 const ServicesFromOnboardingCard = ({
   onboardingServiceEntries,
   portfolioProjects,
@@ -69,11 +106,12 @@ const ServicesFromOnboardingCard = ({
   toUniqueLabels,
   normalizeValueLabel,
   openEditServiceProfileModal,
+  openAddServiceModal,
 }) => {
   const serviceSlides = chunkServices(onboardingServiceEntries, 2);
 
   return (
-    <Card className="relative overflow-visible rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] md:p-6">
+    <Card className="relative overflow-visible rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] md:p-6">
       <div
         className="absolute inset-x-0 top-0 h-px"
         style={{
@@ -83,18 +121,28 @@ const ServicesFromOnboardingCard = ({
         aria-hidden="true"
       />
 
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
-          <Cpu className="h-4 w-4 text-primary" aria-hidden="true" />
-        </span>
-        <div>
-          <h3 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
-            Services From Onboarding
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Service cards styled as polished profile showcases.
-          </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+            <Cpu className="h-4 w-4 text-primary" aria-hidden="true" />
+          </span>
+          <div>
+            <h3 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
+              Services From Onboarding
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Service cards styled as polished profile showcases.
+            </p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={openAddServiceModal}
+          className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-md border border-primary/35 bg-primary/10 px-4 text-xs font-semibold text-primary transition-colors duration-200 hover:bg-primary/20 sm:self-auto"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          Add Service
+        </button>
       </div>
 
       {onboardingServiceEntries.length > 0 ? (
@@ -106,7 +154,7 @@ const ServicesFromOnboardingCard = ({
             }}
             className="w-full"
           >
-            <div className="overflow-hidden rounded-[28px]">
+            <div className="overflow-hidden rounded-2xl">
               <CarouselContent className="-ml-4">
                 {serviceSlides.map((slide, slideIndex) => (
                   <CarouselItem
@@ -143,10 +191,7 @@ const ServicesFromOnboardingCard = ({
 
                     const linkedFeaturedProjects = (
                       Array.isArray(portfolioProjects) ? portfolioProjects : []
-                    ).filter(
-                      (project) =>
-                        String(project?.serviceKey || "").trim() === serviceKey
-                    );
+                    ).filter((project) => projectMatchesService(project, serviceKey));
                     const onboardingProjects = Array.isArray(detail?.projects)
                       ? detail.projects
                       : [];
@@ -183,7 +228,7 @@ const ServicesFromOnboardingCard = ({
                     return (
                         <article
                           key={serviceKey}
-                          className="group flex h-full flex-col overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
+                          className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]"
                         >
                         <div className="relative h-52 overflow-hidden md:h-56">
                           {serviceCoverImage ? (
@@ -211,7 +256,7 @@ const ServicesFromOnboardingCard = ({
                               type="button"
                               onClick={() => openEditServiceProfileModal(serviceKey)}
                               className={cn(
-                                "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold backdrop-blur-sm transition-colors duration-200",
+                                "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-[11px] font-semibold backdrop-blur-sm transition-colors duration-200",
                                 hasServiceProfileContent
                                   ? "border-white/10 bg-black/25 text-white/80 hover:bg-black/40 hover:text-white"
                                   : "border-primary/40 bg-primary/15 text-primary hover:bg-primary/25"
@@ -259,7 +304,7 @@ const ServicesFromOnboardingCard = ({
                             {metadataItems.map((item) => (
                               <div
                                 key={`${serviceKey}-${item.label}`}
-                                className="rounded-[15px] border border-white/6 bg-white/[0.035] px-3 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                                className="rounded-xl border border-white/6 bg-white/[0.035] px-3 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                               >
                                 <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
                                   {item.label}
@@ -363,9 +408,19 @@ const ServicesFromOnboardingCard = ({
           </Carousel>
         </div>
       ) : (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No service data from onboarding yet.
-        </p>
+        <div className="mt-6 rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5">
+          <p className="text-sm text-muted-foreground">
+            No service data from onboarding yet.
+          </p>
+          <button
+            type="button"
+            onClick={openAddServiceModal}
+            className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-primary/35 bg-primary/10 px-4 text-xs font-semibold text-primary transition-colors duration-200 hover:bg-primary/20"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+            Add your first service
+          </button>
+        </div>
       )}
     </Card>
   );
