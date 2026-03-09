@@ -1,5 +1,29 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
+import { generateRandomString } from "@/components/ui/evervault-card";
+
+function MatrixPattern({ mouseX, mouseY, randomString }) {
+    const maskImage = useMotionTemplate`radial-gradient(250px at ${mouseX}px ${mouseY}px, rgba(255,255,255,1) 0%, rgba(255,255,255,0.85) 20%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0.35) 60%, rgba(255,255,255,0.15) 80%, transparent 100%)`;
+    const style = { maskImage, WebkitMaskImage: maskImage };
+
+    return (
+        <div className="pointer-events-none">
+            <div className="absolute inset-0 mask-[linear-gradient(white,transparent)] opacity-20" />
+            <motion.div
+                className="absolute inset-0 bg-linear-to-r from-primary to-orange-700 opacity-100 transition duration-500 backdrop-blur-xl"
+                style={style}
+            />
+            <motion.div
+                className="absolute inset-0 opacity-100 mix-blend-overlay transition duration-500"
+                style={style}
+            >
+                <p className="absolute inset-x-0 h-full wrap-break-word whitespace-pre-wrap text-xs font-mono font-bold text-white transition duration-500">
+                    {randomString}
+                </p>
+            </motion.div>
+        </div>
+    );
+}
 import {
     ArrowRight,
     ArrowLeft,
@@ -865,6 +889,19 @@ const ProposalPreview = ({ content, isDark }) => {
 };
 
 const GuestAIDemo = () => {
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+    const [randomString] = useState(() => generateRandomString(20000));
+
+    useEffect(() => {
+        const handleMouseMove = (event) => {
+            mouseX.set(event.clientX);
+            mouseY.set(event.clientY);
+        };
+        window.addEventListener("mousemove", handleMouseMove);
+        return () => window.removeEventListener("mousemove", handleMouseMove);
+    }, [mouseX, mouseY]);
+
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
@@ -1602,158 +1639,79 @@ const GuestAIDemo = () => {
         return (
             <>
                 <Navbar />
-                <div className={`relative min-h-screen overflow-hidden ${isDark
-                    ? 'bg-black bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.10),transparent_55%)]'
-                    : 'bg-[#fbfbfa] bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.14),transparent_58%)]'
-                    } px-4 pb-10 pt-28 md:px-8 md:pb-12 md:pt-32`}
-                >
-                <div className={`pointer-events-none absolute inset-x-0 top-0 h-64 ${isDark
-                    ? 'bg-[linear-gradient(180deg,rgba(242,204,13,0.10),transparent)]'
-                    : 'bg-[linear-gradient(180deg,rgba(242,204,13,0.12),transparent)]'
-                    }`} />
-                <div className={`pointer-events-none absolute right-[-120px] top-28 h-72 w-72 rounded-full blur-3xl ${isDark
-                    ? 'bg-primary/10'
-                    : 'bg-primary/15'
-                    }`} />
-                <div className="mx-auto max-w-7xl">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`relative overflow-hidden rounded-3xl border p-7 md:p-10 ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white shadow-sm'}`}
-                    >
-                        <div className={`pointer-events-none absolute inset-0 ${isDark
-                            ? 'bg-[linear-gradient(112deg,rgba(255,255,255,0.05)_0%,transparent_46%,rgba(242,204,13,0.16)_100%)]'
-                            : 'bg-[linear-gradient(112deg,rgba(255,255,255,0.80)_0%,transparent_46%,rgba(242,204,13,0.22)_100%)]'
-                            }`} />
-                        <div className={`pointer-events-none absolute -right-20 top-8 h-52 w-52 rounded-full blur-3xl ${isDark ? 'bg-primary/20' : 'bg-primary/25'}`} />
+                <main className="relative min-h-screen bg-black text-foreground overflow-hidden transition-colors pt-28 pb-10">
+                    {/* Matrix Background Layer - Fixed to cover whole screen */}
+                    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+                        <MatrixPattern
+                            mouseX={mouseX}
+                            mouseY={mouseY}
+                            randomString={randomString}
+                        />
+                    </div>
 
-                        <div className="relative">
-                            <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                AI Demo
-                            </div>
-                            <h1 className={`mt-4 text-4xl font-bold tracking-tight md:text-6xl ${isDark ? 'text-white' : 'text-[#181711]'}`}>
-                                Build your project brief with
-                                <span className="block bg-gradient-to-r from-primary via-[#f8de72] to-primary bg-clip-text text-transparent">
-                                    Catalance AI
-                                </span>
-                            </h1>
-                            <p className={`mt-4 max-w-3xl text-base md:text-xl ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                                Pick a service, answer guided questions, and get a structured proposal generated in chat.
-                            </p>
-                            <div className="mt-7 flex flex-wrap gap-2.5">
-                                {DEMO_HIGHLIGHTS.map((item) => (
-                                    <span
-                                        key={item}
-                                        className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold ${isDark
-                                            ? 'border border-white/15 bg-white/[0.04] text-slate-100'
-                                            : 'border border-black/10 bg-white text-slate-700'
-                                            }`}
-                                    >
-                                        {item}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    <div className="mt-11 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <h2 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-[#181711]'}`}>
-                                Choose Your Service
+                    <div className="relative z-10 max-w-[90rem] mx-auto px-6 py-8">
+                        <div className="text-center space-y-2 relative z-10 mb-10">
+                            <span className="inline-block px-6 py-2 text-3xl uppercase tracking-[0.4em] bg-background text-primary rounded-full font-semibold shadow-md border border-white/10">
+                                Services
+                            </span>
+                            <h2 className="text-3xl font-semibold text-white">
+                                Clarity across every step of the freelance lifecycle.
                             </h2>
-                            <p className={`mt-1 text-sm ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                                {services.length > 0
-                                    ? `${services.length} services ready for guided consultation`
-                                    : 'Select a service to begin your AI consultation'}
-                            </p>
                         </div>
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${isDark ? 'border border-white/15 bg-white/[0.03] text-slate-200' : 'border border-black/10 bg-white text-slate-600'}`}>
-                            Tap any card to start
-                        </span>
-                    </div>
 
-                    <div className="relative mt-8 px-1 sm:px-2 md:px-3">
-                        <div className={`pointer-events-none absolute inset-x-8 top-5 h-24 blur-3xl ${isDark ? 'bg-primary/10' : 'bg-primary/15'}`} />
-                        <div className="relative mx-auto grid max-w-[1260px] grid-cols-1 gap-7 md:grid-cols-2 md:gap-8 xl:grid-cols-3">
-                        {services.length === 0 ? (
-                            <div className="md:col-span-2 xl:col-span-3">
-                                <Card className={`rounded-2xl border ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white shadow-sm'}`}>
-                                    <CardHeader>
-                                        <CardTitle className={isDark ? 'text-white' : 'text-[#181711]'}>
-                                            Services unavailable
-                                        </CardTitle>
-                                        <CardDescription className={isDark ? 'text-[#bab59c]' : 'text-slate-600'}>
-                                            {servicesError || "We could not load services right now. Please retry."}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Button onClick={fetchServices}>
-                                            Retry
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        ) : (
-                            services.map((service, index) => (
-                                <motion.div
-                                    key={service.id}
-                                    initial={{ opacity: 0, y: 12 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: Math.min(index * 0.04, 0.25) }}
-                                    whileHover={{ y: -4 }}
-                                    whileTap={{ scale: 0.995 }}
-                                >
-                                    <Card
-                                        className={`group relative mx-auto h-full w-full max-w-[390px] cursor-pointer overflow-hidden rounded-2xl border transition-all duration-300 ${isDark
-                                            ? 'border-white/10 bg-white/[0.04] hover:-translate-y-1 hover:border-primary/55 hover:bg-white/[0.07] hover:shadow-[0_24px_50px_-25px_rgba(242,204,13,0.42)]'
-                                            : 'border-black/10 bg-white hover:border-primary/50 hover:shadow-[0_20px_45px_-28px_rgba(20,20,20,0.30)]'
-                                            }`}
-                                        onClick={() => handleServiceSelect(service)}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 relative z-10">
+                            {services.length === 0 ? (
+                                <div className="col-span-1 sm:col-span-2 lg:col-span-5 text-center text-white/60 py-10">
+                                    {servicesError || "No services available."}
+                                </div>
+                            ) : (
+                                services.map((feature, index) => (
+                                    <div
+                                        key={feature.id || index}
+                                        onClick={() => handleServiceSelect(feature)}
+                                        className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full border-white/20 bg-black shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] hover:border-[#ffc800]/50 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:-translate-y-2`}
                                     >
-                                        <div className={`pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${isDark
-                                            ? 'bg-[radial-gradient(circle_at_80%_15%,rgba(242,204,13,0.22),transparent_42%)]'
-                                            : 'bg-[radial-gradient(circle_at_80%_15%,rgba(242,204,13,0.24),transparent_44%)]'
-                                            }`} />
-                                        <CardHeader className="relative space-y-2 px-5 pb-2 pt-5">
-                                            <div className="mb-3 flex items-start justify-between gap-3">
-                                                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${isDark ? 'bg-primary/15 text-primary' : 'bg-primary/15 text-[#181711]'}`}>
-                                                    <img
-                                                        src={resolveServiceLogoSrc(service)}
-                                                        alt={`${service.name || 'Service'} logo`}
-                                                        className="h-10 w-10 object-contain"
-                                                        loading="lazy"
-                                                        decoding="async"
-                                                    />
-                                                </div>
-                                                <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'border border-primary/35 bg-primary/10 text-primary' : 'border border-primary/30 bg-primary/10 text-[#181711]'}`}>
-                                                    AI Guided
-                                                </span>
+                                        <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                                        <div className="flex flex-col h-full p-5 relative z-10">
+                                            <div className="h-32 w-full flex items-center justify-center mb-3 relative">
+                                                <div className="absolute left-1/2 -translate-x-1/2 -top-4 w-40 h-40 bg-[#ffc800]/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                                <img
+                                                    src={resolveServiceLogoSrc(feature)}
+                                                    alt={feature.title || feature.name}
+                                                    className="w-24 h-24 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
+                                                />
                                             </div>
-                                            <CardTitle className={`text-[1.75rem] leading-tight ${isDark ? 'text-white' : 'text-[#181711]'}`}>{service.name}</CardTitle>
-                                            <CardDescription className={`mt-1 min-h-[2.8rem] text-[15px] leading-relaxed ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                                                {service.description || `Start a ${service.name} consultation`}
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="relative px-5 pb-5 pt-0">
-                                            <div className={`mt-1 flex items-center justify-between border-t pt-3.5 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-                                                <div className={`inline-flex items-center gap-2 text-[15px] font-semibold ${isDark ? 'text-primary' : 'text-[#181711]'}`}>
-                                                    Start consultation
-                                                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+
+                                            <div className="flex flex-col grow items-center text-center">
+                                                <h3 className="text-lg font-bold text-white mb-2 leading-tight group-hover:text-[#ffc800] transition-colors duration-300">
+                                                    {feature.title || feature.name}
+                                                </h3>
+
+                                                <p className="text-sm text-zinc-400 font-medium leading-relaxed mb-4 line-clamp-3 group-hover:text-zinc-300 transition-colors">
+                                                    {feature.description}
+                                                </p>
+
+                                                <div className="mt-auto flex items-end justify-between border-t border-white/5 pt-4 w-full text-left">
+                                                    <div>
+                                                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1">
+                                                            Starting at
+                                                        </p>
+                                                        <p className="text-white text-lg font-bold group-hover:text-[#ffc800] transition-colors duration-300">
+                                                            {feature.price || '₹10,000/-'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-white group-hover:border-[#ffc800] group-hover:text-[#ffc800] group-hover:bg-[#ffc800]/10 transition-colors duration-300">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                                    </div>
                                                 </div>
-                                                <span className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                                    0{index + 1}
-                                                </span>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                </motion.div>
-                            ))
-                        )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
-                </div>
-                </div>
+                </main>
                 <Footer />
             </>
         );
@@ -1890,8 +1848,8 @@ const GuestAIDemo = () => {
                                                         ? 'border-primary/40 bg-primary/10'
                                                         : 'border-primary/40 bg-primary/10'
                                                     : isDark
-                                                    ? 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'
-                                                    : 'border-black/10 bg-[#fbfbfa] hover:bg-slate-100/80'
+                                                        ? 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'
+                                                        : 'border-black/10 bg-[#fbfbfa] hover:bg-slate-100/80'
                                                     }`}
                                             >
                                                 <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-2 py-1.5">
@@ -2046,7 +2004,7 @@ const GuestAIDemo = () => {
                                             </div>
                                             <ProposalPreview content={messageContent || msg.content} isDark={isDark} />
                                             <div className={`mt-6 pt-5 flex justify-end ${isDark ? 'border-t border-primary/20' : 'border-t border-primary/20'}`}>
-                                                <Button 
+                                                <Button
                                                     onClick={() => handleProceed(messageContent || msg.content)}
                                                     className="w-full sm:w-auto px-8 py-2.5 rounded-xl font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98]"
                                                 >
