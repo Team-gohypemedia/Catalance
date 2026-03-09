@@ -677,13 +677,12 @@ const StatsCard = ({
         <h3 className="text-3xl tracking-tight">{value}</h3>
         {trend && (
           <p
-            className={`text-xs mt-2 flex items-center font-bold ${
-              trendType === "up"
-                ? "text-green-600"
-                : trendType === "warning"
-                  ? "text-orange-600"
-                  : "text-muted-foreground"
-            }`}
+            className={`text-xs mt-2 flex items-center font-bold ${trendType === "up"
+              ? "text-green-600"
+              : trendType === "warning"
+                ? "text-orange-600"
+                : "text-muted-foreground"
+              }`}
           >
             {trendType === "up" && <TrendingUp className="w-3.5 h-3.5 mr-1" />}
             {trendType === "warning" && (
@@ -832,7 +831,7 @@ const ClientDashboardContent = () => {
     summary: "",
     budget: "",
     timeline: "",
-  });  const [projectToPay, setProjectToPay] = useState(null);
+  }); const [projectToPay, setProjectToPay] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Increase Budget Dialog State
@@ -980,11 +979,11 @@ const ClientDashboardContent = () => {
     );
     const matched = projectRequiredSkills.length
       ? normalized.filter((freelancer) => {
-          const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
-          return projectRequiredSkills.some((requiredSkill) =>
-            freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
-          );
-        })
+        const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
+        return projectRequiredSkills.some((requiredSkill) =>
+          freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
+        );
+      })
       : normalized;
 
     const available = matched.filter((freelancer) => {
@@ -1469,8 +1468,8 @@ const ClientDashboardContent = () => {
       let project =
         sourceProjectId && Array.isArray(projects)
           ? projects.find(
-              (entry) => String(entry?.id) === String(sourceProjectId),
-            )
+            (entry) => String(entry?.id) === String(sourceProjectId),
+          )
           : null;
 
       if (project) {
@@ -1481,12 +1480,12 @@ const ClientDashboardContent = () => {
 
         const hasExistingProposalForFreelancer = Array.isArray(project.proposals)
           ? project.proposals.some((proposal) => {
-              const proposalStatus = String(proposal?.status || "").toUpperCase();
-              return (
-                String(proposal?.freelancerId) === String(freelancer.id) &&
-                PROPOSAL_BLOCKED_STATUSES.has(proposalStatus)
-              );
-            })
+            const proposalStatus = String(proposal?.status || "").toUpperCase();
+            return (
+              String(proposal?.freelancerId) === String(freelancer.id) &&
+              PROPOSAL_BLOCKED_STATUSES.has(proposalStatus)
+            );
+          })
           : false;
 
         if (hasExistingProposalForFreelancer) {
@@ -1514,13 +1513,13 @@ const ClientDashboardContent = () => {
           project = publishPayload?.data
             ? { ...project, ...publishPayload.data }
             : {
-                ...project,
-                title: resolveProposalTitle(savedProposal),
-                description: savedProposal.summary || savedProposal.content || "",
-                budget: normalizedBudget,
-                timeline: savedProposal.timeline || "1 month",
-                status: "OPEN",
-              };
+              ...project,
+              title: resolveProposalTitle(savedProposal),
+              description: savedProposal.summary || savedProposal.content || "",
+              budget: normalizedBudget,
+              timeline: savedProposal.timeline || "1 month",
+              status: "OPEN",
+            };
         }
       } else {
         // Create a project only when this proposal has no synced project yet.
@@ -1550,11 +1549,11 @@ const ClientDashboardContent = () => {
         const updated = savedProposals.map((proposal) =>
           proposal.id === savedProposal.id
             ? {
-                ...proposal,
-                ownerId: sessionUser?.id || proposal.ownerId || null,
-                syncedProjectId: project.id,
-                syncedAt: proposal.syncedAt || now,
-              }
+              ...proposal,
+              ownerId: sessionUser?.id || proposal.ownerId || null,
+              syncedProjectId: project.id,
+              syncedAt: proposal.syncedAt || now,
+            }
             : proposal,
         );
         persistSavedProposalState(updated, savedProposal.id);
@@ -1624,14 +1623,13 @@ const ClientDashboardContent = () => {
           name: sessionUser?.fullName || "",
           contact: sessionUser?.phone || sessionUser?.phoneNumber || "",
         },
-        description: `${
-          project?.paymentPlan?.nextDueInstallment?.label || "Project payment"
-        } for ${project?.title || "project"}`,
+        description: `${project?.paymentPlan?.nextDueInstallment?.label || "Project payment"
+          } for ${project?.title || "project"}`,
       });
 
       toast.success(
         paymentResult?.message ||
-          "Payment processed successfully! Project billing has been updated."
+        "Payment processed successfully! Project billing has been updated."
       );
       await loadProjects();
     } catch (error) {
@@ -1930,11 +1928,10 @@ const ClientDashboardContent = () => {
                                     storageKeys,
                                   );
                                 }}
-                                className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${
-                                  isActive
-                                    ? "border-primary/50 bg-primary/10"
-                                    : "border-border/70 bg-background/70 hover:bg-background"
-                                }`}
+                                className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${isActive
+                                  ? "border-primary/50 bg-primary/10"
+                                  : "border-border/70 bg-background/70 hover:bg-background"
+                                  }`}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <p className="text-sm font-semibold line-clamp-2">
@@ -2568,11 +2565,10 @@ const ClientDashboardContent = () => {
                             }
                           >
                             <div
-                              className={`absolute -left-3.75 top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
-                                idx === 0
-                                  ? "bg-primary"
-                                  : "bg-muted-foreground/50"
-                              }`}
+                              className={`absolute -left-3.75 top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${idx === 0
+                                ? "bg-primary"
+                                : "bg-muted-foreground/50"
+                                }`}
                             />
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
                               <span className="text-xs font-bold text-muted-foreground w-16 shrink-0">
@@ -2602,6 +2598,39 @@ const ClientDashboardContent = () => {
         </div>
       </main>
 
+      {/* Freelancer Selection Dialog */}
+      <FreelancerSelectionDialog
+        open={showFreelancerSelect}
+        onOpenChange={setShowFreelancerSelect}
+        savedProposal={savedProposal}
+        isLoadingFreelancers={isFreelancersLoading}
+        freelancerSearch={freelancerSearch}
+        onFreelancerSearchChange={setFreelancerSearch}
+        filteredFreelancers={filteredFreelancers}
+        freelancerSelectionData={freelancerSelectionData}
+        bestMatchFreelancerIds={bestMatchFreelancerIds}
+        projectRequiredSkills={projectRequiredSkills}
+        onViewFreelancer={(freelancer) => {
+          setViewingFreelancer(freelancer);
+          setShowFreelancerProfile(true);
+        }}
+        onSendProposal={(freelancer) => {
+          setShowFreelancerSelect(false);
+          sendProposalToFreelancer(freelancer);
+        }}
+        collectFreelancerSkillTokens={collectFreelancerSkillTokens}
+        freelancerMatchesRequiredSkill={freelancerMatchesRequiredSkill}
+        generateGradient={generateGradient}
+        formatRating={formatRating}
+      />
+
+      {/* Freelancer Profile Dialog */}
+      <FreelancerProfileDialog
+        open={showFreelancerProfile}
+        onOpenChange={setShowFreelancerProfile}
+        viewingFreelancer={viewingFreelancer}
+      />
+
       {/* Suspension Alert */}
       <SuspensionAlert
         open={showSuspensionAlert}
@@ -2622,8 +2651,6 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
-
-
 
 
 

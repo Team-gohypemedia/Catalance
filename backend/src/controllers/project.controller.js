@@ -92,9 +92,9 @@ const hydrateProjectForResponse = (project) => {
     ...project,
     proposals: Array.isArray(project.proposals)
       ? project.proposals.map((proposal) => ({
-          ...proposal,
-          freelancer: flattenFreelancerProfile(proposal.freelancer),
-        }))
+        ...proposal,
+        freelancer: flattenFreelancerProfile(proposal.freelancer),
+      }))
       : [],
   });
 };
@@ -378,10 +378,22 @@ export const updateProject = asyncHandler(async (req, res) => {
   }
 
   try {
-    console.log("DEBUG: Attempting to update project", id, "with data:", JSON.stringify(updates));
+    // Whitelist only fields that exist on the Prisma Project model
+    const allowedFields = new Set([
+      "title", "description", "budget", "status", "progress",
+      "spent", "completedTasks", "verifiedTasks", "notes", "externalLink",
+    ]);
+    const sanitizedUpdates = {};
+    for (const [key, value] of Object.entries(updates)) {
+      if (allowedFields.has(key)) {
+        sanitizedUpdates[key] = key === "budget" ? normalizeBudget(value) : value;
+      }
+    }
+
+    console.log("DEBUG: Attempting to update project", id, "with sanitized data:", JSON.stringify(sanitizedUpdates));
     const project = await prisma.project.update({
       where: { id },
-      data: updates
+      data: sanitizedUpdates
     });
     console.log("DEBUG: Update successful");
 
@@ -612,8 +624,8 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
     installment.sequence === 1
       ? "IN_PROGRESS"
       : nextSpentAmount >= paymentPlan.totalAmount && paymentPlan.completedPhaseCount >= 4
-      ? "COMPLETED"
-      : project.status;
+        ? "COMPLETED"
+        : project.status;
 
   const updatedProjectRecord = await prisma.project.update({
     where: { id },
@@ -634,8 +646,8 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
     installment.sequence === 1
       ? `Initial 20% payment completed. "${project.title}" is now active.`
       : installment.sequence === 2
-      ? `40% payment completed after phase 2 for "${project.title}".`
-      : `Final 40% payment completed for "${project.title}".`;
+        ? `40% payment completed after phase 2 for "${project.title}".`
+        : `Final 40% payment completed for "${project.title}".`;
 
   try {
     await sendNotificationToUser(acceptedProposal.freelancerId, {
@@ -694,8 +706,8 @@ export const payUpfront = asyncHandler(async (req, res) => {
     installment.sequence === 1
       ? "IN_PROGRESS"
       : nextSpentAmount >= paymentPlan.totalAmount && paymentPlan.completedPhaseCount >= 4
-      ? "COMPLETED"
-      : project.status;
+        ? "COMPLETED"
+        : project.status;
 
   const updatedProjectRecord = await prisma.project.update({
     where: { id },
@@ -716,8 +728,8 @@ export const payUpfront = asyncHandler(async (req, res) => {
     installment.sequence === 1
       ? `Initial 20% payment processed. "${project.title}" is now active.`
       : installment.sequence === 2
-      ? `40% payment processed after phase 2 for "${project.title}".`
-      : `Final 40% payment processed for "${project.title}".`;
+        ? `40% payment processed after phase 2 for "${project.title}".`
+        : `Final 40% payment processed for "${project.title}".`;
 
   res.json({
     data: {
