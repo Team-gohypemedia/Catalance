@@ -52,6 +52,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -83,6 +90,36 @@ const DEFAULT_MEETING_TIME_SLOTS = [
   "04:00 PM",
   "05:00 PM",
   "06:00 PM",
+];
+
+const MAX_FREELANCER_CHANGE_REQUESTS = 2;
+
+const FREELANCER_CHANGE_CUSTOM_REASON_VALUE = "CUSTOM";
+const FREELANCER_CHANGE_REASON_PRESETS = [
+  {
+    value: "Poor communication / slow responses",
+    label: "Poor communication / slow responses",
+  },
+  {
+    value: "Missed deadlines or delayed progress",
+    label: "Missed deadlines or delayed progress",
+  },
+  {
+    value: "Quality of work not meeting expectations",
+    label: "Quality of work not meeting expectations",
+  },
+  {
+    value: "Not following the agreed scope/requirements",
+    label: "Not following the agreed scope/requirements",
+  },
+  {
+    value: "Unprofessional behavior or conduct",
+    label: "Unprofessional behavior or conduct",
+  },
+  {
+    value: FREELANCER_CHANGE_CUSTOM_REASON_VALUE,
+    label: "Other (custom)",
+  },
 ];
 
 // Skeleton Loading Component
@@ -329,6 +366,13 @@ const ProjectDashboard = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
+  const [freelancerChangeOpen, setFreelancerChangeOpen] = useState(false);
+  const [freelancerChangeReasonPreset, setFreelancerChangeReasonPreset] =
+    useState("");
+  const [freelancerChangeCustomReason, setFreelancerChangeCustomReason] =
+    useState("");
+  const [isSubmittingFreelancerChange, setIsSubmittingFreelancerChange] =
+    useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
@@ -339,6 +383,20 @@ const ProjectDashboard = () => {
   const [deliverableReviews, setDeliverableReviews] = useState({});
   const [reviewingDeliverableId, setReviewingDeliverableId] = useState(null);
   const [isProcessingInstallment, setIsProcessingInstallment] = useState(false);
+
+  const syncProjectState = useCallback((data) => {
+    if (!data) return;
+
+    setProject(data);
+
+    if (Array.isArray(data.completedTasks)) {
+      setCompletedTaskIds(new Set(data.completedTasks));
+    }
+
+    if (Array.isArray(data.verifiedTasks)) {
+      setVerifiedTaskIds(new Set(data.verifiedTasks));
+    }
+  }, []);
 
   useEffect(() => {
     if (!date || !authFetch) {
@@ -741,6 +799,87 @@ const ProjectDashboard = () => {
     }
   };
 
+  const computedFreelancerChangeReason = useMemo(() => {
+    const preset = String(freelancerChangeReasonPreset || "").trim();
+    const detail = String(freelancerChangeCustomReason || "").trim();
+
+    if (!preset) {
+      return "";
+    }
+
+    if (preset === FREELANCER_CHANGE_CUSTOM_REASON_VALUE) {
+      return detail;
+    }
+
+    return detail ? `${preset} - ${detail}` : preset;
+  }, [freelancerChangeReasonPreset, freelancerChangeCustomReason]);
+
+  const handleFreelancerChangeRequest = async () => {
+    const preset = String(freelancerChangeReasonPreset || "").trim();
+    const reason = computedFreelancerChangeReason.trim();
+
+    if (!preset) {
+      toast.error("Please select a reason for the change.");
+      return;
+    }
+
+    if (!freelancer) {
+      toast.error("There is no assigned freelancer to replace yet.");
+      return;
+    }
+
+    if (pendingFreelancerChangeRequest) {
+      toast.error("A freelancer change request is already pending.");
+      return;
+    }
+
+    if (remainingFreelancerChanges <= 0) {
+      toast.error("You have already used both freelancer change requests.");
+      return;
+    }
+
+    if (reason.length < 10) {
+      toast.error("Please provide a clear reason with at least 10 characters.");
+      return;
+    }
+
+    setIsSubmittingFreelancerChange(true);
+    try {
+      const res = await authFetch(
+        `/projects/${project?.id || projectId}/request-freelancer-change`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason }),
+        }
+      );
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          payload?.message || "Failed to submit freelancer change request."
+        );
+      }
+
+      if (payload?.data) {
+        syncProjectState(payload.data);
+      }
+
+      setFreelancerChangeOpen(false);
+      setFreelancerChangeReasonPreset("");
+      setFreelancerChangeCustomReason("");
+      toast.success(
+        payload?.message ||
+          "Your freelancer change request has been sent to the Project Manager."
+      );
+    } catch (error) {
+      console.error("Failed to request freelancer change:", error);
+      toast.error(error.message || "Failed to request freelancer change.");
+    } finally {
+      setIsSubmittingFreelancerChange(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) {
       setIsLoading(false);
@@ -756,14 +895,7 @@ const ProjectDashboard = () => {
         const data = payload?.data || null;
 
         if (active && data) {
-          setProject(data);
-          // Load saved task progress from database
-          if (Array.isArray(data.completedTasks)) {
-            setCompletedTaskIds(new Set(data.completedTasks));
-          }
-          if (Array.isArray(data.verifiedTasks)) {
-            setVerifiedTaskIds(new Set(data.verifiedTasks));
-          }
+          syncProjectState(data);
         }
       } catch (error) {
         console.error("Failed to load project detail:", error);
@@ -778,7 +910,7 @@ const ProjectDashboard = () => {
     return () => {
       active = false;
     };
-  }, [authFetch, isAuthenticated, projectId]);
+  }, [authFetch, isAuthenticated, projectId, syncProjectState]);
 
   const updateProjectProgress = async (
     newProgress,
@@ -812,7 +944,7 @@ const ProjectDashboard = () => {
         const refreshRes = await authFetch(`/projects/${project.id}`);
         const refreshPayload = await refreshRes.json().catch(() => null);
         if (refreshRes.ok && refreshPayload?.data) {
-          setProject(refreshPayload.data);
+          syncProjectState(refreshPayload.data);
         }
       }
     } catch (error) {
@@ -1179,9 +1311,45 @@ const ProjectDashboard = () => {
   }, [project]);
 
   const dueInstallment = paymentPlan?.nextDueInstallment || null;
+  const freelancerChangeRequests = useMemo(
+    () =>
+      Array.isArray(project?.freelancerChangeRequests)
+        ? project.freelancerChangeRequests
+        : [],
+    [project?.freelancerChangeRequests]
+  );
+
+  const pendingFreelancerChangeRequest = useMemo(
+    () =>
+      [...freelancerChangeRequests]
+        .reverse()
+        .find(
+          (request) =>
+            String(request?.status || "").toUpperCase() === "PENDING"
+        ) || null,
+    [freelancerChangeRequests]
+  );
+
+  const latestFreelancerChangeRequest = useMemo(
+    () =>
+      freelancerChangeRequests.length > 0
+        ? freelancerChangeRequests[freelancerChangeRequests.length - 1]
+        : null,
+    [freelancerChangeRequests]
+  );
+
+  const freelancerChangeCount = Number(project?.freelancerChangeCount || 0);
+  const remainingFreelancerChanges = Math.max(
+    0,
+    MAX_FREELANCER_CHANGE_REQUESTS - freelancerChangeCount
+  );
   const freelancer = useMemo(() => {
     return project?.proposals?.find((p) => p.status === "ACCEPTED")?.freelancer;
   }, [project]);
+  const canRequestFreelancerChange =
+    Boolean(freelancer) &&
+    !pendingFreelancerChangeRequest &&
+    remainingFreelancerChanges > 0;
 
   // Render ...
   // Update Documents Card to use `docs`
@@ -1759,6 +1927,91 @@ const ProjectDashboard = () => {
               <FreelancerInfoCard freelancer={freelancer} />
               <FreelancerAboutCard freelancer={freelancer} project={project} />
 
+              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base text-foreground">
+                    Freelancer Change
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    You can request a replacement freelancer up to{" "}
+                    {MAX_FREELANCER_CHANGE_REQUESTS} times for this project.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-3 py-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Requests Used
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        {freelancerChangeCount}/{MAX_FREELANCER_CHANGE_REQUESTS}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={
+                        pendingFreelancerChangeRequest
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                          : remainingFreelancerChanges > 0
+                          ? "border-border/60 bg-background/50 text-foreground"
+                          : "border-red-500/40 bg-red-500/10 text-red-400"
+                      }
+                    >
+                      {pendingFreelancerChangeRequest
+                        ? "Pending Review"
+                        : remainingFreelancerChanges > 0
+                        ? `${remainingFreelancerChanges} Left`
+                        : "Limit Reached"}
+                    </Badge>
+                  </div>
+
+                  {pendingFreelancerChangeRequest ? (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-400">
+                        Pending Request
+                      </p>
+                      <p className="mt-2 text-sm text-foreground">
+                        {pendingFreelancerChangeRequest.reason}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Your Project Catalyst is reviewing request{" "}
+                        {pendingFreelancerChangeRequest.requestNumber || 1} of{" "}
+                        {MAX_FREELANCER_CHANGE_REQUESTS}.
+                      </p>
+                    </div>
+                  ) : latestFreelancerChangeRequest ? (
+                    <div className="rounded-lg border border-border/60 bg-background/30 p-3 text-sm text-muted-foreground">
+                      Last request {latestFreelancerChangeRequest.requestNumber || freelancerChangeCount}{" "}
+                      was completed
+                      {latestFreelancerChangeRequest.replacementFreelancerName
+                        ? ` and reassigned to ${latestFreelancerChangeRequest.replacementFreelancerName}.`
+                        : "."}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      If the current freelancer is not a fit, you can ask your
+                      Project Catalyst to replace them. A written reason is
+                      required.
+                    </p>
+                  )}
+
+                  {!freelancer && (
+                    <p className="text-xs text-muted-foreground">
+                      A freelancer must be assigned before you can request a
+                      replacement.
+                    </p>
+                  )}
+
+                  <Button
+                    className="w-full"
+                    onClick={() => setFreelancerChangeOpen(true)}
+                    disabled={!canRequestFreelancerChange}
+                  >
+                    Request Freelancer Change
+                  </Button>
+                </CardContent>
+              </Card>
+
               {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="border-b border-border/60">
@@ -2179,6 +2432,123 @@ const ProjectDashboard = () => {
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={freelancerChangeOpen}
+        onOpenChange={(open) => {
+          if (!isSubmittingFreelancerChange) {
+            setFreelancerChangeOpen(open);
+            if (!open) {
+              setFreelancerChangeReasonPreset("");
+              setFreelancerChangeCustomReason("");
+            }
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Request Freelancer Change</DialogTitle>
+            <DialogDescription>
+              Tell your Project Catalyst why the current freelancer should be
+              replaced. This request is capped at{" "}
+              {MAX_FREELANCER_CHANGE_REQUESTS} times per project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Requests Remaining
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {remainingFreelancerChanges} of {MAX_FREELANCER_CHANGE_REQUESTS}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Reason for change
+              </label>
+              <Select
+                value={freelancerChangeReasonPreset}
+                onValueChange={setFreelancerChangeReasonPreset}
+                disabled={isSubmittingFreelancerChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FREELANCER_CHANGE_REASON_PRESETS.map((presetOption) => (
+                    <SelectItem
+                      key={presetOption.value}
+                      value={presetOption.value}
+                    >
+                      {presetOption.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                {freelancerChangeReasonPreset ===
+                FREELANCER_CHANGE_CUSTOM_REASON_VALUE
+                  ? "Custom reason"
+                  : "Additional details (optional)"}
+              </label>
+              <Textarea
+                placeholder={
+                  freelancerChangeReasonPreset ===
+                  FREELANCER_CHANGE_CUSTOM_REASON_VALUE
+                    ? "Explain why you want a different freelancer assigned to this project."
+                    : "Add any additional context (optional)."
+                }
+                value={freelancerChangeCustomReason}
+                onChange={(event) =>
+                  setFreelancerChangeCustomReason(event.target.value)
+                }
+                rows={6}
+                disabled={!freelancerChangeReasonPreset || isSubmittingFreelancerChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                {freelancerChangeReasonPreset ===
+                FREELANCER_CHANGE_CUSTOM_REASON_VALUE
+                  ? "Minimum 10 characters."
+                  : "Optional."}{" "}
+                This note is sent to the assigned Project Catalyst.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFreelancerChangeOpen(false);
+                setFreelancerChangeReasonPreset("");
+                setFreelancerChangeCustomReason("");
+              }}
+              disabled={isSubmittingFreelancerChange}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleFreelancerChangeRequest}
+              disabled={
+                isSubmittingFreelancerChange ||
+                !freelancerChangeReasonPreset ||
+                computedFreelancerChangeReason.trim().length < 10
+              }
+            >
+              {isSubmittingFreelancerChange ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending Request
+                </>
+              ) : (
+                "Send Request"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Verification Confirmation Dialog */}
       <Dialog open={verifyConfirmOpen} onOpenChange={setVerifyConfirmOpen}>

@@ -63,7 +63,8 @@ export const ClientTopBar = ({ label, title }) => {
 
     if (
       (notification.type === "task_completed" ||
-        notification.type === "task_verified") &&
+        notification.type === "task_verified" ||
+        notification.type === "freelancer_change_resolved") &&
       notification.data?.projectId
     ) {
       navigate(`/client/project/${notification.data.projectId}`);

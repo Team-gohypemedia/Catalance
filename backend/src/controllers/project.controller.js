@@ -109,6 +109,46 @@ const PROJECT_MANAGER_SELECT = {
   role: true,
 };
 
+const PROJECT_RESPONSE_INCLUDE = {
+  owner: {
+    select: { id: true, fullName: true, email: true },
+  },
+  proposals: {
+    include: {
+      freelancer: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          avatar: true,
+          freelancerProfile: {
+            select: {
+              jobTitle: true,
+              skills: true,
+              bio: true,
+              portfolio: true,
+              linkedin: true,
+              github: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  },
+  manager: {
+    select: PROJECT_MANAGER_SELECT,
+  },
+  disputes: {
+    select: { id: true, status: true },
+  },
+  _count: {
+    select: { proposals: true },
+  },
+};
+
+const MAX_FREELANCER_CHANGE_REQUESTS = 2;
+
 const findLeastLoadedActiveProjectManager = async () =>
   prisma.user.findFirst({
     where: {
@@ -118,6 +158,86 @@ const findLeastLoadedActiveProjectManager = async () =>
     orderBy: { managedProjects: { _count: "asc" } },
     select: PROJECT_MANAGER_SELECT,
   });
+
+const getProjectForResponse = (projectId, tx = prisma) =>
+  tx.project.findUnique({
+    where: { id: projectId },
+    include: PROJECT_RESPONSE_INCLUDE,
+  });
+
+const getFreelancerChangeRequests = (project = {}) =>
+  Array.isArray(project?.freelancerChangeRequests)
+    ? project.freelancerChangeRequests
+    : [];
+
+const getLatestPendingFreelancerChangeRequest = (project = {}) =>
+  [...getFreelancerChangeRequests(project)]
+    .reverse()
+    .find(
+      (request) => String(request?.status || "").toUpperCase() === "PENDING"
+    ) || null;
+
+const resolveLatestAssignmentProposal = (project = {}) => {
+  const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+
+  return (
+    proposals.find((proposal) => proposal?.status === "ACCEPTED") ||
+    proposals.find((proposal) => proposal?.status === "REPLACED") ||
+    proposals.find((proposal) => proposal?.status === "REJECTED") ||
+    proposals[0] ||
+    null
+  );
+};
+
+const buildFreelancerChangeRequestRecord = ({
+  reason,
+  requestCount,
+  requestedById,
+  managerId,
+  previousFreelancer,
+}) => ({
+  id: crypto.randomUUID(),
+  status: "PENDING",
+  requestNumber: requestCount + 1,
+  reason,
+  requestedById,
+  managerId: managerId || null,
+  previousFreelancerId: previousFreelancer?.id || null,
+  previousFreelancerName: previousFreelancer?.fullName || null,
+  requestedAt: new Date().toISOString(),
+  resolvedAt: null,
+  resolvedById: null,
+  replacementFreelancerId: null,
+  replacementFreelancerName: null,
+});
+
+const resolveFreelancerChangeRequestsAfterAssignment = ({
+  requests = [],
+  resolverId,
+  replacementFreelancer,
+}) => {
+  let resolved = false;
+
+  return requests.map((request) => {
+    if (
+      resolved ||
+      String(request?.status || "").toUpperCase() !== "PENDING"
+    ) {
+      return request;
+    }
+
+    resolved = true;
+
+    return {
+      ...request,
+      status: "RESOLVED",
+      resolvedAt: new Date().toISOString(),
+      resolvedById: resolverId,
+      replacementFreelancerId: replacementFreelancer?.id || null,
+      replacementFreelancerName: replacementFreelancer?.fullName || null,
+    };
+  });
+};
 
 export const createProject = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
@@ -251,46 +371,7 @@ export const getProject = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
-  let project = await prisma.project.findUnique({
-    where: { id },
-    include: {
-      owner: {
-        select: { id: true, fullName: true, email: true },
-      },
-      proposals: {
-        include: {
-          freelancer: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-              avatar: true,
-              freelancerProfile: {
-                select: {
-                  jobTitle: true,
-                  skills: true,
-                  bio: true,
-                  portfolio: true,
-                  linkedin: true,
-                  github: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-      manager: {
-        select: PROJECT_MANAGER_SELECT,
-      },
-      disputes: {
-        select: { id: true, status: true },
-      },
-      _count: {
-        select: { proposals: true },
-      },
-    },
-  });
+  let project = await getProjectForResponse(id);
 
   if (!project) {
     throw new AppError("Project not found", 404);
@@ -447,6 +528,136 @@ export const updateProject = asyncHandler(async (req, res) => {
     console.error("Error meta:", error.meta);
     throw new AppError(`Failed to update project: ${error.message}`, 500);
   }
+});
+
+export const requestFreelancerChange = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  const reason = String(req.body?.reason || "").trim();
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  if (reason.length < 10) {
+    throw new AppError(
+      "Please provide a clear reason with at least 10 characters.",
+      400
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true },
+  });
+
+  if (!user || user.role !== "CLIENT") {
+    throw new AppError("Only the client can request a freelancer change.", 403);
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      manager: {
+        select: PROJECT_MANAGER_SELECT,
+      },
+      proposals: {
+        where: { status: "ACCEPTED" },
+        include: {
+          freelancer: {
+            select: { id: true, fullName: true, email: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  if (project.ownerId !== userId) {
+    throw new AppError("Only the project owner can request this change.", 403);
+  }
+
+  const activeFreelancer = project.proposals[0]?.freelancer || null;
+  if (!activeFreelancer) {
+    throw new AppError("There is no assigned freelancer to replace yet.", 400);
+  }
+
+  const existingRequests = getFreelancerChangeRequests(project);
+  if (getLatestPendingFreelancerChangeRequest(project)) {
+    throw new AppError(
+      "A freelancer change request is already pending for this project.",
+      409
+    );
+  }
+
+  const requestCount = Number(project.freelancerChangeCount || 0);
+  if (requestCount >= MAX_FREELANCER_CHANGE_REQUESTS) {
+    throw new AppError(
+      `You have already used all ${MAX_FREELANCER_CHANGE_REQUESTS} freelancer change requests for this project.`,
+      400
+    );
+  }
+
+  let assignedManager = project.manager;
+  if (
+    !assignedManager ||
+    assignedManager.role !== "PROJECT_MANAGER" ||
+    assignedManager.status !== "ACTIVE"
+  ) {
+    assignedManager = await findLeastLoadedActiveProjectManager();
+  }
+
+  if (!assignedManager?.id) {
+    throw new AppError(
+      "No active Project Manager is available right now. Please try again shortly.",
+      503
+    );
+  }
+
+  const nextRequest = buildFreelancerChangeRequestRecord({
+    reason,
+    requestCount,
+    requestedById: userId,
+    managerId: assignedManager.id,
+    previousFreelancer: activeFreelancer,
+  });
+
+  await prisma.project.update({
+    where: { id },
+    data: {
+      managerId: assignedManager.id,
+      freelancerChangeCount: requestCount + 1,
+      freelancerChangeRequests: [...existingRequests, nextRequest],
+    },
+  });
+
+  try {
+    await sendNotificationToUser(assignedManager.id, {
+      type: "freelancer_change_request",
+      title: "Freelancer change requested",
+      message: `Client requested a freelancer change for "${project.title}".`,
+      data: {
+        projectId: id,
+        requestId: nextRequest.id,
+        requestNumber: nextRequest.requestNumber,
+      },
+    });
+  } catch (notificationError) {
+    console.error(
+      "Failed to notify project manager about freelancer change request:",
+      notificationError
+    );
+  }
+
+  const updatedProject = await getProjectForResponse(id);
+
+  res.status(201).json({
+    data: hydrateProjectForResponse(updatedProject),
+    message: "Your freelancer change request has been sent to the Project Manager.",
+  });
 });
 
 const getProjectForUpfrontPayment = async (projectId) => {
@@ -977,30 +1188,176 @@ export const removeFreelancer = asyncHandler(async (req, res) => {
 export const reassignFreelancer = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
   const { id } = req.params;
-  const { newFreelancerEmail } = req.body;
+  const newFreelancerId = String(req.body?.newFreelancerId || "").trim();
+  const newFreelancerEmail = String(req.body?.newFreelancerEmail || "")
+    .trim()
+    .toLowerCase();
   if (!userId) throw new AppError("Authentication required", 401);
   await requirePmOrAdmin(userId, id);
 
-  if (!newFreelancerEmail) throw new AppError("Replacement freelancer email is required", 400);
-
-  // Validate freelancer exists
-  const freelancer = await prisma.user.findUnique({ where: { email: newFreelancerEmail } });
-  if (!freelancer || (freelancer.role !== "FREELANCER" && freelancer.role !== "ADMIN")) {
-    throw new AppError("Valid replacement freelancer not found with that email", 404);
+  if (!newFreelancerId && !newFreelancerEmail) {
+    throw new AppError(
+      "Replacement freelancer selection is required.",
+      400
+    );
   }
 
-  // Stub invitation flow: just log and return success. A real system would send an email or push notification.
-  console.log(`[Reassignment] PM ${userId} invited ${newFreelancerEmail} to replace freelancer on project ${id}.`);
+  const freelancer = newFreelancerId
+    ? await prisma.user.findUnique({
+        where: { id: newFreelancerId },
+        select: { id: true, fullName: true, email: true, role: true },
+      })
+    : await prisma.user.findUnique({
+        where: { email: newFreelancerEmail },
+        select: { id: true, fullName: true, email: true, role: true },
+      });
+
+  if (!freelancer || freelancer.role !== "FREELANCER") {
+    throw new AppError("Valid replacement freelancer not found.", 404);
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      owner: {
+        select: { id: true, fullName: true },
+      },
+      proposals: {
+        include: {
+          freelancer: {
+            select: { id: true, fullName: true, email: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  const currentAssignment = resolveLatestAssignmentProposal(project);
+  if (currentAssignment?.freelancerId === freelancer.id) {
+    throw new AppError(
+      "This freelancer is already assigned to the project.",
+      400
+    );
+  }
+
+  const currentRequests = getFreelancerChangeRequests(project);
+  const hasPendingRequest = Boolean(
+    getLatestPendingFreelancerChangeRequest(project)
+  );
+  const replacementAmount = normalizeAmount(
+    currentAssignment?.amount ?? project.budget ?? 0
+  );
+  const nextProjectStatus =
+    project.status === "PAUSED"
+      ? Number(project.spent || 0) > 0
+        ? "IN_PROGRESS"
+        : "OPEN"
+      : project.status;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.proposal.updateMany({
+      where: {
+        projectId: id,
+        status: "ACCEPTED",
+      },
+      data: {
+        status: "REPLACED",
+        rejectionReason:
+          "Reassigned by Project Manager to another freelancer.",
+        rejectionReasonKey: "project_manager_reassignment",
+      },
+    });
+
+    await tx.proposal.create({
+      data: {
+        projectId: id,
+        freelancerId: freelancer.id,
+        amount: replacementAmount,
+        coverLetter: hasPendingRequest
+          ? "Reassigned by Project Manager after a client freelancer change request."
+          : "Reassigned by Project Manager.",
+        status: "ACCEPTED",
+      },
+    });
+
+    await tx.project.update({
+      where: { id },
+      data: {
+        status: nextProjectStatus,
+        freelancerChangeRequests: resolveFreelancerChangeRequestsAfterAssignment({
+          requests: currentRequests,
+          resolverId: userId,
+          replacementFreelancer: freelancer,
+        }),
+      },
+    });
+  });
+
+  try {
+    await sendNotificationToUser(project.ownerId, {
+      type: "freelancer_change_resolved",
+      title: "Freelancer updated",
+      message: `${freelancer.fullName} has been assigned to "${project.title}".`,
+      data: {
+        projectId: id,
+        freelancerId: freelancer.id,
+      },
+    });
+  } catch (notificationError) {
+    console.error("Failed to notify client after reassignment:", notificationError);
+  }
+
+  try {
+    await sendNotificationToUser(freelancer.id, {
+      type: "proposal",
+      title: "You were assigned to a project",
+      message: `You have been assigned to "${project.title}".`,
+      data: {
+        projectId: id,
+        status: "ACCEPTED",
+      },
+    });
+  } catch (notificationError) {
+    console.error(
+      "Failed to notify replacement freelancer after reassignment:",
+      notificationError
+    );
+  }
+
+  if (
+    currentAssignment?.freelancerId &&
+    currentAssignment.freelancerId !== freelancer.id
+  ) {
+    try {
+      await sendNotificationToUser(currentAssignment.freelancerId, {
+        type: "proposal",
+        title: "Project assignment updated",
+        message: `You have been removed from "${project.title}".`,
+        data: {
+          projectId: id,
+          status: "REPLACED",
+        },
+      });
+    } catch (notificationError) {
+      console.error(
+        "Failed to notify previous freelancer after reassignment:",
+        notificationError
+      );
+    }
+  }
+
+  const updatedProject = await getProjectForResponse(id);
 
   res.json({
-    data: { invitedDoc: { email: newFreelancerEmail, status: "INVITED" } },
-    message: `Invitation sent to ${newFreelancerEmail}.`
+    data: hydrateProjectForResponse(updatedProject),
+    message: `${freelancer.fullName} has been assigned to this project.`,
   });
 });
-
-
-
-
 
 
 

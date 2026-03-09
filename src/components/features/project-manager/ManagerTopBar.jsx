@@ -75,7 +75,11 @@ export const ManagerTopBar = ({ label, interactive = true }) => {
 
         const { type, data } = notification || {};
 
-        if (type === "dispute" || type === "project_assigned") {
+        if (
+            type === "dispute" ||
+            type === "project_assigned" ||
+            type === "freelancer_change_request"
+        ) {
             if (data?.projectId) {
                 navigate(`/project-manager/projects/${data.projectId}`);
             } else {

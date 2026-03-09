@@ -371,7 +371,7 @@ const FreelancerSelectionDialog = ({
 
                       </div>
 
-                      <div className="mt-2 rounded-lg bg-white/3 p-2">
+                      <div className="mt-2">
                         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
                           Project Skills Match
                         </p>
