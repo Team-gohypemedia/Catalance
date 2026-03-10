@@ -1,7 +1,7 @@
 import { AppError } from "../../utils/app-error.js";
 import { getSopFromTitle } from "../../../../src/shared/data/sopTemplates.js";
 
-const INSTALLMENT_DEFINITIONS = Object.freeze([
+const INSTALLMENT_DEFINITIONS_V1 = Object.freeze([
   {
     sequence: 1,
     key: "initial_deposit",
@@ -23,6 +23,33 @@ const INSTALLMENT_DEFINITIONS = Object.freeze([
     key: "final_payment",
     label: "Final project payment",
     percentage: 40,
+    dueAfterCompletedPhases: 4,
+    dueLabel: "Due after phase 4 is fully verified.",
+  },
+]);
+
+const INSTALLMENT_DEFINITIONS_V2 = Object.freeze([
+  {
+    sequence: 1,
+    key: "phase_2_payment",
+    label: "Phase 2 completion payment",
+    percentage: 25,
+    dueAfterCompletedPhases: 2,
+    dueLabel: "Due after phases 1 and 2 are fully verified.",
+  },
+  {
+    sequence: 2,
+    key: "phase_3_payment",
+    label: "Phase 3 completion payment",
+    percentage: 25,
+    dueAfterCompletedPhases: 3,
+    dueLabel: "Due after phase 3 is fully verified.",
+  },
+  {
+    sequence: 3,
+    key: "final_payment",
+    label: "Final project payment",
+    percentage: 50,
     dueAfterCompletedPhases: 4,
     dueLabel: "Due after phase 4 is fully verified.",
   },
@@ -53,13 +80,19 @@ const toTaskIdArray = (value) => {
   return [];
 };
 
-const buildInstallmentAmounts = (totalAmount) => {
+const buildInstallmentAmounts = (totalAmount, version = "v1") => {
   const safeTotal = normalizeAmount(totalAmount);
-  const initialAmount = Math.round(safeTotal * 0.2);
-  const secondAmount = Math.round(safeTotal * 0.4);
-  const finalAmount = Math.max(0, safeTotal - initialAmount - secondAmount);
-
-  return [initialAmount, secondAmount, finalAmount];
+  if (version === "v2") {
+    const firstAmount = Math.round(safeTotal * 0.25);
+    const secondAmount = Math.round(safeTotal * 0.25);
+    const finalAmount = Math.max(0, safeTotal - firstAmount - secondAmount);
+    return [firstAmount, secondAmount, finalAmount];
+  } else {
+    const initialAmount = Math.round(safeTotal * 0.2);
+    const secondAmount = Math.round(safeTotal * 0.4);
+    const finalAmount = Math.max(0, safeTotal - initialAmount - secondAmount);
+    return [initialAmount, secondAmount, finalAmount];
+  }
 };
 
 const getPhaseCompletionSummary = (project) => {
@@ -123,7 +156,10 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
   const paidAmount = Math.min(normalizeAmount(project?.spent || 0), totalAmount);
   const remainingAmount = Math.max(0, totalAmount - paidAmount);
   const phaseSummary = getPhaseCompletionSummary(project);
-  const installmentAmounts = buildInstallmentAmounts(totalAmount);
+  const paymentPlanVersion = project?.paymentPlanVersion || "v1";
+  const INSTALLMENT_DEFINITIONS = paymentPlanVersion === "v2" ? INSTALLMENT_DEFINITIONS_V2 : INSTALLMENT_DEFINITIONS_V1;
+
+  const installmentAmounts = buildInstallmentAmounts(totalAmount, paymentPlanVersion);
 
   let cumulativeAmount = 0;
   let allPreviousPaid = true;

@@ -25,6 +25,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Accordion,
   AccordionContent,
@@ -292,6 +294,7 @@ const ManagerProjectDetailContent = () => {
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message || "Funds released successfully");
+        fetchProject();
       } else {
         toast.error(data.message || "Failed to release funds");
       }
@@ -299,6 +302,97 @@ const ManagerProjectDetailContent = () => {
       toast.error("Error releasing funds: " + err.message);
     } finally {
       setEscrowReleasing(false);
+    }
+  };
+
+  const [milestoneApproving, setMilestoneApproving] = useState(false);
+  const handleApproveMilestone = async () => {
+    try {
+      setMilestoneApproving(true);
+      const currentPhase = derivedPhases.find((p) => p.status === "in-progress")?.id || 1;
+      const res = await authFetch(`/pm/projects/${projectId}/milestone-approval`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phase: currentPhase, notes: "Approved by Project Manager" })
+      });
+      if (res.ok) {
+        toast.success(`Milestone phase ${currentPhase} approved`);
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.message || "Failed to approve milestone");
+      }
+    } catch (err) {
+      toast.error("Error approving milestone");
+    } finally {
+      setMilestoneApproving(false);
+    }
+  };
+
+  const [closureState, setClosureState] = useState({
+    handoverConfirmed: false,
+    deliverablesConfirmed: false,
+    receiptConfirmed: false,
+    noIssuesConfirmed: false
+  });
+  const [closing, setClosing] = useState(false);
+
+  const handleVerifyClosure = async () => {
+    try {
+      setClosing(true);
+      const res = await authFetch(`/pm/projects/${projectId}/closure-verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(closureState)
+      });
+      if (res.ok) {
+        toast.success("Project closure verified successfully");
+        fetchProject();
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.message || "Failed to verify closure");
+      }
+    } catch (err) {
+      toast.error("Error verifying closure");
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const handleInternalReview = async () => {
+    if (!reviewNotes) {
+      toast.error("Please enter review notes");
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      const res = await authFetch(`/pm/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          freelancerId: freelancer?.id,
+          projectId,
+          rating: Number(reviewRating),
+          notes: reviewNotes
+        })
+      });
+      if (res.ok) {
+        toast.success("Internal review submitted successfully");
+        setReviewModalOpen(false);
+        setReviewNotes("");
+        setReviewRating(5);
+      } else {
+        const data = await res.json();
+        toast.error(data.message || "Failed to submit review");
+      }
+    } catch (err) {
+      toast.error("Error submitting review");
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -1021,6 +1115,43 @@ const ManagerProjectDetailContent = () => {
                         </p>
                       </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setReviewModalOpen(true)}
+                      className="w-full mt-4"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Write Internal Review
+                    </Button>
+
+                    <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Internal Freelancer Review</DialogTitle>
+                          <DialogDescription>
+                            Rate and review {freelancer.fullName}'s performance. This is private to Project Managers.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Rating (1-5)</Label>
+                            <Input type="number" min="1" max="5" value={reviewRating} onChange={(e) => setReviewRating(e.target.value)} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Review Notes</Label>
+                            <Textarea placeholder="Enter your private notes here..." value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                          <Button variant="outline" onClick={() => setReviewModalOpen(false)}>Cancel</Button>
+                          <Button onClick={handleInternalReview} disabled={submittingReview}>
+                            {submittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Submit Review
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </CardContent>
                 </Card>
               )}
@@ -1038,15 +1169,67 @@ const ManagerProjectDetailContent = () => {
                     Review completed milestones and release funds to the freelancer securely. Only release funds when work passes verification.
                   </p>
                   <Button
+                    variant="outline"
+                    className="w-full border-green-600 text-green-700 hover:bg-green-50"
+                    onClick={handleApproveMilestone}
+                    disabled={milestoneApproving || !freelancer}
+                  >
+                    {milestoneApproving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Approve Current Milestone
+                  </Button>
+                  <Button
                     className="w-full bg-green-600 hover:bg-green-700 text-white"
                     onClick={handleReleaseEscrow}
                     disabled={escrowReleasing || !freelancer}
                   >
                     {escrowReleasing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Approve & Release Funds
+                    Release Funds
                   </Button>
                 </CardContent>
               </Card>
+
+              {/* Closure Verification */}
+              {project?.status !== "COMPLETED" && (
+                <Card className="border border-blue-500/30 bg-blue-500/5 shadow-sm backdrop-blur">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                      <CheckCircle2 className="h-5 w-5" />
+                      Closure Verification
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-xs text-muted-foreground">
+                      Verify these final checklist items to officially mark the project as completed.
+                    </p>
+                    <div className="space-y-2 text-sm">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300" checked={closureState.handoverConfirmed} onChange={e => setClosureState(p => ({ ...p, handoverConfirmed: e.target.checked }))} />
+                        Handover Confirmed
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300" checked={closureState.deliverablesConfirmed} onChange={e => setClosureState(p => ({ ...p, deliverablesConfirmed: e.target.checked }))} />
+                        Deliverables Confirmed
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300" checked={closureState.receiptConfirmed} onChange={e => setClosureState(p => ({ ...p, receiptConfirmed: e.target.checked }))} />
+                        Receipt Confirmed
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300" checked={closureState.noIssuesConfirmed} onChange={e => setClosureState(p => ({ ...p, noIssuesConfirmed: e.target.checked }))} />
+                        No Pending Issues
+                      </label>
+                    </div>
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={closing || !closureState.handoverConfirmed || !closureState.deliverablesConfirmed || !closureState.receiptConfirmed || !closureState.noIssuesConfirmed}
+                      onClick={handleVerifyClosure}
+                    >
+                      {closing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Complete Project Closure
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
             </div>
           </div>
@@ -1076,10 +1259,10 @@ const ManagerProjectDetailContent = () => {
             requestContext={
               pendingFreelancerChangeRequest
                 ? {
-                    reason: pendingFreelancerChangeRequest.reason,
-                    requestNumber: pendingFreelancerChangeRequest.requestNumber,
-                    maxRequests: MAX_FREELANCER_CHANGE_REQUESTS,
-                  }
+                  reason: pendingFreelancerChangeRequest.reason,
+                  requestNumber: pendingFreelancerChangeRequest.requestNumber,
+                  maxRequests: MAX_FREELANCER_CHANGE_REQUESTS,
+                }
                 : null
             }
           />

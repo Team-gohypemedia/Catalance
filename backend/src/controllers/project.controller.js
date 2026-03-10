@@ -149,15 +149,35 @@ const PROJECT_RESPONSE_INCLUDE = {
 
 const MAX_FREELANCER_CHANGE_REQUESTS = 2;
 
-const findLeastLoadedActiveProjectManager = async () =>
-  prisma.user.findFirst({
+const findLeastLoadedActiveProjectManager = async () => {
+  const managers = await prisma.user.findMany({
     where: {
       role: "PROJECT_MANAGER",
       status: "ACTIVE",
     },
-    orderBy: { managedProjects: { _count: "asc" } },
-    select: PROJECT_MANAGER_SELECT,
+    select: {
+      ...PROJECT_MANAGER_SELECT,
+      managedProjects: {
+        where: {
+          status: { notIn: ["COMPLETED", "PAUSED", "DRAFT"] }
+        },
+        select: { id: true }
+      }
+    }
   });
+
+  const available = managers
+    .map(m => ({ ...m, activeCount: m.managedProjects.length }))
+    .filter(m => m.activeCount < 10)
+    .sort((a, b) => a.activeCount - b.activeCount);
+
+  if (available.length === 0) return null;
+
+  const selected = available[0];
+  delete selected.managedProjects;
+  delete selected.activeCount;
+  return selected;
+};
 
 const getProjectForResponse = (projectId, tx = prisma) =>
   tx.project.findUnique({
@@ -464,10 +484,30 @@ export const updateProject = asyncHandler(async (req, res) => {
       "title", "description", "budget", "status", "progress",
       "spent", "completedTasks", "verifiedTasks", "notes", "externalLink",
     ]);
+
+    // Admins can manually set managerId
+    if (isAdmin) {
+      allowedFields.add("managerId");
+    }
+
     const sanitizedUpdates = {};
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.has(key)) {
         sanitizedUpdates[key] = key === "budget" ? normalizeBudget(value) : value;
+      }
+    }
+
+    if (sanitizedUpdates.managerId) {
+      // Admin manual assignment - enforce 10 cap
+      const targetManager = await prisma.user.findUnique({
+        where: { id: sanitizedUpdates.managerId },
+        include: { managedProjects: { where: { status: { notIn: ["COMPLETED", "PAUSED", "DRAFT"] } } } }
+      });
+      if (!targetManager || targetManager.role !== "PROJECT_MANAGER") {
+        throw new AppError("Invalid Project Manager ID", 400);
+      }
+      if (targetManager.managedProjects.length >= 10) {
+        throw new AppError("This Project Manager has reached the maximum capacity of 10 active projects.", 403);
       }
     }
 
@@ -1092,6 +1132,28 @@ export const releaseEscrow = asyncHandler(async (req, res) => {
   const acceptedProposal = project.proposals[0];
   if (!acceptedProposal) throw new AppError("No accepted freelancer proposal found to release to", 400);
 
+  const paymentPlan = resolveProjectPaymentPlan(project);
+  if (!paymentPlan) throw new AppError("Could not resolve payment plan", 400);
+
+  const nextInstallment = paymentPlan.nextUnpaidInstallment;
+  if (!nextInstallment) {
+    return res.json({ message: "No pending installments to release." });
+  }
+
+  const requiredPhase = nextInstallment.dueAfterCompletedPhases || 1; // Default to phase 1 if 0
+
+  // Check for PM milestone approval explicitly for THIS exact phase
+  const milestoneApproval = await prisma.milestoneApproval.findFirst({
+    where: {
+      projectId: id,
+      phase: requiredPhase
+    }
+  });
+
+  if (!milestoneApproval) {
+    throw new AppError(`Project Manager must approve Phase ${requiredPhase} before these funds can be released.`, 403);
+  }
+
   // Check existing payments to ensure idempotency
   const existingPayment = await prisma.payment.findFirst({
     where: { projectId: id, freelancerId: acceptedProposal.freelancerId }
@@ -1104,7 +1166,7 @@ export const releaseEscrow = asyncHandler(async (req, res) => {
     });
   }
 
-  const amountToRelease = acceptedProposal.amount;
+  const amountToRelease = nextInstallment.amount;
   const platformFee = Math.round(amountToRelease * 0.3);
   const freelancerAmount = amountToRelease - platformFee;
 
@@ -1130,7 +1192,8 @@ export const releaseEscrow = asyncHandler(async (req, res) => {
         paidAt: new Date(),
         description: "Escrow release for completed milestones",
         projectId: id,
-        freelancerId: acceptedProposal.freelancerId
+        freelancerId: acceptedProposal.freelancerId,
+        metadata: { installmentSequence: nextInstallment.sequence, phaseReleased: requiredPhase }
       }
     });
   }
@@ -1204,13 +1267,13 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
 
   const freelancer = newFreelancerId
     ? await prisma.user.findUnique({
-        where: { id: newFreelancerId },
-        select: { id: true, fullName: true, email: true, role: true },
-      })
+      where: { id: newFreelancerId },
+      select: { id: true, fullName: true, email: true, role: true },
+    })
     : await prisma.user.findUnique({
-        where: { email: newFreelancerEmail },
-        select: { id: true, fullName: true, email: true, role: true },
-      });
+      where: { email: newFreelancerEmail },
+      select: { id: true, fullName: true, email: true, role: true },
+    });
 
   if (!freelancer || freelancer.role !== "FREELANCER") {
     throw new AppError("Valid replacement freelancer not found.", 404);
