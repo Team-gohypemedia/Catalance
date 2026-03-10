@@ -15,6 +15,10 @@ import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTop
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import {
+  formatINR,
+  getFreelancerVisibleBudgetValue,
+} from "@/shared/lib/currency";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,6 +65,11 @@ const extractProposalDetails = (content = "", budgetNum = null) => {
     if (budgetMatch) {
       budget = budgetMatch[1];
     }
+  }
+
+  const visibleBudget = getFreelancerVisibleBudgetValue(budget);
+  if (visibleBudget !== null) {
+    budget = formatINR(visibleBudget);
   }
 
   // 2. Try to find Timeline
@@ -203,9 +212,7 @@ const mapApiProposal = (proposal = {}) => {
     proposalId: proposal.id
       ? `PRP-${proposal.id.slice(0, 6).toUpperCase()}`
       : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
-    // Display budget as 30% less (Platform Fee deduction) for freelancer view?
-    // User logic: proposal.amount ? Math.floor(Number(proposal.amount) * 0.7) : null
-    budget: proposal.amount ? Math.floor(Number(proposal.amount) * 0.7) : null,
+    budget: proposal.amount ?? proposal.budget ?? null,
     rejectionReason: String(proposal.rejectionReason || "").trim(),
     content:
       proposal.content ||

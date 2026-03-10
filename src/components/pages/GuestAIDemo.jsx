@@ -1697,7 +1697,7 @@ const GuestAIDemo = () => {
                                                             Starting at
                                                         </p>
                                                         <p className="text-white text-lg font-bold group-hover:text-[#ffc800] transition-colors duration-300">
-                                                            {feature.price || '₹10,000/-'}
+                                                            {feature.price || (feature.min_budget ? `₹${feature.min_budget.toLocaleString('en-IN')}/-` : '₹10,000/-')}
                                                         </p>
                                                     </div>
                                                     <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-white group-hover:border-[#ffc800] group-hover:text-[#ffc800] group-hover:bg-[#ffc800]/10 transition-colors duration-300">

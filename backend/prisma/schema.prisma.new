@@ -101,6 +101,7 @@ model FreelancerProfile {
   jobTitle       String?
   companyName    String?
   location       String?
+  available      Boolean  @default(true)
   rating         Decimal? @db.Decimal(3, 1) @default(0)
   reviewCount    Int      @default(0)
   experienceYears Int?    @default(0)

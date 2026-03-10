@@ -74,6 +74,7 @@ import format from "date-fns/format";
 import isToday from "date-fns/isToday";
 import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
+import { getFreelancerVisibleBudgetValue } from "@/shared/lib/currency";
 import { cn } from "@/shared/lib/utils";
 import {
   Accordion,
@@ -1492,12 +1493,7 @@ const FreelancerProjectDetailContent = () => {
     : "Project Dashboard";
 
   const totalBudget = useMemo(() => {
-    if (project?.budget !== undefined && project?.budget !== null) {
-      const value = Number(project.budget);
-      // Reduce 30% platform fee - Freelancer sees 70%
-      if (Number.isFinite(value)) return Math.max(0, value * 0.7);
-    }
-    return 0;
+    return getFreelancerVisibleBudgetValue(project?.budget) ?? 0;
   }, [project]);
 
   const spentBudget = useMemo(() => {

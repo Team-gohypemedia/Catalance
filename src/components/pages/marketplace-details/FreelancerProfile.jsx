@@ -1,6 +1,7 @@
 import { ExternalLink, Github, Linkedin, Briefcase, MapPin, User, CheckCircle2, Globe, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getFreelancerAvailabilityMeta } from "@/shared/lib/freelancer-availability";
 import { cn } from "@/shared/lib/utils";
 
 // Normalize portfolio from various shapes
@@ -34,6 +35,10 @@ const FreelancerProfile = ({ freelancer, portfolio = [] }) => {
     const location = profile.location || profile.city || profile.country || "Remote";
     const skills = Array.isArray(profile.skills) ? profile.skills : [];
     const portfolioItems = normalizePortfolioItems(portfolio);
+    const availability = getFreelancerAvailabilityMeta({
+        ...freelancer,
+        freelancerProfile: profile,
+    });
 
     const socialLinks = [
         profile.linkedin && { href: profile.linkedin, icon: Linkedin, label: "LinkedIn", color: "text-blue-600 border-blue-500/20 hover:bg-blue-500/10" },
@@ -80,6 +85,13 @@ const FreelancerProfile = ({ freelancer, portfolio = [] }) => {
                                         <CheckCircle2 className="w-3 h-3" /> Verified
                                     </span>
                                 )}
+                                <Badge variant="outline" className={availability.badgeClass}>
+                                    <span
+                                        className={`mr-1.5 h-2 w-2 rounded-full ${availability.dotClass}`}
+                                        aria-hidden="true"
+                                    />
+                                    {availability.label}
+                                </Badge>
                             </div>
                             <p className="text-primary font-medium text-sm mt-0.5">{title}</p>
                         </div>
@@ -184,7 +196,7 @@ const FreelancerProfile = ({ freelancer, portfolio = [] }) => {
                         </div>
                         <div>
                             <p className="font-semibold text-sm text-muted-foreground">Portfolio coming soon</p>
-                            <p className="text-xs text-muted-foreground/60 mt-0.5">The freelancer hasn't added portfolio items yet.</p>
+                            <p className="text-xs text-muted-foreground/60 mt-0.5">The freelancer has not added portfolio items yet.</p>
                         </div>
                     </div>
                 )}

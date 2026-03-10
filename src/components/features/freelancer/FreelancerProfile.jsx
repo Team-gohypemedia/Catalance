@@ -1,3 +1,4 @@
+/* eslint-disable no-irregular-whitespace */
 import Camera from "lucide-react/dist/esm/icons/camera";
 import Check from "lucide-react/dist/esm/icons/check";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
@@ -241,6 +242,7 @@ const FreelancerProfile = () => {
   const [initialData, setInitialData] = useState(null);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isAvailabilitySaving, setIsAvailabilitySaving] = useState(false);
   const [fullProfileForm, setFullProfileForm] = useState(
     createInitialFullProfileForm
   );
@@ -374,7 +376,11 @@ const FreelancerProfile = () => {
             resolveAvatarUrl(payload.coverImage, { allowBlob: true }) ||
             identityCoverImage,
           available:
-            payload.status !== undefined ? payload.status === "ACTIVE" : true,
+            payload.available !== undefined
+              ? Boolean(payload.available)
+              : payload.status !== undefined
+                ? payload.status === "ACTIVE"
+                : true,
         },
         skills: Array.isArray(payload.skills) ? payload.skills : [],
         workExperience: Array.isArray(payload.workExperience) ? payload.workExperience : [],
@@ -1095,6 +1101,39 @@ const FreelancerProfile = () => {
     }
   };
 
+  const handleAvailabilityToggle = async () => {
+    if (isAvailabilitySaving || isSaving || profileLoading) return;
+
+    const previousAvailable = Boolean(personal.available);
+    const nextAvailable = !previousAvailable;
+    const nextPersonal = {
+      ...personal,
+      available: nextAvailable,
+    };
+
+    setPersonal((prev) => ({
+      ...prev,
+      available: nextAvailable,
+    }));
+    setIsAvailabilitySaving(true);
+
+    const saved = await handleSave(buildProfileSnapshot({ personal: nextPersonal }), {
+      suppressSuccessToast: true,
+    });
+
+    if (!saved) {
+      setPersonal((prev) => ({
+        ...prev,
+        available: previousAvailable,
+      }));
+      setIsAvailabilitySaving(false);
+      return;
+    }
+
+    toast.success(`Profile set to ${nextAvailable ? "Open to Work" : "Offline"}`);
+    setIsAvailabilitySaving(false);
+  };
+
   // ----- Personal Details Edit (Name, Headline, Phone, Location) -----
   const openEditPersonalModal = (section = PERSONAL_EDITOR_SECTIONS.ALL) => {
     setPersonalEditorSection(section);
@@ -1342,7 +1381,7 @@ const FreelancerProfile = () => {
   // ----- Add Custom Service -----
   const [serviceForm, setServiceForm] = useState(createInitialServiceForm);
 
-  const openEditServiceProfileModal = (serviceKey) => {
+  const openEditServiceProfileModal = useCallback((serviceKey) => {
     const serviceDetails =
       profileDetails?.serviceDetails &&
         typeof profileDetails.serviceDetails === "object"
@@ -1378,7 +1417,7 @@ const FreelancerProfile = () => {
     });
     setServiceSkillInput("");
     setModalType("onboardingService");
-  };
+  }, [profileDetails]);
 
   const addServiceSkillTag = useCallback((rawValue) => {
     const parsedValues =
@@ -3020,6 +3059,8 @@ const FreelancerProfile = () => {
             onboardingLanguages={onboardingLanguages}
             openEditPersonalModal={openEditPersonalModal}
             openPortfolioModal={openPortfolioModal}
+            onToggleAvailability={handleAvailabilityToggle}
+            availabilitySaving={isAvailabilitySaving}
             profileLinks={{
               portfolio: resolvedPortfolioLink,
               linkedin: resolvedLinkedinLink,

@@ -498,7 +498,10 @@ export const getProfile = asyncHandler(async (req, res) => {
         bio: bioText,
         experienceYears: expYears,
         avatar: resolvedAvatar,
-        available: user.status === "ACTIVE"
+        available:
+          typeof freelancerProfile?.available === "boolean"
+            ? freelancerProfile.available
+            : user.status === "ACTIVE"
       },
       skills: mergedSkills.length ? mergedSkills : fallbackSkills,
       workExperience: userWorkExperience,
@@ -625,6 +628,9 @@ export const saveProfile = asyncHandler(async (req, res) => {
   }
   if (personal.location !== undefined) freelancerProfileUpdateData.location = personal.location;
   if (personal.headline !== undefined) freelancerProfileUpdateData.jobTitle = personal.headline;
+  if (personal.available !== undefined) {
+    freelancerProfileUpdateData.available = Boolean(personal.available);
+  }
   if (payload.companyName !== undefined) {
     freelancerProfileUpdateData.companyName = payload.companyName;
   }
