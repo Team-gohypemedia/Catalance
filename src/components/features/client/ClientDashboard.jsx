@@ -13,7 +13,6 @@ import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import { useNavigate } from "react-router-dom";
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,9 +33,13 @@ import {
 } from "@/shared/lib/api-client";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { formatINR, INR_PREFIX_PATTERN, normalizeINRText } from "@/shared/lib/currency";
+import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useNotifications } from "@/shared/context/NotificationContext";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
+import BookAppointment from "@/components/features/appointments/BookAppointment";
+import ClientDashboardShell from "@/components/features/client/dashboard/ClientDashboardShell";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import EditProposalDialog from "@/components/features/client/dashboard/EditProposalDialog";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
@@ -637,12 +640,13 @@ const hasFreelancerRole = (user = {}) => {
   return primaryRole === "FREELANCER" || roles.includes("FREELANCER");
 };
 
+const isDraftProjectStatus = (status) =>
+  String(status || "").toUpperCase() === "DRAFT";
+
 const shouldHydrateProjectProposal = (project = {}) => {
   const status = String(project?.status || "").toUpperCase();
   if (CLOSED_PROJECT_STATUSES.has(status)) return false;
-  const hasProposals =
-    Array.isArray(project?.proposals) && project.proposals.length > 0;
-  return status === "DRAFT" || hasProposals;
+  return isDraftProjectStatus(status);
 };
 
 const mapProjectToSavedProposal = (project = {}) =>
@@ -675,7 +679,6 @@ const generateGradient = (id) => {
   return `linear-gradient(135deg, hsl(${c1}, 80%, 60%), hsl(${c2}, 80%, 50%))`;
 };
 
-// ==================== Stats Card Component ====================
 const StatsCard = ({
   title,
   value,
@@ -718,16 +721,13 @@ const StatsCard = ({
           </p>
         )}
         {Icon && (
-          <div className="mt-3 flex -space-x-2 overflow-hidden">
-            {/* Placeholder for stacked avatars if needed */}
-          </div>
+          <div className="mt-3 flex -space-x-2 overflow-hidden" />
         )}
       </CardContent>
     </Card>
   );
 };
 
-// ==================== Talent Item Component ====================
 const TalentItem = ({ name, role, avatar, status = "online", onClick }) => {
   const statusColors = {
     online: "bg-green-500",
@@ -736,10 +736,7 @@ const TalentItem = ({ name, role, avatar, status = "online", onClick }) => {
   };
 
   return (
-    <li
-      className="flex items-center gap-3 group cursor-pointer"
-      onClick={onClick}
-    >
+    <li className="flex items-center gap-3 group cursor-pointer" onClick={onClick}>
       <div className="relative">
         <Avatar className="w-10 h-10">
           <AvatarImage src={avatar} alt={name} />
@@ -757,8 +754,8 @@ const TalentItem = ({ name, role, avatar, status = "online", onClick }) => {
         variant="ghost"
         size="icon"
         className="text-muted-foreground hover:text-primary group-hover:text-primary transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
+        onClick={(event) => {
+          event.stopPropagation();
           onClick && onClick();
         }}
       >
@@ -768,10 +765,122 @@ const TalentItem = ({ name, role, avatar, status = "online", onClick }) => {
   );
 };
 
+const DASHBOARD_APPOINTMENT_SLOTS = [
+  "10:00 AM",
+  "12:30 PM",
+  "03:00 PM",
+  "05:00 PM",
+];
+
+const formatDashboardDate = (
+  value,
+  options = { weekday: "long", month: "short", day: "numeric" },
+) => {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return "Today";
+  }
+
+  return new Intl.DateTimeFormat("en-US", options).format(date);
+};
+
+const formatDashboardRelativeTime = (value) => {
+  if (!value) return "Just now";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Just now";
+  }
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(1, Math.floor(diffMs / (60 * 1000)));
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) {
+    return "Yesterday";
+  }
+
+  return `${diffDays}d ago`;
+};
+
+const getChatMessagePreview = (message) => {
+  if (typeof message === "string") {
+    return message.trim();
+  }
+
+  if (typeof message === "number") {
+    return String(message);
+  }
+
+  if (!message || typeof message !== "object") {
+    return "";
+  }
+
+  if (typeof message.content === "string" && message.content.trim()) {
+    return message.content.trim();
+  }
+
+  const attachmentName =
+    typeof message.attachment?.name === "string" ? message.attachment.name.trim() : "";
+  if (attachmentName) {
+    return `Attachment: ${attachmentName}`;
+  }
+
+  if (message.attachment) {
+    return "Sent an attachment";
+  }
+
+  if (typeof message.senderName === "string" && message.senderName.trim()) {
+    return `Message from ${message.senderName.trim()}`;
+  }
+
+  return "";
+};
+
+const getProjectAcceptedProposal = (project = {}) =>
+  Array.isArray(project?.proposals)
+    ? project.proposals.find(
+        (proposal) => String(proposal?.status || "").toUpperCase() === "ACCEPTED",
+      )
+    : null;
+
+const getProjectPendingProposals = (project = {}) =>
+  Array.isArray(project?.proposals)
+    ? project.proposals
+        .filter(
+          (proposal) => String(proposal?.status || "").toUpperCase() === "PENDING",
+        )
+        .sort(
+          (left, right) =>
+            new Date(right?.createdAt || 0).getTime() -
+            new Date(left?.createdAt || 0).getTime(),
+        )
+    : [];
+
+const hasProjectPaymentDue = (project = {}) =>
+  Boolean(project?.paymentPlan?.nextDueInstallment);
+
+const hasStalePendingProposal = (project = {}) => {
+  const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+  return getProjectPendingProposals(project).some(
+    (proposal) => new Date(proposal?.createdAt || 0).getTime() < twentyFourHoursAgo,
+  );
+};
+
 // ==================== Main Dashboard Component ====================
 const ClientDashboardContent = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const { authFetch } = useAuth();
+  const { notifications, unreadCount } = useNotifications();
   const navigate = useNavigate();
   const storageKeys = useMemo(
     () => getProposalStorageKeys(sessionUser?.id),
@@ -812,6 +921,10 @@ const ClientDashboardContent = () => {
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
   const [freelancerSearch, setFreelancerSearch] = useState("");
   const [isFreelancersLoading, setIsFreelancersLoading] = useState(false);
+  const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
+  const [selectedAppointmentTime, setSelectedAppointmentTime] = useState(
+    DASHBOARD_APPOINTMENT_SLOTS[2],
+  );
   const freelancerPoolCacheRef = useRef({
     userId: null,
     loaded: false,
@@ -950,6 +1063,7 @@ const ClientDashboardContent = () => {
 
     const available = matched.filter((freelancer) => {
       if (alreadyInvitedIds.has(freelancer.id)) return false;
+      if (!isFreelancerOpenToWork(freelancer)) return false;
       const matchScore = Number(freelancer?.matchScore);
       if (!Number.isFinite(matchScore)) return false;
       return Math.round(matchScore) >= MIN_FREELANCER_MATCH_SCORE;
@@ -1226,21 +1340,21 @@ const ClientDashboardContent = () => {
         ]),
     );
 
-    const withoutClosedProjects = savedProposals.filter((proposal) => {
+    const visibleDraftProposals = savedProposals.filter((proposal) => {
       const linkedProjectId = proposal?.syncedProjectId || proposal?.projectId;
       if (!linkedProjectId) return true;
       const linkedStatus = projectStatusById.get(String(linkedProjectId));
       if (!linkedStatus) return true;
-      return !CLOSED_PROJECT_STATUSES.has(linkedStatus);
+      return isDraftProjectStatus(linkedStatus);
     });
 
-    if (withoutClosedProjects.length !== savedProposals.length) {
-      const preferredActiveId = withoutClosedProjects.some(
+    if (visibleDraftProposals.length !== savedProposals.length) {
+      const preferredActiveId = visibleDraftProposals.some(
         (proposal) => proposal.id === activeProposalId,
       )
         ? activeProposalId
-        : withoutClosedProjects[0]?.id || null;
-      persistSavedProposalState(withoutClosedProjects, preferredActiveId);
+        : visibleDraftProposals[0]?.id || null;
+      persistSavedProposalState(visibleDraftProposals, preferredActiveId);
       return;
     }
 
@@ -1280,7 +1394,7 @@ const ClientDashboardContent = () => {
               ...c.freelancer,
               chatId: c.id,
               projectId: projectId, // Add projectId for navigation
-              lastMessage: c.lastMessage,
+              lastMessage: getChatMessagePreview(c.lastMessage),
               projectTitle: c.projectTitle,
             };
           })
@@ -1400,6 +1514,7 @@ const ClientDashboardContent = () => {
   }, []);
 
   const firstName = sessionUser?.fullName?.split(" ")[0] || "User";
+  const renderLegacyDashboard = sessionUser?.id === "__legacy_dashboard__";
 
   const openEditProposal = useCallback(() => {
     if (!savedProposal) return;
@@ -1507,13 +1622,13 @@ const ClientDashboardContent = () => {
   ]);
 
   // Map project status to display
-  const getStatusBadge = (status) => {
+  const getStatusBadge = useCallback((status) => {
     const s = (status || "").toUpperCase();
     if (s === "COMPLETED") return { label: "Completed", variant: "default" };
     if (s === "IN_PROGRESS") return { label: "On Track", variant: "success" };
     if (s === "OPEN") return { label: "Open", variant: "warning" };
     return { label: status || "Pending", variant: "secondary" };
-  };
+  }, []);
 
   // Send proposal to freelancer
   const sendProposalToFreelancer = async (freelancer) => {
@@ -1658,7 +1773,7 @@ const ClientDashboardContent = () => {
     }
   };
 
-  const handlePaymentClick = async (project) => {
+  const handlePaymentClick = useCallback(async (project) => {
     if (!project?.id) return;
 
     setProjectToPay(project);
@@ -1688,13 +1803,13 @@ const ClientDashboardContent = () => {
       setIsProcessingPayment(false);
       setProjectToPay(null);
     }
-  };
+  }, [authFetch, loadProjects, sessionUser?.email, sessionUser?.fullName, sessionUser?.phone, sessionUser?.phoneNumber]);
 
-  const handleIncreaseBudgetClick = (project) => {
+  const handleIncreaseBudgetClick = useCallback((project) => {
     setBudgetProject(project);
     setNewBudget(String(project.budget || ""));
     setShowIncreaseBudget(true);
-  };
+  }, []);
 
   const handleIncreaseBudgetDialogChange = useCallback((open) => {
     setShowIncreaseBudget(open);
@@ -1813,7 +1928,7 @@ const ClientDashboardContent = () => {
       } else {
         // Just updated budget (proposals are still pending, under 48hrs)
         toast.success(
-          `Budget updated to ${formatINR(budgetValue)}! Freelancers will see the new amount.`,
+          `Budget updated to ${formatINR(budgetValue)}! Freelancers will see ${formatINR(Math.round(budgetValue * 0.7))} after the 30% platform margin.`,
         );
       }
 
@@ -1829,8 +1944,497 @@ const ClientDashboardContent = () => {
     }
   };
 
+  const handleSiteNav = useCallback(
+    (key) => {
+      const routes = {
+        home: "/",
+        marketplace: "/marketplace",
+        service: "/service",
+        contact: "/contact",
+      };
+
+      navigate(routes[key] || "/");
+    },
+    [navigate],
+  );
+
+  const handleDashboardNav = useCallback(
+    (key) => {
+      const routes = {
+        dashboard: "/client",
+        proposals: "/client/proposal",
+        projects: "/client/project",
+        messages: "/client/messages",
+        payments: "/client/payments",
+      };
+
+      navigate(routes[key] || "/client");
+    },
+    [navigate],
+  );
+
+  const handleFooterAction = useCallback(
+    (key) => {
+      const routes = {
+        privacy: "/privacy",
+        terms: "/terms",
+        support: "/help",
+      };
+
+      navigate(routes[key] || "/client");
+    },
+    [navigate],
+  );
+
+  const handleOpenNotifications = useCallback(() => {
+    navigate("/client/messages");
+  }, [navigate]);
+
+  const handleOpenQuickProject = useCallback(() => {
+    navigate("/service");
+  }, [navigate]);
+
+  const handleOpenViewProposals = useCallback(() => {
+    if (savedProposal) {
+      setShowViewProposal(true);
+      return;
+    }
+
+    navigate("/client/proposal");
+  }, [navigate, savedProposal]);
+
+  const handleOpenViewProjects = useCallback(() => {
+    navigate("/client/project");
+  }, [navigate]);
+
+  const handleOpenMessenger = useCallback(() => {
+    navigate("/client/messages");
+  }, [navigate]);
+
+  const profile = useMemo(
+    () => ({
+      name: sessionUser?.fullName || sessionUser?.name || "Client",
+      avatar: sessionUser?.avatar || "",
+      initial:
+        (sessionUser?.fullName || sessionUser?.name || sessionUser?.email || "C")
+          .charAt(0)
+          .toUpperCase(),
+    }),
+    [sessionUser?.avatar, sessionUser?.email, sessionUser?.fullName, sessionUser?.name],
+  );
+
+  const hero = useMemo(
+    () => ({
+      greeting,
+      firstName,
+      description: "Here's a quick overview of your workspace today.",
+      dateLabel: formatDashboardDate(new Date(), {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      }).toUpperCase(),
+    }),
+    [firstName, greeting],
+  );
+
+  const dashboardMetricCards = useMemo(
+    () => [
+      {
+        title: "Total Spent",
+        value: formatINR(metrics.totalSpent),
+        iconKey: "wallet",
+        detail:
+          savedProposals.length > 0
+            ? `${savedProposals.length} saved proposal${savedProposals.length > 1 ? "s" : ""}`
+            : null,
+      },
+      {
+        title: "Active Projects",
+        value:
+          metrics.activeProjects > 0
+            ? `${metrics.activeProjects} Ongoing`
+            : "0 Ongoing",
+        iconKey: "folder",
+      },
+      {
+        title: "Total Budget",
+        value: formatINR(metrics.totalBudget),
+        iconKey: "receipt",
+        badge: `FY ${new Date().getFullYear()}`,
+      },
+    ],
+    [metrics.activeProjects, metrics.totalBudget, metrics.totalSpent, savedProposals.length],
+  );
+
+  const recentActivities = useMemo(() => {
+    const fromNotifications = Array.isArray(notifications)
+      ? notifications.slice(0, 4).map((notification, index) => {
+          const type = String(notification?.type || "").toLowerCase();
+          const createdAt = notification?.createdAt || notification?.updatedAt;
+
+          if (type === "chat") {
+            const projectId = notification?.data?.projectId;
+            return {
+              id: notification?.id || `notification-chat-${index}`,
+              iconKey: "message",
+              tone: "amber",
+              title: notification?.title || "New Message",
+              subtitle:
+                notification?.message ||
+                notification?.data?.projectTitle ||
+                "A freelancer sent you a new message.",
+              timeLabel: formatDashboardRelativeTime(createdAt),
+              onClick: () =>
+                navigate(
+                  projectId
+                    ? `/client/messages?projectId=${encodeURIComponent(projectId)}`
+                    : "/client/messages",
+                ),
+            };
+          }
+
+          if (type === "proposal") {
+            return {
+              id: notification?.id || `notification-proposal-${index}`,
+              iconKey: "proposal",
+              tone: "green",
+              title: notification?.title || "Proposal Update",
+              subtitle: notification?.message || "Your proposal workflow has a new update.",
+              timeLabel: formatDashboardRelativeTime(createdAt),
+              onClick: () => navigate("/client/proposal"),
+            };
+          }
+
+          if (
+            type === "task_completed" ||
+            type === "task_verified" ||
+            type === "freelancer_change_resolved"
+          ) {
+            const projectId = notification?.data?.projectId;
+            return {
+              id: notification?.id || `notification-project-${index}`,
+              iconKey: "milestone",
+              tone: "violet",
+              title: notification?.title || "Milestone Completed",
+              subtitle: notification?.message || "A project milestone has been completed.",
+              timeLabel: formatDashboardRelativeTime(createdAt),
+              onClick: () =>
+                navigate(
+                  projectId
+                    ? `/client/project/${encodeURIComponent(projectId)}`
+                    : "/client/project",
+                ),
+            };
+          }
+
+          return {
+            id: notification?.id || `notification-general-${index}`,
+            iconKey: "project",
+            tone: "blue",
+            title: notification?.title || "Workspace Update",
+            subtitle: notification?.message || "Catalance updated your workspace.",
+            timeLabel: formatDashboardRelativeTime(createdAt),
+            onClick: () => navigate("/client/project"),
+          };
+        })
+      : [];
+
+    if (fromNotifications.length > 0) {
+      return fromNotifications;
+    }
+
+    const fallback = [];
+    const latestProject = uniqueProjects[0];
+    const latestAcceptedProject = uniqueProjects.find((project) =>
+      Boolean(getProjectAcceptedProposal(project)),
+    );
+    const latestCompletedProject = uniqueProjects.find(
+      (project) => String(project?.status || "").toUpperCase() === "COMPLETED",
+    );
+    const latestChat = freelancers[0];
+
+    if (latestProject) {
+      fallback.push({
+        id: `activity-project-${latestProject.id}`,
+        iconKey: "project",
+        tone: "blue",
+        title: "Project Updated",
+        subtitle: latestProject.title || "A project was updated.",
+        timeLabel: formatDashboardRelativeTime(
+          latestProject.updatedAt || latestProject.createdAt,
+        ),
+        onClick: () => navigate(`/client/project/${encodeURIComponent(latestProject.id)}`),
+      });
+    }
+
+    if (latestChat) {
+      fallback.push({
+        id: `activity-chat-${latestChat.chatId || latestChat.id}`,
+        iconKey: "message",
+        tone: "amber",
+        title: "New Message",
+        subtitle:
+          latestChat.projectTitle ||
+          getChatMessagePreview(latestChat.lastMessage) ||
+          `From ${latestChat.fullName || latestChat.name || "Freelancer"}`,
+        timeLabel: "Live",
+        onClick: () =>
+          navigate(
+            latestChat.projectId
+              ? `/client/messages?projectId=${encodeURIComponent(latestChat.projectId)}`
+              : "/client/messages",
+          ),
+      });
+    }
+
+    if (savedProposal) {
+      fallback.push({
+        id: `activity-draft-${savedProposal.id}`,
+        iconKey: "success",
+        tone: "green",
+        title: "Proposal Ready",
+        subtitle: resolveProposalTitle(savedProposal),
+        timeLabel: formatDashboardRelativeTime(savedProposal.updatedAt || savedProposal.createdAt),
+        onClick: () => setShowViewProposal(true),
+      });
+    }
+
+    if (latestAcceptedProject || latestCompletedProject) {
+      const project = latestAcceptedProject || latestCompletedProject;
+      fallback.push({
+        id: `activity-success-${project.id}`,
+        iconKey: "milestone",
+        tone: "violet",
+        title:
+          String(project?.status || "").toUpperCase() === "COMPLETED"
+            ? "Milestone Completed"
+            : "Proposal Accepted",
+        subtitle: project.title || "Project progress moved forward.",
+        timeLabel: formatDashboardRelativeTime(project.updatedAt || project.createdAt),
+        onClick: () => navigate(`/client/project/${encodeURIComponent(project.id)}`),
+      });
+    }
+
+    if (fallback.length === 0) {
+      fallback.push({
+        id: "activity-empty",
+        iconKey: "project",
+        tone: "blue",
+        title: "Workspace ready",
+        subtitle: "Start a proposal to populate your dashboard activity feed.",
+        timeLabel: "Now",
+        onClick: () => navigate("/service"),
+      });
+    }
+
+    return fallback.slice(0, 4);
+  }, [freelancers, navigate, notifications, savedProposal, uniqueProjects]);
+
+  const showcaseItems = useMemo(() => {
+    const items = uniqueProjects
+      .filter((project) => {
+        const status = String(project?.status || "").toUpperCase();
+        return ["IN_PROGRESS", "AWAITING_PAYMENT", "OPEN", "DRAFT"].includes(status);
+      })
+      .slice(0, 3)
+      .map((project) => {
+        const acceptedProposal = getProjectAcceptedProposal(project);
+        const pendingProposals = getProjectPendingProposals(project);
+        const statusInfo = getStatusBadge(project.status);
+        const dueInstallment = project?.paymentPlan?.nextDueInstallment;
+        let buttonLabel = "View Project";
+        let buttonTone = "slate";
+        let onAction = () =>
+          navigate(`/client/project/${encodeURIComponent(project.id)}`);
+
+        if (
+          String(project?.status || "").toUpperCase() === "AWAITING_PAYMENT" &&
+          hasProjectPaymentDue(project) &&
+          dueInstallment
+        ) {
+          buttonLabel =
+            isProcessingPayment && projectToPay?.id === project.id
+              ? "Processing..."
+              : `Pay ${dueInstallment.percentage}%`;
+          buttonTone = "amber";
+          onAction = () => {
+            void handlePaymentClick(project);
+          };
+        } else if (hasStalePendingProposal(project)) {
+          buttonLabel = "Increase Budget";
+          buttonTone = "amber";
+          onAction = () => handleIncreaseBudgetClick(project);
+        }
+
+        return {
+          id: `project-${project.id}`,
+          eyebrow:
+            acceptedProposal?.freelancer?.fullName?.split(" ")[0] ||
+            statusInfo.label,
+          title: project.title || "Untitled Project",
+          amount: formatINR(project.budget || 0),
+          secondaryAmount:
+            pendingProposals.length > 0
+              ? `${pendingProposals.length} invite${pendingProposals.length > 1 ? "s" : ""}`
+              : formatDashboardRelativeTime(project.updatedAt || project.createdAt),
+          metricPrimary: acceptedProposal ? statusInfo.label : String(pendingProposals.length || 1),
+          metricSecondary: acceptedProposal
+            ? acceptedProposal?.freelancer?.fullName || "Assigned freelancer"
+            : pendingProposals.length > 0
+              ? "pending proposals"
+              : "workspace ready",
+          buttonLabel,
+          buttonTone,
+          onClick: () => navigate(`/client/project/${encodeURIComponent(project.id)}`),
+          onAction,
+        };
+      });
+
+    if (items.length < 3) {
+      savedProposals.forEach((proposal) => {
+        if (items.length >= 3) return;
+
+        items.push({
+          id: `proposal-${proposal.id}`,
+          eyebrow: resolveProposalServiceLabel(proposal).split(" ")[0] || "Draft",
+          title: resolveProposalTitle(proposal),
+          amount: formatBudget(proposal.budget),
+          secondaryAmount: formatProposalUpdatedAt(proposal),
+          metricPrimary: proposal.timeline || "Draft ready",
+          metricSecondary: "proposal workspace",
+          buttonLabel: "Send Proposal",
+          buttonTone: "amber",
+          onClick: () => {
+            setActiveProposalId(proposal.id);
+            persistActiveProposalSelection(savedProposals, proposal.id, storageKeys);
+            setShowViewProposal(true);
+          },
+          onAction: () => {
+            setActiveProposalId(proposal.id);
+            persistActiveProposalSelection(savedProposals, proposal.id, storageKeys);
+            openFreelancerSelection();
+          },
+        });
+      });
+    }
+
+    while (items.length < 3) {
+      const placeholderId = `placeholder-${items.length}`;
+      items.push({
+        id: placeholderId,
+        eyebrow: "Catalance",
+        title: "Start your next project brief",
+        amount: "Ready",
+        secondaryAmount: "New workspace",
+        metricPrimary: "Fast setup",
+        metricSecondary: "create a proposal in minutes",
+        buttonLabel: "Create Proposal",
+        buttonTone: "amber",
+        onClick: () => navigate("/service"),
+        onAction: () => navigate("/service"),
+      });
+    }
+
+    return items.slice(0, 3);
+  }, [
+    getStatusBadge,
+    handleIncreaseBudgetClick,
+    handlePaymentClick,
+    isProcessingPayment,
+    navigate,
+    openFreelancerSelection,
+    projectToPay?.id,
+    savedProposals,
+    storageKeys,
+    uniqueProjects,
+  ]);
+
+  const activeChats = useMemo(
+    () =>
+      freelancers.slice(0, 2).map((freelancer, index) => ({
+        id: freelancer?.chatId || freelancer?.id || `chat-${index}`,
+        name: freelancer?.fullName || freelancer?.name || "Freelancer",
+        initial:
+          (freelancer?.fullName || freelancer?.name || "F").charAt(0).toUpperCase(),
+        avatar: freelancer?.avatar || "",
+        subtitle:
+          freelancer?.projectTitle ||
+          (Array.isArray(freelancer?.skills) && freelancer.skills.length > 0
+            ? freelancer.skills[0]
+            : "Active conversation"),
+        message: getChatMessagePreview(freelancer?.lastMessage),
+        isOnline: index === 0,
+        onClick: () =>
+          navigate(
+            freelancer?.projectId
+              ? `/client/messages?projectId=${encodeURIComponent(freelancer.projectId)}`
+              : "/client/messages",
+          ),
+      })),
+    [freelancers, navigate],
+  );
+
+  const appointmentProject = useMemo(
+    () =>
+      uniqueProjects.find((project) => {
+        const status = String(project?.status || "").toUpperCase();
+        return ["IN_PROGRESS", "AWAITING_PAYMENT", "OPEN"].includes(status);
+      }) || null,
+    [uniqueProjects],
+  );
+
+  const appointmentManager = useMemo(() => {
+    const manager = appointmentProject?.manager;
+    if (
+      manager?.role === "PROJECT_MANAGER" &&
+      String(manager?.status || "").toUpperCase() === "ACTIVE"
+    ) {
+      return manager;
+    }
+    return manager || null;
+  }, [appointmentProject?.manager]);
+
+  const appointmentCard = useMemo(
+    () => ({
+      managerName: appointmentManager?.fullName || "Project Catalyst",
+      managerStatus: appointmentManager ? "Available Today" : "Available on request",
+      avatar: appointmentManager?.avatar || "",
+      initial:
+        (appointmentManager?.fullName || "P").charAt(0).toUpperCase(),
+      dateLabel: formatDashboardDate(new Date()),
+      slots: DASHBOARD_APPOINTMENT_SLOTS,
+      projectTitle: appointmentProject?.title || null,
+      onBook: () => setBookAppointmentOpen(true),
+    }),
+    [appointmentManager, appointmentProject?.title],
+  );
+
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
+    <>
+      <ClientDashboardShell
+        profile={profile}
+        metrics={dashboardMetricCards}
+        showcaseItems={showcaseItems}
+        recentActivities={recentActivities}
+        activeChats={activeChats}
+        appointmentCard={appointmentCard}
+        hero={hero}
+        unreadCount={unreadCount}
+        draftCount={savedProposals.length}
+        selectedAppointmentTime={selectedAppointmentTime}
+        onSelectAppointmentTime={setSelectedAppointmentTime}
+        onSiteNav={handleSiteNav}
+        onDashboardNav={handleDashboardNav}
+        onOpenNotifications={handleOpenNotifications}
+        onOpenProfile={() => navigate("/client/profile")}
+        onOpenQuickProject={handleOpenQuickProject}
+        onOpenViewProposals={handleOpenViewProposals}
+        onOpenViewProjects={handleOpenViewProjects}
+        onOpenMessenger={handleOpenMessenger}
+        onFooterAction={handleFooterAction}
+      />
+      {renderLegacyDashboard && (
+      <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
       <ClientTopBar label="Dashboard" />
 
       {/* Main Content */}
@@ -1849,15 +2453,6 @@ const ClientDashboardContent = () => {
                     Here&apos;s what&apos;s happening in your Executive Control Room
                     today.
                   </p>
-                </div>
-                <div className="hidden sm:flex gap-2">
-                  <Badge
-                    variant="outline"
-                    className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5" />
-                    System Operational
-                  </Badge>
                 </div>
               </div>
 
@@ -2646,6 +3241,8 @@ const ClientDashboardContent = () => {
           </div>
         </div>
       </main>
+      </div>
+      )}
 
       <ViewProposalDialog
         open={showViewProposal}
@@ -2673,7 +3270,7 @@ const ClientDashboardContent = () => {
             <DialogTitle>Increase Budget</DialogTitle>
             <DialogDescription>
               Update the budget for {budgetProject?.title || "this project"} so
-              freelancers see the latest amount.
+              freelancers see the latest amount after the 30% platform margin.
             </DialogDescription>
           </DialogHeader>
 
@@ -2754,6 +3351,13 @@ const ClientDashboardContent = () => {
         </DialogContent>
       </Dialog>
 
+      <BookAppointment
+        isOpen={bookAppointmentOpen}
+        onClose={() => setBookAppointmentOpen(false)}
+        projectId={appointmentProject?.id || null}
+        projectTitle={appointmentProject?.title || null}
+      />
+
       {/* Freelancer Selection Dialog */}
       <FreelancerSelectionDialog
         open={showFreelancerSelect}
@@ -2793,29 +3397,10 @@ const ClientDashboardContent = () => {
         onOpenChange={setShowSuspensionAlert}
         suspendedAt={sessionUser?.suspendedAt}
       />
-    </div>
+    </>
   );
 };
 
-// ==================== Wrapper with Sidebar ====================
-const ClientDashboard = () => {
-  return (
-    <RoleAwareSidebar>
-      <ClientDashboardContent />
-    </RoleAwareSidebar>
-  );
-};
+const ClientDashboard = () => <ClientDashboardContent />;
 
 export default ClientDashboard;
-
-
-
-
-
-
-
-
-
-
-
-

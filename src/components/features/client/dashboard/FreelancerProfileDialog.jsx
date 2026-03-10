@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getFreelancerAvailabilityMeta } from "@/shared/lib/freelancer-availability";
 
 const PROJECT_IMAGE_PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" fill="none">
@@ -523,6 +524,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     "Freelancer",
   );
   const roleLabel = toDisplayLabel(roleValue).toUpperCase();
+  const availability = getFreelancerAvailabilityMeta(viewingFreelancer);
   const experienceLabel = formatExperience({
     ...viewingFreelancer,
     profileDetails,
@@ -707,6 +709,13 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                       </h2>
                       <Badge className="border-primary/20 bg-primary/15 text-primary">
                         {roleLabel}
+                      </Badge>
+                      <Badge variant="outline" className={availability.badgeClass}>
+                        <span
+                          className={`mr-1.5 h-2 w-2 rounded-full ${availability.dotClass}`}
+                          aria-hidden="true"
+                        />
+                        {availability.label}
                       </Badge>
                       {matchScore && (
                         <Badge

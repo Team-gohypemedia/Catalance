@@ -101,6 +101,7 @@ model FreelancerProfile {
   jobTitle       String?
   companyName    String?
   location       String?
+  available      Boolean  @default(true)
   rating         Decimal? @db.Decimal(3, 1) @default(0)
   reviewCount    Int      @default(0)
   experienceYears Int?    @default(0)
@@ -387,6 +388,11 @@ model Payment {
   currency         String        @default("INR")
   status           PaymentStatus @default(PENDING)
   description      String?       @db.Text
+  payoutSequence   Int?
+  payoutKey        String?
+  payoutLabel      String?
+  payoutPercentage Int?
+  payoutPhaseNumber Int?
   
   // Relations
   projectId        String
@@ -402,6 +408,7 @@ model Payment {
   
   @@index([freelancerId])
   @@index([projectId])
+  @@unique([projectId, freelancerId, payoutSequence])
 }
 
 model Service {

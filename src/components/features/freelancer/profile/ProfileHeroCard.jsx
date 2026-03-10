@@ -12,6 +12,7 @@ import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -51,6 +52,8 @@ const ProfileHeroCard = ({
   openEditPersonalModal,
   openPortfolioModal,
   profileLinks,
+  onToggleAvailability,
+  availabilitySaving,
 }) => {
   const identityTitle = String(
     displayHeadline || onboardingIdentity?.professionalTitle || ""
@@ -71,6 +74,7 @@ const ProfileHeroCard = ({
   const resolvedBio = String(displayBio || personal.bio || "").trim();
   const profileName = String(personal.name || "").trim() || "Your Name";
   const profileHandle = username ? `@${username}` : "@add-username";
+  const availabilityLabel = personal.available ? "Open to Work" : "Offline";
   const profileLinkItems = [
     {
       key: "portfolio",
@@ -208,7 +212,39 @@ const ProfileHeroCard = ({
           </div>
         </div>
 
-        <div className="absolute right-4 top-3 flex items-center gap-2 md:right-6 md:top-4">
+        <div className="absolute right-4 top-3 flex flex-wrap items-center justify-end gap-2 md:right-6 md:top-4">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onToggleAvailability}
+            disabled={availabilitySaving}
+            className={`h-10 rounded-md px-3 text-sm font-semibold ${
+              personal.available
+                ? "border-emerald-500/40 bg-emerald-500/12 text-emerald-200 hover:bg-emerald-500/18"
+                : "border-border/70 bg-background text-muted-foreground hover:bg-muted"
+            }`}
+            title={`Set profile status to ${
+              personal.available ? "Offline" : "Open to Work"
+            }`}
+          >
+            {availabilitySaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    personal.available ? "bg-emerald-400" : "bg-muted-foreground/80"
+                  }`}
+                  aria-hidden="true"
+                />
+                {availabilityLabel}
+              </>
+            )}
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -252,12 +288,30 @@ const ProfileHeroCard = ({
         </div>
 
         <div className="min-w-0 space-y-1">
-          <h1
-            title={profileName}
-            className="min-w-0 max-w-full truncate text-3xl font-bold tracking-tight text-foreground md:text-4xl"
-          >
-            {profileName}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1
+              title={profileName}
+              className="min-w-0 max-w-full truncate text-3xl font-bold tracking-tight text-foreground md:text-4xl"
+            >
+              {profileName}
+            </h1>
+            <Badge
+              variant="outline"
+              className={`shrink-0 ${
+                personal.available
+                  ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-300"
+                  : "border-border/70 bg-background/40 text-muted-foreground"
+              }`}
+            >
+              <span
+                className={`mr-1.5 h-2 w-2 rounded-full ${
+                  personal.available ? "bg-emerald-400" : "bg-muted-foreground/80"
+                }`}
+                aria-hidden="true"
+              />
+              {availabilityLabel}
+            </Badge>
+          </div>
           <p className="text-base text-muted-foreground">{profileHandle}</p>
           <p className="max-w-5xl text-base leading-relaxed text-foreground">
             {resolvedBio || "Add a short professional bio to showcase your expertise."}

@@ -3,6 +3,7 @@ import CatalanceHero from "@/components/sections/home/CatalanceHero";
 import ServiceCategoryCards from "@/components/sections/home/ServiceCategoryCards";
 import VibeCodingHelp from "@/components/sections/home/VibeCodingHelp";
 import PortfolioGallery from "@/components/sections/home/PortfolioGallery";
+import FreelancerJoinSection from "@/components/sections/home/FreelancerJoinSection";
 
 const Home = () => {
   React.useEffect(() => {
@@ -18,6 +19,7 @@ const Home = () => {
       <ServiceCategoryCards />
       <VibeCodingHelp />
       <PortfolioGallery />
+      <FreelancerJoinSection />
     </div>
   );
 };

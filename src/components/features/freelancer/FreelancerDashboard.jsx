@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Gavel from "lucide-react/dist/esm/icons/gavel";
 import Video from "lucide-react/dist/esm/icons/video";
@@ -412,6 +412,53 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
   };
 };
 
+const ACTIVITY_TONE_STYLES = {
+  emerald: {
+    icon: "bg-emerald-500/12 text-emerald-400 ring-1 ring-emerald-500/20",
+    badge: "bg-emerald-500/12 text-emerald-300",
+  },
+  amber: {
+    icon: "bg-amber-500/12 text-amber-300 ring-1 ring-amber-500/20",
+    badge: "bg-amber-500/12 text-amber-200",
+  },
+  blue: {
+    icon: "bg-blue-500/12 text-blue-300 ring-1 ring-blue-500/20",
+    badge: "bg-blue-500/12 text-blue-200",
+  },
+  violet: {
+    icon: "bg-violet-500/12 text-violet-300 ring-1 ring-violet-500/20",
+    badge: "bg-violet-500/12 text-violet-200",
+  },
+  rose: {
+    icon: "bg-rose-500/12 text-rose-300 ring-1 ring-rose-500/20",
+    badge: "bg-rose-500/12 text-rose-200",
+  },
+  slate: {
+    icon: "bg-secondary/70 text-muted-foreground ring-1 ring-border",
+    badge: "bg-secondary/70 text-muted-foreground",
+  },
+};
+
+const formatDashboardActivityTime = (value) => {
+  if (!value) return "Now";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Now";
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(1, Math.floor(diffMs / (60 * 1000)));
+
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Yesterday";
+
+  return `${diffDays}d ago`;
+};
+
 export const DashboardContent = ({ _roleOverride }) => {
   const [sessionUser, setSessionUser] = useState(null);
   const { authFetch, user } = useAuth();
@@ -442,7 +489,7 @@ export const DashboardContent = ({ _roleOverride }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useNotifications();
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = useCallback((notification) => {
     markAsRead(notification.id);
     if (notification.type === "chat" && notification.data) {
       const service = notification.data.service || "";
@@ -456,10 +503,34 @@ export const DashboardContent = ({ _roleOverride }) => {
           ? `/freelancer/messages?projectId=${projectId}`
           : "/freelancer/messages"
       );
-    } else if (notification.type === "proposal") {
-      navigate("/freelancer/proposals");
+      return;
     }
-  };
+
+    if (notification.type === "proposal") {
+      const { status, projectId } = notification.data || {};
+      if (status === "ACCEPTED" && projectId) {
+        navigate(`/freelancer/project/${projectId}`);
+      } else if (status === "ACCEPTED") {
+        navigate("/freelancer/proposals/accepted");
+      } else {
+        navigate("/freelancer/proposals");
+      }
+      return;
+    }
+
+    if (
+      (notification.type === "meeting_scheduled" ||
+        notification.type === "task_completed" ||
+        notification.type === "task_verified" ||
+        notification.type === "task_unverified") &&
+      notification.data?.projectId
+    ) {
+      navigate(`/freelancer/project/${notification.data.projectId}`);
+      return;
+    }
+
+    navigate("/freelancer");
+  }, [markAsRead, navigate]);
 
   const effectiveUser = user ?? sessionUser;
   const primaryRole = String(effectiveUser?.role || "").toUpperCase();
@@ -659,6 +730,221 @@ export const DashboardContent = ({ _roleOverride }) => {
     }).format(amount);
   };
 
+  const activityItems = useMemo(() => {
+    const items = [];
+    const pushItem = (item) => {
+      if (!item || items.some((entry) => entry.id === item.id)) return;
+      items.push(item);
+    };
+
+    notifications.slice(0, 5).forEach((notification, index) => {
+      const type = String(notification?.type || "").toLowerCase();
+      const proposalStatus = String(notification?.data?.status || "").toUpperCase();
+      const projectTitle =
+        notification?.data?.projectTitle ||
+        notification?.data?.title ||
+        notification?.title ||
+        "Catalance";
+
+      let item = null;
+
+      if (type === "proposal") {
+        const accepted = proposalStatus === "ACCEPTED";
+        item = {
+          id: notification?.id || `activity-proposal-${index}`,
+          title: accepted
+            ? "Your proposal has been accepted."
+            : notification?.title || "There is a proposal update.",
+          subtitle: accepted
+            ? `${projectTitle} is ready for delivery and client collaboration.`
+            : notification?.message || `${projectTitle} has a new proposal status update.`,
+          timeLabel: formatDashboardActivityTime(notification?.createdAt),
+          icon: accepted ? Sparkles : Gavel,
+          tone: accepted ? "emerald" : "amber",
+          badge: accepted ? "Accepted" : "Proposal",
+          isUnread: true,
+          onClick: () => handleNotificationClick(notification),
+        };
+      } else if (type === "chat") {
+        item = {
+          id: notification?.id || `activity-chat-${index}`,
+          title: notification?.title || "You received a new message.",
+          subtitle:
+            notification?.message ||
+            "Open Messages to continue the conversation with your client.",
+          timeLabel: formatDashboardActivityTime(notification?.createdAt),
+          icon: MessageSquare,
+          tone: "blue",
+          badge: "Message",
+          isUnread: true,
+          onClick: () => handleNotificationClick(notification),
+        };
+      } else if (type === "meeting_scheduled") {
+        item = {
+          id: notification?.id || `activity-meeting-${index}`,
+          title: notification?.title || "A new meeting has been scheduled.",
+          subtitle:
+            notification?.message ||
+            "Check the meeting details and join on time from your project workspace.",
+          timeLabel: formatDashboardActivityTime(notification?.createdAt),
+          icon: Video,
+          tone: "violet",
+          badge: "Meeting",
+          isUnread: true,
+          onClick: () => handleNotificationClick(notification),
+        };
+      } else if (type === "task_verified") {
+        item = {
+          id: notification?.id || `activity-task-verified-${index}`,
+          title: notification?.title || "Your submitted work has been verified.",
+          subtitle:
+            notification?.message ||
+            "A client or manager approved your latest task submission.",
+          timeLabel: formatDashboardActivityTime(notification?.createdAt),
+          icon: TrendingUp,
+          tone: "emerald",
+          badge: "Verified",
+          isUnread: true,
+          onClick: () => handleNotificationClick(notification),
+        };
+      } else if (type === "task_completed") {
+        item = {
+          id: notification?.id || `activity-task-complete-${index}`,
+          title: notification?.title || "A project milestone has been completed.",
+          subtitle:
+            notification?.message ||
+            "Review the latest progress update in your active project workspace.",
+          timeLabel: formatDashboardActivityTime(notification?.createdAt),
+          icon: Sparkles,
+          tone: "emerald",
+          badge: "Milestone",
+          isUnread: true,
+          onClick: () => handleNotificationClick(notification),
+        };
+      } else if (type === "task_unverified") {
+        item = {
+          id: notification?.id || `activity-task-revision-${index}`,
+          title: notification?.title || "A submitted task needs updates.",
+          subtitle:
+            notification?.message ||
+            "Open the project and review the requested revision notes.",
+          timeLabel: formatDashboardActivityTime(notification?.createdAt),
+          icon: Clock,
+          tone: "rose",
+          badge: "Revision",
+          isUnread: true,
+          onClick: () => handleNotificationClick(notification),
+        };
+      }
+
+      if (!item && (notification?.title || notification?.message)) {
+        item = {
+          id: notification?.id || `activity-general-${index}`,
+          title: notification?.title || "New activity on Catalance.",
+          subtitle: notification?.message || "Open your dashboard to review the update.",
+          timeLabel: formatDashboardActivityTime(notification?.createdAt),
+          icon: Sparkles,
+          tone: "slate",
+          badge: "Update",
+          isUnread: true,
+          onClick: () => handleNotificationClick(notification),
+        };
+      }
+
+      pushItem(item);
+    });
+
+    if (items.length < 4 && metrics.acceptedProposals.length > 0) {
+      const acceptedProposal = metrics.acceptedProposals[0];
+      pushItem({
+        id: `activity-project-started-${acceptedProposal.id}`,
+        title: "Your project has started.",
+        subtitle: `${
+          acceptedProposal.project?.title || "Your accepted project"
+        } is now active and ready for execution.`,
+        timeLabel: formatDashboardActivityTime(
+          acceptedProposal.project?.updatedAt ||
+            acceptedProposal.updatedAt ||
+            acceptedProposal.createdAt
+        ),
+        icon: Sparkles,
+        tone: "emerald",
+        badge: "Active Project",
+        isUnread: false,
+        onClick: () =>
+          navigate(`/freelancer/project/${acceptedProposal.project?.id}`),
+      });
+    }
+
+    if (items.length < 4 && metrics.pendingProposals.length > 0) {
+      const pendingProposal = metrics.pendingProposals[0];
+      pushItem({
+        id: `activity-pending-proposal-${pendingProposal.id}`,
+        title: "Your proposal is awaiting client response.",
+        subtitle: `${
+          pendingProposal.project?.title || "A recent proposal"
+        } is still pending review.`,
+        timeLabel: formatDashboardActivityTime(
+          pendingProposal.updatedAt || pendingProposal.createdAt
+        ),
+        icon: Gavel,
+        tone: "amber",
+        badge: "Pending",
+        isUnread: false,
+        onClick: () => navigate("/freelancer/proposals"),
+      });
+    }
+
+    if (items.length < 4 && upcomingMeeting) {
+      pushItem({
+        id: `activity-upcoming-meeting-${upcomingMeeting.id || upcomingMeeting.date}`,
+        title: "You have an upcoming meeting.",
+        subtitle: `${upcomingMeeting.title || "Client meeting"} starts at ${
+          upcomingMeeting.startHour
+        }:00.`,
+        timeLabel: formatDashboardActivityTime(upcomingMeeting.date),
+        icon: Video,
+        tone: "violet",
+        badge: "Upcoming",
+        isUnread: false,
+        onClick: () =>
+          window.open(
+            upcomingMeeting.meetingLink || "https://meet.google.com/",
+            "_blank"
+          ),
+      });
+    }
+
+    if (!items.length) {
+      pushItem({
+        id: "activity-empty",
+        title: "You're all caught up.",
+        subtitle:
+          "Proposal decisions, project starts, milestones, and meetings will appear here.",
+        timeLabel: "Now",
+        icon: Sparkles,
+        tone: "slate",
+        badge: "Activity",
+        isUnread: false,
+        onClick: () => navigate("/freelancer/proposals"),
+      });
+    }
+
+    return items.slice(0, 4);
+  }, [
+    handleNotificationClick,
+    metrics.acceptedProposals,
+    metrics.pendingProposals,
+    navigate,
+    notifications,
+    upcomingMeeting,
+  ]);
+
+  const unreadActivityCount = useMemo(
+    () => activityItems.filter((item) => item.isUnread).length,
+    [activityItems]
+  );
+
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
 
@@ -801,6 +1087,78 @@ export const DashboardContent = ({ _roleOverride }) => {
                       response
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Activity Feed */}
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Activity</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Proposal decisions, project starts, meetings, and milestone
+                      updates appear here.
+                    </p>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className="w-fit border border-border/70 bg-secondary/40 text-foreground"
+                  >
+                    {unreadActivityCount > 0
+                      ? `${unreadActivityCount} new`
+                      : "Live feed"}
+                  </Badge>
+                </div>
+
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
+                  {activityItems.map((item, index) => {
+                    const Icon = item.icon;
+                    const tone =
+                      ACTIVITY_TONE_STYLES[item.tone] || ACTIVITY_TONE_STYLES.slate;
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={item.onClick}
+                        className={`flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-secondary/20 ${
+                          index < activityItems.length - 1 ? "border-b border-border/70" : ""
+                        }`}
+                      >
+                        <div
+                          className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${tone.icon}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {item.title}
+                                </p>
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ${tone.badge}`}
+                                >
+                                  {item.badge}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {item.subtitle}
+                              </p>
+                            </div>
+
+                            <span className="shrink-0 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                              {item.timeLabel}
+                            </span>
+                          </div>
+                        </div>
+
+                        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

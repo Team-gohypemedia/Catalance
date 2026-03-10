@@ -218,6 +218,10 @@ const buildTier1Where = (query) => {
       freelancer: {
         role: "FREELANCER",
         status: "ACTIVE",
+        OR: [
+          { freelancerProfile: { is: null } },
+          { freelancerProfile: { is: { available: true } } }
+        ]
       },
     },
   ];
@@ -566,6 +570,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
           status: true,
           freelancerProfile: {
             select: {
+              available: true,
               rating: true,
               reviewCount: true,
               skills: true,

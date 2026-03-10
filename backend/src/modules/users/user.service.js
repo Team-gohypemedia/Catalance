@@ -108,6 +108,7 @@ const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "jobTitle",
   "companyName",
   "location",
+  "available",
   "rating",
   "reviewCount",
   "experienceYears",
@@ -163,6 +164,7 @@ const resolveFreelancerProfileRecord = (user = null) => {
       reviewCount: 0,
       rating: 0,
       experienceYears: 0,
+      available: true,
       profileDetails: {}
     };
   }
@@ -190,6 +192,10 @@ const resolveFreelancerProfileRecord = (user = null) => {
     jobTitle: read("jobTitle") ?? null,
     companyName: read("companyName") ?? null,
     location: read("location") ?? null,
+    available:
+      typeof read("available") === "boolean"
+        ? read("available")
+        : user?.status === "ACTIVE",
     rating: read("rating") ?? 0,
     reviewCount: Number.isFinite(Number(reviewCountRaw)) ? Number(reviewCountRaw) : 0,
     experienceYears: Number.isFinite(Number(experienceYearsRaw))
@@ -1595,6 +1601,18 @@ export const listUsers = async (filters = {}) => {
     ];
   }
 
+  if (normalizedRoleFilter === "FREELANCER") {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : []),
+      {
+        OR: [
+          { freelancerProfile: { is: null } },
+          { freelancerProfile: { is: { available: true } } }
+        ]
+      }
+    ];
+  }
+
   if (onboardingComplete !== undefined) {
     where.onboardingComplete = onboardingComplete;
   }
@@ -2503,6 +2521,7 @@ export const sanitizeUser = (user) => {
     location: identityLocation || resolvedFreelancerProfile.location || null,
     jobTitle: identityJobTitle || resolvedFreelancerProfile.jobTitle || null,
     companyName: resolvedFreelancerProfile.companyName || null,
+    available: resolvedFreelancerProfile.available,
     rating: resolvedFreelancerProfile.rating ?? 0,
     reviewCount: resolvedFreelancerProfile.reviewCount ?? 0,
     experienceYears: resolvedFreelancerProfile.experienceYears ?? 0,

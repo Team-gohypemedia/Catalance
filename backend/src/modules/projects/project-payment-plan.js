@@ -28,7 +28,7 @@ const INSTALLMENT_DEFINITIONS = Object.freeze([
   },
 ]);
 
-const normalizeAmount = (value) => {
+export const normalizeProjectAmount = (value) => {
   const parsed = Number(value || 0);
   if (!Number.isFinite(parsed)) return 0;
   return Math.max(0, Math.round(parsed));
@@ -54,7 +54,7 @@ const toTaskIdArray = (value) => {
 };
 
 const buildInstallmentAmounts = (totalAmount) => {
-  const safeTotal = normalizeAmount(totalAmount);
+  const safeTotal = normalizeProjectAmount(totalAmount);
   const initialAmount = Math.round(safeTotal * 0.2);
   const secondAmount = Math.round(safeTotal * 0.4);
   const finalAmount = Math.max(0, safeTotal - initialAmount - secondAmount);
@@ -62,7 +62,7 @@ const buildInstallmentAmounts = (totalAmount) => {
   return [initialAmount, secondAmount, finalAmount];
 };
 
-const getPhaseCompletionSummary = (project) => {
+export const getProjectPhaseCompletionSummary = (project) => {
   const sop = getSopFromTitle(project?.title || "");
   const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
 
@@ -112,7 +112,7 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
     return null;
   }
 
-  const totalAmount = normalizeAmount(acceptedProposal.amount || project?.budget || 0);
+  const totalAmount = normalizeProjectAmount(acceptedProposal.amount || project?.budget || 0);
   if (totalAmount <= 0) {
     if (requireAcceptedProposal) {
       throw new AppError("Invalid project amount for payment", 400);
@@ -120,9 +120,9 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
     return null;
   }
 
-  const paidAmount = Math.min(normalizeAmount(project?.spent || 0), totalAmount);
+  const paidAmount = Math.min(normalizeProjectAmount(project?.spent || 0), totalAmount);
   const remainingAmount = Math.max(0, totalAmount - paidAmount);
-  const phaseSummary = getPhaseCompletionSummary(project);
+  const phaseSummary = getProjectPhaseCompletionSummary(project);
   const installmentAmounts = buildInstallmentAmounts(totalAmount);
 
   let cumulativeAmount = 0;
