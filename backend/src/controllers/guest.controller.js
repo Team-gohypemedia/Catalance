@@ -1504,7 +1504,7 @@ ${isInitial ? startTaskBlock : followupTaskBlock}
 - Do not ask extra unrelated questions.
 - If options are provided for the required next question, ask user to choose from those options.
 - Do not say "type below" or ask for free-text when options are present.
-- Keep under 300 words.
+- Keep under 200 words.
 
 Return strict JSON only:
     {
