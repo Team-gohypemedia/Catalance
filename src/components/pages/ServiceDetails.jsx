@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/shared/context/AuthContext";
-import { CheckCircle2, Star, Clock, FileIcon, Search, ChevronDown } from "lucide-react";
+import { CheckCircle2, Star, Clock, FileIcon, Search, ChevronDown, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
@@ -357,7 +357,7 @@ const ServiceDetails = () => {
                             </div>
                         ) : (
                             <div className="p-8 rounded-2xl border border-dashed border-white/5 bg-white/[0.02] text-center">
-                                <p className="text-sm text-[#a1a1aa] font-medium">No specific deliverables listed yet.</p>
+                                <p className="text-sm text-[#a1a1aa] font-medium">No deliverables listed yet.</p>
                             </div>
                         )}
                     </div>
@@ -376,7 +376,7 @@ const ServiceDetails = () => {
                             </div>
                         ) : (
                             <div className="p-6 rounded-2xl border border-dashed border-white/5 bg-white/[0.02] text-center">
-                                <p className="text-xs text-[#a1a1aa] font-medium uppercase tracking-wider">No specific tools mentioned.</p>
+                                <p className="text-xs text-[#a1a1aa] font-medium uppercase tracking-wider">Tools not specified yet</p>
                             </div>
                         )}
                     </div>
@@ -421,7 +421,7 @@ const ServiceDetails = () => {
                             </div>
                         ) : (
                             <div className="p-12 rounded-2xl border border-dashed border-white/5 bg-white/[0.02] text-center">
-                                <p className="text-sm text-[#a1a1aa] font-medium">No previous project highlights shared yet.</p>
+                                <p className="text-sm text-[#a1a1aa] font-medium">No portfolio added yet</p>
                             </div>
                         )}
                     </div>

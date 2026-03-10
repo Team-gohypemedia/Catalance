@@ -1,0 +1,23 @@
+[
+  {
+    "id": "cmmad5oi50007151v0xoj8lod",
+    "service": "Web Development",
+    "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/941479a8-7d33-4b4c-bf92-706c86ba1bfe.png",
+    "startingPrice": 100000,
+    "deliveryTime": "Not specified"
+  },
+  {
+    "id": "cmmagl33i0009rf3821piudrm",
+    "service": "Social Media Management",
+    "coverImage": null,
+    "startingPrice": 10000,
+    "deliveryTime": "Not specified"
+  },
+  {
+    "id": "cmmagl3fy000brf38uaor30mh",
+    "service": "Performance Marketing / Paid Ads",
+    "coverImage": null,
+    "startingPrice": 5000,
+    "deliveryTime": "Not specified"
+  }
+]

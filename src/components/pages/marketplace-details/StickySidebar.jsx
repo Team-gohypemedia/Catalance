@@ -277,11 +277,16 @@ const StickySidebar = ({
                         {freelancer?.freelancerProfile?.jobTitle && (
                             <div className="text-xs text-[#a1a1aa] mb-1">{freelancer.freelancerProfile.jobTitle}</div>
                         )}
-                        <div className="flex items-center gap-1.5 text-xs font-medium mt-1">
+                        <div className="flex items-center gap-1.5 text-xs font-medium mt-1 mb-1">
                             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
                             <span className="text-amber-500">{Number(service?.averageRating || 0) > 0 ? Number(service.averageRating).toFixed(1) : "New"}</span>
                             {service?.reviewCount > 0 && <span className="text-[#a1a1aa]">({service.reviewCount} reviews)</span>}
                         </div>
+                        {service?.portfolioCount > 0 && (
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#a1a1aa] font-medium uppercase tracking-wider">
+                                <span>{service.portfolioCount} portfolio project{service.portfolioCount !== 1 ? 's' : ''}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
