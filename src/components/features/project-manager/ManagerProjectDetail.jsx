@@ -50,6 +50,8 @@ import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { KanbanBoard } from "./KanbanBoard";
 import { FreelancerReassignStepper } from "./FreelancerReassignStepper";
 
+const MAX_FREELANCER_CHANGE_REQUESTS = 2;
+
 const getPhaseIcon = (status) => {
   switch (status) {
     case "completed":
@@ -91,6 +93,17 @@ const formatDate = (dateString) => {
   });
 };
 
+const getLatestAssignmentProposal = (project) => {
+  const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+  return (
+    proposals.find((proposal) => proposal?.status === "ACCEPTED") ||
+    proposals.find((proposal) => proposal?.status === "REPLACED") ||
+    proposals.find((proposal) => proposal?.status === "REJECTED") ||
+    proposals[0] ||
+    null
+  );
+};
+
 const formatTime = (dateString) => {
   return new Date(dateString).toLocaleString("en-IN", {
     month: "short",
@@ -119,6 +132,8 @@ const ManagerProjectDetailContent = () => {
   const [generatingTasks, setGeneratingTasks] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [escrowReleasing, setEscrowReleasing] = useState(false);
+  const [availableFreelancers, setAvailableFreelancers] = useState([]);
+  const [loadingFreelancers, setLoadingFreelancers] = useState(false);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -162,11 +177,45 @@ const ManagerProjectDetailContent = () => {
     }
   }, [authFetch, projectId]);
 
+  const fetchAvailableFreelancers = useCallback(async () => {
+    try {
+      setLoadingFreelancers(true);
+      const res = await authFetch(
+        "/users?role=FREELANCER&status=ACTIVE&onboardingComplete=true"
+      );
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(payload?.message || "Failed to load freelancers");
+      }
+
+      const freelancers = Array.isArray(payload?.data) ? payload.data : [];
+      setAvailableFreelancers(
+        [...freelancers].sort((left, right) =>
+          String(left?.fullName || "").localeCompare(
+            String(right?.fullName || "")
+          )
+        )
+      );
+    } catch (error) {
+      console.error("Failed to load freelancers:", error);
+      toast.error(error.message || "Failed to load freelancers");
+    } finally {
+      setLoadingFreelancers(false);
+    }
+  }, [authFetch]);
+
   useEffect(() => {
     fetchProject();
     fetchMessages();
     fetchTasks();
   }, [fetchProject, fetchMessages, fetchTasks]);
+
+  useEffect(() => {
+    if (reassignOpen) {
+      fetchAvailableFreelancers();
+    }
+  }, [reassignOpen, fetchAvailableFreelancers]);
 
   // --- Kanban Handlers ---
   const handleAddTask = async (taskData) => {
@@ -255,30 +304,88 @@ const ManagerProjectDetailContent = () => {
 
   // --- Reassignment Handlers ---
   const handlePauseProject = async () => {
-    const res = await authFetch(`/projects/${projectId}/pause`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to pause project");
+    const res = await authFetch(`/projects/${projectId}/pause`, {
+      method: "POST",
+    });
+    const payload = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(payload?.message || "Failed to pause project");
+    }
+
+    if (payload?.data) {
+      setProject(payload.data);
+      return;
+    }
+
     await fetchProject();
   };
 
   const handleRemoveFreelancer = async () => {
-    const res = await authFetch(`/projects/${projectId}/remove-freelancer`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to remove freelancer");
+    const res = await authFetch(`/projects/${projectId}/remove-freelancer`, {
+      method: "POST",
+    });
+    const payload = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(payload?.message || "Failed to remove freelancer");
+    }
+
     await fetchProject();
   };
 
-  const handleInviteReplacement = async (email) => {
+  const handleAssignReplacement = async (freelancerId) => {
     const res = await authFetch(`/projects/${projectId}/reassign-freelancer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newFreelancerEmail: email })
+      body: JSON.stringify({ newFreelancerId: freelancerId }),
     });
-    if (!res.ok) throw new Error("Failed to send invite");
+    const payload = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(payload?.message || "Failed to assign freelancer");
+    }
+
+    if (payload?.data) {
+      setProject(payload.data);
+    } else {
+      await fetchProject();
+    }
+
+    toast.success(payload?.message || "Replacement freelancer assigned");
   };
 
-  // Get accepted proposal for freelancer info
-  const acceptedProposal = useMemo(() => {
-    return project?.proposals?.find((p) => p.status === "ACCEPTED");
-  }, [project]);
+  const assignmentProposal = useMemo(
+    () => getLatestAssignmentProposal(project),
+    [project]
+  );
+
+  const freelancerChangeRequests = useMemo(
+    () =>
+      Array.isArray(project?.freelancerChangeRequests)
+        ? project.freelancerChangeRequests
+        : [],
+    [project?.freelancerChangeRequests]
+  );
+
+  const pendingFreelancerChangeRequest = useMemo(
+    () =>
+      [...freelancerChangeRequests]
+        .reverse()
+        .find(
+          (request) =>
+            String(request?.status || "").toUpperCase() === "PENDING"
+        ) || null,
+    [freelancerChangeRequests]
+  );
+
+  const latestFreelancerChangeRequest = useMemo(
+    () =>
+      freelancerChangeRequests.length > 0
+        ? freelancerChangeRequests[freelancerChangeRequests.length - 1]
+        : null,
+    [freelancerChangeRequests]
+  );
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -286,7 +393,7 @@ const ManagerProjectDetailContent = () => {
     setSending(true);
     try {
       const clientId = project?.ownerId;
-      const freelancerId = acceptedProposal?.freelancerId;
+      const freelancerId = assignmentProposal?.freelancerId;
       const serviceKey =
         clientId && freelancerId
           ? `CHAT:${projectId}:${clientId}:${freelancerId}`
@@ -328,12 +435,13 @@ const ManagerProjectDetailContent = () => {
     }
   };
 
-  const freelancer = acceptedProposal?.freelancer;
-  const freelancerPay = acceptedProposal?.amount
-    ? Math.round(acceptedProposal.amount * 0.7)
+  const freelancer = assignmentProposal?.freelancer;
+  const freelancerPay = assignmentProposal?.amount
+    ? Math.round(assignmentProposal.amount * 0.7)
     : project?.budget
       ? Math.round(project.budget * 0.7)
       : 0;
+  const freelancerChangeCount = Number(project?.freelancerChangeCount || 0);
 
   // Determine SOP based on project title
   const activeSOP = useMemo(() => {
@@ -466,7 +574,9 @@ const ManagerProjectDetailContent = () => {
                 className="text-orange-600 border-orange-200 hover:bg-orange-50"
               >
                 <Settings className="h-4 w-4 mr-2" />
-                Reassign Freelancer
+                {pendingFreelancerChangeRequest
+                  ? "Resolve Change Request"
+                  : "Reassign Freelancer"}
               </Button>
               <Button
                 variant="outline"
@@ -717,6 +827,83 @@ const ManagerProjectDetailContent = () => {
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {(pendingFreelancerChangeRequest || freelancerChangeCount > 0) && (
+                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      Freelancer Change
+                    </CardTitle>
+                    <CardDescription>
+                      {pendingFreelancerChangeRequest
+                        ? "The client has requested a replacement freelancer."
+                        : `${freelancerChangeCount}/${MAX_FREELANCER_CHANGE_REQUESTS} change requests have been used on this project.`}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-3 py-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Requests Used
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {freelancerChangeCount}/{MAX_FREELANCER_CHANGE_REQUESTS}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          pendingFreelancerChangeRequest
+                            ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                            : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                        }
+                      >
+                        {pendingFreelancerChangeRequest ? "Pending" : "Resolved"}
+                      </Badge>
+                    </div>
+
+                    {pendingFreelancerChangeRequest ? (
+                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-400">
+                          Client Reason
+                        </p>
+                        <p className="mt-2 text-sm text-foreground">
+                          {pendingFreelancerChangeRequest.reason}
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Request {pendingFreelancerChangeRequest.requestNumber || 1} of{" "}
+                          {MAX_FREELANCER_CHANGE_REQUESTS}
+                        </p>
+                        {pendingFreelancerChangeRequest.previousFreelancerName && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Current freelancer:{" "}
+                            {pendingFreelancerChangeRequest.previousFreelancerName}
+                          </p>
+                        )}
+                      </div>
+                    ) : latestFreelancerChangeRequest ? (
+                      <div className="rounded-lg border border-border/60 bg-background/30 p-3 text-sm text-muted-foreground">
+                        Last request {latestFreelancerChangeRequest.requestNumber || freelancerChangeCount}{" "}
+                        was completed
+                        {latestFreelancerChangeRequest.replacementFreelancerName
+                          ? ` and reassigned to ${latestFreelancerChangeRequest.replacementFreelancerName}.`
+                          : "."}
+                      </div>
+                    ) : null}
+
+                    <Button
+                      variant={pendingFreelancerChangeRequest ? "default" : "outline"}
+                      className="w-full"
+                      onClick={() => setReassignOpen(true)}
+                    >
+                      <Settings className="mr-2 h-4 w-4" />
+                      {pendingFreelancerChangeRequest
+                        ? "Process Request"
+                        : "Open Reassignment Flow"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Communication Log */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
                 <CardHeader className="border-b border-border/60 pb-3">
@@ -882,8 +1069,19 @@ const ManagerProjectDetailContent = () => {
             onOpenChange={setReassignOpen}
             onPauseProject={handlePauseProject}
             onRemoveFreelancer={handleRemoveFreelancer}
-            onInviteReplacement={handleInviteReplacement}
+            onAssignReplacement={handleAssignReplacement}
             currentFreelancer={freelancer}
+            freelancers={availableFreelancers}
+            loadingFreelancers={loadingFreelancers}
+            requestContext={
+              pendingFreelancerChangeRequest
+                ? {
+                    reason: pendingFreelancerChangeRequest.reason,
+                    requestNumber: pendingFreelancerChangeRequest.requestNumber,
+                    maxRequests: MAX_FREELANCER_CHANGE_REQUESTS,
+                  }
+                : null
+            }
           />
         </div>
       </div>

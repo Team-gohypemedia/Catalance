@@ -69,6 +69,53 @@ const statusConfig = {
   },
 };
 
+const CircularProgress = ({ progress, gradient, size = 52, strokeWidth = 4 }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          className="text-muted/40"
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          className="text-primary"
+          style={{
+            stroke: "url(#progressGradient)",
+          }}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
+          strokeDasharray={circumference}
+        />
+        <defs>
+          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="hsl(var(--primary))" />
+            <stop offset="100%" stopColor="#facc15" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-xs font-bold text-foreground">{progress}%</span>
+      </div>
+    </div>
+  );
+};
+
 const ProjectCard = ({ project }) => {
   const config = statusConfig[project.status];
   const StatusIcon = config.icon;
@@ -85,89 +132,118 @@ const ProjectCard = ({ project }) => {
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      whileHover={{ y: -6 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+      whileHover={{ y: -8, transition: { duration: 0.25 } }}
       className="h-full"
     >
-      <Card className="group relative h-full overflow-hidden border border-border/50 bg-card/80 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-primary/40 hover:shadow-[0_25px_80px_-50px_rgba(253,200,0,0.65)]">
-        <div
-          className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${config.gradient}`}
-        />
-        <CardContent className="relative z-10 flex h-full flex-col gap-6 p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 space-y-1">
-              <p className="text-xs uppercase tracking-[0.35em] text-primary/70">
+      <Card className="group relative h-full overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/95 via-card/80 to-card/60 shadow-lg backdrop-blur-xl transition-all duration-500 hover:border-primary/50 hover:shadow-[0_20px_60px_-15px_rgba(253,200,0,0.25)]">
+        {/* Animated top accent */}
+        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
+          <motion.div
+            className={`h-full w-[200%] bg-gradient-to-r ${config.gradient} via-transparent`}
+            animate={{ x: ["-50%", "0%"] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          />
+        </div>
+
+        {/* Hover shine sweep */}
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+          <motion.div
+            className="absolute -top-1/2 left-0 h-[200%] w-16 rotate-12 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
+            initial={{ x: "-100px" }}
+            whileInView={{ x: "500px" }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
+          />
+        </div>
+
+        {/* Corner glow */}
+        <div className={`pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br ${config.gradient} opacity-[0.07] blur-2xl transition-opacity duration-500 group-hover:opacity-[0.15]`} />
+
+        <CardContent className="relative z-10 flex h-full flex-col gap-5 p-6">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-primary/60">
                 Active project
               </p>
-              <h3 className="line-clamp-2 text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-primary">
+              <h3 className="line-clamp-2 text-lg font-bold tracking-tight text-foreground transition-colors duration-300 group-hover:text-primary">
                 {project.title}
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 for{" "}
-                <span className="font-medium text-foreground">
+                <span className="font-semibold text-foreground/80">
                   {project.client}
                 </span>
               </p>
             </div>
-            <motion.div whileHover={{ scale: 1.05 }}>
+            <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}>
               <Badge
                 variant="outline"
-                className={`flex items-center gap-1.5 border px-3 py-1 text-xs font-medium ${config.badgeClass}`}
+                className={`flex shrink-0 items-center gap-1.5 border px-2.5 py-1 text-[10px] font-semibold backdrop-blur-sm ${config.badgeClass}`}
               >
-                <StatusIcon className="h-3.5 w-3.5" />
+                <StatusIcon className="h-3 w-3" />
                 {config.label}
               </Badge>
             </motion.div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 text-sm">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/80">
+          {/* Stats row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="group/stat rounded-xl border border-border/20 bg-muted/20 px-4 py-3 transition-colors duration-200 hover:border-border/40 hover:bg-muted/30">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">
                 Budget
               </p>
-              <p className="text-2xl font-semibold text-foreground">
-                {budgetValue ? `₹${Math.floor(budgetValue * 0.7).toLocaleString()}` : "TBD"}
+              <p className="text-lg font-bold tabular-nums text-foreground">
+                {budgetValue
+                  ? `₹${Math.floor(budgetValue * 0.7).toLocaleString()}`
+                  : "TBD"}
               </p>
             </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/80">
+            <div className="group/stat rounded-xl border border-border/20 bg-muted/20 px-4 py-3 transition-colors duration-200 hover:border-border/40 hover:bg-muted/30">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">
                 Deadline
               </p>
-              <p className="text-sm font-semibold text-foreground">
+              <p className="text-sm font-bold text-foreground">
                 {deadlineValue || "TBD"}
               </p>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/80">
+          {/* Progress section */}
+          <div className="flex items-center gap-4 rounded-xl border border-border/20 bg-muted/10 px-4 py-3">
+            <CircularProgress
+              progress={project.progress}
+              gradient={config.gradient}
+            />
+            <div className="flex-1 space-y-1.5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">
                 Progress
               </p>
-              <span className="flex items-center gap-2 text-sm font-semibold text-primary">
-                <Zap className="h-4 w-4" />
-                {project.progress}%
-              </span>
-            </div>
-            <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
-              <motion.div
-                className={`h-full rounded-full bg-gradient-to-r ${config.gradient}`}
-                initial={{ width: 0 }}
-                animate={{ width: `${project.progress}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              />
+              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+                <motion.div
+                  className={`h-full rounded-full bg-gradient-to-r ${config.gradient}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${project.progress}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                />
+              </div>
             </div>
           </div>
 
+          {/* CTA Button */}
           <Button
             asChild
-            className={`mt-auto w-full gap-2 rounded-full bg-gradient-to-r ${config.gradient} py-5 font-semibold text-white transition-all duration-200 hover:shadow-lg hover:shadow-primary/30`}
+            className={`mt-auto w-full gap-2 rounded-xl bg-gradient-to-r ${config.gradient} py-5 text-sm font-bold text-background shadow-md transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:brightness-110`}
           >
             <Link to={`/freelancer/project/${project.id}`}>
               View details
               <motion.div
-                animate={{ x: [0, 6, 0] }}
-                transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+                animate={{ x: [0, 5, 0] }}
+                transition={{
+                  duration: 1.8,
+                  repeat: Number.POSITIVE_INFINITY,
+                  ease: "easeInOut",
+                }}
               >
                 <ArrowRight className="h-4 w-4" />
               </motion.div>
@@ -209,10 +285,10 @@ const FreelancerProjectsContent = () => {
           if (!project?.id) return;
           if (!uniqueProjects.has(project.id)) {
             // Calculate progress - use project.progress if available, default to 0
-            const projectProgress = typeof project.progress === "number" 
-              ? project.progress 
+            const projectProgress = typeof project.progress === "number"
+              ? project.progress
               : 0;
-            
+
             // Determine status based on progress
             let projectStatus = "pending";
             if (projectProgress === 100) {
@@ -315,4 +391,3 @@ const FreelancerProjects = () => {
 };
 
 export default FreelancerProjects;
-

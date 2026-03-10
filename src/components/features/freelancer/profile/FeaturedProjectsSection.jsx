@@ -21,6 +21,7 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel";
 import ProjectCoverMedia from "@/components/features/freelancer/profile/ProjectCoverMedia";
+import { getServiceLabel } from "@/components/features/freelancer/onboarding/utils";
 
 const normalizeProjectLink = (link = "") => {
   const rawLink = String(link || "").trim();
@@ -44,6 +45,33 @@ const getProjectHost = (link = "") => {
   }
 };
 
+const normalizeServiceIdentity = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const resolveProjectServiceLabels = (project = {}) => {
+  const seen = new Set();
+
+  return [
+    ...(Array.isArray(project?.serviceKeys) ? project.serviceKeys : []),
+    project?.serviceKey,
+  ].reduce((acc, value) => {
+    const rawValue = String(value || "").trim();
+    const normalizedValue = normalizeServiceIdentity(rawValue);
+
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      return acc;
+    }
+
+    seen.add(normalizedValue);
+    acc.push(getServiceLabel(rawValue));
+    return acc;
+  }, []);
+};
+
 const FeaturedProjectsSection = ({
   portfolioProjects,
   projectCoverUploadingIndex,
@@ -57,7 +85,7 @@ const FeaturedProjectsSection = ({
   const projectCount = Array.isArray(portfolioProjects) ? portfolioProjects.length : 0;
 
   return (
-    <section className="relative overflow-visible rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] md:p-6">
+    <section className="relative overflow-visible rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] md:p-6">
       <div
         className="absolute inset-x-0 top-0 h-px"
         style={{
@@ -122,14 +150,20 @@ const FeaturedProjectsSection = ({
             }}
             className="w-full"
           >
-            <div className="overflow-hidden rounded-[28px]">
+            <div className="overflow-hidden rounded-2xl">
               <CarouselContent className="-ml-4">
                 {portfolioProjects.map((project, idx) => {
                   const projectHref = normalizeProjectLink(project?.link || "");
+                  const projectServiceLabels = resolveProjectServiceLabels(project);
+                  const visibleProjectServiceLabels = projectServiceLabels.slice(0, 2);
+                  const hiddenProjectServiceLabelCount = Math.max(
+                    0,
+                    projectServiceLabels.length - visibleProjectServiceLabels.length
+                  );
 
                   return (
                     <CarouselItem key={idx} className="pl-4 md:basis-1/2 xl:basis-1/3">
-                      <article className="group flex h-full flex-col overflow-hidden rounded-[26px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]">
+                      <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]">
                         <div className="relative h-52 overflow-hidden md:h-56">
                           <ProjectCoverMedia
                             project={project}
@@ -239,10 +273,28 @@ const FeaturedProjectsSection = ({
                               "Add a concise project summary so clients can understand the scope, outcome, and value of this work."}
                           </p>
 
-                          <div className="mt-auto flex items-center justify-between gap-3 border-t border-white/6 pt-3">
-                            <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
-                              Featured Work
-                            </span>
+                          <div className="mt-auto flex items-start justify-between gap-3 border-t border-white/6 pt-3">
+                            <div className="flex flex-wrap gap-2">
+                              {visibleProjectServiceLabels.length ? (
+                                visibleProjectServiceLabels.map((label) => (
+                                  <span
+                                    key={`${project.title || project.link || idx}-${label}`}
+                                    className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65"
+                                  >
+                                    {label}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="inline-flex items-center rounded-full border border-white/6 bg-white/[0.045] px-2.5 py-1 text-[11px] font-medium text-white/65">
+                                  Featured Work
+                                </span>
+                              )}
+                              {hiddenProjectServiceLabelCount > 0 ? (
+                                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                                  +{hiddenProjectServiceLabelCount} more
+                                </span>
+                              ) : null}
+                            </div>
                             {projectHref ? (
                               <a
                                 href={projectHref}

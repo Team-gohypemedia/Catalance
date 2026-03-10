@@ -12,7 +12,6 @@ import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
-import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import { useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { Button } from "@/components/ui/button";
@@ -34,6 +33,7 @@ import {
   fetchChatConversations,
 } from "@/shared/lib/api-client";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
+import { formatINR, INR_PREFIX_PATTERN, normalizeINRText } from "@/shared/lib/currency";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
@@ -54,6 +54,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const MIN_FREELANCER_MATCH_SCORE = 50;
 const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);
 const CLOSED_PROJECT_STATUSES = new Set(["COMPLETED", "PAUSED"]);
+const PROPOSAL_BUDGET_PATTERN = new RegExp(
+  String.raw`Budget[:\s\-\n\u2022]*${INR_PREFIX_PATTERN.source}?\s*([\d,]+)\s*(k)?`,
+  "i",
+);
+const STORED_BUDGET_LINE_PATTERN = new RegExp(
+  String.raw`Budget[\s\n]*[-:]*[\s\n]*${INR_PREFIX_PATTERN.source}?\s*[\d,]+\s*(?:k)?`,
+  "gi",
+);
 
 const getProposalStorageKeys = (userId) => {
   const suffix = userId ? `:${userId}` : "";
@@ -89,6 +97,16 @@ const normalizeSavedProposal = (proposal = {}) => {
     next.id = next.localId || buildLocalProposalId();
   }
 
+  if (typeof next.content === "string") {
+    next.content = normalizeINRText(next.content);
+  }
+  if (typeof next.summary === "string") {
+    next.summary = normalizeINRText(next.summary);
+  }
+  if (typeof next.budget === "string") {
+    next.budget = normalizeINRText(next.budget);
+  }
+
   const text = next.content || next.summary || "";
   if (!next.timeline && text) {
     const timelineMatch = text.match(/Timeline[:\s\-\n\u2022]*([^\n]+)/i);
@@ -99,15 +117,17 @@ const normalizeSavedProposal = (proposal = {}) => {
         .trim();
     }
   }
-  // Always re-parse budget from text to handle 'k' suffix correctly
-  if (text) {
-    // Match budget with optional 'k' suffix for thousands
-    const budgetMatch = text.match(
-      /Budget[:\s\-\n\u2022]*(?:INR|Rs\.?|â‚¹|Æ’,1)?\s*([\d,]+)\s*(k)?/i,
-    );
+
+  const hasExplicitBudget =
+    next.budget !== undefined &&
+    next.budget !== null &&
+    String(next.budget).trim() !== "";
+
+  // Only derive budget from text when an explicit value is missing.
+  if (!hasExplicitBudget && text) {
+    const budgetMatch = text.match(PROPOSAL_BUDGET_PATTERN);
     if (budgetMatch) {
       let budgetValue = parseFloat(budgetMatch[1].replace(/,/g, ""));
-      // If 'k' suffix found, multiply by 1000
       if (budgetMatch[2] && /k/i.test(budgetMatch[2])) {
         budgetValue = budgetValue * 1000;
       }
@@ -142,23 +162,29 @@ const resolveActiveProposalId = (proposals, preferredId, fallbackId) => {
   return proposals[0].id;
 };
 
-// Helper function to format budget as â‚¹X,XXX
+// Helper function to format budget in INR without relying on pasted symbols.
 const formatBudget = (budget) => {
   if (!budget || budget === "Not set") return "Not set";
 
-  const budgetStr = String(budget).trim();
-
-  // Check if original had 'k' or 'K' suffix for thousands BEFORE cleaning
+  const budgetStr = normalizeINRText(String(budget).trim());
   const hasKSuffix = /\d+\s*k$/i.test(budgetStr);
-
-  // Extract digits from the budget string (remove currency symbols, 'k' suffix, etc.)
   const cleaned = budgetStr.replace(/[^\d.]/g, "");
   const numValue = parseFloat(cleaned);
-  if (isNaN(numValue)) return budget; // Return original if can't parse
+  if (isNaN(numValue)) return budgetStr;
 
   const finalValue = hasKSuffix ? numValue * 1000 : numValue;
+  return formatINR(finalValue);
+};
 
-  return `â‚¹${finalValue.toLocaleString("en-IN")}`;
+const parseProposalBudgetValue = (budget) => {
+  const normalizedBudget = normalizeINRText(String(budget || "").trim());
+  if (!normalizedBudget) return 0;
+
+  const hasKSuffix = /\d+\s*k$/i.test(normalizedBudget);
+  const numericValue = parseFloat(normalizedBudget.replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(numericValue)) return 0;
+
+  return Math.round(hasKSuffix ? numericValue * 1000 : numericValue);
 };
 
 const stripProposalMarkdown = (value = "") =>
@@ -677,13 +703,12 @@ const StatsCard = ({
         <h3 className="text-3xl tracking-tight">{value}</h3>
         {trend && (
           <p
-            className={`text-xs mt-2 flex items-center font-bold ${
-              trendType === "up"
-                ? "text-green-600"
-                : trendType === "warning"
-                  ? "text-orange-600"
-                  : "text-muted-foreground"
-            }`}
+            className={`text-xs mt-2 flex items-center font-bold ${trendType === "up"
+              ? "text-green-600"
+              : trendType === "warning"
+                ? "text-orange-600"
+                : "text-muted-foreground"
+              }`}
           >
             {trendType === "up" && <TrendingUp className="w-3.5 h-3.5 mr-1" />}
             {trendType === "warning" && (
@@ -697,60 +722,6 @@ const StatsCard = ({
             {/* Placeholder for stacked avatars if needed */}
           </div>
         )}
-      </CardContent>
-    </Card>
-  );
-};
-
-// ==================== Budget Chart Component ====================
-const BudgetChart = ({ percentage, remaining, spent }) => {
-  return (
-    <Card className="border-border/60">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-bold">Budget Utilization</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative w-24 h-24 shrink-0">
-            <svg
-              className="w-full h-full transform -rotate-90"
-              viewBox="0 0 36 36"
-            >
-              <path
-                className="text-muted/20"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-              />
-              <path
-                className="text-primary"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="currentColor"
-                strokeDasharray={`${percentage}, 100`}
-                strokeWidth="3"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center flex-col">
-              <span className="text-xl font-bold">{percentage}%</span>
-            </div>
-          </div>
-          <div className="flex-1 flex flex-col gap-2">
-            <div>
-              <p className="text-xs text-muted-foreground">Remaining</p>
-              <p className="text-sm font-bold">
-                â‚¹{remaining?.toLocaleString() || 0}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Spent</p>
-              <p className="text-sm font-bold">
-                â‚¹{spent?.toLocaleString() || 0}
-              </p>
-            </div>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
@@ -815,16 +786,6 @@ const ClientDashboardContent = () => {
   const [activeProposalId, setActiveProposalId] = useState(null);
   const [isSendingProposal, setIsSendingProposal] = useState(false);
   const [isSyncingDrafts, setIsSyncingDrafts] = useState(false);
-  const [dismissedProjectIds, setDismissedProjectIds] = useState(() => {
-    try {
-      const stored = localStorage.getItem("markify:dismissedExpiredProposals");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [selectedFreelancer, setSelectedFreelancer] = useState(null);
-  const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showViewProposal, setShowViewProposal] = useState(false);
   const [showEditProposal, setShowEditProposal] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -832,7 +793,7 @@ const ClientDashboardContent = () => {
     summary: "",
     budget: "",
     timeline: "",
-  });  const [projectToPay, setProjectToPay] = useState(null);
+  }); const [projectToPay, setProjectToPay] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Increase Budget Dialog State
@@ -980,11 +941,11 @@ const ClientDashboardContent = () => {
     );
     const matched = projectRequiredSkills.length
       ? normalized.filter((freelancer) => {
-          const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
-          return projectRequiredSkills.some((requiredSkill) =>
-            freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
-          );
-        })
+        const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
+        return projectRequiredSkills.some((requiredSkill) =>
+          freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
+        );
+      })
       : normalized;
 
     const available = matched.filter((freelancer) => {
@@ -1431,11 +1392,6 @@ const ClientDashboardContent = () => {
     };
   }, [uniqueProjects]);
 
-  const budgetPercentage = useMemo(() => {
-    if (!metrics.totalBudget) return 0;
-    return Math.round((metrics.totalSpent / metrics.totalBudget) * 100);
-  }, [metrics]);
-
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -1444,6 +1400,111 @@ const ClientDashboardContent = () => {
   }, []);
 
   const firstName = sessionUser?.fullName?.split(" ")[0] || "User";
+
+  const openEditProposal = useCallback(() => {
+    if (!savedProposal) return;
+    setEditForm({
+      title: resolveProposalTitle(savedProposal),
+      summary: savedProposal.summary || savedProposal.content || "",
+      budget: savedProposal.budget || "",
+      timeline: savedProposal.timeline || "",
+    });
+    setShowViewProposal(false);
+    setShowEditProposal(true);
+  }, [savedProposal]);
+
+  const saveProposalChanges = useCallback(async () => {
+    if (!savedProposal?.id) return;
+
+    const nextTitle = editForm.title.trim() || resolveProposalTitle(savedProposal);
+    const nextSummary = editForm.summary.trim();
+    const nextBudget = editForm.budget.trim();
+    const nextTimeline = editForm.timeline.trim();
+    const nextDescription =
+      nextSummary || savedProposal.summary || savedProposal.content || "";
+    const nextBudgetValue = parseProposalBudgetValue(
+      nextBudget || savedProposal.budget || "",
+    );
+    const linkedProjectId =
+      savedProposal?.syncedProjectId || savedProposal?.projectId || null;
+    const updatedAt = new Date().toISOString();
+
+    const updatedProposals = savedProposals.map((proposal) =>
+      proposal.id === savedProposal.id
+        ? {
+            ...proposal,
+            projectTitle: nextTitle,
+            title: nextTitle,
+            summary: nextDescription,
+            content: nextDescription,
+            budget: nextBudget || proposal.budget || "",
+            timeline: nextTimeline || proposal.timeline || "",
+            updatedAt,
+          }
+        : proposal,
+    );
+
+    persistSavedProposalState(updatedProposals, savedProposal.id);
+    setProjects((currentProjects) =>
+      linkedProjectId
+        ? currentProjects.map((project) =>
+            String(project?.id) === String(linkedProjectId)
+              ? {
+                  ...project,
+                  title: nextTitle,
+                  description: nextDescription,
+                  budget: nextBudgetValue,
+                  updatedAt,
+                }
+              : project,
+          )
+        : currentProjects,
+    );
+
+    if (linkedProjectId && authFetch) {
+      try {
+        const response = await authFetch(`/projects/${linkedProjectId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: nextTitle,
+            description: nextDescription,
+            budget: nextBudgetValue,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Project update failed with status ${response.status}`);
+        }
+
+        const payload = await response.json().catch(() => null);
+        const updatedProject = payload?.data;
+        if (updatedProject?.id) {
+          setProjects((currentProjects) =>
+            currentProjects.map((project) =>
+              String(project?.id) === String(updatedProject.id)
+                ? { ...project, ...updatedProject }
+                : project,
+            ),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to sync proposal changes to project:", error);
+        toast.error("Proposal saved locally, but project sync failed.");
+        setShowEditProposal(false);
+        return;
+      }
+    }
+
+    setShowEditProposal(false);
+    toast.success("Proposal updated");
+  }, [
+    authFetch,
+    editForm,
+    persistSavedProposalState,
+    savedProposal,
+    savedProposals,
+  ]);
 
   // Map project status to display
   const getStatusBadge = (status) => {
@@ -1469,8 +1530,8 @@ const ClientDashboardContent = () => {
       let project =
         sourceProjectId && Array.isArray(projects)
           ? projects.find(
-              (entry) => String(entry?.id) === String(sourceProjectId),
-            )
+            (entry) => String(entry?.id) === String(sourceProjectId),
+          )
           : null;
 
       if (project) {
@@ -1481,12 +1542,12 @@ const ClientDashboardContent = () => {
 
         const hasExistingProposalForFreelancer = Array.isArray(project.proposals)
           ? project.proposals.some((proposal) => {
-              const proposalStatus = String(proposal?.status || "").toUpperCase();
-              return (
-                String(proposal?.freelancerId) === String(freelancer.id) &&
-                PROPOSAL_BLOCKED_STATUSES.has(proposalStatus)
-              );
-            })
+            const proposalStatus = String(proposal?.status || "").toUpperCase();
+            return (
+              String(proposal?.freelancerId) === String(freelancer.id) &&
+              PROPOSAL_BLOCKED_STATUSES.has(proposalStatus)
+            );
+          })
           : false;
 
         if (hasExistingProposalForFreelancer) {
@@ -1514,13 +1575,13 @@ const ClientDashboardContent = () => {
           project = publishPayload?.data
             ? { ...project, ...publishPayload.data }
             : {
-                ...project,
-                title: resolveProposalTitle(savedProposal),
-                description: savedProposal.summary || savedProposal.content || "",
-                budget: normalizedBudget,
-                timeline: savedProposal.timeline || "1 month",
-                status: "OPEN",
-              };
+              ...project,
+              title: resolveProposalTitle(savedProposal),
+              description: savedProposal.summary || savedProposal.content || "",
+              budget: normalizedBudget,
+              timeline: savedProposal.timeline || "1 month",
+              status: "OPEN",
+            };
         }
       } else {
         // Create a project only when this proposal has no synced project yet.
@@ -1550,11 +1611,11 @@ const ClientDashboardContent = () => {
         const updated = savedProposals.map((proposal) =>
           proposal.id === savedProposal.id
             ? {
-                ...proposal,
-                ownerId: sessionUser?.id || proposal.ownerId || null,
-                syncedProjectId: project.id,
-                syncedAt: proposal.syncedAt || now,
-              }
+              ...proposal,
+              ownerId: sessionUser?.id || proposal.ownerId || null,
+              syncedProjectId: project.id,
+              syncedAt: proposal.syncedAt || now,
+            }
             : proposal,
         );
         persistSavedProposalState(updated, savedProposal.id);
@@ -1589,24 +1650,11 @@ const ClientDashboardContent = () => {
       // Keep the proposal so user can send to more freelancers
       // The freelancer just sent to will be filtered out from the list
 
-      setShowSendConfirm(false);
-      setSelectedFreelancer(null);
     } catch (error) {
       console.error("Failed to send proposal:", error);
       toast.error(error?.message || "Failed to send proposal. Please try again.");
     } finally {
       setIsSendingProposal(false);
-    }
-  };
-
-  const handleSendClick = (freelancer) => {
-    setSelectedFreelancer(freelancer);
-    setShowSendConfirm(true);
-  };
-
-  const confirmSend = () => {
-    if (selectedFreelancer) {
-      sendProposalToFreelancer(selectedFreelancer);
     }
   };
 
@@ -1624,14 +1672,13 @@ const ClientDashboardContent = () => {
           name: sessionUser?.fullName || "",
           contact: sessionUser?.phone || sessionUser?.phoneNumber || "",
         },
-        description: `${
-          project?.paymentPlan?.nextDueInstallment?.label || "Project payment"
-        } for ${project?.title || "project"}`,
+        description: `${project?.paymentPlan?.nextDueInstallment?.label || "Project payment"
+          } for ${project?.title || "project"}`,
       });
 
       toast.success(
         paymentResult?.message ||
-          "Payment processed successfully! Project billing has been updated."
+        "Payment processed successfully! Project billing has been updated."
       );
       await loadProjects();
     } catch (error) {
@@ -1648,6 +1695,14 @@ const ClientDashboardContent = () => {
     setNewBudget(String(project.budget || ""));
     setShowIncreaseBudget(true);
   };
+
+  const handleIncreaseBudgetDialogChange = useCallback((open) => {
+    setShowIncreaseBudget(open);
+    if (!open) {
+      setBudgetProject(null);
+      setNewBudget("");
+    }
+  }, []);
 
   const updateBudget = async () => {
     if (!budgetProject || !newBudget) return;
@@ -1719,9 +1774,7 @@ const ClientDashboardContent = () => {
         loadSavedProposalsFromStorage();
       if (storedProposals.length) {
         let updatedAny = false;
-        const budgetRegex =
-          /Budget[\s\n]*[-:]*[\s\n]*(?:INR|Rs\.?|â‚¹|Æ’,1)?\s*[\d,]+/gi;
-        const newBudgetText = `Budget\n- Æ’,1${budgetValue.toLocaleString()}`;
+        const newBudgetText = `Budget\n- ${formatINR(budgetValue)}`;
         const updatedProposals = storedProposals.map((proposal) => {
           const matchesId =
             proposal.projectId && proposal.projectId === budgetProject.id;
@@ -1730,14 +1783,20 @@ const ClientDashboardContent = () => {
           updatedAny = true;
           const next = {
             ...proposal,
-            budget: `Æ’,1${budgetValue.toLocaleString()}`,
+            budget: formatINR(budgetValue),
             updatedAt: new Date().toISOString(),
           };
           if (next.summary) {
-            next.summary = next.summary.replace(budgetRegex, newBudgetText);
+            next.summary = normalizeINRText(next.summary).replace(
+              STORED_BUDGET_LINE_PATTERN,
+              newBudgetText,
+            );
           }
           if (next.content) {
-            next.content = next.content.replace(budgetRegex, newBudgetText);
+            next.content = normalizeINRText(next.content).replace(
+              STORED_BUDGET_LINE_PATTERN,
+              newBudgetText,
+            );
           }
           return next;
         });
@@ -1749,12 +1808,12 @@ const ClientDashboardContent = () => {
       // Show appropriate message based on whether proposals were rejected
       if (rejectedCount > 0) {
         toast.success(
-          `Budget updated to â‚¹${budgetValue.toLocaleString()}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`,
+          `Budget updated to ${formatINR(budgetValue)}! ${rejectedCount} expired proposal(s) removed. You can now send to new freelancers.`,
         );
       } else {
         // Just updated budget (proposals are still pending, under 48hrs)
         toast.success(
-          `Budget updated to â‚¹${budgetValue.toLocaleString()}! Freelancers will see the new amount.`,
+          `Budget updated to ${formatINR(budgetValue)}! Freelancers will see the new amount.`,
         );
       }
 
@@ -1807,7 +1866,7 @@ const ClientDashboardContent = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatsCard
                   title="Total Spent"
-                  value={`â‚¹${metrics.totalSpent.toLocaleString()}`}
+                  value={formatINR(metrics.totalSpent)}
                   trend="Invested so far"
                   trendType="neutral"
                   accentColor="primary"
@@ -1821,18 +1880,12 @@ const ClientDashboardContent = () => {
                 />
                 <StatsCard
                   title="Total Budget"
-                  value={`â‚¹${metrics.totalBudget.toLocaleString()}`}
+                  value={formatINR(metrics.totalBudget)}
                   trend="Allocated budget"
                   trendType="neutral"
                   accentColor="green" // Changed to green for budget
                 />
               </div>
-
-              <BudgetChart
-                percentage={budgetPercentage}
-                remaining={Math.max(metrics.totalBudget - metrics.totalSpent, 0)}
-                spent={metrics.totalSpent}
-              />
 
               {/* Saved Proposal Workspace */}
               {savedProposal && (
@@ -1862,18 +1915,7 @@ const ClientDashboardContent = () => {
                           variant="outline"
                           size="sm"
                           className="gap-1.5"
-                          onClick={() => {
-                            setEditForm({
-                              title: savedProposal.projectTitle || "",
-                              summary:
-                                savedProposal.summary ||
-                                savedProposal.content ||
-                                "",
-                              budget: savedProposal.budget || "",
-                              timeline: savedProposal.timeline || "",
-                            });
-                            setShowEditProposal(true);
-                          }}
+                          onClick={openEditProposal}
                         >
                           <Edit2 className="w-4 h-4" />
                           Edit
@@ -1930,11 +1972,10 @@ const ClientDashboardContent = () => {
                                     storageKeys,
                                   );
                                 }}
-                                className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${
-                                  isActive
-                                    ? "border-primary/50 bg-primary/10"
-                                    : "border-border/70 bg-background/70 hover:bg-background"
-                                }`}
+                                className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${isActive
+                                  ? "border-primary/50 bg-primary/10"
+                                  : "border-border/70 bg-background/70 hover:bg-background"
+                                  }`}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <p className="text-sm font-semibold line-clamp-2">
@@ -2066,9 +2107,14 @@ const ClientDashboardContent = () => {
                             onMouseEnter={primeFreelancerPool}
                             onFocus={primeFreelancerPool}
                             onClick={openFreelancerSelection}
+                            disabled={isSendingProposal}
                           >
-                            <Send className="w-4 h-4" />
-                            Send Proposal To Freelancer
+                            {isSendingProposal ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Send className="w-4 h-4" />
+                            )}
+                            {isSendingProposal ? "Sending..." : "Send Proposal To Freelancer"}
                           </Button>
                         </div>
                       </div>
@@ -2185,7 +2231,7 @@ const ClientDashboardContent = () => {
                                 </TableCell>
                                 <TableCell>
                                   <span className="text-sm font-medium">
-                                    INR {(project.budget || 0).toLocaleString()}
+                                    {formatINR(project.budget || 0)}
                                   </span>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -2374,7 +2420,7 @@ const ClientDashboardContent = () => {
                                 </TableCell>
                                 <TableCell>
                                   <span className="text-sm font-medium">
-                                    â‚¹{(project.budget || 0).toLocaleString()}
+                                    {formatINR(project.budget || 0)}
                                   </span>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -2568,11 +2614,10 @@ const ClientDashboardContent = () => {
                             }
                           >
                             <div
-                              className={`absolute -left-3.75 top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${
-                                idx === 0
-                                  ? "bg-primary"
-                                  : "bg-muted-foreground/50"
-                              }`}
+                              className={`absolute -left-3.75 top-3 h-3.5 w-3.5 rounded-full border-2 border-background ${idx === 0
+                                ? "bg-primary"
+                                : "bg-muted-foreground/50"
+                                }`}
                             />
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 ml-2">
                               <span className="text-xs font-bold text-muted-foreground w-16 shrink-0">
@@ -2602,6 +2647,146 @@ const ClientDashboardContent = () => {
         </div>
       </main>
 
+      <ViewProposalDialog
+        open={showViewProposal}
+        onOpenChange={setShowViewProposal}
+        savedProposal={savedProposal}
+        resolveProposalTitle={resolveProposalTitle}
+        formatBudget={formatBudget}
+        onEditProposal={openEditProposal}
+      />
+
+      <EditProposalDialog
+        open={showEditProposal}
+        onOpenChange={setShowEditProposal}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        onSaveChanges={saveProposalChanges}
+      />
+
+      <Dialog
+        open={showIncreaseBudget}
+        onOpenChange={handleIncreaseBudgetDialogChange}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Increase Budget</DialogTitle>
+            <DialogDescription>
+              Update the budget for {budgetProject?.title || "this project"} so
+              freelancers see the latest amount.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                Current Budget
+              </p>
+              <p className="mt-1 text-lg font-semibold">
+                {formatINR(budgetProject?.budget || 0)}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="dashboard-budget-input" className="text-sm font-medium">
+                New Budget
+              </label>
+              <Input
+                id="dashboard-budget-input"
+                value={newBudget}
+                onChange={(e) => setNewBudget(e.target.value)}
+                placeholder="e.g. 60000 or INR 60,000"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handleIncreaseBudgetDialogChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={updateBudget} disabled={isUpdatingBudget}>
+              {isUpdatingBudget ? "Updating..." : "Update Budget"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBudgetReminder} onOpenChange={setShowBudgetReminder}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Pending proposals need attention</DialogTitle>
+            <DialogDescription>
+              Some invited freelancers have not responded for more than 24 hours.
+              You can review them or increase the budget to improve conversion.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {oldPendingProjects.slice(0, 3).map((project) => (
+              <div
+                key={project.id}
+                className="rounded-lg border border-border/70 bg-background/70 p-3"
+              >
+                <p className="font-medium">{project.title}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Current budget: {formatINR(project.budget || 0)}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBudgetReminder(false)}>
+              Later
+            </Button>
+            <Button
+              onClick={() => {
+                setShowBudgetReminder(false);
+                navigate("/client/proposal");
+              }}
+            >
+              Review proposals
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Freelancer Selection Dialog */}
+      <FreelancerSelectionDialog
+        open={showFreelancerSelect}
+        onOpenChange={setShowFreelancerSelect}
+        savedProposal={savedProposal}
+        isLoadingFreelancers={isFreelancersLoading}
+        freelancerSearch={freelancerSearch}
+        onFreelancerSearchChange={setFreelancerSearch}
+        filteredFreelancers={filteredFreelancers}
+        freelancerSelectionData={freelancerSelectionData}
+        bestMatchFreelancerIds={bestMatchFreelancerIds}
+        projectRequiredSkills={projectRequiredSkills}
+        onViewFreelancer={(freelancer) => {
+          setViewingFreelancer(freelancer);
+          setShowFreelancerProfile(true);
+        }}
+        onSendProposal={(freelancer) => {
+          setShowFreelancerSelect(false);
+          sendProposalToFreelancer(freelancer);
+        }}
+        collectFreelancerSkillTokens={collectFreelancerSkillTokens}
+        freelancerMatchesRequiredSkill={freelancerMatchesRequiredSkill}
+        generateGradient={generateGradient}
+        formatRating={formatRating}
+      />
+
+      {/* Freelancer Profile Dialog */}
+      <FreelancerProfileDialog
+        open={showFreelancerProfile}
+        onOpenChange={setShowFreelancerProfile}
+        viewingFreelancer={viewingFreelancer}
+      />
+
       {/* Suspension Alert */}
       <SuspensionAlert
         open={showSuspensionAlert}
@@ -2622,8 +2807,6 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
-
-
 
 
 

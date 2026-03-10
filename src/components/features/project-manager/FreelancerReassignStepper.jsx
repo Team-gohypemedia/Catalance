@@ -8,50 +8,71 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 export const FreelancerReassignStepper = ({
     open,
     onOpenChange,
     onPauseProject,
     onRemoveFreelancer,
-    onInviteReplacement,
+    onAssignReplacement,
     currentFreelancer,
+    freelancers = [],
+    loadingFreelancers = false,
+    requestContext = null,
 }) => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [inviteEmail, setInviteEmail] = useState("");
+    const [selectedFreelancerId, setSelectedFreelancerId] = useState("");
 
     const handlePause = async () => {
         setLoading(true);
-        await onPauseProject();
-        setLoading(false);
-        setStep(2);
+        try {
+            await onPauseProject();
+            setStep(2);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleRemove = async () => {
         setLoading(true);
-        await onRemoveFreelancer();
-        setLoading(false);
-        setStep(3);
+        try {
+            await onRemoveFreelancer();
+            setStep(3);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleInvite = async () => {
-        if (!inviteEmail) return;
+    const handleAssign = async () => {
+        if (!selectedFreelancerId) return;
         setLoading(true);
-        await onInviteReplacement(inviteEmail);
-        setLoading(false);
-        setStep(4);
+        try {
+            await onAssignReplacement(selectedFreelancerId);
+            setStep(4);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const resetAndClose = () => {
         onOpenChange(false);
         setTimeout(() => {
             setStep(1);
-            setInviteEmail("");
+            setSelectedFreelancerId("");
         }, 300);
     };
+
+    const availableFreelancers = Array.isArray(freelancers)
+        ? freelancers.filter((freelancer) => freelancer?.id !== currentFreelancer?.id)
+        : [];
 
     return (
         <Dialog open={open} onOpenChange={resetAndClose}>
@@ -64,6 +85,20 @@ export const FreelancerReassignStepper = ({
                 </DialogHeader>
 
                 <div className="py-4">
+                    {requestContext?.reason && (
+                        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-400">
+                                Client Request
+                            </p>
+                            <p className="mt-1 text-sm text-foreground">
+                                {requestContext.reason}
+                            </p>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                Request {requestContext.requestNumber || 1} of {requestContext.maxRequests || 2}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Step 1: Pause Project */}
                     {step === 1 && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -115,29 +150,46 @@ export const FreelancerReassignStepper = ({
                             <div className="flex items-center gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                                 <Send className="h-8 w-8 text-blue-500" />
                                 <div>
-                                    <h4 className="font-semibold text-sm text-blue-500">Step 3: Invite Replacement</h4>
+                                    <h4 className="font-semibold text-sm text-blue-500">Step 3: Assign Replacement</h4>
                                     <p className="text-xs text-muted-foreground">
-                                        Send an invitation to a new freelancer to take over this project.
+                                        Assign a suitable freelancer to take over this project.
                                     </p>
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="inviteEmail">Freelancer Email</Label>
-                                <Input
-                                    id="inviteEmail"
-                                    placeholder="freelancer@example.com"
-                                    type="email"
-                                    value={inviteEmail}
-                                    onChange={(e) => setInviteEmail(e.target.value)}
-                                />
+                                <p className="text-sm font-medium">Select Freelancer</p>
+                                <Select
+                                    value={selectedFreelancerId}
+                                    onValueChange={setSelectedFreelancerId}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue
+                                            placeholder={
+                                                loadingFreelancers ? "Loading freelancers..." : "Choose a freelancer"
+                                            }
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableFreelancers.map((freelancer) => (
+                                            <SelectItem key={freelancer.id} value={freelancer.id}>
+                                                {freelancer.fullName} ({freelancer.email})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {!loadingFreelancers && availableFreelancers.length === 0 && (
+                                    <p className="text-xs text-muted-foreground">
+                                        No replacement freelancers are available right now.
+                                    </p>
+                                )}
                             </div>
                             <Button
-                                onClick={handleInvite}
-                                disabled={loading || !inviteEmail.trim()}
+                                onClick={handleAssign}
+                                disabled={loading || loadingFreelancers || !selectedFreelancerId}
                                 className="w-full"
                             >
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Send Invitation
+                                Assign Freelancer
                             </Button>
                         </div>
                     )}
@@ -151,7 +203,7 @@ export const FreelancerReassignStepper = ({
                             <div className="text-center space-y-1">
                                 <h3 className="font-semibold text-lg">Reassignment Complete</h3>
                                 <p className="text-sm text-muted-foreground">
-                                    Invitation sent. The project is awaiting the new freelancer.
+                                    The replacement freelancer has been assigned and the project team has been notified.
                                 </p>
                             </div>
                             <Button onClick={resetAndClose} className="w-full mt-4">

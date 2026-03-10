@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "prisma generate",
     "dev": "nodemon index.js",
     "test:budget": "node --test src/services/__tests__/ai.budget.test.mjs",
     "build": "prisma generate",
@@ -22,7 +23,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
-    "@prisma/client": "^5.20.0",
+    "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",
     "catalance": "file:..",
     "cors": "^2.8.5",

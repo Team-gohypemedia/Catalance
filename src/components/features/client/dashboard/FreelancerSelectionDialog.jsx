@@ -1,5 +1,5 @@
 import { memo } from "react";
-import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
+
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Search from "lucide-react/dist/esm/icons/search";
 import Send from "lucide-react/dist/esm/icons/send";
@@ -19,66 +19,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const normalizeProjectUrl = (value) => {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (/^[\w-]+(\.[\w-]+)+/i.test(raw)) return `https://${raw}`;
-  return "";
-};
-
-const resolvePortfolioProjects = (freelancer = {}) => {
-  let projects = [];
-
-  if (
-    Array.isArray(freelancer?.portfolioProjects) &&
-    freelancer.portfolioProjects.length > 0
-  ) {
-    projects = freelancer.portfolioProjects;
-  } else if (
-    typeof freelancer?.portfolio === "string" &&
-    freelancer.portfolio.startsWith("[")
-  ) {
-    try {
-      projects = JSON.parse(freelancer.portfolio);
-    } catch {
-      projects = [];
-    }
-  } else if (Array.isArray(freelancer?.portfolio)) {
-    projects = freelancer.portfolio;
-  }
-
-  return projects
-    .map((project) => {
-      if (typeof project === "string") {
-        const title = project.trim();
-        const url = normalizeProjectUrl(project);
-        if (!title && !url) return null;
-        return {
-          title: title || url.replace(/^https?:\/\//i, ""),
-          url,
-        };
-      }
-
-      const title = String(
-        project?.title || project?.name || project?.projectTitle || "",
-      ).trim();
-      const url = normalizeProjectUrl(
-        project?.link ||
-          project?.url ||
-          project?.projectUrl ||
-          project?.href ||
-          project?.website,
-      );
-
-      if (!title && !url) return null;
-      return {
-        title: title || url.replace(/^https?:\/\//i, ""),
-        url,
-      };
-    })
-    .filter(Boolean);
-};
 
 const getDisplayInitials = (name = "") => {
   const parts = String(name || "")
@@ -143,6 +83,39 @@ const resolveFreelancerCoverImage = (freelancer = {}) => {
     serviceCoverImage ||
     ""
   );
+};
+const getDeliveredProjectCount = (freelancer = {}) => {
+  if (
+    Array.isArray(freelancer?.freelancerProjects) &&
+    freelancer.freelancerProjects.length > 0
+  ) {
+    return freelancer.freelancerProjects.length;
+  }
+
+  if (
+    Array.isArray(freelancer?.portfolioProjects) &&
+    freelancer.portfolioProjects.length > 0
+  ) {
+    return freelancer.portfolioProjects.length;
+  }
+
+  if (Array.isArray(freelancer?.portfolio) && freelancer.portfolio.length > 0) {
+    return freelancer.portfolio.length;
+  }
+
+  if (
+    typeof freelancer?.portfolio === "string" &&
+    freelancer.portfolio.trim().startsWith("[")
+  ) {
+    try {
+      const parsedPortfolio = JSON.parse(freelancer.portfolio);
+      if (Array.isArray(parsedPortfolio)) return parsedPortfolio.length;
+    } catch {
+      return 0;
+    }
+  }
+
+  return 0;
 };
 
 const FreelancerSelectionDialog = ({
@@ -294,10 +267,31 @@ const FreelancerSelectionDialog = ({
                 )
                   ? Math.round(Number(freelancer?.budgetCompatibility?.score) * 100)
                   : null;
+                const clampedBudgetFit =
+                  budgetFit !== null ? Math.max(0, Math.min(100, budgetFit)) : null;
+                const deliveredProjectCount = getDeliveredProjectCount(freelancer);
                 const cardBio = String(
                   freelancer?.cleanBio || freelancer?.bio || freelancer?.about || "",
                 ).trim();
-                const portfolioProjects = resolvePortfolioProjects(freelancer);
+                const performanceStats = [
+                  {
+                    key: "rating",
+                    label: "Rating",
+                    value: formatRating(freelancer.rating),
+                    showStar: true,
+                  },
+                  {
+                    key: "budget-fit",
+                    label: "Budget Fit",
+                    value: clampedBudgetFit !== null ? `${clampedBudgetFit}%` : "N/A",
+                  },
+                  {
+                    key: "projects-delivered",
+                    label: "Projects Delivered",
+                    value: deliveredProjectCount,
+                  },
+                ];
+
                 const freelancerSkillTokens =
                   collectFreelancerSkillTokens(freelancer);
                 const requiredSkillsForCard =
@@ -374,13 +368,10 @@ const FreelancerSelectionDialog = ({
                             {cardBio || "No bio available."}
                           </p>
                         </div>
-                        <div className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-white">
-                          <Star className="h-3.5 w-3.5 fill-current text-amber-400" />
-                          {formatRating(freelancer.rating)}
-                        </div>
+
                       </div>
 
-                      <div className="mt-2 rounded-lg bg-white/3 p-2">
+                      <div className="mt-2">
                         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
                           Project Skills Match
                         </p>
@@ -403,39 +394,29 @@ const FreelancerSelectionDialog = ({
                         </div>
                       </div>
 
-                      <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-lg bg-white/2 p-2">
-                        {budgetFit !== null && (
-                          <div>
-                            <p className="text-[11px] font-semibold text-foreground/90">
-                              Budget fit: {Math.max(0, Math.min(100, budgetFit))}%
-                            </p>
-                          </div>
-                        )}
-                        {portfolioProjects.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
-                              Highlighted Projects
-                            </p>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {portfolioProjects
-                                .slice(0, 2)
-                                .map((project, index) => (
-                                  <a
-                                    key={`${freelancer.id}-portfolio-${index}`}
-                                    href={project.url || undefined}
-                                    target={project.url ? "_blank" : undefined}
-                                    rel={project.url ? "noopener noreferrer" : undefined}
-                                    title={project.title}
-                                    onClick={(event) => event.stopPropagation()}
-                                    className="inline-flex h-5 w-full min-w-0 items-center gap-1 rounded-full bg-transparent px-2 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/10"
-                                  >
-                                    <span className="truncate">{project.title}</span>
-                                    <ArrowUpRight className="h-3 w-3 shrink-0" />
-                                  </a>
-                                ))}
+                      <div className="mt-2 flex min-h-0 flex-1 items-center px-2 py-2">
+                        <div className="grid w-full grid-cols-3">
+                          {performanceStats.map((stat, index) => (
+                            <div
+                              key={`${freelancer.id}-${stat.key}`}
+                              className={`flex min-w-0 flex-col items-center justify-center px-2 py-3 text-center ${
+                                index < performanceStats.length - 1
+                                  ? "border-r border-white/10"
+                                  : ""
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 text-[15px] font-semibold tracking-tight text-foreground">
+                                {stat.showStar && (
+                                  <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+                                )}
+                                <span className="truncate">{stat.value}</span>
+                              </div>
+                              <p className="mt-1 max-w-[84px] text-[10px] leading-3 font-medium text-muted-foreground/85">
+                                {stat.label}
+                              </p>
                             </div>
-                          </div>
-                        )}
+                          ))}
+                        </div>
                       </div>
 
                       <div className="mt-2 shrink-0 grid grid-cols-2 gap-2.5">
@@ -477,3 +458,7 @@ const FreelancerSelectionDialog = ({
 );
 
 export default memo(FreelancerSelectionDialog);
+
+
+
+

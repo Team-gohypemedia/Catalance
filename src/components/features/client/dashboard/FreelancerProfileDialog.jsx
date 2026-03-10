@@ -1,16 +1,13 @@
 import { memo, useMemo } from "react";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import Languages from "lucide-react/dist/esm/icons/languages";
-import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import MapPin from "lucide-react/dist/esm/icons/map-pin";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
 import User from "lucide-react/dist/esm/icons/user";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
-import Zap from "lucide-react/dist/esm/icons/zap";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +21,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 
 const PROJECT_IMAGE_PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" fill="none">
@@ -53,12 +49,6 @@ const firstNonEmptyText = (...values) => {
   return "";
 };
 
-const firstNonEmptyArray = (...values) => {
-  for (const value of values) {
-    if (Array.isArray(value) && value.length > 0) return value;
-  }
-  return [];
-};
 
 const normalizeProjectUrl = (value) => {
   const raw = normalizePlainText(value);
@@ -94,14 +84,115 @@ const getDisplayInitials = (name = "") => {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 };
 
-const normalizeList = (items = [], max = 999) =>
-  Array.from(
-    new Set(
-      (Array.isArray(items) ? items : [])
-        .map((entry) => normalizePlainText(entry))
-        .filter(Boolean),
-    ),
-  ).slice(0, max);
+const parseStructuredList = (value) => {
+  if (Array.isArray(value)) return value;
+
+  const raw = normalizePlainText(value);
+  if (!raw) return [];
+
+  if (raw.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // Fall back to delimited text parsing.
+    }
+  }
+
+  return raw
+    .split(/[\n,]+/)
+    .map((entry) => normalizePlainText(entry))
+    .filter(Boolean);
+};
+
+const resolveListEntryLabel = (value) => {
+  if (typeof value === "string" || typeof value === "number") {
+    return normalizePlainText(value);
+  }
+
+  if (!value || typeof value !== "object") return "";
+
+  return firstNonEmptyText(
+    value?.name,
+    value?.label,
+    value?.title,
+    value?.value,
+    value?.skill,
+    value?.service,
+    value?.serviceName,
+    value?.serviceKey,
+    value?.language,
+  );
+};
+
+const collectListEntries = (sources = []) => {
+  const entries = [];
+
+  sources.forEach((source) => {
+    if (Array.isArray(source)) {
+      entries.push(...source);
+      return;
+    }
+
+    entries.push(...parseStructuredList(source));
+  });
+
+  return entries;
+};
+
+const buildDisplayLabels = (
+  sources = [],
+  { max = 999, formatter = toDisplayLabel, shouldInclude } = {},
+) => {
+  const labels = new Map();
+
+  collectListEntries(sources).forEach((entry) => {
+    const rawLabel = resolveListEntryLabel(entry);
+    const normalizedKey = normalizePlainText(rawLabel).toLowerCase();
+
+    if (!normalizedKey) return;
+    if (shouldInclude && !shouldInclude(rawLabel, entry)) return;
+
+    if (!labels.has(normalizedKey)) {
+      labels.set(normalizedKey, formatter(rawLabel));
+    }
+  });
+
+  return Array.from(labels.values()).filter(Boolean).slice(0, max);
+};
+
+const buildServiceBadges = (
+  sources = [],
+  { currentServiceKey = "", currentServiceLabel = "", max = 32 } = {},
+) => {
+  const services = new Map();
+
+  collectListEntries(sources).forEach((entry) => {
+    const rawLabel = resolveListEntryLabel(entry);
+    const serviceKey = normalizeServiceIdentifier(rawLabel);
+    if (!serviceKey) return;
+
+    if (!services.has(serviceKey)) {
+      services.set(serviceKey, {
+        key: serviceKey,
+        label: toDisplayLabel(
+          serviceKey === currentServiceKey && currentServiceLabel
+            ? currentServiceLabel
+            : rawLabel,
+        ),
+      });
+    }
+  });
+
+  return Array.from(services.values())
+    .sort(
+      (left, right) =>
+        Number(right.key === currentServiceKey) -
+          Number(left.key === currentServiceKey) ||
+        left.label.localeCompare(right.label),
+    )
+    .slice(0, max);
+};
 
 const formatRating = (value) => {
   const numeric = Number(value);
@@ -109,8 +200,94 @@ const formatRating = (value) => {
   return numeric.toFixed(1);
 };
 
+const SERVICE_EXPERIENCE_LABELS = {
+  less_than_1: "Less than 1 year",
+  "1_3": "1-3 years",
+  "3_5": "3-5 years",
+  "5_10": "5-10 years",
+  "5_plus": "5+ years",
+  "10_plus": "10+ years",
+};
+
+const normalizeServiceIdentifier = (value = "") =>
+  normalizePlainText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const formatExperienceValue = (value) => {
+  const raw = normalizePlainText(value);
+  if (!raw) return "";
+
+  const normalizedKey = raw.toLowerCase();
+  if (SERVICE_EXPERIENCE_LABELS[normalizedKey]) {
+    return SERVICE_EXPERIENCE_LABELS[normalizedKey];
+  }
+
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return `${Math.round(numeric)} yrs`;
+  }
+
+  return raw;
+};
+
+const resolveServiceSpecificExperience = (freelancer = {}) => {
+  const profileDetails = asObject(
+    freelancer?.profileDetails || freelancer?.freelancerProfile,
+  );
+  const serviceDetails =
+    profileDetails?.serviceDetails && typeof profileDetails.serviceDetails === "object"
+      ? profileDetails.serviceDetails
+      : {};
+  const freelancerProjects = Array.isArray(freelancer?.freelancerProjects)
+    ? freelancer.freelancerProjects
+    : [];
+  const targetServiceKey = normalizeServiceIdentifier(
+    freelancer?.matchedService?.serviceKey ||
+      freelancer?.serviceKey ||
+      freelancer?.matchedService?.serviceName ||
+      freelancer?.serviceName ||
+      freelancer?.service,
+  );
+
+  if (targetServiceKey) {
+    const matchedProject = freelancerProjects.find((project) =>
+      normalizeServiceIdentifier(project?.serviceKey || project?.serviceName) ===
+      targetServiceKey,
+    );
+    const projectExperience = formatExperienceValue(
+      matchedProject?.yearsOfExperienceInService || matchedProject?.experienceYears,
+    );
+    if (projectExperience) return projectExperience;
+
+    if (serviceDetails[targetServiceKey]) {
+      const detailExperience = formatExperienceValue(
+        serviceDetails[targetServiceKey]?.experienceYears ||
+          serviceDetails[targetServiceKey]?.yearsOfExperienceInService,
+      );
+      if (detailExperience) return detailExperience;
+    }
+
+    for (const [rawKey, detail] of Object.entries(serviceDetails)) {
+      if (normalizeServiceIdentifier(rawKey || detail?.key) !== targetServiceKey) continue;
+      const detailExperience = formatExperienceValue(
+        detail?.experienceYears || detail?.yearsOfExperienceInService,
+      );
+      if (detailExperience) return detailExperience;
+    }
+  }
+
+  return "";
+};
+
 const formatExperience = (freelancer) => {
   const normalizedFreelancer = freelancer ?? {};
+  const serviceSpecificExperience = resolveServiceSpecificExperience(
+    normalizedFreelancer,
+  );
+  if (serviceSpecificExperience) return serviceSpecificExperience;
+
   const yearsValue = Number(
     normalizedFreelancer.experienceYears ??
       normalizedFreelancer.experience ??
@@ -120,7 +297,7 @@ const formatExperience = (freelancer) => {
     return `${Math.round(yearsValue)} yrs`;
   }
 
-  const textValue = normalizePlainText(normalizedFreelancer.experience);
+  const textValue = formatExperienceValue(normalizedFreelancer.experience);
   return textValue || "N/A";
 };
 
@@ -218,11 +395,111 @@ const resolvePortfolioProjects = (freelancer = {}) => {
     .slice(0, 12);
 };
 
+const TagListCard = ({
+  title,
+  icon: Icon,
+  items = [],
+  emptyLabel,
+  highlightKey = "",
+}) => (
+  <Card className="border-border/60 bg-muted/15 p-4">
+    <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
+      <Icon className="h-4 w-4 text-primary" />
+      {title}
+    </h3>
+
+    {items.length > 0 ? (
+      <div className="flex flex-wrap gap-2">
+        {items.map((item, index) => {
+          const label = typeof item === "string" ? item : item.label;
+          const key =
+            typeof item === "string"
+              ? normalizePlainText(item).toLowerCase() || `${title}-${index}`
+              : item.key || `${title}-${index}`;
+          const isHighlighted =
+            typeof item === "object" && highlightKey && item.key === highlightKey;
+
+          return (
+            <Badge
+              key={`${title}-${key}-${index}`}
+              variant="outline"
+              className={
+                isHighlighted
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border/70 bg-background/35 text-foreground/90"
+              }
+            >
+              {label}
+            </Badge>
+          );
+        })}
+      </div>
+    ) : (
+      <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+    )}
+  </Card>
+);
+
+const extractStartingPrice = (priceRange) => {
+  if (!priceRange || typeof priceRange !== 'string') return null;
+  
+  // Handle "Under INR 5,000" -> "Under INR 5,000"
+  if (priceRange.includes('Under')) return priceRange;
+  
+  // Handle "Over INR 10 Lakhs" -> "Over INR 10 Lakhs" 
+  if (priceRange.includes('Over')) return priceRange;
+  
+  // Handle "INR 5,000 - 10,000" -> "INR 5,000"
+  const match = priceRange.match(/^INR\s+[\d,]+/);
+  return match ? match[0] : null;
+};
+
+const getStartingPrice = (freelancer) => {
+  // Try to get price from matched service/project first
+  const matchedPrice = freelancer?.matchedService?.averageProjectPriceRange || 
+                      freelancer?.matchedFreelancerProject?.averageProjectPriceRange;
+  
+  if (matchedPrice) {
+    return extractStartingPrice(matchedPrice);
+  }
+  
+  // Try to get from service details
+  const serviceDetails = freelancer?.profileDetails?.serviceDetails || {};
+  const currentServiceKey = normalizeServiceIdentifier(
+    freelancer?.matchedService?.serviceKey ||
+    freelancer?.serviceKey ||
+    freelancer?.matchedService?.serviceName ||
+    freelancer?.serviceName ||
+    freelancer?.service
+  );
+  
+  if (currentServiceKey && serviceDetails[currentServiceKey]) {
+    const servicePrice = serviceDetails[currentServiceKey]?.averageProjectPriceRange;
+    if (servicePrice) {
+      return extractStartingPrice(servicePrice);
+    }
+  }
+  
+  // Try to get from any service detail as fallback
+  for (const detail of Object.values(serviceDetails)) {
+    if (detail?.averageProjectPriceRange) {
+      return extractStartingPrice(detail.averageProjectPriceRange);
+    }
+  }
+  
+  return null;
+};
+
 const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
   const profileDetails = asObject(
     viewingFreelancer?.profileDetails || viewingFreelancer?.freelancerProfile,
   );
   const userDetails = asObject(viewingFreelancer?.user);
+  const identityDetails = asObject(profileDetails?.identity);
+  const serviceDetails = asObject(profileDetails?.serviceDetails);
+  const freelancerProjects = Array.isArray(viewingFreelancer?.freelancerProjects)
+    ? viewingFreelancer.freelancerProjects
+    : [];
 
   const displayName = firstNonEmptyText(
     viewingFreelancer?.fullName,
@@ -247,6 +524,8 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
   );
   const roleLabel = toDisplayLabel(roleValue).toUpperCase();
   const experienceLabel = formatExperience({
+    ...viewingFreelancer,
+    profileDetails,
     experienceYears:
       viewingFreelancer?.experienceYears ?? profileDetails?.experienceYears,
     experience: viewingFreelancer?.experience ?? profileDetails?.experience,
@@ -288,33 +567,79 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     profileDetails?.responseTime,
     profileDetails?.avgResponseTime,
   );
+  const currentServiceKey = normalizeServiceIdentifier(
+    firstNonEmptyText(
+      viewingFreelancer?.matchedService?.serviceKey,
+      viewingFreelancer?.serviceKey,
+      viewingFreelancer?.matchedService?.serviceName,
+      viewingFreelancer?.serviceName,
+      viewingFreelancer?.service,
+    ),
+  );
+  const currentServiceLabel = firstNonEmptyText(
+    viewingFreelancer?.matchedService?.serviceName,
+    viewingFreelancer?.matchedService?.serviceKey,
+    viewingFreelancer?.serviceName,
+    viewingFreelancer?.serviceKey,
+    viewingFreelancer?.service,
+  );
+  const matchedFreelancerProject = currentServiceKey
+    ? freelancerProjects.find(
+        (project) =>
+          normalizeServiceIdentifier(project?.serviceKey || project?.serviceName) ===
+          currentServiceKey,
+      )
+    : null;
+  const matchedServiceDetail = currentServiceKey
+    ? Object.entries(serviceDetails).find(
+        ([rawKey, detail]) =>
+          normalizeServiceIdentifier(rawKey || detail?.key) === currentServiceKey,
+      )?.[1]
+    : null;
 
-  const resolvedSkills = firstNonEmptyArray(
-    viewingFreelancer?.skills,
-    profileDetails?.skills,
-  );
-  const resolvedServices = firstNonEmptyArray(
-    viewingFreelancer?.services,
-    profileDetails?.services,
-  );
-  const resolvedLanguages = firstNonEmptyArray(
-    viewingFreelancer?.languages,
-    profileDetails?.languages,
-  );
-
-  const skills = useMemo(
-    () => normalizeList(resolvedSkills, 100),
-    [resolvedSkills],
-  );
-
-  const services = useMemo(
-    () => normalizeList(resolvedServices, 40).map(toDisplayLabel),
-    [resolvedServices],
+  const services = buildServiceBadges(
+    [
+      currentServiceLabel || currentServiceKey,
+      viewingFreelancer?.services,
+      profileDetails?.services,
+      freelancerProjects.map(
+        (project) => project?.serviceKey || project?.serviceName,
+      ),
+      Object.keys(serviceDetails),
+    ],
+    {
+      currentServiceKey,
+      currentServiceLabel,
+      max: 24,
+    },
   );
 
-  const languages = useMemo(
-    () => normalizeList(resolvedLanguages, 20).map(toDisplayLabel),
-    [resolvedLanguages],
+  const skills = buildDisplayLabels(
+    [
+      viewingFreelancer?.skills,
+      profileDetails?.skills,
+      matchedServiceDetail?.skillsAndTechnologies,
+      matchedFreelancerProject?.serviceSpecializations,
+      matchedFreelancerProject?.activeTechnologies,
+    ],
+    { max: 30 },
+  );
+
+  const languages = buildDisplayLabels(
+    [
+      identityDetails?.languages,
+      identityDetails?.otherLanguage,
+      viewingFreelancer?.languages,
+      profileDetails?.languages,
+      freelancerProjects.flatMap((project) =>
+        Array.isArray(project?.languages) ? project.languages : [],
+      ),
+    ],
+    {
+      max: 20,
+      shouldInclude: (rawLabel) =>
+        normalizePlainText(rawLabel).toLowerCase() !== "other",
+    },
   );
 
   const portfolioProjects = useMemo(
@@ -334,15 +659,18 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     [viewingFreelancer?.portfolio, profileDetails?.portfolio, profileDetails?.portfolioUrl],
   );
 
-  const visibleSkills = skills.slice(0, 24);
-  const extraSkillCount = Math.max(0, skills.length - visibleSkills.length);
+  const startingPrice = useMemo(
+    () => getStartingPrice(viewingFreelancer),
+    [viewingFreelancer],
+  );
 
   const stats = [
     { label: "Experience", value: experienceLabel },
-    { label: "Skills", value: `${skills.length}` },
-    { label: "Services", value: `${services.length}` },
-    { label: "Projects", value: `${portfolioProjects.length}` },
   ];
+
+  if (startingPrice) {
+    stats.push({ label: "Starting from", value: startingPrice });
+  }
 
   if (responseTimeLabel) {
     stats.push({ label: "Response", value: responseTimeLabel });
@@ -361,7 +689,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                   {displayName} Freelancer Profile
                 </DialogTitle>
                 <DialogDescription className="sr-only">
-                  Profile overview with skills, services, and projects.
+                  Profile overview with services, skills, languages, and projects.
                 </DialogDescription>
 
                 <div className="flex items-start gap-4">
@@ -425,16 +753,6 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                           {hourlyRateLabel}
                         </Badge>
                       )}
-
-                      {experienceLabel && (
-                        <Badge
-                          variant="outline"
-                          className="border-border/70 bg-background/40 text-muted-foreground"
-                        >
-                          <Clock3 className="mr-1 h-3.5 w-3.5" />
-                          {experienceLabel}
-                        </Badge>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -443,8 +761,8 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
 
             <ScrollArea className="min-h-0 flex-1">
               <div className="space-y-4 p-6">
-                <div className="grid gap-4 lg:grid-cols-[300px,1fr]">
-                  <Card className="h-fit border-border/60 bg-muted/15 p-4">
+                <div className="space-y-4">
+                  <Card className="border-border/60 bg-muted/15 p-4">
                     <h3 className="mb-2 flex items-center gap-2 text-base font-semibold text-foreground">
                       <User className="h-4 w-4 text-primary" />
                       About
@@ -452,119 +770,52 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       {profileBio || "No bio available for this freelancer yet."}
                     </p>
-
-                    <Separator className="my-4 bg-border/50" />
-
-                    <div className="grid grid-cols-2 gap-2">
-                      {stats.map((item) => (
-                        <div
-                          key={`freelancer-stat-${item.label}`}
-                          className="rounded-lg border border-border/60 bg-background/40 p-2"
-                        >
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                            {item.label}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-foreground">
-                            {item.value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
                   </Card>
 
-                  <div className="space-y-4">
-                    <Card className="border-border/60 bg-muted/15 p-4">
-                      <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-                        <Zap className="h-4 w-4 text-primary" />
-                        Core Skills
-                      </h3>
-
-                      {visibleSkills.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {visibleSkills.map((skill) => (
-                            <Badge
-                              key={`skill-${skill}`}
-                              variant="outline"
-                              className="border-primary/30 bg-primary/10 text-primary"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
-                          {extraSkillCount > 0 && (
-                            <Badge
-                              variant="outline"
-                              className="border-border/70 text-muted-foreground"
-                            >
-                              +{extraSkillCount} more
-                            </Badge>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          No skills listed yet.
+                  <div className="grid grid-cols-2 gap-2">
+                    {stats.map((item) => (
+                      <div
+                        key={`freelancer-stat-${item.label}`}
+                        className="rounded-lg border border-border/60 bg-muted/15 p-3"
+                      >
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          {item.label}
                         </p>
-                      )}
-                    </Card>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <Card className="border-border/60 bg-muted/15 p-4">
-                        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-                          <Layers3 className="h-4 w-4 text-primary" />
-                          Service Expertise
-                        </h3>
-
-                        {services.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {services.slice(0, 16).map((service) => (
-                              <Badge
-                                key={`service-${service}`}
-                                variant="secondary"
-                                className="bg-background/70"
-                              >
-                                {service}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No service expertise listed.
-                          </p>
-                        )}
-                      </Card>
-
-                      <Card className="border-border/60 bg-muted/15 p-4">
-                        <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
-                          <Languages className="h-4 w-4 text-primary" />
-                          Languages
-                        </h3>
-
-                        {languages.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {languages.map((language) => (
-                              <Badge
-                                key={`language-${language}`}
-                                variant="outline"
-                                className="border-border/70"
-                              >
-                                {language}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No languages listed.
-                          </p>
-                        )}
-                      </Card>
-                    </div>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
                   </div>
+
+                  <TagListCard
+                    title="Services"
+                    icon={Briefcase}
+                    items={services}
+                    emptyLabel="No services selected yet."
+                    highlightKey={currentServiceKey}
+                  />
+
+                  <TagListCard
+                    title="Skills"
+                    icon={Sparkles}
+                    items={skills}
+                    emptyLabel="No skills added yet."
+                  />
+
+                  <TagListCard
+                    title="Languages"
+                    icon={Languages}
+                    items={languages}
+                    emptyLabel="No languages listed yet."
+                  />
                 </div>
 
                 <Card className="border-border/60 bg-muted/15 p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
                       <Briefcase className="h-4 w-4 text-primary" />
-                      Portfolio Projects
+                      Projects
                     </h3>
                     <Badge variant="outline" className="border-border/70 text-xs">
                       {portfolioProjects.length} items
@@ -630,7 +881,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                   ) : (
                     <div className="rounded-xl border border-dashed border-border/70 bg-background/30 p-10 text-center">
                       <p className="text-sm text-muted-foreground">
-                        Portfolio projects are not added yet.
+                        Projects are not added yet.
                       </p>
                     </div>
                   )}
@@ -640,7 +891,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
 
             <DialogFooter className="shrink-0 border-t border-border/60 px-6 py-4 sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                Review skills and portfolio before sending a proposal.
+                Review services, skills, languages, pricing, and projects before sending a proposal.
               </p>
               <div className="flex gap-2">
                 {primaryPortfolioUrl && (
@@ -672,3 +923,6 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
 };
 
 export default memo(FreelancerProfileDialog);
+
+
+

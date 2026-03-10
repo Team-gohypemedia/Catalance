@@ -157,6 +157,8 @@ model Project {
   ownerId         String
   manager         User?         @relation("ProjectManager", fields: [managerId], references: [id])
   managerId       String?
+  freelancerChangeCount    Int    @default(0)
+  freelancerChangeRequests Json   @default("[]")
 
   proposals       Proposal[]
   disputes        Dispute[]
