@@ -50,7 +50,7 @@ export const createDispute = asyncHandler(async (req, res) => {
 
     const assignedActiveManagerId =
       project.manager?.role === "PROJECT_MANAGER" &&
-      project.manager?.status === "ACTIVE"
+        project.manager?.status === "ACTIVE"
         ? project.manager.id
         : undefined;
 
@@ -113,7 +113,7 @@ export const createDispute = asyncHandler(async (req, res) => {
       const selectedSlot = assignedActiveManagerId
         ? availableSlots[0]
         : availableSlots[Math.floor(Math.random() * availableSlots.length)];
-      
+
       managerId = selectedSlot.managerId;
       availabilityId = selectedSlot.id;
 
@@ -238,7 +238,7 @@ export const updateDispute = asyncHandler(async (req, res) => {
 
   // Optionally auto-assign if manager touches it
   // Check if already has manager
-  const currentDispute = await prisma.dispute.findUnique({ 
+  const currentDispute = await prisma.dispute.findUnique({
     where: { id },
     include: {
       project: {
@@ -256,6 +256,49 @@ export const updateDispute = asyncHandler(async (req, res) => {
 
   if (!currentDispute.managerId) {
     data.managerId = userId;
+  }
+
+  const activeManagerId = data.managerId || currentDispute.managerId;
+
+  // Conflict prevention for meeting reschedules
+  if (data.meetingDate) {
+    const newMeetingDate = new Date(data.meetingDate);
+    if (isNaN(newMeetingDate.getTime())) throw new AppError("Invalid meeting date", 400);
+
+    const startWindow = new Date(newMeetingDate.getTime() - 45 * 60 * 1000); // 45 min buffer
+    const endWindow = new Date(newMeetingDate.getTime() + 45 * 60 * 1000);
+
+    // Check for conflicting disputes
+    const conflictingDispute = await prisma.dispute.findFirst({
+      where: {
+        managerId: activeManagerId,
+        id: { not: id },
+        status: { notIn: ["RESOLVED"] },
+        meetingDate: {
+          gte: startWindow,
+          lte: endWindow
+        }
+      }
+    });
+
+    if (conflictingDispute) {
+      throw new AppError("Conflict: You already have another dispute meeting scheduled too close to this time.", 409);
+    }
+
+    // Also check for conflicting Appointments
+    const startHour = newMeetingDate.getUTCHours();
+    const conflictingAppointment = await prisma.appointment.findFirst({
+      where: {
+        managerId: activeManagerId,
+        date: newMeetingDate, // Note: Prisma date comparison might need normalization depending on DB driver
+        startHour,
+        status: { notIn: ["CANCELLED", "REJECTED"] }
+      }
+    });
+
+    if (conflictingAppointment) {
+      throw new AppError("Conflict: You already have a fixed appointment scheduled at this time.", 409);
+    }
   }
 
   const dispute = await prisma.dispute.update({
@@ -411,7 +454,7 @@ export const getAvailability = asyncHandler(async (req, res) => {
     }
 
     const { date, projectId } = req.query;
-    
+
     if (!date) {
       return res.status(400).json({ error: "Date parameter required" });
     }
@@ -516,7 +559,7 @@ export const getAvailability = asyncHandler(async (req, res) => {
     // Format to 12-hour time strings (slots are already filtered by isBooked=false)
     const seen = new Set();
     const result = [];
-    
+
     matchingSlots
       .sort((a, b) => a.startHour - b.startHour)
       .forEach(slot => {

@@ -83,7 +83,7 @@ export const ProjectManagerDashboardContent = () => {
         try {
             const [disputesRes, projectsRes] = await Promise.all([
                 authFetch("/disputes"),
-                authFetch("/projects"),
+                authFetch("/pm/dashboard"),
             ]);
 
             const disputesData = await disputesRes.json().catch(() => null);
@@ -96,7 +96,7 @@ export const ProjectManagerDashboardContent = () => {
             }
 
             if (projectsRes.ok) {
-                setProjects(Array.isArray(projectsData?.data) ? projectsData.data : []);
+                setProjects(Array.isArray(projectsData?.data?.projects) ? projectsData.data.projects : []);
             }
         } catch (e) {
             toast.error("Error loading dashboard data");
@@ -157,16 +157,24 @@ export const ProjectManagerDashboardContent = () => {
                 progress >= 95
                     ? "Delivery"
                     : progress >= 70
-                    ? "QA / Review"
-                    : progress >= 40
-                    ? "Development"
-                    : progress > 0
-                    ? "Discovery"
-                    : "Kickoff";
+                        ? "QA / Review"
+                        : progress >= 40
+                            ? "Development"
+                            : progress > 0
+                                ? "Discovery"
+                                : "Kickoff";
+
+            const clientName = project?.owner?.fullName || "Unknown Client";
+            const freelancerName = project?.proposals?.[0]?.freelancer?.fullName || "Unassigned";
+            const status = String(project?.status || "UNKNOWN");
+            const chatMetrics = project?.chatMetrics || {};
 
             return {
                 id: project?.id,
                 title: project?.title || "Untitled Project",
+                status,
+                clientName,
+                freelancerName,
                 progress,
                 phaseLabel,
                 burnRate,
@@ -174,6 +182,9 @@ export const ProjectManagerDashboardContent = () => {
                 spent,
                 health,
                 disputeStatus,
+                meetingIndicator: dispute?.meetingDate && new Date(dispute.meetingDate) > new Date() ? true : false,
+                lastActivity: project?.updatedAt,
+                ...chatMetrics
             };
         });
     }, [managedProjects, disputes]);
@@ -389,8 +400,8 @@ const PMProjectTracker = ({ projects }) => {
                             project.health === "GREEN"
                                 ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
                                 : project.health === "YELLOW"
-                                ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
-                                : "bg-rose-500/15 text-rose-500 border-rose-500/30";
+                                    ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                                    : "bg-rose-500/15 text-rose-500 border-rose-500/30";
 
                         return (
                             <Card key={project.id} className="border-border/60">
@@ -408,35 +419,35 @@ const PMProjectTracker = ({ projects }) => {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-2">
+                                        <div><strong>Client:</strong> <span className="text-foreground">{project.clientName}</span></div>
+                                        <div><strong>Freelancer:</strong> <span className="text-foreground">{project.freelancerName}</span></div>
+                                        <div><strong>Status:</strong> <span className="text-foreground">{project.status}</span></div>
+                                        <div>
+                                            {project.meetingIndicator && <span className="text-amber-600 font-medium flex items-center gap-1"><Clock className="w-3 h-3" /> Upcoming Mtg</span>}
+                                        </div>
+                                    </div>
+
                                     <div>
                                         <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                                             <span className="inline-flex items-center gap-1">
                                                 <Activity className="h-3.5 w-3.5" />
-                                                Progress
+                                                Milestone Progress
                                             </span>
                                             <span>{Math.round(project.progress)}%</span>
                                         </div>
                                         <Progress value={project.progress} className="h-2" />
                                     </div>
-                                    <div>
-                                        <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                                            <span className="inline-flex items-center gap-1">
-                                                <Gauge className="h-3.5 w-3.5" />
-                                                Budget burn rate
-                                            </span>
-                                            <span>{project.burnRate}%</span>
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mt-2">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="inline-flex items-center gap-1"><Gauge className="h-3 w-3" /> Burn Rate: {project.burnRate}%</span>
+                                            <span className="inline-flex items-center gap-1"><TrendingUp className="h-3 w-3" /> ₹{Number(project.spent || 0).toLocaleString()} / ₹{Number(project.budget || 0).toLocaleString()}</span>
                                         </div>
-                                        <Progress value={Math.min(project.burnRate, 100)} className="h-2" />
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                        <span className="inline-flex items-center gap-1">
-                                            <TrendingUp className="h-3.5 w-3.5" />
-                                            Spent vs Budget
-                                        </span>
-                                        <span>
-                                            ₹{Number(project.spent || 0).toLocaleString("en-IN")} / ₹
-                                            {Number(project.budget || 0).toLocaleString("en-IN")}
-                                        </span>
+                                        <div className="flex flex-col gap-1 border-l pl-2 border-border/50">
+                                            <span><strong>Msgs:</strong> {project.totalMessages || 0}</span>
+                                            <span className="truncate"><strong>Last:</strong> {project.lastMessageSender || "N/A"}</span>
+                                            <span className="truncate text-[10px] mt-1">Act: {new Date(project.lastActivity).toLocaleDateString()}</span>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

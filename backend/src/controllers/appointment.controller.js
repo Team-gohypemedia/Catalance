@@ -186,11 +186,30 @@ export const bookAppointment = asyncHandler(async (req, res) => {
 
     const dateObj = parseDate(date, false);
 
+    // Cross-check for conflicting dispute meetings
+    const startWindow = new Date(dateObj);
+    startWindow.setUTCHours(startHour, 0, 0, 0);
+    const endWindow = new Date(startWindow.getTime() + 60 * 60 * 1000); // 1 hour slot
+
+    const conflictingDispute = await prisma.dispute.findFirst({
+        where: {
+            managerId,
+            status: { notIn: ["RESOLVED"] },
+            meetingDate: {
+                gte: startWindow,
+                lt: endWindow
+            }
+        }
+    });
+
+    if (conflictingDispute) {
+        throw new AppError("Conflict: The manager already has a dispute meeting scheduled at this time.", 409);
+    }
+
     // Check if the slot exists and is available
     const slot = await prisma.managerAvailability.findFirst({
         where: {
             managerId,
-            date: dateObj,
             date: dateObj,
             startHour,
             isBooked: false,
