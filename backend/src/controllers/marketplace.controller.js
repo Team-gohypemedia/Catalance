@@ -594,9 +594,20 @@ export const getMarketplace = asyncHandler(async (req, res) => {
     });
   }
 
+  // Deduplicate tier1Candidates by freelancerId and serviceKey to prevent duplicate cards
+  const deduplicatedCandidates = [];
+  const seenPair = new Set();
+  for (const c of tier1Candidates) {
+    const pairKey = `${c.freelancerId}:${c.serviceKey}`;
+    if (!seenPair.has(pairKey)) {
+      seenPair.add(pairKey);
+      deduplicatedCandidates.push(c);
+    }
+  }
+
   // Batch-fetch the canonical Marketplace rows for each (freelancerId, serviceKey) pair
   // These contain real serviceDetails including coverImage, price, deliveryTime, etc.
-  const uniquePairs = tier1Candidates
+  const uniquePairs = deduplicatedCandidates
     .map(c => ({ freelancerId: c.freelancerId, serviceKey: c.serviceKey }))
     .filter(p => p.serviceKey);
 
@@ -614,7 +625,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
   }
 
   // Attach mktRow to each candidate so mapToMarketplaceRow can use it
-  const enrichedCandidates = tier1Candidates.map(c => ({
+  const enrichedCandidates = deduplicatedCandidates.map(c => ({
     ...c,
     _mktRow: mktMap.get(`${c.freelancerId}:${c.serviceKey}`) || null,
   }));
@@ -809,9 +820,47 @@ export const getServiceById = asyncHandler(async (req, res) => {
   const averageRating = reviewStats._avg.rating ? Number(reviewStats._avg.rating.toFixed(1)) : 0;
   const reviewCount = reviewStats._count.id;
 
+  // Fetch real portfolio from FreelancerProject model for this freelancer
+  const portfolioProjects = await prisma.freelancerProject.findMany({
+    where: { freelancerId: service.freelancerId },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      link: true,
+      fileUrl: true,
+      role: true,
+      budget: true,
+      techStack: true,
+      tags: true,
+    },
+    orderBy: { sortOrder: 'desc' },
+    take: 10
+  });
+
+  const formattedPortfolio = portfolioProjects.map(p => ({
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    link: p.link,
+    imageUrl: p.fileUrl,
+    role: p.role,
+    budget: p.budget,
+    techStack: p.techStack,
+    tags: p.tags,
+  }));
+
+  // Force overwrite portfolio inside serviceDetails to avoid mock data
+  if (service.serviceDetails) {
+    service.serviceDetails.portfolio = formattedPortfolio;
+  }
+
+  const portfolioCount = formattedPortfolio.length;
+
   res.json({
     data: {
       ...service,
+      portfolioCount,
       averageRating,
       reviewCount
     }

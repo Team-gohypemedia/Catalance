@@ -1,0 +1,1015 @@
+[
+  {
+    "mktId": "cmmac4uv000049zd8qiymj2hb",
+    "serviceKey": "web_development",
+    "mktDetails": {
+      "key": "web_development",
+      "title": "Web Development",
+      "coverImage": "/assets/services/web-development-cover.jpg",
+      "description": "Design and develop responsive, high-converting websites and landing pages."
+    },
+    "pdServiceDetailsType": "object",
+    "pdServiceDetailsIsArray": false,
+    "pdServiceDetails": {
+      "web_development": {
+        "groups": {
+          "website_tech_stack": [
+            "React / Next.js",
+            "Node.js"
+          ],
+          "website_specialization": [
+            "E-commerce",
+            "Landing Pages"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://royaloptics.in/",
+            "role": "full_execution",
+            "title": "Royal Optics",
+            "budget": "30000",
+            "timeline": "2_4_weeks",
+            "techStack": [
+              "php"
+            ]
+          },
+          {}
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "github": "https://github.com/rishavrawat-ai/"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "small",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 5,000 - 10,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "mktId": "cmmaciosq0003nf73nwq79g6y",
+    "serviceKey": "branding",
+    "mktDetails": {
+      "key": "branding",
+      "title": "Branding",
+      "coverImage": "/assets/services/branding-cover.jpg",
+      "description": "Build logo, brand identity, and strategic messaging for consistent brand growth."
+    },
+    "pdServiceDetailsType": "object",
+    "pdServiceDetailsIsArray": false,
+    "pdServiceDetails": {
+      "branding": {
+        "groups": {
+          "branding_scope": [
+            "Logo Design",
+            "Brand Identity",
+            "Brand Strategy",
+            "Packaging & Visual Systems",
+            "Brand Guidelines"
+          ],
+          "branding_approach": [
+            "Visual Identity Driven",
+            "Storytelling Driven",
+            "Market Research Driven"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {}
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "behance": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "creative_design": {
+        "groups": {
+          "design_tools": [
+            "Illustrator",
+            "Photoshop",
+            "Canva",
+            "Adobe Firefly",
+            "DALL-E",
+            "Midjourney"
+          ],
+          "design_approach": [
+            "Brand Guideline Based"
+          ],
+          "design_specialization": [
+            "Branding Design",
+            "Social Media Creatives",
+            "Packaging Design",
+            "Ad Creatives"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "behance": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Post Design"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Engagement Growth",
+            "Lead Generation"
+          ],
+          "social_platforms": [
+            "Instagram"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "instagram": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "mktId": "cmmacip5i0005nf73tqi99rln",
+    "serviceKey": "social_media_marketing",
+    "mktDetails": {
+      "key": "social_media_marketing",
+      "title": "Social Media Management",
+      "coverImage": "/assets/services/social-media-cover.jpg",
+      "description": "Plan and execute social content, engagement, and platform growth campaigns."
+    },
+    "pdServiceDetailsType": "object",
+    "pdServiceDetailsIsArray": false,
+    "pdServiceDetails": {
+      "branding": {
+        "groups": {
+          "branding_scope": [
+            "Logo Design",
+            "Brand Identity",
+            "Brand Strategy",
+            "Packaging & Visual Systems",
+            "Brand Guidelines"
+          ],
+          "branding_approach": [
+            "Visual Identity Driven",
+            "Storytelling Driven",
+            "Market Research Driven"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {}
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "behance": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "creative_design": {
+        "groups": {
+          "design_tools": [
+            "Illustrator",
+            "Photoshop",
+            "Canva",
+            "Adobe Firefly",
+            "DALL-E",
+            "Midjourney"
+          ],
+          "design_approach": [
+            "Brand Guideline Based"
+          ],
+          "design_specialization": [
+            "Branding Design",
+            "Social Media Creatives",
+            "Packaging Design",
+            "Ad Creatives"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "behance": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Post Design"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Engagement Growth",
+            "Lead Generation"
+          ],
+          "social_platforms": [
+            "Instagram"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "instagram": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "mktId": "cmmacipi90007nf738detcygz",
+    "serviceKey": "creative_design",
+    "mktDetails": {
+      "key": "creative_design",
+      "title": "Creative & Design",
+      "coverImage": "/assets/services/creative-design-cover.jpg",
+      "description": "Design social, brand, and marketing creatives aligned to business goals."
+    },
+    "pdServiceDetailsType": "object",
+    "pdServiceDetailsIsArray": false,
+    "pdServiceDetails": {
+      "branding": {
+        "groups": {
+          "branding_scope": [
+            "Logo Design",
+            "Brand Identity",
+            "Brand Strategy",
+            "Packaging & Visual Systems",
+            "Brand Guidelines"
+          ],
+          "branding_approach": [
+            "Visual Identity Driven",
+            "Storytelling Driven",
+            "Market Research Driven"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {}
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "behance": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "creative_design": {
+        "groups": {
+          "design_tools": [
+            "Illustrator",
+            "Photoshop",
+            "Canva",
+            "Adobe Firefly",
+            "DALL-E",
+            "Midjourney"
+          ],
+          "design_approach": [
+            "Brand Guideline Based"
+          ],
+          "design_specialization": [
+            "Branding Design",
+            "Social Media Creatives",
+            "Packaging Design",
+            "Ad Creatives"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "behance": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "social_media_marketing": {
+        "groups": {
+          "social_scope": [
+            "Post Design"
+          ],
+          "social_strategy": [
+            "Brand Awareness Focus",
+            "Engagement Growth",
+            "Lead Generation"
+          ],
+          "social_platforms": [
+            "Instagram"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "instagram": "https://www.behance.net/shoaibmalik56"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      }
+    }
+  },
+  {
+    "mktId": "cmmad5oi50007151v0xoj8lod",
+    "serviceKey": "web_development",
+    "mktDetails": {
+      "key": "web_development",
+      "title": "Web Development",
+      "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/941479a8-7d33-4b4c-bf92-706c86ba1bfe.png",
+      "description": "I am a web developer with 3 years of experience building responsive, user-friendly, and high-performing websites. I have worked on multiple projects using different technologies and always focus on delivering clean code and quality results."
+    },
+    "pdServiceDetailsType": "object",
+    "pdServiceDetailsIsArray": false,
+    "pdServiceDetails": {
+      "seo": {
+        "groups": {
+          "seo_tools": [
+            "Ahrefs",
+            "SEMrush",
+            "GSC",
+            "Google Search Console",
+            "Google Keyword Planner",
+            "PageSpeed Insights"
+          ],
+          "seo_deliverables": [
+            "SEO Audit",
+            "Keyword Research",
+            "Monthly Reports",
+            "Backlink Strategy",
+            "Content Plan"
+          ],
+          "seo_specialization": [
+            "On Page SEO",
+            "Technical SEO"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/8f5fefb4-0449-4c2b-943c-10afac63dc4f.png",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "linkedin": "https://www.linkedin.com/in/btwitskaif69/"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "small",
+        "serviceDescription": "I am a beginner in SEO with a strong interest in improving website visibility and search rankings. I am learning keyword research, on-page optimization, and SEO best practices to help websites grow organically.",
+        "averageProjectPrice": "Under INR 5,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "branding": {
+        "groups": {
+          "branding_scope": [
+            "Logo Design",
+            "Packaging & Visual Systems"
+          ],
+          "branding_approach": [
+            "Visual Identity Driven"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/7d0e2aa6-018c-4a1d-ad93-c5ad96f63e2b.jpeg",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "other": "https://btwitskaif.vercel.app/"
+        },
+        "experienceYears": "3_5",
+        "projectComplexity": "medium",
+        "serviceDescription": "I am a branding specialist with experience in creating strong and impactful brand identities. I help businesses build a clear brand voice, visual identity, and strategy that connects with their audience and leaves a lasting impression.",
+        "averageProjectPrice": "INR 10,000 - 25,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "ai_automation": {
+        "groups": {
+          "automation_type": [
+            "Marketing Automation",
+            "AI Chatbots",
+            "AI Agents",
+            "Workflow Automation"
+          ],
+          "automation_tools": [
+            "Zapier",
+            "Make.com",
+            "n8n",
+            "OpenAI API",
+            "Airtable",
+            "Claude API",
+            "Google Apps Script"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/1bdcff3c-956e-4adb-93b6-c0ce93fd74bc.gif",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "github": "https://github.com/btwitskaif69 "
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "I am an intermediate AI automation specialist with experience in building smart workflows and automated systems that improve efficiency and reduce manual work. I work with AI tools and integrations to create practical, scalable solutions for businesses.",
+        "averageProjectPrice": "INR 25,000 - 50,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "creative_design": {
+        "groups": {},
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/b1540905-a976-4359-a6ad-d2f554e69c7e.png",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "INR 50,000 - 1 Lakh",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {},
+        "experienceYears": "less_than_1",
+        "projectComplexity": "large",
+        "serviceDescription": "I build experiences that convert into revenue",
+        "averageProjectPrice": "INR 50,000 - 1 Lakh",
+        "hasPreviousProjects": "",
+        "preferOnlyIndustries": "",
+        "skillsAndTechnologies": [
+          "Figma",
+          "Photoshop",
+          "Adobe Xd",
+          "Illustrator",
+          "After Effects",
+          "Blender",
+          "Adobe Photoshop",
+          "Adobe Illustrator",
+          "Canva",
+          "Adobe Firefly",
+          "Midjourney",
+          "DALL-E",
+          "Framer",
+          "Sketch",
+          "Adobe Indesign"
+        ]
+      },
+      "web_development": {
+        "groups": {
+          "website_tech_stack": [
+            "Custom CMS",
+            "TypeScript",
+            "Bootstrap",
+            "Cloudflare",
+            "Git/GitHub",
+            "Vercel",
+            "Tailwind CSS",
+            "HTML / CSS / JavaScript",
+            "Node.js",
+            "React / Next.js",
+            "Shopify",
+            "Other"
+          ],
+          "website_specialization": [
+            "E-commerce",
+            "Marketplace Websites",
+            "Landing Pages",
+            "SaaS Platforms",
+            "Corporate / Business"
+          ]
+        },
+        "niches": [],
+        "projects": [
+          {
+            "link": "https://www.markify.tech/",
+            "role": "full_execution",
+            "tags": [
+              "Next.js",
+              "Typescript",
+              "Javascript",
+              "Node.js",
+              "React.js",
+              "Express.js",
+              "PrismaORM",
+              "NeonDB",
+              "Tailwindcss",
+              "Saas",
+              "Startup",
+              "Cloudflare R2",
+              "Vercel",
+              "PostgreSQL",
+              "Resend",
+              "E-commerce"
+            ],
+            "title": "Markify",
+            "budget": "300000",
+            "readme": "https://github.com/btwitskaif69/Markify/blob/main/README.md",
+            "timeline": "3_plus_months",
+            "techStack": [
+              "React / Next.js",
+              "Node.js",
+              "Vercel",
+              "NeonDb",
+              "CloudFLare",
+              "R2",
+              "Tailwindcss",
+              "PrismaORM",
+              "Zod",
+              "PostgreSQL",
+              "Resend"
+            ],
+            "description": "Keep every link organized, searchable, and accessible with Markify’s clean, modern bookmark manager."
+          },
+          {
+            "link": "https://delan.in/",
+            "role": "full_execution",
+            "tags": [
+              "React.js",
+              "Node.js",
+              "Resend",
+              "Shopify",
+              "Tailwindcss",
+              "Payment Gateway",
+              "Clothing Website",
+              "vps",
+              "ECOMMERCE"
+            ],
+            "title": "Delan",
+            "budget": "1500000",
+            "timeline": "1_3_months",
+            "techStack": [
+              "React / Next.js",
+              "Node.js",
+              "Payment Gateway",
+              "Tailwindcss",
+              "Resend",
+              "vps"
+            ],
+            "description": "DELAN is a modern luxury label designed for women who value refined silhouettes, premium finishing, and effortless confidence. We create pieces you can live in, repeat, and remember, FOR THE MOMENTS THAT MATTER."
+          },
+          {
+            "link": "https://drinkfizzix.com/",
+            "role": "full_execution",
+            "tags": [
+              "React.js",
+              "Node.js",
+              "Resend",
+              "Shopify",
+              "Tailwindcss",
+              "Payment Gateway",
+              "Ecommerce",
+              "E-commerce",
+              "vps",
+              "Drink Website",
+              "Razorpay"
+            ],
+            "title": "Fizzix",
+            "budget": "1500000",
+            "timeline": "1_3_months",
+            "techStack": [
+              "React / Next.js",
+              "Node.js",
+              "Resend",
+              "Shopify",
+              "Razorpay",
+              "Tailwindcss",
+              "vps"
+            ],
+            "description": "Fizzix offers premium, low-sugar effervescent tablets designed to create instant, bar-quality cocktails or mocktails in seconds. By dropping a tablet into water or a spirit, it produces a sparkling, flavored drink with 80% less sugar than traditional mixers. It is a portable, convenient, and vegan product suited for parties or personal use. "
+          }
+        ],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/941479a8-7d33-4b4c-bf92-706c86ba1bfe.png",
+        "groupOther": {
+          "website_tech_stack": "shadcn, razorpay, react.js, express.js, mongodb, gsap, frammermotion, 3d, scrolltrigger, firebase, neondb, prismaorm, drizzleorm, vps"
+        },
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "",
+        "industryFocus": "",
+        "platformLinks": {
+          "github": "https://github.com/btwitskaif69",
+          "liveProjects": "https://btwitskaif.vercel.app/"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "large",
+        "serviceDescription": "I am a web developer with 3 years of experience building responsive, user-friendly, and high-performing websites. I have worked on multiple projects using different technologies and always focus on delivering clean code and quality results.",
+        "averageProjectPrice": "INR 1 Lakh - 3 Lakhs",
+        "hasPreviousProjects": "yes",
+        "preferOnlyIndustries": ""
+      },
+      "whatsapp_chatbot": {
+        "groups": {
+          "whatsapp_bot_type": [
+            "Customer Support Bot",
+            "Lead Qualification Bot",
+            "Appointment Booking Bot",
+            "Sales Funnel Bot"
+          ],
+          "whatsapp_platforms": [
+            "WhatsApp Business API",
+            "Make.com",
+            "Interakt",
+            "Meta WhatsApp Cloud API"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/8c84c20c-63c0-4f82-bb92-bef54f336725.jpg",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "website": "https://btwitskaif.vercel.app/"
+        },
+        "experienceYears": "less_than_1",
+        "projectComplexity": "medium",
+        "serviceDescription": "I build WhatsApp chatbots that automate customer support, lead capture, and order or booking flows. I can set up interactive conversations, integrations, and reliable automation to improve response time and customer experience.",
+        "averageProjectPrice": "INR 25,000 - 50,000",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      },
+      "software_development": {
+        "groups": {
+          "software_capability": [
+            "Internal Business Tools",
+            "Cloud-Based SaaS",
+            "Enterprise Solutions",
+            "API / System Integration"
+          ],
+          "software_tech_stack": [
+            "Node.js",
+            "Microservices Architecture",
+            "React",
+            "TypeScript",
+            "Next.js",
+            "PostgreSQL / MySQL",
+            "MongoDB",
+            "Redis",
+            "Git/GitHub"
+          ],
+          "software_specialization": [
+            "SaaS Platforms",
+            "Automation Tools",
+            "Enterprise Software",
+            "Custom Dashboards",
+            "Business Management Software"
+          ]
+        },
+        "niches": [],
+        "caseStudy": {
+          "goal": "",
+          "role": "",
+          "results": "",
+          "industry": "",
+          "timeline": "",
+          "techStack": [],
+          "budgetRange": "",
+          "projectTitle": "",
+          "industryOther": "",
+          "techStackOther": ""
+        },
+        "coverImage": "https://assets.catalance.in/freelancers/cmmaawrzt0000151v1gpyvpdp/profile/projects/manual/3cd47398-4d48-419c-97b9-3904152828c4.webp",
+        "groupOther": {},
+        "otherNiche": "",
+        "sampleWork": null,
+        "averagePrice": "",
+        "workingLevel": "",
+        "hasSampleWork": "no",
+        "industryFocus": "",
+        "platformLinks": {
+          "github": "https://github.com/btwitskaif69 ",
+          "portfolio": "https://btwitskaif.vercel.app/"
+        },
+        "experienceYears": "1_3",
+        "projectComplexity": "medium",
+        "serviceDescription": "I am a software developer with experience in building efficient, scalable, and user-focused applications. I work with different technologies to develop reliable solutions and always focus on clean code and quality performance.",
+        "averageProjectPrice": "INR 1 Lakh - 3 Lakhs",
+        "hasPreviousProjects": "no",
+        "preferOnlyIndustries": ""
+      }
+    }
+  }
+]
