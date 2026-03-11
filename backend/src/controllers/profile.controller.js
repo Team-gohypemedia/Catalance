@@ -6,6 +6,11 @@ import {
   normalizeSkills,
   extractSkillsFromProfileDetails
 } from "../utils/skill-utils.js";
+import { syncFreelancerProfileDetailsProjection } from "../modules/users/freelancer-profile-details.service.js";
+import {
+  FREELANCER_PROFILE_SAFE_SELECT,
+  FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+} from "../modules/users/freelancer-profile.select.js";
 
 const parseExtras = (value) => {
   try {
@@ -109,19 +114,19 @@ const toProfileDetailsObject = (value) => {
 
 const resolveUserProfileDetails = async (user = null) => {
   const relationProfileDetails = toProfileDetailsObject(
-    user?.freelancerProfile?.profileDetails
+    user?.freelancerProfile?.freelancerProfileDetails?.profileDetails
   );
   if (Object.keys(relationProfileDetails).length) {
     return relationProfileDetails;
   }
 
   const legacyProfileDetails = toProfileDetailsObject(user?.profileDetails);
-  if (!user?.id || !prisma?.freelancerProfile?.findUnique) {
+  if (!user?.id || !prisma?.freelancerProfileDetails?.findUnique) {
     return legacyProfileDetails;
   }
 
   try {
-    const profile = await prisma.freelancerProfile.findUnique({
+    const profile = await prisma.freelancerProfileDetails.findUnique({
       where: { userId: user.id },
       select: { profileDetails: true }
     });
@@ -385,7 +390,9 @@ export const getProfile = asyncHandler(async (req, res) => {
       roles: true,
       status: true,
       avatar: true,
-      freelancerProfile: true
+      freelancerProfile: {
+        select: FREELANCER_PROFILE_SAFE_SELECT
+      }
     }
   });
   if (!user) {
@@ -534,10 +541,10 @@ export const saveProfile = asyncHandler(async (req, res) => {
 
   const existingUser = await prisma.user.findUnique({
     where: userId ? { id: userId } : { email },
-    select: {
-      id: true,
-      email: true,
-      freelancerProfile: true
+    include: {
+      freelancerProfile: {
+        select: FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+      }
     }
   });
   if (!existingUser) {
@@ -551,6 +558,10 @@ export const saveProfile = asyncHandler(async (req, res) => {
   const workExperience = payload.workExperience || [];
   const portfolioProjects = payload.portfolioProjects || [];
   const portfolio = payload.portfolio || {};
+  const existingFreelancerProfile =
+    existingUser?.freelancerProfile && typeof existingUser.freelancerProfile === "object"
+      ? existingUser.freelancerProfile
+      : {};
 
   // 1. Prepare update payloads split by table
   const userUpdateData = {};
@@ -587,14 +598,13 @@ export const saveProfile = asyncHandler(async (req, res) => {
   if (hasOwn(payload, "services")) {
     freelancerProfileUpdateData.services = services;
   }
-  if (hasOwn(payload, "profileDetails")) {
-    freelancerProfileUpdateData.profileDetails =
-      payload.profileDetails &&
-        typeof payload.profileDetails === "object" &&
-        !Array.isArray(payload.profileDetails)
+  const normalizedPayloadProfileDetails = hasOwn(payload, "profileDetails")
+    ? payload.profileDetails &&
+      typeof payload.profileDetails === "object" &&
+      !Array.isArray(payload.profileDetails)
         ? payload.profileDetails
-        : {};
-  }
+        : {}
+    : undefined;
   if (hasOwn(payload, "portfolioProjects")) {
     freelancerProfileUpdateData.portfolioProjects = portfolioProjects;
   }
@@ -687,6 +697,36 @@ export const saveProfile = asyncHandler(async (req, res) => {
         userId: existingUser.id,
         ...freelancerProfileUpdateData
       }
+    });
+  }
+
+  const shouldSyncFreelancerProfileDetails =
+    hasOwn(payload, "profileDetails") ||
+    hasOwn(payload, "portfolioProjects") ||
+    hasOwn(payload, "services");
+
+  if (shouldSyncFreelancerProfileDetails) {
+    const resolvedProfileDetails = hasOwn(payload, "profileDetails")
+      ? toProfileDetailsObject(normalizedPayloadProfileDetails)
+      : toProfileDetailsObject(
+        existingFreelancerProfile?.freelancerProfileDetails?.profileDetails
+      );
+    const resolvedPortfolioProjects = hasOwn(payload, "portfolioProjects")
+      ? portfolioProjects
+      : Array.isArray(existingFreelancerProfile.portfolioProjects)
+        ? existingFreelancerProfile.portfolioProjects
+        : [];
+    const resolvedServices = hasOwn(payload, "services")
+      ? services
+      : Array.isArray(existingFreelancerProfile.services)
+        ? existingFreelancerProfile.services
+        : [];
+
+    await syncFreelancerProfileDetailsProjection({
+      userId: existingUser.id,
+      profileDetails: resolvedProfileDetails,
+      portfolioProjects: resolvedPortfolioProjects,
+      services: resolvedServices,
     });
   }
 

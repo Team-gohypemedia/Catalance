@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 import { prisma } from "../lib/prisma.js";
+import { FREELANCER_PROFILE_SAFE_SELECT } from "../modules/users/freelancer-profile.select.js";
 
 const DEFAULT_PAGE_LIMIT = 20;
 const DEFAULT_MAX_CANDIDATES = 80;
@@ -104,6 +105,23 @@ const normalizeCompact = (value = "") =>
     .replace(/[^a-z0-9]+/g, "");
 
 const uniqueValues = (values = []) => [...new Set(values.filter(Boolean))];
+const asObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const asArray = (value) => (Array.isArray(value) ? value : []);
+const uniqueObjectsBy = (values = [], getKey = (value) => value) => {
+  const seen = new Set();
+  const result = [];
+
+  for (const value of values) {
+    if (!value) continue;
+    const key = getKey(value);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(value);
+  }
+
+  return result;
+};
 
 const parseOptionalInteger = (value) => {
   if (value === undefined || value === null || value === "") return null;
@@ -220,8 +238,8 @@ const buildTier1Where = (query) => {
         status: "ACTIVE",
         OR: [
           { freelancerProfile: { is: null } },
-          { freelancerProfile: { is: { available: true } } }
-        ]
+          { freelancerProfile: { is: { available: true } } },
+        ],
       },
     },
   ];
@@ -230,34 +248,11 @@ const buildTier1Where = (query) => {
     andConditions.push({ serviceKey: query.category });
   }
 
-  if (query.strictTech) {
-    andConditions.push({
-      OR: [
-        { techStack: { hasSome: query.techFilterTokens } },
-        { activeTechnologies: { hasSome: query.techFilterTokens } },
-      ],
-    });
-  }
-
-  if (query.strictBudget) {
-    if (query.maxBudget !== null) {
-      andConditions.push({
-        OR: [{ budget: null }, { budget: { lte: query.maxBudget } }],
-      });
-    }
-    if (query.minBudget !== null) {
-      andConditions.push({
-        OR: [{ budget: null }, { budget: { gte: query.minBudget } }],
-      });
-    }
-  }
-
   if (query.searchTerm) {
     andConditions.push({
       OR: [
-        { title: { contains: query.searchTerm, mode: "insensitive" } },
-        { serviceName: { contains: query.searchTerm, mode: "insensitive" } },
-        { description: { contains: query.searchTerm, mode: "insensitive" } },
+        { service: { contains: query.searchTerm, mode: "insensitive" } },
+        { serviceKey: { contains: query.searchTerm, mode: "insensitive" } },
         {
           freelancer: {
             fullName: { contains: query.searchTerm, mode: "insensitive" },
@@ -430,6 +425,64 @@ const calcReliabilityScore = (candidate) => {
   return clampScore(ratingSignal * 0.6 + reviewSignal * 0.3 + activeSignal * 0.1);
 };
 
+const matchesCandidateQuery = (candidate, query) => {
+  if (query.category && candidate.serviceKey !== query.category) {
+    return false;
+  }
+
+  if (query.strictTech) {
+    const candidateTech = new Set(
+      uniqueValues([
+        ...(candidate.techStack || []).map(normalizeTechToken),
+        ...(candidate.activeTechnologies || []).map(normalizeTechToken),
+        ...((candidate.freelancer?.freelancerProfile?.skills || []).map(
+          normalizeTechToken
+        )),
+      ])
+    );
+
+    if (!query.techStack.some((tech) => candidateTech.has(tech))) {
+      return false;
+    }
+  }
+
+  if (query.strictBudget) {
+    const budget = candidate.budget;
+    if (budget !== null && budget !== undefined) {
+      if (query.minBudget !== null && budget < query.minBudget) {
+        return false;
+      }
+
+      if (query.maxBudget !== null && budget > query.maxBudget) {
+        return false;
+      }
+    }
+  }
+
+  if (query.searchTerm) {
+    const term = query.searchTerm.toLowerCase();
+    const searchableText = uniqueValues([
+      candidate.title,
+      candidate.serviceName,
+      candidate.description,
+      candidate.serviceKey,
+      candidate.freelancer?.fullName,
+      ...(candidate.serviceSpecializations || []),
+      ...(candidate.industriesOrNiches || []),
+      ...(candidate.techStack || []),
+      ...(candidate.deliverables || []),
+    ])
+      .join(" ")
+      .toLowerCase();
+
+    if (!searchableText.includes(term)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 const scoreCandidate = (candidate, query, weights) => {
   const scoreBreakdown = {
     relevance: toFixedScore(calcRelevanceScore(candidate, query)),
@@ -465,6 +518,154 @@ const scoreCandidate = (candidate, query, weights) => {
   };
 };
 
+const extractStructuredServiceDetail = (freelancer = {}, serviceKey = "") => {
+  const detailsMap = asObject(
+    freelancer?.freelancerProfile?.freelancerProfileDetails?.serviceDetails
+  );
+
+  return asObject(detailsMap[serviceKey]);
+};
+
+const extractStructuredTools = (detail = {}) =>
+  uniqueValues([
+    ...asArray(detail.skillsAndTechnologies),
+    ...Object.entries(asObject(detail.groups)).flatMap(([groupKey, values]) =>
+      /tech|tool|stack|platform/i.test(groupKey) ? asArray(values) : []
+    ),
+    ...asArray(asObject(detail.caseStudy).techStack),
+  ]);
+
+const extractStructuredDeliverables = (detail = {}) =>
+  uniqueValues([
+    ...Object.entries(asObject(detail.groups)).flatMap(([groupKey, values]) =>
+      /tech|tool|stack|platform/i.test(groupKey) ? [] : asArray(values)
+    ),
+    ...asArray(detail.niches),
+  ]);
+
+const buildMergedServiceDetails = ({
+  marketplaceDetails = {},
+  structuredDetails = {},
+} = {}) => {
+  const mktSd = asObject(marketplaceDetails);
+  const profileSd = asObject(structuredDetails);
+
+  const tools = uniqueValues([
+    ...(Array.isArray(mktSd.tools) ? mktSd.tools : []),
+    ...(Array.isArray(mktSd.techStack) ? mktSd.techStack : []),
+    ...(Array.isArray(mktSd.technologies) ? mktSd.technologies : []),
+    ...(Array.isArray(mktSd.stack) ? mktSd.stack : []),
+    ...extractStructuredTools(profileSd),
+  ]);
+
+  const deliverables = uniqueValues([
+    ...(Array.isArray(mktSd.deliverables) ? mktSd.deliverables : []),
+    ...(Array.isArray(mktSd.whatsIncluded) ? mktSd.whatsIncluded : []),
+    ...(Array.isArray(mktSd.includes) ? mktSd.includes : []),
+    ...(Array.isArray(mktSd.features) ? mktSd.features : []),
+    ...extractStructuredDeliverables(profileSd),
+  ]);
+
+  const portfolio = uniqueObjectsBy(
+    [
+      ...asArray(mktSd.portfolio),
+      ...asArray(mktSd.projects),
+      ...asArray(profileSd.projects),
+    ],
+    (entry) => {
+      if (typeof entry === "string") return entry.trim();
+      const project = asObject(entry);
+      return [
+        project.link,
+        project.title,
+        project.readme,
+        project.description,
+        project.timeline,
+        project.role,
+      ]
+        .filter(Boolean)
+        .join("|");
+    }
+  );
+
+  const averageProjectPriceRange =
+    mktSd.averageProjectPriceRange ||
+    mktSd.priceRange ||
+    profileSd.averageProjectPrice ||
+    profileSd.averagePrice ||
+    "";
+
+  const mergedForImage = {
+    ...profileSd,
+    ...mktSd,
+  };
+  const image = extractCoverImage(mergedForImage);
+  const startingPrice = extractPrice({
+    ...profileSd,
+    ...mktSd,
+  });
+  const deliveryTime =
+    mktSd.deliveryTime ||
+    mktSd.deliveryDays ||
+    asObject(profileSd.caseStudy).timeline ||
+    null;
+  const description =
+    String(
+      profileSd.serviceDescription ||
+      profileSd.description ||
+      mktSd.description ||
+      mktSd.bio ||
+      ""
+    ).trim();
+
+  return {
+    ...profileSd,
+    ...mktSd,
+    coverImage: image,
+    image,
+    startingPrice,
+    minBudget: startingPrice,
+    averageProjectPriceRange,
+    priceRange: averageProjectPriceRange,
+    deliveryTime: deliveryTime || "Not specified",
+    bio: description,
+    description,
+    tools,
+    techStack: tools,
+    deliverables,
+    portfolio,
+    projects: portfolio,
+    platformLinks: {
+      ...asObject(mktSd.platformLinks),
+      ...asObject(profileSd.platformLinks),
+    },
+    caseStudy: asObject(profileSd.caseStudy),
+    groups: asObject(profileSd.groups),
+    groupOther: asObject(profileSd.groupOther),
+    niches: asArray(profileSd.niches),
+    skillsAndTechnologies: uniqueValues([
+      ...asArray(profileSd.skillsAndTechnologies),
+      ...tools,
+    ]),
+    industriesOrNiches: uniqueValues([
+      ...(Array.isArray(mktSd.industriesOrNiches) ? mktSd.industriesOrNiches : []),
+      ...asArray(profileSd.niches),
+      ...String(profileSd.industryFocus || "")
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ]),
+    serviceSpecializations: uniqueValues([
+      ...(Array.isArray(mktSd.serviceSpecializations) ? mktSd.serviceSpecializations : []),
+      ...Object.entries(asObject(profileSd.groups)).flatMap(([groupKey, values]) =>
+        /specialization|capability|type|scope|approach/i.test(groupKey)
+          ? asArray(values)
+          : []
+      ),
+    ]),
+  };
+};
+
 /** Extract cover image strictly from a serviceDetails object (Marketplace table rows) */
 const extractCoverImage = (sd = {}) => {
   return sd.coverImage || (Array.isArray(sd.images) && sd.images[0]) || sd.image || sd.thumbnail || null;
@@ -479,42 +680,27 @@ const extractPrice = (sd = {}) => {
 };
 
 const mapToMarketplaceRow = (candidate) => {
-  const profile = candidate.freelancer?.freelancerProfile || {};
-
   // Canonical serviceDetails comes from Marketplace table row (_mktRow)
   const mktSd = candidate._mktRow?.serviceDetails || {};
   const mktId = candidate._mktRow?.id || null;
-
-  // Tools/Technologies extraction logic (Step 1 rules)
-  const tools = uniqueValues([
-    ...(Array.isArray(mktSd.tools) ? mktSd.tools : []),
-    ...(Array.isArray(mktSd.techStack) ? mktSd.techStack : []),
-    ...(Array.isArray(mktSd.technologies) ? mktSd.technologies : []),
-    ...(Array.isArray(mktSd.stack) ? mktSd.stack : []),
-  ]);
-
-  // Deliverables (Step 1 rules)
-  const deliverables = uniqueValues([
-    ...(Array.isArray(mktSd.deliverables) ? mktSd.deliverables : []),
-    ...(Array.isArray(mktSd.whatsIncluded) ? mktSd.whatsIncluded : []),
-    ...(Array.isArray(mktSd.includes) ? mktSd.includes : []),
-    ...(Array.isArray(mktSd.features) ? mktSd.features : []),
-  ]);
-
-  // Image: strictly from Marketplace serviceDetails only
-  const image = extractCoverImage(mktSd);
-
-  // Price: from Marketplace serviceDetails only (Remove FreelancerProject budget fallback as per Step 1 hard rules)
-  const startingPrice = extractPrice(mktSd);
-
-  // Delivery: strictly from Marketplace serviceDetails (deliveryTime or deliveryDays)
-  const deliveryTime = mktSd.deliveryTime || mktSd.deliveryDays || null;
+  const profileSd = extractStructuredServiceDetail(
+    candidate.freelancer,
+    candidate.serviceKey
+  );
+  const mergedServiceDetails = buildMergedServiceDetails({
+    marketplaceDetails: mktSd,
+    structuredDetails: profileSd,
+  });
 
   return {
     id: mktId || candidate.projectId,   // Prefer Marketplace id
     freelancerId: candidate.freelancerId,
     serviceKey: candidate.serviceKey || "",
-    service: mktSd.title || candidate.serviceName || candidate.title || "Freelancer Service",
+    service:
+      mergedServiceDetails.title ||
+      candidate.serviceName ||
+      candidate.title ||
+      "Freelancer Service",
     isFeatured: candidate._mktRow?.isFeatured || false,
     createdAt: candidate.createdAt,
     updatedAt: candidate.updatedAt,
@@ -522,26 +708,49 @@ const mapToMarketplaceRow = (candidate) => {
       id: candidate.freelancer?.id || candidate.freelancerId,
       fullName: candidate.freelancer?.fullName || "Freelancer",
       avatar: candidate.freelancer?.avatar || null,
+      isVerified: Boolean(candidate.freelancer?.isVerified),
     },
-    serviceDetails: {
-      ...mktSd,                              // raw Marketplace serviceDetails
-      image,                                 // resolved cover image
-      coverImage: image,                     // alias for frontend
-      startingPrice,                         // resolved price
-      minBudget: startingPrice,
-      techStack: tools,                      // resolved/merged tools
-      tools,
-      deliverables,
-      deliveryTime: deliveryTime || "Not specified",
-      bio: mktSd.bio || mktSd.description || "",
-      description: mktSd.description || mktSd.bio || "",
-      industriesOrNiches: Array.isArray(mktSd.industriesOrNiches) ? mktSd.industriesOrNiches : [],
-      serviceSpecializations: Array.isArray(mktSd.serviceSpecializations) ? mktSd.serviceSpecializations : [],
-    },
+    bio: mergedServiceDetails.bio,
+    techStack: mergedServiceDetails.techStack,
+    deliverables: mergedServiceDetails.deliverables,
+    deliveryTime: mergedServiceDetails.deliveryTime,
+    serviceDetails: mergedServiceDetails,
     rating: candidate.rating,
     reviewCount: candidate.reviewCount,
     matchScore: candidate.matchScore,
     scoreBreakdown: candidate.scoreBreakdown,
+  };
+};
+
+const createMarketplaceCandidate = (row) => {
+  const profileSd = extractStructuredServiceDetail(row.freelancer, row.serviceKey);
+  const mergedServiceDetails = buildMergedServiceDetails({
+    marketplaceDetails: row.serviceDetails,
+    structuredDetails: profileSd,
+  });
+
+  return {
+    id: row.id,
+    projectId: row.id,
+    freelancerId: row.freelancerId,
+    serviceKey: row.serviceKey || "",
+    serviceName: row.service || mergedServiceDetails.title || "Freelancer Service",
+    title: mergedServiceDetails.title || row.service || "Freelancer Service",
+    description: mergedServiceDetails.description || mergedServiceDetails.bio || "",
+    techStack: mergedServiceDetails.techStack || [],
+    activeTechnologies: mergedServiceDetails.techStack || [],
+    serviceSpecializations: mergedServiceDetails.serviceSpecializations || [],
+    industriesOrNiches: mergedServiceDetails.industriesOrNiches || [],
+    deliverables: mergedServiceDetails.deliverables || [],
+    yearsOfExperienceInService:
+      mergedServiceDetails.experienceYears ||
+      row.freelancer?.freelancerProfile?.experienceYears ||
+      0,
+    budget: extractPrice(mergedServiceDetails),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    freelancer: row.freelancer,
+    _mktRow: row,
   };
 };
 
@@ -558,7 +767,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
 
   const where = buildTier1Where(query);
 
-  const tier1Candidates = await prisma.freelancerProject.findMany({
+  const marketplaceRows = await prisma.marketplace.findMany({
     where,
     take: candidateLimit,
     include: {
@@ -567,6 +776,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
           id: true,
           fullName: true,
           avatar: true,
+          isVerified: true,
           status: true,
           freelancerProfile: {
             select: {
@@ -576,17 +786,27 @@ export const getMarketplace = asyncHandler(async (req, res) => {
               skills: true,
               bio: true,
               experienceYears: true,
+              freelancerProfileDetails: {
+                select: {
+                  serviceDetails: true,
+                },
+              },
             },
           },
         },
       },
     },
     orderBy: [
+      { isFeatured: "desc" },
       { freelancer: { freelancerProfile: { rating: "desc" } } },
       { freelancer: { freelancerProfile: { reviewCount: "desc" } } },
       { updatedAt: "desc" },
     ],
   });
+
+  const tier1Candidates = marketplaceRows
+    .map(createMarketplaceCandidate)
+    .filter((candidate) => matchesCandidateQuery(candidate, query));
 
   if (!tier1Candidates.length) {
     return res.json({
@@ -599,44 +819,8 @@ export const getMarketplace = asyncHandler(async (req, res) => {
     });
   }
 
-  // Deduplicate tier1Candidates by freelancerId and serviceKey to prevent duplicate cards
-  const deduplicatedCandidates = [];
-  const seenPair = new Set();
-  for (const c of tier1Candidates) {
-    const pairKey = `${c.freelancerId}:${c.serviceKey}`;
-    if (!seenPair.has(pairKey)) {
-      seenPair.add(pairKey);
-      deduplicatedCandidates.push(c);
-    }
-  }
-
-  // Batch-fetch the canonical Marketplace rows for each (freelancerId, serviceKey) pair
-  // These contain real serviceDetails including coverImage, price, deliveryTime, etc.
-  const uniquePairs = deduplicatedCandidates
-    .map(c => ({ freelancerId: c.freelancerId, serviceKey: c.serviceKey }))
-    .filter(p => p.serviceKey);
-
-  const marketplaceRows = await prisma.marketplace.findMany({
-    where: {
-      OR: uniquePairs.map(p => ({ freelancerId: p.freelancerId, serviceKey: p.serviceKey }))
-    },
-    select: { id: true, freelancerId: true, serviceKey: true, serviceDetails: true, isFeatured: true }
-  });
-
-  // Build a lookup map: "freelancerId:serviceKey" → Marketplace row
-  const mktMap = new Map();
-  for (const row of marketplaceRows) {
-    mktMap.set(`${row.freelancerId}:${row.serviceKey}`, row);
-  }
-
-  // Attach mktRow to each candidate so mapToMarketplaceRow can use it
-  const enrichedCandidates = deduplicatedCandidates.map(c => ({
-    ...c,
-    _mktRow: mktMap.get(`${c.freelancerId}:${c.serviceKey}`) || null,
-  }));
-
   const weights = getScoreWeights(query);
-  const scored = enrichedCandidates.map((candidate) =>
+  const scored = tier1Candidates.map((candidate) =>
     scoreCandidate(candidate, query, weights)
   );
 
@@ -690,7 +874,16 @@ export const getServiceById = asyncHandler(async (req, res) => {
           fullName: true,
           avatar: true,
           isVerified: true,
-          freelancerProfile: true
+          freelancerProfile: {
+            select: {
+              ...FREELANCER_PROFILE_SAFE_SELECT,
+              freelancerProfileDetails: {
+                select: {
+                  serviceDetails: true,
+                },
+              },
+            }
+          },
         }
       }
     }
@@ -699,39 +892,22 @@ export const getServiceById = asyncHandler(async (req, res) => {
   // For Marketplace rows: enrich image from serviceDetails JSON only (no profileDetails)
   if (service) {
     const mSd = service.serviceDetails || {};
-    const resolvedImage = extractCoverImage(mSd);
-    const resolvedPrice = extractPrice(mSd);
-    const deliveryTime = mSd.deliveryTime || mSd.deliveryDays || "Not specified";
-
-    const tools = uniqueValues([
-      ...(Array.isArray(mSd.tools) ? mSd.tools : []),
-      ...(Array.isArray(mSd.techStack) ? mSd.techStack : []),
-      ...(Array.isArray(mSd.technologies) ? mSd.technologies : []),
-      ...(Array.isArray(mSd.stack) ? mSd.stack : []),
-    ]);
-
-    const deliverables = uniqueValues([
-      ...(Array.isArray(mSd.deliverables) ? mSd.deliverables : []),
-      ...(Array.isArray(mSd.whatsIncluded) ? mSd.whatsIncluded : []),
-      ...(Array.isArray(mSd.includes) ? mSd.includes : []),
-      ...(Array.isArray(mSd.features) ? mSd.features : []),
-    ]);
+    const profileSd = extractStructuredServiceDetail(
+      service.freelancer,
+      service.serviceKey
+    );
+    const mergedServiceDetails = buildMergedServiceDetails({
+      marketplaceDetails: mSd,
+      structuredDetails: profileSd,
+    });
 
     service = {
       ...service,
-      serviceDetails: {
-        ...mSd,
-        image: resolvedImage,
-        coverImage: resolvedImage,
-        startingPrice: resolvedPrice,
-        minBudget: resolvedPrice,
-        deliveryTime,
-        tools,
-        techStack: tools,
-        deliverables,
-        bio: mSd.bio || mSd.description || "",
-        description: mSd.description || mSd.bio || "",
-      }
+      bio: mergedServiceDetails.bio,
+      techStack: mergedServiceDetails.techStack,
+      deliverables: mergedServiceDetails.deliverables,
+      deliveryTime: mergedServiceDetails.deliveryTime,
+      serviceDetails: mergedServiceDetails,
     };
   }
 
@@ -746,7 +922,17 @@ export const getServiceById = asyncHandler(async (req, res) => {
             avatar: true,
             isVerified: true,
             freelancerProfile: {
-              select: { bio: true, skills: true, rating: true, reviewCount: true }
+              select: {
+                bio: true,
+                skills: true,
+                rating: true,
+                reviewCount: true,
+                freelancerProfileDetails: {
+                  select: {
+                    serviceDetails: true,
+                  },
+                },
+              }
             }
           }
         }
@@ -754,8 +940,6 @@ export const getServiceById = asyncHandler(async (req, res) => {
     });
 
     if (fp) {
-      const profile = fp.freelancer?.freelancerProfile || {};
-
       // Look up the canonical Marketplace row for this freelancer+serviceKey
       const mktRow = fp.serviceKey ? await prisma.marketplace.findFirst({
         where: { freelancerId: fp.freelancerId, serviceKey: fp.serviceKey },
@@ -765,44 +949,28 @@ export const getServiceById = asyncHandler(async (req, res) => {
       // Build merged serviceDetails: Marketplace row is canonical, fp fields are fallback
       const mktSd = mktRow?.serviceDetails || {};
 
-      const tools = uniqueValues([
-        ...(Array.isArray(mktSd.tools) ? mktSd.tools : []),
-        ...(Array.isArray(mktSd.techStack) ? mktSd.techStack : []),
-        ...(Array.isArray(mktSd.technologies) ? mktSd.technologies : []),
-        ...(Array.isArray(mktSd.stack) ? mktSd.stack : []),
-      ]);
-
-      const deliverables = uniqueValues([
-        ...(Array.isArray(mktSd.deliverables) ? mktSd.deliverables : []),
-        ...(Array.isArray(mktSd.whatsIncluded) ? mktSd.whatsIncluded : []),
-        ...(Array.isArray(mktSd.includes) ? mktSd.includes : []),
-        ...(Array.isArray(mktSd.features) ? mktSd.features : []),
-      ]);
-
-      const image = extractCoverImage(mktSd);
-      const startingPrice = extractPrice(mktSd); // No fallback to budget
-      const deliveryTime = mktSd.deliveryTime || mktSd.deliveryDays || "Not specified";
+      const profileSd = extractStructuredServiceDetail(fp.freelancer, fp.serviceKey);
+      const mergedServiceDetails = buildMergedServiceDetails({
+        marketplaceDetails: mktSd,
+        structuredDetails: profileSd,
+      });
 
       service = {
         id: mktRow?.id || fp.id,   // prefer Marketplace id
         freelancerId: fp.freelancerId,
         serviceKey: fp.serviceKey || "",
-        service: mktSd.title || fp.serviceName || fp.title || "Freelancer Service",
+        service:
+          mergedServiceDetails.title ||
+          fp.serviceName ||
+          fp.title ||
+          "Freelancer Service",
         serviceDetails: {
-          ...mktSd,
-          image,
-          coverImage: image,
-          startingPrice,
-          minBudget: startingPrice,
-          techStack: tools,
-          tools,
-          deliverables,
-          deliveryTime,
-          bio: mktSd.bio || mktSd.description || "",
-          description: mktSd.description || mktSd.bio || "",
-          industriesOrNiches: Array.isArray(mktSd.industriesOrNiches) ? mktSd.industriesOrNiches : [],
-          serviceSpecializations: Array.isArray(mktSd.serviceSpecializations) ? mktSd.serviceSpecializations : [],
+          ...mergedServiceDetails,
         },
+        bio: mergedServiceDetails.bio,
+        techStack: mergedServiceDetails.techStack,
+        deliverables: mergedServiceDetails.deliverables,
+        deliveryTime: mergedServiceDetails.deliveryTime,
         isFeatured: mktRow?.isFeatured || false,
         createdAt: fp.createdAt,
         updatedAt: fp.updatedAt,

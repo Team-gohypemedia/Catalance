@@ -247,7 +247,11 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
         id: true,
         email: true,
         freelancerProfile: {
-          select: { profileDetails: true },
+          select: {
+            freelancerProfileDetails: {
+              select: { profileDetails: true },
+            },
+          },
         },
       },
     });
@@ -260,7 +264,11 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
         id: true,
         email: true,
         freelancerProfile: {
-          select: { profileDetails: true },
+          select: {
+            freelancerProfileDetails: {
+              select: { profileDetails: true },
+            },
+          },
         },
       },
     });
@@ -270,7 +278,9 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
     throw new AppError("User not found for cover upload", 404);
   }
 
-  const profileDetails = toPlainObject(targetUser.freelancerProfile?.profileDetails);
+  const profileDetails = toPlainObject(
+    targetUser.freelancerProfile?.freelancerProfileDetails?.profileDetails
+  );
   const identity = toPlainObject(profileDetails.identity);
   const existingCoverImage = String(identity.coverImage || "").trim();
 

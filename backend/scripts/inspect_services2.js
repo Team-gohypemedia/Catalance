@@ -7,7 +7,13 @@ async function main() {
         take: 5,
         include: {
             freelancer: {
-                include: { freelancerProfile: true }
+                include: {
+                    freelancerProfile: {
+                        include: {
+                            freelancerProfileDetails: true
+                        }
+                    }
+                }
             }
         }
     });
@@ -18,7 +24,7 @@ async function main() {
         let pd = null;
         let serviceDetailsFromPd = null;
         if (row.freelancer?.freelancerProfile) {
-            pd = row.freelancer.freelancerProfile.profileDetails;
+            pd = row.freelancer.freelancerProfile.freelancerProfileDetails?.profileDetails;
             if (pd && pd.serviceDetails) {
                 serviceDetailsFromPd = pd.serviceDetails;
             }

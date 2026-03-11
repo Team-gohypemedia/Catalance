@@ -7,7 +7,13 @@ async function main() {
         take: 5,
         include: {
             freelancer: {
-                include: { freelancerProfile: true }
+                include: {
+                    freelancerProfile: {
+                        include: {
+                            freelancerProfileDetails: true
+                        }
+                    }
+                }
             }
         }
     });
@@ -17,7 +23,7 @@ async function main() {
     for (const row of mkt) {
         let pd = null;
         if (row.freelancer?.freelancerProfile) {
-            pd = row.freelancer.freelancerProfile.profileDetails;
+            pd = row.freelancer.freelancerProfile.freelancerProfileDetails?.profileDetails;
         }
         output.push({
             mktId: row.id,

@@ -15,6 +15,8 @@ import {
   generatePasswordResetEmail,
   generatePasswordResetTextEmail
 } from "../../lib/email-templates/password-reset.template.js";
+import { syncFreelancerProfileDetailsProjection } from "./freelancer-profile-details.service.js";
+import { FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT } from "./freelancer-profile.select.js";
 
 const OTP_TTL_MINUTES = 15;
 const OTP_EMAIL_RETRY_ATTEMPTS = 2;
@@ -72,18 +74,77 @@ const USER_SAFE_SCALAR_SELECT = Object.freeze({
   updatedAt: true
 });
 
+const withFreelancerProfileDetailsSelection = (selection = true) => {
+  if (selection === true) {
+    return {
+      select: {
+        ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+      }
+    };
+  }
+
+  if (!selection || typeof selection !== "object") {
+    return selection;
+  }
+
+  if (selection.select && typeof selection.select === "object") {
+    return {
+      ...selection,
+      select: {
+        ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT,
+        ...selection.select,
+        freelancerProfileDetails:
+          selection.select.freelancerProfileDetails === undefined
+            ? FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT.freelancerProfileDetails
+            : selection.select.freelancerProfileDetails
+      }
+    };
+  }
+
+  if (selection.include && typeof selection.include === "object") {
+    const { include, ...restSelection } = selection;
+
+    return {
+      ...restSelection,
+      select: {
+        ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT,
+        ...include,
+        freelancerProfileDetails:
+          include.freelancerProfileDetails === undefined
+            ? FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT.freelancerProfileDetails
+            : include.freelancerProfileDetails
+      }
+    };
+  }
+
+  return {
+    ...selection,
+    select: {
+      ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+    }
+  };
+};
+
 const withFreelancerProfileInclude = (query = {}) => {
   if (!supportsFreelancerProfileModel) return query;
   if (query?.select) {
     if (Object.prototype.hasOwnProperty.call(query.select, "freelancerProfile")) {
-      return query;
+      return {
+        ...query,
+        select: {
+          ...query.select,
+          freelancerProfile: withFreelancerProfileDetailsSelection(
+            query.select.freelancerProfile
+          )
+        }
+      };
     }
 
     return {
       ...query,
       select: {
         ...query.select,
-        freelancerProfile: true
+        freelancerProfile: withFreelancerProfileDetailsSelection(true)
       }
     };
   }
@@ -97,7 +158,9 @@ const withFreelancerProfileInclude = (query = {}) => {
       ...USER_SAFE_SCALAR_SELECT,
       ...include,
       freelancerProfile:
-        include.freelancerProfile === undefined ? true : include.freelancerProfile
+        withFreelancerProfileDetailsSelection(
+          include.freelancerProfile === undefined ? true : include.freelancerProfile
+        )
     }
   };
 };
@@ -118,8 +181,7 @@ const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "linkedin",
   "github",
   "portfolioProjects",
-  "resume",
-  "profileDetails"
+  "resume"
 ]);
 
 const pickFreelancerProfileUpdates = (updates = {}) =>
@@ -133,7 +195,9 @@ const pickFreelancerProfileUpdates = (updates = {}) =>
 const resolveFreelancerProfileDetails = (user = null) => {
   if (!user || typeof user !== "object") return {};
 
-  const relatedProfileDetails = user?.freelancerProfile?.profileDetails;
+  const relatedProfileDetails =
+    user?.freelancerProfile?.freelancerProfileDetails?.profileDetails ||
+    user?.freelancerProfileDetails?.profileDetails;
   if (
     relatedProfileDetails &&
     typeof relatedProfileDetails === "object" &&
@@ -218,16 +282,6 @@ const upsertFreelancerProfile = async ({ userId, updates = {} }) => {
   const profileUpdates = pickFreelancerProfileUpdates(updates);
   if (!Object.keys(profileUpdates).length) return;
 
-  if (Object.prototype.hasOwnProperty.call(profileUpdates, "profileDetails")) {
-    const normalizedProfileDetails =
-      profileUpdates.profileDetails &&
-      typeof profileUpdates.profileDetails === "object" &&
-      !Array.isArray(profileUpdates.profileDetails)
-        ? profileUpdates.profileDetails
-        : {};
-    profileUpdates.profileDetails = normalizedProfileDetails;
-  }
-
   try {
     await prisma.freelancerProfile.upsert({
       where: { userId },
@@ -242,10 +296,17 @@ const upsertFreelancerProfile = async ({ userId, updates = {} }) => {
   }
 };
 
-const syncFreelancerProfileDetails = async ({ userId, profileDetails }) =>
-  upsertFreelancerProfile({
+const syncFreelancerProfileDetails = async ({
+  userId,
+  profileDetails,
+  portfolioProjects = [],
+  services = []
+}) =>
+  syncFreelancerProfileDetailsProjection({
     userId,
-    updates: { profileDetails }
+    profileDetails,
+    portfolioProjects,
+    services
   });
 
 const normalizeRoleValue = (value) =>
@@ -1824,6 +1885,25 @@ export const updateUserProfile = async (userId, updates) => {
   )
     ? freelancerProfileUpdates.portfolioProjects
     : resolvedFreelancerProfile.portfolioProjects;
+  const shouldSyncFreelancerProfileDetails =
+    hasProfileDetailsUpdate ||
+    Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "services") ||
+    Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "portfolioProjects");
+
+  if (shouldSyncFreelancerProfileDetails) {
+    await syncFreelancerProfileDetails({
+      userId: user.id,
+      profileDetails: resolvedProfileDetails,
+      portfolioProjects: resolvedPortfolioProjects,
+      services: resolvedServices
+    });
+
+    user = await prisma.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: user.id }
+      })
+    );
+  }
 
   const profileServiceDetails =
     resolvedProfileDetails?.serviceDetails &&
@@ -2348,8 +2428,7 @@ const createUserRecord = async (payload) => {
       linkedin: payload.linkedin || null,
       github: payload.github || null,
       portfolioProjects: normalizedPortfolioProjects,
-      resume: payload.resume || null,
-      profileDetails: normalizedFreelancerProfile
+      resume: payload.resume || null
     };
     const hasFreelancerProfileData =
       normalizedRole === "FREELANCER" ||
@@ -2385,6 +2464,21 @@ const createUserRecord = async (payload) => {
       })
     );
 
+    if (hasFreelancerProfileData) {
+      await syncFreelancerProfileDetails({
+        userId: user.id,
+        profileDetails: normalizedFreelancerProfile,
+        portfolioProjects: normalizedPortfolioProjects,
+        services: normalizedServices
+      });
+    }
+
+    const hydratedUser = await prisma.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: user.id }
+      })
+    );
+
     if (normalizedRole === "FREELANCER") {
       const normalizedProjects = deriveFreelancerProjects({
         profileDetails: normalizedFreelancerProfile,
@@ -2406,7 +2500,7 @@ const createUserRecord = async (payload) => {
     // Don't send welcome email yet, wait for verification
     // await maybeSendWelcomeEmail(user);
 
-    return user;
+    return hydratedUser || user;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

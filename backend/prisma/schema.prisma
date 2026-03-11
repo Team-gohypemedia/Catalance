@@ -112,9 +112,49 @@ model FreelancerProfile {
   github         String?
   portfolioProjects Json? @default("[]")
   resume         String?
-  profileDetails Json     @default("{}")
+  freelancerProfileDetails FreelancerProfileDetails?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model FreelancerProfileDetails {
+  userId                        String   @id
+  freelancerProfile             FreelancerProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  profileDetails                Json     @default("{}")
+  profileRole                   String?
+  professionalBio               String?  @db.Text
+  termsAccepted                 Boolean  @default(false)
+  deliveryPolicyAccepted        Boolean  @default(false)
+  communicationPolicyAccepted   Boolean  @default(false)
+  acceptInProgressProjects      String?
+  globalIndustryOther           String?
+  city                          String?
+  country                       String?
+  username                      String?
+  githubUrl                     String?
+  languages                     String[] @default([])
+  coverImage                    String?
+  linkedinUrl                   String?
+  portfolioUrl                  String?
+  profilePhoto                  String?
+  otherLanguage                 String?
+  professionalTitle             String?
+  skills                        String[] @default([])
+  skillLevels                   Json     @default("{}")
+  education                     Json     @default("[]")
+  services                      String[] @default([])
+  serviceDetails                Json     @default("{}")
+  portfolioProjects             Json     @default("[]")
+  globalIndustryFocus           String[] @default([])
+  availabilityHoursPerWeek      String?
+  availabilityStartTimeline     String?
+  availabilityWorkingSchedule   String?
+  reliabilityDelayHandling      String?
+  reliabilityMissedDeadlines    String?
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  @@map("Freelancer Profile Details")
 }
 
 model ClientProfile {
