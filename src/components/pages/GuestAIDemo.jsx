@@ -519,7 +519,7 @@ const splitContextAndQuestion = (text = "") => {
         .map((sentence) => sentence.trim())
         .filter((sentence) => !/^\d+\.$/.test(sentence))
         .map((sentence) => sentence.trim())
-        .join(" ")
+        .join("\n\n")
         .trim();
 
     return { contextText, questionText };
@@ -592,9 +592,17 @@ const parseAssistantMessageLayout = (content = "") => {
 
     const contextText = contextParts.join("\n\n").trim();
 
+    const forceSentenceBreaks = (text = "") => {
+        if (!text) return text;
+        return text
+            .replace(/\b(Dr|Mr|Mrs|Ms|e\.g|i\.e)\.\s/g, "$1_PROTECT_")
+            .replace(/([a-z0-9][.?!])\s+(?=[A-Z])/g, "$1\n\n")
+            .replace(/_PROTECT_/g, ". ");
+    };
+
     return {
-        contextText,
-        questionText,
+        contextText: forceSentenceBreaks(contextText),
+        questionText: forceSentenceBreaks(questionText),
         options: optionEntries.map((option) => ({
             number: option.number,
             text: option.text
@@ -617,8 +625,8 @@ const AssistantMessageBody = ({
 
     if (!hasStructuredQuestion) {
         return (
-            <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
-                <ReactMarkdown>{content}</ReactMarkdown>
+            <div className={`prose prose-sm max-w-none [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold [&_h3]:!mt-2 [&_h3]:!mb-2 [&_ul]:!my-4 [&_li]:!mb-1 ${isDark ? 'prose-invert' : ''}`}>
+                <ReactMarkdown>{forceSentenceBreaks(content)}</ReactMarkdown>
             </div>
         );
     }
@@ -626,14 +634,14 @@ const AssistantMessageBody = ({
     return (
         <div className="space-y-3">
             {contextText && (
-                <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                <div className={`prose prose-sm max-w-none [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold [&_h3]:!mt-2 [&_h3]:!mb-2 [&_ul]:!my-4 [&_li]:!mb-1 ${isDark ? 'prose-invert' : ''}`}>
                     <ReactMarkdown>{contextText}</ReactMarkdown>
                 </div>
             )}
 
             {questionText && (
-                <div className={`rounded-xl border px-3 py-3 ${isDark ? 'border-white/12 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
-                    <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                <div className={`rounded-xl border px-4 py-4 ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/20 bg-primary/5'}`}>
+                    <div className={`prose prose-sm max-w-none font-medium [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold ${isDark ? 'prose-invert' : ''}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
                 </div>
@@ -2014,12 +2022,12 @@ const GuestAIDemo = () => {
                                         </div>
                                     ) : (
                                         <div
-                                            className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed md:text-[15px]
+                                            className={`rounded-2xl p-4 text-sm leading-relaxed md:text-[15px]
                                             ${msg.role === 'user'
-                                                    ? 'rounded-tr-none bg-slate-900 text-white'
+                                                    ? 'w-fit max-w-[75%] rounded-tr-none bg-slate-900 text-white self-end'
                                                     : isDark
-                                                        ? 'rounded-tl-none border border-white/10 bg-white/[0.06] text-white'
-                                                        : 'rounded-tl-none border border-black/10 bg-white text-slate-800'
+                                                        ? 'w-full max-w-[100%] rounded-tl-none border border-white/10 bg-white/[0.06] text-white shadow-sm md:p-5'
+                                                        : 'w-full max-w-[100%] rounded-tl-none border border-black/10 bg-white text-slate-800 shadow-sm md:p-5'
                                                 }`}
                                         >
                                             {msg.role === 'assistant' ? (
