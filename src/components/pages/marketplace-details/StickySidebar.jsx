@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, Send, Share2, Copy, CheckCheck, Zap, LogIn, Lock, Star } from "lucide-react";
+import { Clock, Send, CheckCheck, LogIn, Lock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -11,7 +11,6 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/shared/lib/utils";
 
 // ─── Price formatter ──────────────────────────────────────────────────────────
 const formatPrice = (serviceDetails = {}, titleLabel = "Service Plan") => {
@@ -23,9 +22,24 @@ const formatPrice = (serviceDetails = {}, titleLabel = "Service Plan") => {
     return { label: titleLabel, value: "Contact for pricing" };
 };
 
+const DELIVERY_LABELS = {
+    less_than_2_weeks: "Less than 2 weeks",
+    two_weeks: "2 weeks",
+    "2_4_weeks": "2-4 weeks",
+    "1_3_months": "1-3 months",
+    "3_plus_months": "3+ months",
+    rush: "Rush (< 1 week)",
+};
+
 const formatDelivery = (serviceDetails = {}) => {
     const val = serviceDetails.deliveryTime;
-    return val ? String(val) : "Delivery time not specified";
+    if (!val) return "Delivery time not specified";
+    return (
+        DELIVERY_LABELS[val] ||
+        String(val)
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (char) => char.toUpperCase())
+    );
 };
 
 // ─── Unauthenticated in-modal prompt ─────────────────────────────────────────
@@ -37,7 +51,7 @@ const LoginPrompt = ({ onLogin, onClose }) => (
         <div className="space-y-1.5">
             <p className="font-bold text-base text-foreground">Sign in to contact this freelancer</p>
             <p className="text-sm text-muted-foreground max-w-[260px]">
-                Please log in to send a message. You'll be brought right back here after signing in.
+                Please log in to send a message. You&apos;ll be brought right back here after signing in.
             </p>
         </div>
         <div className="flex flex-col w-full gap-2.5">
@@ -64,7 +78,6 @@ const LoginPrompt = ({ onLogin, onClose }) => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 const StickySidebar = ({
     service,
-    onShare,
     isAuthenticated = false,
     onLoginRequired,
     modalOpen = false,
@@ -96,8 +109,6 @@ const StickySidebar = ({
     const [sending, setSending] = useState(false);
     const [sendSuccess, setSendSuccess] = useState(false);
     const [sendError, setSendError] = useState(null);
-    const [copied, setCopied] = useState(false);
-
     // The "showAuth=true" state triggers the login prompt within the modal
     const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
@@ -120,12 +131,6 @@ const StickySidebar = ({
             setSendError(null);
             setShowAuthPrompt(false);
         }
-    };
-
-    const handleShare = () => {
-        if (onShare) onShare();
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
     };
 
     const handleSend = async () => {

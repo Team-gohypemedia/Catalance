@@ -12,9 +12,7 @@ const run = async () => {
       userId: true,
       portfolioProjects: true,
       services: true,
-      freelancerProfileDetails: {
-        select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
-      },
+      ...FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
       user: {
         select: {
           marketplace: {
@@ -35,7 +33,7 @@ const run = async () => {
     await syncFreelancerProfileDetailsProjection({
       userId: profile.userId,
       profileDetails: mergeFreelancerProfileDetailsWithMarketplace(
-        buildFreelancerProfileDetailsObject(profile.freelancerProfileDetails),
+        buildFreelancerProfileDetailsObject(profile),
         profile.user?.marketplace
       ),
       portfolioProjects: Array.isArray(profile.portfolioProjects)

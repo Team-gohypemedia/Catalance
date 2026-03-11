@@ -408,9 +408,20 @@ const ProfileHeroCard = ({
             </span>
             <span className="inline-flex items-center gap-1.5">
               <MessageCircle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              {spokenLanguages.length > 0
-                ? `Speaks ${spokenLanguages.join(", ")}`
-                : "Languages not set"}
+              {spokenLanguages.length > 0 ? (
+                `Speaks ${spokenLanguages.join(", ")}`
+              ) : (
+                <>
+                  <span>Languages not set</span>
+                  <button
+                    type="button"
+                    onClick={() => openEditPersonalModal()}
+                    className="inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
+                  >
+                    Add
+                  </button>
+                </>
+              )}
             </span>
           </div>
         </div>

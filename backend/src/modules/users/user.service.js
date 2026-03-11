@@ -96,11 +96,7 @@ const withFreelancerProfileDetailsSelection = (selection = true) => {
       ...selection,
       select: {
         ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT,
-        ...selection.select,
-        freelancerProfileDetails:
-          selection.select.freelancerProfileDetails === undefined
-            ? FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT.freelancerProfileDetails
-            : selection.select.freelancerProfileDetails
+        ...selection.select
       }
     };
   }
@@ -112,11 +108,7 @@ const withFreelancerProfileDetailsSelection = (selection = true) => {
       ...restSelection,
       select: {
         ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT,
-        ...include,
-        freelancerProfileDetails:
-          include.freelancerProfileDetails === undefined
-            ? FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT.freelancerProfileDetails
-            : include.freelancerProfileDetails
+        ...include
       }
     };
   }
@@ -154,7 +146,8 @@ const withFreelancerProfileInclude = (query = {}) => {
   }
 
   const include = query?.include && typeof query.include === "object" ? query.include : {};
-  const { include: _include, ...rest } = query;
+  const rest = { ...query };
+  delete rest.include;
 
   return {
     ...rest,
@@ -200,15 +193,13 @@ const resolveFreelancerProfileDetails = (user = null) => {
   if (!user || typeof user !== "object") return {};
 
   const relatedProfileDetails = buildFreelancerProfileDetailsObject(
-    user?.freelancerProfile?.freelancerProfileDetails ||
-      user?.freelancerProfileDetails
+    user?.freelancerProfile || user?.freelancerProfileDetails
   );
-  const marketplaceMergedProfileDetails = mergeFreelancerProfileDetailsWithMarketplace(
-    relatedProfileDetails,
-    user?.marketplace
-  );
-  if (Object.keys(marketplaceMergedProfileDetails).length) {
-    return marketplaceMergedProfileDetails;
+  if (Object.keys(relatedProfileDetails).length) {
+    return mergeFreelancerProfileDetailsWithMarketplace(
+      relatedProfileDetails,
+      user?.marketplace
+    );
   }
 
   const legacyProfileDetails = user?.profileDetails;
@@ -217,10 +208,13 @@ const resolveFreelancerProfileDetails = (user = null) => {
     typeof legacyProfileDetails === "object" &&
     !Array.isArray(legacyProfileDetails)
   ) {
-    return legacyProfileDetails;
+    return mergeFreelancerProfileDetailsWithMarketplace(
+      legacyProfileDetails,
+      user?.marketplace
+    );
   }
 
-  return {};
+  return mergeFreelancerProfileDetailsWithMarketplace({}, user?.marketplace);
 };
 
 const resolveFreelancerProfileRecord = (user = null) => {
@@ -298,6 +292,7 @@ const upsertFreelancerProfile = async ({ userId, updates = {} }) => {
       `[FreelancerProfile] Unable to upsert profile for user ${userId}:`,
       error?.message || error
     );
+    throw error;
   }
 };
 
@@ -856,6 +851,9 @@ const buildFreelancerProjectOnboardingSnapshot = ({
     averageProjectPriceRange: normalizeOptionalText(
       detail?.averageProjectPrice || detail?.averagePrice
     ),
+    deliveryTime: normalizeOptionalText(
+      detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline
+    ),
     projectComplexityLevel: normalizeOptionalText(detail?.projectComplexity),
     acceptInProgressProjects: normalizeOptionalText(
       profileDetails?.acceptInProgressProjects
@@ -1228,7 +1226,14 @@ const deriveMarketplaceServiceDetails = ({
         meta?.description ||
         "Service information provided during onboarding.",
       coverImage:
-        customCoverImage || meta?.coverImage || `/assets/services/${serviceKey}-cover.jpg`
+        customCoverImage || meta?.coverImage || `/assets/services/${serviceKey}-cover.jpg`,
+      deliveryTime: normalizeOptionalText(
+        detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline
+      ),
+      averageProjectPriceRange: normalizeOptionalText(
+        detail?.averageProjectPrice || detail?.averagePrice
+      ),
+      projectComplexityLevel: normalizeOptionalText(detail?.projectComplexity)
     };
   });
 };
@@ -1716,6 +1721,7 @@ export const listUsers = async (filters = {}) => {
 export const updateUserProfile = async (userId, updates) => {
   const allowedUpdates = [
     "fullName",
+    "phone",
     "phoneNumber",
     "bio",
     "portfolio",
@@ -1727,7 +1733,13 @@ export const updateUserProfile = async (userId, updates) => {
     "services",
     "skills",
     "portfolioProjects",
-    "location"
+    "location",
+    "jobTitle",
+    "companyName",
+    "available",
+    "experienceYears",
+    "workExperience",
+    "resume"
   ];
   const cleanUpdates = {};
 
@@ -1736,6 +1748,8 @@ export const updateUserProfile = async (userId, updates) => {
       // Sanitize bio to plain text even if JSON/object slips in.
       if (key === "bio") {
         cleanUpdates[key] = extractBioText(updates[key]);
+      } else if (key === "phone" || key === "phoneNumber") {
+        cleanUpdates.phoneNumber = normalizeOptionalText(updates[key]);
       } else if (key === "skills") {
         cleanUpdates[key] = normalizeSkills(updates[key], {
           strictTech: true,
@@ -1746,13 +1760,32 @@ export const updateUserProfile = async (userId, updates) => {
       } else if (key === "portfolioProjects") {
         cleanUpdates[key] = normalizePortfolioProjects(updates[key]);
       } else if (key === "location") {
-        cleanUpdates[key] = String(updates[key] || "").trim() || null;
+        cleanUpdates[key] = normalizeOptionalText(updates[key]);
       } else if (key === "profileDetails") {
         cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
       } else if (key === "services") {
         cleanUpdates[key] = normalizeMarketplaceServiceKeys(updates[key], {
           max: 64
         });
+      } else if (key === "available") {
+        cleanUpdates[key] = Boolean(updates[key]);
+      } else if (key === "experienceYears") {
+        const parsedExperienceYears = Number(updates[key]);
+        cleanUpdates[key] =
+          Number.isFinite(parsedExperienceYears) && parsedExperienceYears >= 0
+            ? Math.round(parsedExperienceYears)
+            : 0;
+      } else if (key === "workExperience") {
+        cleanUpdates[key] = normalizeWorkExperienceEntries(updates[key]);
+      } else if (
+        key === "portfolio" ||
+        key === "linkedin" ||
+        key === "github" ||
+        key === "jobTitle" ||
+        key === "companyName" ||
+        key === "resume"
+      ) {
+        cleanUpdates[key] = normalizeOptionalText(updates[key]);
       } else {
         cleanUpdates[key] = updates[key];
       }
@@ -1829,6 +1862,11 @@ export const updateUserProfile = async (userId, updates) => {
   const userUpdates = {};
   const freelancerProfileUpdates = {};
   Object.entries(cleanUpdates).forEach(([key, value]) => {
+    if (key === "phoneNumber") {
+      userUpdates.phoneNumber = value;
+      userUpdates.phone = value;
+      return;
+    }
     if (userUpdateKeys.has(key)) {
       userUpdates[key] = value;
       return;

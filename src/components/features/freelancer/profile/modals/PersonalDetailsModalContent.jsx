@@ -7,8 +7,11 @@ const PersonalDetailsModalContent = ({
   personal,
   portfolio,
   onboardingIdentity,
+  onboardingLanguages,
   handlePersonalChange,
   handlePersonalUsernameChange,
+  handlePersonalLanguagesChange,
+  handlePersonalOtherLanguageChange,
   setPortfolio,
   savePersonalSection,
   isSaving,
@@ -113,6 +116,50 @@ const PersonalDetailsModalContent = ({
             placeholder="City, Country"
             className="h-10 bg-background/70"
           />
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label
+            htmlFor="personal-languages"
+            className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+          >
+            Languages
+          </Label>
+          <Input
+            id="personal-languages"
+            value={
+              Array.isArray(onboardingIdentity?.languages)
+                ? onboardingIdentity.languages.join(", ")
+                : ""
+            }
+            onChange={handlePersonalLanguagesChange}
+            placeholder="English, Hindi"
+            className="h-10 bg-background/70"
+          />
+          <p className="text-xs text-muted-foreground">
+            Add one or more languages, separated by commas.
+          </p>
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label
+            htmlFor="personal-other-language"
+            className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+          >
+            Other Language
+          </Label>
+          <Input
+            id="personal-other-language"
+            value={String(onboardingIdentity?.otherLanguage || "")}
+            onChange={handlePersonalOtherLanguageChange}
+            placeholder="Optional additional language"
+            className="h-10 bg-background/70"
+          />
+          {Array.isArray(onboardingLanguages) && onboardingLanguages.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Current display: {onboardingLanguages.join(", ")}
+            </p>
+          ) : null}
         </div>
       </div>
 

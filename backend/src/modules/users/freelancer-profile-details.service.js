@@ -21,19 +21,17 @@ export const syncFreelancerProfileDetailsProjection = async ({
     fallbackServices: services,
     fallbackPortfolioProjects: portfolioProjects,
   });
+  const detailColumns = { ...mainRecord };
+  delete detailColumns.skills;
+  delete detailColumns.services;
+  delete detailColumns.portfolioProjects;
 
   await tx.freelancerProfile.upsert({
     where: { userId },
-    update: {},
-    create: { userId },
-  });
-
-  await tx.freelancerProfileDetails.upsert({
-    where: { userId },
-    update: mainRecord,
+    update: detailColumns,
     create: {
       userId,
-      ...mainRecord,
+      ...detailColumns,
     },
   });
 };

@@ -249,11 +249,7 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
         id: true,
         email: true,
         freelancerProfile: {
-          select: {
-            freelancerProfileDetails: {
-              select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
-            },
-          },
+          select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
         },
       },
     });
@@ -266,11 +262,7 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
         id: true,
         email: true,
         freelancerProfile: {
-          select: {
-            freelancerProfileDetails: {
-              select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
-            },
-          },
+          select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
         },
       },
     });
@@ -281,7 +273,7 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
   }
 
   const profileDetails = buildFreelancerProfileDetailsObject(
-    targetUser.freelancerProfile?.freelancerProfileDetails
+    targetUser.freelancerProfile
   );
   const identity = toPlainObject(profileDetails.identity);
   const existingCoverImage = String(identity.coverImage || "").trim();

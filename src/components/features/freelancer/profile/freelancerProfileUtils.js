@@ -812,6 +812,7 @@ export const PERSONAL_EDITOR_SECTIONS = Object.freeze({
 export const FULL_PROFILE_EDITOR_SECTIONS = Object.freeze({
   ALL: "all",
   WORK_PREFERENCES: "workPreferences",
+  INDUSTRY_FOCUS: "industryFocus",
   EDUCATION: "education",
 });
 

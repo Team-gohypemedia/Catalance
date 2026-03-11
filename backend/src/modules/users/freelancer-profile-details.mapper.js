@@ -502,6 +502,9 @@ export const mergeFreelancerProfileDetailsWithMarketplace = (
           marketplaceDetail.averageProjectPriceRange ||
           marketplaceDetail.priceRange
       ),
+      deliveryTime: toOptionalString(
+        marketplaceDetail.deliveryTime || marketplaceDetail.deliveryDays
+      ),
       skillsAndTechnologies: tools,
       projects,
       platformLinks: asObject(marketplaceDetail.platformLinks),

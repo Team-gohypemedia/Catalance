@@ -35,6 +35,7 @@ export const createServiceDetail = () => ({
     sampleWork: null,
     averagePrice: "",
     averageProjectPrice: "", // Added for dropdown selection
+    deliveryTime: "",
     groups: {},
     groupOther: {},
     industryFocus: "",

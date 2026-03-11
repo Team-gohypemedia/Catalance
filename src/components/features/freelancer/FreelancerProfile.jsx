@@ -49,6 +49,7 @@ import {
   AVERAGE_PROJECT_PRICE_OPTIONS,
   EXPERIENCE_YEARS_OPTIONS,
   PROJECT_COMPLEXITY_OPTIONS,
+  PROJECT_TIMELINE_OPTIONS,
   SERVICE_OPTIONS,
 } from "@/components/features/freelancer/onboarding/constants";
 import { useNavigate } from "react-router-dom";
@@ -238,6 +239,7 @@ const FreelancerProfile = () => {
     serviceDescription: "",
     coverImage: "",
     averageProjectPrice: "",
+    deliveryTime: "",
     projectComplexity: "",
     skillsAndTechnologies: [],
   });
@@ -575,9 +577,39 @@ const FreelancerProfile = () => {
           resume: normalized.portfolio?.resume || normalized.resume || "",
         };
 
+        const loadedSkillLevels =
+          loadedProfileDetails?.skillLevels &&
+            typeof loadedProfileDetails.skillLevels === "object" &&
+            !Array.isArray(loadedProfileDetails.skillLevels)
+            ? loadedProfileDetails.skillLevels
+            : {};
+        const explicitSkillKeys = new Set(
+          Object.keys(loadedSkillLevels)
+            .map((entry) => getSkillDedupKey(entry))
+            .filter(Boolean)
+        );
+        const hasExplicitSkillList = Object.prototype.hasOwnProperty.call(
+          loadedProfileDetails,
+          "skills"
+        );
+        const loadedSkillSource = hasExplicitSkillList
+          ? Array.isArray(loadedProfileDetails.skills)
+            ? loadedProfileDetails.skills
+            : []
+          : explicitSkillKeys.size > 0
+            ? (Array.isArray(normalized.skills) ? normalized.skills : []).filter(
+              (entry) => {
+                const skillName =
+                  typeof entry === "string" ? entry : entry?.name;
+                return explicitSkillKeys.has(getSkillDedupKey(skillName));
+              }
+            )
+            : Array.isArray(normalized.skills)
+              ? normalized.skills
+              : [];
         const loadedSkills = toUniqueSkillObjects(
-          Array.isArray(normalized.skills) ? normalized.skills : [],
-          loadedProfileDetails?.skillLevels
+          loadedSkillSource,
+          loadedSkillLevels
         );
 
         setPersonal(loadedPersonal);
@@ -993,6 +1025,7 @@ const FreelancerProfile = () => {
     const profileDetailsForSave = {
       ...existingProfileDetails,
       professionalBio: bioText,
+      skills: skillsForApi,
       skillLevels: skillLevelsForApi,
       identity: {
         ...existingIdentity,
@@ -1174,14 +1207,7 @@ const FreelancerProfile = () => {
     }));
   };
 
-  const handlePersonalUsernameChange = useCallback((event) => {
-    const rawValue = String(event.target.value || "");
-    const normalizedUsername = rawValue
-      .replace(/^@+/, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "")
-      .slice(0, 30);
-
+  const updateProfileIdentityFields = useCallback((updates = {}) => {
     setProfileDetails((prev) => {
       const current =
         prev && typeof prev === "object" && !Array.isArray(prev) ? prev : {};
@@ -1196,11 +1222,36 @@ const FreelancerProfile = () => {
         ...current,
         identity: {
           ...currentIdentity,
-          username: normalizedUsername,
+          ...updates,
         },
       };
     });
   }, []);
+
+  const handlePersonalUsernameChange = useCallback((event) => {
+    const rawValue = String(event.target.value || "");
+    const normalizedUsername = rawValue
+      .replace(/^@+/, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 30);
+
+    updateProfileIdentityFields({ username: normalizedUsername });
+  }, [updateProfileIdentityFields]);
+
+  const handlePersonalLanguagesChange = useCallback((event) => {
+    const normalizedLanguages = toUniqueLabels(
+      parseDelimitedValues(event.target.value)
+    ).filter((entry) => String(entry || "").trim().toLowerCase() !== "other");
+
+    updateProfileIdentityFields({ languages: normalizedLanguages });
+  }, [updateProfileIdentityFields]);
+
+  const handlePersonalOtherLanguageChange = useCallback((event) => {
+    updateProfileIdentityFields({
+      otherLanguage: String(event.target.value || ""),
+    });
+  }, [updateProfileIdentityFields]);
 
   const closeProfileCropDialog = useCallback(() => {
     setIsProfileCropOpen(false);
@@ -1482,6 +1533,9 @@ const FreelancerProfile = () => {
       averageProjectPrice: String(
         detail?.averageProjectPrice || detail?.averagePrice || ""
       ).trim(),
+      deliveryTime: String(
+        detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline || ""
+      ).trim(),
       projectComplexity: String(detail?.projectComplexity || "").trim(),
       skillsAndTechnologies: existingSkillsAndTechnologies,
     });
@@ -1576,6 +1630,10 @@ const FreelancerProfile = () => {
   const saveOnboardingServiceProfile = async () => {
     const serviceKey = String(serviceProfileForm.serviceKey || "").trim();
     if (!serviceKey) return;
+    if (!String(serviceProfileForm.deliveryTime || "").trim()) {
+      toast.error("Please select a delivery timeline for this service.");
+      return;
+    }
 
     const existingServiceDetails =
       profileDetails?.serviceDetails &&
@@ -1619,6 +1677,7 @@ const FreelancerProfile = () => {
           serviceProfileForm.averageProjectPrice || ""
         ).trim(),
         averagePrice: String(serviceProfileForm.averageProjectPrice || "").trim(),
+        deliveryTime: String(serviceProfileForm.deliveryTime || "").trim(),
         projectComplexity: String(
           serviceProfileForm.projectComplexity || ""
         ).trim(),
@@ -2761,6 +2820,9 @@ const FreelancerProfile = () => {
   const hasServiceAveragePrice = Boolean(
     String(serviceProfileForm.averageProjectPrice || "").trim()
   );
+  const hasServiceDeliveryTime = Boolean(
+    String(serviceProfileForm.deliveryTime || "").trim()
+  );
   const hasServiceSkills =
     (Array.isArray(serviceProfileForm.skillsAndTechnologies)
       ? serviceProfileForm.skillsAndTechnologies
@@ -2780,11 +2842,13 @@ const FreelancerProfile = () => {
       ? "Add a cover image"
       : !hasServiceAveragePrice
         ? "Set average price"
-      : !hasServiceComplexity
-        ? "Set complexity"
-        : !hasServiceSkills
-          ? "Add skills & technologies"
-          : "Ready to publish";
+        : !hasServiceDeliveryTime
+          ? "Set delivery timeline"
+          : !hasServiceComplexity
+            ? "Set complexity"
+            : !hasServiceSkills
+              ? "Add skills & technologies"
+              : "Ready to publish";
   const hasFeaturedProject = portfolioProjects.length > 0;
   const hasIndustryFocus = onboardingGlobalIndustry.length > 0;
 
@@ -3194,6 +3258,7 @@ const FreelancerProfile = () => {
                 splitExperienceTitle={splitExperienceTitle}
                 profileDetails={profileDetails}
                 openFullProfileEditor={openFullProfileEditor}
+                normalizeValueLabel={normalizeValueLabel}
               />
             </div>
 
@@ -3207,8 +3272,10 @@ const FreelancerProfile = () => {
             className={`w-full border border-border/70 bg-card/95 backdrop-blur shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "addProject" ? "rounded-md p-4 sm:p-5" : "rounded-2xl p-6"} ${modalType === "viewAllProjects"
               ? "max-w-6xl h-[90vh] overflow-hidden flex flex-col"
               : modalType === "fullProfile"
-                ? fullProfileEditorSection ===
-                  FULL_PROFILE_EDITOR_SECTIONS.WORK_PREFERENCES
+                ? [
+                    FULL_PROFILE_EDITOR_SECTIONS.WORK_PREFERENCES,
+                    FULL_PROFILE_EDITOR_SECTIONS.INDUSTRY_FOCUS,
+                  ].includes(fullProfileEditorSection)
                   ? "max-w-3xl max-h-[90vh] overflow-y-auto"
                   : "max-w-5xl max-h-[90vh] overflow-y-auto"
                 : modalType === "education"
@@ -3701,7 +3768,38 @@ const FreelancerProfile = () => {
                       </select>
                     </label>
 
-                    <label className="block space-y-1.5 lg:col-span-2">
+                    <label className="block space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                        Delivery Timeline
+                      </span>
+                      <select
+                        value={serviceProfileForm.deliveryTime || ""}
+                        onChange={(event) =>
+                          setServiceProfileForm((prev) => ({
+                            ...prev,
+                            deliveryTime: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      >
+                        <option value="">Select delivery timeline</option>
+                        {serviceProfileForm.deliveryTime &&
+                        !PROJECT_TIMELINE_OPTIONS.some(
+                          (option) => option.value === serviceProfileForm.deliveryTime
+                        ) ? (
+                          <option value={serviceProfileForm.deliveryTime}>
+                            {normalizeValueLabel(serviceProfileForm.deliveryTime)}
+                          </option>
+                        ) : null}
+                        {PROJECT_TIMELINE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block space-y-1.5">
                       <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
                         Avg Price
                       </span>
@@ -3743,8 +3841,8 @@ const FreelancerProfile = () => {
                         {serviceProfileStatusLabel}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Description, cover, price, complexity, and skills
-                        complete the card.
+                        Description, cover, price, delivery timeline, complexity,
+                        and skills complete the card.
                       </p>
                     </div>
                   </div>
@@ -4319,8 +4417,11 @@ const FreelancerProfile = () => {
                 personal={personal}
                 portfolio={portfolio}
                 onboardingIdentity={onboardingIdentity}
+                onboardingLanguages={onboardingLanguages}
                 handlePersonalChange={handlePersonalChange}
                 handlePersonalUsernameChange={handlePersonalUsernameChange}
+                handlePersonalLanguagesChange={handlePersonalLanguagesChange}
+                handlePersonalOtherLanguageChange={handlePersonalOtherLanguageChange}
                 setPortfolio={setPortfolio}
                 savePersonalSection={savePersonalSection}
                 isSaving={isSaving}

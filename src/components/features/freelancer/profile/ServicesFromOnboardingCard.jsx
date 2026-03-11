@@ -3,7 +3,10 @@ import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import { Card } from "@/components/ui/card";
-import { PROJECT_COMPLEXITY_OPTIONS } from "@/components/features/freelancer/onboarding/constants";
+import {
+  PROJECT_COMPLEXITY_OPTIONS,
+  PROJECT_TIMELINE_OPTIONS,
+} from "@/components/features/freelancer/onboarding/constants";
 import {
   Carousel,
   CarouselContent,
@@ -22,6 +25,14 @@ const chunkServices = (entries = [], chunkSize = 2) => {
 };
 
 const PROJECT_COMPLEXITY_LABELS = PROJECT_COMPLEXITY_OPTIONS.reduce(
+  (acc, option) => ({
+    ...acc,
+    [option.value]: option.label,
+  }),
+  {}
+);
+
+const PROJECT_TIMELINE_LABELS = PROJECT_TIMELINE_OPTIONS.reduce(
   (acc, option) => ({
     ...acc,
     [option.value]: option.label,
@@ -254,6 +265,26 @@ const ServicesFromOnboardingCard = ({
                           ] || "Not set",
                       },
                       {
+                        label: "Delivery",
+                        value:
+                          PROJECT_TIMELINE_LABELS[
+                            String(
+                              detail?.deliveryTime ||
+                                detail?.deliveryDays ||
+                                detail?.caseStudy?.timeline ||
+                                ""
+                            )
+                              .trim()
+                              .toLowerCase()
+                          ] ||
+                          normalizeValueLabel(
+                            detail?.deliveryTime ||
+                              detail?.deliveryDays ||
+                              detail?.caseStudy?.timeline
+                          ) ||
+                          "Not set",
+                      },
+                      {
                         label: "Avg Price",
                         value:
                           normalizeValueLabel(detail?.averageProjectPrice) || "Not set",
@@ -335,7 +366,7 @@ const ServicesFromOnboardingCard = ({
                               "Add a stronger service description so clients understand your positioning, delivery approach, and outcomes at a glance."}
                           </p>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                             {metadataItems.map((item) => (
                               <div
                                 key={`${serviceKey}-${item.label}`}

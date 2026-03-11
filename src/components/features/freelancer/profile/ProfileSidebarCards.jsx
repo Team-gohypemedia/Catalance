@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FULL_PROFILE_EDITOR_SECTIONS } from "@/components/features/freelancer/profile/freelancerProfileUtils";
 
 const normalizeEducationEntries = (profileDetails = {}) => {
   const extractYearToken = (value = "") => {
@@ -118,6 +119,21 @@ const normalizeProfileLink = (value = "") => {
   return `https://${raw}`;
 };
 
+const normalizeIndustryFocusEntries = (profileDetails = {}) => {
+  const values = [
+    ...(Array.isArray(profileDetails?.globalIndustryFocus)
+      ? profileDetails.globalIndustryFocus
+      : []),
+    profileDetails?.globalIndustryOther || "",
+  ]
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+
+  return Array.from(
+    new Map(values.map((value) => [value.toLowerCase(), value])).values()
+  );
+};
+
 const ProfileSidebarCards = ({
   openCreateExperienceModal,
   effectiveWorkExperience,
@@ -127,15 +143,61 @@ const ProfileSidebarCards = ({
   splitExperienceTitle,
   profileDetails,
   openFullProfileEditor,
+  normalizeValueLabel,
 }) => {
   const educationEntries = normalizeEducationEntries(profileDetails);
   const experienceEntries = Array.isArray(effectiveWorkExperience)
     ? effectiveWorkExperience
     : [];
   const hasExperience = experienceEntries.length > 0;
+  const industryFocusEntries = normalizeIndustryFocusEntries(profileDetails);
+  const hasIndustryFocus = industryFocusEntries.length > 0;
 
   return (
     <div className="space-y-5">
+      <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-bold tracking-tight text-foreground">
+              Industry Focus
+            </h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Show clients the sectors and niches you understand best.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.INDUSTRY_FOCUS)
+            }
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98]"
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+            {hasIndustryFocus ? "Edit" : "Add"}
+          </button>
+        </div>
+
+        {hasIndustryFocus ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {industryFocusEntries.map((entry) => (
+              <span
+                key={entry.toLowerCase()}
+                className="inline-flex items-center rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs font-medium text-foreground"
+              >
+                {normalizeValueLabel(entry) || entry}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-dashed border-border/50 bg-muted/10 p-4">
+            <p className="text-sm text-muted-foreground">
+              Add your global industry focus so the right clients can find and
+              trust your profile faster.
+            </p>
+          </div>
+        )}
+      </Card>
+
       <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>

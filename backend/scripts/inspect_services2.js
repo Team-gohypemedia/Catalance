@@ -9,8 +9,8 @@ async function main() {
             freelancer: {
                 include: {
                     freelancerProfile: {
-                        include: {
-                            freelancerProfileDetails: true
+                        select: {
+                            profileDetails: true
                         }
                     }
                 }
@@ -24,7 +24,7 @@ async function main() {
         let pd = null;
         let serviceDetailsFromPd = null;
         if (row.freelancer?.freelancerProfile) {
-            pd = row.freelancer.freelancerProfile.freelancerProfileDetails?.profileDetails;
+            pd = row.freelancer.freelancerProfile.profileDetails;
             if (pd && pd.serviceDetails) {
                 serviceDetailsFromPd = pd.serviceDetails;
             }

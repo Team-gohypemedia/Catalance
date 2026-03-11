@@ -1,7 +1,6 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
-import { extractBioText } from "../utils/bio-utils.js";
 import {
   normalizeSkills,
   extractSkillsFromProfileDetails
@@ -10,12 +9,10 @@ import {
   buildFreelancerProfileDetailsObject,
   mergeFreelancerProfileDetailsWithMarketplace
 } from "../modules/users/freelancer-profile-details.mapper.js";
-import { syncFreelancerProfileDetailsProjection } from "../modules/users/freelancer-profile-details.service.js";
 import {
-  FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
-  FREELANCER_PROFILE_SAFE_SELECT,
   FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
 } from "../modules/users/freelancer-profile.select.js";
+import { updateUserProfile } from "../modules/users/user.service.js";
 
 const parseExtras = (value) => {
   try {
@@ -195,25 +192,31 @@ const mergeWithFallback = (primaryValue, fallbackValue) => {
 
 const resolveUserProfileDetails = async (user = null) => {
   const relationProfileDetails = buildFreelancerProfileDetailsObject(
-    user?.freelancerProfile?.freelancerProfileDetails
+    user?.freelancerProfile
   );
-  const marketplaceMergedProfileDetails = mergeFreelancerProfileDetailsWithMarketplace(
-    relationProfileDetails,
-    user?.marketplace
-  );
-  if (Object.keys(marketplaceMergedProfileDetails).length) {
-    return marketplaceMergedProfileDetails;
+  if (Object.keys(relationProfileDetails).length) {
+    return mergeFreelancerProfileDetailsWithMarketplace(
+      relationProfileDetails,
+      user?.marketplace
+    );
   }
 
   const legacyProfileDetails = toProfileDetailsObject(user?.profileDetails);
-  if (!user?.id || !prisma?.freelancerProfileDetails?.findUnique) {
-    return legacyProfileDetails;
+  if (Object.keys(legacyProfileDetails).length) {
+    return mergeFreelancerProfileDetailsWithMarketplace(
+      legacyProfileDetails,
+      user?.marketplace
+    );
+  }
+
+  if (!user?.id || !prisma?.freelancerProfile?.findUnique) {
+    return mergeFreelancerProfileDetailsWithMarketplace({}, user?.marketplace);
   }
 
   try {
-    const profile = await prisma.freelancerProfileDetails.findUnique({
+    const profile = await prisma.freelancerProfile.findUnique({
       where: { userId: user.id },
-      select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT
+      select: FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
     });
 
     if (!profile) {
@@ -486,7 +489,7 @@ export const getProfile = asyncHandler(async (req, res) => {
         },
       },
       freelancerProfile: {
-        select: FREELANCER_PROFILE_SAFE_SELECT
+        select: FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
       }
     }
   });
@@ -620,212 +623,152 @@ export const getProfile = asyncHandler(async (req, res) => {
   });
 });
 
-export const saveProfile = asyncHandler(async (req, res) => {
-  const payload = req.body;
-  console.log("[saveProfile] Called with payload:", JSON.stringify(payload, null, 2));
-  console.log("[saveProfile] *** EXECUTING NATIVE COLUMN UPDATE V2 ***");
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
 
-  const userId = req.user?.sub;
-  const email = payload.email || payload.personal?.email || req.user?.email;
-  console.log("[saveProfile] Email:", email);
-  console.log("[saveProfile] UserId:", userId);
-
-  if (!userId && !email) {
-    throw new AppError("Email is required to update profile", 400);
-  }
-
-  const existingUser = await prisma.user.findUnique({
-    where: userId ? { id: userId } : { email },
-    include: {
-      freelancerProfile: {
-        select: FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
-      }
-    }
-  });
-  if (!existingUser) {
-    throw new AppError("User not found", 404);
-  }
-
-  // Extract from payload
-  const personal = payload.personal || {};
-  const skills = payload.skills || [];
-  const services = payload.services || [];
-  const workExperience = payload.workExperience || [];
-  const portfolioProjects = payload.portfolioProjects || [];
-  const portfolio = payload.portfolio || {};
-  const existingFreelancerProfile =
-    existingUser?.freelancerProfile && typeof existingUser.freelancerProfile === "object"
-      ? existingUser.freelancerProfile
+const buildSaveProfileUpdates = (payload = {}) => {
+  const personal = isPlainObject(payload?.personal) ? payload.personal : {};
+  const portfolio =
+    payload?.portfolio && typeof payload.portfolio === "object" && !Array.isArray(payload.portfolio)
+      ? payload.portfolio
       : {};
+  const normalizedProfileDetails = hasOwn(payload, "profileDetails")
+    ? toProfileDetailsObject(payload.profileDetails)
+    : undefined;
+  const identity =
+    normalizedProfileDetails?.identity && typeof normalizedProfileDetails.identity === "object"
+      ? normalizedProfileDetails.identity
+      : {};
+  const updates = {};
 
-  // 1. Prepare update payloads split by table
-  const userUpdateData = {};
-  const freelancerProfileUpdateData = {};
-  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+  if (hasOwn(personal, "name")) {
+    updates.fullName = personal.name;
+  }
 
-  // Sanitize SKILLS to ensure string[] and not [{name: "..."}] or JSON strings
+  if (hasOwn(personal, "phone")) {
+    updates.phoneNumber = personal.phone;
+  }
+
+  if (hasOwn(personal, "avatar")) {
+    updates.avatar = personal.avatar;
+  }
+
+  const resolvedLocation = hasOwn(personal, "location")
+    ? personal.location
+    : hasOwn(payload, "location")
+      ? payload.location
+      : buildLocationFromIdentity(identity);
+  if (resolvedLocation !== undefined) {
+    updates.location = resolvedLocation;
+  }
+
+  const resolvedJobTitle = hasOwn(personal, "headline")
+    ? personal.headline
+    : hasOwn(payload, "jobTitle")
+      ? payload.jobTitle
+      : buildJobTitleFromIdentity(identity);
+  if (resolvedJobTitle !== undefined) {
+    updates.jobTitle = resolvedJobTitle;
+  }
+
+  if (hasOwn(personal, "available")) {
+    updates.available = personal.available;
+  }
+
+  if (hasOwn(personal, "experienceYears")) {
+    updates.experienceYears = personal.experienceYears;
+  }
+
+  const resolvedBio = hasOwn(personal, "bio")
+    ? personal.bio
+    : hasOwn(payload, "bio")
+      ? payload.bio
+      : undefined;
+  if (resolvedBio !== undefined) {
+    updates.bio = resolvedBio;
+  }
+
+  if (hasOwn(payload, "companyName")) {
+    updates.companyName = payload.companyName;
+  }
+
   if (hasOwn(payload, "skills")) {
-    let cleanSkills = [];
-    if (Array.isArray(skills)) {
-      cleanSkills = skills
-        .map((s) => {
-          if (typeof s === "object" && s !== null && s.name) return s.name; // Flatten object
-          if (typeof s === "string") {
-            if (s.trim().startsWith("{") && s.includes('"name"')) {
-              try {
-                return JSON.parse(s).name;
-              } catch (e) {
-                return s;
-              }
-            }
-            return s;
-          }
-          return String(s);
-        })
-        .filter(Boolean);
-    }
-    freelancerProfileUpdateData.skills = normalizeSkills(cleanSkills, {
-      strictTech: true,
-      max: 120
-    });
+    updates.skills = payload.skills;
   }
 
   if (hasOwn(payload, "services")) {
-    freelancerProfileUpdateData.services = services;
+    updates.services = payload.services;
   }
-  const normalizedPayloadProfileDetails = hasOwn(payload, "profileDetails")
-    ? payload.profileDetails &&
-      typeof payload.profileDetails === "object" &&
-      !Array.isArray(payload.profileDetails)
-        ? payload.profileDetails
-        : {}
-    : undefined;
+
   if (hasOwn(payload, "portfolioProjects")) {
-    freelancerProfileUpdateData.portfolioProjects = portfolioProjects;
+    updates.portfolioProjects = payload.portfolioProjects;
   }
+
   if (hasOwn(payload, "workExperience")) {
-    freelancerProfileUpdateData.workExperience = workExperience;
+    updates.workExperience = payload.workExperience;
   }
 
-  const hasPortfolio = hasOwn(payload, "portfolio");
-  if (hasPortfolio) {
-    freelancerProfileUpdateData.portfolio = portfolio.portfolioUrl || null;
-    freelancerProfileUpdateData.linkedin = portfolio.linkedinUrl || null;
-    freelancerProfileUpdateData.github = portfolio.githubUrl || null;
+  const resolvedPortfolio = hasOwn(portfolio, "portfolioUrl")
+    ? portfolio.portfolioUrl
+    : hasOwn(payload, "website")
+      ? payload.website
+      : typeof payload?.portfolio === "string"
+        ? payload.portfolio
+        : undefined;
+  if (resolvedPortfolio !== undefined) {
+    updates.portfolio = resolvedPortfolio;
   }
 
-  const resumeValue = payload.resume || portfolio.resume || null;
-  if (resumeValue) {
-    freelancerProfileUpdateData.resume = resumeValue;
+  const resolvedLinkedin = hasOwn(portfolio, "linkedinUrl")
+    ? portfolio.linkedinUrl
+    : hasOwn(payload, "linkedin")
+      ? payload.linkedin
+      : undefined;
+  if (resolvedLinkedin !== undefined) {
+    updates.linkedin = resolvedLinkedin;
   }
 
-  // DEBUG: Log resume specifically
-  console.log("[saveProfile] Resume from portfolio:", portfolio.resume);
-  console.log("[saveProfile] Resume from payload:", payload.resume);
-  console.log("[saveProfile] Final resume value:", freelancerProfileUpdateData.resume);
-
-  // Personal details - store in dedicated columns
-  if (personal.name) userUpdateData.fullName = personal.name;
-  if (personal.avatar !== undefined) userUpdateData.avatar = personal.avatar;
-  if (personal.phone !== undefined) {
-    userUpdateData.phone = personal.phone;
-    userUpdateData.phoneNumber = personal.phone;
-  }
-  if (personal.location !== undefined) freelancerProfileUpdateData.location = personal.location;
-  if (personal.headline !== undefined) freelancerProfileUpdateData.jobTitle = personal.headline;
-  if (personal.available !== undefined) {
-    freelancerProfileUpdateData.available = Boolean(personal.available);
-  }
-  if (payload.companyName !== undefined) {
-    freelancerProfileUpdateData.companyName = payload.companyName;
-  }
-  if (payload.website !== undefined) freelancerProfileUpdateData.portfolio = payload.website;
-
-  // Bio should be plain text, NOT JSON
-  const bioInput = personal.bio !== undefined ? personal.bio : payload.bio;
-  if (bioInput !== undefined) {
-    freelancerProfileUpdateData.bio = extractBioText(bioInput);
-  } else if (typeof existingUser?.freelancerProfile?.bio === "string") {
-    const trimmed = existingUser.freelancerProfile.bio.trim();
-    const looksJson =
-      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-      (trimmed.startsWith("[") && trimmed.endsWith("]"));
-    if (looksJson) {
-      freelancerProfileUpdateData.bio = extractBioText(existingUser.freelancerProfile.bio);
-    }
-  }
-  if (typeof freelancerProfileUpdateData.bio === "string") {
-    const trimmedBio = freelancerProfileUpdateData.bio.trim();
-    const looksJson =
-      (trimmedBio.startsWith("{") && trimmedBio.endsWith("}")) ||
-      (trimmedBio.startsWith("[") && trimmedBio.endsWith("]"));
-    if (looksJson) {
-      freelancerProfileUpdateData.bio = extractBioText(trimmedBio);
-    }
+  const resolvedGithub = hasOwn(portfolio, "githubUrl")
+    ? portfolio.githubUrl
+    : hasOwn(payload, "github")
+      ? payload.github
+      : undefined;
+  if (resolvedGithub !== undefined) {
+    updates.github = resolvedGithub;
   }
 
-  // Experience years as number
-  if (personal.experienceYears !== undefined) {
-    freelancerProfileUpdateData.experienceYears = Number(personal.experienceYears) || 0;
+  const resolvedResume = hasOwn(payload, "resume")
+    ? payload.resume
+    : hasOwn(portfolio, "resume")
+      ? portfolio.resume
+      : undefined;
+  if (resolvedResume !== undefined) {
+    updates.resume = resolvedResume;
   }
 
-  // Handle Onboarding Completion & Verification Flow
-  if (payload.onboardingComplete === true) {
-    userUpdateData.onboardingComplete = true;
-    // Set status to PENDING_APPROVAL when onboarding is finished
-    // This locks the dashboard until admin approves
-    userUpdateData.status = "PENDING_APPROVAL";
+  if (normalizedProfileDetails !== undefined) {
+    updates.profileDetails = normalizedProfileDetails;
   }
 
-  if (Object.keys(userUpdateData).length) {
-    await prisma.user.update({
-      where: userId ? { id: userId } : { email },
-      data: userUpdateData
-    });
+  if (hasOwn(payload, "onboardingComplete")) {
+    updates.onboardingComplete = Boolean(payload.onboardingComplete);
   }
 
-  if (Object.keys(freelancerProfileUpdateData).length) {
-    await prisma.freelancerProfile.upsert({
-      where: { userId: existingUser.id },
-      update: freelancerProfileUpdateData,
-      create: {
-        userId: existingUser.id,
-        ...freelancerProfileUpdateData
-      }
-    });
+  return updates;
+};
+
+export const saveProfile = asyncHandler(async (req, res) => {
+  const payload = req.body;
+  console.log("[saveProfile] Called with payload:", JSON.stringify(payload, null, 2));
+  const userId = req.user?.sub;
+  console.log("[saveProfile] UserId:", userId);
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
   }
 
-  const shouldSyncFreelancerProfileDetails =
-    hasOwn(payload, "profileDetails") ||
-    hasOwn(payload, "portfolioProjects") ||
-    hasOwn(payload, "services");
-
-  if (shouldSyncFreelancerProfileDetails) {
-    const resolvedProfileDetails = hasOwn(payload, "profileDetails")
-      ? toProfileDetailsObject(normalizedPayloadProfileDetails)
-      : buildFreelancerProfileDetailsObject(
-        existingFreelancerProfile?.freelancerProfileDetails
-      );
-    const resolvedPortfolioProjects = hasOwn(payload, "portfolioProjects")
-      ? portfolioProjects
-      : Array.isArray(existingFreelancerProfile.portfolioProjects)
-        ? existingFreelancerProfile.portfolioProjects
-        : [];
-    const resolvedServices = hasOwn(payload, "services")
-      ? services
-      : Array.isArray(existingFreelancerProfile.services)
-        ? existingFreelancerProfile.services
-        : [];
-
-    await syncFreelancerProfileDetailsProjection({
-      userId: existingUser.id,
-      profileDetails: resolvedProfileDetails,
-      portfolioProjects: resolvedPortfolioProjects,
-      services: resolvedServices,
-    });
-  }
-
-  res.json({ data: { success: true } });
+  const updates = buildSaveProfileUpdates(payload);
+  const updatedUser = await updateUserProfile(userId, updates);
+  res.json({ data: updatedUser });
 });
 
 export const saveResume = asyncHandler(async (req, res) => {

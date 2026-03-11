@@ -12,8 +12,9 @@ async function main() {
             freelancer: {
                 include: {
                     freelancerProfile: {
-                        include: {
-                            freelancerProfileDetails: true
+                        select: {
+                            profileDetails: true,
+                            serviceDetails: true
                         }
                     }
                 }
@@ -30,7 +31,7 @@ async function main() {
 
         let pdSrv = null;
         if (row.freelancer?.freelancerProfile) {
-            const pd = row.freelancer.freelancerProfile.freelancerProfileDetails?.profileDetails;
+            const pd = row.freelancer.freelancerProfile.profileDetails;
             if (pd && typeof pd === 'object') {
                 const pdServiceDetails = pd.serviceDetails || pd;
                 if (pdServiceDetails && pdServiceDetails[row.serviceKey]) {

@@ -518,9 +518,7 @@ const scoreCandidate = (candidate, query, weights) => {
 };
 
 const extractStructuredServiceDetail = (freelancer = {}, serviceKey = "") => {
-  const detailsMap = asObject(
-    freelancer?.freelancerProfile?.freelancerProfileDetails?.serviceDetails
-  );
+  const detailsMap = asObject(freelancer?.freelancerProfile?.serviceDetails);
 
   return asObject(detailsMap[serviceKey]);
 };
@@ -606,6 +604,8 @@ const buildMergedServiceDetails = ({
   const deliveryTime =
     mktSd.deliveryTime ||
     mktSd.deliveryDays ||
+    profileSd.deliveryTime ||
+    profileSd.deliveryDays ||
     asObject(profileSd.caseStudy).timeline ||
     null;
   const description =
@@ -779,11 +779,7 @@ export const getMarketplace = asyncHandler(async (req, res) => {
               skills: true,
               bio: true,
               experienceYears: true,
-              freelancerProfileDetails: {
-                select: {
-                  serviceDetails: true,
-                },
-              },
+              serviceDetails: true,
             },
           },
         },
@@ -870,11 +866,7 @@ export const getServiceById = asyncHandler(async (req, res) => {
           freelancerProfile: {
             select: {
               ...FREELANCER_PROFILE_SAFE_SELECT,
-              freelancerProfileDetails: {
-                select: {
-                  serviceDetails: true,
-                },
-              },
+              serviceDetails: true,
             }
           },
         }
@@ -920,11 +912,7 @@ export const getServiceById = asyncHandler(async (req, res) => {
                 skills: true,
                 rating: true,
                 reviewCount: true,
-                freelancerProfileDetails: {
-                  select: {
-                    serviceDetails: true,
-                  },
-                },
+                serviceDetails: true,
               }
             }
           }

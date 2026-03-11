@@ -9,8 +9,8 @@ async function main() {
             freelancer: {
                 include: {
                     freelancerProfile: {
-                        include: {
-                            freelancerProfileDetails: true
+                        select: {
+                            profileDetails: true
                         }
                     }
                 }
@@ -23,7 +23,7 @@ async function main() {
     for (const row of mkt) {
         let pd = null;
         if (row.freelancer?.freelancerProfile) {
-            pd = row.freelancer.freelancerProfile.freelancerProfileDetails?.profileDetails;
+            pd = row.freelancer.freelancerProfile.profileDetails;
         }
         output.push({
             mktId: row.id,
