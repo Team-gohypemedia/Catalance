@@ -8,7 +8,6 @@ datasource db {
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
-
 enum UserRole {
   CLIENT
   FREELANCER
@@ -52,109 +51,77 @@ enum ProjectTaskStatus {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  fullName     String
-  phoneNumber  String?
-  passwordHash String
-  role         UserRole   @default(FREELANCER)
-  roles        String[]   @default([])
-  status       UserStatus @default(ACTIVE)
-  resetPasswordToken   String?   @unique
+  id                   String              @id @default(cuid())
+  email                String              @unique
+  fullName             String
+  phoneNumber          String?
+  passwordHash         String
+  role                 UserRole            @default(FREELANCER)
+  roles                String[]            @default([])
+  status               UserStatus          @default(ACTIVE)
+  resetPasswordToken   String?             @unique
   resetPasswordExpires DateTime?
-  fcmToken     String?    // Firebase Cloud Messaging token for push notifications
-  otpCode      String?
-  otpExpires   DateTime?
-  onboardingComplete Boolean @default(false)
-  isVerified   Boolean    @default(false)
-  suspendedAt  DateTime?  // Track when user was suspended for 90-day deletion countdown
-  phone        String?    // Contact number
-  avatar       String?    // Profile image URL
-  clientProfile ClientProfile?
-  freelancerProfile FreelancerProfile?
-  freelancerProjects FreelancerProject[]
-  marketplace     Marketplace[]
+  fcmToken             String? // Firebase Cloud Messaging token for push notifications
+  otpCode              String?
+  otpExpires           DateTime?
+  onboardingComplete   Boolean             @default(false)
+  isVerified           Boolean             @default(false)
+  suspendedAt          DateTime? // Track when user was suspended for 90-day deletion countdown
+  phone                String? // Contact number
+  avatar               String? // Profile image URL
+  clientProfile        ClientProfile?
+  freelancerProfile    FreelancerProfile?
+  managerProfile       ManagerProfile?
+  freelancerProjects   FreelancerProject[]
+  marketplace          Marketplace[]
 
+  ownedProjects           Project[]          @relation("ProjectOwner")
+  managedProjects         Project[]          @relation("ProjectManager")
+  closureVerifiedProjects Project[]          @relation("ProjectClosureVerifier")
+  proposals               Proposal[]
+  createdChats            ChatConversation[] @relation("ChatCreator")
+  sentMessages            ChatMessage[]      @relation("ChatSender")
+  raisedDisputes          Dispute[]          @relation("DisputeRaiser")
+  managedDisputes         Dispute[]          @relation("DisputeManager")
 
-  ownedProjects Project[] @relation("ProjectOwner")
-  managedProjects Project[] @relation("ProjectManager")
-  proposals    Proposal[]
-  createdChats ChatConversation[] @relation("ChatCreator")
-  sentMessages ChatMessage[]      @relation("ChatSender")
-  raisedDisputes Dispute[] @relation("DisputeRaiser")
-  managedDisputes Dispute[] @relation("DisputeManager")
+  authoredInternalReviews InternalFreelancerReview[] @relation("ReviewAuthor")
+  subjectInternalReviews  InternalFreelancerReview[] @relation("ReviewSubject")
+  raisedEscalations       AdminEscalation[]          @relation("EscalationRaiser")
+  profileUpdateRequests   ProfileUpdateRequest[]     @relation("ProfileUpdateUser")
+  reviewedProfileUpdates  ProfileUpdateRequest[]     @relation("ProfileUpdateReviewer")
+  milestoneApprovals      MilestoneApproval[]        @relation("MilestoneApprover")
 
-  notifications Notification[]
-  availabilitySlots ManagerAvailability[] @relation("ManagerAvailability")
-  bookedAppointments Appointment[] @relation("AppointmentBooker")
-  managedAppointments Appointment[] @relation("AppointmentManager")
-  payments Payment[] @relation("FreelancerPayments")
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  notifications       Notification[]
+  availabilitySlots   ManagerAvailability[] @relation("ManagerAvailability")
+  bookedAppointments  Appointment[]         @relation("AppointmentBooker")
+  managedAppointments Appointment[]         @relation("AppointmentManager")
+  payments            Payment[]             @relation("FreelancerPayments")
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 }
 
 model FreelancerProfile {
-  userId         String   @id
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio            String?  @db.Text
-  skills         String[] @default([])
-  jobTitle       String?
-  companyName    String?
-  location       String?
-  available      Boolean  @default(true)
-  rating         Decimal? @db.Decimal(3, 1) @default(0)
-  reviewCount    Int      @default(0)
-  experienceYears Int?    @default(0)
-  workExperience Json?    @default("[]")
-  services       String[] @default([])
-  portfolio      String?
-  linkedin       String?
-  github         String?
-  portfolioProjects Json? @default("[]")
-  resume         String?
+  userId                   String                    @id
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                      String?                   @db.Text
+  skills                   String[]                  @default([])
+  jobTitle                 String?
+  companyName              String?
+  location                 String?
+  available                Boolean                   @default(true)
+  rating                   Decimal?                  @default(0) @db.Decimal(3, 1)
+  reviewCount              Int                       @default(0)
+  experienceYears          Int?                      @default(0)
+  workExperience           Json?                     @default("[]")
+  services                 String[]                  @default([])
+  portfolio                String?
+  linkedin                 String?
+  github                   String?
+  portfolioProjects        Json?                     @default("[]")
+  resume                   String?
   freelancerProfileDetails FreelancerProfileDetails?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
-
-model FreelancerProfileDetails {
-  userId                        String   @id
-  freelancerProfile             FreelancerProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  profileDetails                Json     @default("{}")
-  profileRole                   String?
-  professionalBio               String?  @db.Text
-  termsAccepted                 Boolean  @default(false)
-  deliveryPolicyAccepted        Boolean  @default(false)
-  communicationPolicyAccepted   Boolean  @default(false)
-  acceptInProgressProjects      String?
-  globalIndustryOther           String?
-  city                          String?
-  country                       String?
-  username                      String?
-  githubUrl                     String?
-  languages                     String[] @default([])
-  coverImage                    String?
-  linkedinUrl                   String?
-  portfolioUrl                  String?
-  profilePhoto                  String?
-  otherLanguage                 String?
-  professionalTitle             String?
-  skills                        String[] @default([])
-  skillLevels                   Json     @default("{}")
-  education                     Json     @default("[]")
-  services                      String[] @default([])
-  serviceDetails                Json     @default("{}")
-  portfolioProjects             Json     @default("[]")
-  globalIndustryFocus           String[] @default([])
-  availabilityHoursPerWeek      String?
-  availabilityStartTimeline     String?
-  availabilityWorkingSchedule   String?
-  reliabilityDelayHandling      String?
-  reliabilityMissedDeadlines    String?
-  createdAt                     DateTime @default(now())
-  updatedAt                     DateTime @updatedAt
-
-  @@map("Freelancer Profile Details")
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
 }
 
 model ClientProfile {
@@ -165,16 +132,64 @@ model ClientProfile {
   updatedAt      DateTime @updatedAt
 }
 
+model FreelancerProfileDetails {
+  userId                      String            @id
+  freelancerProfile           FreelancerProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  profileDetails              Json              @default("{}")
+  profileRole                 String?
+  professionalBio             String?           @db.Text
+  termsAccepted               Boolean           @default(false)
+  deliveryPolicyAccepted      Boolean           @default(false)
+  communicationPolicyAccepted Boolean           @default(false)
+  acceptInProgressProjects    String?
+  globalIndustryOther         String?
+  city                        String?
+  country                     String?
+  username                    String?
+  githubUrl                   String?
+  languages                   String[]          @default([])
+  coverImage                  String?
+  linkedinUrl                 String?
+  portfolioUrl                String?
+  profilePhoto                String?
+  otherLanguage               String?
+  professionalTitle           String?
+  skills                      String[]          @default([])
+  skillLevels                 Json              @default("{}")
+  education                   Json              @default("[]")
+  services                    String[]          @default([])
+  serviceDetails              Json              @default("{}")
+  portfolioProjects           Json              @default("[]")
+  globalIndustryFocus         String[]          @default([])
+  availabilityHoursPerWeek    String?
+  availabilityStartTimeline   String?
+  availabilityWorkingSchedule String?
+  reliabilityDelayHandling    String?
+  reliabilityMissedDeadlines  String?
+  createdAt                   DateTime          @default(now())
+  updatedAt                   DateTime          @updatedAt
+
+  @@map("Freelancer Profile Details")
+}
+
+model ManagerProfile {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileDetails Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 model Marketplace {
-  id           String   @id @default(cuid())
-  freelancerId String
-  freelancer   User     @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
-  serviceKey   String   @default("")
-  service      String   @default("")
-  serviceDetails Json   @default("{}")
-  isFeatured   Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  freelancerId   String
+  freelancer     User     @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  serviceKey     String   @default("")
+  service        String   @default("")
+  serviceDetails Json     @default("{}")
+  isFeatured     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([freelancerId, serviceKey])
   @@unique([freelancerId, service])
@@ -184,41 +199,54 @@ model Marketplace {
 }
 
 model Project {
-  id              String        @id @default(cuid())
-  title           String
-  description     String        @db.Text
-  budget          Int?
-  status          ProjectStatus @default(DRAFT)
-  progress        Int           @default(0)
-  spent           Int           @default(0)
-  completedTasks  Json          @default("[]")
-  verifiedTasks   Json          @default("[]")
-  notes           String?       @db.Text
-  owner           User          @relation("ProjectOwner", fields: [ownerId], references: [id])
-  ownerId         String
-  manager         User?         @relation("ProjectManager", fields: [managerId], references: [id])
-  managerId       String?
-  freelancerChangeCount    Int    @default(0)
-  freelancerChangeRequests Json   @default("[]")
+  id                       String        @id @default(cuid())
+  title                    String
+  description              String        @db.Text
+  budget                   Int?
+  status                   ProjectStatus @default(DRAFT)
+  progress                 Int           @default(0)
+  spent                    Int           @default(0)
+  completedTasks           Json          @default("[]")
+  verifiedTasks            Json          @default("[]")
+  notes                    String?       @db.Text
+  owner                    User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  ownerId                  String
+  manager                  User?         @relation("ProjectManager", fields: [managerId], references: [id])
+  managerId                String?
+  freelancerChangeCount    Int           @default(0)
+  freelancerChangeRequests Json          @default("[]")
 
-  proposals       Proposal[]
-  disputes        Dispute[]
-  appointments    Appointment[]
-  payments        Payment[]
-  tasks           ProjectTask[]
-  externalLink    String?       // Project link (e.g. markify.io)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  proposals          Proposal[]
+  disputes           Dispute[]
+  appointments       Appointment[]
+  payments           Payment[]
+  tasks              ProjectTask[]
+  internalReviews    InternalFreelancerReview[]
+  adminEscalations   AdminEscalation[]
+  milestoneApprovals MilestoneApproval[]
+  externalLink       String? // Project link (e.g. markify.io)
+
+  paymentPlanVersion           String    @default("v1")
+  closureHandoverConfirmed     Boolean   @default(false)
+  closureDeliverablesConfirmed Boolean   @default(false)
+  closureReceiptConfirmed      Boolean   @default(false)
+  closureNoIssuesConfirmed     Boolean   @default(false)
+  closureVerifiedById          String?
+  closureVerifiedBy            User?     @relation("ProjectClosureVerifier", fields: [closureVerifiedById], references: [id])
+  closureVerifiedAt            DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("OnGoingProjects")
 }
 
 model FreelancerProject {
-  id           String   @id @default(cuid())
-  freelancerId String
-  freelancer   User     @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
-  serviceKey   String?
-  serviceName  String?
+  id                         String   @id @default(cuid())
+  freelancerId               String
+  freelancer                 User     @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  serviceKey                 String?
+  serviceName                String?
   professionalTitle          String?
   languages                  String[] @default([])
   industriesOrNiches         String[] @default([])
@@ -228,20 +256,20 @@ model FreelancerProject {
   averageProjectPriceRange   String?
   projectComplexityLevel     String?
   acceptInProgressProjects   String?
-  title        String
-  description  String?  @db.Text
-  link         String?
-  readme       String?
-  fileName     String?
-  fileUrl      String?
-  role         String?
-  timeline     String?
-  budget       Int?
-  tags         String[] @default([])
-  techStack    String[] @default([])
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  title                      String
+  description                String?  @db.Text
+  link                       String?
+  readme                     String?
+  fileName                   String?
+  fileUrl                    String?
+  role                       String?
+  timeline                   String?
+  budget                     Int?
+  tags                       String[] @default([])
+  techStack                  String[] @default([])
+  sortOrder                  Int      @default(0)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
   @@index([freelancerId])
   @@index([freelancerId, serviceKey])
@@ -269,41 +297,41 @@ model CompletedProject {
 }
 
 model Proposal {
-  id           String         @id @default(cuid())
-  coverLetter  String         @db.Text
-  amount       Int
-  status       ProposalStatus @default(PENDING)
-  rejectionReason    String?  @db.Text
+  id                 String         @id @default(cuid())
+  coverLetter        String         @db.Text
+  amount             Int
+  status             ProposalStatus @default(PENDING)
+  rejectionReason    String?        @db.Text
   rejectionReasonKey String?
-  budgetReminderSent Boolean  @default(false)
-  freelancer   User           @relation(fields: [freelancerId], references: [id])
-  freelancerId String
-  project      Project        @relation(fields: [projectId], references: [id])
-  projectId    String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  budgetReminderSent Boolean        @default(false)
+  freelancer         User           @relation(fields: [freelancerId], references: [id])
+  freelancerId       String
+  project            Project        @relation(fields: [projectId], references: [id])
+  projectId          String
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 }
 
 model Dispute {
-  id              String        @id @default(cuid())
-  description     String        @db.Text
-  status          DisputeStatus @default(OPEN)
-  resolutionNotes String?       @db.Text
-  meetingLink     String?
-  meetingDate     DateTime?
-  meetingReminderSent Boolean @default(false)
-  
-  projectId       String
-  project         Project       @relation(fields: [projectId], references: [id])
-  
-  raisedById      String
-  raisedBy        User          @relation("DisputeRaiser", fields: [raisedById], references: [id])
-  
-  managerId       String?
-  manager         User?         @relation("DisputeManager", fields: [managerId], references: [id])
-  
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                  String        @id @default(cuid())
+  description         String        @db.Text
+  status              DisputeStatus @default(OPEN)
+  resolutionNotes     String?       @db.Text
+  meetingLink         String?
+  meetingDate         DateTime?
+  meetingReminderSent Boolean       @default(false)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  raisedById String
+  raisedBy   User   @relation("DisputeRaiser", fields: [raisedById], references: [id])
+
+  managerId String?
+  manager   User?   @relation("DisputeManager", fields: [managerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ServiceCatalog {
@@ -318,30 +346,31 @@ model ServiceCatalog {
 }
 
 model ChatConversation {
-  id          String        @id @default(cuid())
-  service     String?
+  id           String        @id @default(cuid())
+  service      String?
   projectTitle String?
-  createdBy   User?         @relation("ChatCreator", fields: [createdById], references: [id])
-  createdById String?
-  messages    ChatMessage[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdBy    User?         @relation("ChatCreator", fields: [createdById], references: [id])
+  createdById  String?
+  messages     ChatMessage[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model ChatMessage {
-  id              String           @id @default(cuid())
-  conversation    ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  conversationId  String
-  sender          User?            @relation("ChatSender", fields: [senderId], references: [id])
-  senderId        String?
-  senderName      String?
-  senderRole      String?
-  role            String           @default("user")
-  content         String?          @db.Text
-  attachment      Json?            // store { name, size, type, url? }
-  deleted         Boolean          @default(false)
-  readAt          DateTime?
-  createdAt       DateTime         @default(now())
+  id             String           @id @default(cuid())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  sender         User?            @relation("ChatSender", fields: [senderId], references: [id])
+  senderId       String?
+  senderName     String?
+  senderRole     String?
+  role           String           @default("user")
+  content        String?          @db.Text
+  attachment     Json? // store { name, size, type, url? }
+  deleted        Boolean          @default(false)
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
   @@index([conversationId, createdAt])
 }
 
@@ -353,7 +382,7 @@ model Notification {
   title     String
   message   String   @db.Text
   read      Boolean  @default(false)
-  data      Json?    // Extra data like link, relatedId etc.
+  data      Json? // Extra data like link, relatedId etc.
   createdAt DateTime @default(now())
 
   @@index([userId])
@@ -367,47 +396,47 @@ enum AppointmentStatus {
 }
 
 model ManagerAvailability {
-  id          String   @id @default(cuid())
-  managerId   String
-  manager     User     @relation("ManagerAvailability", fields: [managerId], references: [id])
-  date        DateTime @db.Date
-  startHour   Int      // 0-23 (e.g., 10 for 10:00 AM)
-  endHour     Int      // 0-23 (e.g., 11 for 11:00 AM)
-  isBooked    Boolean  @default(false)
-  isEnabled   Boolean  @default(true)
-  remark      String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id        String   @id @default(cuid())
+  managerId String
+  manager   User     @relation("ManagerAvailability", fields: [managerId], references: [id])
+  date      DateTime @db.Date
+  startHour Int // 0-23 (e.g., 10 for 10:00 AM)
+  endHour   Int // 0-23 (e.g., 11 for 11:00 AM)
+  isBooked  Boolean  @default(false)
+  isEnabled Boolean  @default(true)
+  remark    String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([managerId, date, startHour])
   @@index([managerId, date])
 }
 
 model Appointment {
-  id              String            @id @default(cuid())
-  title           String
-  description     String?           @db.Text
-  date            DateTime          @db.Date
-  startHour       Int               // 0-23
-  endHour         Int               // 0-23
-  status          AppointmentStatus @default(PENDING)
-  meetingLink     String?
-  
+  id          String            @id @default(cuid())
+  title       String
+  description String?           @db.Text
+  date        DateTime          @db.Date
+  startHour   Int // 0-23
+  endHour     Int // 0-23
+  status      AppointmentStatus @default(PENDING)
+  meetingLink String?
+
   // Who booked the appointment
-  bookedById      String
-  bookedBy        User              @relation("AppointmentBooker", fields: [bookedById], references: [id])
-  
+  bookedById String
+  bookedBy   User   @relation("AppointmentBooker", fields: [bookedById], references: [id])
+
   // Which manager's slot
-  managerId       String
-  manager         User              @relation("AppointmentManager", fields: [managerId], references: [id])
-  
+  managerId String
+  manager   User   @relation("AppointmentManager", fields: [managerId], references: [id])
+
   // Optional: related project
-  projectId       String?
-  project         Project?          @relation(fields: [projectId], references: [id])
-  
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([managerId, date])
   @@index([bookedById])
 }
@@ -422,76 +451,77 @@ enum PaymentStatus {
 
 model Payment {
   id               String        @id @default(cuid())
-  amount           Int           // Total amount from client
+  amount           Int // Total amount from client
   platformFee      Int           @default(0) // 30% platform fee
-  freelancerAmount Int           // Amount after fee (70%)
+  freelancerAmount Int // Amount after fee (70%)
   currency         String        @default("INR")
   status           PaymentStatus @default(PENDING)
   description      String?       @db.Text
-  payoutSequence   Int?
-  payoutKey        String?
-  payoutLabel      String?
-  payoutPercentage Int?
+
+  payoutSequence    Int?
+  payoutKey         String?
+  payoutLabel       String?
+  payoutPercentage  Int?
   payoutPhaseNumber Int?
-  
+
   // Relations
-  projectId        String
-  project          Project       @relation(fields: [projectId], references: [id])
-  
-  freelancerId     String
-  freelancer       User          @relation("FreelancerPayments", fields: [freelancerId], references: [id])
-  
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  freelancerId String
+  freelancer   User   @relation("FreelancerPayments", fields: [freelancerId], references: [id])
+
   // Timestamps
-  paidAt           DateTime?     // When payment was released to freelancer
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  
+  paidAt    DateTime? // When payment was released to freelancer
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([projectId, freelancerId, payoutSequence])
   @@index([freelancerId])
   @@index([projectId])
-  @@unique([projectId, freelancerId, payoutSequence])
 }
 
 model Service {
-  id          String   @id @default(cuid()) 
-  slug        String   @unique // e.g. "branding", "web-dev"
+  id          String  @id @default(cuid())
+  slug        String  @unique // e.g. "branding", "web-dev"
   name        String
   description String?
-  icon        String?  // Optional icon name
-  active      Boolean  @default(true)
-  
-  minBudget   Int?     @default(0)
-  currency    String   @default("INR")
+  icon        String? // Optional icon name
+  active      Boolean @default(true)
 
-  questions   ServiceQuestion[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  minBudget Int?   @default(0)
+  currency  String @default("INR")
+
+  questions ServiceQuestion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ServiceQuestion {
-  id          String   @id @default(cuid())
-  
-  slug        String   // The 'id' from JSON (e.g., 'project_requirements')
-  
-  text        String   @db.Text
-  type        String   // 'input', 'single_option', 'multi_option'
-  
-  order       Int      @default(0)
-  
-  required    Boolean  @default(true)
-  
-  options     Json?    // [{ "label": "Red", "value": "red" }, ...]
-  logic       Json?    // [{ "condition": "equals", "value": "x", "nextQuestionSlug": "y" }]
+  id String @id @default(cuid())
 
-  subtitle    String?  // Context for AI
-  saveResponse Boolean @default(false) // Flag to save response for special handling
+  slug String // The 'id' from JSON (e.g., 'project_requirements')
+
+  text String @db.Text
+  type String // 'input', 'single_option', 'multi_option'
+
+  order Int @default(0)
+
+  required Boolean @default(true)
+
+  options Json? // [{ "label": "Red", "value": "red" }, ...]
+  logic   Json? // [{ "condition": "equals", "value": "x", "nextQuestionSlug": "y" }]
+
+  subtitle         String? // Context for AI
+  saveResponse     Boolean @default(false) // Flag to save response for special handling
   nextQuestionSlug String? // Default next question if logic doesn't override
 
-  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId   String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId String
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([serviceId, slug])
 }
@@ -505,8 +535,6 @@ model AiGuestSession {
   answers     Json?            @default("{}")
   messages    AiGuestMessage[]
 }
-
-
 
 model AiGuestMessage {
   id        String         @id @default(cuid())
@@ -523,24 +551,91 @@ model ProjectTask {
   description String?           @db.Text
   status      ProjectTaskStatus @default(TO_DO)
   deadline    DateTime?
-  
-  projectId   String
-  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([projectId])
 }
 
 model Review {
-  id          String      @id @default(cuid())
-  serviceId   String
-  clientName  String
-  clientId    String?
-  rating      Int
-  comment     String      @db.Text
-  createdAt   DateTime    @default(now())
+  id         String   @id @default(cuid())
+  serviceId  String
+  clientName String
+  clientId   String?
+  rating     Int
+  comment    String   @db.Text
+  createdAt  DateTime @default(now())
 
   @@index([serviceId])
+}
+
+model MilestoneApproval {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  managerId String
+  manager   User     @relation("MilestoneApprover", fields: [managerId], references: [id])
+  phase     Int
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, phase])
+  @@index([managerId])
+}
+
+model InternalFreelancerReview {
+  id           String   @id @default(cuid())
+  freelancerId String
+  freelancer   User     @relation("ReviewSubject", fields: [freelancerId], references: [id])
+  managerId    String
+  manager      User     @relation("ReviewAuthor", fields: [managerId], references: [id])
+  projectId    String?
+  project      Project? @relation(fields: [projectId], references: [id])
+  rating       Int?
+  strengths    String?  @db.Text
+  issues       String?  @db.Text
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([freelancerId])
+  @@index([managerId])
+  @@index([projectId])
+}
+
+model AdminEscalation {
+  id          String        @id @default(cuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id])
+  raisedById  String
+  raisedBy    User          @relation("EscalationRaiser", fields: [raisedById], references: [id])
+  reason      String
+  description String        @db.Text
+  status      DisputeStatus @default(OPEN)
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([projectId])
+  @@index([raisedById])
+}
+
+model ProfileUpdateRequest {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation("ProfileUpdateUser", fields: [userId], references: [id])
+  status          ProposalStatus @default(PENDING)
+  requestedData   Json
+  reviewedById    String?
+  reviewedBy      User?          @relation("ProfileUpdateReviewer", fields: [reviewedById], references: [id])
+  reviewedAt      DateTime?
+  rejectionReason String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId])
 }

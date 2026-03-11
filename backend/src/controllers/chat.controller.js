@@ -29,6 +29,7 @@ const ensureProjectChatAccess = async ({
     select: {
       id: true,
       ownerId: true,
+      managerId: true,
       status: true,
       spent: true,
       proposals: {
@@ -46,6 +47,7 @@ const ensureProjectChatAccess = async ({
   const acceptedFreelancerId = project.proposals?.[0]?.freelancerId || null;
   const isParticipant =
     String(userId) === String(project.ownerId) ||
+    String(userId) === String(project.managerId) ||
     (acceptedFreelancerId &&
       String(userId) === String(acceptedFreelancerId));
 
@@ -537,7 +539,7 @@ export const getProjectMessages = asyncHandler(async (req, res) => {
       where: { id: projectId },
       select: { managerId: true }
     });
-    if (!project || project.managerId !== userId) {
+    if (!project || String(project.managerId) !== String(userId)) {
       throw new AppError("Access denied. You are not assigned to this project's chat.", 403);
     }
   }
