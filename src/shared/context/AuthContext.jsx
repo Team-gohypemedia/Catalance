@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { clearSession, getSession, persistSession } from "@/shared/lib/auth-storage";
 import { API_BASE_URL } from "@/shared/lib/api-client";
+import { migrateSavedProposalsToUser } from "@/shared/lib/client-proposal-storage";
 
 const AuthContext = createContext(null);
 AuthContext.displayName = "AuthContext";
@@ -23,9 +24,6 @@ const PROTECTED_PATH_PREFIXES = [
   "/dashboard",
   "/admin",
 ];
-const SAVED_PROPOSAL_KEY = "markify:savedProposal";
-const SAVED_PROPOSAL_SYNCED_KEY = "markify:savedProposalSynced";
-
 const isAbsoluteUrl = (value = "") => /^https?:\/\//i.test(value);
 
 const resolveRequestUrl = (target) => {
@@ -261,6 +259,7 @@ export const AuthProvider = ({ children }) => {
         user: userData,
         accessToken: authToken,
       });
+      migrateSavedProposalsToUser(userData.id);
       setIsLoading(false);
     },
     [syncSession]

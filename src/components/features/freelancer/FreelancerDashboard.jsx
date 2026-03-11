@@ -120,14 +120,14 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
       !hasTextValue(detail?.serviceDescription || detail?.description)
   ).length;
   const serviceEntriesMissingCover = onboardingServiceEntries.filter(
-    ({ detail }) => !resolveAvatarUrl(detail?.coverImage)
+    ({ detail }) => !resolveAvatarUrl(detail?.coverImage, { allowBlob: true })
   ).length;
   const serviceEntriesWithAnyProfileData = onboardingServiceEntries.filter(
     ({ detail }) => {
       const description = String(
         detail?.serviceDescription || detail?.description || ""
       ).trim();
-      const coverImage = resolveAvatarUrl(detail?.coverImage);
+      const coverImage = resolveAvatarUrl(detail?.coverImage, { allowBlob: true });
       return Boolean(description || coverImage);
     }
   ).length;

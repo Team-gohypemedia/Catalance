@@ -97,6 +97,34 @@ const projectMatchesService = (project = {}, serviceKey = "") => {
   );
 };
 
+const resolveServiceCardCoverImage = (
+  detail = {},
+  projectList = [],
+  resolveAvatarUrl
+) => {
+  const directCoverImage = resolveAvatarUrl(detail?.coverImage, { allowBlob: true });
+  if (directCoverImage) {
+    return directCoverImage;
+  }
+
+  for (const project of Array.isArray(projectList) ? projectList : []) {
+    const projectCoverImage = resolveAvatarUrl(
+      project?.image ||
+        project?.imageUrl ||
+        project?.thumbnail ||
+        project?.coverImage ||
+        project?.fileUrl,
+      { allowBlob: true }
+    );
+
+    if (projectCoverImage) {
+      return projectCoverImage;
+    }
+  }
+
+  return "";
+};
+
 const ServicesFromOnboardingCard = ({
   onboardingServiceEntries,
   portfolioProjects,
@@ -167,10 +195,6 @@ const ServicesFromOnboardingCard = ({
                     const serviceDescription = String(
                       detail?.serviceDescription || detail?.description || ""
                     ).trim();
-                    const serviceCoverImage = resolveAvatarUrl(detail?.coverImage);
-                    const hasServiceProfileContent = Boolean(
-                      serviceDescription || serviceCoverImage
-                    );
 
                     const specializationTags = collectServiceSpecializations(detail);
                     const nicheTags = toUniqueLabels([
@@ -209,6 +233,17 @@ const ServicesFromOnboardingCard = ({
                       ).values()
                     );
                     const displayedProjects = projectList.slice(0, 6);
+                    const serviceProfileCoverImage = resolveAvatarUrl(detail?.coverImage, {
+                      allowBlob: true,
+                    });
+                    const serviceCoverImage = resolveServiceCardCoverImage(
+                      detail,
+                      projectList,
+                      resolveAvatarUrl
+                    );
+                    const hasServiceProfileContent = Boolean(
+                      serviceDescription || serviceProfileCoverImage
+                    );
 
                     const metadataItems = [
                       {

@@ -117,6 +117,26 @@ const normalizeServiceIdentity = (value = "") =>
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
+const parseLocationInput = (value = "") => {
+  const parts = String(value || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return { city: "", country: "" };
+  }
+
+  if (parts.length === 1) {
+    return { city: parts[0], country: "" };
+  }
+
+  return {
+    city: parts[0],
+    country: parts.slice(1).join(", "),
+  };
+};
+
 const resolveCatalogServiceMatch = (value = "") => {
   const normalizedValue = normalizeServiceIdentity(value);
   if (!normalizedValue) return null;
@@ -249,7 +269,7 @@ const FreelancerProfile = () => {
   const [, setPersonalEditorSection] = useState(
     PERSONAL_EDITOR_SECTIONS.ALL
   );
-  const [, setFullProfileEditorSection] = useState(
+  const [fullProfileEditorSection, setFullProfileEditorSection] = useState(
     FULL_PROFILE_EDITOR_SECTIONS.ALL
   );
 
@@ -968,6 +988,7 @@ const FreelancerProfile = () => {
         typeof existingProfileDetails.identity === "object"
         ? existingProfileDetails.identity
         : {};
+    const nextIdentityLocation = parseLocationInput(currentPersonal.location);
 
     const profileDetailsForSave = {
       ...existingProfileDetails,
@@ -975,8 +996,13 @@ const FreelancerProfile = () => {
       skillLevels: skillLevelsForApi,
       identity: {
         ...existingIdentity,
+        city: nextIdentityLocation.city,
+        country: nextIdentityLocation.country,
         professionalTitle: String(currentPersonal.headline || "").trim(),
         username: String(existingIdentity.username || "").trim(),
+        portfolioUrl: String(currentPortfolio.portfolioUrl || "").trim(),
+        linkedinUrl: String(currentPortfolio.linkedinUrl || "").trim(),
+        githubUrl: String(currentPortfolio.githubUrl || "").trim(),
         profilePhoto: currentAvatarUrl || "",
         coverImage: currentCoverUrl || "",
       },
@@ -1371,12 +1397,56 @@ const FreelancerProfile = () => {
     [authFetch]
   );
 
-  const removeCoverImage = useCallback(() => {
-    setSelectedCoverFile(null);
-    setPersonal((prev) =>
-      prev.coverImage ? { ...prev, coverImage: "" } : prev
+  const removeCoverImage = async () => {
+    const currentCoverImage = String(personal.coverImage || "").trim();
+    const hasIdentityCoverImage = Boolean(
+      String(profileDetails?.identity?.coverImage || "").trim()
     );
-  }, []);
+
+    if (!currentCoverImage && !hasIdentityCoverImage && !selectedCoverFile) {
+      return;
+    }
+
+    if (currentCoverImage.startsWith("blob:")) {
+      URL.revokeObjectURL(currentCoverImage);
+    }
+
+    const nextPersonal = {
+      ...personal,
+      coverImage: "",
+    };
+    const nextProfileDetails = {
+      ...(profileDetails && typeof profileDetails === "object"
+        ? profileDetails
+        : {}),
+      identity: {
+        ...((profileDetails?.identity && typeof profileDetails.identity === "object")
+          ? profileDetails.identity
+          : {}),
+        coverImage: "",
+      },
+    };
+
+    setSelectedCoverFile(null);
+    setPersonal(nextPersonal);
+    setProfileDetails(nextProfileDetails);
+
+    const saved = await handleSave(
+      buildProfileSnapshot({
+        personal: nextPersonal,
+        profileDetails: nextProfileDetails,
+      }),
+      { suppressSuccessToast: true }
+    );
+
+    if (saved) {
+      toast.success("Profile cover removed");
+      return;
+    }
+
+    setPersonal(personal);
+    setProfileDetails(profileDetails);
+  };
 
   // ----- Add Custom Service -----
   const [serviceForm, setServiceForm] = useState(createInitialServiceForm);
@@ -1576,32 +1646,18 @@ const FreelancerProfile = () => {
 
     setSavingServiceProfile(true);
     try {
-      const response = await authFetch("/auth/profile", {
-        method: "PUT",
-        body: JSON.stringify({
-          profileDetails: nextProfileDetails,
+      const saved = await handleSave(
+        buildProfileSnapshot({
           services: nextServices,
+          profileDetails: nextProfileDetails,
         }),
-      });
+        { suppressSuccessToast: true }
+      );
 
-      if (!response.ok) {
-        const errPayload = await response
-          .json()
-          .catch(() => ({ message: "Failed to save service details" }));
-        throw new Error(errPayload?.message || "Failed to save service details");
+      if (!saved) {
+        throw new Error("Failed to save service details");
       }
 
-      setProfileDetails(nextProfileDetails);
-      setServices(nextServices);
-      setInitialData((prev) =>
-        prev
-          ? {
-            ...prev,
-            services: nextServices,
-            profileDetails: nextProfileDetails,
-          }
-          : prev
-      );
       toast.success(
         `${getServiceLabel(serviceKey)} ${
           serviceAlreadyExists ? "updated" : "added"
@@ -2599,14 +2655,14 @@ const FreelancerProfile = () => {
       !hasTextValue(detail?.serviceDescription || detail?.description)
   ).length;
   const serviceEntriesMissingCover = onboardingServiceEntries.filter(
-    ({ detail }) => !resolveAvatarUrl(detail?.coverImage)
+    ({ detail }) => !resolveAvatarUrl(detail?.coverImage, { allowBlob: true })
   ).length;
   const serviceEntriesWithAnyProfileData = onboardingServiceEntries.filter(
     ({ detail }) => {
       const description = String(
         detail?.serviceDescription || detail?.description || ""
       ).trim();
-      const coverImage = resolveAvatarUrl(detail?.coverImage);
+      const coverImage = resolveAvatarUrl(detail?.coverImage, { allowBlob: true });
       return Boolean(description || coverImage);
     }
   ).length;
@@ -2678,9 +2734,9 @@ const FreelancerProfile = () => {
 
   const profilePhotoUrl = resolveAvatarUrl(personal.avatar);
   const profileCoverUrl =
-    resolveAvatarUrl(personal.coverImage) ||
-    resolveAvatarUrl(onboardingIdentity?.coverImage) ||
-    resolveAvatarUrl(profileDetails?.identity?.coverImage);
+    resolveAvatarUrl(personal.coverImage, { allowBlob: true }) ||
+    resolveAvatarUrl(onboardingIdentity?.coverImage, { allowBlob: true }) ||
+    resolveAvatarUrl(profileDetails?.identity?.coverImage, { allowBlob: true });
   const hasProfilePhoto = Boolean(profilePhotoUrl);
   // If a dedicated cover is missing, accept profile photo as fallback so users
   // are not blocked by an extra image requirement.
@@ -3052,6 +3108,7 @@ const FreelancerProfile = () => {
             handleCoverImageUpload={handleCoverImageUpload}
             handleResumeUpload={handleResumeUpload}
             removeCoverImage={removeCoverImage}
+            coverImageUrl={profileCoverUrl}
             displayHeadline={displayHeadline}
             displayBio={displayBio}
             displayLocation={displayLocation}
@@ -3150,9 +3207,12 @@ const FreelancerProfile = () => {
             className={`w-full border border-border/70 bg-card/95 backdrop-blur shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "addProject" ? "rounded-md p-4 sm:p-5" : "rounded-2xl p-6"} ${modalType === "viewAllProjects"
               ? "max-w-6xl h-[90vh] overflow-hidden flex flex-col"
               : modalType === "fullProfile"
-                ? "max-w-5xl max-h-[90vh] overflow-y-auto"
-              : modalType === "education"
-                ? "max-w-4xl max-h-[90vh] overflow-y-auto"
+                ? fullProfileEditorSection ===
+                  FULL_PROFILE_EDITOR_SECTIONS.WORK_PREFERENCES
+                  ? "max-w-3xl max-h-[90vh] overflow-y-auto"
+                  : "max-w-5xl max-h-[90vh] overflow-y-auto"
+                : modalType === "education"
+                  ? "max-w-4xl max-h-[90vh] overflow-y-auto"
               : modalType === "personal"
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
               : modalType === "onboardingService"
@@ -4232,6 +4292,7 @@ const FreelancerProfile = () => {
             ) : modalType === "fullProfile" ? (
               <FullProfileEditorModalContent
                 fullProfileForm={fullProfileForm}
+                section={fullProfileEditorSection}
                 handleFullProfileFieldChange={handleFullProfileFieldChange}
                 setFullProfileForm={setFullProfileForm}
                 addEducationEntry={addEducationEntry}

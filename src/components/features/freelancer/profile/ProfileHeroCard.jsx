@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Camera from "lucide-react/dist/esm/icons/camera";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import FileText from "lucide-react/dist/esm/icons/file-text";
@@ -44,6 +45,7 @@ const ProfileHeroCard = ({
   handleCoverImageUpload,
   handleResumeUpload,
   removeCoverImage,
+  coverImageUrl,
   displayHeadline,
   displayBio,
   displayLocation,
@@ -75,6 +77,27 @@ const ProfileHeroCard = ({
   const profileName = String(personal.name || "").trim() || "Your Name";
   const profileHandle = username ? `@${username}` : "@add-username";
   const availabilityLabel = personal.available ? "Open to Work" : "Offline";
+  const [hasCoverImageError, setHasCoverImageError] = useState(false);
+  const [isCoverDragActive, setIsCoverDragActive] = useState(false);
+
+  useEffect(() => {
+    setHasCoverImageError(false);
+  }, [coverImageUrl]);
+
+  const triggerCoverUpload = () => {
+    if (uploadingCoverImage) return;
+    coverInputRef.current?.click();
+  };
+
+  const handleCoverDrop = (event) => {
+    event.preventDefault();
+    setIsCoverDragActive(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    handleCoverImageUpload({ target: { files: [file], value: "" } });
+  };
+
+  const resolvedCoverImage = !hasCoverImageError ? String(coverImageUrl || "").trim() : "";
   const profileLinkItems = [
     {
       key: "portfolio",
@@ -99,22 +122,52 @@ const ProfileHeroCard = ({
   return (
     <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card text-foreground shadow-sm">
       <div className="relative h-44 w-full md:h-64">
-        {personal.coverImage ? (
+        {resolvedCoverImage ? (
           <img
-            src={personal.coverImage}
+            src={resolvedCoverImage}
             alt={`${personal.name || "Freelancer"} profile cover`}
             className="h-full w-full object-cover"
-            onError={() =>
-              setPersonal((prev) =>
-                prev.coverImage ? { ...prev, coverImage: "" } : prev
-              )
-            }
+            onError={() => setHasCoverImageError(true)}
           />
         ) : (
-          <div
-            className="h-full w-full bg-gradient-to-br from-muted/70 via-muted/40 to-background"
-            aria-hidden="true"
-          />
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,rgba(120,119,198,0.12),transparent_32%),linear-gradient(135deg,rgba(9,9,11,0.98),rgba(24,24,27,0.96))] px-6 py-8 text-center">
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:34px_34px] opacity-40" />
+            <div className="pointer-events-none absolute left-[8%] top-[18%] h-28 w-28 rounded-full bg-primary/20 blur-3xl" />
+            <div className="pointer-events-none absolute bottom-[12%] right-[10%] h-32 w-32 rounded-full bg-sky-400/10 blur-3xl" />
+
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={triggerCoverUpload}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  triggerCoverUpload();
+                }
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (event.dataTransfer) {
+                  event.dataTransfer.dropEffect = "copy";
+                }
+                setIsCoverDragActive(true);
+              }}
+              onDragLeave={(event) => {
+                if (event.currentTarget === event.target) {
+                  setIsCoverDragActive(false);
+                }
+              }}
+              onDrop={handleCoverDrop}
+              className={`relative flex w-full items-center justify-center px-6 py-10 outline-none transition ${
+                isCoverDragActive ? "text-primary" : "text-white"
+              } ${uploadingCoverImage ? "pointer-events-none opacity-70" : "cursor-pointer hover:text-white/88"}`}
+              aria-label="Add cover image"
+            >
+              <span className="text-[28px] font-semibold tracking-[-0.05em] md:text-[32px]">
+                Add Cover Image
+              </span>
+            </div>
+          </div>
         )}
 
         <div className="absolute right-4 top-4 z-10">
@@ -137,10 +190,10 @@ const ProfileHeroCard = ({
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem onSelect={() => coverInputRef.current?.click()}>
                 <Camera className="h-4 w-4" />
-                {personal.coverImage ? "Change cover" : "Add cover"}
+                {resolvedCoverImage ? "Change cover" : "Add cover"}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!personal.coverImage}
+                disabled={!resolvedCoverImage}
                 onSelect={removeCoverImage}
                 className="text-destructive focus:text-destructive"
               >

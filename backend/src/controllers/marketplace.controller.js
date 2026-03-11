@@ -5,7 +5,6 @@ import { FREELANCER_PROFILE_SAFE_SELECT } from "../modules/users/freelancer-prof
 
 const DEFAULT_PAGE_LIMIT = 20;
 const DEFAULT_MAX_CANDIDATES = 80;
-const NO_FILTER_LIMIT = 20;
 
 const CATEGORY_ALIAS_MAP = new Map([
   ["web_dev", "web_development"],
@@ -757,13 +756,7 @@ const createMarketplaceCandidate = (row) => {
 export const getMarketplace = asyncHandler(async (req, res) => {
   const query = normalizeQuery(req.query || {});
   const configuredCap = getConfiguredCandidateCap();
-
-  const hasHardFilters =
-    Boolean(query.category) || query.strictTech || query.strictBudget;
-  const candidateLimit =
-    hasHardFilters || query.searchTerm
-      ? configuredCap
-      : Math.min(NO_FILTER_LIMIT, configuredCap);
+  const candidateLimit = configuredCap;
 
   const where = buildTier1Where(query);
 

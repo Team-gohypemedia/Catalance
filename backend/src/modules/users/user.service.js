@@ -16,6 +16,10 @@ import {
   generatePasswordResetTextEmail
 } from "../../lib/email-templates/password-reset.template.js";
 import { syncFreelancerProfileDetailsProjection } from "./freelancer-profile-details.service.js";
+import {
+  buildFreelancerProfileDetailsObject,
+  mergeFreelancerProfileDetailsWithMarketplace
+} from "./freelancer-profile-details.mapper.js";
 import { FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT } from "./freelancer-profile.select.js";
 
 const OTP_TTL_MINUTES = 15;
@@ -195,15 +199,16 @@ const pickFreelancerProfileUpdates = (updates = {}) =>
 const resolveFreelancerProfileDetails = (user = null) => {
   if (!user || typeof user !== "object") return {};
 
-  const relatedProfileDetails =
-    user?.freelancerProfile?.freelancerProfileDetails?.profileDetails ||
-    user?.freelancerProfileDetails?.profileDetails;
-  if (
-    relatedProfileDetails &&
-    typeof relatedProfileDetails === "object" &&
-    !Array.isArray(relatedProfileDetails)
-  ) {
-    return relatedProfileDetails;
+  const relatedProfileDetails = buildFreelancerProfileDetailsObject(
+    user?.freelancerProfile?.freelancerProfileDetails ||
+      user?.freelancerProfileDetails
+  );
+  const marketplaceMergedProfileDetails = mergeFreelancerProfileDetailsWithMarketplace(
+    relatedProfileDetails,
+    user?.marketplace
+  );
+  if (Object.keys(marketplaceMergedProfileDetails).length) {
+    return marketplaceMergedProfileDetails;
   }
 
   const legacyProfileDetails = user?.profileDetails;
@@ -2357,7 +2362,16 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
 export const getUserById = async (id) => {
   const user = await prisma.user.findUnique(
     withFreelancerProfileInclude({
-      where: { id }
+      where: { id },
+      include: {
+        marketplace: {
+          select: {
+            serviceKey: true,
+            service: true,
+            serviceDetails: true,
+          },
+        },
+      },
     })
   );
 

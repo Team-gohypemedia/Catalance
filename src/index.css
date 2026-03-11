@@ -173,6 +173,15 @@
 }
 
 @layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   .subtle-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--foreground) 18%, transparent)

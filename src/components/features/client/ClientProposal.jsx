@@ -19,6 +19,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
+import {
+  getProposalSignature,
+  getProposalStorageKeys,
+  loadSavedProposalsFromStorage,
+  persistSavedProposalsToStorage,
+  resolveActiveProposalId,
+} from "@/shared/lib/client-proposal-storage";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
@@ -219,7 +226,7 @@ const ProposalRowCard = ({ proposal, onDelete, onOpen, onPay, isPaying }) => {
             {onDelete && !proposal.requiresPayment ? (
               <Button
                 className="w-full bg-card hover:bg-card/80 border border-border/40 text-foreground hover:text-destructive rounded-lg"
-                onClick={() => onDelete(proposal.id)}
+                onClick={() => onDelete(proposal)}
               >
                 <div className="flex items-center gap-2">
                   <Trash2 className="w-4 h-4" />
@@ -297,6 +304,101 @@ const normalizeProposalStatus = (status = "") => {
   }
 };
 
+const formatProposalDate = (value) => {
+  if (!value) return "No Date";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "No Date";
+
+  return parsed.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const mapLocalDraftProposal = (proposal = {}) => ({
+  id: proposal.id,
+  title:
+    proposal.projectTitle ||
+    proposal.title ||
+    proposal.service ||
+    proposal.serviceKey ||
+    "Proposal Draft",
+  category: proposal.service || proposal.serviceKey || "General",
+  status: "draft",
+  recipientName: proposal.recipientName || proposal.preparedFor || "Not assigned",
+  recipientId: proposal.recipientId || "LOCAL_DRAFT",
+  projectId: proposal.syncedProjectId || proposal.projectId || null,
+  freelancerId: proposal.freelancerId || null,
+  submittedDate: formatProposalDate(
+    proposal.updatedAt || proposal.createdAt || new Date().toISOString()
+  ),
+  avatar: proposal.avatar || "",
+  content: proposal.summary || proposal.content || "",
+  budget: proposal.budget || "",
+  timeline: proposal.timeline || "",
+  projectStatus: proposal.syncedProjectId ? "DRAFT" : "LOCAL_DRAFT",
+  requiresPayment: false,
+  isLocalDraft: true,
+  draftSignature: getProposalSignature(proposal),
+});
+
+const getProposalMergeKey = (proposal = {}) => {
+  if (proposal.isLocalDraft) {
+    if (proposal.projectId) {
+      return `draft-project:${proposal.projectId}`;
+    }
+
+    return `draft:${proposal.draftSignature || proposal.id}`;
+  }
+
+  if (proposal.status === "draft" && proposal.projectId && !proposal.freelancerId) {
+    return `draft-project:${proposal.projectId}`;
+  }
+
+  if (proposal.id) {
+    return `proposal:${proposal.id}`;
+  }
+
+  if (proposal.projectId && proposal.freelancerId) {
+    return `proposal:${proposal.projectId}:${proposal.freelancerId}`;
+  }
+
+  return `proposal:${proposal.projectId || proposal.title || proposal.submittedDate}`;
+};
+
+const mergeProposalCollections = (remote = [], localDrafts = []) => {
+  const merged = [];
+  const seen = new Set();
+
+  const pushUnique = (proposal) => {
+    const key = getProposalMergeKey(proposal);
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(proposal);
+  };
+
+  remote.forEach(pushUnique);
+  localDrafts.forEach(pushUnique);
+
+  return merged;
+};
+
+const deleteLocalDraftProposal = (proposalId, userId) => {
+  const storageKeys = getProposalStorageKeys(userId);
+  const { proposals, activeId } = loadSavedProposalsFromStorage(userId);
+  const remaining = proposals.filter((proposal) => proposal.id !== proposalId);
+  const preferredActiveId = activeId === proposalId ? null : activeId;
+  const nextActiveId = resolveActiveProposalId(
+    remaining,
+    preferredActiveId,
+    null
+  );
+
+  persistSavedProposalsToStorage(remaining, nextActiveId, storageKeys);
+};
+
 const ClientProposalContent = () => {
   const { isAuthenticated, authFetch, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -315,6 +417,11 @@ const ClientProposalContent = () => {
   const deepLinkAction = (searchParams.get("action") || "").toLowerCase();
 
   const fetchProposals = useCallback(async () => {
+    const { proposals: localSavedProposals } = loadSavedProposalsFromStorage(
+      user?.id
+    );
+    const localDrafts = localSavedProposals.map(mapLocalDraftProposal);
+
     try {
       const response = await authFetch("/proposals?as=owner");
       const payload = await response.json().catch(() => null);
@@ -334,13 +441,14 @@ const ClientProposalContent = () => {
         { seen: new Set(), list: [] }
       ).list;
 
-      setProposals(uniqueById);
+      setProposals(mergeProposalCollections(uniqueById, localDrafts));
     } catch (error) {
       console.error("Failed to load proposals from API:", error);
+      setProposals(localDrafts);
     } finally {
       setIsLoading(false);
     }
-  }, [authFetch]);
+  }, [authFetch, user?.id]);
 
   useEffect(() => {
     setHasHandledDeepLink(false);
@@ -365,19 +473,26 @@ const ClientProposalContent = () => {
   }, [fetchProposals, isAuthenticated]);
 
   const handleDelete = useCallback(
-    async (id) => {
+    async (proposal) => {
+      if (proposal?.isLocalDraft) {
+        deleteLocalDraftProposal(proposal.id, user?.id);
+        setProposals((prev) => prev.filter((item) => item.id !== proposal.id));
+        toast.success("Draft deleted.");
+        return;
+      }
+
       try {
-        const response = await authFetch(`/proposals/${id}`, {
+        const response = await authFetch(`/proposals/${proposal.id}`, {
           method: "DELETE",
         });
         if (!response.ok) throw new Error("Unable to delete proposal.");
-        setProposals((prev) => prev.filter((p) => p.id !== id));
+        setProposals((prev) => prev.filter((item) => item.id !== proposal.id));
         toast.success("Proposal deleted.");
       } catch {
         toast.error("Unable to delete proposal right now.");
       }
     },
-    [authFetch]
+    [authFetch, user?.id]
   );
 
   const handleApproveAndPay = useCallback(
@@ -496,6 +611,7 @@ const ClientProposalContent = () => {
       setIsViewing(true);
       setActiveProposal(proposal);
 
+      if (proposal?.isLocalDraft) return;
       if (proposal?.content && proposal?.budget) return; // Already have details
       if (!proposal?.id) return;
 

@@ -6,8 +6,13 @@ import {
   normalizeSkills,
   extractSkillsFromProfileDetails
 } from "../utils/skill-utils.js";
+import {
+  buildFreelancerProfileDetailsObject,
+  mergeFreelancerProfileDetailsWithMarketplace
+} from "../modules/users/freelancer-profile-details.mapper.js";
 import { syncFreelancerProfileDetailsProjection } from "../modules/users/freelancer-profile-details.service.js";
 import {
+  FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
   FREELANCER_PROFILE_SAFE_SELECT,
   FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
 } from "../modules/users/freelancer-profile.select.js";
@@ -112,12 +117,92 @@ const toProfileDetailsObject = (value) => {
   return {};
 };
 
+const isPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value);
+
+const normalizeStringList = (value, { max = 64 } = {}) =>
+  Array.from(
+    new Set(
+      (Array.isArray(value) ? value : [])
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+    )
+  ).slice(0, max);
+
+const hasMeaningfulValue = (value) => {
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((entry) => hasMeaningfulValue(entry));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.values(value).some((entry) => hasMeaningfulValue(entry));
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+
+  if (typeof value === "boolean") {
+    return true;
+  }
+
+  return value !== null && value !== undefined;
+};
+
+const cloneJsonValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => cloneJsonValue(entry));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, cloneJsonValue(entry)])
+    );
+  }
+
+  return value;
+};
+
+const mergeWithFallback = (primaryValue, fallbackValue) => {
+  if (Array.isArray(primaryValue)) {
+    return primaryValue.length
+      ? cloneJsonValue(primaryValue)
+      : Array.isArray(fallbackValue)
+        ? cloneJsonValue(fallbackValue)
+        : [];
+  }
+
+  if (isPlainObject(primaryValue)) {
+    const merged = { ...cloneJsonValue(primaryValue) };
+    if (!isPlainObject(fallbackValue)) {
+      return merged;
+    }
+
+    Object.entries(fallbackValue).forEach(([key, value]) => {
+      merged[key] = mergeWithFallback(merged[key], value);
+    });
+    return merged;
+  }
+
+  return hasMeaningfulValue(primaryValue)
+    ? primaryValue
+    : cloneJsonValue(fallbackValue);
+};
+
 const resolveUserProfileDetails = async (user = null) => {
-  const relationProfileDetails = toProfileDetailsObject(
-    user?.freelancerProfile?.freelancerProfileDetails?.profileDetails
+  const relationProfileDetails = buildFreelancerProfileDetailsObject(
+    user?.freelancerProfile?.freelancerProfileDetails
   );
-  if (Object.keys(relationProfileDetails).length) {
-    return relationProfileDetails;
+  const marketplaceMergedProfileDetails = mergeFreelancerProfileDetailsWithMarketplace(
+    relationProfileDetails,
+    user?.marketplace
+  );
+  if (Object.keys(marketplaceMergedProfileDetails).length) {
+    return marketplaceMergedProfileDetails;
   }
 
   const legacyProfileDetails = toProfileDetailsObject(user?.profileDetails);
@@ -128,14 +213,17 @@ const resolveUserProfileDetails = async (user = null) => {
   try {
     const profile = await prisma.freelancerProfileDetails.findUnique({
       where: { userId: user.id },
-      select: { profileDetails: true }
+      select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT
     });
 
     if (!profile) {
       return legacyProfileDetails;
     }
 
-    return toProfileDetailsObject(profile.profileDetails);
+    return mergeFreelancerProfileDetailsWithMarketplace(
+      buildFreelancerProfileDetailsObject(profile),
+      user?.marketplace
+    );
   } catch (error) {
     console.warn(
       `[FreelancerProfile] Unable to load profile details for user ${user.id}:`,
@@ -390,6 +478,13 @@ export const getProfile = asyncHandler(async (req, res) => {
       roles: true,
       status: true,
       avatar: true,
+      marketplace: {
+        select: {
+          serviceKey: true,
+          service: true,
+          serviceDetails: true,
+        },
+      },
       freelancerProfile: {
         select: FREELANCER_PROFILE_SAFE_SELECT
       }
@@ -708,8 +803,8 @@ export const saveProfile = asyncHandler(async (req, res) => {
   if (shouldSyncFreelancerProfileDetails) {
     const resolvedProfileDetails = hasOwn(payload, "profileDetails")
       ? toProfileDetailsObject(normalizedPayloadProfileDetails)
-      : toProfileDetailsObject(
-        existingFreelancerProfile?.freelancerProfileDetails?.profileDetails
+      : buildFreelancerProfileDetailsObject(
+        existingFreelancerProfile?.freelancerProfileDetails
       );
     const resolvedPortfolioProjects = hasOwn(payload, "portfolioProjects")
       ? portfolioProjects

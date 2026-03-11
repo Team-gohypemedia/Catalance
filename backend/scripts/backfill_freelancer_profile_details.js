@@ -1,4 +1,9 @@
 import { prisma } from "../src/lib/prisma.js";
+import {
+  buildFreelancerProfileDetailsObject,
+  mergeFreelancerProfileDetailsWithMarketplace
+} from "../src/modules/users/freelancer-profile-details.mapper.js";
+import { FREELANCER_PROFILE_DETAILS_SAFE_SELECT } from "../src/modules/users/freelancer-profile.select.js";
 import { syncFreelancerProfileDetailsProjection } from "../src/modules/users/freelancer-profile-details.service.js";
 
 const run = async () => {
@@ -8,8 +13,17 @@ const run = async () => {
       portfolioProjects: true,
       services: true,
       freelancerProfileDetails: {
+        select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
+      },
+      user: {
         select: {
-          profileDetails: true,
+          marketplace: {
+            select: {
+              serviceKey: true,
+              service: true,
+              serviceDetails: true,
+            },
+          },
         },
       },
     },
@@ -20,11 +34,10 @@ const run = async () => {
   for (const profile of profiles) {
     await syncFreelancerProfileDetailsProjection({
       userId: profile.userId,
-      profileDetails:
-        profile.freelancerProfileDetails?.profileDetails &&
-        typeof profile.freelancerProfileDetails.profileDetails === "object"
-          ? profile.freelancerProfileDetails.profileDetails
-          : {},
+      profileDetails: mergeFreelancerProfileDetailsWithMarketplace(
+        buildFreelancerProfileDetailsObject(profile.freelancerProfileDetails),
+        profile.user?.marketplace
+      ),
       portfolioProjects: Array.isArray(profile.portfolioProjects)
         ? profile.portfolioProjects
         : [],
