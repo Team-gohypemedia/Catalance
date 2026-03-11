@@ -15,6 +15,12 @@ import {
   generatePasswordResetEmail,
   generatePasswordResetTextEmail
 } from "../../lib/email-templates/password-reset.template.js";
+import { syncFreelancerProfileDetailsProjection } from "./freelancer-profile-details.service.js";
+import {
+  buildFreelancerProfileDetailsObject,
+  mergeFreelancerProfileDetailsWithMarketplace
+} from "./freelancer-profile-details.mapper.js";
+import { FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT } from "./freelancer-profile.select.js";
 
 const OTP_TTL_MINUTES = 15;
 const OTP_EMAIL_RETRY_ATTEMPTS = 2;
@@ -72,24 +78,76 @@ const USER_SAFE_SCALAR_SELECT = Object.freeze({
   updatedAt: true
 });
 
+const withFreelancerProfileDetailsSelection = (selection = true) => {
+  if (selection === true) {
+    return {
+      select: {
+        ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+      }
+    };
+  }
+
+  if (!selection || typeof selection !== "object") {
+    return selection;
+  }
+
+  if (selection.select && typeof selection.select === "object") {
+    return {
+      ...selection,
+      select: {
+        ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT,
+        ...selection.select
+      }
+    };
+  }
+
+  if (selection.include && typeof selection.include === "object") {
+    const { include, ...restSelection } = selection;
+
+    return {
+      ...restSelection,
+      select: {
+        ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT,
+        ...include
+      }
+    };
+  }
+
+  return {
+    ...selection,
+    select: {
+      ...FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+    }
+  };
+};
+
 const withFreelancerProfileInclude = (query = {}) => {
   if (!supportsFreelancerProfileModel) return query;
   if (query?.select) {
     if (Object.prototype.hasOwnProperty.call(query.select, "freelancerProfile")) {
-      return query;
+      return {
+        ...query,
+        select: {
+          ...query.select,
+          freelancerProfile: withFreelancerProfileDetailsSelection(
+            query.select.freelancerProfile
+          )
+        }
+      };
     }
 
     return {
       ...query,
       select: {
         ...query.select,
-        freelancerProfile: true
+        freelancerProfile: withFreelancerProfileDetailsSelection(true)
       }
     };
   }
 
   const include = query?.include && typeof query.include === "object" ? query.include : {};
-  const { include: _include, ...rest } = query;
+  const rest = { ...query };
+  delete rest.include;
 
   return {
     ...rest,
@@ -97,7 +155,9 @@ const withFreelancerProfileInclude = (query = {}) => {
       ...USER_SAFE_SCALAR_SELECT,
       ...include,
       freelancerProfile:
-        include.freelancerProfile === undefined ? true : include.freelancerProfile
+        withFreelancerProfileDetailsSelection(
+          include.freelancerProfile === undefined ? true : include.freelancerProfile
+        )
     }
   };
 };
@@ -118,8 +178,7 @@ const FREELANCER_PROFILE_FIELD_KEYS = new Set([
   "linkedin",
   "github",
   "portfolioProjects",
-  "resume",
-  "profileDetails"
+  "resume"
 ]);
 
 const pickFreelancerProfileUpdates = (updates = {}) =>
@@ -133,13 +192,14 @@ const pickFreelancerProfileUpdates = (updates = {}) =>
 const resolveFreelancerProfileDetails = (user = null) => {
   if (!user || typeof user !== "object") return {};
 
-  const relatedProfileDetails = user?.freelancerProfile?.profileDetails;
-  if (
-    relatedProfileDetails &&
-    typeof relatedProfileDetails === "object" &&
-    !Array.isArray(relatedProfileDetails)
-  ) {
-    return relatedProfileDetails;
+  const relatedProfileDetails = buildFreelancerProfileDetailsObject(
+    user?.freelancerProfile || user?.freelancerProfileDetails
+  );
+  if (Object.keys(relatedProfileDetails).length) {
+    return mergeFreelancerProfileDetailsWithMarketplace(
+      relatedProfileDetails,
+      user?.marketplace
+    );
   }
 
   const legacyProfileDetails = user?.profileDetails;
@@ -148,10 +208,13 @@ const resolveFreelancerProfileDetails = (user = null) => {
     typeof legacyProfileDetails === "object" &&
     !Array.isArray(legacyProfileDetails)
   ) {
-    return legacyProfileDetails;
+    return mergeFreelancerProfileDetailsWithMarketplace(
+      legacyProfileDetails,
+      user?.marketplace
+    );
   }
 
-  return {};
+  return mergeFreelancerProfileDetailsWithMarketplace({}, user?.marketplace);
 };
 
 const resolveFreelancerProfileRecord = (user = null) => {
@@ -218,16 +281,6 @@ const upsertFreelancerProfile = async ({ userId, updates = {} }) => {
   const profileUpdates = pickFreelancerProfileUpdates(updates);
   if (!Object.keys(profileUpdates).length) return;
 
-  if (Object.prototype.hasOwnProperty.call(profileUpdates, "profileDetails")) {
-    const normalizedProfileDetails =
-      profileUpdates.profileDetails &&
-      typeof profileUpdates.profileDetails === "object" &&
-      !Array.isArray(profileUpdates.profileDetails)
-        ? profileUpdates.profileDetails
-        : {};
-    profileUpdates.profileDetails = normalizedProfileDetails;
-  }
-
   try {
     await prisma.freelancerProfile.upsert({
       where: { userId },
@@ -239,13 +292,21 @@ const upsertFreelancerProfile = async ({ userId, updates = {} }) => {
       `[FreelancerProfile] Unable to upsert profile for user ${userId}:`,
       error?.message || error
     );
+    throw error;
   }
 };
 
-const syncFreelancerProfileDetails = async ({ userId, profileDetails }) =>
-  upsertFreelancerProfile({
+const syncFreelancerProfileDetails = async ({
+  userId,
+  profileDetails,
+  portfolioProjects = [],
+  services = []
+}) =>
+  syncFreelancerProfileDetailsProjection({
     userId,
-    updates: { profileDetails }
+    profileDetails,
+    portfolioProjects,
+    services
   });
 
 const normalizeRoleValue = (value) =>
@@ -790,6 +851,9 @@ const buildFreelancerProjectOnboardingSnapshot = ({
     averageProjectPriceRange: normalizeOptionalText(
       detail?.averageProjectPrice || detail?.averagePrice
     ),
+    deliveryTime: normalizeOptionalText(
+      detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline
+    ),
     projectComplexityLevel: normalizeOptionalText(detail?.projectComplexity),
     acceptInProgressProjects: normalizeOptionalText(
       profileDetails?.acceptInProgressProjects
@@ -1162,7 +1226,14 @@ const deriveMarketplaceServiceDetails = ({
         meta?.description ||
         "Service information provided during onboarding.",
       coverImage:
-        customCoverImage || meta?.coverImage || `/assets/services/${serviceKey}-cover.jpg`
+        customCoverImage || meta?.coverImage || `/assets/services/${serviceKey}-cover.jpg`,
+      deliveryTime: normalizeOptionalText(
+        detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline
+      ),
+      averageProjectPriceRange: normalizeOptionalText(
+        detail?.averageProjectPrice || detail?.averagePrice
+      ),
+      projectComplexityLevel: normalizeOptionalText(detail?.projectComplexity)
     };
   });
 };
@@ -1650,6 +1721,7 @@ export const listUsers = async (filters = {}) => {
 export const updateUserProfile = async (userId, updates) => {
   const allowedUpdates = [
     "fullName",
+    "phone",
     "phoneNumber",
     "bio",
     "portfolio",
@@ -1661,7 +1733,13 @@ export const updateUserProfile = async (userId, updates) => {
     "services",
     "skills",
     "portfolioProjects",
-    "location"
+    "location",
+    "jobTitle",
+    "companyName",
+    "available",
+    "experienceYears",
+    "workExperience",
+    "resume"
   ];
   const cleanUpdates = {};
 
@@ -1670,6 +1748,8 @@ export const updateUserProfile = async (userId, updates) => {
       // Sanitize bio to plain text even if JSON/object slips in.
       if (key === "bio") {
         cleanUpdates[key] = extractBioText(updates[key]);
+      } else if (key === "phone" || key === "phoneNumber") {
+        cleanUpdates.phoneNumber = normalizeOptionalText(updates[key]);
       } else if (key === "skills") {
         cleanUpdates[key] = normalizeSkills(updates[key], {
           strictTech: true,
@@ -1680,13 +1760,32 @@ export const updateUserProfile = async (userId, updates) => {
       } else if (key === "portfolioProjects") {
         cleanUpdates[key] = normalizePortfolioProjects(updates[key]);
       } else if (key === "location") {
-        cleanUpdates[key] = String(updates[key] || "").trim() || null;
+        cleanUpdates[key] = normalizeOptionalText(updates[key]);
       } else if (key === "profileDetails") {
         cleanUpdates[key] = normalizeFreelancerProfileDetails(updates[key]);
       } else if (key === "services") {
         cleanUpdates[key] = normalizeMarketplaceServiceKeys(updates[key], {
           max: 64
         });
+      } else if (key === "available") {
+        cleanUpdates[key] = Boolean(updates[key]);
+      } else if (key === "experienceYears") {
+        const parsedExperienceYears = Number(updates[key]);
+        cleanUpdates[key] =
+          Number.isFinite(parsedExperienceYears) && parsedExperienceYears >= 0
+            ? Math.round(parsedExperienceYears)
+            : 0;
+      } else if (key === "workExperience") {
+        cleanUpdates[key] = normalizeWorkExperienceEntries(updates[key]);
+      } else if (
+        key === "portfolio" ||
+        key === "linkedin" ||
+        key === "github" ||
+        key === "jobTitle" ||
+        key === "companyName" ||
+        key === "resume"
+      ) {
+        cleanUpdates[key] = normalizeOptionalText(updates[key]);
       } else {
         cleanUpdates[key] = updates[key];
       }
@@ -1763,6 +1862,11 @@ export const updateUserProfile = async (userId, updates) => {
   const userUpdates = {};
   const freelancerProfileUpdates = {};
   Object.entries(cleanUpdates).forEach(([key, value]) => {
+    if (key === "phoneNumber") {
+      userUpdates.phoneNumber = value;
+      userUpdates.phone = value;
+      return;
+    }
     if (userUpdateKeys.has(key)) {
       userUpdates[key] = value;
       return;
@@ -1824,6 +1928,25 @@ export const updateUserProfile = async (userId, updates) => {
   )
     ? freelancerProfileUpdates.portfolioProjects
     : resolvedFreelancerProfile.portfolioProjects;
+  const shouldSyncFreelancerProfileDetails =
+    hasProfileDetailsUpdate ||
+    Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "services") ||
+    Object.prototype.hasOwnProperty.call(freelancerProfileUpdates, "portfolioProjects");
+
+  if (shouldSyncFreelancerProfileDetails) {
+    await syncFreelancerProfileDetails({
+      userId: user.id,
+      profileDetails: resolvedProfileDetails,
+      portfolioProjects: resolvedPortfolioProjects,
+      services: resolvedServices
+    });
+
+    user = await prisma.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: user.id }
+      })
+    );
+  }
 
   const profileServiceDetails =
     resolvedProfileDetails?.serviceDetails &&
@@ -2277,7 +2400,16 @@ export const authenticateWithGoogle = async ({ token, role, mode }) => {
 export const getUserById = async (id) => {
   const user = await prisma.user.findUnique(
     withFreelancerProfileInclude({
-      where: { id }
+      where: { id },
+      include: {
+        marketplace: {
+          select: {
+            serviceKey: true,
+            service: true,
+            serviceDetails: true,
+          },
+        },
+      },
     })
   );
 
@@ -2348,8 +2480,7 @@ const createUserRecord = async (payload) => {
       linkedin: payload.linkedin || null,
       github: payload.github || null,
       portfolioProjects: normalizedPortfolioProjects,
-      resume: payload.resume || null,
-      profileDetails: normalizedFreelancerProfile
+      resume: payload.resume || null
     };
     const hasFreelancerProfileData =
       normalizedRole === "FREELANCER" ||
@@ -2385,6 +2516,21 @@ const createUserRecord = async (payload) => {
       })
     );
 
+    if (hasFreelancerProfileData) {
+      await syncFreelancerProfileDetails({
+        userId: user.id,
+        profileDetails: normalizedFreelancerProfile,
+        portfolioProjects: normalizedPortfolioProjects,
+        services: normalizedServices
+      });
+    }
+
+    const hydratedUser = await prisma.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: user.id }
+      })
+    );
+
     if (normalizedRole === "FREELANCER") {
       const normalizedProjects = deriveFreelancerProjects({
         profileDetails: normalizedFreelancerProfile,
@@ -2406,7 +2552,7 @@ const createUserRecord = async (payload) => {
     // Don't send welcome email yet, wait for verification
     // await maybeSendWelcomeEmail(user);
 
-    return user;
+    return hydratedUser || user;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

@@ -101,27 +101,54 @@ model User {
 }
 
 model FreelancerProfile {
-  userId            String   @id
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio               String?  @db.Text
-  skills            String[] @default([])
-  jobTitle          String?
-  companyName       String?
-  location          String?
-  available         Boolean  @default(true)
-  rating            Decimal? @default(0) @db.Decimal(3, 1)
-  reviewCount       Int      @default(0)
-  experienceYears   Int?     @default(0)
-  workExperience    Json?    @default("[]")
-  services          String[] @default([])
-  portfolio         String?
-  linkedin          String?
-  github            String?
-  portfolioProjects Json?    @default("[]")
-  resume            String?
-  profileDetails    Json     @default("{}")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  userId                      String   @id
+  user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                         String?  @db.Text
+  skills                      String[] @default([])
+  jobTitle                    String?
+  companyName                 String?
+  location                    String?
+  available                   Boolean  @default(true)
+  rating                      Decimal? @default(0) @db.Decimal(3, 1)
+  reviewCount                 Int      @default(0)
+  experienceYears             Int?     @default(0)
+  workExperience              Json?    @default("[]")
+  services                    String[] @default([])
+  portfolio                   String?
+  linkedin                    String?
+  github                      String?
+  portfolioProjects           Json?    @default("[]")
+  resume                      String?
+  profileDetails              Json     @default("{}")
+  profileRole                 String?
+  professionalBio             String?  @db.Text
+  termsAccepted               Boolean  @default(false)
+  deliveryPolicyAccepted      Boolean  @default(false)
+  communicationPolicyAccepted Boolean  @default(false)
+  acceptInProgressProjects    String?
+  globalIndustryOther         String?
+  city                        String?
+  country                     String?
+  username                    String?
+  githubUrl                   String?
+  languages                   String[] @default([])
+  coverImage                  String?
+  linkedinUrl                 String?
+  portfolioUrl                String?
+  profilePhoto                String?
+  otherLanguage               String?
+  professionalTitle           String?
+  skillLevels                 Json     @default("{}")
+  education                   Json     @default("[]")
+  serviceDetails              Json     @default("{}")
+  globalIndustryFocus         String[] @default([])
+  availabilityHoursPerWeek    String?
+  availabilityStartTimeline   String?
+  availabilityWorkingSchedule String?
+  reliabilityDelayHandling    String?
+  reliabilityMissedDeadlines  String?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 }
 
 model ClientProfile {

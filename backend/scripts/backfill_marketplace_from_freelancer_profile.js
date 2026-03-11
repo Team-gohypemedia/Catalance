@@ -10,7 +10,14 @@ async function main() {
     const marketplaces = await prisma.marketplace.findMany({
         include: {
             freelancer: {
-                include: { freelancerProfile: true }
+                include: {
+                    freelancerProfile: {
+                        select: {
+                            profileDetails: true,
+                            serviceDetails: true
+                        }
+                    }
+                }
             }
         }
     });

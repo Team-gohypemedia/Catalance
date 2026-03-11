@@ -1,0 +1,60 @@
+export const FREELANCER_PROFILE_SAFE_SELECT = Object.freeze({
+  userId: true,
+  bio: true,
+  skills: true,
+  jobTitle: true,
+  companyName: true,
+  location: true,
+  available: true,
+  rating: true,
+  reviewCount: true,
+  experienceYears: true,
+  workExperience: true,
+  services: true,
+  portfolio: true,
+  linkedin: true,
+  github: true,
+  portfolioProjects: true,
+  resume: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const FREELANCER_PROFILE_DETAILS_SAFE_SELECT = Object.freeze({
+  profileDetails: true,
+  profileRole: true,
+  professionalBio: true,
+  termsAccepted: true,
+  deliveryPolicyAccepted: true,
+  communicationPolicyAccepted: true,
+  acceptInProgressProjects: true,
+  globalIndustryOther: true,
+  city: true,
+  country: true,
+  username: true,
+  githubUrl: true,
+  languages: true,
+  coverImage: true,
+  linkedinUrl: true,
+  portfolioUrl: true,
+  profilePhoto: true,
+  otherLanguage: true,
+  professionalTitle: true,
+  skills: true,
+  skillLevels: true,
+  education: true,
+  services: true,
+  serviceDetails: true,
+  portfolioProjects: true,
+  globalIndustryFocus: true,
+  availabilityHoursPerWeek: true,
+  availabilityStartTimeline: true,
+  availabilityWorkingSchedule: true,
+  reliabilityDelayHandling: true,
+  reliabilityMissedDeadlines: true
+});
+
+export const FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT = Object.freeze({
+  ...FREELANCER_PROFILE_SAFE_SELECT,
+  ...FREELANCER_PROFILE_DETAILS_SAFE_SELECT
+});

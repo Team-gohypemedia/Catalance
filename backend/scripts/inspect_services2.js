@@ -7,7 +7,13 @@ async function main() {
         take: 5,
         include: {
             freelancer: {
-                include: { freelancerProfile: true }
+                include: {
+                    freelancerProfile: {
+                        select: {
+                            profileDetails: true
+                        }
+                    }
+                }
             }
         }
     });

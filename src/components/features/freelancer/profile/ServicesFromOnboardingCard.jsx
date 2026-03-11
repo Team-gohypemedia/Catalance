@@ -3,7 +3,10 @@ import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import { Card } from "@/components/ui/card";
-import { PROJECT_COMPLEXITY_OPTIONS } from "@/components/features/freelancer/onboarding/constants";
+import {
+  PROJECT_COMPLEXITY_OPTIONS,
+  PROJECT_TIMELINE_OPTIONS,
+} from "@/components/features/freelancer/onboarding/constants";
 import {
   Carousel,
   CarouselContent,
@@ -22,6 +25,14 @@ const chunkServices = (entries = [], chunkSize = 2) => {
 };
 
 const PROJECT_COMPLEXITY_LABELS = PROJECT_COMPLEXITY_OPTIONS.reduce(
+  (acc, option) => ({
+    ...acc,
+    [option.value]: option.label,
+  }),
+  {}
+);
+
+const PROJECT_TIMELINE_LABELS = PROJECT_TIMELINE_OPTIONS.reduce(
   (acc, option) => ({
     ...acc,
     [option.value]: option.label,
@@ -97,6 +108,34 @@ const projectMatchesService = (project = {}, serviceKey = "") => {
   );
 };
 
+const resolveServiceCardCoverImage = (
+  detail = {},
+  projectList = [],
+  resolveAvatarUrl
+) => {
+  const directCoverImage = resolveAvatarUrl(detail?.coverImage, { allowBlob: true });
+  if (directCoverImage) {
+    return directCoverImage;
+  }
+
+  for (const project of Array.isArray(projectList) ? projectList : []) {
+    const projectCoverImage = resolveAvatarUrl(
+      project?.image ||
+        project?.imageUrl ||
+        project?.thumbnail ||
+        project?.coverImage ||
+        project?.fileUrl,
+      { allowBlob: true }
+    );
+
+    if (projectCoverImage) {
+      return projectCoverImage;
+    }
+  }
+
+  return "";
+};
+
 const ServicesFromOnboardingCard = ({
   onboardingServiceEntries,
   portfolioProjects,
@@ -167,10 +206,6 @@ const ServicesFromOnboardingCard = ({
                     const serviceDescription = String(
                       detail?.serviceDescription || detail?.description || ""
                     ).trim();
-                    const serviceCoverImage = resolveAvatarUrl(detail?.coverImage);
-                    const hasServiceProfileContent = Boolean(
-                      serviceDescription || serviceCoverImage
-                    );
 
                     const specializationTags = collectServiceSpecializations(detail);
                     const nicheTags = toUniqueLabels([
@@ -209,6 +244,17 @@ const ServicesFromOnboardingCard = ({
                       ).values()
                     );
                     const displayedProjects = projectList.slice(0, 6);
+                    const serviceProfileCoverImage = resolveAvatarUrl(detail?.coverImage, {
+                      allowBlob: true,
+                    });
+                    const serviceCoverImage = resolveServiceCardCoverImage(
+                      detail,
+                      projectList,
+                      resolveAvatarUrl
+                    );
+                    const hasServiceProfileContent = Boolean(
+                      serviceDescription || serviceProfileCoverImage
+                    );
 
                     const metadataItems = [
                       {
@@ -217,6 +263,26 @@ const ServicesFromOnboardingCard = ({
                           PROJECT_COMPLEXITY_LABELS[
                             String(detail?.projectComplexity || "").trim().toLowerCase()
                           ] || "Not set",
+                      },
+                      {
+                        label: "Delivery",
+                        value:
+                          PROJECT_TIMELINE_LABELS[
+                            String(
+                              detail?.deliveryTime ||
+                                detail?.deliveryDays ||
+                                detail?.caseStudy?.timeline ||
+                                ""
+                            )
+                              .trim()
+                              .toLowerCase()
+                          ] ||
+                          normalizeValueLabel(
+                            detail?.deliveryTime ||
+                              detail?.deliveryDays ||
+                              detail?.caseStudy?.timeline
+                          ) ||
+                          "Not set",
                       },
                       {
                         label: "Avg Price",
@@ -300,7 +366,7 @@ const ServicesFromOnboardingCard = ({
                               "Add a stronger service description so clients understand your positioning, delivery approach, and outcomes at a glance."}
                           </p>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                             {metadataItems.map((item) => (
                               <div
                                 key={`${serviceKey}-${item.label}`}

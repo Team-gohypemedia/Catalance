@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { FULL_PROFILE_EDITOR_SECTIONS } from "@/components/features/freelancer/profile/freelancerProfileUtils";
 
 const FullProfileEditorModalContent = ({
   fullProfileForm,
+  section = FULL_PROFILE_EDITOR_SECTIONS.ALL,
   handleFullProfileFieldChange,
   setFullProfileForm,
   addEducationEntry,
@@ -17,17 +19,32 @@ const FullProfileEditorModalContent = ({
   isSaving,
   setModalType,
 }) => {
+  const isWorkPreferencesOnly =
+    section === FULL_PROFILE_EDITOR_SECTIONS.WORK_PREFERENCES;
+  const isIndustryFocusOnly =
+    section === FULL_PROFILE_EDITOR_SECTIONS.INDUSTRY_FOCUS;
+  const isFocusedSection = isWorkPreferencesOnly || isIndustryFocusOnly;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground">
-          Edit Full Profile
+          {isWorkPreferencesOnly
+            ? "Edit Work Preferences"
+            : isIndustryFocusOnly
+              ? "Edit Industry Focus"
+              : "Edit Full Profile"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Update your onboarding profile details and save directly to database.
+          {isWorkPreferencesOnly
+            ? "Update the availability and policy details clients see on your profile."
+            : isIndustryFocusOnly
+              ? "Add the industries and niches you want clients to associate with your profile."
+              : "Update your onboarding profile details and save directly to database."}
         </p>
       </div>
 
+      {!isFocusedSection ? (
       <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <h2 className="text-sm font-semibold text-foreground">Identity</h2>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
@@ -134,7 +151,9 @@ const FullProfileEditorModalContent = ({
           </div>
         </div>
       </div>
+      ) : null}
 
+      {!isIndustryFocusOnly ? (
       <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <h2 className="text-sm font-semibold text-foreground">
           Work Preferences
@@ -202,7 +221,7 @@ const FullProfileEditorModalContent = ({
               htmlFor="full-start-timeline"
               className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
             >
-              Start Timeline
+              Start Time
             </Label>
             <Input
               id="full-start-timeline"
@@ -210,62 +229,6 @@ const FullProfileEditorModalContent = ({
               value={fullProfileForm.startTimeline}
               onChange={handleFullProfileFieldChange}
               placeholder="e.g. Immediate"
-              className="h-10 bg-background/70"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label
-              htmlFor="full-missed-deadlines"
-              className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-            >
-              Missed Deadlines
-            </Label>
-            <Input
-              id="full-missed-deadlines"
-              name="missedDeadlines"
-              value={fullProfileForm.missedDeadlines}
-              onChange={handleFullProfileFieldChange}
-              placeholder="e.g. Never"
-              className="h-10 bg-background/70"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label
-              htmlFor="full-delay-handling"
-              className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-            >
-              Delay Handling
-            </Label>
-            <Input
-              id="full-delay-handling"
-              name="delayHandling"
-              value={fullProfileForm.delayHandling}
-              onChange={handleFullProfileFieldChange}
-              placeholder="e.g. Communicate early"
-              className="h-10 bg-background/70"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-        <h2 className="text-sm font-semibold text-foreground">
-          Policies And Industry Focus
-        </h2>
-        <div className="mt-3 grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label
-              htmlFor="full-industry-focus"
-              className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
-            >
-              Industry Focus
-            </Label>
-            <Input
-              id="full-industry-focus"
-              name="globalIndustryFocus"
-              value={fullProfileForm.globalIndustryFocus}
-              onChange={handleFullProfileFieldChange}
-              placeholder="SaaS, Healthcare, Ecommerce"
               className="h-10 bg-background/70"
             />
           </div>
@@ -327,6 +290,88 @@ const FullProfileEditorModalContent = ({
               }
             />
           </div>
+          {!isWorkPreferencesOnly ? (
+            <>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="full-missed-deadlines"
+                  className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                >
+                  Missed Deadlines
+                </Label>
+                <Input
+                  id="full-missed-deadlines"
+                  name="missedDeadlines"
+                  value={fullProfileForm.missedDeadlines}
+                  onChange={handleFullProfileFieldChange}
+                  placeholder="e.g. Never"
+                  className="h-10 bg-background/70"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="full-delay-handling"
+                  className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+                >
+                  Delay Handling
+                </Label>
+                <Input
+                  id="full-delay-handling"
+                  name="delayHandling"
+                  value={fullProfileForm.delayHandling}
+                  onChange={handleFullProfileFieldChange}
+                  placeholder="e.g. Communicate early"
+                  className="h-10 bg-background/70"
+                />
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
+      ) : null}
+
+      {!isWorkPreferencesOnly ? (
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+        <h2 className="text-sm font-semibold text-foreground">
+          {isIndustryFocusOnly ? "Industry Focus" : "Policies And Industry Focus"}
+        </h2>
+        <div className="mt-3 grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <Label
+              htmlFor="full-industry-focus"
+              className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+            >
+              Industry Focus
+            </Label>
+            <Input
+              id="full-industry-focus"
+              name="globalIndustryFocus"
+              value={fullProfileForm.globalIndustryFocus}
+              onChange={handleFullProfileFieldChange}
+              placeholder="SaaS, Healthcare, Ecommerce"
+              className="h-10 bg-background/70"
+            />
+            <p className="text-xs text-muted-foreground">
+              Separate multiple industries with commas.
+            </p>
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label
+              htmlFor="full-industry-other"
+              className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
+            >
+              Other Industry Or Niche
+            </Label>
+            <Input
+              id="full-industry-other"
+              name="globalIndustryOther"
+              value={fullProfileForm.globalIndustryOther}
+              onChange={handleFullProfileFieldChange}
+              placeholder="Optional niche or custom industry"
+              className="h-10 bg-background/70"
+            />
+          </div>
+          {!isIndustryFocusOnly ? (
           <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/50 px-3 py-2.5 md:col-span-2">
             <div>
               <p className="text-sm font-medium text-foreground">
@@ -346,9 +391,12 @@ const FullProfileEditorModalContent = ({
               }
             />
           </div>
+          ) : null}
         </div>
       </div>
+      ) : null}
 
+      {!isFocusedSection ? (
       <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">Education</h2>
@@ -433,7 +481,9 @@ const FullProfileEditorModalContent = ({
           ))}
         </div>
       </div>
+      ) : null}
 
+      {!isFocusedSection ? (
       <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <Label
           htmlFor="full-professional-bio"
@@ -451,6 +501,7 @@ const FullProfileEditorModalContent = ({
           className="mt-2 min-h-[120px] resize-y bg-background/70"
         />
       </div>
+      ) : null}
 
       <div className="flex items-center justify-end gap-2 border-t border-border/70 pt-4">
         <Button type="button" variant="outline" onClick={() => setModalType(null)}>

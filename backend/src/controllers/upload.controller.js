@@ -5,6 +5,8 @@ import { AppError } from "../utils/app-error.js";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import { prisma } from "../lib/prisma.js";
+import { buildFreelancerProfileDetailsObject } from "../modules/users/freelancer-profile-details.mapper.js";
+import { FREELANCER_PROFILE_DETAILS_SAFE_SELECT } from "../modules/users/freelancer-profile.select.js";
 
 const METADATA_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
@@ -247,7 +249,7 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
         id: true,
         email: true,
         freelancerProfile: {
-          select: { profileDetails: true },
+          select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
         },
       },
     });
@@ -260,7 +262,7 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
         id: true,
         email: true,
         freelancerProfile: {
-          select: { profileDetails: true },
+          select: FREELANCER_PROFILE_DETAILS_SAFE_SELECT,
         },
       },
     });
@@ -270,7 +272,9 @@ export const uploadProfileCover = asyncHandler(async (req, res) => {
     throw new AppError("User not found for cover upload", 404);
   }
 
-  const profileDetails = toPlainObject(targetUser.freelancerProfile?.profileDetails);
+  const profileDetails = buildFreelancerProfileDetailsObject(
+    targetUser.freelancerProfile
+  );
   const identity = toPlainObject(profileDetails.identity);
   const existingCoverImage = String(identity.coverImage || "").trim();
 

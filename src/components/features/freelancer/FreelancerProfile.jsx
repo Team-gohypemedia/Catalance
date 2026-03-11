@@ -49,6 +49,7 @@ import {
   AVERAGE_PROJECT_PRICE_OPTIONS,
   EXPERIENCE_YEARS_OPTIONS,
   PROJECT_COMPLEXITY_OPTIONS,
+  PROJECT_TIMELINE_OPTIONS,
   SERVICE_OPTIONS,
 } from "@/components/features/freelancer/onboarding/constants";
 import { useNavigate } from "react-router-dom";
@@ -116,6 +117,26 @@ const normalizeServiceIdentity = (value = "") =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+
+const parseLocationInput = (value = "") => {
+  const parts = String(value || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return { city: "", country: "" };
+  }
+
+  if (parts.length === 1) {
+    return { city: parts[0], country: "" };
+  }
+
+  return {
+    city: parts[0],
+    country: parts.slice(1).join(", "),
+  };
+};
 
 const resolveCatalogServiceMatch = (value = "") => {
   const normalizedValue = normalizeServiceIdentity(value);
@@ -218,6 +239,7 @@ const FreelancerProfile = () => {
     serviceDescription: "",
     coverImage: "",
     averageProjectPrice: "",
+    deliveryTime: "",
     projectComplexity: "",
     skillsAndTechnologies: [],
   });
@@ -249,7 +271,7 @@ const FreelancerProfile = () => {
   const [, setPersonalEditorSection] = useState(
     PERSONAL_EDITOR_SECTIONS.ALL
   );
-  const [, setFullProfileEditorSection] = useState(
+  const [fullProfileEditorSection, setFullProfileEditorSection] = useState(
     FULL_PROFILE_EDITOR_SECTIONS.ALL
   );
 
@@ -555,9 +577,39 @@ const FreelancerProfile = () => {
           resume: normalized.portfolio?.resume || normalized.resume || "",
         };
 
+        const loadedSkillLevels =
+          loadedProfileDetails?.skillLevels &&
+            typeof loadedProfileDetails.skillLevels === "object" &&
+            !Array.isArray(loadedProfileDetails.skillLevels)
+            ? loadedProfileDetails.skillLevels
+            : {};
+        const explicitSkillKeys = new Set(
+          Object.keys(loadedSkillLevels)
+            .map((entry) => getSkillDedupKey(entry))
+            .filter(Boolean)
+        );
+        const hasExplicitSkillList = Object.prototype.hasOwnProperty.call(
+          loadedProfileDetails,
+          "skills"
+        );
+        const loadedSkillSource = hasExplicitSkillList
+          ? Array.isArray(loadedProfileDetails.skills)
+            ? loadedProfileDetails.skills
+            : []
+          : explicitSkillKeys.size > 0
+            ? (Array.isArray(normalized.skills) ? normalized.skills : []).filter(
+              (entry) => {
+                const skillName =
+                  typeof entry === "string" ? entry : entry?.name;
+                return explicitSkillKeys.has(getSkillDedupKey(skillName));
+              }
+            )
+            : Array.isArray(normalized.skills)
+              ? normalized.skills
+              : [];
         const loadedSkills = toUniqueSkillObjects(
-          Array.isArray(normalized.skills) ? normalized.skills : [],
-          loadedProfileDetails?.skillLevels
+          loadedSkillSource,
+          loadedSkillLevels
         );
 
         setPersonal(loadedPersonal);
@@ -968,15 +1020,22 @@ const FreelancerProfile = () => {
         typeof existingProfileDetails.identity === "object"
         ? existingProfileDetails.identity
         : {};
+    const nextIdentityLocation = parseLocationInput(currentPersonal.location);
 
     const profileDetailsForSave = {
       ...existingProfileDetails,
       professionalBio: bioText,
+      skills: skillsForApi,
       skillLevels: skillLevelsForApi,
       identity: {
         ...existingIdentity,
+        city: nextIdentityLocation.city,
+        country: nextIdentityLocation.country,
         professionalTitle: String(currentPersonal.headline || "").trim(),
         username: String(existingIdentity.username || "").trim(),
+        portfolioUrl: String(currentPortfolio.portfolioUrl || "").trim(),
+        linkedinUrl: String(currentPortfolio.linkedinUrl || "").trim(),
+        githubUrl: String(currentPortfolio.githubUrl || "").trim(),
         profilePhoto: currentAvatarUrl || "",
         coverImage: currentCoverUrl || "",
       },
@@ -1148,14 +1207,7 @@ const FreelancerProfile = () => {
     }));
   };
 
-  const handlePersonalUsernameChange = useCallback((event) => {
-    const rawValue = String(event.target.value || "");
-    const normalizedUsername = rawValue
-      .replace(/^@+/, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "")
-      .slice(0, 30);
-
+  const updateProfileIdentityFields = useCallback((updates = {}) => {
     setProfileDetails((prev) => {
       const current =
         prev && typeof prev === "object" && !Array.isArray(prev) ? prev : {};
@@ -1170,11 +1222,36 @@ const FreelancerProfile = () => {
         ...current,
         identity: {
           ...currentIdentity,
-          username: normalizedUsername,
+          ...updates,
         },
       };
     });
   }, []);
+
+  const handlePersonalUsernameChange = useCallback((event) => {
+    const rawValue = String(event.target.value || "");
+    const normalizedUsername = rawValue
+      .replace(/^@+/, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 30);
+
+    updateProfileIdentityFields({ username: normalizedUsername });
+  }, [updateProfileIdentityFields]);
+
+  const handlePersonalLanguagesChange = useCallback((event) => {
+    const normalizedLanguages = toUniqueLabels(
+      parseDelimitedValues(event.target.value)
+    ).filter((entry) => String(entry || "").trim().toLowerCase() !== "other");
+
+    updateProfileIdentityFields({ languages: normalizedLanguages });
+  }, [updateProfileIdentityFields]);
+
+  const handlePersonalOtherLanguageChange = useCallback((event) => {
+    updateProfileIdentityFields({
+      otherLanguage: String(event.target.value || ""),
+    });
+  }, [updateProfileIdentityFields]);
 
   const closeProfileCropDialog = useCallback(() => {
     setIsProfileCropOpen(false);
@@ -1371,12 +1448,56 @@ const FreelancerProfile = () => {
     [authFetch]
   );
 
-  const removeCoverImage = useCallback(() => {
-    setSelectedCoverFile(null);
-    setPersonal((prev) =>
-      prev.coverImage ? { ...prev, coverImage: "" } : prev
+  const removeCoverImage = async () => {
+    const currentCoverImage = String(personal.coverImage || "").trim();
+    const hasIdentityCoverImage = Boolean(
+      String(profileDetails?.identity?.coverImage || "").trim()
     );
-  }, []);
+
+    if (!currentCoverImage && !hasIdentityCoverImage && !selectedCoverFile) {
+      return;
+    }
+
+    if (currentCoverImage.startsWith("blob:")) {
+      URL.revokeObjectURL(currentCoverImage);
+    }
+
+    const nextPersonal = {
+      ...personal,
+      coverImage: "",
+    };
+    const nextProfileDetails = {
+      ...(profileDetails && typeof profileDetails === "object"
+        ? profileDetails
+        : {}),
+      identity: {
+        ...((profileDetails?.identity && typeof profileDetails.identity === "object")
+          ? profileDetails.identity
+          : {}),
+        coverImage: "",
+      },
+    };
+
+    setSelectedCoverFile(null);
+    setPersonal(nextPersonal);
+    setProfileDetails(nextProfileDetails);
+
+    const saved = await handleSave(
+      buildProfileSnapshot({
+        personal: nextPersonal,
+        profileDetails: nextProfileDetails,
+      }),
+      { suppressSuccessToast: true }
+    );
+
+    if (saved) {
+      toast.success("Profile cover removed");
+      return;
+    }
+
+    setPersonal(personal);
+    setProfileDetails(profileDetails);
+  };
 
   // ----- Add Custom Service -----
   const [serviceForm, setServiceForm] = useState(createInitialServiceForm);
@@ -1411,6 +1532,9 @@ const FreelancerProfile = () => {
       coverImage: resolveAvatarUrl(detail?.coverImage, { allowBlob: true }),
       averageProjectPrice: String(
         detail?.averageProjectPrice || detail?.averagePrice || ""
+      ).trim(),
+      deliveryTime: String(
+        detail?.deliveryTime || detail?.deliveryDays || detail?.caseStudy?.timeline || ""
       ).trim(),
       projectComplexity: String(detail?.projectComplexity || "").trim(),
       skillsAndTechnologies: existingSkillsAndTechnologies,
@@ -1506,6 +1630,10 @@ const FreelancerProfile = () => {
   const saveOnboardingServiceProfile = async () => {
     const serviceKey = String(serviceProfileForm.serviceKey || "").trim();
     if (!serviceKey) return;
+    if (!String(serviceProfileForm.deliveryTime || "").trim()) {
+      toast.error("Please select a delivery timeline for this service.");
+      return;
+    }
 
     const existingServiceDetails =
       profileDetails?.serviceDetails &&
@@ -1549,6 +1677,7 @@ const FreelancerProfile = () => {
           serviceProfileForm.averageProjectPrice || ""
         ).trim(),
         averagePrice: String(serviceProfileForm.averageProjectPrice || "").trim(),
+        deliveryTime: String(serviceProfileForm.deliveryTime || "").trim(),
         projectComplexity: String(
           serviceProfileForm.projectComplexity || ""
         ).trim(),
@@ -1576,32 +1705,18 @@ const FreelancerProfile = () => {
 
     setSavingServiceProfile(true);
     try {
-      const response = await authFetch("/auth/profile", {
-        method: "PUT",
-        body: JSON.stringify({
-          profileDetails: nextProfileDetails,
+      const saved = await handleSave(
+        buildProfileSnapshot({
           services: nextServices,
+          profileDetails: nextProfileDetails,
         }),
-      });
+        { suppressSuccessToast: true }
+      );
 
-      if (!response.ok) {
-        const errPayload = await response
-          .json()
-          .catch(() => ({ message: "Failed to save service details" }));
-        throw new Error(errPayload?.message || "Failed to save service details");
+      if (!saved) {
+        throw new Error("Failed to save service details");
       }
 
-      setProfileDetails(nextProfileDetails);
-      setServices(nextServices);
-      setInitialData((prev) =>
-        prev
-          ? {
-            ...prev,
-            services: nextServices,
-            profileDetails: nextProfileDetails,
-          }
-          : prev
-      );
       toast.success(
         `${getServiceLabel(serviceKey)} ${
           serviceAlreadyExists ? "updated" : "added"
@@ -2599,14 +2714,14 @@ const FreelancerProfile = () => {
       !hasTextValue(detail?.serviceDescription || detail?.description)
   ).length;
   const serviceEntriesMissingCover = onboardingServiceEntries.filter(
-    ({ detail }) => !resolveAvatarUrl(detail?.coverImage)
+    ({ detail }) => !resolveAvatarUrl(detail?.coverImage, { allowBlob: true })
   ).length;
   const serviceEntriesWithAnyProfileData = onboardingServiceEntries.filter(
     ({ detail }) => {
       const description = String(
         detail?.serviceDescription || detail?.description || ""
       ).trim();
-      const coverImage = resolveAvatarUrl(detail?.coverImage);
+      const coverImage = resolveAvatarUrl(detail?.coverImage, { allowBlob: true });
       return Boolean(description || coverImage);
     }
   ).length;
@@ -2678,9 +2793,9 @@ const FreelancerProfile = () => {
 
   const profilePhotoUrl = resolveAvatarUrl(personal.avatar);
   const profileCoverUrl =
-    resolveAvatarUrl(personal.coverImage) ||
-    resolveAvatarUrl(onboardingIdentity?.coverImage) ||
-    resolveAvatarUrl(profileDetails?.identity?.coverImage);
+    resolveAvatarUrl(personal.coverImage, { allowBlob: true }) ||
+    resolveAvatarUrl(onboardingIdentity?.coverImage, { allowBlob: true }) ||
+    resolveAvatarUrl(profileDetails?.identity?.coverImage, { allowBlob: true });
   const hasProfilePhoto = Boolean(profilePhotoUrl);
   // If a dedicated cover is missing, accept profile photo as fallback so users
   // are not blocked by an extra image requirement.
@@ -2705,6 +2820,9 @@ const FreelancerProfile = () => {
   const hasServiceAveragePrice = Boolean(
     String(serviceProfileForm.averageProjectPrice || "").trim()
   );
+  const hasServiceDeliveryTime = Boolean(
+    String(serviceProfileForm.deliveryTime || "").trim()
+  );
   const hasServiceSkills =
     (Array.isArray(serviceProfileForm.skillsAndTechnologies)
       ? serviceProfileForm.skillsAndTechnologies
@@ -2724,11 +2842,13 @@ const FreelancerProfile = () => {
       ? "Add a cover image"
       : !hasServiceAveragePrice
         ? "Set average price"
-      : !hasServiceComplexity
-        ? "Set complexity"
-        : !hasServiceSkills
-          ? "Add skills & technologies"
-          : "Ready to publish";
+        : !hasServiceDeliveryTime
+          ? "Set delivery timeline"
+          : !hasServiceComplexity
+            ? "Set complexity"
+            : !hasServiceSkills
+              ? "Add skills & technologies"
+              : "Ready to publish";
   const hasFeaturedProject = portfolioProjects.length > 0;
   const hasIndustryFocus = onboardingGlobalIndustry.length > 0;
 
@@ -3052,6 +3172,7 @@ const FreelancerProfile = () => {
             handleCoverImageUpload={handleCoverImageUpload}
             handleResumeUpload={handleResumeUpload}
             removeCoverImage={removeCoverImage}
+            coverImageUrl={profileCoverUrl}
             displayHeadline={displayHeadline}
             displayBio={displayBio}
             displayLocation={displayLocation}
@@ -3137,6 +3258,7 @@ const FreelancerProfile = () => {
                 splitExperienceTitle={splitExperienceTitle}
                 profileDetails={profileDetails}
                 openFullProfileEditor={openFullProfileEditor}
+                normalizeValueLabel={normalizeValueLabel}
               />
             </div>
 
@@ -3150,9 +3272,14 @@ const FreelancerProfile = () => {
             className={`w-full border border-border/70 bg-card/95 backdrop-blur shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200 ${modalType === "addProject" ? "rounded-md p-4 sm:p-5" : "rounded-2xl p-6"} ${modalType === "viewAllProjects"
               ? "max-w-6xl h-[90vh] overflow-hidden flex flex-col"
               : modalType === "fullProfile"
-                ? "max-w-5xl max-h-[90vh] overflow-y-auto"
-              : modalType === "education"
-                ? "max-w-4xl max-h-[90vh] overflow-y-auto"
+                ? [
+                    FULL_PROFILE_EDITOR_SECTIONS.WORK_PREFERENCES,
+                    FULL_PROFILE_EDITOR_SECTIONS.INDUSTRY_FOCUS,
+                  ].includes(fullProfileEditorSection)
+                  ? "max-w-3xl max-h-[90vh] overflow-y-auto"
+                  : "max-w-5xl max-h-[90vh] overflow-y-auto"
+                : modalType === "education"
+                  ? "max-w-4xl max-h-[90vh] overflow-y-auto"
               : modalType === "personal"
                 ? "max-w-2xl max-h-[90vh] overflow-y-auto"
               : modalType === "onboardingService"
@@ -3641,7 +3768,38 @@ const FreelancerProfile = () => {
                       </select>
                     </label>
 
-                    <label className="block space-y-1.5 lg:col-span-2">
+                    <label className="block space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                        Delivery Timeline
+                      </span>
+                      <select
+                        value={serviceProfileForm.deliveryTime || ""}
+                        onChange={(event) =>
+                          setServiceProfileForm((prev) => ({
+                            ...prev,
+                            deliveryTime: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                      >
+                        <option value="">Select delivery timeline</option>
+                        {serviceProfileForm.deliveryTime &&
+                        !PROJECT_TIMELINE_OPTIONS.some(
+                          (option) => option.value === serviceProfileForm.deliveryTime
+                        ) ? (
+                          <option value={serviceProfileForm.deliveryTime}>
+                            {normalizeValueLabel(serviceProfileForm.deliveryTime)}
+                          </option>
+                        ) : null}
+                        {PROJECT_TIMELINE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block space-y-1.5">
                       <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
                         Avg Price
                       </span>
@@ -3683,8 +3841,8 @@ const FreelancerProfile = () => {
                         {serviceProfileStatusLabel}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Description, cover, price, complexity, and skills
-                        complete the card.
+                        Description, cover, price, delivery timeline, complexity,
+                        and skills complete the card.
                       </p>
                     </div>
                   </div>
@@ -4232,6 +4390,7 @@ const FreelancerProfile = () => {
             ) : modalType === "fullProfile" ? (
               <FullProfileEditorModalContent
                 fullProfileForm={fullProfileForm}
+                section={fullProfileEditorSection}
                 handleFullProfileFieldChange={handleFullProfileFieldChange}
                 setFullProfileForm={setFullProfileForm}
                 addEducationEntry={addEducationEntry}
@@ -4258,8 +4417,11 @@ const FreelancerProfile = () => {
                 personal={personal}
                 portfolio={portfolio}
                 onboardingIdentity={onboardingIdentity}
+                onboardingLanguages={onboardingLanguages}
                 handlePersonalChange={handlePersonalChange}
                 handlePersonalUsernameChange={handlePersonalUsernameChange}
+                handlePersonalLanguagesChange={handlePersonalLanguagesChange}
+                handlePersonalOtherLanguageChange={handlePersonalOtherLanguageChange}
                 setPortfolio={setPortfolio}
                 savePersonalSection={savePersonalSection}
                 isSaving={isSaving}
