@@ -475,6 +475,22 @@ const appendSpeechTranscript = (
 
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
+const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|kindly|please|type|tap|reply)\b/i;
+
+const forceSentenceBreaks = (text = "") => {
+    const source = String(text || "");
+    if (!source) return source;
+
+    // Preserve authored structure (lists/newlines) and only split single-line blobs.
+    if (source.includes("\n") || /(^|\s)([-*]|\d+\.)\s+/m.test(source)) {
+        return source;
+    }
+
+    return source
+        .replace(/\b(Dr|Mr|Mrs|Ms|e\.g|i\.e)\.\s/g, "$1_PROTECT_")
+        .replace(/([a-z0-9][.?!])\s+(?=[A-Z])/g, "$1\n\n")
+        .replace(/_PROTECT_/g, ". ");
+};
 
 const normalizeInlineOptions = (text = "") =>
     String(text || "")
@@ -546,6 +562,18 @@ const parseAssistantMessageLayout = (content = "") => {
         })
         .filter(Boolean);
 
+    const hasQuestionLine = lines.some((line) => QUESTION_LINE_REGEX.test(line));
+    const isLikelyInteractivePrompt =
+        optionEntries.length >= 2 &&
+        optionEntries.length <= 12 &&
+        (hasQuestionLine || OPTION_PROMPT_CUE_REGEX.test(normalized));
+
+    // Keep numbered informational answers as normal markdown instead of forcing
+    // question/option card layout.
+    if (optionEntries.length > 0 && !isLikelyInteractivePrompt) {
+        return { contextText: forceSentenceBreaks(normalized), questionText: "", options: [] };
+    }
+
     let questionIndex = -1;
     for (let idx = lines.length - 1; idx >= 0; idx -= 1) {
         if (QUESTION_LINE_REGEX.test(lines[idx])) {
@@ -592,14 +620,6 @@ const parseAssistantMessageLayout = (content = "") => {
 
     const contextText = contextParts.join("\n\n").trim();
 
-    const forceSentenceBreaks = (text = "") => {
-        if (!text) return text;
-        return text
-            .replace(/\b(Dr|Mr|Mrs|Ms|e\.g|i\.e)\.\s/g, "$1_PROTECT_")
-            .replace(/([a-z0-9][.?!])\s+(?=[A-Z])/g, "$1\n\n")
-            .replace(/_PROTECT_/g, ". ");
-    };
-
     return {
         contextText: forceSentenceBreaks(contextText),
         questionText: forceSentenceBreaks(questionText),
@@ -622,10 +642,14 @@ const AssistantMessageBody = ({
 }) => {
     const { contextText, questionText, options } = parseAssistantMessageLayout(content);
     const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
+    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.95rem] leading-7 prose-p:my-2 prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-strong:font-semibold prose-headings:font-semibold ${isDark
+        ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white'
+        : 'prose-p:text-slate-700 prose-li:text-slate-700 prose-headings:text-slate-900'
+        }`;
 
     if (!hasStructuredQuestion) {
         return (
-            <div className={`prose prose-sm max-w-none [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold [&_h3]:!mt-2 [&_h3]:!mb-2 [&_ul]:!my-4 [&_li]:!mb-1 ${isDark ? 'prose-invert' : ''}`}>
+            <div className={assistantMarkdownClassName}>
                 <ReactMarkdown>{forceSentenceBreaks(content)}</ReactMarkdown>
             </div>
         );
@@ -634,14 +658,14 @@ const AssistantMessageBody = ({
     return (
         <div className="space-y-3">
             {contextText && (
-                <div className={`prose prose-sm max-w-none [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold [&_h3]:!mt-2 [&_h3]:!mb-2 [&_ul]:!my-4 [&_li]:!mb-1 ${isDark ? 'prose-invert' : ''}`}>
+                <div className={assistantMarkdownClassName}>
                     <ReactMarkdown>{contextText}</ReactMarkdown>
                 </div>
             )}
 
             {questionText && (
-                <div className={`rounded-xl border px-4 py-4 ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/20 bg-primary/5'}`}>
-                    <div className={`prose prose-sm max-w-none font-medium [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold ${isDark ? 'prose-invert' : ''}`}>
+                <div className={`rounded-2xl border px-4 py-3.5 ${isDark ? 'border-primary/35 bg-primary/[0.09]' : 'border-primary/25 bg-amber-50/70'}`}>
+                    <div className={`prose prose-sm max-w-none text-[0.95rem] font-medium leading-7 prose-p:my-1 ${isDark ? 'prose-invert prose-p:text-amber-50' : 'prose-p:text-slate-800'}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
                 </div>
@@ -655,29 +679,29 @@ const AssistantMessageBody = ({
                                 key={`${option.number}-${option.text}`}
                                 type="button"
                                 onClick={() => onOptionClick(option.text)}
-                                className={`flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left transition-all ${isOptionSelected(option.text)
+                                className={`flex w-full items-start gap-2 rounded-xl border px-3.5 py-2.5 text-left transition-all ${isOptionSelected(option.text)
                                     ? 'border-primary bg-primary/20 ring-1 ring-primary/50'
                                     : isDark
-                                        ? 'border-white/15 bg-white/[0.04] hover:bg-white/[0.08]'
+                                        ? 'border-white/15 bg-white/[0.045] hover:bg-white/[0.08]'
                                         : 'border-black/10 bg-[#faf9f5] hover:bg-slate-100'
                                     }`}
                             >
                                 <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
                                     {option.number}
                                 </span>
-                                <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                <div className={`prose prose-sm max-w-none leading-relaxed prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
                                 </div>
                             </button>
                         ) : (
                             <div
                                 key={`${option.number}-${option.text}`}
-                                className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${isDark ? 'border-white/15 bg-white/[0.04]' : 'border-black/10 bg-[#faf9f5]'}`}
+                                className={`flex items-start gap-2 rounded-xl border px-3.5 py-2.5 ${isDark ? 'border-white/15 bg-white/[0.045]' : 'border-black/10 bg-[#faf9f5]'}`}
                             >
                                 <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
                                     {option.number}
                                 </span>
-                                <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                <div className={`prose prose-sm max-w-none leading-relaxed prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
                                 </div>
                             </div>
@@ -1950,8 +1974,8 @@ const GuestAIDemo = () => {
                 </div>
             </aside>
 
-            <section className={`flex min-w-0 flex-1 flex-col ${isDark ? 'bg-transparent' : 'bg-transparent'}`}>
-                <div className={`border-b px-4 py-4 md:px-6 ${isDark ? 'border-white/10 bg-black/40' : 'border-black/10 bg-white/85'}`}>
+            <section className={`relative flex min-w-0 flex-1 flex-col ${isDark ? 'bg-transparent' : 'bg-transparent'}`}>
+                <div className={`border-b px-4 py-4 backdrop-blur-xl md:px-8 ${isDark ? 'border-white/10 bg-black/35' : 'border-black/10 bg-white/80'}`}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="md:hidden">
@@ -1981,8 +2005,8 @@ const GuestAIDemo = () => {
                     </div>
                 </div>
 
-                <ScrollArea ref={scrollRef} className="flex-1 min-h-0 px-3 py-4 md:px-6 md:py-6">
-                    <div className="mx-auto max-w-4xl space-y-5 pb-4">
+                <ScrollArea ref={scrollRef} className="flex-1 min-h-0 px-3 py-4 md:px-8 md:py-7">
+                    <div className="mx-auto w-full max-w-5xl space-y-6 pb-6">
                         {messages.map((msg, idx) => {
                             const { text: messageContent, attachments: messageAttachments } = parseMessageContentWithAttachments(
                                 msg.content,
@@ -1996,16 +2020,16 @@ const GuestAIDemo = () => {
                                     key={messageKey}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex items-start gap-3 md:gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     {msg.role === 'assistant' && (
-                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-primary/30 bg-primary/15 shadow-[0_0_0_4px_rgba(242,204,13,0.08)]' : 'border-primary/25 bg-primary/10'}`}>
                                             <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
                                         </div>
                                     )}
 
                                     {proposalCard ? (
-                                        <div className={`w-full max-w-[96%] rounded-2xl border p-5 shadow-sm md:p-6 ${isDark ? 'border-primary/30 bg-white/[0.04] text-white' : 'border-primary/40 bg-white text-[#181711]'}`}>
+                                        <div className={`w-full max-w-[94%] rounded-3xl border p-5 shadow-sm md:p-6 ${isDark ? 'border-primary/30 bg-white/[0.04] text-white shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)]' : 'border-primary/30 bg-white text-[#181711]'}`}>
                                             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
                                                 <Sparkles className="h-3.5 w-3.5" />
                                                 Generated Proposal
@@ -2022,12 +2046,12 @@ const GuestAIDemo = () => {
                                         </div>
                                     ) : (
                                         <div
-                                            className={`rounded-2xl p-4 text-sm leading-relaxed md:text-[15px]
+                                            className={`p-4 text-sm leading-7 md:text-[15px] md:p-5
                                             ${msg.role === 'user'
-                                                    ? 'w-fit max-w-[75%] rounded-tr-none bg-slate-900 text-white self-end'
+                                                    ? 'w-fit max-w-[78%] rounded-3xl rounded-br-lg border border-primary/30 bg-primary/20 text-white shadow-[0_14px_34px_-18px_rgba(242,204,13,0.5)] self-end'
                                                     : isDark
-                                                        ? 'w-full max-w-[100%] rounded-tl-none border border-white/10 bg-white/[0.06] text-white shadow-sm md:p-5'
-                                                        : 'w-full max-w-[100%] rounded-tl-none border border-black/10 bg-white text-slate-800 shadow-sm md:p-5'
+                                                        ? 'w-full max-w-[94%] rounded-3xl border border-white/12 bg-linear-to-r from-white/[0.07] via-white/[0.045] to-transparent text-white shadow-[0_20px_48px_-32px_rgba(0,0,0,0.55)]'
+                                                        : 'w-full max-w-[94%] rounded-3xl border border-black/10 bg-linear-to-r from-white via-slate-50 to-white text-slate-800 shadow-sm'
                                                 }`}
                                         >
                                             {msg.role === 'assistant' ? (
@@ -2106,7 +2130,7 @@ const GuestAIDemo = () => {
                                     )}
 
                                     {msg.role === 'user' && (
-                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-white/10 text-slate-200' : 'bg-slate-200 text-slate-600'}`}>
+                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${isDark ? 'border-white/15 bg-white/10 text-slate-200' : 'border-black/10 bg-slate-100 text-slate-600'}`}>
                                             <User className="h-4 w-4" />
                                         </div>
                                     )}
@@ -2118,12 +2142,12 @@ const GuestAIDemo = () => {
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="flex items-start gap-3"
+                                className="flex items-start gap-4"
                             >
-                                <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-primary/30 bg-primary/15' : 'border-primary/25 bg-primary/10'}`}>
                                     <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
                                 </div>
-                                <div className={`flex items-center gap-2 rounded-2xl rounded-tl-none border p-4 ${isDark ? 'border-white/10 bg-white/[0.05]' : 'border-black/10 bg-white'}`}>
+                                <div className={`flex items-center gap-2 rounded-3xl border px-4 py-3 ${isDark ? 'border-white/12 bg-white/[0.05]' : 'border-black/10 bg-white'}`}>
                                     <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
                                     <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '140ms' }} />
                                     <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '280ms' }} />
@@ -2134,14 +2158,14 @@ const GuestAIDemo = () => {
                     </div>
                 </ScrollArea>
 
-                <div className={`border-t p-4 md:px-6 md:py-5 ${isDark ? 'border-white/10 bg-black/35' : 'border-black/10 bg-white/90'}`}>
-                    <div className="mx-auto max-w-4xl space-y-3">
+                <div className={`border-t px-3 py-4 md:px-8 md:py-5 ${isDark ? 'border-white/10 bg-black/40' : 'border-black/10 bg-white/85'}`}>
+                    <div className="mx-auto w-full max-w-5xl space-y-3">
                         {shouldShowTextInput && (
                             <form
                                 onSubmit={handleSendMessage}
-                                className={`rounded-2xl border p-2 ${isDark
-                                    ? 'border-white/12 bg-white/[0.03]'
-                                    : 'border-black/10 bg-[#fbfbfa]'
+                                className={`rounded-[1.7rem] border p-2.5 shadow-[0_22px_45px_-30px_rgba(0,0,0,0.55)] backdrop-blur-xl ${isDark
+                                    ? 'border-white/15 bg-linear-to-b from-white/[0.08] to-white/[0.03]'
+                                    : 'border-black/12 bg-linear-to-b from-white to-[#f8f8f7]'
                                     }`}
                             >
                                 {pendingAttachments.length > 0 && (
@@ -2178,14 +2202,14 @@ const GuestAIDemo = () => {
                                         })}
                                     </div>
                                 )}
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2.5">
                                     <Input
                                         ref={inputRef}
                                         autoFocus
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
-                                        placeholder="Type your message..."
-                                        className={`h-12 flex-1 rounded-xl text-base ${isDark
+                                        placeholder="Message CATA AI..."
+                                        className={`h-14 flex-1 rounded-2xl text-base ${isDark
                                             ? 'border-0 bg-transparent text-white placeholder:text-slate-400'
                                             : 'border-0 bg-transparent text-slate-900 placeholder:text-slate-400'
                                             }`}
@@ -2206,7 +2230,7 @@ const GuestAIDemo = () => {
                                         disabled={isTyping || isUploadingAttachment}
                                         aria-label="Upload image or document"
                                         title="Upload image or document"
-                                        className={`h-10 w-10 rounded-xl ${isDark
+                                        className={`h-11 w-11 rounded-2xl ${isDark
                                             ? 'border border-white/20 bg-white/[0.08] text-slate-200 hover:bg-white/[0.14]'
                                             : 'border border-black/15 bg-white text-slate-700 hover:bg-slate-100'
                                             }`}
@@ -2226,7 +2250,7 @@ const GuestAIDemo = () => {
                                                 : isDark
                                                     ? 'border border-white/20 bg-white/[0.08] text-slate-200 hover:bg-white/[0.14]'
                                                     : 'border border-black/15 bg-white text-slate-700 hover:bg-slate-100'
-                                                } h-10 w-10 rounded-xl`}
+                                                } h-11 w-11 rounded-2xl`}
                                         >
                                             {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                                         </Button>
@@ -2235,7 +2259,7 @@ const GuestAIDemo = () => {
                                         size="icon"
                                         type="submit"
                                         disabled={(!input.trim() && pendingAttachments.length === 0) || isTyping || isUploadingAttachment}
-                                        className="h-10 w-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                                        className="h-11 w-11 rounded-2xl bg-primary text-primary-foreground shadow-[0_12px_28px_-14px_rgba(242,204,13,0.8)] hover:bg-primary/90"
                                     >
                                         <Send className="h-4 w-4" />
                                     </Button>
