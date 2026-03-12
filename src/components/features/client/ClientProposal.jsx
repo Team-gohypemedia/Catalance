@@ -1,21 +1,20 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
+import Bell from "lucide-react/dist/esm/icons/bell";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Send from "lucide-react/dist/esm/icons/send";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
-import { useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import logo from "@/assets/logos/logo.png";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
-import { ClientTopBar } from "@/components/features/client/ClientTopBar";
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,9 +25,16 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useNotifications } from "@/shared/context/NotificationContext";
 import {
   getProposalSignature,
   getProposalStorageKeys,
@@ -64,12 +70,28 @@ const statusLabels = {
   rejected: "Rejected",
 };
 
+const marketingNavItems = [
+  { label: "Home", to: "/" },
+  { label: "Marketplace", to: "/marketplace" },
+  { label: "Service", to: "/services" },
+  { label: "Contact", to: "/contact" },
+];
+
+const workspaceNavItems = [
+  { label: "Dashboard", to: "/client" },
+  { label: "Proposals", to: "/client/proposal" },
+  { label: "Projects", to: "/client/project" },
+  { label: "Messages", to: "/client/messages" },
+  { label: "Payments", to: "/client/payments" },
+  { label: "Freelancers", to: "/marketplace" },
+];
+
 const proposalCardStatusClasses = {
-  draft: "border-white/10 bg-white/[0.04] text-muted-foreground",
-  accepted: "border-emerald-400/20 bg-emerald-400/15 text-emerald-100",
-  sent: "border-primary/20 bg-primary text-primary-foreground",
-  pending: "border-primary/20 bg-primary text-primary-foreground",
-  rejected: "border-rose-400/15 bg-rose-500/10 text-rose-100",
+  draft: "border-white/10 bg-[#2f3135] text-[#d4d7dd]",
+  accepted: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
+  sent: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
+  pending: "border-[#856715] bg-[#241c0b] text-[#f4c128]",
+  rejected: "border-[#5b2a2a] bg-[#261617] text-[#f49e9e]",
 };
 
 const PROPOSAL_STACK_KEYS = [
@@ -170,6 +192,21 @@ const formatProposalDate = (value) => {
     month: "short",
     day: "numeric",
   });
+};
+
+const getDisplayName = (user) =>
+  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+
+const getInitials = (value = "") => {
+  const parts = String(value)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "C";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
 const normalizeSkillToken = (value = "") =>
@@ -341,23 +378,6 @@ const resolveProposalServiceLabel = (proposal) => {
   );
 };
 
-const getProposalPreview = (proposal) => {
-  const normalizedProposal = normalizeProposalRecord(proposal);
-  const raw = String(
-    normalizedProposal.summary ||
-      normalizedProposal.content ||
-      normalizedProposal.project?.description ||
-      "",
-  )
-    .replace(/```markdown\n?/gi, "")
-    .replace(/```\n?/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!raw) return "No proposal summary available yet.";
-  return raw.length > 220 ? `${raw.slice(0, 220).trim()}...` : raw;
-};
-
 const ProposalContentRenderer = ({ content }) => {
   if (!content) {
     return <p className="text-sm text-muted-foreground">No content available.</p>;
@@ -440,24 +460,201 @@ const ProposalMetric = ({ icon: Icon, label, value, valueClassName }) => (
 
 const ProposalSummaryItem = ({ label, value, valueClassName }) => (
   <div className="space-y-2">
-    <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#727277]">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
       {label}
     </p>
-    <div className={cn("text-sm font-medium leading-6 text-foreground", valueClassName)}>
+    <div className={cn("text-sm font-medium leading-6 text-white", valueClassName)}>
       {value}
     </div>
   </div>
 );
 
+const NotificationPopoverButton = ({
+  notifications,
+  unreadCount,
+  onMarkAllAsRead,
+  onNotificationClick,
+}) => (
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative h-11 w-11 rounded-full text-[#a7afbc] hover:bg-white/5 hover:text-white"
+      >
+        <Bell className="h-5 w-5" />
+        {unreadCount > 0 ? (
+          <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-primary" />
+        ) : null}
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent
+      align="end"
+      className="w-[22rem] border border-white/10 bg-[#171718] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+    >
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <h4 className="text-sm font-semibold">Notifications</h4>
+        {unreadCount > 0 ? (
+          <button
+            type="button"
+            className="text-xs font-medium text-primary transition hover:text-primary/80"
+            onClick={onMarkAllAsRead}
+          >
+            Mark all as read
+          </button>
+        ) : null}
+      </div>
+      <ScrollArea className="h-72">
+        {notifications.length === 0 ? (
+          <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 px-6 text-center text-[#7e8392]">
+            <Bell className="h-8 w-8 opacity-40" />
+            <p className="text-sm">No notifications yet</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/6">
+            {notifications.slice(0, 20).map((notification) => (
+              <button
+                key={notification.id}
+                type="button"
+                onClick={() => onNotificationClick(notification)}
+                className={cn(
+                  "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-white/5",
+                  !notification.read && "bg-primary/5",
+                )}
+              >
+                <div
+                  className={cn(
+                    "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                    !notification.read ? "bg-primary" : "bg-white/15",
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-white">
+                    {notification.title}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#8f96a3]">
+                    {notification.message}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
+    </PopoverContent>
+  </Popover>
+);
+
+const StandaloneProposalHeader = ({
+  user,
+  notifications,
+  unreadCount,
+  onMarkAllAsRead,
+  onNotificationClick,
+}) => {
+  const displayName = getDisplayName(user);
+  const initials = getInitials(displayName);
+
+  return (
+    <header className="space-y-5">
+      <div className="rounded-[2rem] border border-white/10 bg-[#121315]/95 px-5 py-4 shadow-[0_26px_80px_-56px_rgba(255,204,0,0.45)] backdrop-blur-sm sm:px-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+              <img
+                src={logo}
+                alt="Catalance logo"
+                className="h-7 w-7 object-contain brightness-0 saturate-100"
+              />
+            </div>
+            <span className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white sm:text-[2rem]">
+              Catalance
+            </span>
+          </Link>
+
+          <nav className="flex flex-1 flex-wrap items-center justify-center gap-5 text-[0.98rem] font-medium lg:gap-8">
+            {marketingNavItems.map((item) => {
+              const active = item.label === "Home";
+              return (
+                <Link
+                  key={item.label}
+                  to={item.to}
+                  className={cn(
+                    "transition",
+                    active ? "text-primary" : "text-[#a1a7b3] hover:text-white",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <Link
+            to="/client/profile"
+            className="inline-flex items-center gap-3 self-start rounded-full bg-[#222326] px-4 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:bg-[#292a2e] lg:self-auto"
+          >
+            <Avatar className="h-10 w-10 border border-white/10">
+              <AvatarImage src={user?.avatar} alt={displayName} />
+              <AvatarFallback className="bg-[#101113] text-xs font-bold text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <span className="max-w-[12rem] truncate">{displayName}</span>
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 border-b border-[#3a2f13] pb-2 lg:flex-row lg:items-center lg:justify-between">
+        <nav className="flex items-center gap-2 overflow-x-auto pb-2 text-sm no-scrollbar sm:gap-3 lg:pb-0">
+          {workspaceNavItems.map((item) => {
+            const active = item.label === "Proposals";
+            return (
+              <Link
+                key={item.label}
+                to={item.to}
+                className={cn(
+                  "shrink-0 rounded-full px-4 py-2.5 font-medium transition",
+                  active
+                    ? "border border-white/12 bg-[#2a2b2d] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    : "text-[#9aa1ae] hover:text-white",
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <Button
+            asChild
+            className="h-11 rounded-full bg-primary px-6 text-sm font-semibold text-[#141414] hover:bg-primary/90"
+          >
+            <Link to="/marketplace">Hire Freelancer</Link>
+          </Button>
+
+          <NotificationPopoverButton
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAllAsRead={onMarkAllAsRead}
+            onNotificationClick={onNotificationClick}
+          />
+        </div>
+      </div>
+    </header>
+  );
+};
+
 const EmptyStateCard = ({ title, description }) => (
-  <Card className="rounded-[32px] border border-dashed border-white/10 bg-[#181818] shadow-none">
-    <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-4 px-6 py-14 text-center">
-      <div className="rounded-2xl border border-white/10 bg-black/10 p-3 text-muted-foreground">
-        <FileText className="h-5 w-5" />
+  <Card className="rounded-[2.5rem] border border-dashed border-[#3a2f13] bg-[#151617]/80 shadow-none">
+    <CardContent className="flex min-h-[200px] flex-col items-center justify-center gap-4 px-6 py-14 text-center">
+      <div className="rounded-2xl border border-[#3a2f13] bg-[#191a1d] p-3 text-[#61718d]">
+        <FileText className="h-6 w-6" />
       </div>
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
-        <p className="max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+        <h3 className="text-xl font-semibold tracking-tight text-white">{title}</h3>
+        <p className="max-w-md text-sm leading-6 text-[#7e8797]">{description}</p>
       </div>
     </CardContent>
   </Card>
@@ -475,14 +672,16 @@ const ProposalWorkspaceHintCard = ({ activeTab, hasProjectFilter }) => {
         : "Use a rejected scope as a starting point, revise the brief, and send a stronger version back out.";
 
   return (
-    <Card className="rounded-[32px] border border-dashed border-white/10 bg-[#171717]/80 shadow-none">
-      <CardContent className="flex min-h-[160px] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-        <div className="rounded-2xl border border-white/10 bg-black/10 p-3 text-muted-foreground">
-          <FileText className="h-5 w-5" />
+    <Card className="rounded-[2.5rem] border border-dashed border-[#3a2f13] bg-[#151617]/65 shadow-none">
+      <CardContent className="flex min-h-[180px] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+        <div className="rounded-2xl border border-[#3a2f13] bg-[#191a1d] p-3 text-[#61718d]">
+          <FileText className="h-6 w-6" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
-          <p className="max-w-lg text-sm leading-6 text-muted-foreground">{description}</p>
+          <h3 className="text-[1.85rem] font-semibold tracking-[-0.03em] text-[#516889]">
+            {title}
+          </h3>
+          <p className="max-w-lg text-sm leading-6 text-[#5d6d87]">{description}</p>
         </div>
       </CardContent>
     </Card>
@@ -499,26 +698,26 @@ const ProposalRowCard = ({
   isSending,
 }) => {
   const details = extractProposalDetails(proposal);
-  const preview = getProposalPreview(proposal);
   const isDraft = proposal.status === "draft";
   const canSendToFreelancers = isDraft && !proposal.requiresPayment && onSend;
   const hasAssignedFreelancer =
     Boolean(proposal.freelancerId) &&
     String(proposal.recipientName || "").trim().toLowerCase() !== "not assigned";
-  const showQuickActions =
-    canSendToFreelancers || Boolean(proposal.requiresPayment && onPay) || Boolean(onDelete);
+  const displayName = hasAssignedFreelancer ? proposal.recipientName : "Not assigned";
+  const initials = getInitials(displayName);
+  const showSecondaryAction = canSendToFreelancers || Boolean(proposal.requiresPayment && onPay);
 
   return (
-    <Card className="overflow-hidden rounded-[32px] border border-white/8 bg-[#202020] shadow-[0_22px_55px_-42px_rgba(0,0,0,0.9)] transition-colors duration-200 hover:border-white/14">
-      <CardContent className="flex flex-col gap-6 p-6 sm:p-8 xl:flex-row xl:items-center xl:justify-between">
-        <div className="min-w-0 flex-1 space-y-5">
+    <Card className="overflow-hidden rounded-[2.9rem] border border-white/6 bg-[#2b2b2d] shadow-[0_30px_80px_-52px_rgba(0,0,0,0.98)] transition duration-200 hover:border-white/10">
+      <CardContent className="p-7 sm:p-8 lg:p-9">
+        <div className="space-y-8">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 space-y-4">
-              <div className="flex flex-wrap items-center gap-3 text-xs text-[#909095]">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-[#9a9ea8]">
                 <Badge
                   variant="outline"
                   className={cn(
-                    "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.26em]",
+                    "rounded-md border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.24em]",
                     proposalCardStatusClasses[proposal.status] ||
                       proposalCardStatusClasses.pending,
                   )}
@@ -529,89 +728,104 @@ const ProposalRowCard = ({
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+                <h3 className="text-[2rem] font-semibold tracking-[-0.04em] text-white sm:text-[2.2rem]">
                   {resolveProposalTitle(proposal)}
                 </h3>
-                <p className="max-w-3xl text-sm leading-7 text-[#8f8f94]">{preview}</p>
               </div>
             </div>
 
-            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/8 bg-black/10 text-muted-foreground sm:flex">
-              <FileText className="h-4 w-4" />
-            </div>
+            {onDelete && !proposal.requiresPayment ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-full text-[#8d96a7] hover:bg-white/5 hover:text-white"
+                onClick={() => onDelete(proposal)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : null}
           </div>
 
-          <div className="grid gap-4 border-t border-white/8 pt-5 sm:grid-cols-3">
+          <div className="grid gap-6 border-t border-white/6 pt-7 lg:grid-cols-[1.25fr_1fr_1fr_auto] lg:items-center">
             <ProposalSummaryItem
               label="Freelancer"
               value={
-                hasAssignedFreelancer ? proposal.recipientName : "Not assigned"
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 border border-white/10">
+                    <AvatarImage src={proposal.avatar} alt={displayName} />
+                    <AvatarFallback className="bg-[#111214] text-xs font-bold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span
+                    className={cn(
+                      "max-w-[11rem] text-base font-semibold leading-5 text-white",
+                      !hasAssignedFreelancer && "text-[#8d96a7]",
+                    )}
+                  >
+                    {displayName}
+                  </span>
+                </div>
               }
-              valueClassName={hasAssignedFreelancer ? "" : "text-muted-foreground"}
             />
             <ProposalSummaryItem
               label="Agreed Amount"
               value={details.budget}
-              valueClassName="text-primary"
+              valueClassName="text-[1.9rem] font-semibold tracking-[-0.03em] text-primary"
             />
-            <ProposalSummaryItem label="Delivery" value={details.delivery} />
-          </div>
-        </div>
+            <ProposalSummaryItem
+              label="Delivery"
+              value={
+                <span className="inline-flex items-center gap-2 text-lg font-semibold text-[#d8dbe2]">
+                  <Clock3 className="h-4 w-4 text-[#97a1b2]" />
+                  {details.delivery}
+                </span>
+              }
+            />
+            <div className="flex w-full flex-col gap-3 lg:w-[10.5rem] lg:items-end">
+              <Button
+                className="h-11 rounded-full bg-primary px-6 font-semibold text-[#141414] hover:bg-primary/90 lg:w-full"
+                onClick={() => onOpen?.(proposal)}
+              >
+                View Details
+              </Button>
 
-        <div className="flex w-full shrink-0 flex-col gap-3 xl:w-[220px] xl:items-end">
-          <Button
-            className="h-11 rounded-full bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90 xl:w-full"
-            onClick={() => onOpen?.(proposal)}
-          >
-            <ExternalLink className="mr-2 h-4 w-4" />
-            View Details
-          </Button>
+              {showSecondaryAction ? (
+                <div className="flex w-full flex-wrap gap-2 lg:justify-end">
+                  {canSendToFreelancers ? (
+                    <Button
+                      variant="outline"
+                      className="h-9 rounded-full border-white/10 bg-white/[0.03] px-4 text-xs font-semibold text-white hover:bg-white/[0.06]"
+                      onClick={() => onSend?.(proposal)}
+                      disabled={isSending}
+                    >
+                      {isSending ? (
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 h-3.5 w-3.5" />
+                      )}
+                      {isSending ? "Sending..." : "Send"}
+                    </Button>
+                  ) : null}
 
-          {showQuickActions ? (
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              {canSendToFreelancers ? (
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-full border-white/10 bg-white/[0.03] px-4 text-xs font-semibold text-foreground hover:bg-white/[0.06]"
-                  onClick={() => onSend?.(proposal)}
-                  disabled={isSending}
-                >
-                  {isSending ? (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Send className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  {isSending ? "Sending..." : "Send"}
-                </Button>
-              ) : null}
-
-              {proposal.requiresPayment && onPay ? (
-                <Button
-                  className="h-9 rounded-full bg-emerald-500 px-4 text-xs font-semibold text-black hover:bg-emerald-400"
-                  onClick={() => onPay(proposal)}
-                  disabled={isPaying}
-                >
-                  {isPaying ? (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <CreditCard className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  {isPaying ? "Processing..." : "Approve & Pay"}
-                </Button>
-              ) : null}
-
-              {onDelete && !proposal.requiresPayment ? (
-                <Button
-                  variant="ghost"
-                  className="h-9 rounded-full px-3 text-xs font-semibold text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
-                  onClick={() => onDelete(proposal)}
-                >
-                  <Trash2 className="mr-2 h-3.5 w-3.5" />
-                  Delete
-                </Button>
+                  {proposal.requiresPayment && onPay ? (
+                    <Button
+                      className="h-9 rounded-full bg-emerald-500 px-4 text-xs font-semibold text-black hover:bg-emerald-400"
+                      onClick={() => onPay(proposal)}
+                      disabled={isPaying}
+                    >
+                      {isPaying ? (
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <CreditCard className="mr-2 h-3.5 w-3.5" />
+                      )}
+                      {isPaying ? "Processing..." : "Approve & Pay"}
+                    </Button>
+                  ) : null}
+                </div>
               ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -827,6 +1041,8 @@ const deleteLocalDraftProposal = (proposalId, userId) => {
 
 const ClientProposalContent = () => {
   const { isAuthenticated, authFetch, user } = useAuth();
+  const navigate = useNavigate();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const [proposals, setProposals] = useState([]);
   const [activeProposal, setActiveProposal] = useState(null);
@@ -855,6 +1071,44 @@ const ClientProposalContent = () => {
   const deepLinkProjectId = searchParams.get("projectId");
   const deepLinkTab = (searchParams.get("tab") || "").toLowerCase();
   const deepLinkAction = (searchParams.get("action") || "").toLowerCase();
+
+  const handleNotificationClick = useCallback(
+    (notification) => {
+      markAsRead(notification.id);
+
+      if (notification.type === "chat" && notification.data) {
+        const service = notification.data.service || "";
+        const parts = service.split(":");
+        let projectId = notification.data.projectId;
+
+        if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
+          projectId = parts[1];
+        }
+
+        if (projectId) {
+          navigate(`/client/messages?projectId=${projectId}`);
+        } else {
+          navigate("/client/messages");
+        }
+        return;
+      }
+
+      if (notification.type === "proposal") {
+        navigate("/client/proposal");
+        return;
+      }
+
+      if (
+        (notification.type === "task_completed" ||
+          notification.type === "task_verified" ||
+          notification.type === "freelancer_change_resolved") &&
+        notification.data?.projectId
+      ) {
+        navigate(`/client/project/${notification.data.projectId}`);
+      }
+    },
+    [markAsRead, navigate],
+  );
 
   const fetchProposals = useCallback(async () => {
     const { proposals: localSavedProposals } = loadSavedProposalsFromStorage(user?.id);
@@ -1638,20 +1892,34 @@ const ClientProposalContent = () => {
   const currentTabMeta = tabCopy[activeTab] || tabCopy.draft;
 
   return (
-    <div className="relative flex h-full flex-1 flex-col overflow-hidden bg-[#141415]">
-      <ClientTopBar />
+    <div className="relative min-h-screen overflow-x-hidden bg-[#141415]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_50%_0%,rgba(255,204,0,0.12),transparent_42%),linear-gradient(180deg,#151516_0%,#131314_100%)]"
+      />
 
-      <main className="relative z-10 flex-1 overflow-y-auto bg-[radial-gradient(120%_120%_at_50%_0%,rgba(250,204,21,0.06),transparent_38%),#141415] px-4 py-6 md:px-8 md:py-8 lg:px-10">
-        <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6">
-          <section className="space-y-3 pt-1">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Project Proposals
-            </h1>
-            <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-              Manage your draft, pending, and rejected proposals. Keep potential
-              collaborations moving from one workspace.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+      <main className="relative z-10 px-4 pb-12 pt-6 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-10">
+          <StandaloneProposalHeader
+            user={user}
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAllAsRead={markAllAsRead}
+            onNotificationClick={handleNotificationClick}
+          />
+
+          <section className="space-y-4">
+            <div className="space-y-3">
+              <h1 className="text-4xl font-semibold tracking-[-0.05em] text-white sm:text-[3.4rem]">
+                Project Proposals
+              </h1>
+              <p className="max-w-[34rem] text-base leading-8 text-[#9ca3b1]">
+                Manage your draft, pending, and rejected proposals. Keep your
+                potential collaborations moving.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-sm text-[#8f96a3]">
               {deepLinkProjectId ? (
                 <Badge
                   variant="outline"
@@ -1673,57 +1941,36 @@ const ClientProposalContent = () => {
             defaultValue="draft"
             value={activeTab}
             onValueChange={setActiveTab}
-            className="w-full space-y-6"
+            className="w-full space-y-8"
           >
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <TabsList className="inline-flex h-auto w-fit flex-wrap rounded-full border border-white/8 bg-[#1b1b1c] p-1">
-                {[
-                  {
-                    value: "draft",
-                    label: "Draft",
-                    tone: "data-[state=active]:bg-[#2a2a2d] data-[state=active]:text-foreground",
-                  },
-                  {
-                    value: "pending",
-                    label: "Pending Approval",
-                    tone: "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
-                  },
-                  {
-                    value: "rejected",
-                    label: "Rejected",
-                    tone: "data-[state=active]:bg-[#2a2a2d] data-[state=active]:text-foreground",
-                  },
-                ].map((item) => (
-                  <TabsTrigger
-                    key={item.value}
-                    value={item.value}
-                    className={cn(
-                      "h-10 rounded-full px-5 text-sm font-medium text-[#8f8f94] shadow-none transition hover:text-foreground",
-                      item.tone,
-                    )}
-                  >
-                    {item.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              <p className="max-w-2xl text-sm leading-6 text-[#8f8f94] lg:text-right">
-                {currentTabMeta.description}
-              </p>
-            </div>
+            <TabsList className="inline-flex h-auto w-fit flex-wrap rounded-full border border-white/8 bg-[#262628] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              {[
+                { value: "draft", label: "Draft" },
+                { value: "pending", label: "Pending Approval" },
+                { value: "rejected", label: "Rejected" },
+              ].map((item) => (
+                <TabsTrigger
+                  key={item.value}
+                  value={item.value}
+                  className="h-11 rounded-full px-6 text-[0.95rem] font-semibold text-[#a3a6ad] shadow-none transition hover:text-white data-[state=active]:bg-primary data-[state=active]:text-[#141414]"
+                >
+                  {item.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
             <TabsContent value="draft" className="m-0">
               {isLoading ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {[1, 2].map((item) => (
                     <Skeleton
                       key={`draft-skeleton-${item}`}
-                      className="h-[220px] rounded-[32px] bg-white/[0.06]"
+                      className="h-[250px] rounded-[2.9rem] bg-white/[0.06]"
                     />
                   ))}
                 </div>
               ) : currentTabItems.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {currentTabItems.map((proposal) => (
                     <ProposalRowCard
                       key={proposal.id}
@@ -1749,16 +1996,16 @@ const ClientProposalContent = () => {
 
             <TabsContent value="pending" className="m-0">
               {isLoading ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {[1, 2].map((item) => (
                     <Skeleton
                       key={`pending-skeleton-${item}`}
-                      className="h-[220px] rounded-[32px] bg-white/[0.06]"
+                      className="h-[250px] rounded-[2.9rem] bg-white/[0.06]"
                     />
                   ))}
                 </div>
               ) : currentTabItems.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {currentTabItems.map((proposal) => (
                     <ProposalRowCard
                       key={proposal.id}
@@ -1784,16 +2031,16 @@ const ClientProposalContent = () => {
 
             <TabsContent value="rejected" className="m-0">
               {isLoading ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {[1, 2].map((item) => (
                     <Skeleton
                       key={`rejected-skeleton-${item}`}
-                      className="h-[220px] rounded-[32px] bg-white/[0.06]"
+                      className="h-[250px] rounded-[2.9rem] bg-white/[0.06]"
                     />
                   ))}
                 </div>
               ) : currentTabItems.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {currentTabItems.map((proposal) => (
                     <ProposalRowCard
                       key={proposal.id}
@@ -2014,10 +2261,6 @@ const ClientProposalContent = () => {
   );
 };
 
-const ClientProposal = () => (
-  <RoleAwareSidebar>
-    <ClientProposalContent />
-  </RoleAwareSidebar>
-);
+const ClientProposal = () => <ClientProposalContent />;
 
 export default ClientProposal;
