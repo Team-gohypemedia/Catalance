@@ -1,4 +1,0 @@
-﻿Environment variables loaded from .env
-Prisma schema loaded from prisma\schema.prisma
-Datasource "db": PostgreSQL database "neondb", schema "public" at "ep-nameless-bar-a1q9980g.ap-southeast-1.aws.neon.tech"
-
