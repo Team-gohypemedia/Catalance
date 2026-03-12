@@ -237,6 +237,48 @@ const AdminServiceQuestions = () => {
         }
     };
 
+    const handleCopyFlow = () => {
+        if (!questions || questions.length === 0) {
+            toast.error("No questions to copy");
+            return;
+        }
+
+        const formattedFlow = questions.map((q, index) => {
+            let flowText = `${index + 1}. [${q.id}] ${q.question} (${q.type})`;
+            if (q.options && q.options.length > 0) {
+                const optLabels = q.options.map(o => typeof o === 'object' ? (o.label || o.value) : o);
+                flowText += `\n   Options: ${optLabels.join(', ')}`;
+            }
+            if (q.logic && q.logic.length > 0) {
+                flowText += `\n   Logic: ${q.logic.map(l => `If ${l.condition} '${l.value}' -> Jump to ${l.nextQuestionSlug}`).join(' | ')}`;
+            }
+            if (q.nextQuestionSlug) {
+                flowText += `\n   Next: ${q.nextQuestionSlug}`;
+            }
+            return flowText;
+        }).join('\n\n');
+
+        const fullCopyText = `Service Content Flow\n===================\n\n${formattedFlow}\n\n===================\nRaw JSON Configuration:\n${JSON.stringify(questions, null, 2)}`;
+
+        navigator.clipboard.writeText(fullCopyText).then(() => {
+            toast.success("Flow copied to clipboard!");
+        }).catch(err => {
+            console.error("Failed to copy:", err);
+            // Fallback for older browsers
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = fullCopyText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+                toast.success("Flow copied to clipboard!");
+            } catch (fallbackErr) {
+                toast.error("Failed to copy flow to clipboard");
+            }
+        });
+    };
+
     return (
         <AdminLayout>
             <div className="relative flex flex-col gap-8 p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)]">
@@ -320,6 +362,14 @@ const AdminServiceQuestions = () => {
                                         <LucideIcons.GitGraph className="h-4 w-4 mr-2 inline" /> Flow
                                     </button>
                                 </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleCopyFlow}
+                                    disabled={!selectedServiceId || questions.length === 0}
+                                    className="bg-card shadow-sm"
+                                >
+                                    <LucideIcons.Copy className="mr-2 h-4 w-4" /> Copy Flow
+                                </Button>
                                 <Button
                                     onClick={() => handleOpenDialog()}
                                     disabled={!selectedServiceId}
