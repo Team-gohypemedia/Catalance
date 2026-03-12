@@ -3364,6 +3364,7 @@ const ClientDashboardContent = () => {
         onOpenChange={setShowFreelancerSelect}
         savedProposal={savedProposal}
         isLoadingFreelancers={isFreelancersLoading}
+        isSendingProposal={isSendingProposal}
         freelancerSearch={freelancerSearch}
         onFreelancerSearchChange={setFreelancerSearch}
         filteredFreelancers={filteredFreelancers}

@@ -1,24 +1,35 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
+import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Send from "lucide-react/dist/esm/icons/send";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import UserRound from "lucide-react/dist/esm/icons/user-round";
+import { useSearchParams } from "react-router-dom";
+import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
+import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
+import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClientTopBar } from "@/components/features/client/ClientTopBar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/shared/context/AuthContext";
-import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
 import {
   getProposalSignature,
   getProposalStorageKeys,
@@ -26,270 +37,602 @@ import {
   persistSavedProposalsToStorage,
   resolveActiveProposalId,
 } from "@/shared/lib/client-proposal-storage";
+import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
+import { rankFreelancersForProposal } from "@/shared/lib/freelancer-matching";
+import { listFreelancers } from "@/shared/lib/api-client";
+import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSearchParams } from "react-router-dom";
 
-// Helper to format currency
-const formatBudget = (val) => {
-  if (!val) return "Not set";
-  const num = parseInt(val.toString().replace(/[^0-9]/g, ""), 10);
-  if (isNaN(num)) return val;
+const MIN_FREELANCER_MATCH_SCORE = 50;
+const PROPOSAL_BLOCKED_STATUSES = new Set(["pending", "accepted", "sent"]);
+const CLOSED_PROJECT_STATUSES = new Set(["completed", "paused"]);
+const DRAFT_PROJECT_STATUSES = new Set(["draft", "local_draft"]);
+
+const statusColors = {
+  draft: "border-sky-400/30 bg-sky-500/10 text-sky-200",
+  accepted: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
+  sent: "border-blue-400/30 bg-blue-500/10 text-blue-200",
+  pending: "border-amber-400/30 bg-amber-500/10 text-amber-200",
+  rejected: "border-rose-400/30 bg-rose-500/10 text-rose-200",
+};
+
+const statusLabels = {
+  draft: "Draft",
+  accepted: "Accepted",
+  sent: "Sent",
+  pending: "Pending",
+  rejected: "Rejected",
+};
+
+const PROPOSAL_STACK_KEYS = [
+  "projectStack",
+  "project_stack",
+  "projectTechStack",
+  "project_tech_stack",
+  "requiredTechStack",
+  "required_tech_stack",
+  "techStack",
+  "tech_stack",
+  "frontendFramework",
+  "frontend_framework",
+  "backendTechnology",
+  "backend_technology",
+  "database",
+];
+
+const PROPOSAL_STACK_TEXT_KEYS = [
+  "projectTitle",
+  "title",
+  "projectNote",
+  "project_note",
+  "projectNotes",
+  "project_notes",
+  "projectRequirement",
+  "project_requirement",
+  "projectRequirements",
+  "project_requirements",
+  "requirements",
+  "description",
+  "summary",
+  "content",
+];
+
+const STACK_DETECTION_PATTERNS = [
+  { label: "Technical SEO", pattern: /\btechnical seo\b/i },
+  { label: "Content SEO", pattern: /\bcontent seo\b/i },
+  { label: "On-Page SEO", pattern: /\bon[\s-]?page seo\b/i },
+  { label: "Off-Page SEO", pattern: /\boff[\s-]?page seo\b/i },
+  { label: "Local SEO", pattern: /\blocal seo\b/i },
+  { label: "Keyword Research", pattern: /\bkeyword research\b/i },
+  { label: "Link Building", pattern: /\blink building\b/i },
+  { label: "Google Search Console", pattern: /\bgoogle search console\b|\bgsc\b/i },
+  { label: "Ahrefs", pattern: /\bahrefs\b/i },
+  { label: "React.js", pattern: /\breact(?:\.js)?\b/i },
+  { label: "Next.js", pattern: /\bnext(?:\.js)?\b/i },
+  { label: "Node.js", pattern: /\bnode(?:\.js)?\b/i },
+  { label: "TypeScript", pattern: /\btypescript\b|\bts\b/i },
+  { label: "JavaScript", pattern: /\bjavascript\b|\bjs\b/i },
+  { label: "PostgreSQL", pattern: /\bpostgres(?:ql)?\b/i },
+  { label: "MySQL", pattern: /\bmysql\b/i },
+  { label: "MongoDB", pattern: /\bmongo(?:db)?\b/i },
+  { label: "Express.js", pattern: /\bexpress(?:\.js)?\b/i },
+  { label: "Tailwind CSS", pattern: /\btailwind\b/i },
+  { label: "Flutter", pattern: /\bflutter\b/i },
+  { label: "React Native", pattern: /\breact native\b/i },
+  { label: "Python", pattern: /\bpython\b|\bdjango\b|\bflask\b|\bfastapi\b/i },
+  { label: "PHP", pattern: /\bphp\b|\blaravel\b/i },
+  { label: "WordPress", pattern: /\bwordpress\b/i },
+  { label: "Shopify", pattern: /\bshopify\b/i },
+  { label: "Firebase", pattern: /\bfirebase\b/i },
+  { label: "Supabase", pattern: /\bsupabase\b/i },
+  { label: "AWS", pattern: /\baws\b|amazon web services/i },
+  { label: "Vercel", pattern: /\bvercel\b/i },
+  { label: "SEO", pattern: /\bseo\b|search engine optimization/i },
+  { label: "Content Marketing", pattern: /\bcontent marketing\b|\bcontent strategy\b/i },
+  { label: "Social Media", pattern: /\bsocial media\b|\bsmm\b/i },
+  { label: "Google Ads", pattern: /\bgoogle ads\b|\bppc\b/i },
+  { label: "Meta Ads", pattern: /\bmeta ads\b|\bfacebook ads\b|\binstagram ads\b/i },
+  { label: "Branding", pattern: /\bbranding\b|brand identity/i },
+];
+
+const formatBudget = (value) => {
+  if (!value) return "Not set";
+  const numeric = Number.parseInt(String(value).replace(/[^0-9]/g, ""), 10);
+  if (!Number.isFinite(numeric) || numeric <= 0) return String(value);
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
-  }).format(num);
+  }).format(numeric);
 };
 
-// Helper to render markdown-like content
-const ProposalContentRenderer = ({ content }) => {
-  if (!content)
-    return <p className="text-muted-foreground">No content available.</p>;
+const parseProposalBudgetValue = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return 0;
+  const numeric = Number.parseInt(raw.replace(/[^0-9]/g, ""), 10);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const formatProposalDate = (value) => {
+  if (!value) return "No date";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "No date";
+  return parsed.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const normalizeSkillToken = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9#+.]/g, "");
+
+const collectStringValues = (value) => {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) return value.flatMap((entry) => collectStringValues(entry));
+  if (typeof value === "object") {
+    return Object.values(value).flatMap((entry) => collectStringValues(entry));
+  }
+  if (typeof value === "string" || typeof value === "number") return [String(value)];
+  return [];
+};
+
+const splitSkillValues = (value = "") =>
+  String(value || "")
+    .split(/,|\/|\||\+|;|&|\band\b/gi)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+const collectFreelancerSkillTokens = (freelancer = {}) => {
+  const tokenSet = new Set();
+  const candidates = collectStringValues([
+    freelancer?.matchedTechnologies,
+    freelancer?.matchHighlights,
+    freelancer?.skills,
+    freelancer?.services,
+    freelancer?.profileDetails?.services,
+    freelancer?.profileDetails?.serviceDetails,
+    freelancer?.freelancerProjects,
+  ]);
+
+  candidates.forEach((entry) => {
+    splitSkillValues(entry).forEach((part) => {
+      const normalized = normalizeSkillToken(part);
+      if (normalized) tokenSet.add(normalized);
+    });
+  });
+
+  return tokenSet;
+};
+
+const freelancerMatchesRequiredSkill = (requiredSkill, freelancerSkillTokens) => {
+  const required = normalizeSkillToken(requiredSkill);
+  if (!required) return false;
+  if (freelancerSkillTokens.has(required)) return true;
+
+  for (const token of freelancerSkillTokens) {
+    if (!token || token.length < 3 || required.length < 3) continue;
+    if (token.includes(required) || required.includes(token)) return true;
+  }
+
+  return false;
+};
+
+const extractProjectRequiredSkills = (proposal = {}) => {
+  const skills = [];
+  const seen = new Set();
+
+  const pushSkill = (rawValue) => {
+    const value = String(rawValue || "").trim();
+    if (!value || value.length < 2) return;
+    const key = normalizeSkillToken(value);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    skills.push(value);
+  };
+
+  PROPOSAL_STACK_KEYS.forEach((key) => {
+    collectStringValues(proposal?.[key]).forEach((entry) => {
+      splitSkillValues(entry).forEach(pushSkill);
+    });
+  });
+
+  if (skills.length > 0) return skills.slice(0, 8);
+
+  const searchText = PROPOSAL_STACK_TEXT_KEYS.map((key) => proposal?.[key])
+    .filter(Boolean)
+    .join(" ");
+
+  STACK_DETECTION_PATTERNS.forEach(({ label, pattern }) => {
+    if (pattern.test(searchText)) pushSkill(label);
+  });
+
+  return skills.slice(0, 8);
+};
+
+const hasFreelancerRole = (user = {}) => {
+  const primaryRole = String(user?.role || "").toUpperCase();
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((entry) => String(entry || "").toUpperCase())
+    : [];
+  return primaryRole === "FREELANCER" || roles.includes("FREELANCER");
+};
+
+const normalizeFreelancerCardData = (candidate = {}) => {
+  const freelancer = { ...candidate };
+  const rawBio = freelancer.bio || freelancer.about;
+
+  if (typeof rawBio === "string" && rawBio.trim().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawBio);
+      if (!freelancer.location && parsed.location) freelancer.location = parsed.location;
+      if (!freelancer.role && parsed.role) freelancer.role = parsed.role;
+      if (!freelancer.title && parsed.title) freelancer.title = parsed.title;
+      if (!freelancer.rating && parsed.rating) freelancer.rating = parsed.rating;
+      if ((!freelancer.skills || freelancer.skills.length === 0) && parsed.skills) {
+        freelancer.skills = parsed.skills;
+      }
+      if (!freelancer.hourlyRate && parsed.hourlyRate) {
+        freelancer.hourlyRate = parsed.hourlyRate;
+      }
+
+      freelancer.cleanBio =
+        parsed.bio ||
+        parsed.about ||
+        parsed.description ||
+        parsed.summary ||
+        parsed.overview ||
+        parsed.introduction ||
+        parsed.profileSummary ||
+        parsed.shortDescription ||
+        (Array.isArray(parsed.services) && parsed.services.length > 0
+          ? `Experienced in ${parsed.services.join(", ")}`
+          : null) ||
+        "No bio available.";
+    } catch {
+      freelancer.cleanBio = "Overview available in profile.";
+    }
+  } else {
+    freelancer.cleanBio = rawBio || "No bio available for this freelancer.";
+  }
+
+  return freelancer;
+};
+
+const formatRating = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "N/A";
+  return numeric.toFixed(1);
+};
+
+const normalizeProposalRecord = (proposal) => proposal ?? {};
+
+const resolveProposalTitle = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
 
   return (
-    <div className="space-y-1 text-sm leading-6 text-foreground">
-      {content.split("\n").map((line, i) => {
+    normalizedProposal.projectTitle ||
+    normalizedProposal.title ||
+    normalizedProposal.service ||
+    normalizedProposal.serviceKey ||
+    "Proposal"
+  );
+};
+
+const resolveProposalServiceLabel = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+
+  return (
+    normalizedProposal.service ||
+    normalizedProposal.serviceName ||
+    normalizedProposal.serviceKey ||
+    normalizedProposal.category ||
+    "General"
+  );
+};
+
+const getProposalPreview = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const raw = String(
+    normalizedProposal.summary ||
+      normalizedProposal.content ||
+      normalizedProposal.project?.description ||
+      "",
+  )
+    .replace(/```markdown\n?/gi, "")
+    .replace(/```\n?/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!raw) return "No proposal summary available yet.";
+  return raw.length > 220 ? `${raw.slice(0, 220).trim()}...` : raw;
+};
+
+const ProposalContentRenderer = ({ content }) => {
+  if (!content) {
+    return <p className="text-sm text-muted-foreground">No content available.</p>;
+  }
+
+  return (
+    <div className="space-y-2 text-sm leading-6 text-foreground">
+      {content.split("\n").map((line, index) => {
         const trimmed = line.trim();
+
         if (trimmed.startsWith("##")) {
           return (
-            <h3 key={i} className="text-base font-bold mt-4 mb-2 text-primary">
+            <h3
+              key={`heading-${index}`}
+              className="pt-3 text-base font-semibold tracking-tight text-foreground"
+            >
               {trimmed.replace(/^#+\s*/, "")}
             </h3>
           );
         }
+
         if (trimmed.startsWith("-")) {
           return (
-            <div key={i} className="flex gap-2 ml-1">
-              <span className="text-muted-foreground">•</span>
+            <div key={`bullet-${index}`} className="flex items-start gap-2">
+              <span className="mt-1 text-primary">&bull;</span>
               <span>{trimmed.replace(/^-\s*/, "")}</span>
             </div>
           );
         }
-        if (!trimmed) return <div key={i} className="h-2" />;
-        return <p key={i}>{trimmed}</p>;
+
+        if (!trimmed) return <div key={`spacer-${index}`} className="h-2" />;
+        return <p key={`copy-${index}`}>{trimmed}</p>;
       })}
     </div>
   );
 };
 
-// Helper to extract details from proposal
 const extractProposalDetails = (proposal) => {
-  // Budget
-  let budget = proposal.budget || proposal.project?.budget || "Not set";
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  let budget =
+    normalizedProposal.budget || normalizedProposal.project?.budget || "Not set";
+  let delivery =
+    normalizedProposal.timeline ||
+    normalizedProposal.project?.timeline ||
+    "Not set";
 
-  // Timeline/Delivery
-  let delivery = proposal.timeline || proposal.project?.timeline || "Not set";
-  if (delivery === "Not set" && proposal.content) {
-    // Try to extract from content if simple regex matches
-    const timelineMatch = proposal.content.match(
-      /Timeline[:\s-]*(.+?)(?:\n|$)/i
+  if (delivery === "Not set" && normalizedProposal.content) {
+    const timelineMatch = normalizedProposal.content.match(
+      /Timeline[:\s-]*(.+?)(?:\n|$)/i,
     );
     if (timelineMatch) delivery = timelineMatch[1].trim();
   }
 
   return {
     budget: formatBudget(budget),
-    delivery: delivery,
-    requiresPayment: Boolean(proposal.requiresPayment),
+    delivery,
+    requiresPayment: Boolean(normalizedProposal.requiresPayment),
     statusDisplay:
-      proposal.requiresPayment
+      normalizedProposal.requiresPayment
         ? "Awaiting Payment"
-        : proposal.status === "draft"
-        ? "Draft"
-        : proposal.status === "rejected"
-          ? "Rejected"
-          : "Pending Review",
+        : normalizedProposal.status === "draft"
+          ? "Draft"
+          : normalizedProposal.status === "rejected"
+            ? "Rejected"
+            : "Pending Review",
   };
 };
 
-const ProposalRowCard = ({ proposal, onDelete, onOpen, onPay, isPaying }) => {
+const ProposalMetric = ({ icon: Icon, label, value, valueClassName }) => (
+  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <Icon className="h-3.5 w-3.5 text-primary" />
+      <span>{label}</span>
+    </div>
+    <p className={cn("mt-3 text-base font-semibold text-foreground", valueClassName)}>
+      {value}
+    </p>
+  </div>
+);
+
+const DashboardStatCard = ({ icon: Icon, label, value, hint, toneClassName }) => (
+  <Card className="overflow-hidden border-border/60 bg-card/70 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.9)] backdrop-blur">
+    <CardContent className="flex items-start justify-between gap-4 p-5">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          {label}
+        </p>
+        <p className="text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+        <p className="text-sm leading-6 text-muted-foreground">{hint}</p>
+      </div>
+      <div className={cn("rounded-2xl border p-3", toneClassName)}>
+        <Icon className="h-5 w-5" />
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const EmptyStateCard = ({ title, description }) => (
+  <Card className="border-dashed border-border/60 bg-card/40">
+    <CardContent className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-primary">
+        <FileText className="h-5 w-5" />
+      </div>
+      <div className="space-y-1.5">
+        <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+        <p className="max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ProposalRowCard = ({
+  proposal,
+  onDelete,
+  onOpen,
+  onPay,
+  onSend,
+  isPaying,
+  isSending,
+}) => {
   const details = extractProposalDetails(proposal);
-
-  const statusColors = {
-    draft: "bg-slate-500/10 text-slate-400 border-slate-300/30",
-    accepted: "bg-emerald-500/10 text-emerald-500 border-emerald-200/40",
-    sent: "bg-blue-500/10 text-blue-500 border-blue-200/40",
-    pending: "bg-amber-500/10 text-amber-500 border-amber-200/40",
-    rejected: "bg-red-500/10 text-red-500 border-red-200/40",
-  };
-
-  const statusLabels = {
-    draft: "DRAFT",
-    accepted: "ACCEPTED",
-    sent: "SENT",
-    pending: "PENDING",
-    rejected: "REJECTED",
-  };
+  const preview = getProposalPreview(proposal);
+  const hasAssignedFreelancer =
+    Boolean(proposal.freelancerId) &&
+    String(proposal.recipientName || "").trim().toLowerCase() !== "not assigned";
+  const isDraft = proposal.status === "draft";
+  const canSendToFreelancers = isDraft && !proposal.requiresPayment && onSend;
+  const serviceLabel = resolveProposalServiceLabel(proposal);
 
   return (
-    <Card className="group border-border/50 bg-card/60 backdrop-blur hover:border-border transition-all duration-200 mb-4">
-      <CardContent className="p-6">
-        <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between">
-          {/* Main Info */}
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-3">
-              <Badge
-                variant="outline"
-                className={`border font-semibold tracking-wider text-[10px] px-2 py-0.5 h-6 rounded uppercase ${
-                  statusColors[proposal.status] || statusColors.pending
-                }`}
-              >
-                {statusLabels[proposal.status] || "PENDING"}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                {proposal.submittedDate}
-              </span>
-            </div>
+    <Card className="group h-full overflow-hidden border-border/60 bg-[linear-gradient(180deg,rgba(18,18,22,0.96),rgba(10,10,12,0.96))] shadow-[0_24px_70px_-40px_rgba(15,23,42,0.9)] transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary/30">
+      <CardContent className="relative flex h-full flex-col gap-6 p-6 sm:p-7">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(85%_85%_at_0%_0%,rgba(59,130,246,0.18),transparent_60%),radial-gradient(80%_80%_at_100%_0%,rgba(250,204,21,0.12),transparent_52%)]" />
 
-            <div>
-              <h3 className="text-xl font-bold text-foreground mb-1">
-                {proposal.title}
-              </h3>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Freelancer:</span>
-                <span className="flex items-center gap-1 font-medium text-foreground">
-                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] text-primary font-bold">
-                    {proposal.recipientName.charAt(0)}
-                  </div>
-                  {proposal.recipientName}
-                </span>
-              </div>
-            </div>
-
-            {/* Metrics Grid */}
-            <div className="flex flex-wrap gap-4 md:gap-12 pt-2">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
-                  AGREED AMOUNT
-                </p>
-                <p className="font-bold text-foreground font-mono">
-                  {details.budget}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
-                  PROJECT STATUS
-                </p>
-                <p
-                  className={`font-medium ${
-                    proposal.status === "accepted"
-                      ? "text-blue-500"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {details.statusDisplay}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
-                  DELIVERY
-                </p>
-                <p className="font-medium text-foreground">
-                  {details.delivery}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col gap-3 min-w-[170px]">
-            <Button
-              className="w-full bg-amber-400 hover:bg-amber-500 text-black font-semibold border-none rounded-lg"
-              onClick={() => onOpen?.(proposal)}
-            >
-              <div className="flex items-center gap-2">
-                <ExternalLink className="w-4 h-4" />
-                View Details
-              </div>
-            </Button>
-
-            {proposal.requiresPayment && onPay ? (
-              <Button
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold border-none rounded-lg"
-                onClick={() => onPay(proposal)}
-                disabled={isPaying}
-              >
-                <div className="flex items-center gap-2">
-                  {isPaying ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CreditCard className="w-4 h-4" />
+        <div className="relative flex flex-col gap-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]",
+                    statusColors[proposal.status] || statusColors.pending,
                   )}
-                  {isPaying ? "Processing..." : "Approve & Pay"}
-                </div>
-              </Button>
-            ) : null}
+                >
+                  {statusLabels[proposal.status] || "Pending"}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-muted-foreground"
+                >
+                  {serviceLabel}
+                </Badge>
+                <span className="text-sm text-muted-foreground">{proposal.submittedDate}</span>
+              </div>
 
-            {onDelete && !proposal.requiresPayment ? (
-              <Button
-                className="w-full bg-card hover:bg-card/80 border border-border/40 text-foreground hover:text-destructive rounded-lg"
-                onClick={() => onDelete(proposal)}
-              >
-                <div className="flex items-center gap-2">
-                  <Trash2 className="w-4 h-4" />
-                  Delete
+              <div className="space-y-2">
+                <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+                  {resolveProposalTitle(proposal)}
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span className="font-medium">Freelancer</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-full border px-3 py-1.5",
+                      hasAssignedFreelancer
+                        ? "border-primary/20 bg-primary/10 text-foreground"
+                        : "border-dashed border-white/15 bg-white/[0.03] text-muted-foreground",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold",
+                        hasAssignedFreelancer
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-white/[0.05] text-muted-foreground",
+                      )}
+                    >
+                      {hasAssignedFreelancer
+                        ? proposal.recipientName?.charAt(0)?.toUpperCase()
+                        : "NA"}
+                    </span>
+                    {hasAssignedFreelancer ? proposal.recipientName : "Not assigned"}
+                  </span>
                 </div>
-              </Button>
-            ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-black/30 px-5 py-4 text-right shadow-inner">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Proposal Snapshot
+              </p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                {details.budget}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{details.delivery}</p>
+            </div>
           </div>
+
+          <p className="max-w-4xl text-sm leading-7 text-muted-foreground">{preview}</p>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <ProposalMetric icon={FileText} label="Budget" value={details.budget} />
+            <ProposalMetric icon={Clock3} label="Timeline" value={details.delivery} />
+            <ProposalMetric
+              icon={UserRound}
+              label="Project Status"
+              value={details.statusDisplay}
+              valueClassName={
+                proposal.status === "accepted"
+                  ? "text-emerald-300"
+                  : proposal.status === "rejected"
+                    ? "text-rose-300"
+                    : ""
+              }
+            />
+            <ProposalMetric
+              icon={CalendarDays}
+              label="Updated"
+              value={proposal.submittedDate}
+            />
+          </div>
+        </div>
+
+        <div className="relative flex flex-wrap items-center gap-3 border-t border-white/10 pt-5">
+          <Button
+            className="h-11 rounded-full bg-primary px-5 font-semibold text-primary-foreground hover:bg-primary/90"
+            onClick={() => onOpen?.(proposal)}
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            View Details
+          </Button>
+
+          {canSendToFreelancers ? (
+            <Button
+              variant="outline"
+              className="h-11 rounded-full border-primary/30 bg-primary/10 px-5 font-semibold text-primary hover:bg-primary/15"
+              onClick={() => onSend?.(proposal)}
+              disabled={isSending}
+            >
+              {isSending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              {isSending ? "Sending..." : "Send to Freelancers"}
+            </Button>
+          ) : null}
+
+          {proposal.requiresPayment && onPay ? (
+            <Button
+              className="h-11 rounded-full bg-emerald-500 px-5 font-semibold text-black hover:bg-emerald-400"
+              onClick={() => onPay(proposal)}
+              disabled={isPaying}
+            >
+              {isPaying ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CreditCard className="mr-2 h-4 w-4" />
+              )}
+              {isPaying ? "Processing..." : "Approve & Pay"}
+            </Button>
+          ) : null}
+
+          {onDelete && !proposal.requiresPayment ? (
+            <Button
+              variant="ghost"
+              className="h-11 rounded-full px-4 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
+              onClick={() => onDelete(proposal)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          ) : null}
         </div>
       </CardContent>
     </Card>
   );
 };
 
-const mapApiProposal = (proposal = {}) => {
-  const freelancerName =
-    proposal.freelancer?.fullName ||
-    proposal.freelancer?.name ||
-    proposal.freelancer?.email ||
-    proposal.freelancerName ||
-    "Freelancer";
-  const freelancerAvatar = proposal.freelancer?.avatar || proposal.avatar || "";
-  const projectStatus = String(proposal.project?.status || "").toUpperCase();
-  const spentAmount = Number(proposal.project?.spent || 0);
-  const requiresPayment =
-    projectStatus === "AWAITING_PAYMENT" &&
-    String(proposal.status || "").toUpperCase() === "ACCEPTED" &&
-    spentAmount <= 0;
-
-  return {
-    id: proposal.id,
-    title: proposal.project?.title || proposal.title || "Proposal",
-    category: proposal.project?.description
-      ? "Project"
-      : proposal.category || "General",
-    status: normalizeProposalStatus(proposal.status || "PENDING"),
-    recipientName: freelancerName,
-    recipientId: proposal.freelancer?.id || "FREELANCER",
-    projectId: proposal.projectId || proposal.project?.id || null,
-    freelancerId: proposal.freelancer?.id || proposal.freelancerId || null,
-    submittedDate: proposal.createdAt
-      ? new Date(proposal.createdAt).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        })
-      : "No Date",
-    avatar: freelancerAvatar,
-    content:
-      proposal.content ||
-      proposal.description ||
-      proposal.summary ||
-      proposal.project?.description ||
-      "",
-    budget: proposal.budget || proposal.project?.budget,
-    timeline: proposal.timeline || proposal.project?.timeline,
-    projectStatus,
-    requiresPayment,
-  };
-};
-
 const normalizeProposalStatus = (status = "") => {
-  switch (status.toUpperCase()) {
+  switch (String(status).toUpperCase()) {
     case "DRAFT":
       return "draft";
     case "ACCEPTED":
@@ -304,68 +647,168 @@ const normalizeProposalStatus = (status = "") => {
   }
 };
 
-const formatProposalDate = (value) => {
-  if (!value) return "No Date";
+const mapApiProposal = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const freelancerName =
+    normalizedProposal.freelancer?.fullName ||
+    normalizedProposal.freelancer?.name ||
+    normalizedProposal.freelancer?.email ||
+    normalizedProposal.freelancerName ||
+    "Freelancer";
+  const freelancerAvatar =
+    normalizedProposal.freelancer?.avatar || normalizedProposal.avatar || "";
+  const projectStatus = String(normalizedProposal.project?.status || "").toUpperCase();
+  const spentAmount = Number(normalizedProposal.project?.spent || 0);
+  const requiresPayment =
+    projectStatus === "AWAITING_PAYMENT" &&
+    String(normalizedProposal.status || "").toUpperCase() === "ACCEPTED" &&
+    spentAmount <= 0;
 
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "No Date";
-
-  return parsed.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return {
+    id: normalizedProposal.id,
+    title:
+      normalizedProposal.project?.title || normalizedProposal.title || "Proposal",
+    category:
+      normalizedProposal.service ||
+      normalizedProposal.project?.service ||
+      normalizedProposal.project?.category ||
+      normalizedProposal.category ||
+      "General",
+    service:
+      normalizedProposal.service ||
+      normalizedProposal.project?.service ||
+      normalizedProposal.project?.category ||
+      normalizedProposal.category ||
+      "General",
+    serviceKey:
+      normalizedProposal.serviceKey ||
+      normalizedProposal.project?.serviceKey ||
+      normalizedProposal.project?.category ||
+      normalizedProposal.category ||
+      "",
+    status: normalizeProposalStatus(normalizedProposal.status || "PENDING"),
+    recipientName: freelancerName,
+    recipientId: normalizedProposal.freelancer?.id || "FREELANCER",
+    projectId: normalizedProposal.projectId || normalizedProposal.project?.id || null,
+    freelancerId:
+      normalizedProposal.freelancer?.id || normalizedProposal.freelancerId || null,
+    submittedDate: formatProposalDate(
+      normalizedProposal.updatedAt || normalizedProposal.createdAt,
+    ),
+    avatar: freelancerAvatar,
+    summary:
+      normalizedProposal.summary ||
+      normalizedProposal.content ||
+      normalizedProposal.description ||
+      normalizedProposal.project?.description ||
+      "",
+    content:
+      normalizedProposal.content ||
+      normalizedProposal.description ||
+      normalizedProposal.summary ||
+      normalizedProposal.project?.description ||
+      "",
+    budget:
+      normalizedProposal.budget ||
+      normalizedProposal.amount ||
+      normalizedProposal.project?.budget,
+    timeline:
+      normalizedProposal.timeline || normalizedProposal.project?.timeline,
+    projectStatus,
+    requiresPayment,
+    createdAt: normalizedProposal.createdAt || null,
+    updatedAt: normalizedProposal.updatedAt || normalizedProposal.createdAt || null,
+    syncedProjectId:
+      normalizedProposal.projectId || normalizedProposal.project?.id || null,
+    proposalContext: normalizedProposal.proposalContext || null,
+  };
 };
 
-const mapLocalDraftProposal = (proposal = {}) => ({
-  id: proposal.id,
-  title:
-    proposal.projectTitle ||
-    proposal.title ||
-    proposal.service ||
-    proposal.serviceKey ||
-    "Proposal Draft",
-  category: proposal.service || proposal.serviceKey || "General",
-  status: "draft",
-  recipientName: proposal.recipientName || proposal.preparedFor || "Not assigned",
-  recipientId: proposal.recipientId || "LOCAL_DRAFT",
-  projectId: proposal.syncedProjectId || proposal.projectId || null,
-  freelancerId: proposal.freelancerId || null,
-  submittedDate: formatProposalDate(
-    proposal.updatedAt || proposal.createdAt || new Date().toISOString()
-  ),
-  avatar: proposal.avatar || "",
-  content: proposal.summary || proposal.content || "",
-  budget: proposal.budget || "",
-  timeline: proposal.timeline || "",
-  projectStatus: proposal.syncedProjectId ? "DRAFT" : "LOCAL_DRAFT",
-  requiresPayment: false,
-  isLocalDraft: true,
-  draftSignature: getProposalSignature(proposal),
-});
+const mapLocalDraftProposal = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
 
-const getProposalMergeKey = (proposal = {}) => {
-  if (proposal.isLocalDraft) {
-    if (proposal.projectId) {
-      return `draft-project:${proposal.projectId}`;
+  return {
+    id: normalizedProposal.id,
+    title:
+      normalizedProposal.projectTitle ||
+      normalizedProposal.title ||
+      normalizedProposal.service ||
+      normalizedProposal.serviceKey ||
+      "Proposal Draft",
+    category:
+      normalizedProposal.service || normalizedProposal.serviceKey || "General",
+    service:
+      normalizedProposal.service || normalizedProposal.serviceKey || "General",
+    serviceKey:
+      normalizedProposal.serviceKey || normalizedProposal.service || "",
+    status: "draft",
+    recipientName:
+      normalizedProposal.recipientName ||
+      normalizedProposal.preparedFor ||
+      "Not assigned",
+    recipientId: normalizedProposal.recipientId || "LOCAL_DRAFT",
+    projectId:
+      normalizedProposal.syncedProjectId || normalizedProposal.projectId || null,
+    syncedProjectId:
+      normalizedProposal.syncedProjectId || normalizedProposal.projectId || null,
+    freelancerId: normalizedProposal.freelancerId || null,
+    submittedDate: formatProposalDate(
+      normalizedProposal.updatedAt ||
+        normalizedProposal.createdAt ||
+        new Date().toISOString(),
+    ),
+    avatar: normalizedProposal.avatar || "",
+    summary: normalizedProposal.summary || normalizedProposal.content || "",
+    content: normalizedProposal.summary || normalizedProposal.content || "",
+    budget: normalizedProposal.budget || "",
+    timeline: normalizedProposal.timeline || "",
+    projectStatus: normalizedProposal.syncedProjectId ? "DRAFT" : "LOCAL_DRAFT",
+    requiresPayment: false,
+    isLocalDraft: true,
+    draftSignature: getProposalSignature(normalizedProposal),
+    createdAt: normalizedProposal.createdAt || null,
+    updatedAt: normalizedProposal.updatedAt || normalizedProposal.createdAt || null,
+    proposalContext: normalizedProposal.proposalContext || null,
+    projectStack:
+      normalizedProposal.projectStack ||
+      normalizedProposal.project_stack ||
+      normalizedProposal.requiredTechStack ||
+      normalizedProposal.required_tech_stack ||
+      null,
+    techStack:
+      normalizedProposal.techStack || normalizedProposal.tech_stack || null,
+    requirements: normalizedProposal.requirements || null,
+  };
+};
+
+const getProposalMergeKey = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+
+  if (normalizedProposal.isLocalDraft) {
+    if (normalizedProposal.projectId) {
+      return `draft-project:${normalizedProposal.projectId}`;
     }
-
-    return `draft:${proposal.draftSignature || proposal.id}`;
+    return `draft:${normalizedProposal.draftSignature || normalizedProposal.id}`;
   }
 
-  if (proposal.status === "draft" && proposal.projectId && !proposal.freelancerId) {
-    return `draft-project:${proposal.projectId}`;
+  if (
+    normalizedProposal.status === "draft" &&
+    normalizedProposal.projectId &&
+    !normalizedProposal.freelancerId
+  ) {
+    return `draft-project:${normalizedProposal.projectId}`;
   }
 
-  if (proposal.id) {
-    return `proposal:${proposal.id}`;
+  if (normalizedProposal.id) return `proposal:${normalizedProposal.id}`;
+  if (normalizedProposal.projectId && normalizedProposal.freelancerId) {
+    return `proposal:${normalizedProposal.projectId}:${normalizedProposal.freelancerId}`;
   }
 
-  if (proposal.projectId && proposal.freelancerId) {
-    return `proposal:${proposal.projectId}:${proposal.freelancerId}`;
-  }
-
-  return `proposal:${proposal.projectId || proposal.title || proposal.submittedDate}`;
+  return `proposal:${
+    normalizedProposal.projectId ||
+    normalizedProposal.title ||
+    normalizedProposal.submittedDate
+  }`;
 };
 
 const mergeProposalCollections = (remote = [], localDrafts = []) => {
@@ -390,11 +833,7 @@ const deleteLocalDraftProposal = (proposalId, userId) => {
   const { proposals, activeId } = loadSavedProposalsFromStorage(userId);
   const remaining = proposals.filter((proposal) => proposal.id !== proposalId);
   const preferredActiveId = activeId === proposalId ? null : activeId;
-  const nextActiveId = resolveActiveProposalId(
-    remaining,
-    preferredActiveId,
-    null
-  );
+  const nextActiveId = resolveActiveProposalId(remaining, preferredActiveId, null);
 
   persistSavedProposalsToStorage(remaining, nextActiveId, storageKeys);
 };
@@ -410,16 +849,28 @@ const ClientProposalContent = () => {
   const [activeTab, setActiveTab] = useState("draft");
   const [processingPaymentProposalId, setProcessingPaymentProposalId] =
     useState(null);
+  const [sendingProposalId, setSendingProposalId] = useState(null);
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
+  const [showFreelancerSelect, setShowFreelancerSelect] = useState(false);
+  const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
+  const [viewingFreelancer, setViewingFreelancer] = useState(null);
+  const [freelancerSearch, setFreelancerSearch] = useState("");
+  const [suggestedFreelancers, setSuggestedFreelancers] = useState([]);
+  const [isFreelancersLoading, setIsFreelancersLoading] = useState(false);
+  const [selectedProposalForSend, setSelectedProposalForSend] = useState(null);
+  const freelancerPoolCacheRef = useRef({
+    userId: null,
+    loaded: false,
+    data: [],
+  });
+  const freelancerPoolPromiseRef = useRef(null);
 
   const deepLinkProjectId = searchParams.get("projectId");
   const deepLinkTab = (searchParams.get("tab") || "").toLowerCase();
   const deepLinkAction = (searchParams.get("action") || "").toLowerCase();
 
   const fetchProposals = useCallback(async () => {
-    const { proposals: localSavedProposals } = loadSavedProposalsFromStorage(
-      user?.id
-    );
+    const { proposals: localSavedProposals } = loadSavedProposalsFromStorage(user?.id);
     const localDrafts = localSavedProposals.map(mapLocalDraftProposal);
 
     try {
@@ -428,17 +879,15 @@ const ClientProposalContent = () => {
       const remote = Array.isArray(payload?.data) ? payload.data : [];
       const remoteNormalized = remote.map(mapApiProposal);
 
-      // Remove duplicates
       const uniqueById = remoteNormalized.reduce(
         (acc, proposal) => {
-          const key =
-            proposal.id || `${proposal.projectId}-${proposal.freelancerId}`;
+          const key = proposal.id || `${proposal.projectId}-${proposal.freelancerId}`;
           if (!key || acc.seen.has(key)) return acc;
           acc.seen.add(key);
           acc.list.push(proposal);
           return acc;
         },
-        { seen: new Set(), list: [] }
+        { seen: new Set(), list: [] },
       ).list;
 
       setProposals(mergeProposalCollections(uniqueById, localDrafts));
@@ -449,6 +898,113 @@ const ClientProposalContent = () => {
       setIsLoading(false);
     }
   }, [authFetch, user?.id]);
+
+  const fetchFreelancerPool = useCallback(async () => {
+    if (!user?.id) return [];
+
+    const currentCache = freelancerPoolCacheRef.current;
+    if (currentCache.userId === user.id && currentCache.loaded) {
+      return currentCache.data;
+    }
+
+    if (freelancerPoolPromiseRef.current) {
+      return freelancerPoolPromiseRef.current;
+    }
+
+    freelancerPoolPromiseRef.current = (async () => {
+      const [activeFreelancers, pendingFreelancers] = await Promise.all([
+        listFreelancers({
+          onboardingComplete: "true",
+          status: "ACTIVE",
+        }),
+        listFreelancers({
+          onboardingComplete: "true",
+          status: "PENDING_APPROVAL",
+        }),
+      ]);
+
+      const merged = [
+        ...(Array.isArray(activeFreelancers) ? activeFreelancers : []),
+        ...(Array.isArray(pendingFreelancers) ? pendingFreelancers : []),
+      ];
+      const uniqueById = merged.filter(
+        (freelancer, index, collection) =>
+          freelancer?.id &&
+          collection.findIndex((item) => item?.id === freelancer.id) === index,
+      );
+      const normalized = uniqueById.filter(
+        (freelancer) => freelancer?.id !== user.id && hasFreelancerRole(freelancer),
+      );
+
+      freelancerPoolCacheRef.current = {
+        userId: user.id,
+        loaded: true,
+        data: normalized,
+      };
+
+      return normalized;
+    })();
+
+    try {
+      return await freelancerPoolPromiseRef.current;
+    } finally {
+      freelancerPoolPromiseRef.current = null;
+    }
+  }, [user?.id]);
+
+  const openFreelancerSelection = useCallback(
+    (proposal) => {
+      if (!proposal) return;
+      setSelectedProposalForSend(proposal);
+      const cache = freelancerPoolCacheRef.current;
+      const hasCachedPool = cache.userId === user?.id && cache.loaded;
+      setIsFreelancersLoading(!hasCachedPool);
+      setShowFreelancerSelect(true);
+    },
+    [user?.id],
+  );
+
+  const updateProposalProjectReference = useCallback(
+    (proposal, projectId, projectStatus = "OPEN") => {
+      const now = new Date().toISOString();
+
+      if (proposal?.isLocalDraft) {
+        const storageKeys = getProposalStorageKeys(user?.id);
+        const { proposals: savedProposals } = loadSavedProposalsFromStorage(user?.id);
+        const updatedSavedProposals = savedProposals.map((savedProposal) =>
+          savedProposal.id === proposal.id
+            ? {
+                ...savedProposal,
+                ownerId: user?.id || savedProposal.ownerId || null,
+                syncedProjectId: projectId,
+                projectId,
+                syncedAt: savedProposal.syncedAt || now,
+              }
+            : savedProposal,
+        );
+
+        persistSavedProposalsToStorage(updatedSavedProposals, proposal.id, storageKeys);
+      }
+
+      const patch = {
+        projectId,
+        syncedProjectId: projectId,
+        projectStatus,
+        updatedAt: now,
+      };
+
+      setProposals((current) =>
+        current.map((entry) => (entry.id === proposal.id ? { ...entry, ...patch } : entry)),
+      );
+      setSelectedProposalForSend((current) =>
+        current?.id === proposal.id ? { ...current, ...patch } : current,
+      );
+      setActiveProposal((current) =>
+        current?.id === proposal.id ? { ...current, ...patch } : current,
+      );
+    },
+    [user?.id],
+  );
 
   useEffect(() => {
     setHasHandledDeepLink(false);
@@ -468,15 +1024,92 @@ const ClientProposalContent = () => {
 
     return () => {
       isMounted = false;
-      if (intervalId) window.clearInterval(intervalId);
+      window.clearInterval(intervalId);
     };
   }, [fetchProposals, isAuthenticated]);
+
+  useEffect(() => {
+    freelancerPoolPromiseRef.current = null;
+
+    if (!user?.id) {
+      freelancerPoolCacheRef.current = {
+        userId: null,
+        loaded: false,
+        data: [],
+      };
+      setSuggestedFreelancers([]);
+      return;
+    }
+
+    if (freelancerPoolCacheRef.current.userId !== user.id) {
+      freelancerPoolCacheRef.current = {
+        userId: user.id,
+        loaded: false,
+        data: [],
+      };
+      setSuggestedFreelancers([]);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void fetchFreelancerPool().catch((error) => {
+      console.error("Failed to prefetch freelancers:", error);
+    });
+  }, [fetchFreelancerPool, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !showFreelancerSelect) return;
+
+    let isCurrentRequest = true;
+
+    const hydrateFreelancers = async () => {
+      const cache = freelancerPoolCacheRef.current;
+
+      if (cache.userId === user.id && cache.loaded) {
+        setSuggestedFreelancers(cache.data);
+        setIsFreelancersLoading(false);
+        return;
+      }
+
+      setIsFreelancersLoading(true);
+      try {
+        const pool = await fetchFreelancerPool();
+        if (!isCurrentRequest) return;
+        setSuggestedFreelancers(pool);
+      } catch (error) {
+        if (!isCurrentRequest) return;
+        console.error("Failed to load suggested freelancers:", error);
+        setSuggestedFreelancers([]);
+      } finally {
+        if (isCurrentRequest) setIsFreelancersLoading(false);
+      }
+    };
+
+    void hydrateFreelancers();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [fetchFreelancerPool, showFreelancerSelect, user?.id]);
+
+  useEffect(() => {
+    if (!showFreelancerSelect) {
+      setFreelancerSearch("");
+      setIsFreelancersLoading(false);
+    }
+  }, [showFreelancerSelect]);
 
   const handleDelete = useCallback(
     async (proposal) => {
       if (proposal?.isLocalDraft) {
         deleteLocalDraftProposal(proposal.id, user?.id);
         setProposals((prev) => prev.filter((item) => item.id !== proposal.id));
+        setActiveProposal((current) => (current?.id === proposal.id ? null : current));
+        setSelectedProposalForSend((current) =>
+          current?.id === proposal.id ? null : current,
+        );
+        if (activeProposal?.id === proposal.id) setIsViewing(false);
         toast.success("Draft deleted.");
         return;
       }
@@ -487,12 +1120,17 @@ const ClientProposalContent = () => {
         });
         if (!response.ok) throw new Error("Unable to delete proposal.");
         setProposals((prev) => prev.filter((item) => item.id !== proposal.id));
+        setActiveProposal((current) => (current?.id === proposal.id ? null : current));
+        setSelectedProposalForSend((current) =>
+          current?.id === proposal.id ? null : current,
+        );
+        if (activeProposal?.id === proposal.id) setIsViewing(false);
         toast.success("Proposal deleted.");
       } catch {
         toast.error("Unable to delete proposal right now.");
       }
     },
-    [authFetch, user?.id]
+    [activeProposal?.id, authFetch, user?.id],
   );
 
   const handleApproveAndPay = useCallback(
@@ -505,29 +1143,28 @@ const ClientProposalContent = () => {
       setProcessingPaymentProposalId(proposal.id);
 
       try {
-        const orderRes = await authFetch(
-          `/projects/${proposal.projectId}/pay-upfront/order`,
-          { method: "POST" }
-        );
+        const orderRes = await authFetch(`/projects/${proposal.projectId}/pay-upfront/order`, {
+          method: "POST",
+        });
         const orderPayload = await orderRes.json().catch(() => null);
 
         if (!orderRes.ok) {
           if (orderRes.status === 503) {
-            const fallbackRes = await authFetch(
-              `/projects/${proposal.projectId}/pay-upfront`,
-              { method: "POST" }
-            );
+            const fallbackRes = await authFetch(`/projects/${proposal.projectId}/pay-upfront`, {
+              method: "POST",
+            });
             const fallbackPayload = await fallbackRes.json().catch(() => null);
             if (!fallbackRes.ok) {
               throw new Error(fallbackPayload?.message || "Payment failed.");
             }
             toast.success(
               fallbackPayload?.data?.message ||
-                "Payment completed. Project is now active."
+                "Payment completed. Project is now active.",
             );
             await fetchProposals();
             return;
           }
+
           throw new Error(orderPayload?.message || "Unable to start payment.");
         }
 
@@ -548,14 +1185,11 @@ const ClientProposalContent = () => {
           },
         });
 
-        const verifyRes = await authFetch(
-          `/projects/${proposal.projectId}/pay-upfront/verify`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(paymentProof),
-          }
-        );
+        const verifyRes = await authFetch(`/projects/${proposal.projectId}/pay-upfront/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paymentProof),
+        });
         const verifyPayload = await verifyRes.json().catch(() => null);
 
         if (!verifyRes.ok) {
@@ -563,7 +1197,7 @@ const ClientProposalContent = () => {
         }
 
         toast.success(
-          verifyPayload?.data?.message || "Payment completed. Project is now active."
+          verifyPayload?.data?.message || "Payment completed. Project is now active.",
         );
         await fetchProposals();
       } catch (error) {
@@ -573,38 +1207,8 @@ const ClientProposalContent = () => {
         setProcessingPaymentProposalId(null);
       }
     },
-    [authFetch, fetchProposals, user]
+    [authFetch, fetchProposals, user],
   );
-
-  const scopedProposals = useMemo(() => {
-    if (!deepLinkProjectId) return proposals;
-    return proposals.filter(
-      (proposal) => String(proposal.projectId) === String(deepLinkProjectId)
-    );
-  }, [deepLinkProjectId, proposals]);
-
-  const grouped = useMemo(() => {
-    return scopedProposals.reduce(
-      (acc, proposal) => {
-        if (proposal.status === "accepted" && !proposal.requiresPayment) {
-          return acc;
-        }
-        if (proposal.status === "accepted" && proposal.requiresPayment) {
-          acc.pending.push(proposal);
-          return acc;
-        }
-        if (proposal.status === "draft") {
-          acc.draft.push(proposal);
-        } else if (proposal.status === "rejected") {
-          acc.rejected.push(proposal);
-        } else {
-          acc.pending.push(proposal);
-        }
-        return acc;
-      },
-      { draft: [], pending: [], rejected: [] }
-    );
-  }, [scopedProposals]);
 
   const handleOpenProposal = useCallback(
     async (proposal) => {
@@ -612,7 +1216,7 @@ const ClientProposalContent = () => {
       setActiveProposal(proposal);
 
       if (proposal?.isLocalDraft) return;
-      if (proposal?.content && proposal?.budget) return; // Already have details
+      if (proposal?.content && proposal?.budget) return;
       if (!proposal?.id) return;
 
       try {
@@ -623,7 +1227,7 @@ const ClientProposalContent = () => {
         if (mapped) {
           setActiveProposal(mapped);
           setProposals((prev) =>
-            prev.map((item) => (item.id === mapped.id ? mapped : item))
+            prev.map((item) => (item.id === mapped.id ? mapped : item)),
           );
         }
       } catch (error) {
@@ -632,16 +1236,348 @@ const ClientProposalContent = () => {
         setIsLoadingProposal(false);
       }
     },
-    [authFetch]
+    [authFetch],
   );
 
-  useEffect(() => {
-    if (!deepLinkProjectId || isLoading || hasHandledDeepLink) {
-      return;
+  const sendProposalToFreelancer = useCallback(
+    async (freelancer) => {
+      const proposal = selectedProposalForSend;
+      if (!proposal || !freelancer) return;
+
+      setSendingProposalId(proposal.id);
+
+      try {
+        const normalizedBudget = parseProposalBudgetValue(proposal.budget);
+        const sourceProjectId = proposal?.syncedProjectId || proposal?.projectId || null;
+        const currentProjectStatus = String(proposal?.projectStatus || "").toLowerCase();
+
+        const hasExistingProposalForFreelancer = proposals.some((entry) => {
+          if (!entry?.freelancerId || !entry?.projectId) return false;
+          if (String(entry.projectId) !== String(sourceProjectId)) return false;
+          if (String(entry.freelancerId) !== String(freelancer.id)) return false;
+          return PROPOSAL_BLOCKED_STATUSES.has(String(entry.status || "").toLowerCase());
+        });
+
+        if (hasExistingProposalForFreelancer) {
+          throw new Error("You already sent this proposal to this freelancer.");
+        }
+
+        if (CLOSED_PROJECT_STATUSES.has(currentProjectStatus)) {
+          throw new Error("This project is already completed or paused.");
+        }
+
+        let project = sourceProjectId
+          ? {
+              id: sourceProjectId,
+              status: proposal.projectStatus || "OPEN",
+            }
+          : null;
+
+        if (sourceProjectId && DRAFT_PROJECT_STATUSES.has(currentProjectStatus)) {
+          const publishRes = await authFetch(`/projects/${sourceProjectId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: resolveProposalTitle(proposal),
+              description: proposal.summary || proposal.content || "",
+              budget: normalizedBudget,
+              timeline: proposal.timeline || "1 month",
+              status: "OPEN",
+            }),
+          });
+
+          const publishPayload = await publishRes.json().catch(() => null);
+          if (!publishRes.ok) {
+            throw new Error("Failed to publish project before sending proposal.");
+          }
+
+          project =
+            publishPayload?.data?.project ||
+            publishPayload?.data || {
+              id: sourceProjectId,
+              status: "OPEN",
+            };
+        }
+
+        if (!project?.id) {
+          const projectRes = await authFetch("/projects", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: resolveProposalTitle(proposal),
+              description: proposal.summary || proposal.content || "",
+              budget: normalizedBudget,
+              timeline: proposal.timeline || "1 month",
+              status: "OPEN",
+            }),
+          });
+
+          const projectPayload = await projectRes.json().catch(() => null);
+          if (!projectRes.ok) {
+            throw new Error(projectPayload?.message || "Failed to create project.");
+          }
+
+          project =
+            projectPayload?.data?.project ||
+            projectPayload?.data || {
+              id: null,
+              status: "OPEN",
+            };
+        }
+
+        if (!project?.id) {
+          throw new Error("Could not resolve project for this proposal.");
+        }
+
+        updateProposalProjectReference(
+          proposal,
+          project.id,
+          String(project.status || "OPEN").toUpperCase(),
+        );
+
+        const proposalRes = await authFetch("/proposals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: project.id,
+            freelancerId: freelancer.id,
+            amount: normalizedBudget,
+            coverLetter: proposal.summary || proposal.content || "",
+          }),
+        });
+
+        const proposalPayload = await proposalRes.json().catch(() => null);
+        if (!proposalRes.ok) {
+          throw new Error(proposalPayload?.message || "Failed to send proposal.");
+        }
+
+        toast.success(
+          proposalRes.status === 200
+            ? `Proposal resent to ${freelancer.fullName || "freelancer"}!`
+            : `Proposal sent to ${freelancer.fullName || "freelancer"}!`,
+        );
+
+        await fetchProposals();
+      } catch (error) {
+        console.error("Failed to send proposal:", error);
+        toast.error(error?.message || "Failed to send proposal. Please try again.");
+      } finally {
+        setSendingProposalId(null);
+      }
+    },
+    [
+      authFetch,
+      fetchProposals,
+      proposals,
+      selectedProposalForSend,
+      updateProposalProjectReference,
+    ],
+  );
+
+  const scopedProposals = useMemo(() => {
+    if (!deepLinkProjectId) return proposals;
+    return proposals.filter(
+      (proposal) => String(proposal.projectId) === String(deepLinkProjectId),
+    );
+  }, [deepLinkProjectId, proposals]);
+
+  const grouped = useMemo(
+    () =>
+      scopedProposals.reduce(
+        (acc, proposal) => {
+          if (proposal.status === "accepted" && !proposal.requiresPayment) return acc;
+
+          if (proposal.status === "accepted" && proposal.requiresPayment) {
+            acc.pending.push(proposal);
+            return acc;
+          }
+
+          if (proposal.status === "draft") {
+            acc.draft.push(proposal);
+          } else if (proposal.status === "rejected") {
+            acc.rejected.push(proposal);
+          } else {
+            acc.pending.push(proposal);
+          }
+
+          return acc;
+        },
+        { draft: [], pending: [], rejected: [] },
+      ),
+    [scopedProposals],
+  );
+
+  const unassignedDraftCount = useMemo(
+    () =>
+      grouped.draft.filter(
+        (proposal) =>
+          !proposal.freelancerId ||
+          String(proposal.recipientName || "").trim().toLowerCase() === "not assigned",
+      ).length,
+    [grouped.draft],
+  );
+
+  const proposalForFreelancerSelection = useMemo(() => {
+    if (!selectedProposalForSend) return null;
+
+    return {
+      ...selectedProposalForSend,
+      projectTitle: resolveProposalTitle(selectedProposalForSend),
+      title: resolveProposalTitle(selectedProposalForSend),
+      summary:
+        selectedProposalForSend.summary || selectedProposalForSend.content || "",
+      content:
+        selectedProposalForSend.content || selectedProposalForSend.summary || "",
+      service: resolveProposalServiceLabel(selectedProposalForSend),
+      serviceKey:
+        selectedProposalForSend.serviceKey ||
+        resolveProposalServiceLabel(selectedProposalForSend),
+      syncedProjectId:
+        selectedProposalForSend.syncedProjectId ||
+        selectedProposalForSend.projectId ||
+        null,
+      projectId:
+        selectedProposalForSend.projectId ||
+        selectedProposalForSend.syncedProjectId ||
+        null,
+    };
+  }, [selectedProposalForSend]);
+
+  const projectRequiredSkills = useMemo(() => {
+    if (!showFreelancerSelect) return [];
+    return extractProjectRequiredSkills(proposalForFreelancerSelection || {});
+  }, [proposalForFreelancerSelection, showFreelancerSelect]);
+
+  const rankedSuggestedFreelancers = useMemo(() => {
+    if (!showFreelancerSelect) return [];
+    if (!Array.isArray(suggestedFreelancers) || suggestedFreelancers.length === 0) {
+      return [];
     }
 
+    return rankFreelancersForProposal(
+      suggestedFreelancers,
+      proposalForFreelancerSelection,
+    );
+  }, [proposalForFreelancerSelection, showFreelancerSelect, suggestedFreelancers]);
+
+  const freelancerSelectionData = useMemo(() => {
+    if (!showFreelancerSelect) {
+      return {
+        totalRanked: 0,
+        invitedCount: 0,
+        available: [],
+      };
+    }
+
+    const sourceProjectId =
+      proposalForFreelancerSelection?.syncedProjectId ||
+      proposalForFreelancerSelection?.projectId ||
+      null;
+    const alreadyInvitedIds = new Set();
+
+    if (sourceProjectId) {
+      proposals.forEach((proposal) => {
+        if (String(proposal.projectId) !== String(sourceProjectId)) return;
+        const status = String(proposal.status || "").toLowerCase();
+        if (proposal.freelancerId && PROPOSAL_BLOCKED_STATUSES.has(status)) {
+          alreadyInvitedIds.add(proposal.freelancerId);
+        }
+      });
+    }
+
+    const normalized = rankedSuggestedFreelancers.map((entry) =>
+      normalizeFreelancerCardData(entry),
+    );
+    const matched = projectRequiredSkills.length
+      ? normalized.filter((freelancer) => {
+          const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
+          return projectRequiredSkills.some((requiredSkill) =>
+            freelancerMatchesRequiredSkill(requiredSkill, freelancerSkillTokens),
+          );
+        })
+      : normalized;
+
+    const available = matched.filter((freelancer) => {
+      if (alreadyInvitedIds.has(freelancer.id)) return false;
+      if (!isFreelancerOpenToWork(freelancer)) return false;
+      const matchScore = Number(freelancer?.matchScore);
+      if (!Number.isFinite(matchScore)) return false;
+      return Math.round(matchScore) >= MIN_FREELANCER_MATCH_SCORE;
+    });
+
+    return {
+      totalRanked: matched.length,
+      invitedCount: alreadyInvitedIds.size,
+      available,
+    };
+  }, [
+    projectRequiredSkills,
+    proposalForFreelancerSelection?.projectId,
+    proposalForFreelancerSelection?.syncedProjectId,
+    proposals,
+    rankedSuggestedFreelancers,
+    showFreelancerSelect,
+  ]);
+
+  const filteredFreelancers = useMemo(() => {
+    if (!showFreelancerSelect) return [];
+
+    const query = String(freelancerSearch || "").trim().toLowerCase();
+    if (!query) return freelancerSelectionData.available;
+
+    return freelancerSelectionData.available.filter((freelancer) => {
+      const searchable = [
+        freelancer.fullName,
+        freelancer.name,
+        freelancer.role,
+        freelancer.cleanBio,
+        ...(Array.isArray(freelancer.skills) ? freelancer.skills : []),
+        ...(Array.isArray(freelancer.matchHighlights) ? freelancer.matchHighlights : []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchable.includes(query);
+    });
+  }, [
+    freelancerSearch,
+    freelancerSelectionData.available,
+    showFreelancerSelect,
+  ]);
+
+  const bestMatchFreelancerIds = useMemo(() => {
+    const scoredFreelancers = freelancerSelectionData.available
+      .map((freelancer) => {
+        const score = Number.isFinite(Number(freelancer?.matchScore))
+          ? Math.round(Number(freelancer.matchScore))
+          : null;
+        if (!freelancer?.id || score === null) return null;
+        return { id: freelancer.id, score };
+      })
+      .filter(Boolean);
+
+    if (scoredFreelancers.length === 0) return new Set();
+
+    const topScore = scoredFreelancers.reduce(
+      (maxScore, freelancer) => Math.max(maxScore, freelancer.score),
+      Number.NEGATIVE_INFINITY,
+    );
+
+    if (!Number.isFinite(topScore) || topScore <= 0) return new Set();
+
+    return new Set(
+      scoredFreelancers
+        .filter((freelancer) => freelancer.score === topScore)
+        .map((freelancer) => freelancer.id),
+    );
+  }, [freelancerSelectionData.available]);
+
+  useEffect(() => {
+    if (!deepLinkProjectId || isLoading || hasHandledDeepLink) return;
+
     const relatedProposals = proposals.filter(
-      (proposal) => String(proposal.projectId) === String(deepLinkProjectId)
+      (proposal) => String(proposal.projectId) === String(deepLinkProjectId),
     );
 
     if (!relatedProposals.length) {
@@ -687,196 +1623,480 @@ const ClientProposalContent = () => {
     setSearchParams,
   ]);
 
+  const tabCopy = {
+    draft: {
+      title: "Draft proposals",
+      description: "Refine scope, review details, and send polished drafts to matched freelancers.",
+      emptyTitle: "No draft proposals",
+      emptyDescription:
+        "Accepted proposal drafts will appear here until you send them to freelancers.",
+    },
+    pending: {
+      title: "Pending approvals",
+      description: "Track sent proposals, payment-required approvals, and live invites in one place.",
+      emptyTitle: "No pending proposals",
+      emptyDescription:
+        "When a freelancer receives your proposal or a payment step is waiting, it will show here.",
+    },
+    rejected: {
+      title: "Rejected proposals",
+      description: "Keep visibility on declined proposals so you can revise the scope and resend later.",
+      emptyTitle: "No rejected proposals",
+      emptyDescription:
+        "Rejected proposals will appear here if a freelancer turns down the current scope.",
+    },
+  };
+
+  const dashboardStats = [
+    {
+      label: "Drafts ready",
+      value: grouped.draft.length,
+      hint:
+        grouped.draft.length > 0
+          ? `${unassignedDraftCount} draft${unassignedDraftCount === 1 ? "" : "s"} still need freelancer outreach.`
+          : "No draft proposals are waiting right now.",
+      icon: Layers3,
+      toneClassName: "border-sky-400/20 bg-sky-500/10 text-sky-200",
+    },
+    {
+      label: "Pending action",
+      value: grouped.pending.length,
+      hint:
+        grouped.pending.length > 0
+          ? "These proposals are live, waiting on review, or need payment approval."
+          : "No live proposals need your attention.",
+      icon: Send,
+      toneClassName: "border-amber-400/20 bg-amber-500/10 text-amber-200",
+    },
+    {
+      label: "Need revision",
+      value: grouped.rejected.length,
+      hint:
+        grouped.rejected.length > 0
+          ? "Use rejected proposals as a starting point for a stronger next draft."
+          : "No rejected proposals in the current workspace.",
+      icon: Sparkles,
+      toneClassName: "border-rose-400/20 bg-rose-500/10 text-rose-200",
+    },
+  ];
+
+  const currentTabItems = grouped[activeTab] || [];
+  const currentTabMeta = tabCopy[activeTab] || tabCopy.draft;
+
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
+    <div className="relative flex h-full flex-1 flex-col overflow-hidden bg-background">
       <ClientTopBar />
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
-        <div className="max-w-[1600px] mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-              Project Proposals
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your draft, pending, and rejected proposals.
-            </p>
-          </div>
-          {/* Filter/Sort removed */}
+      <main className="relative z-10 flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 lg:px-12">
+        <div className="mx-auto flex w-full max-w-[1580px] flex-col gap-6">
+          <section className="overflow-hidden rounded-[32px] border border-border/60 bg-[linear-gradient(140deg,rgba(12,12,14,0.98),rgba(18,24,38,0.95))] shadow-[0_28px_90px_-52px_rgba(15,23,42,0.95)]">
+            <div className="relative p-6 sm:p-8">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_85%_at_0%_0%,rgba(250,204,21,0.12),transparent_55%),radial-gradient(70%_80%_at_100%_0%,rgba(59,130,246,0.14),transparent_48%)]" />
+
+              <div className="relative flex flex-col gap-8">
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                  <div className="max-w-3xl space-y-3">
+                    <Badge className="w-fit rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                      Client proposal workspace
+                    </Badge>
+                    <div className="space-y-2">
+                      <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                        Project Proposals
+                      </h1>
+                      <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+                        Manage every draft, live proposal, and declined scope from one page.
+                        Drafts can now be sent directly to matched freelancers without leaving
+                        this workspace.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-black/25 px-5 py-4 text-sm text-muted-foreground backdrop-blur">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                      Total proposals
+                    </p>
+                    <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
+                      {scopedProposals.length}
+                    </p>
+                    <p className="mt-1 leading-6">
+                      {deepLinkProjectId
+                        ? "Showing proposals linked to the selected project."
+                        : "Showing drafts, pending proposals, and rejected proposals."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {dashboardStats.map((item) => (
+                    <DashboardStatCard key={item.label} {...item} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <Tabs
+            defaultValue="draft"
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <div className="rounded-[28px] border border-border/60 bg-card/55 p-3 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.9)] backdrop-blur">
+              <TabsList className="grid h-auto w-full grid-cols-1 gap-3 bg-transparent p-0 md:grid-cols-3">
+                {[
+                  {
+                    value: "draft",
+                    label: "Draft",
+                    count: grouped.draft.length,
+                    tone: "data-[state=active]:border-sky-400/30 data-[state=active]:bg-sky-500/10 data-[state=active]:text-sky-100",
+                  },
+                  {
+                    value: "pending",
+                    label: "Pending Approval",
+                    count: grouped.pending.length,
+                    tone: "data-[state=active]:border-amber-400/30 data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-100",
+                  },
+                  {
+                    value: "rejected",
+                    label: "Rejected",
+                    count: grouped.rejected.length,
+                    tone: "data-[state=active]:border-rose-400/30 data-[state=active]:bg-rose-500/10 data-[state=active]:text-rose-100",
+                  },
+                ].map((item) => (
+                  <TabsTrigger
+                    key={item.value}
+                    value={item.value}
+                    className={cn(
+                      "h-auto rounded-[22px] border border-transparent bg-white/[0.02] px-4 py-4 text-left text-muted-foreground shadow-none transition hover:text-foreground",
+                      item.tone,
+                    )}
+                  >
+                    <div className="flex w-full items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold">{item.label}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {item.value === "draft"
+                            ? "Ready to edit or send"
+                            : item.value === "pending"
+                              ? "Live invites and approvals"
+                              : "Closed loop proposals"}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-semibold text-foreground">
+                        {item.count}
+                      </span>
+                    </div>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+
+            <div className="mt-6 rounded-[28px] border border-border/60 bg-card/50 p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.9)]">
+              <div className="mb-5 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+                <div className="space-y-1.5">
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                    {currentTabMeta.title}
+                  </h2>
+                  <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                    {currentTabMeta.description}
+                  </p>
+                </div>
+                {activeTab === "draft" && grouped.draft.length > 0 ? (
+                  <Badge
+                    variant="outline"
+                    className="w-fit rounded-full border-primary/20 bg-primary/10 px-4 py-2 text-primary"
+                  >
+                    {unassignedDraftCount} ready for freelancer outreach
+                  </Badge>
+                ) : null}
+              </div>
+
+              <TabsContent value="draft" className="m-0">
+                {isLoading ? (
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {[1, 2].map((item) => (
+                      <Skeleton key={`draft-skeleton-${item}`} className="h-[360px] rounded-[28px]" />
+                    ))}
+                  </div>
+                ) : currentTabItems.length > 0 ? (
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    {currentTabItems.map((proposal) => (
+                      <ProposalRowCard
+                        key={proposal.id}
+                        proposal={proposal}
+                        onOpen={handleOpenProposal}
+                        onDelete={handleDelete}
+                        onSend={openFreelancerSelection}
+                        isSending={sendingProposalId === proposal.id}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyStateCard
+                    title={currentTabMeta.emptyTitle}
+                    description={currentTabMeta.emptyDescription}
+                  />
+                )}
+              </TabsContent>
+
+              <TabsContent value="pending" className="m-0">
+                {isLoading ? (
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {[1, 2].map((item) => (
+                      <Skeleton key={`pending-skeleton-${item}`} className="h-[360px] rounded-[28px]" />
+                    ))}
+                  </div>
+                ) : currentTabItems.length > 0 ? (
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    {currentTabItems.map((proposal) => (
+                      <ProposalRowCard
+                        key={proposal.id}
+                        proposal={proposal}
+                        onOpen={handleOpenProposal}
+                        onDelete={handleDelete}
+                        onPay={handleApproveAndPay}
+                        isPaying={processingPaymentProposalId === proposal.id}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyStateCard
+                    title={currentTabMeta.emptyTitle}
+                    description={currentTabMeta.emptyDescription}
+                  />
+                )}
+              </TabsContent>
+
+              <TabsContent value="rejected" className="m-0">
+                {isLoading ? (
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {[1, 2].map((item) => (
+                      <Skeleton key={`rejected-skeleton-${item}`} className="h-[360px] rounded-[28px]" />
+                    ))}
+                  </div>
+                ) : currentTabItems.length > 0 ? (
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    {currentTabItems.map((proposal) => (
+                      <ProposalRowCard
+                        key={proposal.id}
+                        proposal={proposal}
+                        onOpen={handleOpenProposal}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyStateCard
+                    title={currentTabMeta.emptyTitle}
+                    description={currentTabMeta.emptyDescription}
+                  />
+                )}
+              </TabsContent>
+            </div>
+          </Tabs>
         </div>
-
-        {/* Tabs */}
-        <Tabs
-          defaultValue="draft"
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <TabsList className="bg-transparent p-0 h-auto w-full justify-start gap-4 mb-6">
-            <TabsTrigger
-              value="draft"
-              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-600 data-[state=active]:text-white data-[state=active]:shadow-md"
-            >
-              Draft
-            </TabsTrigger>
-            <TabsTrigger
-              value="pending"
-              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-500 data-[state=active]:text-white data-[state=active]:shadow-md"
-            >
-              Pending Approval
-            </TabsTrigger>
-            <TabsTrigger
-              value="rejected"
-              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-rose-500 data-[state=active]:text-white data-[state=active]:shadow-md"
-            >
-              Rejected
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="draft" className="m-0 space-y-4">
-              {isLoading ? (
-                [1, 2].map((i) => (
-                  <Skeleton key={i} className="h-40 w-full rounded-xl" />
-                ))
-              ) : grouped.draft.length ? (
-                grouped.draft.map((p) => (
-                  <ProposalRowCard
-                    key={p.id}
-                    proposal={p}
-                    onOpen={handleOpenProposal}
-                    onDelete={handleDelete}
-                  />
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-12 text-center text-muted-foreground">
-                  No drafts found.
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="pending" className="m-0 space-y-4">
-              {isLoading ? (
-                [1, 2].map((i) => (
-                  <Skeleton key={i} className="h-40 w-full rounded-xl" />
-                ))
-              ) : grouped.pending.length ? (
-                grouped.pending.map((p) => (
-                  <ProposalRowCard
-                    key={p.id}
-                    proposal={p}
-                    onOpen={handleOpenProposal}
-                    onDelete={handleDelete}
-                    onPay={handleApproveAndPay}
-                    isPaying={processingPaymentProposalId === p.id}
-                  />
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-12 text-center text-muted-foreground">
-                  No pending proposals.
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="rejected" className="m-0 space-y-4">
-              {isLoading ? (
-                [1, 2].map((i) => (
-                  <Skeleton key={i} className="h-40 w-full rounded-xl" />
-                ))
-              ) : grouped.rejected.length ? (
-                grouped.rejected.map((p) => (
-                  <ProposalRowCard
-                    key={p.id}
-                    proposal={p}
-                    onOpen={handleOpenProposal}
-                    onDelete={handleDelete}
-                  />
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-12 text-center text-muted-foreground">
-                  No rejected proposals.
-                </div>
-              )}
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
       </main>
 
       <Dialog
-        open={isViewing}
+        open={isViewing && Boolean(activeProposal)}
         onOpenChange={(open) => {
           setIsViewing(open);
           if (!open) setActiveProposal(null);
         }}
       >
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] p-0 overflow-hidden">
-          <div className="p-5 border-b border-border/60">
-            <DialogTitle className="text-xl font-semibold">
-              {activeProposal?.title || "Proposal"}
-              {activeProposal?.status && (
-                <Badge variant="outline" className="ml-3 uppercase text-[10px]">
-                  {activeProposal.status}
-                </Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground mt-1">
-              Submitted by{" "}
-              <span className="font-medium text-foreground">
-                {activeProposal?.recipientName}
-              </span>{" "}
-              on {activeProposal?.submittedDate}
-            </DialogDescription>
+        <DialogContent className="max-h-[92vh] overflow-hidden border border-border/60 bg-[linear-gradient(180deg,rgba(12,12,14,0.98),rgba(18,18,24,0.98))] p-0 sm:max-w-[820px]">
+          <div className="border-b border-white/10 px-6 py-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
+                    {activeProposal?.title || "Proposal"}
+                  </DialogTitle>
+                  {activeProposal?.status ? (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]",
+                        statusColors[activeProposal.status] || statusColors.pending,
+                      )}
+                    >
+                      {statusLabels[activeProposal.status] || activeProposal.status}
+                    </Badge>
+                  ) : null}
+                </div>
+                <DialogDescription className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                  {activeProposal?.status === "draft"
+                    ? "Review the draft, polish the scope, and send it to the right freelancer."
+                    : "Review the proposal details, payment status, and delivery expectations."}
+                </DialogDescription>
+              </div>
+
+              <Badge
+                variant="outline"
+                className="w-fit rounded-full border-white/10 bg-white/[0.04] px-3 py-1.5 text-muted-foreground"
+              >
+                {activeProposal?.submittedDate || "No date"}
+              </Badge>
+            </div>
           </div>
-          <div className="p-5">
-            <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-muted/30 rounded-lg border border-border/40">
-              <div>
-                <p className="text-xs uppercase text-muted-foreground font-semibold">
-                  Budget
-                </p>
-                <p className="font-mono font-medium text-lg">
-                  {activeProposal
-                    ? extractProposalDetails(activeProposal).budget
-                    : "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase text-muted-foreground font-semibold">
-                  Timeline
-                </p>
-                <p className="font-medium text-lg">
-                  {activeProposal
+
+          <div className="space-y-6 overflow-y-auto px-6 py-6">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <ProposalMetric
+                icon={FileText}
+                label="Budget"
+                value={
+                  activeProposal ? extractProposalDetails(activeProposal).budget : "Not set"
+                }
+              />
+              <ProposalMetric
+                icon={Clock3}
+                label="Timeline"
+                value={
+                  activeProposal
                     ? extractProposalDetails(activeProposal).delivery
-                    : "Not set"}
-                </p>
-              </div>
+                    : "Not set"
+                }
+              />
+              <ProposalMetric
+                icon={UserRound}
+                label="Freelancer"
+                value={activeProposal?.recipientName || "Not assigned"}
+              />
+              <ProposalMetric
+                icon={Layers3}
+                label="Service"
+                value={resolveProposalServiceLabel(activeProposal)}
+              />
             </div>
 
-            <h4 className="font-semibold mb-2">Proposal Details</h4>
-            <div className="max-h-[50vh] overflow-y-auto pr-2 bg-muted/50 p-4 rounded-lg [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-              {isLoadingProposal ? (
-                <p className="text-sm text-muted-foreground">
-                  Loading details...
-                </p>
-              ) : (
-                <ProposalContentRenderer content={activeProposal?.content} />
-              )}
-            </div>
+            <Card className="border-border/60 bg-card/55">
+              <CardContent className="space-y-4 p-5">
+                <div className="space-y-1">
+                  <h4 className="text-lg font-semibold tracking-tight text-foreground">
+                    Proposal Details
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Full scope, delivery notes, and proposal narrative.
+                  </p>
+                </div>
+
+                <div className="max-h-[48vh] overflow-y-auto rounded-2xl border border-white/10 bg-black/20 p-4">
+                  {isLoadingProposal ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading details...
+                    </div>
+                  ) : (
+                    <ProposalContentRenderer content={activeProposal?.content} />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
+
+          <DialogFooter className="flex flex-col gap-3 border-t border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-6 text-muted-foreground">
+              Use the action buttons to continue the proposal lifecycle from here.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {activeProposal?.status === "draft" && !activeProposal?.requiresPayment ? (
+                <Button
+                  variant="outline"
+                  className="rounded-full border-primary/25 bg-primary/10 text-primary hover:bg-primary/15"
+                  onClick={() => openFreelancerSelection(activeProposal)}
+                  disabled={sendingProposalId === activeProposal?.id}
+                >
+                  {sendingProposalId === activeProposal?.id ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  {sendingProposalId === activeProposal?.id
+                    ? "Sending..."
+                    : "Send to Freelancers"}
+                </Button>
+              ) : null}
+
+              {activeProposal?.requiresPayment ? (
+                <Button
+                  className="rounded-full bg-emerald-500 text-black hover:bg-emerald-400"
+                  onClick={() => handleApproveAndPay(activeProposal)}
+                  disabled={processingPaymentProposalId === activeProposal?.id}
+                >
+                  {processingPaymentProposalId === activeProposal?.id ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="mr-2 h-4 w-4" />
+                  )}
+                  {processingPaymentProposalId === activeProposal?.id
+                    ? "Processing..."
+                    : "Approve & Pay"}
+                </Button>
+              ) : null}
+
+              {activeProposal && !activeProposal.requiresPayment ? (
+                <Button
+                  variant="ghost"
+                  className="rounded-full text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
+                  onClick={() => handleDelete(activeProposal)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              ) : null}
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FreelancerSelectionDialog
+        open={showFreelancerSelect}
+        onOpenChange={setShowFreelancerSelect}
+        savedProposal={proposalForFreelancerSelection}
+        isLoadingFreelancers={isFreelancersLoading}
+        isSendingProposal={Boolean(sendingProposalId)}
+        freelancerSearch={freelancerSearch}
+        onFreelancerSearchChange={setFreelancerSearch}
+        filteredFreelancers={filteredFreelancers}
+        freelancerSelectionData={freelancerSelectionData}
+        bestMatchFreelancerIds={bestMatchFreelancerIds}
+        projectRequiredSkills={projectRequiredSkills}
+        onViewFreelancer={(freelancer) => {
+          setViewingFreelancer(freelancer);
+          setShowFreelancerProfile(true);
+        }}
+        onSendProposal={sendProposalToFreelancer}
+        collectFreelancerSkillTokens={collectFreelancerSkillTokens}
+        freelancerMatchesRequiredSkill={freelancerMatchesRequiredSkill}
+        generateGradient={(id) => {
+          if (!id) return "linear-gradient(135deg, #0f172a, #1d4ed8)";
+
+          let hash = 0;
+          for (let index = 0; index < id.length; index += 1) {
+            hash = id.charCodeAt(index) + ((hash << 5) - hash);
+          }
+
+          const firstHue = Math.abs(hash % 360);
+          const secondHue = (firstHue + 44) % 360;
+          return `linear-gradient(135deg, hsl(${firstHue}, 78%, 58%), hsl(${secondHue}, 78%, 48%))`;
+        }}
+        formatRating={formatRating}
+      />
+
+      <FreelancerProfileDialog
+        open={showFreelancerProfile}
+        onOpenChange={setShowFreelancerProfile}
+        viewingFreelancer={viewingFreelancer}
+      />
     </div>
   );
 };
 
-const ClientProposal = () => {
-  return (
-    <RoleAwareSidebar>
-      <ClientProposalContent />
-    </RoleAwareSidebar>
-  );
-};
+const ClientProposal = () => (
+  <RoleAwareSidebar>
+    <ClientProposalContent />
+  </RoleAwareSidebar>
+);
 
 export default ClientProposal;
-
