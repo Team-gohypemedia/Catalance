@@ -9,7 +9,6 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Send from "lucide-react/dist/esm/icons/send";
-import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 import { useSearchParams } from "react-router-dom";
@@ -63,6 +62,14 @@ const statusLabels = {
   sent: "Sent",
   pending: "Pending",
   rejected: "Rejected",
+};
+
+const proposalCardStatusClasses = {
+  draft: "border-white/10 bg-white/[0.04] text-muted-foreground",
+  accepted: "border-emerald-400/20 bg-emerald-400/15 text-emerald-100",
+  sent: "border-primary/20 bg-primary text-primary-foreground",
+  pending: "border-primary/20 bg-primary text-primary-foreground",
+  rejected: "border-rose-400/15 bg-rose-500/10 text-rose-100",
 };
 
 const PROPOSAL_STACK_KEYS = [
@@ -431,36 +438,56 @@ const ProposalMetric = ({ icon: Icon, label, value, valueClassName }) => (
   </div>
 );
 
-const DashboardStatCard = ({ icon: Icon, label, value, hint, toneClassName }) => (
-  <Card className="overflow-hidden border-border/60 bg-card/70 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.9)] backdrop-blur">
-    <CardContent className="flex items-start justify-between gap-4 p-5">
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-          {label}
-        </p>
-        <p className="text-3xl font-semibold tracking-tight text-foreground">{value}</p>
-        <p className="text-sm leading-6 text-muted-foreground">{hint}</p>
-      </div>
-      <div className={cn("rounded-2xl border p-3", toneClassName)}>
-        <Icon className="h-5 w-5" />
-      </div>
-    </CardContent>
-  </Card>
+const ProposalSummaryItem = ({ label, value, valueClassName }) => (
+  <div className="space-y-2">
+    <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#727277]">
+      {label}
+    </p>
+    <div className={cn("text-sm font-medium leading-6 text-foreground", valueClassName)}>
+      {value}
+    </div>
+  </div>
 );
 
 const EmptyStateCard = ({ title, description }) => (
-  <Card className="border-dashed border-border/60 bg-card/40">
-    <CardContent className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-primary">
+  <Card className="rounded-[32px] border border-dashed border-white/10 bg-[#181818] shadow-none">
+    <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-4 px-6 py-14 text-center">
+      <div className="rounded-2xl border border-white/10 bg-black/10 p-3 text-muted-foreground">
         <FileText className="h-5 w-5" />
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
         <p className="max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
     </CardContent>
   </Card>
 );
+
+const ProposalWorkspaceHintCard = ({ activeTab, hasProjectFilter }) => {
+  const title =
+    activeTab === "rejected" ? "Need a replacement proposal?" : "Submit a new proposal";
+  const description = hasProjectFilter
+    ? "This workspace is currently scoped to one project, so all related proposal movement will stay grouped here."
+    : activeTab === "draft"
+      ? "Accept a newly generated draft or build out a project brief to keep your proposal pipeline moving."
+      : activeTab === "pending"
+        ? "Open any proposal above to review scope details, continue the conversation, or complete payment approval."
+        : "Use a rejected scope as a starting point, revise the brief, and send a stronger version back out.";
+
+  return (
+    <Card className="rounded-[32px] border border-dashed border-white/10 bg-[#171717]/80 shadow-none">
+      <CardContent className="flex min-h-[160px] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+        <div className="rounded-2xl border border-white/10 bg-black/10 p-3 text-muted-foreground">
+          <FileText className="h-5 w-5" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold tracking-tight text-foreground">{title}</h3>
+          <p className="max-w-lg text-sm leading-6 text-muted-foreground">{description}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ProposalRowCard = ({
   proposal,
@@ -473,157 +500,117 @@ const ProposalRowCard = ({
 }) => {
   const details = extractProposalDetails(proposal);
   const preview = getProposalPreview(proposal);
+  const isDraft = proposal.status === "draft";
+  const canSendToFreelancers = isDraft && !proposal.requiresPayment && onSend;
   const hasAssignedFreelancer =
     Boolean(proposal.freelancerId) &&
     String(proposal.recipientName || "").trim().toLowerCase() !== "not assigned";
-  const isDraft = proposal.status === "draft";
-  const canSendToFreelancers = isDraft && !proposal.requiresPayment && onSend;
-  const serviceLabel = resolveProposalServiceLabel(proposal);
+  const showQuickActions =
+    canSendToFreelancers || Boolean(proposal.requiresPayment && onPay) || Boolean(onDelete);
 
   return (
-    <Card className="group h-full overflow-hidden border-border/60 bg-[linear-gradient(180deg,rgba(18,18,22,0.96),rgba(10,10,12,0.96))] shadow-[0_24px_70px_-40px_rgba(15,23,42,0.9)] transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary/30">
-      <CardContent className="relative flex h-full flex-col gap-6 p-6 sm:p-7">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(85%_85%_at_0%_0%,rgba(59,130,246,0.18),transparent_60%),radial-gradient(80%_80%_at_100%_0%,rgba(250,204,21,0.12),transparent_52%)]" />
-
-        <div className="relative flex flex-col gap-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
+    <Card className="overflow-hidden rounded-[32px] border border-white/8 bg-[#202020] shadow-[0_22px_55px_-42px_rgba(0,0,0,0.9)] transition-colors duration-200 hover:border-white/14">
+      <CardContent className="flex flex-col gap-6 p-6 sm:p-8 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0 flex-1 space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 space-y-4">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-[#909095]">
                 <Badge
                   variant="outline"
                   className={cn(
-                    "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]",
-                    statusColors[proposal.status] || statusColors.pending,
+                    "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.26em]",
+                    proposalCardStatusClasses[proposal.status] ||
+                      proposalCardStatusClasses.pending,
                   )}
                 >
                   {statusLabels[proposal.status] || "Pending"}
                 </Badge>
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-muted-foreground"
-                >
-                  {serviceLabel}
-                </Badge>
-                <span className="text-sm text-muted-foreground">{proposal.submittedDate}</span>
+                <span>{proposal.submittedDate}</span>
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+                <h3 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
                   {resolveProposalTitle(proposal)}
                 </h3>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span className="font-medium">Freelancer</span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full border px-3 py-1.5",
-                      hasAssignedFreelancer
-                        ? "border-primary/20 bg-primary/10 text-foreground"
-                        : "border-dashed border-white/15 bg-white/[0.03] text-muted-foreground",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold",
-                        hasAssignedFreelancer
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-white/[0.05] text-muted-foreground",
-                      )}
-                    >
-                      {hasAssignedFreelancer
-                        ? proposal.recipientName?.charAt(0)?.toUpperCase()
-                        : "NA"}
-                    </span>
-                    {hasAssignedFreelancer ? proposal.recipientName : "Not assigned"}
-                  </span>
-                </div>
+                <p className="max-w-3xl text-sm leading-7 text-[#8f8f94]">{preview}</p>
               </div>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-black/30 px-5 py-4 text-right shadow-inner">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Proposal Snapshot
-              </p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                {details.budget}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{details.delivery}</p>
+            <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/8 bg-black/10 text-muted-foreground sm:flex">
+              <FileText className="h-4 w-4" />
             </div>
           </div>
 
-          <p className="max-w-4xl text-sm leading-7 text-muted-foreground">{preview}</p>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <ProposalMetric icon={FileText} label="Budget" value={details.budget} />
-            <ProposalMetric icon={Clock3} label="Timeline" value={details.delivery} />
-            <ProposalMetric
-              icon={UserRound}
-              label="Project Status"
-              value={details.statusDisplay}
-              valueClassName={
-                proposal.status === "accepted"
-                  ? "text-emerald-300"
-                  : proposal.status === "rejected"
-                    ? "text-rose-300"
-                    : ""
+          <div className="grid gap-4 border-t border-white/8 pt-5 sm:grid-cols-3">
+            <ProposalSummaryItem
+              label="Freelancer"
+              value={
+                hasAssignedFreelancer ? proposal.recipientName : "Not assigned"
               }
+              valueClassName={hasAssignedFreelancer ? "" : "text-muted-foreground"}
             />
-            <ProposalMetric
-              icon={CalendarDays}
-              label="Updated"
-              value={proposal.submittedDate}
+            <ProposalSummaryItem
+              label="Agreed Amount"
+              value={details.budget}
+              valueClassName="text-primary"
             />
+            <ProposalSummaryItem label="Delivery" value={details.delivery} />
           </div>
         </div>
 
-        <div className="relative flex flex-wrap items-center gap-3 border-t border-white/10 pt-5">
+        <div className="flex w-full shrink-0 flex-col gap-3 xl:w-[220px] xl:items-end">
           <Button
-            className="h-11 rounded-full bg-primary px-5 font-semibold text-primary-foreground hover:bg-primary/90"
+            className="h-11 rounded-full bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90 xl:w-full"
             onClick={() => onOpen?.(proposal)}
           >
             <ExternalLink className="mr-2 h-4 w-4" />
             View Details
           </Button>
 
-          {canSendToFreelancers ? (
-            <Button
-              variant="outline"
-              className="h-11 rounded-full border-primary/30 bg-primary/10 px-5 font-semibold text-primary hover:bg-primary/15"
-              onClick={() => onSend?.(proposal)}
-              disabled={isSending}
-            >
-              {isSending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="mr-2 h-4 w-4" />
-              )}
-              {isSending ? "Sending..." : "Send to Freelancers"}
-            </Button>
-          ) : null}
+          {showQuickActions ? (
+            <div className="flex flex-wrap gap-2 xl:justify-end">
+              {canSendToFreelancers ? (
+                <Button
+                  variant="outline"
+                  className="h-9 rounded-full border-white/10 bg-white/[0.03] px-4 text-xs font-semibold text-foreground hover:bg-white/[0.06]"
+                  onClick={() => onSend?.(proposal)}
+                  disabled={isSending}
+                >
+                  {isSending ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  {isSending ? "Sending..." : "Send"}
+                </Button>
+              ) : null}
 
-          {proposal.requiresPayment && onPay ? (
-            <Button
-              className="h-11 rounded-full bg-emerald-500 px-5 font-semibold text-black hover:bg-emerald-400"
-              onClick={() => onPay(proposal)}
-              disabled={isPaying}
-            >
-              {isPaying ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <CreditCard className="mr-2 h-4 w-4" />
-              )}
-              {isPaying ? "Processing..." : "Approve & Pay"}
-            </Button>
-          ) : null}
+              {proposal.requiresPayment && onPay ? (
+                <Button
+                  className="h-9 rounded-full bg-emerald-500 px-4 text-xs font-semibold text-black hover:bg-emerald-400"
+                  onClick={() => onPay(proposal)}
+                  disabled={isPaying}
+                >
+                  {isPaying ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CreditCard className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  {isPaying ? "Processing..." : "Approve & Pay"}
+                </Button>
+              ) : null}
 
-          {onDelete && !proposal.requiresPayment ? (
-            <Button
-              variant="ghost"
-              className="h-11 rounded-full px-4 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
-              onClick={() => onDelete(proposal)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
+              {onDelete && !proposal.requiresPayment ? (
+                <Button
+                  variant="ghost"
+                  className="h-9 rounded-full px-3 text-xs font-semibold text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
+                  onClick={() => onDelete(proposal)}
+                >
+                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </CardContent>
@@ -1647,91 +1634,38 @@ const ClientProposalContent = () => {
     },
   };
 
-  const dashboardStats = [
-    {
-      label: "Drafts ready",
-      value: grouped.draft.length,
-      hint:
-        grouped.draft.length > 0
-          ? `${unassignedDraftCount} draft${unassignedDraftCount === 1 ? "" : "s"} still need freelancer outreach.`
-          : "No draft proposals are waiting right now.",
-      icon: Layers3,
-      toneClassName: "border-sky-400/20 bg-sky-500/10 text-sky-200",
-    },
-    {
-      label: "Pending action",
-      value: grouped.pending.length,
-      hint:
-        grouped.pending.length > 0
-          ? "These proposals are live, waiting on review, or need payment approval."
-          : "No live proposals need your attention.",
-      icon: Send,
-      toneClassName: "border-amber-400/20 bg-amber-500/10 text-amber-200",
-    },
-    {
-      label: "Need revision",
-      value: grouped.rejected.length,
-      hint:
-        grouped.rejected.length > 0
-          ? "Use rejected proposals as a starting point for a stronger next draft."
-          : "No rejected proposals in the current workspace.",
-      icon: Sparkles,
-      toneClassName: "border-rose-400/20 bg-rose-500/10 text-rose-200",
-    },
-  ];
-
   const currentTabItems = grouped[activeTab] || [];
   const currentTabMeta = tabCopy[activeTab] || tabCopy.draft;
 
   return (
-    <div className="relative flex h-full flex-1 flex-col overflow-hidden bg-background">
+    <div className="relative flex h-full flex-1 flex-col overflow-hidden bg-[#141415]">
       <ClientTopBar />
 
-      <main className="relative z-10 flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 lg:px-12">
-        <div className="mx-auto flex w-full max-w-[1580px] flex-col gap-6">
-          <section className="overflow-hidden rounded-[32px] border border-border/60 bg-[linear-gradient(140deg,rgba(12,12,14,0.98),rgba(18,24,38,0.95))] shadow-[0_28px_90px_-52px_rgba(15,23,42,0.95)]">
-            <div className="relative p-6 sm:p-8">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_85%_at_0%_0%,rgba(250,204,21,0.12),transparent_55%),radial-gradient(70%_80%_at_100%_0%,rgba(59,130,246,0.14),transparent_48%)]" />
-
-              <div className="relative flex flex-col gap-8">
-                <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-                  <div className="max-w-3xl space-y-3">
-                    <Badge className="w-fit rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-                      Client proposal workspace
-                    </Badge>
-                    <div className="space-y-2">
-                      <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                        Project Proposals
-                      </h1>
-                      <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                        Manage every draft, live proposal, and declined scope from one page.
-                        Drafts can now be sent directly to matched freelancers without leaving
-                        this workspace.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-white/10 bg-black/25 px-5 py-4 text-sm text-muted-foreground backdrop-blur">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                      Total proposals
-                    </p>
-                    <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
-                      {scopedProposals.length}
-                    </p>
-                    <p className="mt-1 leading-6">
-                      {deepLinkProjectId
-                        ? "Showing proposals linked to the selected project."
-                        : "Showing drafts, pending proposals, and rejected proposals."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 lg:grid-cols-3">
-                  {dashboardStats.map((item) => (
-                    <DashboardStatCard key={item.label} {...item} />
-                  ))}
-                </div>
-              </div>
+      <main className="relative z-10 flex-1 overflow-y-auto bg-[radial-gradient(120%_120%_at_50%_0%,rgba(250,204,21,0.06),transparent_38%),#141415] px-4 py-6 md:px-8 md:py-8 lg:px-10">
+        <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6">
+          <section className="space-y-3 pt-1">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              Project Proposals
+            </h1>
+            <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+              Manage your draft, pending, and rejected proposals. Keep potential
+              collaborations moving from one workspace.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              {deepLinkProjectId ? (
+                <Badge
+                  variant="outline"
+                  className="rounded-full border-primary/20 bg-primary/10 px-4 py-1.5 text-primary"
+                >
+                  Filtered to the selected project
+                </Badge>
+              ) : null}
+              {activeTab === "draft" && grouped.draft.length > 0 ? (
+                <span>
+                  {unassignedDraftCount} draft
+                  {unassignedDraftCount === 1 ? "" : "s"} ready for freelancer outreach.
+                </span>
+              ) : null}
             </div>
           </section>
 
@@ -1739,160 +1673,147 @@ const ClientProposalContent = () => {
             defaultValue="draft"
             value={activeTab}
             onValueChange={setActiveTab}
-            className="w-full"
+            className="w-full space-y-6"
           >
-            <div className="rounded-[28px] border border-border/60 bg-card/55 p-3 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.9)] backdrop-blur">
-              <TabsList className="grid h-auto w-full grid-cols-1 gap-3 bg-transparent p-0 md:grid-cols-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <TabsList className="inline-flex h-auto w-fit flex-wrap rounded-full border border-white/8 bg-[#1b1b1c] p-1">
                 {[
                   {
                     value: "draft",
                     label: "Draft",
-                    count: grouped.draft.length,
-                    tone: "data-[state=active]:border-sky-400/30 data-[state=active]:bg-sky-500/10 data-[state=active]:text-sky-100",
+                    tone: "data-[state=active]:bg-[#2a2a2d] data-[state=active]:text-foreground",
                   },
                   {
                     value: "pending",
                     label: "Pending Approval",
-                    count: grouped.pending.length,
-                    tone: "data-[state=active]:border-amber-400/30 data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-100",
+                    tone: "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
                   },
                   {
                     value: "rejected",
                     label: "Rejected",
-                    count: grouped.rejected.length,
-                    tone: "data-[state=active]:border-rose-400/30 data-[state=active]:bg-rose-500/10 data-[state=active]:text-rose-100",
+                    tone: "data-[state=active]:bg-[#2a2a2d] data-[state=active]:text-foreground",
                   },
                 ].map((item) => (
                   <TabsTrigger
                     key={item.value}
                     value={item.value}
                     className={cn(
-                      "h-auto rounded-[22px] border border-transparent bg-white/[0.02] px-4 py-4 text-left text-muted-foreground shadow-none transition hover:text-foreground",
+                      "h-10 rounded-full px-5 text-sm font-medium text-[#8f8f94] shadow-none transition hover:text-foreground",
                       item.tone,
                     )}
                   >
-                    <div className="flex w-full items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold">{item.label}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {item.value === "draft"
-                            ? "Ready to edit or send"
-                            : item.value === "pending"
-                              ? "Live invites and approvals"
-                              : "Closed loop proposals"}
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-semibold text-foreground">
-                        {item.count}
-                      </span>
-                    </div>
+                    {item.label}
                   </TabsTrigger>
                 ))}
               </TabsList>
+
+              <p className="max-w-2xl text-sm leading-6 text-[#8f8f94] lg:text-right">
+                {currentTabMeta.description}
+              </p>
             </div>
 
-            <div className="mt-6 rounded-[28px] border border-border/60 bg-card/50 p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.9)]">
-              <div className="mb-5 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-                <div className="space-y-1.5">
-                  <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                    {currentTabMeta.title}
-                  </h2>
-                  <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                    {currentTabMeta.description}
-                  </p>
+            <TabsContent value="draft" className="m-0">
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((item) => (
+                    <Skeleton
+                      key={`draft-skeleton-${item}`}
+                      className="h-[220px] rounded-[32px] bg-white/[0.06]"
+                    />
+                  ))}
                 </div>
-                {activeTab === "draft" && grouped.draft.length > 0 ? (
-                  <Badge
-                    variant="outline"
-                    className="w-fit rounded-full border-primary/20 bg-primary/10 px-4 py-2 text-primary"
-                  >
-                    {unassignedDraftCount} ready for freelancer outreach
-                  </Badge>
-                ) : null}
-              </div>
-
-              <TabsContent value="draft" className="m-0">
-                {isLoading ? (
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    {[1, 2].map((item) => (
-                      <Skeleton key={`draft-skeleton-${item}`} className="h-[360px] rounded-[28px]" />
-                    ))}
-                  </div>
-                ) : currentTabItems.length > 0 ? (
-                  <div className="grid gap-5 xl:grid-cols-2">
-                    {currentTabItems.map((proposal) => (
-                      <ProposalRowCard
-                        key={proposal.id}
-                        proposal={proposal}
-                        onOpen={handleOpenProposal}
-                        onDelete={handleDelete}
-                        onSend={openFreelancerSelection}
-                        isSending={sendingProposalId === proposal.id}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyStateCard
-                    title={currentTabMeta.emptyTitle}
-                    description={currentTabMeta.emptyDescription}
+              ) : currentTabItems.length > 0 ? (
+                <div className="space-y-4">
+                  {currentTabItems.map((proposal) => (
+                    <ProposalRowCard
+                      key={proposal.id}
+                      proposal={proposal}
+                      onOpen={handleOpenProposal}
+                      onDelete={handleDelete}
+                      onSend={openFreelancerSelection}
+                      isSending={sendingProposalId === proposal.id}
+                    />
+                  ))}
+                  <ProposalWorkspaceHintCard
+                    activeTab={activeTab}
+                    hasProjectFilter={Boolean(deepLinkProjectId)}
                   />
-                )}
-              </TabsContent>
+                </div>
+              ) : (
+                <EmptyStateCard
+                  title={currentTabMeta.emptyTitle}
+                  description={currentTabMeta.emptyDescription}
+                />
+              )}
+            </TabsContent>
 
-              <TabsContent value="pending" className="m-0">
-                {isLoading ? (
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    {[1, 2].map((item) => (
-                      <Skeleton key={`pending-skeleton-${item}`} className="h-[360px] rounded-[28px]" />
-                    ))}
-                  </div>
-                ) : currentTabItems.length > 0 ? (
-                  <div className="grid gap-5 xl:grid-cols-2">
-                    {currentTabItems.map((proposal) => (
-                      <ProposalRowCard
-                        key={proposal.id}
-                        proposal={proposal}
-                        onOpen={handleOpenProposal}
-                        onDelete={handleDelete}
-                        onPay={handleApproveAndPay}
-                        isPaying={processingPaymentProposalId === proposal.id}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyStateCard
-                    title={currentTabMeta.emptyTitle}
-                    description={currentTabMeta.emptyDescription}
+            <TabsContent value="pending" className="m-0">
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((item) => (
+                    <Skeleton
+                      key={`pending-skeleton-${item}`}
+                      className="h-[220px] rounded-[32px] bg-white/[0.06]"
+                    />
+                  ))}
+                </div>
+              ) : currentTabItems.length > 0 ? (
+                <div className="space-y-4">
+                  {currentTabItems.map((proposal) => (
+                    <ProposalRowCard
+                      key={proposal.id}
+                      proposal={proposal}
+                      onOpen={handleOpenProposal}
+                      onDelete={handleDelete}
+                      onPay={handleApproveAndPay}
+                      isPaying={processingPaymentProposalId === proposal.id}
+                    />
+                  ))}
+                  <ProposalWorkspaceHintCard
+                    activeTab={activeTab}
+                    hasProjectFilter={Boolean(deepLinkProjectId)}
                   />
-                )}
-              </TabsContent>
+                </div>
+              ) : (
+                <EmptyStateCard
+                  title={currentTabMeta.emptyTitle}
+                  description={currentTabMeta.emptyDescription}
+                />
+              )}
+            </TabsContent>
 
-              <TabsContent value="rejected" className="m-0">
-                {isLoading ? (
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    {[1, 2].map((item) => (
-                      <Skeleton key={`rejected-skeleton-${item}`} className="h-[360px] rounded-[28px]" />
-                    ))}
-                  </div>
-                ) : currentTabItems.length > 0 ? (
-                  <div className="grid gap-5 xl:grid-cols-2">
-                    {currentTabItems.map((proposal) => (
-                      <ProposalRowCard
-                        key={proposal.id}
-                        proposal={proposal}
-                        onOpen={handleOpenProposal}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyStateCard
-                    title={currentTabMeta.emptyTitle}
-                    description={currentTabMeta.emptyDescription}
+            <TabsContent value="rejected" className="m-0">
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((item) => (
+                    <Skeleton
+                      key={`rejected-skeleton-${item}`}
+                      className="h-[220px] rounded-[32px] bg-white/[0.06]"
+                    />
+                  ))}
+                </div>
+              ) : currentTabItems.length > 0 ? (
+                <div className="space-y-4">
+                  {currentTabItems.map((proposal) => (
+                    <ProposalRowCard
+                      key={proposal.id}
+                      proposal={proposal}
+                      onOpen={handleOpenProposal}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                  <ProposalWorkspaceHintCard
+                    activeTab={activeTab}
+                    hasProjectFilter={Boolean(deepLinkProjectId)}
                   />
-                )}
-              </TabsContent>
-            </div>
+                </div>
+              ) : (
+                <EmptyStateCard
+                  title={currentTabMeta.emptyTitle}
+                  description={currentTabMeta.emptyDescription}
+                />
+              )}
+            </TabsContent>
           </Tabs>
         </div>
       </main>
