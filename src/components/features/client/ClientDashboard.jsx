@@ -1966,6 +1966,7 @@ const ClientDashboardContent = () => {
         projects: "/client/project",
         messages: "/client/messages",
         payments: "/client/payments",
+        freelancers: "/marketplace",
       };
 
       navigate(routes[key] || "/client");
@@ -1992,6 +1993,10 @@ const ClientDashboardContent = () => {
 
   const handleOpenQuickProject = useCallback(() => {
     navigate("/service");
+  }, [navigate]);
+
+  const handleOpenHireFreelancer = useCallback(() => {
+    navigate("/marketplace");
   }, [navigate]);
 
   const handleOpenViewProposals = useCallback(() => {
@@ -2037,34 +2042,177 @@ const ClientDashboardContent = () => {
     [firstName, greeting],
   );
 
+  const pendingFreelancerRequests = useMemo(
+    () =>
+      uniqueProjects.reduce(
+        (count, project) => count + getProjectPendingProposals(project).length,
+        0,
+      ),
+    [getProjectPendingProposals, uniqueProjects],
+  );
+
+  const actionRequiredCount = useMemo(
+    () =>
+      uniqueProjects.reduce(
+        (count, project) =>
+          count + (hasProjectPaymentDue(project) || hasStalePendingProposal(project) ? 1 : 0),
+        0,
+      ),
+    [hasProjectPaymentDue, hasStalePendingProposal, uniqueProjects],
+  );
+
   const dashboardMetricCards = useMemo(
     () => [
       {
-        title: "Total Spent",
-        value: formatINR(metrics.totalSpent),
-        iconKey: "wallet",
-        detail:
-          savedProposals.length > 0
-            ? `${savedProposals.length} saved proposal${savedProposals.length > 1 ? "s" : ""}`
-            : null,
+        title: "Proposal Draft",
+        value: String(savedProposals.length).padStart(2, "0"),
+        iconKey: "proposals",
       },
       {
-        title: "Active Projects",
-        value:
-          metrics.activeProjects > 0
-            ? `${metrics.activeProjects} Ongoing`
-            : "0 Ongoing",
-        iconKey: "folder",
+        title: "Freelancers Approach",
+        value: String(pendingFreelancerRequests).padStart(2, "0"),
+        detail: pendingFreelancerRequests === 1 ? "New Request" : "New Requests",
+        iconKey: "freelancers",
       },
       {
-        title: "Total Budget",
-        value: formatINR(metrics.totalBudget),
-        iconKey: "receipt",
-        badge: `FY ${new Date().getFullYear()}`,
+        title: "Task Requiring Action",
+        value: String(actionRequiredCount),
+        iconKey: "tasks",
       },
     ],
-    [metrics.activeProjects, metrics.totalBudget, metrics.totalSpent, savedProposals.length],
+    [actionRequiredCount, pendingFreelancerRequests, savedProposals.length],
   );
+
+  const draftProposalRows = useMemo(() => {
+    const toneCycle = ["amber", "blue", "green", "violet"];
+
+    return savedProposals.slice(0, 4).map((proposal, index) => ({
+      id: proposal.id,
+      title: resolveProposalTitle(proposal),
+      tag: resolveProposalServiceLabel(proposal).toUpperCase(),
+      tagTone: toneCycle[index % toneCycle.length],
+      budget: formatBudget(proposal.budget),
+      updatedAt: formatProposalUpdatedAt(proposal),
+      onView: () => {
+        setActiveProposalId(proposal.id);
+        persistActiveProposalSelection(savedProposals, proposal.id, storageKeys);
+        setShowViewProposal(true);
+      },
+      onDelete: () => {
+        const remaining = savedProposals.filter((entry) => entry.id !== proposal.id);
+        const nextActiveId = remaining[0]?.id || null;
+
+        if (!remaining.length && storageKeys?.singleKey) {
+          localStorage.removeItem(storageKeys.singleKey);
+        }
+
+        persistSavedProposalState(remaining, nextActiveId);
+        toast.success("Proposal deleted");
+      },
+    }));
+  }, [
+    formatBudget,
+    formatProposalUpdatedAt,
+    persistActiveProposalSelection,
+    persistSavedProposalState,
+    resolveProposalServiceLabel,
+    savedProposals,
+    storageKeys,
+  ]);
+
+  const interestedFreelancerRows = useMemo(() => {
+    const source = Array.isArray(freelancers) && freelancers.length > 0
+      ? freelancers
+      : suggestedFreelancers;
+
+    return source.slice(0, 3).map((freelancer, index) => {
+      const displayName =
+        freelancer?.fullName || freelancer?.name || `Freelancer ${index + 1}`;
+      const numericRate =
+        Number(
+          freelancer?.dailyRate ||
+            freelancer?.ratePerDay ||
+            freelancer?.hourlyRate ||
+            freelancer?.rate ||
+            0,
+        ) || 0;
+      const rating =
+        Number(freelancer?.rating || freelancer?.averageRating || freelancer?.avgRating || 4.8) ||
+        4.8;
+      const projectsCount =
+        Number(
+          freelancer?.completedProjects ||
+            freelancer?.projectsCompleted ||
+            freelancer?.projectsCount ||
+            0,
+        ) || 0;
+
+      return {
+        id: freelancer?.id || freelancer?.chatId || `freelancer-${index}`,
+        name: displayName,
+        initial: displayName.charAt(0).toUpperCase(),
+        avatar: freelancer?.avatar || "",
+        role:
+          freelancer?.professionalTitle ||
+          freelancer?.headline ||
+          freelancer?.projectTitle ||
+          (Array.isArray(freelancer?.skills) && freelancer.skills.length > 0
+            ? freelancer.skills[0]
+            : "Creative specialist"),
+        rating: rating.toFixed(1),
+        projectsLabel: `${projectsCount} ${projectsCount === 1 ? "Project" : "Projects"}`,
+        rateLabel: numericRate > 0 ? formatINR(numericRate) : "Available",
+        rateSuffix: numericRate > 0 ? "/day" : "",
+        onView: () => navigate("/marketplace"),
+        onMessage: () =>
+          navigate(
+            freelancer?.projectId
+              ? `/client/messages?projectId=${encodeURIComponent(freelancer.projectId)}`
+              : "/client/messages",
+          ),
+      };
+    });
+  }, [freelancers, navigate, suggestedFreelancers]);
+
+  const progressProjects = useMemo(() => {
+    const statusCurves = {
+      DRAFT: [4, 12, 18, 18, 18],
+      OPEN: [6, 20, 30, 34, 36],
+      AWAITING_PAYMENT: [8, 24, 40, 48, 52],
+      IN_PROGRESS: [8, 32, 55, 72, 78],
+      COMPLETED: [12, 40, 70, 82, 100],
+    };
+
+    return uniqueProjects.slice(0, 3).map((project, index) => {
+      const normalizedStatus = String(project?.status || "").toUpperCase();
+      const phaseValues = statusCurves[normalizedStatus] || statusCurves.OPEN;
+      const pendingCount = getProjectPendingProposals(project).length;
+      const highlightIndex =
+        normalizedStatus === "COMPLETED"
+          ? 4
+          : normalizedStatus === "IN_PROGRESS"
+            ? 3
+            : 1;
+
+      return {
+        id: project.id || `progress-${index}`,
+        label: `Project ${index + 1}`,
+        calloutLabel: `Phase ${highlightIndex + 1}`,
+        calloutValue: `${phaseValues[highlightIndex]}%`,
+        calloutDetail:
+          pendingCount > 0
+            ? `${pendingCount} task${pendingCount > 1 ? "s" : ""} pending`
+            : normalizedStatus === "COMPLETED"
+              ? "Ready for delivery"
+              : "Workspace active",
+        highlightIndex,
+        phases: phaseValues.map((value, phaseIndex) => ({
+          label: `Phase ${phaseIndex + 1}`,
+          value,
+        })),
+      };
+    });
+  }, [getProjectPendingProposals, uniqueProjects]);
 
   const recentActivities = useMemo(() => {
     const fromNotifications = Array.isArray(notifications)
@@ -2416,13 +2564,15 @@ const ClientDashboardContent = () => {
         metrics={dashboardMetricCards}
         showcaseItems={showcaseItems}
         recentActivities={recentActivities}
-        activeChats={activeChats}
-        appointmentCard={appointmentCard}
         hero={hero}
         unreadCount={unreadCount}
-        draftCount={savedProposals.length}
-        selectedAppointmentTime={selectedAppointmentTime}
-        onSelectAppointmentTime={setSelectedAppointmentTime}
+        draftProposalRows={draftProposalRows}
+        interestedFreelancers={interestedFreelancerRows}
+        interestedFreelancersCount={Math.max(
+          interestedFreelancerRows.length,
+          Array.isArray(freelancers) ? freelancers.length : 0,
+        )}
+        progressProjects={progressProjects}
         onSiteNav={handleSiteNav}
         onDashboardNav={handleDashboardNav}
         onOpenNotifications={handleOpenNotifications}
@@ -2430,7 +2580,7 @@ const ClientDashboardContent = () => {
         onOpenQuickProject={handleOpenQuickProject}
         onOpenViewProposals={handleOpenViewProposals}
         onOpenViewProjects={handleOpenViewProjects}
-        onOpenMessenger={handleOpenMessenger}
+        onOpenHireFreelancer={handleOpenHireFreelancer}
         onFooterAction={handleFooterAction}
       />
       {renderLegacyDashboard && (

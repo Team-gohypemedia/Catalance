@@ -239,76 +239,89 @@ const prismaDatasourceOptions = runtimeDatabaseUrl
   ? { db: { url: runtimeDatabaseUrl } }
   : undefined;
 
+const createUserProjectionExtension = () => ({
+  query: {
+    user: {
+      async $allOperations({ operation, args, query }) {
+        if (!USER_QUERY_ACTIONS_WITH_ROW_RESULT.has(String(operation || ""))) {
+          return query(args);
+        }
+
+        const hasExplicitProjection =
+          hasOwn(args, "select") || hasOwn(args, "include");
+        const nextArgs = hasExplicitProjection
+          ? args
+          : {
+            ...(args || {}),
+            select: USER_SAFE_DEFAULT_SELECT
+          };
+
+        return query(nextArgs);
+      }
+    }
+  }
+});
+
+const createConnectivityRetryExtension = (prismaClient) => ({
+  query: {
+    $allModels: {
+      async $allOperations({ model, operation, args, query }) {
+        let attempt = 1;
+
+        while (true) {
+          try {
+            return await query(args);
+          } catch (error) {
+            const params = { action: operation, model };
+            if (!shouldRetryConnectivityError({ error, params, attempt })) {
+              throw error;
+            }
+
+            const retryDelayMs = transientRetryBaseDelayMs * attempt;
+            const modelName = model || "UnknownModel";
+            const action = operation || "unknownAction";
+
+            console.warn(
+              `[Prisma] Transient DB connectivity error on ${modelName}.${action}. ` +
+                `Retrying in ${retryDelayMs}ms (attempt ${attempt}/${transientRetryAttempts}).`
+            );
+
+            await wait(retryDelayMs);
+
+            try {
+              await prismaClient.$connect();
+            } catch {
+              // Best-effort reconnect before retrying query.
+            }
+
+            attempt += 1;
+          }
+        }
+      }
+    }
+  }
+});
+
 let prismaInitError = null;
 
 if (!globalForPrisma.__prisma) {
   try {
-    globalForPrisma.__prisma = new PrismaClient({
+    const prismaClient = new PrismaClient({
       datasources: prismaDatasourceOptions,
       log: prismaLogLevels
     });
+
+    globalForPrisma.__prismaBase = prismaClient;
+    globalForPrisma.__prisma = prismaClient
+      .$extends(createUserProjectionExtension())
+      .$extends(createConnectivityRetryExtension(prismaClient));
   } catch (error) {
     // Capture initialization errors (e.g. missing generated client on Vercel)
     console.error("Prisma client initialization failed:", error);
     prismaInitError = error;
+    globalForPrisma.__prismaBase = null;
     globalForPrisma.__prisma = null;
   }
-}
-
-if (globalForPrisma.__prisma && !globalForPrisma.__prismaUserProjectionGuardAttached) {
-  globalForPrisma.__prisma.$use(async (params, next) => {
-    if (
-      params?.model === "User" &&
-      USER_QUERY_ACTIONS_WITH_ROW_RESULT.has(String(params?.action || ""))
-    ) {
-      const args = params.args || {};
-      const hasExplicitProjection = hasOwn(args, "select") || hasOwn(args, "include");
-      if (!hasExplicitProjection) {
-        params.args = {
-          ...args,
-          select: USER_SAFE_DEFAULT_SELECT
-        };
-      }
-    }
-
-    return next(params);
-  });
-  globalForPrisma.__prismaUserProjectionGuardAttached = true;
-}
-
-if (globalForPrisma.__prisma && !globalForPrisma.__prismaConnectivityRetryAttached) {
-  globalForPrisma.__prisma.$use(async (params, next) => {
-    let attempt = 1;
-    while (true) {
-      try {
-        return await next(params);
-      } catch (error) {
-        if (!shouldRetryConnectivityError({ error, params, attempt })) {
-          throw error;
-        }
-
-        const retryDelayMs = transientRetryBaseDelayMs * attempt;
-        const model = params?.model || "UnknownModel";
-        const action = params?.action || "unknownAction";
-
-        console.warn(
-          `[Prisma] Transient DB connectivity error on ${model}.${action}. ` +
-            `Retrying in ${retryDelayMs}ms (attempt ${attempt}/${transientRetryAttempts}).`
-        );
-
-        await wait(retryDelayMs);
-
-        try {
-          await globalForPrisma.__prisma.$connect();
-        } catch {
-          // Best-effort reconnect before retrying query.
-        }
-
-        attempt += 1;
-      }
-    }
-  });
-  globalForPrisma.__prismaConnectivityRetryAttached = true;
 }
 
 export const prisma = globalForPrisma.__prisma;

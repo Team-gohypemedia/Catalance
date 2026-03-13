@@ -1,31 +1,35 @@
 "use client";
 
 import React from "react";
-import Bell from "lucide-react/dist/esm/icons/bell";
+import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
-import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
-import Clock3 from "lucide-react/dist/esm/icons/clock-3";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
 import Heart from "lucide-react/dist/esm/icons/heart";
 import MessageSquareText from "lucide-react/dist/esm/icons/message-square-text";
 import Plus from "lucide-react/dist/esm/icons/plus";
-import Receipt from "lucide-react/dist/esm/icons/receipt";
-import Send from "lucide-react/dist/esm/icons/send";
+import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
-import Wallet from "lucide-react/dist/esm/icons/wallet";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Users from "lucide-react/dist/esm/icons/users";
+import Zap from "lucide-react/dist/esm/icons/zap";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { cn } from "@/shared/lib/utils";
 
 const FIGMA_PROJECT_IMAGE =
   "https://www.figma.com/api/mcp/asset/4acce3fe-79ed-4308-b085-bac7b8198fb2";
 
 const metricIconMap = {
-  wallet: Wallet,
-  folder: FolderKanban,
-  receipt: Receipt,
+  proposals: ClipboardList,
+  freelancers: Users,
+  tasks: ShieldAlert,
 };
 
 const activityIconMap = {
@@ -37,17 +41,18 @@ const activityIconMap = {
 };
 
 const activityToneMap = {
-  blue: "bg-[#3b82f6]/10 text-[#60a5fa]",
-  amber: "bg-[#ffc107]/10 text-[#ffc107]",
-  green: "bg-[#22c55e]/10 text-[#34d399]",
-  violet: "bg-[#a855f7]/10 text-[#c084fc]",
-  slate: "bg-[#334155]/70 text-[#94a3b8]",
+  blue: "bg-[#1f3558]/65 text-[#6ea8ff]",
+  amber: "bg-[#3b2d0a] text-[#ffc107]",
+  green: "bg-[#102e24] text-[#23d18b]",
+  violet: "bg-[#33204c] text-[#c084fc]",
+  slate: "bg-[#273142] text-[#94a3b8]",
 };
 
-const showcaseToneMap = {
-  amber: "bg-[#ffc107] text-[#0a0a0a] hover:bg-[#ffd54f]",
-  slate: "bg-[#1e293b]/60 text-[#f1f5f9] hover:bg-[#334155]",
-  success: "bg-[#22c55e]/15 text-[#bbf7d0] hover:bg-[#22c55e]/20",
+const draftToneMap = {
+  amber: "bg-[#40310a] text-[#ffc107]",
+  blue: "bg-[#19345d] text-[#60a5fa]",
+  green: "bg-[#163822] text-[#34d399]",
+  violet: "bg-[#3d2459] text-[#c084fc]",
 };
 
 const footerLinks = [
@@ -56,25 +61,58 @@ const footerLinks = [
   { label: "Support Center", key: "support" },
 ];
 
-const siteLinks = [
-  { label: "Home", key: "home" },
-  { label: "Marketplace", key: "marketplace" },
-  { label: "Service", key: "service" },
-  { label: "Contact", key: "contact" },
+const fallbackProgressProjects = [
+  {
+    id: "project-1",
+    label: "Project 1",
+    calloutLabel: "Phase 2",
+    calloutValue: "40%",
+    calloutDetail: "2 tasks pending",
+    highlightIndex: 1,
+    phases: [
+      { label: "Phase 1", value: 8 },
+      { label: "Phase 2", value: 40 },
+      { label: "Phase 3", value: 62 },
+      { label: "Phase 4", value: 78 },
+      { label: "Phase 5", value: 100 },
+    ],
+  },
+  {
+    id: "project-2",
+    label: "Project 2",
+    calloutLabel: "Phase 3",
+    calloutValue: "55%",
+    calloutDetail: "3 reviews pending",
+    highlightIndex: 2,
+    phases: [
+      { label: "Phase 1", value: 10 },
+      { label: "Phase 2", value: 28 },
+      { label: "Phase 3", value: 55 },
+      { label: "Phase 4", value: 70 },
+      { label: "Phase 5", value: 88 },
+    ],
+  },
+  {
+    id: "project-3",
+    label: "Project 3",
+    calloutLabel: "Phase 4",
+    calloutValue: "72%",
+    calloutDetail: "Ready for delivery",
+    highlightIndex: 3,
+    phases: [
+      { label: "Phase 1", value: 12 },
+      { label: "Phase 2", value: 35 },
+      { label: "Phase 3", value: 50 },
+      { label: "Phase 4", value: 72 },
+      { label: "Phase 5", value: 94 },
+    ],
+  },
 ];
 
-const dashboardTabs = [
-  { label: "Dashboard", key: "dashboard" },
-  { label: "Proposals", key: "proposals" },
-  { label: "Projects", key: "projects" },
-  { label: "Messages", key: "messages" },
-  { label: "Payments", key: "payments" },
-];
-
-const SectionCard = ({ className, children }) => (
+const DashboardPanel = ({ className, children }) => (
   <div
     className={cn(
-      "rounded-[24px] border border-[#1e293b] bg-[#303030]/40 shadow-[0px_0px_20px_0px_rgba(255,193,5,0.03)] backdrop-blur-[6px]",
+      "rounded-[28px] border border-white/[0.06] bg-[#232323]/90 backdrop-blur-[10px]",
       className,
     )}
   >
@@ -82,92 +120,49 @@ const SectionCard = ({ className, children }) => (
   </div>
 );
 
-const BrandMark = () => (
-  <div className="flex items-center gap-2">
-    <div className="flex size-8 items-center justify-center rounded-full bg-[#facc15]">
-      <div className="size-4 rounded-full border-2 border-[#0a0a0a]" />
-    </div>
-    <span className="text-base font-bold tracking-[-0.5px] text-white">
-      Catalance
-    </span>
-  </div>
-);
-
-const DesktopLinks = ({ items, activeKey, onAction }) => (
-  <div className="hidden items-center gap-8 lg:flex">
-    {items.map((item) => (
-      <button
-        key={item.key}
-        type="button"
-        onClick={() => onAction(item.key)}
-        className={cn(
-          "text-sm font-medium transition-colors",
-          item.key === activeKey ? "text-[#facc15]" : "text-[#94a3b8] hover:text-white",
-        )}
-      >
-        {item.label}
-      </button>
-    ))}
-  </div>
-);
-
-const MobileLinks = ({ items, activeKey, onAction }) => (
-  <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">
-    {items.map((item) => (
-      <button
-        key={item.key}
-        type="button"
-        onClick={() => onAction(item.key)}
-        className={cn(
-          "rounded-full border px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
-          item.key === activeKey
-            ? "border-[#ffc107]/30 bg-[#ffc107]/15 text-[#ffc107]"
-            : "border-white/10 bg-transparent text-[#94a3b8] hover:text-white",
-        )}
-      >
-        {item.label}
-      </button>
-    ))}
-  </div>
-);
-
-const MetricCard = ({ item }) => {
-  const Icon = metricIconMap[item.iconKey] || Wallet;
+const OverviewMetricCard = ({ item }) => {
+  const Icon = metricIconMap[item.iconKey] || ClipboardList;
 
   return (
-    <div className="rounded-[20px] border border-white/[0.03] bg-linear-to-r from-[#2f2f2f] to-[#303030] p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-[#ffc107]/10 text-[#ffc107]">
-          <Icon className="size-5" />
-        </div>
-        {item.badge ? (
-          <div
-            className={cn(
-              "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]",
-              item.badgeTone === "green"
-                ? "bg-[#22c55e]/10 text-[#34d399]"
-                : "border border-white/10 bg-[#171717]/60 text-[#94a3b8]",
-            )}
-          >
-            {item.badge}
+    <DashboardPanel className="min-h-[128px] border-transparent bg-accent p-5">
+      <div className="flex h-full flex-col justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-white/10 text-white/85">
+            <Icon className="size-5" />
           </div>
-        ) : null}
-      </div>
-      <p className="mt-4 text-sm text-[#94a3b8]">{item.title}</p>
-      <p className="mt-1 text-[30px] font-bold leading-[36px] tracking-[-0.75px] text-[#f1f5f9]">
-        {item.value}
-      </p>
-      {item.detail ? (
-        <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#34d399]">
-          <Sparkles className="size-3.5" />
-          <span>{item.detail}</span>
+          <p className="text-sm font-medium text-[#94a3b8]">{item.title}</p>
         </div>
-      ) : null}
-    </div>
+
+        <div className="mt-7 flex items-end gap-2">
+          <p className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-white">
+            {item.value}
+          </p>
+          {item.detail ? (
+            <p className="pb-1 text-sm text-[#f1f5f9]">{item.detail}</p>
+          ) : null}
+        </div>
+      </div>
+    </DashboardPanel>
   );
 };
 
-const ShowcaseCard = ({ item }) => (
+const CreateProposalCard = ({ onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="flex min-h-[128px] w-full flex-col items-center justify-center gap-3 rounded-[28px] border border-transparent bg-accent px-6 py-6 text-center transition-colors hover:border-primary/60 hover:bg-accent/90"
+  >
+    <div className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+      <Plus className="size-5" />
+    </div>
+    <p className="text-[1.35rem] font-semibold leading-tight tracking-[-0.03em] text-white">
+      Create New Proposal
+    </p>
+    <p className="text-sm leading-5 text-[#94a3b8]">Start a new project</p>
+  </button>
+);
+
+const RunningProjectCard = ({ item }) => (
   <article
     role="button"
     tabIndex={0}
@@ -178,56 +173,62 @@ const ShowcaseCard = ({ item }) => (
         item.onClick?.();
       }
     }}
-    className="group flex w-full cursor-pointer flex-col overflow-hidden rounded-[18px] border border-[#1e293b] bg-[#141414] text-left transition-transform hover:-translate-y-0.5"
+    className="group flex w-full cursor-pointer flex-col overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#101010] shadow-[0_20px_45px_rgba(0,0,0,0.28)] transition-transform hover:-translate-y-1"
   >
-    <div className="relative h-[210px] overflow-hidden bg-[#e5e7eb]">
+    <div className="relative aspect-[1.08/1] overflow-hidden bg-[#e5e7eb]">
       <img
         src={item.imageSrc || FIGMA_PROJECT_IMAGE}
         alt=""
-        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
         loading="lazy"
       />
-      <div className="absolute right-3 top-3 flex size-6 items-center justify-center rounded-full bg-black/20 text-[#ef4444] backdrop-blur-sm">
-        <Heart className="size-3.5 fill-current" />
+      <div className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-white/70 text-[#ef4444]">
+        <Heart className="size-4 fill-current" />
       </div>
     </div>
 
-    <div className="flex flex-1 flex-col gap-4 p-3">
+    <div className="flex flex-1 flex-col gap-4 bg-[#0d0d0d] p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <span className="shrink-0 text-sm text-[#6b6b6b]">{item.eyebrow}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="truncate text-sm text-[#6f6f6f]">{item.eyebrow}</span>
+          <div className="flex items-center gap-1.5">
+            {["#d7ddd6", "#f59e0b", "#ec4899"].map((color) => (
+              <span
+                key={color}
+                className="size-3 rounded-[2px] border border-white/10"
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 text-white">
-          <Clock3 className="size-4" />
-          <span className="text-base font-medium">{item.amount}</span>
+          <BadgeCheck className="size-4 text-white/85" />
+          <span className="text-[1.15rem] font-medium">{item.amount}</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <p className="line-clamp-2 flex-1 text-[18px] font-semibold text-white">
+      <div className="flex items-start justify-between gap-3">
+        <p className="line-clamp-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
           {item.title}
         </p>
-        <p className="shrink-0 text-xs text-[#6b6b6b]">{item.secondaryAmount}</p>
+        <span className="shrink-0 pt-1 text-xs text-[#6b7280]">{item.secondaryAmount}</span>
       </div>
 
       <div className="flex items-center gap-2 text-sm">
         <Star className="size-4 fill-[#ffc107] text-[#ffc107]" />
         <span className="font-semibold text-white">{item.metricPrimary}</span>
-        <span className="text-xs text-[#cacaca]">{item.metricSecondary}</span>
+        <span className="text-xs text-[#a3a3a3]">{item.metricSecondary}</span>
       </div>
 
       <button
         type="button"
         onClick={(event) => {
           event.stopPropagation();
-          item.onAction();
+          item.onAction?.();
         }}
-        className={cn(
-          "mt-auto rounded-[6px] px-4 py-2.5 text-center text-sm transition-colors",
-          showcaseToneMap[item.buttonTone] || showcaseToneMap.slate,
-        )}
+        className="mt-auto rounded-[8px] bg-[#667368] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#7a8a7d]"
       >
-        {item.buttonLabel}
+        {item.buttonLabel || "View Project"}
       </button>
     </div>
   </article>
@@ -240,7 +241,7 @@ const ActivityRow = ({ item }) => {
     <button
       type="button"
       onClick={item.onClick}
-      className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left transition-colors hover:bg-white/[0.02]"
+      className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-white/[0.02]"
     >
       <div className="flex min-w-0 items-center gap-4">
         <div
@@ -252,9 +253,7 @@ const ActivityRow = ({ item }) => {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[#f1f5f9]">
-            {item.title}
-          </p>
+          <p className="truncate text-sm font-semibold text-white">{item.title}</p>
           <p className="truncate text-xs text-[#94a3b8]">{item.subtitle}</p>
         </div>
       </div>
@@ -263,35 +262,100 @@ const ActivityRow = ({ item }) => {
   );
 };
 
-const AppointmentSlotButton = ({ slot, selected, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      "rounded-[16px] border px-4 py-3 text-center text-xs font-medium transition-all",
-      selected
-        ? "border-[#ffc107] bg-[#ffc107]/20 text-[#ffc107] shadow-[0px_0px_20px_0px_rgba(255,193,7,0.3)]"
-        : "border-white/10 text-[#cbd5e1] hover:border-[#ffc107]/30 hover:text-white",
-    )}
-  >
-    {slot}
-  </button>
+const DraftProposalRow = ({ item }) => (
+  <div className="flex flex-col gap-4 border-b border-white/[0.05] px-5 py-5 last:border-b-0 md:flex-row md:items-center md:justify-between">
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="truncate text-lg font-medium text-white">{item.title}</p>
+        <span
+          className={cn(
+            "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]",
+            draftToneMap[item.tagTone] || draftToneMap.amber,
+          )}
+        >
+          {item.tag}
+        </span>
+      </div>
+      {item.updatedAt ? (
+        <p className="mt-2 text-sm text-[#94a3b8]">Updated {item.updatedAt}</p>
+      ) : null}
+    </div>
+
+    <div className="flex items-center gap-3 md:gap-4">
+      <span className="min-w-[112px] text-right text-[1.1rem] font-medium text-[#f1f5f9]">
+        {item.budget}
+      </span>
+
+      <button
+        type="button"
+        onClick={item.onView}
+        className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#f2f2f2]"
+      >
+        View Details
+      </button>
+
+      <button
+        type="button"
+        onClick={item.onDelete}
+        className="flex size-9 items-center justify-center rounded-full text-[#71809a] transition-colors hover:bg-white/[0.05] hover:text-white"
+        aria-label={`Delete ${item.title}`}
+      >
+        <Trash2 className="size-4" />
+      </button>
+    </div>
+  </div>
 );
 
-const EmptyState = ({ title, description, actionLabel, onAction }) => (
-  <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-    <div className="flex size-16 items-center justify-center rounded-full bg-[#1e293b] text-[#64748b]">
-      <MessageSquareText className="size-7" />
+const InterestedFreelancerRow = ({ item }) => (
+  <div className="flex items-start gap-3.5">
+    <Avatar className="mt-0.5 size-10 shrink-0 border border-white/10 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
+      <AvatarImage src={item.avatar} alt={item.name} />
+      <AvatarFallback className="bg-[#1e293b] text-sm text-white">
+        {item.initial}
+      </AvatarFallback>
+    </Avatar>
+
+    <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr),132px] grid-rows-[auto,auto,auto] gap-x-3.5 gap-y-1">
+      <p className="col-start-1 row-start-1 min-w-0 truncate text-[1.08rem] font-semibold leading-[1.05] tracking-[-0.03em] text-white">
+        {item.name}
+      </p>
+
+      <p className="col-start-1 row-start-2 min-w-0 truncate self-end text-[12px] leading-none text-[#8a8a8a]">
+        {item.role}
+      </p>
+
+      <p className="col-start-2 row-start-2 self-end pt-0.5 text-right text-[15px] font-semibold leading-none tracking-[-0.01em] text-white">
+        {item.rateLabel}
+        {item.rateSuffix ? (
+          <span className="ml-0.5 text-[15px] font-normal text-[#8a8a8a]">{item.rateSuffix}</span>
+        ) : null}
+      </p>
+
+      <div className="col-start-1 row-start-3 flex min-w-0 items-center gap-1.5 text-[12px] leading-none text-[#8f8f8f]">
+        <Star className="size-[12px] fill-[#ffc107] text-[#ffc107]" />
+        <span className="font-semibold text-white">{item.rating}</span>
+        <span className="text-[#64748b]">&bull;</span>
+        <span>{item.projectsLabel}</span>
+      </div>
+
+      <div className="col-start-2 row-start-3 flex items-center justify-end gap-2 self-center">
+        <button
+          type="button"
+          onClick={item.onView}
+          className="inline-flex h-7 min-w-[50px] items-center justify-center rounded-[8px] bg-white/[0.08] px-3 text-[12px] font-semibold text-white transition-colors hover:bg-white/[0.14]"
+        >
+          View
+        </button>
+
+        <button
+          type="button"
+          onClick={item.onMessage}
+          className="inline-flex h-7 min-w-[88px] items-center justify-center rounded-[8px] bg-white px-3 text-[11px] font-bold uppercase tracking-[0.01em] text-black transition-colors hover:bg-[#f2f2f2]"
+        >
+          MESSAGE
+        </button>
+      </div>
     </div>
-    <p className="mt-6 text-sm text-[#94a3b8]">{title}</p>
-    <p className="mt-2 max-w-[220px] text-xs text-[#64748b]">{description}</p>
-    <button
-      type="button"
-      onClick={onAction}
-      className="mt-5 text-sm font-bold text-[#ffc107] transition-colors hover:text-[#facc15]"
-    >
-      {actionLabel}
-    </button>
   </div>
 );
 
@@ -305,18 +369,220 @@ const FooterLink = ({ item, onAction }) => (
   </button>
 );
 
+const ProjectProgressChartCard = ({ project }) => {
+  const chartWidth = 960;
+  const chartHeight = 360;
+  const leftPadding = 74;
+  const rightPadding = 34;
+  const topPadding = 36;
+  const bottomPadding = 66;
+  const usableWidth = chartWidth - leftPadding - rightPadding;
+  const usableHeight = chartHeight - topPadding - bottomPadding;
+
+  const chartPoints = project.phases.map((phase, index) => {
+    const x =
+      leftPadding +
+      (index / Math.max(project.phases.length - 1, 1)) * usableWidth;
+    const y = topPadding + ((100 - phase.value) / 100) * usableHeight;
+    return { ...phase, x, y };
+  });
+
+  const polylinePoints = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const highlightPoint =
+    chartPoints[project.highlightIndex] || chartPoints[Math.min(1, chartPoints.length - 1)];
+  const isNearRightEdge = highlightPoint.x >= chartWidth - rightPadding - 48;
+  const isNearLeftEdge = highlightPoint.x <= leftPadding + 48;
+  const isNearTopEdge = highlightPoint.y <= topPadding + 24;
+  const verticalTransform = isNearTopEdge ? "translateY(16px)" : "translateY(-105%)";
+  const calloutStyle = isNearRightEdge
+    ? {
+        right: "16px",
+        top: `${(highlightPoint.y / chartHeight) * 100}%`,
+        transform: verticalTransform,
+      }
+    : isNearLeftEdge
+      ? {
+          left: "16px",
+          top: `${(highlightPoint.y / chartHeight) * 100}%`,
+          transform: verticalTransform,
+        }
+      : {
+          left: `${(highlightPoint.x / chartWidth) * 100}%`,
+          top: `${(highlightPoint.y / chartHeight) * 100}%`,
+          transform: isNearTopEdge ? "translate(-50%, 16px)" : "translate(-50%, -105%)",
+        };
+
+  return (
+    <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#232323]/90 text-white shadow-none backdrop-blur-[10px]">
+      <CardContent className="px-4 py-5 sm:px-6">
+        <div className="relative">
+          <Card
+            className="pointer-events-none absolute min-w-[156px] rounded-[24px] border border-white/[0.08] bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01),rgba(255,255,255,0.05))] px-5 py-4 text-white shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
+            style={calloutStyle}
+          >
+            <p className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-white">
+              {project.calloutLabel}
+            </p>
+            <p className="mt-2 text-[1.2rem] font-semibold text-[#ffc107]">
+              {project.calloutValue}
+              <span className="ml-2 text-sm font-medium text-[#94a3b8]">
+                {project.calloutDetail}
+              </span>
+            </p>
+          </Card>
+
+          <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-full w-full">
+            {[100, 80, 60, 40, 20, 0].map((value) => {
+              const y = topPadding + ((100 - value) / 100) * usableHeight;
+              return (
+                <g key={value}>
+                  <line
+                    x1={leftPadding}
+                    y1={y}
+                    x2={chartWidth - rightPadding}
+                    y2={y}
+                    stroke="rgba(255,255,255,0.12)"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={18}
+                    y={y + 5}
+                    fill="#a3a3a3"
+                    fontSize="14"
+                    fontWeight="500"
+                  >
+                    {value}%
+                  </text>
+                </g>
+              );
+            })}
+
+            {chartPoints.map((point) => (
+              <line
+                key={`${point.label}-grid`}
+                x1={point.x}
+                y1={point.y}
+                x2={point.x}
+                y2={chartHeight - bottomPadding}
+                stroke="rgba(255,255,255,0.16)"
+                strokeDasharray="4 4"
+                strokeWidth="1"
+              />
+            ))}
+
+            <polyline
+              points={polylinePoints}
+              fill="none"
+              stroke="#facc15"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {chartPoints.map((point) => (
+              <circle
+                key={point.label}
+                cx={point.x}
+                cy={point.y}
+                r="8"
+                fill="#facc15"
+                stroke="#292929"
+                strokeWidth="3"
+              />
+            ))}
+
+            <line
+              x1={leftPadding}
+              y1={chartHeight - bottomPadding}
+              x2={chartWidth - rightPadding}
+              y2={chartHeight - bottomPadding}
+              stroke="rgba(255,255,255,0.14)"
+              strokeWidth="1"
+            />
+
+            {chartPoints.map((point) => (
+              <text
+                key={`${point.label}-axis`}
+                x={point.x}
+                y={chartHeight - 18}
+                textAnchor="middle"
+                fill="#d4d4d4"
+                fontSize="14"
+                fontWeight="500"
+              >
+                {point.label}
+              </text>
+            ))}
+          </svg>
+        </div>
+      </CardContent>
+
+      <CardFooter className="gap-3 border-t border-white/[0.05] px-4 py-5 text-[#d4d4d4] sm:px-6">
+        <Badge
+          variant="outline"
+          className="gap-3 border-0 bg-transparent px-0 py-0 text-sm font-medium text-[#d4d4d4] shadow-none"
+        >
+          <span aria-hidden="true" className="size-3 rounded-full bg-[#facc15]" />
+          Milestones
+        </Badge>
+      </CardFooter>
+    </Card>
+  );
+};
+
+const ProjectProgressSection = ({ progressProjects }) => {
+  const projects = progressProjects?.length ? progressProjects : fallbackProgressProjects;
+  const [activeProjectId, setActiveProjectId] = React.useState(projects[0]?.id || "");
+  const activeProject =
+    projects.find((project) => project.id === activeProjectId) || projects[0];
+
+  return (
+    <section className="mt-16">
+      <Tabs value={activeProject.id} onValueChange={setActiveProjectId} className="gap-0">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
+              Project Progress
+            </h2>
+            <p className="mt-2 text-sm text-[#94a3b8]">
+              Track the progress of project phases that require your attention.
+            </p>
+          </div>
+
+          <TabsList className="h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-[#232323] p-1.5">
+            {projects.map((project) => (
+              <TabsTrigger
+                key={project.id}
+                value={project.id}
+                className="rounded-full border border-transparent px-5 py-2 text-sm text-[#8f96a3] shadow-none transition-colors data-[state=active]:border-[#ffc107]/50 data-[state=active]:bg-[#2a2406] data-[state=active]:text-[#ffc107] data-[state=active]:shadow-none hover:text-white"
+              >
+                {project.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        {projects.map((project) => (
+          <TabsContent key={project.id} value={project.id} className="mt-8">
+            <ProjectProgressChartCard project={project} />
+          </TabsContent>
+        ))}
+      </Tabs>
+    </section>
+  );
+};
+
 const ClientDashboardShell = ({
   profile,
   metrics,
   showcaseItems,
   recentActivities,
-  activeChats,
-  appointmentCard,
   hero,
   unreadCount,
-  draftCount,
-  selectedAppointmentTime,
-  onSelectAppointmentTime,
+  draftProposalRows = [],
+  interestedFreelancers = [],
+  interestedFreelancersCount = 0,
+  progressProjects = [],
   onSiteNav,
   onDashboardNav,
   onOpenNotifications,
@@ -324,103 +590,46 @@ const ClientDashboardShell = ({
   onOpenQuickProject,
   onOpenViewProposals,
   onOpenViewProjects,
-  onOpenMessenger,
+  onOpenHireFreelancer,
   onFooterAction,
 }) => (
-  <div
-    className="min-h-screen bg-[#212121] text-[#f1f5f9]"
-    style={{
-      backgroundImage:
-        "radial-gradient(circle at 50% 50%, rgba(255,193,5,0.05) 0%, rgba(255,193,5,0) 24%), linear-gradient(90deg, #212121 0%, #212121 100%)",
-    }}
-  >
-    <div className="mx-auto flex min-h-screen max-w-[1311px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px]">
-      <header className="mx-auto w-full max-w-[1024px] rounded-[40px] border border-white/10 bg-[#171717]/70 px-4 py-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:px-6">
-        <div className="flex items-center justify-between gap-4">
-          <BrandMark />
-          <DesktopLinks items={siteLinks} activeKey="home" onAction={onSiteNav} />
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onOpenProfile}
-              className="flex items-center gap-2 rounded-full bg-[#facc15] px-3 py-2 text-sm font-semibold text-black transition-transform hover:scale-[1.01]"
-            >
-              <Avatar className="size-7 border border-black/10">
-                <AvatarImage src={profile.avatar} alt={profile.name} />
-                <AvatarFallback className="bg-black/5 text-xs font-semibold text-black">
-                  {profile.initial}
-                </AvatarFallback>
-              </Avatar>
-              <span className="max-w-[120px] truncate">{profile.name}</span>
-            </button>
-          </div>
-        </div>
-        <div className="mt-4 lg:hidden">
-          <MobileLinks items={siteLinks} activeKey="home" onAction={onSiteNav} />
-        </div>
-      </header>
+  <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+    <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px] xl:w-[90%] xl:max-w-none">
+      <ClientWorkspaceHeader
+        profile={profile}
+        activeWorkspaceKey="dashboard"
+        unreadCount={unreadCount}
+        onSiteNav={onSiteNav}
+        onWorkspaceNav={onDashboardNav}
+        onOpenProfile={onOpenProfile}
+        onPrimaryAction={onOpenHireFreelancer}
+        primaryActionLabel="Hire Freelancer"
+        onOpenNotifications={onOpenNotifications}
+      />
 
       <main className="flex-1 pb-12">
-        <div className="mt-7 border-b border-[#ffc107]/10 pb-3">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-3">
-              <DesktopLinks
-                items={dashboardTabs}
-                activeKey="dashboard"
-                onAction={onDashboardNav}
-              />
-              <MobileLinks
-                items={dashboardTabs}
-                activeKey="dashboard"
-                onAction={onDashboardNav}
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onOpenQuickProject}
-                className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
-              >
-                <Plus className="size-4" />
-                <span>Project</span>
-              </button>
-              <button
-                type="button"
-                onClick={onOpenNotifications}
-                className="relative flex size-9 items-center justify-center text-[#94a3b8] transition-colors hover:text-white"
-                aria-label="Open notifications"
-              >
-                <Bell className="size-4.5" />
-                {unreadCount > 0 ? (
-                  <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
-                ) : null}
-              </button>
-            </div>
-          </div>
-        </div>
-
         <section className="mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
+            <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
               {hero.greeting}, {hero.firstName}
             </h1>
             <p className="mt-2 text-sm text-[#94a3b8]">{hero.description}</p>
           </div>
-          <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#64748b]">
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#64748b]">
             {hero.dateLabel}
           </p>
         </section>
 
-        <section className="mt-14 grid gap-4 md:grid-cols-3">
-          {metrics.map((item) => (
-            <MetricCard key={item.title} item={item} />
+        <section className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {metrics.slice(0, 3).map((item) => (
+            <OverviewMetricCard key={item.title} item={item} />
           ))}
+          <CreateProposalCard onClick={onOpenQuickProject} />
         </section>
 
         <section className="mt-14">
-          <div className="mb-5 flex items-center gap-3">
-            <h2 className="text-[18px] font-bold leading-7 text-[#f1f5f9]">
+          <div className="mb-6 flex items-center gap-3">
+            <h2 className="text-[1.7rem] font-semibold tracking-[-0.04em] text-white">
               Running Projects
             </h2>
             <span className="size-[15px] rounded-full bg-[#10b981]/10 p-[4.5px]">
@@ -430,204 +639,137 @@ const ClientDashboardShell = ({
 
           <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
             {showcaseItems.map((item) => (
-              <ShowcaseCard key={item.id} item={item} />
+              <RunningProjectCard key={item.id} item={item} />
             ))}
           </div>
         </section>
 
-        <section className="mt-14 grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <SectionCard className="overflow-hidden">
-            <div className="border-b border-white/5 px-6 py-5">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-[18px] font-bold leading-7 text-[#f1f5f9]">
+        <section className="mt-14 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="flex flex-col gap-7">
+            <DashboardPanel className="overflow-hidden">
+              <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-5">
+                <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
                   Recent Activity
                 </h2>
                 <button
                   type="button"
                   onClick={onOpenViewProjects}
-                  className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffc107] transition-colors hover:text-[#facc15]"
+                  className="text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
                 >
                   View All
                 </button>
               </div>
-            </div>
-            <div>
-              {recentActivities.map((item) => (
-                <ActivityRow key={item.id} item={item} />
-              ))}
-            </div>
-          </SectionCard>
+              <div>
+                {recentActivities.map((item) => (
+                  <ActivityRow key={item.id} item={item} />
+                ))}
+              </div>
+            </DashboardPanel>
 
-          <div className="space-y-6">
-            <SectionCard className="p-6">
-              <h2 className="text-[18px] font-bold leading-7 text-[#f1f5f9]">
+            <DashboardPanel className="overflow-hidden">
+              <div className="px-6 py-5">
+                <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
+                  Draft Proposals
+                </h2>
+              </div>
+
+              {draftProposalRows.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+                  <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
+                    <ClipboardList className="size-7" />
+                  </div>
+                  <p className="mt-6 text-base font-medium text-white">No draft proposals yet</p>
+                  <p className="mt-2 max-w-[320px] text-sm text-[#8f96a3]">
+                    Start a new proposal to build your project brief and invite freelancers.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onOpenQuickProject}
+                    className="mt-6 rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+                  >
+                    Create New Proposal
+                  </button>
+                </div>
+              ) : (
+                draftProposalRows.map((item) => <DraftProposalRow key={item.id} item={item} />)
+              )}
+            </DashboardPanel>
+          </div>
+
+          <div className="flex flex-col gap-7">
+            <DashboardPanel className="p-5">
+              <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white">
                 Action Center
               </h2>
+
               <div className="mt-5 space-y-3">
                 <button
                   type="button"
-                  onClick={onOpenQuickProject}
-                  className="flex w-full items-center justify-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-3 text-base font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
-                >
-                  <Send className="size-4.5" />
-                  <span>New Proposal</span>
-                </button>
-                <button
-                  type="button"
                   onClick={onOpenViewProposals}
-                  className="w-full rounded-[16px] bg-[#1e293b]/50 px-4 py-3 text-base font-semibold text-[#f1f5f9] transition-colors hover:bg-[#334155]"
+                  className="w-full rounded-[18px] bg-[#17253a] px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-[#1c314f]"
                 >
                   View Proposals
                 </button>
                 <button
                   type="button"
                   onClick={onOpenViewProjects}
-                  className="w-full rounded-[16px] bg-[#1e293b]/50 px-4 py-3 text-base font-semibold text-[#f1f5f9] transition-colors hover:bg-[#334155]"
+                  className="w-full rounded-[18px] bg-[#17253a] px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-[#1c314f]"
                 >
                   View Projects
                 </button>
               </div>
-              {draftCount > 0 ? (
-                <p className="mt-4 text-xs text-[#94a3b8]">
-                  {draftCount} saved proposal{draftCount > 1 ? "s" : ""} ready to continue.
-                </p>
-              ) : null}
-            </SectionCard>
+            </DashboardPanel>
 
-            <SectionCard className="p-6">
-              <h2 className="text-[18px] font-bold leading-7 text-[#f1f5f9]">
-                Active Chat
+            <DashboardPanel className="w-full overflow-hidden rounded-[20px] px-6 pb-6 pt-7">
+              <h2 className="text-[1.6rem] font-semibold tracking-[-0.04em] text-white">
+                Interested Freelancers
               </h2>
-              {activeChats.length === 0 ? (
-                <EmptyState
-                  title="No active chats yet"
-                  description="Your conversations with freelancers and project managers will appear here."
-                  actionLabel="Open Messenger"
-                  onAction={onOpenMessenger}
-                />
-              ) : (
-                <div className="mt-6 space-y-4">
-                  {activeChats.map((chat) => (
-                    <button
-                      key={chat.id}
-                      type="button"
-                      onClick={chat.onClick}
-                      className="flex w-full items-center gap-3 rounded-[18px] border border-white/5 bg-black/10 px-3 py-3 text-left transition-colors hover:bg-black/20"
-                    >
-                      <Avatar className="size-12 border border-white/10">
-                        <AvatarImage src={chat.avatar} alt={chat.name} />
-                        <AvatarFallback className="bg-[#1e293b] text-sm text-white">
-                          {chat.initial}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-[#f1f5f9]">
-                            {chat.name}
-                          </p>
-                          <span
-                            className={cn(
-                              "size-2 rounded-full",
-                              chat.isOnline ? "bg-[#22c55e]" : "bg-[#64748b]",
-                            )}
-                          />
-                        </div>
-                        <p className="truncate text-xs text-[#94a3b8]">{chat.subtitle}</p>
-                        {chat.message ? (
-                          <p className="mt-1 truncate text-xs text-[#64748b]">
-                            {chat.message}
-                          </p>
-                        ) : null}
-                      </div>
-                    </button>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={onOpenMessenger}
-                    className="h-auto justify-start px-0 text-sm font-bold text-[#ffc107] hover:bg-transparent hover:text-[#facc15]"
-                  >
-                    Open Messenger
-                  </Button>
-                </div>
-              )}
-            </SectionCard>
+              <p className="mt-2 text-[14px] leading-5 text-[#8f8f8f]">
+                Have shown interest in the brief.
+              </p>
 
-            <SectionCard className="overflow-hidden">
-              <div className="px-6 pb-4 pt-6">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffc107]/80">
-                  Appointment
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold tracking-[-0.6px] text-[#f1f5f9]">
-                  With Project Manager
-                </h2>
-              </div>
-
-              <div className="flex items-center justify-between border-y border-white/5 bg-white/5 px-6 py-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="size-12 border-2 border-[#ffc107]/20">
-                      <AvatarImage src={appointmentCard.avatar} alt={appointmentCard.managerName} />
-                      <AvatarFallback className="bg-[#1e293b] text-sm text-white">
-                        {appointmentCard.initial}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="absolute bottom-0 right-0 size-3.5 rounded-full border-2 border-[#1e1e1e] bg-[#22c55e]" />
+              {interestedFreelancers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+                  <div className="flex size-14 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
+                    <Users className="size-6" />
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-[#f1f5f9]">
-                      {appointmentCard.managerName}
-                    </p>
-                    <p className="text-xs text-[#94a3b8]">{appointmentCard.managerStatus}</p>
-                  </div>
-                </div>
-                <CalendarDays className="size-5 text-[#94a3b8]" />
-              </div>
-
-              <div className="px-6 py-4">
-                <p className="text-xs text-[#94a3b8]">
-                  Selected Date:{" "}
-                  <span className="font-medium text-[#f1f5f9]">
-                    {appointmentCard.dateLabel}
-                  </span>
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 px-6 pb-6">
-                {appointmentCard.slots.map((slot) => (
-                  <AppointmentSlotButton
-                    key={slot}
-                    slot={slot}
-                    selected={slot === selectedAppointmentTime}
-                    onClick={() => onSelectAppointmentTime(slot)}
-                  />
-                ))}
-              </div>
-
-              <div className="px-6 pb-6">
-                <button
-                  type="button"
-                  onClick={appointmentCard.onBook}
-                  className="w-full rounded-[24px] bg-[#ffc107] px-5 py-4 text-base font-bold text-black transition-colors hover:bg-[#ffd54f]"
-                >
-                  Book Appointment
-                </button>
-                {appointmentCard.projectTitle ? (
-                  <p className="mt-3 text-center text-xs text-[#64748b]">
-                    Booking for {appointmentCard.projectTitle}
+                  <p className="mt-5 text-sm text-white">No interested freelancers yet</p>
+                  <p className="mt-2 max-w-[220px] text-xs text-[#8f8f8f]">
+                    Invite talent from the marketplace to populate this list.
                   </p>
-                ) : null}
-              </div>
-            </SectionCard>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-8 space-y-[30px]">
+                    {interestedFreelancers.map((item) => (
+                      <InterestedFreelancerRow key={item.id} item={item} />
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onOpenHireFreelancer}
+                    className="mt-9 flex w-full items-center justify-center gap-2 text-[13px] font-bold uppercase tracking-[0.16em] text-[#8f8f8f] transition-colors hover:text-white"
+                  >
+                    <span>View All ({interestedFreelancersCount || interestedFreelancers.length})</span>
+                    <ChevronRight className="size-[15px] stroke-[1.75]" />
+                  </button>
+                </>
+              )}
+            </DashboardPanel>
           </div>
         </section>
+
+        <ProjectProgressSection progressProjects={progressProjects} />
       </main>
 
-      <footer className="border-t border-[#1e293b]/50 px-2 py-8">
+      <footer className="mt-8 border-t border-white/[0.05] px-2 py-8">
         <div className="flex flex-col gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
-          <p className="text-xs text-[#64748b]">
-            Copyright 2026 Catalance. All rights reserved.
-          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-[#64748b] sm:justify-start">
+            <Zap className="size-3.5 text-[#ffc107]" />
+            <span>&copy; 2026 Catalance. All rights reserved.</span>
+          </div>
+
           <div className="flex flex-wrap items-center justify-center gap-6 sm:justify-end">
             {footerLinks.map((item) => (
               <FooterLink key={item.key} item={item} onAction={onFooterAction} />

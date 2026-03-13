@@ -10,8 +10,8 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Send from "lucide-react/dist/esm/icons/send";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import logo from "@/assets/logos/logo.png";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -70,21 +70,8 @@ const statusLabels = {
   rejected: "Rejected",
 };
 
-const marketingNavItems = [
-  { label: "Home", to: "/" },
-  { label: "Marketplace", to: "/marketplace" },
-  { label: "Service", to: "/services" },
-  { label: "Contact", to: "/contact" },
-];
-
-const workspaceNavItems = [
-  { label: "Dashboard", to: "/client" },
-  { label: "Proposals", to: "/client/proposal" },
-  { label: "Projects", to: "/client/project" },
-  { label: "Messages", to: "/client/messages" },
-  { label: "Payments", to: "/client/payments" },
-  { label: "Freelancers", to: "/marketplace" },
-];
+const proposalPanelClassName =
+  "rounded-[24px] border border-[#1e293b] bg-[#303030]/40 shadow-[0px_0px_20px_0px_rgba(255,193,5,0.03)] backdrop-blur-[6px]";
 
 const proposalCardStatusClasses = {
   draft: "border-white/10 bg-[#2f3135] text-[#d4d7dd]",
@@ -480,11 +467,11 @@ const NotificationPopoverButton = ({
       <Button
         variant="ghost"
         size="icon"
-        className="relative h-11 w-11 rounded-full text-[#a7afbc] hover:bg-white/5 hover:text-white"
+        className="relative flex size-9 items-center justify-center rounded-full p-0 text-[#94a3b8] transition-colors hover:bg-transparent hover:text-white"
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="size-4.5" />
         {unreadCount > 0 ? (
-          <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-primary" />
+          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
         ) : null}
       </Button>
     </PopoverTrigger>
@@ -545,116 +532,28 @@ const NotificationPopoverButton = ({
   </Popover>
 );
 
-const StandaloneProposalHeader = ({
-  user,
-  notifications,
-  unreadCount,
-  onMarkAllAsRead,
-  onNotificationClick,
-}) => {
-  const displayName = getDisplayName(user);
-  const initials = getInitials(displayName);
-
-  return (
-    <header className="space-y-5">
-      <div className="rounded-[2rem] border border-white/10 bg-[#121315]/95 px-5 py-4 shadow-[0_26px_80px_-56px_rgba(255,204,0,0.45)] backdrop-blur-sm sm:px-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
-              <img
-                src={logo}
-                alt="Catalance logo"
-                className="h-7 w-7 object-contain brightness-0 saturate-100"
-              />
-            </div>
-            <span className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white sm:text-[2rem]">
-              Catalance
-            </span>
-          </Link>
-
-          <nav className="flex flex-1 flex-wrap items-center justify-center gap-5 text-[0.98rem] font-medium lg:gap-8">
-            {marketingNavItems.map((item) => {
-              const active = item.label === "Home";
-              return (
-                <Link
-                  key={item.label}
-                  to={item.to}
-                  className={cn(
-                    "transition",
-                    active ? "text-primary" : "text-[#a1a7b3] hover:text-white",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <Link
-            to="/client/profile"
-            className="inline-flex items-center gap-3 self-start rounded-full bg-[#222326] px-4 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:bg-[#292a2e] lg:self-auto"
-          >
-            <Avatar className="h-10 w-10 border border-white/10">
-              <AvatarImage src={user?.avatar} alt={displayName} />
-              <AvatarFallback className="bg-[#101113] text-xs font-bold text-primary">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <span className="max-w-[12rem] truncate">{displayName}</span>
-          </Link>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 border-b border-[#3a2f13] pb-2 lg:flex-row lg:items-center lg:justify-between">
-        <nav className="flex items-center gap-2 overflow-x-auto pb-2 text-sm no-scrollbar sm:gap-3 lg:pb-0">
-          {workspaceNavItems.map((item) => {
-            const active = item.label === "Proposals";
-            return (
-              <Link
-                key={item.label}
-                to={item.to}
-                className={cn(
-                  "shrink-0 rounded-full px-4 py-2.5 font-medium transition",
-                  active
-                    ? "border border-white/12 bg-[#2a2b2d] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                    : "text-[#9aa1ae] hover:text-white",
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="flex items-center gap-3">
-          <Button
-            asChild
-            className="h-11 rounded-full bg-primary px-6 text-sm font-semibold text-[#141414] hover:bg-primary/90"
-          >
-            <Link to="/marketplace">Hire Freelancer</Link>
-          </Button>
-
-          <NotificationPopoverButton
-            notifications={notifications}
-            unreadCount={unreadCount}
-            onMarkAllAsRead={onMarkAllAsRead}
-            onNotificationClick={onNotificationClick}
-          />
-        </div>
-      </div>
-    </header>
-  );
-};
-
 const EmptyStateCard = ({ title, description }) => (
-  <Card className="rounded-[2.5rem] border border-dashed border-[#3a2f13] bg-[#151617]/80 shadow-none">
-    <CardContent className="flex min-h-[200px] flex-col items-center justify-center gap-4 px-6 py-14 text-center">
-      <div className="rounded-2xl border border-[#3a2f13] bg-[#191a1d] p-3 text-[#61718d]">
+  <Card className={cn("shadow-none", proposalPanelClassName)}>
+    <CardContent className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+      <div className="rounded-xl bg-[#ffc107]/10 p-3 text-[#ffc107]">
         <FileText className="h-6 w-6" />
       </div>
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold tracking-tight text-white">{title}</h3>
-        <p className="max-w-md text-sm leading-6 text-[#7e8797]">{description}</p>
+        <h3 className="text-xl font-semibold tracking-tight text-[#f1f5f9]">{title}</h3>
+        <p className="max-w-md text-sm leading-6 text-[#94a3b8]">{description}</p>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ProposalLoadingState = () => (
+  <Card className={cn("shadow-none", proposalPanelClassName)}>
+    <CardContent className="flex min-h-[260px] flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+      <Skeleton className="h-12 w-12 rounded-xl bg-white/[0.08]" />
+      <div className="space-y-3">
+        <Skeleton className="mx-auto h-8 w-56 rounded-full bg-white/[0.08]" />
+        <Skeleton className="mx-auto h-4 w-80 max-w-full rounded-full bg-white/[0.06]" />
+        <Skeleton className="mx-auto h-4 w-64 max-w-full rounded-full bg-white/[0.06]" />
       </div>
     </CardContent>
   </Card>
@@ -672,16 +571,16 @@ const ProposalWorkspaceHintCard = ({ activeTab, hasProjectFilter }) => {
         : "Use a rejected scope as a starting point, revise the brief, and send a stronger version back out.";
 
   return (
-    <Card className="rounded-[2.5rem] border border-dashed border-[#3a2f13] bg-[#151617]/65 shadow-none">
-      <CardContent className="flex min-h-[180px] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-        <div className="rounded-2xl border border-[#3a2f13] bg-[#191a1d] p-3 text-[#61718d]">
+    <Card className={cn("shadow-none", proposalPanelClassName)}>
+      <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-4 px-6 py-14 text-center">
+        <div className="rounded-xl bg-[#ffc107]/10 p-3 text-[#ffc107]">
           <FileText className="h-6 w-6" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-[1.85rem] font-semibold tracking-[-0.03em] text-[#516889]">
+          <h3 className="text-[1.85rem] font-semibold tracking-[-0.03em] text-[#f1f5f9]">
             {title}
           </h3>
-          <p className="max-w-lg text-sm leading-6 text-[#5d6d87]">{description}</p>
+          <p className="max-w-lg text-sm leading-6 text-[#94a3b8]">{description}</p>
         </div>
       </CardContent>
     </Card>
@@ -794,8 +693,7 @@ const ProposalRowCard = ({
                 <div className="flex w-full flex-wrap gap-2 lg:justify-end">
                   {canSendToFreelancers ? (
                     <Button
-                      variant="outline"
-                      className="h-9 rounded-full border-white/10 bg-white/[0.03] px-4 text-xs font-semibold text-white hover:bg-white/[0.06]"
+                      className="h-11 rounded-full border border-white/10 bg-white/[0.03] px-6 font-semibold text-white hover:bg-white/[0.06] lg:w-full"
                       onClick={() => onSend?.(proposal)}
                       disabled={isSending}
                     >
@@ -1890,36 +1788,42 @@ const ClientProposalContent = () => {
 
   const currentTabItems = grouped[activeTab] || [];
   const currentTabMeta = tabCopy[activeTab] || tabCopy.draft;
+  const headerDisplayName = getDisplayName(user);
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#141415]">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_50%_0%,rgba(255,204,0,0.12),transparent_42%),linear-gradient(180deg,#151516_0%,#131314_100%)]"
-      />
+    <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px] xl:w-[90%] xl:max-w-none">
+        <ClientWorkspaceHeader
+          profile={{
+            avatar: user?.avatar,
+            name: headerDisplayName,
+            initial: getInitials(headerDisplayName),
+          }}
+          activeWorkspaceKey="proposals"
+          unreadCount={unreadCount}
+          notificationNode={
+            <NotificationPopoverButton
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAllAsRead={markAllAsRead}
+              onNotificationClick={handleNotificationClick}
+            />
+          }
+        />
 
-      <main className="relative z-10 px-4 pb-12 pt-6 sm:px-6 lg:px-8">
-        <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-10">
-          <StandaloneProposalHeader
-            user={user}
-            notifications={notifications}
-            unreadCount={unreadCount}
-            onMarkAllAsRead={markAllAsRead}
-            onNotificationClick={handleNotificationClick}
-          />
-
-          <section className="space-y-4">
-            <div className="space-y-3">
-              <h1 className="text-4xl font-semibold tracking-[-0.05em] text-white sm:text-[3.4rem]">
+        <main className="flex-1 pb-12">
+          <section className="mt-14 space-y-4">
+            <div>
+              <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
                 Project Proposals
               </h1>
-              <p className="max-w-[34rem] text-base leading-8 text-[#9ca3b1]">
+              <p className="mt-2 max-w-[34rem] text-sm text-[#94a3b8]">
                 Manage your draft, pending, and rejected proposals. Keep your
                 potential collaborations moving.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-sm text-[#8f96a3]">
+            <div className="flex min-h-7 flex-wrap items-center gap-3 text-sm text-[#94a3b8]">
               {deepLinkProjectId ? (
                 <Badge
                   variant="outline"
@@ -1941,7 +1845,7 @@ const ClientProposalContent = () => {
             defaultValue="draft"
             value={activeTab}
             onValueChange={setActiveTab}
-            className="w-full space-y-8"
+            className="mt-12 w-full space-y-8"
           >
             <TabsList className="inline-flex h-auto w-fit flex-wrap rounded-full border border-white/8 bg-[#262628] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               {[
@@ -1952,7 +1856,7 @@ const ClientProposalContent = () => {
                 <TabsTrigger
                   key={item.value}
                   value={item.value}
-                  className="h-11 rounded-full px-6 text-[0.95rem] font-semibold text-[#a3a6ad] shadow-none transition hover:text-white data-[state=active]:bg-primary data-[state=active]:text-[#141414]"
+                  className="h-11 rounded-full border border-transparent px-6 text-[0.95rem] font-semibold text-[#a3a6ad] shadow-none transition hover:text-white data-[state=active]:!border-[#ffc107]/70 data-[state=active]:!bg-[#ffc107] data-[state=active]:!text-[#141414] data-[state=active]:!shadow-none"
                 >
                   {item.label}
                 </TabsTrigger>
@@ -1961,14 +1865,7 @@ const ClientProposalContent = () => {
 
             <TabsContent value="draft" className="m-0">
               {isLoading ? (
-                <div className="space-y-6">
-                  {[1, 2].map((item) => (
-                    <Skeleton
-                      key={`draft-skeleton-${item}`}
-                      className="h-[250px] rounded-[2.9rem] bg-white/[0.06]"
-                    />
-                  ))}
-                </div>
+                <ProposalLoadingState />
               ) : currentTabItems.length > 0 ? (
                 <div className="space-y-6">
                   {currentTabItems.map((proposal) => (
@@ -1996,14 +1893,7 @@ const ClientProposalContent = () => {
 
             <TabsContent value="pending" className="m-0">
               {isLoading ? (
-                <div className="space-y-6">
-                  {[1, 2].map((item) => (
-                    <Skeleton
-                      key={`pending-skeleton-${item}`}
-                      className="h-[250px] rounded-[2.9rem] bg-white/[0.06]"
-                    />
-                  ))}
-                </div>
+                <ProposalLoadingState />
               ) : currentTabItems.length > 0 ? (
                 <div className="space-y-6">
                   {currentTabItems.map((proposal) => (
@@ -2031,14 +1921,7 @@ const ClientProposalContent = () => {
 
             <TabsContent value="rejected" className="m-0">
               {isLoading ? (
-                <div className="space-y-6">
-                  {[1, 2].map((item) => (
-                    <Skeleton
-                      key={`rejected-skeleton-${item}`}
-                      className="h-[250px] rounded-[2.9rem] bg-white/[0.06]"
-                    />
-                  ))}
-                </div>
+                <ProposalLoadingState />
               ) : currentTabItems.length > 0 ? (
                 <div className="space-y-6">
                   {currentTabItems.map((proposal) => (
@@ -2062,8 +1945,8 @@ const ClientProposalContent = () => {
               )}
             </TabsContent>
           </Tabs>
-        </div>
-      </main>
+        </main>
+      </div>
 
       <Dialog
         open={isViewing && Boolean(activeProposal)}
@@ -2216,7 +2099,7 @@ const ClientProposalContent = () => {
             </div>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+        </Dialog>
 
       <FreelancerSelectionDialog
         open={showFreelancerSelect}
