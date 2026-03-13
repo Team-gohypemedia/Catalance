@@ -123,6 +123,7 @@ const FreelancerSelectionDialog = ({
   onOpenChange,
   savedProposal,
   isLoadingFreelancers,
+  isSendingProposal = false,
   freelancerSearch,
   onFreelancerSearchChange,
   filteredFreelancers,
@@ -436,8 +437,16 @@ const FreelancerSelectionDialog = ({
                             event.stopPropagation();
                             onSendProposal(freelancer);
                           }}
+                          disabled={isSendingProposal}
                         >
-                          Send Proposal
+                          {isSendingProposal ? (
+                            <>
+                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            "Send Proposal"
+                          )}
                         </Button>
                       </div>
                     </div>

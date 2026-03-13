@@ -475,6 +475,22 @@ const appendSpeechTranscript = (
 
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
+const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|kindly|please|type|tap|reply)\b/i;
+
+const forceSentenceBreaks = (text = "") => {
+    const source = String(text || "");
+    if (!source) return source;
+
+    // Preserve authored structure (lists/newlines) and only split single-line blobs.
+    if (source.includes("\n") || /(^|\s)([-*]|\d+\.)\s+/m.test(source)) {
+        return source;
+    }
+
+    return source
+        .replace(/\b(Dr|Mr|Mrs|Ms|e\.g|i\.e)\.\s/g, "$1_PROTECT_")
+        .replace(/([a-z0-9][.?!])\s+(?=[A-Z])/g, "$1\n\n")
+        .replace(/_PROTECT_/g, ". ");
+};
 
 const normalizeInlineOptions = (text = "") =>
     String(text || "")
@@ -546,6 +562,18 @@ const parseAssistantMessageLayout = (content = "") => {
         })
         .filter(Boolean);
 
+    const hasQuestionLine = lines.some((line) => QUESTION_LINE_REGEX.test(line));
+    const isLikelyInteractivePrompt =
+        optionEntries.length >= 2 &&
+        optionEntries.length <= 12 &&
+        (hasQuestionLine || OPTION_PROMPT_CUE_REGEX.test(normalized));
+
+    // Keep numbered informational answers as normal markdown instead of forcing
+    // question/option card layout.
+    if (optionEntries.length > 0 && !isLikelyInteractivePrompt) {
+        return { contextText: forceSentenceBreaks(normalized), questionText: "", options: [] };
+    }
+
     let questionIndex = -1;
     for (let idx = lines.length - 1; idx >= 0; idx -= 1) {
         if (QUESTION_LINE_REGEX.test(lines[idx])) {
@@ -592,14 +620,6 @@ const parseAssistantMessageLayout = (content = "") => {
 
     const contextText = contextParts.join("\n\n").trim();
 
-    const forceSentenceBreaks = (text = "") => {
-        if (!text) return text;
-        return text
-            .replace(/\b(Dr|Mr|Mrs|Ms|e\.g|i\.e)\.\s/g, "$1_PROTECT_")
-            .replace(/([a-z0-9][.?!])\s+(?=[A-Z])/g, "$1\n\n")
-            .replace(/_PROTECT_/g, ". ");
-    };
-
     return {
         contextText: forceSentenceBreaks(contextText),
         questionText: forceSentenceBreaks(questionText),
@@ -622,10 +642,14 @@ const AssistantMessageBody = ({
 }) => {
     const { contextText, questionText, options } = parseAssistantMessageLayout(content);
     const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
+    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.97rem] leading-7 prose-p:my-2.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
+        ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white prose-a:text-amber-300'
+        : 'prose-p:text-slate-700 prose-li:text-slate-700 prose-headings:text-slate-900 prose-a:text-amber-700'
+        }`;
 
     if (!hasStructuredQuestion) {
         return (
-            <div className={`prose prose-sm max-w-none [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold [&_h3]:!mt-2 [&_h3]:!mb-2 [&_ul]:!my-4 [&_li]:!mb-1 ${isDark ? 'prose-invert' : ''}`}>
+            <div className={assistantMarkdownClassName}>
                 <ReactMarkdown>{forceSentenceBreaks(content)}</ReactMarkdown>
             </div>
         );
@@ -634,50 +658,50 @@ const AssistantMessageBody = ({
     return (
         <div className="space-y-3">
             {contextText && (
-                <div className={`prose prose-sm max-w-none [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold [&_h3]:!mt-2 [&_h3]:!mb-2 [&_ul]:!my-4 [&_li]:!mb-1 ${isDark ? 'prose-invert' : ''}`}>
+                <div className={assistantMarkdownClassName}>
                     <ReactMarkdown>{contextText}</ReactMarkdown>
                 </div>
             )}
 
             {questionText && (
-                <div className={`rounded-xl border px-4 py-4 ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/20 bg-primary/5'}`}>
-                    <div className={`prose prose-sm max-w-none font-medium [&_p]:!mb-2 last:[&_p]:!mb-0 [&_strong]:!font-bold ${isDark ? 'prose-invert' : ''}`}>
+                <div className={`rounded-2xl border px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-amber-300/35 bg-amber-300/[0.08]' : 'border-amber-400/30 bg-amber-50/80'}`}>
+                    <div className={`prose prose-sm max-w-none text-[0.95rem] font-medium leading-7 prose-p:my-1 ${isDark ? 'prose-invert prose-p:text-amber-50' : 'prose-p:text-slate-800'}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
                 </div>
             )}
 
             {options.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                     {options.map((option) => (
                         enableOptionClick ? (
                             <button
                                 key={`${option.number}-${option.text}`}
                                 type="button"
                                 onClick={() => onOptionClick(option.text)}
-                                className={`flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left transition-all ${isOptionSelected(option.text)
-                                    ? 'border-primary bg-primary/20 ring-1 ring-primary/50'
+                                className={`group flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left transition-all ${isOptionSelected(option.text)
+                                    ? 'border-primary bg-primary/18 ring-1 ring-primary/45'
                                     : isDark
-                                        ? 'border-white/15 bg-white/[0.04] hover:bg-white/[0.08]'
-                                        : 'border-black/10 bg-[#faf9f5] hover:bg-slate-100'
+                                        ? 'border-white/15 bg-white/[0.045] hover:border-white/30 hover:bg-white/[0.09]'
+                                        : 'border-black/10 bg-white hover:border-black/20 hover:bg-slate-50'
                                     }`}
                             >
                                 <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
                                     {option.number}
                                 </span>
-                                <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                <div className={`prose prose-sm max-w-none leading-relaxed prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
                                 </div>
                             </button>
                         ) : (
                             <div
                                 key={`${option.number}-${option.text}`}
-                                className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${isDark ? 'border-white/15 bg-white/[0.04]' : 'border-black/10 bg-[#faf9f5]'}`}
+                                className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${isDark ? 'border-white/15 bg-white/[0.045]' : 'border-black/10 bg-white'}`}
                             >
                                 <span className={`mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full text-[11px] font-semibold ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
                                     {option.number}
                                 </span>
-                                <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
+                                <div className={`prose prose-sm max-w-none leading-relaxed prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
                                 </div>
                             </div>
@@ -1727,12 +1751,12 @@ const GuestAIDemo = () => {
 
     return (
         <div className={`flex h-screen overflow-hidden ${isDark
-            ? 'bg-black bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.10),transparent_50%)]'
-            : 'bg-[#fbfbfa] bg-[radial-gradient(ellipse_at_top,rgba(242,204,13,0.14),transparent_55%)]'
+            ? 'bg-[#050507] bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.17),transparent_52%)]'
+            : 'bg-[#f5f7fb] bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.22),transparent_58%)]'
             }`}
         >
-            <aside className={`hidden shrink-0 border-r p-5 transition-[width] duration-300 md:flex md:flex-col ${isSidebarCompact ? 'w-[17.5rem]' : 'w-[21rem]'} ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-black/10 bg-white/80'}`}>
-                <div className="mb-4 flex items-center justify-between gap-2">
+            <aside className={`hidden shrink-0 border-r p-4 transition-[width] duration-300 md:flex md:flex-col ${isSidebarCompact ? 'w-[18rem]' : 'w-[22rem]'} ${isDark ? 'border-white/10 bg-black/35' : 'border-slate-300/70 bg-white/80'}`}>
+                <div className="mb-3 flex items-center justify-between gap-2">
                     <Button
                         variant="ghost"
                         className={`w-fit rounded-full px-2.5 ${isDark ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
@@ -1754,22 +1778,27 @@ const GuestAIDemo = () => {
                     </Button>
                 </div>
 
-                <div className="mb-4 flex items-start gap-3">
-                    <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/15'} ${isSidebarCompact ? 'h-10 w-10' : 'h-12 w-12'}`}>
-                        <img src={cataLogo} alt="CATA AI logo" className={`${isSidebarCompact ? 'h-6 w-6' : 'h-8 w-8'} object-contain`} />
-                    </div>
-                    <div className="min-w-0">
-                        <h2 className={`truncate font-bold leading-tight ${isSidebarCompact ? 'text-lg' : 'text-xl'} ${isDark ? 'text-white' : 'text-[#181711]'}`}>
-                            {selectedService.name}
-                        </h2>
-                        <p className={`mt-1 text-[10px] leading-4 ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
-                            {sidebarServiceDescription || 'Guided consultation'}
-                        </p>
+                <div className={`mb-3 rounded-2xl border p-3.5 ${isDark ? 'border-white/12 bg-white/[0.04]' : 'border-slate-300/70 bg-white/95'}`}>
+                    <div className="flex items-start gap-3">
+                        <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-amber-300/15' : 'bg-amber-300/20'} ${isSidebarCompact ? 'h-10 w-10' : 'h-11 w-11'}`}>
+                            <img src={cataLogo} alt="CATA AI logo" className={`${isSidebarCompact ? 'h-5 w-5' : 'h-6 w-6'} object-contain`} />
+                        </div>
+                        <div className="min-w-0">
+                            <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
+                                AI Assistant
+                            </p>
+                            <h2 className={`mt-1 truncate font-bold leading-tight ${isSidebarCompact ? 'text-lg' : 'text-xl'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                {selectedService.name}
+                            </h2>
+                            <p className={`mt-1 text-[11px] leading-5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                {sidebarServiceDescription || 'Guided consultation'}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4">
-                    <div className={`flex min-h-0 flex-[1.05] flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
+                    <div className={`flex min-h-0 flex-[1.05] flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/12 bg-white/[0.035]' : 'border-slate-300/70 bg-white/90'}`}>
                         <div className="mb-3 flex items-center justify-between gap-2">
                             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
                                 <Sparkles className="h-3.5 w-3.5" />
@@ -1780,7 +1809,7 @@ const GuestAIDemo = () => {
                             </span>
                         </div>
                         {generatedProposals.length === 0 ? (
-                            <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                                 No proposals generated yet.
                             </p>
                         ) : (
@@ -1792,8 +1821,8 @@ const GuestAIDemo = () => {
                                             type="button"
                                             onClick={() => handleOpenProposalPreview(proposal)}
                                             className={`group w-full rounded-xl border px-3 py-2 text-left transition-all duration-200 ${isDark
-                                                ? 'border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] hover:border-primary/35 hover:bg-white/[0.06]'
-                                                : 'border-black/10 bg-[#fbfbfa] hover:border-primary/35 hover:bg-slate-100/85'
+                                                ? 'border-white/12 bg-white/[0.04] hover:border-primary/35 hover:bg-white/[0.08]'
+                                                : 'border-black/10 bg-white hover:border-primary/35 hover:bg-slate-50'
                                                 }`}
                                             title="Open proposal details"
                                         >
@@ -1829,13 +1858,13 @@ const GuestAIDemo = () => {
                         )}
                     </div>
 
-                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/12 bg-white/[0.035]' : 'border-slate-300/70 bg-white/90'}`}>
                         <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
                             <History className="h-3.5 w-3.5" />
                             Previous chats
                         </div>
                         {visiblePreviousChats.length === 0 ? (
-                            <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-600'}`}>
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                                 No previous chats yet.
                             </p>
                         ) : (
@@ -1857,7 +1886,7 @@ const GuestAIDemo = () => {
                                                         : 'border-primary/40 bg-primary/10'
                                                     : isDark
                                                         ? 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'
-                                                        : 'border-black/10 bg-[#fbfbfa] hover:bg-slate-100/80'
+                                                        : 'border-black/10 bg-white hover:bg-slate-100/80'
                                                     }`}
                                             >
                                                 <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-2 py-1.5">
@@ -1897,7 +1926,7 @@ const GuestAIDemo = () => {
                     </div>
                 </div>
 
-                <div className={`mt-4 shrink-0 rounded-xl border ${isSidebarCompact ? 'p-2.5' : 'p-3'} ${isDark ? 'border-white/12 bg-white/[0.03]' : 'border-black/10 bg-white'}`}>
+                <div className={`mt-3 shrink-0 rounded-2xl border ${isSidebarCompact ? 'p-2.5' : 'p-3'} ${isDark ? 'border-white/12 bg-white/[0.04]' : 'border-slate-300/70 bg-white/95'}`}>
                     {isAuthLoading ? (
                         <div className="flex items-center gap-2">
                             <span className={`h-2.5 w-2.5 animate-pulse rounded-full ${isDark ? 'bg-slate-400' : 'bg-slate-500'}`} />
@@ -1950,9 +1979,9 @@ const GuestAIDemo = () => {
                 </div>
             </aside>
 
-            <section className={`flex min-w-0 flex-1 flex-col ${isDark ? 'bg-transparent' : 'bg-transparent'}`}>
-                <div className={`border-b px-4 py-4 md:px-6 ${isDark ? 'border-white/10 bg-black/40' : 'border-black/10 bg-white/85'}`}>
-                    <div className="flex items-center justify-between">
+            <section className={`relative flex min-w-0 flex-1 flex-col ${isDark ? 'bg-transparent' : 'bg-transparent'}`}>
+                <div className={`border-b px-4 py-4 backdrop-blur-xl md:px-8 ${isDark ? 'border-white/10 bg-black/35' : 'border-slate-300/70 bg-white/75'}`}>
+                    <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="md:hidden">
                                 <Button
@@ -1964,25 +1993,30 @@ const GuestAIDemo = () => {
                                     <ArrowLeft className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <div className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                            <div className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border ${isDark ? 'border-amber-300/35 bg-amber-300/15' : 'border-amber-400/35 bg-amber-100'}`}>
                                 <img src={cataLogo} alt="CATA AI logo" className="h-6 w-6 object-contain" />
                             </div>
                             <div>
-                                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>CATA AI</h2>
-                                <p className={`text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-500'}`}>
-                                    {selectedService?.name} - Guided consultation
+                                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>CATA AI Workspace</h2>
+                                <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    {selectedService?.name} consultation
                                 </p>
                             </div>
                         </div>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                            Active
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider ${isDark ? 'border-amber-300/30 bg-amber-300/10 text-amber-100' : 'border-amber-400/35 bg-amber-100 text-amber-800'}`}>
+                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+                                Active
+                            </span>
+                            <span className={`hidden rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider lg:inline-flex ${isDark ? 'border-white/15 text-slate-300' : 'border-black/10 text-slate-600'}`}>
+                                {messages.length} messages
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <ScrollArea ref={scrollRef} className="flex-1 min-h-0 px-3 py-4 md:px-6 md:py-6">
-                    <div className="mx-auto max-w-4xl space-y-5 pb-4">
+                <ScrollArea ref={scrollRef} className="flex-1 min-h-0 px-4 py-6 md:px-8 md:py-8">
+                    <div className="mx-auto w-full max-w-6xl space-y-6 pb-10">
                         {messages.map((msg, idx) => {
                             const { text: messageContent, attachments: messageAttachments } = parseMessageContentWithAttachments(
                                 msg.content,
@@ -1994,18 +2028,18 @@ const GuestAIDemo = () => {
                             return (
                                 <motion.div
                                     key={messageKey}
-                                    initial={{ opacity: 0, y: 10 }}
+                                    initial={{ opacity: 0, y: 12 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex items-start gap-3 md:gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     {msg.role === 'assistant' && (
-                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                        <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-amber-300/35 bg-amber-300/15 shadow-[0_0_0_5px_rgba(245,158,11,0.10)]' : 'border-amber-400/35 bg-amber-100'}`}>
                                             <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
                                         </div>
                                     )}
 
                                     {proposalCard ? (
-                                        <div className={`w-full max-w-[96%] rounded-2xl border p-5 shadow-sm md:p-6 ${isDark ? 'border-primary/30 bg-white/[0.04] text-white' : 'border-primary/40 bg-white text-[#181711]'}`}>
+                                        <div className={`w-full max-w-4xl rounded-[1.5rem] border p-5 shadow-sm md:p-6 ${isDark ? 'border-amber-300/30 bg-gradient-to-b from-white/[0.07] to-white/[0.04] text-white shadow-[0_18px_50px_-30px_rgba(0,0,0,0.70)]' : 'border-amber-400/30 bg-white text-slate-900 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.35)]'}`}>
                                             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
                                                 <Sparkles className="h-3.5 w-3.5" />
                                                 Generated Proposal
@@ -2022,12 +2056,18 @@ const GuestAIDemo = () => {
                                         </div>
                                     ) : (
                                         <div
-                                            className={`rounded-2xl p-4 text-sm leading-relaxed md:text-[15px]
+                                            className={`text-sm leading-7 md:text-[15px]
                                             ${msg.role === 'user'
-                                                    ? 'w-fit max-w-[75%] rounded-tr-none bg-slate-900 text-white self-end'
+                                                    ? 'w-fit max-w-2xl rounded-[1.45rem] rounded-tr-md border px-4 py-3.5 md:px-5 md:py-4'
+                                                    : 'w-full max-w-4xl rounded-[1.45rem] border px-4 py-3.5 md:px-5 md:py-4'
+                                                }
+                                            ${msg.role === 'user'
+                                                    ? isDark
+                                                        ? 'border-amber-300/35 bg-gradient-to-br from-amber-300/22 via-amber-300/15 to-amber-300/8 text-amber-50 shadow-[0_16px_34px_-22px_rgba(245,158,11,0.75)]'
+                                                        : 'border-amber-400/40 bg-amber-100 text-amber-900 shadow-[0_16px_30px_-24px_rgba(146,64,14,0.45)]'
                                                     : isDark
-                                                        ? 'w-full max-w-[100%] rounded-tl-none border border-white/10 bg-white/[0.06] text-white shadow-sm md:p-5'
-                                                        : 'w-full max-w-[100%] rounded-tl-none border border-black/10 bg-white text-slate-800 shadow-sm md:p-5'
+                                                        ? 'border-white/12 bg-gradient-to-b from-white/[0.08] to-white/[0.04] text-white shadow-[0_20px_50px_-34px_rgba(0,0,0,0.68)]'
+                                                        : 'border-black/10 bg-white text-slate-800 shadow-[0_20px_40px_-34px_rgba(15,23,42,0.35)]'
                                                 }`}
                                         >
                                             {msg.role === 'assistant' ? (
@@ -2066,12 +2106,12 @@ const GuestAIDemo = () => {
                                                                             href={attachment.url}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
-                                                                            className="block overflow-hidden rounded-lg border border-white/15 bg-black/15"
+                                                                            className={`block overflow-hidden rounded-xl border ${isDark ? 'border-white/15 bg-black/15' : 'border-black/10 bg-white'}`}
                                                                         >
                                                                             <img
                                                                                 src={attachment.url}
                                                                                 alt={attachment.name || 'Attachment'}
-                                                                                className="max-h-40 w-full object-cover"
+                                                                                className="max-h-44 w-full object-cover"
                                                                             />
                                                                         </a>
                                                                     );
@@ -2083,9 +2123,9 @@ const GuestAIDemo = () => {
                                                                         href={attachment.url}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${isDark
-                                                                            ? 'border-white/20 bg-white/[0.04] text-slate-100'
-                                                                            : 'border-black/15 bg-white/85 text-slate-700'
+                                                                        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${isDark
+                                                                            ? 'border-white/20 bg-white/[0.06] text-slate-100'
+                                                                            : 'border-black/15 bg-white text-slate-700'
                                                                             }`}
                                                                     >
                                                                         <FileText className="h-3.5 w-3.5 shrink-0" />
@@ -2106,7 +2146,7 @@ const GuestAIDemo = () => {
                                     )}
 
                                     {msg.role === 'user' && (
-                                        <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isDark ? 'bg-white/10 text-slate-200' : 'bg-slate-200 text-slate-600'}`}>
+                                        <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${isDark ? 'border-white/15 bg-white/10 text-slate-200' : 'border-black/10 bg-slate-100 text-slate-600'}`}>
                                             <User className="h-4 w-4" />
                                         </div>
                                     )}
@@ -2118,12 +2158,12 @@ const GuestAIDemo = () => {
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="flex items-start gap-3"
+                                className="flex items-start gap-4"
                             >
-                                <div className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-primary/15' : 'bg-primary/15'}`}>
+                                <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-amber-300/35 bg-amber-300/15' : 'border-amber-400/35 bg-amber-100'}`}>
                                     <img src={cataLogo} alt="CATA AI logo" className="h-4 w-4 object-contain" />
                                 </div>
-                                <div className={`flex items-center gap-2 rounded-2xl rounded-tl-none border p-4 ${isDark ? 'border-white/10 bg-white/[0.05]' : 'border-black/10 bg-white'}`}>
+                                <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/12 bg-white/[0.06]' : 'border-black/10 bg-white'}`}>
                                     <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
                                     <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '140ms' }} />
                                     <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: '280ms' }} />
@@ -2134,26 +2174,26 @@ const GuestAIDemo = () => {
                     </div>
                 </ScrollArea>
 
-                <div className={`border-t p-4 md:px-6 md:py-5 ${isDark ? 'border-white/10 bg-black/35' : 'border-black/10 bg-white/90'}`}>
-                    <div className="mx-auto max-w-4xl space-y-3">
+                <div className={`border-t px-4 py-4 md:px-8 ${isDark ? 'border-white/10 bg-black/35' : 'border-slate-300/70 bg-white/75'}`}>
+                    <div className="mx-auto w-full max-w-6xl space-y-2.5">
                         {shouldShowTextInput && (
                             <form
                                 onSubmit={handleSendMessage}
-                                className={`rounded-2xl border p-2 ${isDark
-                                    ? 'border-white/12 bg-white/[0.03]'
-                                    : 'border-black/10 bg-[#fbfbfa]'
+                                className={`rounded-[1.75rem] border p-3 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.85)] backdrop-blur-xl ${isDark
+                                    ? 'border-white/15 bg-gradient-to-b from-white/[0.10] to-white/[0.03]'
+                                    : 'border-slate-300/70 bg-white'
                                     }`}
                             >
                                 {pendingAttachments.length > 0 && (
-                                    <div className="mb-2 flex flex-wrap gap-2">
+                                    <div className="mb-3 flex flex-wrap gap-2">
                                         {pendingAttachments.map((file, index) => {
                                             const imageFile = String(file.type || '').startsWith('image/');
                                             return (
                                                 <div
                                                     key={`${file.name}-${file.size}-${index}`}
                                                     className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1 text-xs ${isDark
-                                                        ? 'border-white/20 bg-white/[0.07] text-slate-200'
-                                                        : 'border-black/15 bg-white text-slate-700'
+                                                        ? 'border-white/20 bg-white/[0.08] text-slate-200'
+                                                        : 'border-black/15 bg-slate-50 text-slate-700'
                                                         }`}
                                                 >
                                                     {imageFile ? (
@@ -2167,7 +2207,7 @@ const GuestAIDemo = () => {
                                                     </span>
                                                     <button
                                                         type="button"
-                                                        className={`rounded-full p-0.5 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-100'}`}
+                                                        className={`rounded-full p-0.5 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-200'}`}
                                                         onClick={() => removePendingAttachment(index)}
                                                         aria-label={`Remove ${file.name}`}
                                                     >
@@ -2178,16 +2218,16 @@ const GuestAIDemo = () => {
                                         })}
                                     </div>
                                 )}
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2.5">
                                     <Input
                                         ref={inputRef}
                                         autoFocus
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
-                                        placeholder="Type your message..."
-                                        className={`h-12 flex-1 rounded-xl text-base ${isDark
-                                            ? 'border-0 bg-transparent text-white placeholder:text-slate-400'
-                                            : 'border-0 bg-transparent text-slate-900 placeholder:text-slate-400'
+                                        placeholder="Message CATA AI..."
+                                        className={`h-12 flex-1 rounded-2xl border-0 bg-transparent text-base ${isDark
+                                            ? 'text-white placeholder:text-slate-400'
+                                            : 'text-slate-900 placeholder:text-slate-500'
                                             }`}
                                         disabled={isTyping || isUploadingAttachment}
                                     />
@@ -2235,7 +2275,7 @@ const GuestAIDemo = () => {
                                         size="icon"
                                         type="submit"
                                         disabled={(!input.trim() && pendingAttachments.length === 0) || isTyping || isUploadingAttachment}
-                                        className="h-10 w-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                                        className="h-10 w-10 rounded-xl bg-primary text-primary-foreground shadow-[0_14px_28px_-16px_rgba(245,158,11,0.9)] hover:bg-primary/90"
                                     >
                                         <Send className="h-4 w-4" />
                                     </Button>
@@ -2247,7 +2287,7 @@ const GuestAIDemo = () => {
                                 )}
                             </form>
                         )}
-                        <p className={`text-center text-xs ${isDark ? 'text-[#bab59c]' : 'text-slate-500'}`}>
+                        <p className={`text-center text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             AI may produce inaccurate information about people, places, or facts.
                         </p>
                     </div>
@@ -2255,17 +2295,17 @@ const GuestAIDemo = () => {
             </section>
 
             {selectedProposalPreview && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6">
                     <div className={`max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${isDark
-                        ? 'border-white/15 bg-[#0d0d0d]'
-                        : 'border-black/10 bg-white'
+                        ? 'border-white/15 bg-[#0d0d0f]'
+                        : 'border-slate-300/80 bg-white'
                         }`}>
-                        <div className={`flex items-center justify-between border-b px-5 py-3 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                        <div className={`flex items-center justify-between border-b px-5 py-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
                             <div>
                                 <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                     {selectedProposalPreview.service || 'Proposal'}
                                 </p>
-                                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-[#181711]'}`}>
+                                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                     {selectedProposalPreview.projectTitle || 'AI Generated Proposal'}
                                 </h3>
                             </div>
@@ -2281,7 +2321,7 @@ const GuestAIDemo = () => {
                         </div>
                         <div className="max-h-[calc(88vh-64px)] overflow-y-auto px-5 py-4">
                             <ProposalPreview content={selectedProposalPreview.content} isDark={isDark} />
-                            <div className={`mt-6 flex justify-end border-t pt-4 ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+                            <div className={`mt-6 flex justify-end border-t pt-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
                                 <Button
                                     onClick={() => handleProceed(selectedProposalPreview.content)}
                                     className="w-full sm:w-auto rounded-xl bg-primary px-8 py-2.5 font-semibold text-primary-foreground hover:bg-primary/90"
