@@ -16,11 +16,12 @@ const prismaLogLevels =
 
 const NEON_HOST_HINT = "neon.tech";
 const NEON_POOLER_HOST_HINT = "-pooler.";
-const DEFAULT_NEON_CONNECT_TIMEOUT_SECONDS = "15";
-const DEFAULT_NEON_POOL_TIMEOUT_SECONDS = "30";
+const DEFAULT_NEON_CONNECT_TIMEOUT_SECONDS = "30";
+const DEFAULT_NEON_POOL_TIMEOUT_SECONDS = "60";
 const DEFAULT_NEON_CONNECTION_LIMIT = "5";
-const DEFAULT_TRANSIENT_RETRY_ATTEMPTS = 4;
-const DEFAULT_TRANSIENT_RETRY_BASE_DELAY_MS = 600;
+const DEFAULT_NEON_KEEPALIVE_IDLE = "10";
+const DEFAULT_TRANSIENT_RETRY_ATTEMPTS = 5;
+const DEFAULT_TRANSIENT_RETRY_BASE_DELAY_MS = 1000;
 const RETRYABLE_CONNECTIVITY_CODES = new Set(["P1001", "P1017"]);
 const WRITE_ACTIONS = new Set([
   "create",
@@ -129,7 +130,10 @@ const isPrismaConnectivityError = (error) => {
     message.includes("can't reach database server") ||
     message.includes("error in postgresql connection") ||
     message.includes("connection was forcibly closed") ||
-    message.includes("server has closed the connection")
+    message.includes("server has closed the connection") ||
+    message.includes("10054") ||
+    message.includes("connectionreset") ||
+    message.includes("broken pipe")
   );
 };
 
@@ -195,6 +199,15 @@ const withNeonConnectionTuning = (databaseUrl) => {
 
     if (!parsed.searchParams.has("connection_limit")) {
       parsed.searchParams.set("connection_limit", DEFAULT_NEON_CONNECTION_LIMIT);
+    }
+
+    if (!parsed.searchParams.has("keepalives_idle")) {
+      parsed.searchParams.set("keepalives_idle", DEFAULT_NEON_KEEPALIVE_IDLE);
+    }
+
+    // Add statement_timeout to prevent long-running queries from hanging the pool
+    if (!parsed.searchParams.has("statement_timeout")) {
+      parsed.searchParams.set("statement_timeout", "120000"); // 2 minutes
     }
 
     return parsed.toString();

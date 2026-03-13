@@ -95,7 +95,7 @@ const hashStringToPositiveInt = (value = "") => {
   return Math.abs(hash) || 1;
 };
 
-const buildFreelancerUnsplashAvatarUrl = (user = {}) => {
+export const buildFreelancerUnsplashAvatarUrl = (user = {}) => {
   const seedSource =
     user?.id || user?.email || user?.fullName || user?.phoneNumber || "freelancer";
   const seed = hashStringToPositiveInt(seedSource);
@@ -190,7 +190,7 @@ const mergeWithFallback = (primaryValue, fallbackValue) => {
     : cloneJsonValue(fallbackValue);
 };
 
-const resolveUserProfileDetails = async (user = null) => {
+export const resolveUserProfileDetails = async (user = null) => {
   const relationProfileDetails = buildFreelancerProfileDetailsObject(
     user?.freelancerProfile
   );
@@ -236,7 +236,7 @@ const resolveUserProfileDetails = async (user = null) => {
   }
 };
 
-const extractPortfolioProjectsFromProfileDetails = (profileDetails = {}) => {
+export const extractPortfolioProjectsFromProfileDetails = (profileDetails = {}) => {
   const serviceDetails =
     profileDetails && typeof profileDetails === "object"
       ? profileDetails.serviceDetails
@@ -395,7 +395,7 @@ const normalizeWorkExperienceEntries = (entries = []) =>
     })
     .filter(Boolean);
 
-const extractWorkExperienceFromProfileDetails = (profileDetails = {}) => {
+export const extractWorkExperienceFromProfileDetails = (profileDetails = {}) => {
   const explicit = normalizeWorkExperienceEntries(profileDetails?.workExperience);
   return explicit;
 };

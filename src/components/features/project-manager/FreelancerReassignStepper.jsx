@@ -8,6 +8,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
     Select,
     SelectContent,
@@ -30,6 +31,11 @@ export const FreelancerReassignStepper = ({
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [selectedFreelancerId, setSelectedFreelancerId] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [skillFilter, setSkillFilter] = useState("");
+    const [minRating, setMinRating] = useState("0");
+    const [minExperience, setMinExperience] = useState("0");
+    const [availabilityFilter, setAvailabilityFilter] = useState("all");
 
     const handlePause = async () => {
         setLoading(true);
@@ -67,11 +73,47 @@ export const FreelancerReassignStepper = ({
         setTimeout(() => {
             setStep(1);
             setSelectedFreelancerId("");
+            setSearchTerm("");
+            setSkillFilter("");
+            setMinRating("0");
+            setMinExperience("0");
+            setAvailabilityFilter("all");
         }, 300);
     };
 
     const availableFreelancers = Array.isArray(freelancers)
-        ? freelancers.filter((freelancer) => freelancer?.id !== currentFreelancer?.id)
+        ? freelancers
+            .filter((freelancer) => freelancer?.id !== currentFreelancer?.id)
+            .filter((freelancer) => {
+                const name = String(freelancer?.fullName || "").toLowerCase();
+                const email = String(freelancer?.email || "").toLowerCase();
+                const search = searchTerm.trim().toLowerCase();
+                if (search && !name.includes(search) && !email.includes(search)) {
+                    return false;
+                }
+
+                const requiredSkill = skillFilter.trim().toLowerCase();
+                if (requiredSkill) {
+                    const skills = Array.isArray(freelancer?.skills)
+                        ? freelancer.skills
+                        : [];
+                    const hasSkill = skills.some((skill) =>
+                        String(skill || "").toLowerCase().includes(requiredSkill)
+                    );
+                    if (!hasSkill) return false;
+                }
+
+                const ratingValue = Number(freelancer?.rating || 0);
+                const experienceValue = Number(freelancer?.experienceYears || 0);
+                if (ratingValue < Number(minRating || 0)) return false;
+                if (experienceValue < Number(minExperience || 0)) return false;
+
+                if (availabilityFilter === "available" && freelancer?.available === false) {
+                    return false;
+                }
+
+                return true;
+            })
         : [];
 
     return (
@@ -158,6 +200,51 @@ export const FreelancerReassignStepper = ({
                             </div>
                             <div className="space-y-2">
                                 <p className="text-sm font-medium">Select Freelancer</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input
+                                        placeholder="Search by name/email"
+                                        value={searchTerm}
+                                        onChange={(event) => setSearchTerm(event.target.value)}
+                                    />
+                                    <Input
+                                        placeholder="Filter by skill"
+                                        value={skillFilter}
+                                        onChange={(event) => setSkillFilter(event.target.value)}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <Select value={minRating} onValueChange={setMinRating}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Min rating" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="0">Any Rating</SelectItem>
+                                            <SelectItem value="3">3+ Rating</SelectItem>
+                                            <SelectItem value="4">4+ Rating</SelectItem>
+                                            <SelectItem value="4.5">4.5+ Rating</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Select value={minExperience} onValueChange={setMinExperience}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Experience" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="0">Any Exp</SelectItem>
+                                            <SelectItem value="1">1+ Years</SelectItem>
+                                            <SelectItem value="3">3+ Years</SelectItem>
+                                            <SelectItem value="5">5+ Years</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Availability" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All</SelectItem>
+                                            <SelectItem value="available">Available Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <Select
                                     value={selectedFreelancerId}
                                     onValueChange={setSelectedFreelancerId}
@@ -172,7 +259,7 @@ export const FreelancerReassignStepper = ({
                                     <SelectContent>
                                         {availableFreelancers.map((freelancer) => (
                                             <SelectItem key={freelancer.id} value={freelancer.id}>
-                                                {freelancer.fullName} ({freelancer.email})
+                                                {freelancer.fullName} ({freelancer.email}) | Rating {Number(freelancer.rating || 0).toFixed(1)} | {Number(freelancer.experienceYears || 0)}y
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

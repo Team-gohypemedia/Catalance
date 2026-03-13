@@ -1138,6 +1138,38 @@ const extractAnswerTokens = (answerValue) => {
     return Array.from(new Set(splitParts));
 };
 
+const doesExtractedAnswerFitQuestion = (question = {}, answerValue = "") => {
+    if (!question || !hasAnswerValue(answerValue)) return false;
+
+    const questionType = normalizeTextToken(question?.type || "input");
+    const optionTypes = new Set([
+        "single_option",
+        "multi_option",
+        "multi_select",
+        "grouped_multi_select",
+        "single_select"
+    ]);
+    const optionLabels = getQuestionOptionLabels(question);
+
+    if (!optionTypes.has(questionType) || optionLabels.length === 0) {
+        return true;
+    }
+
+    const normalizedOptionLabels = optionLabels
+        .map((label) => normalizeTextToken(label))
+        .filter(Boolean);
+    const answerTokens = extractAnswerTokens(answerValue);
+    if (answerTokens.length === 0) return false;
+
+    return answerTokens.some((token) =>
+        normalizedOptionLabels.some((optionLabel) =>
+            token === optionLabel
+            || token.includes(optionLabel)
+            || optionLabel.includes(token)
+        )
+    );
+};
+
 const matchesLogicRule = (answerValue, rule = {}) => {
     const condition = normalizeTextToken(rule.condition || "equals");
     const ruleValue = normalizeTextToken(rule.value || "");
@@ -1330,7 +1362,7 @@ const buildContextualSuggestionMessage = ({
 
     return [
         "Good question.",
-        `Based on what you shared, I suggest **${recommendation}** ${reason}`,
+        `I recommend **${recommendation}** ${reason}`,
         alternativesLine,
         "Quick tip:",
         "- Pick the option that best matches your first launch goal.",
@@ -1397,6 +1429,153 @@ const buildAnswersContextLines = (answersByQuestionText = {}) =>
         .slice(0, 12)
         .join("\n");
 
+const stringifyAnswerForContext = (value) => {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item || "").trim())
+            .filter(Boolean)
+            .join(", ");
+    }
+    return String(value || "").trim();
+};
+
+const buildSavedResponseContextLines = (answersBySlug = {}, questions = []) =>
+    (Array.isArray(questions) ? questions : [])
+        .filter((question) => question?.saveResponse && question?.slug)
+        .map((question) => {
+            const answerValue = answersBySlug?.[question.slug];
+            if (!hasAnswerValue(answerValue)) return null;
+            const answerText = stringifyAnswerForContext(answerValue);
+            if (!answerText) return null;
+            const subtitle = String(question?.subtitle || "").trim();
+            return subtitle
+                ? `- ${question.text}: ${answerText} (intent: ${subtitle})`
+                : `- ${question.text}: ${answerText}`;
+        })
+        .filter(Boolean)
+        .slice(0, 12)
+        .join("\n");
+
+const buildQuestionSubtitleMapLines = (questions = []) =>
+    (Array.isArray(questions) ? questions : [])
+        .map((question) => {
+            const slug = String(question?.slug || "").trim();
+            const subtitle = String(question?.subtitle || "").trim();
+            if (!slug || !subtitle) return null;
+            return `- ${slug}: ${subtitle}`;
+        })
+        .filter(Boolean)
+        .slice(0, 30)
+        .join("\n");
+
+const extractFirstSentence = (value = "") => {
+    const source = String(value || "").replace(/\s+/g, " ").trim();
+    if (!source) return "";
+    const chunks = source.split(/(?<=[.!?])\s+/).map((chunk) => chunk.trim()).filter(Boolean);
+    return chunks[0] || source;
+};
+
+const clipSentence = (value = "", limit = 180) => {
+    const source = String(value || "").replace(/\s+/g, " ").trim();
+    if (!source) return "";
+    if (source.length <= limit) return source;
+    return `${source.slice(0, Math.max(0, limit - 1)).trimEnd()}...`;
+};
+
+const normalizeGuidanceSentence = (value = "") => {
+    const cleaned = String(value || "").trim();
+    if (!cleaned) return "";
+    const withoutMarkdown = cleaned.replace(/\*\*/g, "");
+    const normalizedLead = withoutMarkdown
+        .replace(/^based on what you shared,\s*/i, "")
+        .replace(/^from your earlier inputs,\s*/i, "")
+        .replace(/^for this question,\s*/i, "")
+        .replace(/^(i suggest|suggest)\s+/i, "I recommend ")
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
+    if (!normalizedLead) return "";
+    if (!/^[a-z]/.test(normalizedLead)) return normalizedLead;
+    return `${normalizedLead.charAt(0).toUpperCase()}${normalizedLead.slice(1)}`;
+};
+
+const stripInlineOptionListTail = (value = "") => {
+    const source = String(value || "").trim();
+    if (!source) return "";
+
+    const firstOptionIndex = source.search(/\b1\.\s+\S/);
+    if (firstOptionIndex === -1) return source;
+
+    const optionTail = source.slice(firstOptionIndex);
+    const optionTokenCount = (optionTail.match(/\b\d+\.\s+\S/g) || []).length;
+    if (optionTokenCount < 2) return source;
+
+    return source
+        .slice(0, firstOptionIndex)
+        .replace(/[,:;\-]\s*$/, "")
+        .trim();
+};
+
+const buildRecentAnswerContextSnippet = ({
+    answersBySlug = {},
+    questions = [],
+    excludeSlug = ""
+}) => {
+    const answeredRows = (Array.isArray(questions) ? questions : [])
+        .filter((question) => question?.slug && question.slug !== excludeSlug)
+        .map((question) => {
+            const value = answersBySlug?.[question.slug];
+            if (!hasAnswerValue(value)) return null;
+            return {
+                question: String(question.text || "").trim(),
+                answer: stringifyAnswerForContext(value)
+            };
+        })
+        .filter(Boolean)
+        .slice(-2);
+
+    if (answeredRows.length === 0) return "";
+    return answeredRows
+        .map((row) => `${row.question}: ${row.answer}`)
+        .join(" | ");
+};
+
+const extractCurrentRecommendationLine = (text = "") => {
+    const lines = String(text || "")
+        .replace(/\r/g, "\n")
+        .split("\n")
+        .map((line) => String(line || "").replace(/\*\*/g, "").trim())
+        .filter(Boolean);
+
+    const preferred = lines.find((line) => /\bi suggest\b|\brecommend\b/i.test(line));
+    return preferred || "";
+};
+
+const parsePostFifthMessageFields = (rawMessage = "") => {
+    if (typeof rawMessage !== "string" || !rawMessage.trim()) return null;
+
+    const parsed = parseJsonObjectFromRaw(rawMessage);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return null;
+    }
+
+    const pickText = (...keys) => {
+        for (const key of keys) {
+            const value = parsed?.[key];
+            if (typeof value !== "string") continue;
+            const cleaned = value.trim();
+            if (cleaned) return cleaned;
+        }
+        return "";
+    };
+
+    return {
+        ack: pickText("ack", "acknowledgement"),
+        previousSuggestion: pickText("previousSuggestion", "previous_context_suggestion", "previous"),
+        currentRecommendation: pickText("currentRecommendation", "current_question_recommendation", "recommendation"),
+        questionLead: pickText("questionLead", "question", "nextQuestionPrompt")
+    };
+};
+
 const buildOptionLabelsText = (question = {}) => {
     const labels = getQuestionOptionLabels(question);
     if (labels.length === 0) return "No predefined options.";
@@ -1438,6 +1617,8 @@ const buildAiGuidedQuestionMessage = async ({
     currentQuestion = {},
     nextQuestion = {},
     answersByQuestionText = {},
+    answersBySlug = {},
+    allQuestions = [],
     sideReply = "",
     bridgeSegments = [],
     isInitial = false
@@ -1447,11 +1628,24 @@ const buildAiGuidedQuestionMessage = async ({
 
     const optionLabelsText = buildOptionLabelsText(nextQuestion);
     const hasOptions = getQuestionOptionLabels(nextQuestion).length > 0;
+    const answeredCount = Object.values(answersBySlug || {}).filter((value) => hasAnswerValue(value)).length;
+    const isPostFifthAckSuggestionMode = !isInitial && answeredCount >= 5;
     const answersContext = buildAnswersContextLines(answersByQuestionText);
+    const savedResponseContext = buildSavedResponseContextLines(answersBySlug, allQuestions);
+    const subtitleMapContext = buildQuestionSubtitleMapLines(allQuestions);
+    const currentQuestionSubtitle = String(currentQuestion?.subtitle || "").trim();
+    const nextQuestionSubtitle = String(nextQuestion?.subtitle || "").trim();
     const guidanceHints = bridgeSegments
         .map((item) => String(item || "").trim())
         .filter(Boolean)
-        .slice(0, 4)
+        .reduce((acc, segment) => {
+            const normalized = segment.toLowerCase().replace(/\s+/g, " ").trim();
+            if (!normalized || acc.seen.has(normalized)) return acc;
+            acc.seen.add(normalized);
+            acc.rows.push(segment);
+            return acc;
+        }, { seen: new Set(), rows: [] }).rows
+        .slice(0, isPostFifthAckSuggestionMode ? 2 : 4)
         .join(" | ");
 
     const startTaskBlock = `
@@ -1462,7 +1656,18 @@ Task:
 4) If options exist, show them as numbered list using exact labels.
 `;
 
-    const followupTaskBlock = `
+    const followupTaskBlock = isPostFifthAckSuggestionMode
+        ? `
+Task:
+1) Act like a human expert casually chatting with a client.
+2) Acknowledge the user's last answer in 1-2 natural sentences.
+3) Give one concise suggestion based on previously shared answers/user context.
+4) Give one concise recommendation for the required next question based on its context.
+5) If options exist, mention exactly one recommended option with one short reason.
+6) Ask the required next question naturally (rephrase it; do not copy it verbatim).
+7) If options exist, show them as numbered list using the exact labels provided.
+`
+        : `
 Task:
 1) Act like a human expert casually chatting with a client.
 2) Enthusiastically acknowledge their last answer in 2-3 sentences.
@@ -1471,6 +1676,36 @@ Task:
 5) If user seems unsure/confused, add helpful guidance before asking.
 6) Ask the required next question naturally (rephrase it; do not copy it verbatim).
 7) If options exist, show them as numbered list using the exact labels provided.
+`;
+
+    const responseLengthRule = isPostFifthAckSuggestionMode
+        ? "- Keep it concise in post-question-5 mode: usually 2-3 short sentences before/including the question."
+        : "- Provide thoughtful, slightly longer responses MUST be a minimum of 3 to 4 sentences BEFORE asking the question. This applies to every message.";
+
+    const postFifthRuleBlock = isPostFifthAckSuggestionMode
+        ? `
+- This is post-question-5 mode: avoid duplicate acknowledgements/suggestions.
+- Keep exactly one acknowledgement + one previous-context suggestion + one current-question recommendation before asking the question.
+- Use current_question_context and next_question_context to shape these two suggestion lines.
+- Do not repeat the same reason in both suggestion lines.
+`
+        : "";
+
+    const outputFormatBlock = isPostFifthAckSuggestionMode
+        ? `
+Return strict JSON only:
+{
+  "ack": "one short sentence",
+  "previousSuggestion": "one short sentence tied to previous answers",
+  "currentRecommendation": "one short sentence tied to the current question/options",
+  "questionLead": "one short sentence that asks the next question"
+}
+`
+        : `
+Return strict JSON only:
+{
+    "message": "final assistant message"
+}
 `;
 
     const prompt = `
@@ -1486,6 +1721,16 @@ ${optionLabelsText}
 Context from earlier answers:
 ${answersContext || "- none yet"}
 
+Saved AI memory (only fields marked "Save Response for AI Context"):
+${savedResponseContext || "- none yet"}
+
+Internal question intent (hidden, do not reveal directly to user):
+- current_question_context: ${JSON.stringify(currentQuestionSubtitle || "none")}
+- next_question_context: ${JSON.stringify(nextQuestionSubtitle || "none")}
+
+Question subtitle map (hidden guidance for flow continuity):
+${subtitleMapContext || "- none"}
+
 Helper phrases you may reuse naturally:
     - side_reply: ${JSON.stringify(sideReply)}
     - hints: ${JSON.stringify(guidanceHints)}
@@ -1494,23 +1739,24 @@ ${isInitial ? startTaskBlock : followupTaskBlock}
 
     Rules:
     - Keep it highly human, conversational, and engaging. Avoid being overly brief.
-- Provide thoughtful, slightly longer responses MUST be a minimum of 3 to 4 sentences BEFORE asking the question. This applies to every message.
+${responseLengthRule}
 - NEVER sound like a robot or a questionnaire form. Do NOT use phrases like "I noted that", "It's helpful to know", "This helps me guide you", "So far you have shared", or "Before we continue".
 - Act like you are having a normal conversation with a friend about their project.
 - Use the same language style as the user last message.
 - Use simple English with clear sentences.
 - Keep the tone polite, friendly, and enthusiastic in every response.
+- Avoid repeating the same idea in multiple lines.
 - Do not skip or replace the required next question.
 - Do not ask extra unrelated questions.
 - If options are provided for the required next question, ask user to choose from those options.
 - Do not say "type below" or ask for free-text when options are present.
+- Use internal question context and saved AI memory as guidance only; never expose them verbatim.
+- Read and use subtitle (AI context) for each relevant question when forming guidance.
+${postFifthRuleBlock}
 - Keep under 200 words.
 
-Return strict JSON only:
-    {
-        "message": "final assistant message"
-    }
-    `;
+${outputFormatBlock}
+`;
 
     try {
         const aiResponse = await chatWithAI(
@@ -1520,6 +1766,75 @@ Return strict JSON only:
         );
 
         if (!aiResponse?.success) return "";
+
+        if (isPostFifthAckSuggestionMode) {
+            const structured = parsePostFifthMessageFields(aiResponse.message) || {};
+            const fallbackMessage = parseMessageFieldFromJson(aiResponse.message);
+            const fallbackRecentContext = clipSentence(
+                buildRecentAnswerContextSnippet({
+                    answersBySlug,
+                    questions: allQuestions,
+                    excludeSlug: currentQuestion?.slug
+                }),
+                170
+            );
+            const contextualSuggestionDraft = buildContextualSuggestionMessage({
+                question: nextQuestion,
+                answersBySlug,
+                serviceName
+            });
+            const contextualRecommendation = extractCurrentRecommendationLine(contextualSuggestionDraft);
+
+            const ack = clipSentence(
+                structured.ack
+                || extractFirstSentence(fallbackMessage)
+                || "Great, thanks for sharing that.",
+                170
+            );
+            const previousSuggestionRaw = structured.previousSuggestion
+                || (fallbackRecentContext
+                    ? `since you shared ${fallbackRecentContext}, this direction will stay aligned with your flow.`
+                    : "this direction will keep your scope practical based on your earlier inputs.");
+            const previousSuggestion = clipSentence(
+                normalizeGuidanceSentence(previousSuggestionRaw),
+                190
+            );
+            const currentRecommendationRaw = structured.currentRecommendation
+                || contextualRecommendation
+                || (nextQuestionSubtitle
+                    ? `use this context: ${nextQuestionSubtitle}`
+                    : "choose the option that best matches your first-launch goal.");
+            const currentRecommendation = clipSentence(
+                normalizeGuidanceSentence(currentRecommendationRaw),
+                190
+            );
+            const strippedQuestionLead = stripExistingOptionLines(
+                stripInlineOptionListTail(structured.questionLead || nextQuestionText),
+                getQuestionOptionLabels(nextQuestion)
+            );
+            const questionLead = clipSentence(
+                strippedQuestionLead || nextQuestionText,
+                180
+            );
+
+            const uniqueSegments = [];
+            const seen = new Set();
+            for (const segment of [ack, previousSuggestion, currentRecommendation, questionLead]) {
+                const normalized = normalizeTextToken(segment);
+                if (!normalized || seen.has(normalized)) continue;
+                seen.add(normalized);
+                uniqueSegments.push(segment);
+            }
+
+            let postFifthMessage = uniqueSegments.join("\n").trim();
+
+            if (hasOptions && !hasNumberedOptionsInMessage(postFifthMessage)) {
+                postFifthMessage = `${postFifthMessage}\n\n${optionLabelsText}`;
+            }
+
+            return postFifthMessage;
+        }
+
         const parsedMessage = parseMessageFieldFromJson(aiResponse.message);
         if (!parsedMessage) {
             console.error("[buildAiGuidedQuestionMessage] AI Response gave empty or invalid parsed message.", aiResponse);
@@ -1530,10 +1845,13 @@ Return strict JSON only:
 
         if (hasOptions) {
             const optionLabels = getQuestionOptionLabels(nextQuestion);
-            if (!hasNumberedOptionsInMessage(parsedMessage)) {
-                const cleanedMessage = stripExistingOptionLines(parsedMessage, optionLabels);
+            const normalizedParsedMessage = stripInlineOptionListTail(parsedMessage);
+            if (!hasNumberedOptionsInMessage(normalizedParsedMessage)) {
+                const cleanedMessage = stripExistingOptionLines(normalizedParsedMessage, optionLabels);
                 return `${cleanedMessage} \n\n${optionLabelsText} `;
             }
+
+            return normalizedParsedMessage;
         }
 
         return parsedMessage;
@@ -1669,7 +1987,9 @@ const applyExtractedAnswerUpdates = ({
     existingAnswersBySlug = {},
     extractedAnswers = [],
     questionIndexBySlug = new Map(),
+    questionsBySlug = new Map(),
     questionSlugSet = new Set(),
+    currentStep = -1,
     ignoreSlug = "",
     correctionIntent = false,
     logPrefix = "[Auto Capture]"
@@ -1683,12 +2003,26 @@ const applyExtractedAnswerUpdates = ({
         if (ignoreSlug && slug === ignoreSlug) continue;
         if (!hasAnswerValue(extracted?.answer)) continue;
 
+        const targetIndex = questionIndexBySlug.get(slug);
+        const targetQuestion = questionsBySlug.get(slug);
+        if (targetQuestion && !doesExtractedAnswerFitQuestion(targetQuestion, extracted.answer)) {
+            continue;
+        }
+
         const confidence = Number(extracted?.confidence);
         const normalizedConfidence = Number.isFinite(confidence) ? confidence : 0;
         const hasExistingAnswer = hasAnswerValue(existingAnswersBySlug[slug]);
-        const minConfidence = hasExistingAnswer
+        let minConfidence = hasExistingAnswer
             ? (correctionIntent ? EXTRACTION_CONFIDENCE_MIN : EXTRACTION_CONFIDENCE_UPDATE_MIN)
             : EXTRACTION_CONFIDENCE_MIN;
+
+        if (Number.isInteger(currentStep) && currentStep >= 0 && Number.isInteger(targetIndex)) {
+            if (targetIndex > currentStep + 1) {
+                minConfidence = Math.max(minConfidence, 0.93);
+            } else if (targetIndex > currentStep) {
+                minConfidence = Math.max(minConfidence, 0.90);
+            }
+        }
 
         if (normalizedConfidence < minConfidence) continue;
 
@@ -1702,7 +2036,6 @@ const applyExtractedAnswerUpdates = ({
         nextAnswers[slug] = extracted.answer;
         updatedSlugs.push(slug);
 
-        const targetIndex = questionIndexBySlug.get(slug);
         if (Number.isInteger(targetIndex)) {
             console.log(
                 `${logPrefix} Updated "${slug}" at step ${targetIndex} (confidence = ${normalizedConfidence.toFixed(2)})`
@@ -1838,6 +2171,8 @@ const extractAnswersFromMessage = async ({ serviceName = "", message = "", quest
         slug: q.slug,
         question: q.text,
         type: q.type || "text",
+        subtitle: String(q?.subtitle || "").trim(),
+        saveResponse: Boolean(q?.saveResponse),
         options: Array.isArray(q.options)
             ? q.options.map((opt) => ({
                 value: typeof opt === "string" ? opt : (opt?.value ?? ""),
@@ -1858,6 +2193,7 @@ Rules:
 - Do not infer, assume, or guess.
 - If a question is not clearly answered, skip it.
 - Keep answers short and literal to what the user said.
+- Use each question's subtitle as intent guidance only.
 
 Return only valid JSON in this format:
 {
@@ -1889,6 +2225,8 @@ const extractAnswersFromConversation = async ({ serviceName = "", history = [], 
         slug: q.slug,
         question: q.text,
         type: q.type || "text",
+        subtitle: String(q?.subtitle || "").trim(),
+        saveResponse: Boolean(q?.saveResponse),
         options: Array.isArray(q.options)
             ? q.options.map((opt) => ({
                 value: typeof opt === "string" ? opt : (opt?.value ?? ""),
@@ -1915,6 +2253,7 @@ Rules:
 - If one user message answers multiple questions, return all matched questions.
 - Do not infer missing answers.
 - Prefer concise answer text.
+- Use each question's subtitle as intent guidance only.
 
 Return strict JSON only:
 {
@@ -1981,6 +2320,8 @@ export const startGuestSession = asyncHandler(async (req, res) => {
             currentQuestion: {},
             nextQuestion: firstQuestionDefinition,
             answersByQuestionText: {},
+            answersBySlug: {},
+            allQuestions: service.questions,
             sideReply: "",
             bridgeSegments: [],
             isInitial: true
@@ -2128,6 +2469,11 @@ export const guestChat = asyncHandler(async (req, res) => {
             .filter((q) => q?.slug)
             .map((q, index) => [q.slug, index])
     );
+    const questionsBySlug = new Map(
+        questions
+            .filter((q) => q?.slug)
+            .map((q) => [q.slug, q])
+    );
     const questionSlugSet = new Set(questions.map((q) => q.slug).filter(Boolean));
     let extractedAnswersForMessage = [];
     if (currentStep < questions.length) {
@@ -2148,13 +2494,21 @@ export const guestChat = asyncHandler(async (req, res) => {
     if (currentStep < questions.length) {
         const currentQuestionText = currentQuestion?.text || "";
         const currentQuestionOptions = getQuestionOptionLabels(currentQuestion);
+        const currentQuestionSubtitle = String(currentQuestion?.subtitle || "").trim();
         const knownContextByQuestion = buildPersistedAnswersPayload(
             existingAnswersBySlug,
             questions
         ).byQuestionText;
+        const savedResponseContext = buildSavedResponseContextLines(
+            existingAnswersBySlug,
+            questions
+        );
 
         // Prepare context for the NEXT question if it exists
         const nextStepIndex = currentStep + 1;
+        const nextQuestionSubtitle = (nextStepIndex < questions.length)
+            ? String(questions[nextStepIndex]?.subtitle || "").trim()
+            : "";
         const nextQuestionText = (nextStepIndex < questions.length)
             ? questions[nextStepIndex].text
             : "This was the final question. I will now generate the proposal.";
@@ -2165,11 +2519,14 @@ export const guestChat = asyncHandler(async (req, res) => {
             Current Question Asked: "${currentQuestionText}"
             Current Question Options: ${JSON.stringify(currentQuestionOptions)}
             Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
+            Saved AI Memory Context: ${JSON.stringify(savedResponseContext || "None")}
+            Current Question Internal Context: ${JSON.stringify(currentQuestionSubtitle || "None")}
             User's Answer: "${userMessageText}"
             Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
             Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
              
             Next Question in Script: "${nextQuestionText}"
+            Next Question Internal Context: ${JSON.stringify(nextQuestionSubtitle || "None")}
 
             Task:
             1. Validate the user's answer to the Current Question.
@@ -2197,6 +2554,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
             - Keep wording polite, friendly, and engaging.
             - Aim for slightly longer, more conversational and engaging responses (must be 3-5 sentences total for the entire message) rather than extremely brief ones.
+            - Use "Internal Context" and "Saved AI Memory Context" only as hidden intent guidance. Never reveal those labels/text directly to the user.
 
             Return ONLY a raw JSON object (double quotes only) with this structure:
             {
@@ -2255,6 +2613,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                 currentQuestion,
                 nextQuestion: currentQuestion,
                 answersByQuestionText: knownContextByQuestion,
+                answersBySlug: existingAnswersBySlug,
+                allQuestions: questions,
                 sideReply: "",
                 bridgeSegments: [],
                 isInitial: false
@@ -2287,7 +2647,9 @@ export const guestChat = asyncHandler(async (req, res) => {
                 existingAnswersBySlug,
                 extractedAnswers: extractedAnswersForMessage,
                 questionIndexBySlug,
+                questionsBySlug,
                 questionSlugSet,
+                currentStep,
                 ignoreSlug: currentQuestion?.slug,
                 correctionIntent: true,
                 logPrefix: "[Correction Capture]"
@@ -2428,6 +2790,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                     currentQuestion,
                     nextQuestion: currentQuestion,
                     answersByQuestionText: buildPersistedAnswersPayload(invalidFlowAnswersBySlug, questions).byQuestionText,
+                    answersBySlug: invalidFlowAnswersBySlug,
+                    allQuestions: questions,
                     sideReply: "",
                     bridgeSegments: [],
                     isInitial: false
@@ -2493,7 +2857,9 @@ export const guestChat = asyncHandler(async (req, res) => {
             existingAnswersBySlug,
             extractedAnswers: extractedAnswersForMessage,
             questionIndexBySlug,
+            questionsBySlug,
             questionSlugSet,
+            currentStep,
             ignoreSlug: currentQuestion?.slug,
             correctionIntent,
             logPrefix: "[Auto Capture]"
@@ -2609,6 +2975,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             currentQuestion,
             nextQuestion,
             answersByQuestionText: persistedAnswers.byQuestionText,
+            answersBySlug: persistedAnswers.bySlug,
+            allQuestions: questions,
             sideReply,
             bridgeSegments
         });

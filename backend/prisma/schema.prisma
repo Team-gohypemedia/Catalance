@@ -615,6 +615,7 @@ model ProfileUpdateRequest {
   id              String         @id @default(cuid())
   userId          String
   user            User           @relation("ProfileUpdateUser", fields: [userId], references: [id])
+  userRole        String         @default("PROJECT_MANAGER")
   status          ProposalStatus @default(PENDING)
   requestedData   Json
   reviewedById    String?

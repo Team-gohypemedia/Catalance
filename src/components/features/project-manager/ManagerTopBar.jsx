@@ -1,203 +1,62 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import React, { useEffect, useState } from "react"
 import Bell from "lucide-react/dist/esm/icons/bell";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
-import PanelLeftClose from "lucide-react/dist/esm/icons/panel-left-close";
-import PanelLeftOpen from "lucide-react/dist/esm/icons/panel-left-open";
-
+import Search from "lucide-react/dist/esm/icons/search";
+import Settings from "lucide-react/dist/esm/icons/settings";
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useSidebar } from "@/components/ui/sidebar"
 import { getSession } from "@/shared/lib/auth-storage"
-import { useNotifications } from "@/shared/context/NotificationContext"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import { Notepad } from "@/components/ui/notepad"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now - date
-    const diffMins = Math.floor(diffMs / 60000)
-
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins}m ago`
-    const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-    const diffDays = Math.floor(diffHours / 24)
-    return `${diffDays}d ago`
-}
-
-export const ManagerTopBar = ({ label, interactive = true }) => {
-    const { state, toggleSidebar } = useSidebar()
+export const ManagerTopBar = () => {
     const [sessionUser, setSessionUser] = useState(null)
-    const navigate = useNavigate()
-    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
 
     useEffect(() => {
         const session = getSession()
         setSessionUser(session?.user ?? null)
     }, [])
 
-    const roleLabel = useMemo(() => {
-        const baseRole = sessionUser?.role ?? "MANAGER"
-        const normalized = baseRole.toLowerCase()
-        return normalized.charAt(0).toUpperCase() + normalized.slice(1)
-    }, [sessionUser])
-
-    const computedLabel = useMemo(() => {
-        if (label) {
-            return label
-        }
-        const fullName = sessionUser?.fullName?.trim()
-        if (fullName) {
-            return `${fullName}'s dashboard`
-        }
-        return `${roleLabel} dashboard`
-    }, [label, sessionUser, roleLabel])
-
-    const sidebarClosed = state === "collapsed"
-    const SidebarToggleIcon = sidebarClosed ? PanelLeftOpen : PanelLeftClose
-
-    const handleSidebarToggle = () => {
-        if (!interactive) return
-        toggleSidebar()
-    }
-
-    const handleNotificationClick = (notification) => {
-        markAsRead(notification.id)
-
-        const { type, data } = notification || {};
-
-        if (
-            type === "dispute" ||
-            type === "project_assigned" ||
-            type === "freelancer_change_request"
-        ) {
-            if (data?.projectId) {
-                navigate(`/project-manager/projects/${data.projectId}`);
-            } else {
-                navigate("/project-manager?view=active-disputes");
-            }
-        }
-        else if (type === "appointment" || type === "meeting_scheduled") {
-            navigate("/project-manager/appointments");
-        }
-        else if (type === "chat") {
-            // Handle chat navigation - try to get projectId if possible to open specific context
-            if (data?.projectId) {
-                navigate(`/project-manager/messages?projectId=${data.projectId}`);
-            } else {
-                navigate("/project-manager/messages");
-            }
-        }
-        else if (type === "proposal") {
-            // If a PM is notified about a proposal (rare, but possible if they are also owner)
-            if (data?.projectId) {
-                navigate(`/project-manager/projects/${data.projectId}`);
-            }
-        }
-    }
-
     return (
-        <div className="flex w-full flex-wrap items-center gap-2 p-4 border-b bg-background">
-            <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-60"
-                onClick={handleSidebarToggle}
-                disabled={!interactive}
-            >
-                <SidebarToggleIcon className="size-4" />
-                <span className="sr-only">
-                    {sidebarClosed ? "Open navigation" : "Close navigation"}
-                </span>
-            </Button>
-            <div className="flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium text-muted-foreground">
-                <span className="truncate">{computedLabel}</span>
-                <ChevronRight className="size-3.5" />
+        <div className="flex h-20 w-full items-center justify-between border-b border-slate-100 bg-white/80 px-8 backdrop-blur-md sticky top-0 z-50">
+            <div className="relative w-full max-w-xl">
+                <Search className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input 
+                    type="text" 
+                    placeholder="Search projects, freelancers, or files..." 
+                    className="h-12 w-full rounded-2xl border-none bg-slate-50/50 pl-14 text-sm font-medium placeholder:text-slate-400/80 focus-visible:ring-2 focus-visible:ring-blue-600/20 transition-all focus:bg-white focus:shadow-xl shadow-inner-sm"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-40">
+                   <span className="text-[10px] font-bold border border-slate-300 rounded px-1.5 py-0.5">⌘</span>
+                   <span className="text-[10px] font-bold border border-slate-300 rounded px-1.5 py-0.5">K</span>
+                </div>
             </div>
 
-            <div className="ml-auto flex items-center gap-2">
-                <Notepad />
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 p-1.5 bg-slate-50/50 rounded-2xl border border-slate-100">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 border-0 bg-transparent text-slate-500 rounded-xl hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all relative">
+                        <Bell className="h-5 w-5" />
+                        <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-rose-500 border-2 border-white" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 border-0 bg-transparent text-slate-500 rounded-xl hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all">
+                        <Settings className="h-5 w-5" />
+                    </Button>
+                </div>
+                
+                <div className="h-8 w-[1px] bg-slate-100 mx-2" />
 
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="relative rounded-full border border-border text-muted-foreground hover:text-foreground disabled:opacity-60"
-                            disabled={!interactive}
-                            aria-label="Notifications">
-                            <Bell className="size-4" />
-                            {unreadCount > 0 && (
-                                <Badge
-                                    className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white border-0"
-                                >
-                                    {unreadCount > 99 ? "99+" : unreadCount}
-                                </Badge>
-                            )}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-0" align="end">
-                        <div className="flex items-center justify-between border-b px-4 py-3">
-                            <h4 className="text-sm font-semibold">Notifications</h4>
-                            {unreadCount > 0 && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto p-0 text-xs text-primary hover:text-primary/80"
-                                    onClick={markAllAsRead}>
-                                    Mark all as read
-                                </Button>
-                            )}
-                        </div>
-
-                        {/* Enable Push Notifications Banner - Required for Firebase Messaging */}
-                        {/* Enable Push Notifications Banner - Removed per user request */}
-
-                        <ScrollArea className="h-72">
-                            {notifications.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                                    <Bell className="mb-2 h-8 w-8 opacity-40" />
-                                    <p className="text-sm">No notifications yet</p>
-                                </div>
-                            ) : (
-                                <div className="divide-y">
-                                    {notifications.slice(0, 20).map((notification) => (
-                                        <button
-                                            key={notification.id}
-                                            onClick={() => handleNotificationClick(notification)}
-                                            className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-muted/50 ${!notification.read ? "bg-primary/5" : ""
-                                                }`}>
-                                            <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${!notification.read ? "bg-primary" : "bg-transparent"
-                                                }`} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium truncate">
-                                                    {notification.title}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                                    {notification.message}
-                                                </p>
-                                                <p className="mt-1 text-xs text-muted-foreground/70">
-                                                    {formatTimeAgo(notification.createdAt)}
-                                                </p>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </PopoverContent>
-                </Popover>
-
+                <div className="flex items-center gap-3 pl-2 group cursor-pointer">
+                    <div className="text-right flex flex-col items-end">
+                        <span className="text-sm font-bold text-slate-900 leading-none">{sessionUser?.fullName || 'Project Manager'}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Management Portal</span>
+                    </div>
+                    <Avatar className="h-11 w-11 rounded-2xl border-2 border-white shadow-md ring-1 ring-slate-100 transition-transform group-hover:scale-105">
+                        <AvatarImage src={sessionUser?.avatar} />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-700 text-[10px] font-bold text-white uppercase">
+                            {sessionUser?.fullName?.split(' ').map(n => n[0]).join('') || 'PM'}
+                        </AvatarFallback>
+                    </Avatar>
+                </div>
             </div>
         </div>
     )

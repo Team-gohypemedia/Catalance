@@ -475,10 +475,16 @@ const appendSpeechTranscript = (
 
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
-const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|kindly|please|type|tap|reply)\b/i;
+const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|choice|choices|kindly|please|type|tap|reply|which one|which of these|here are)\b/i;
+
+const repairBrokenTechTokens = (text = "") =>
+    String(text || "")
+        // Fix "Node. js" / "Node.\njs" -> "Node.js"
+        .replace(/\b([A-Za-z][A-Za-z0-9+#-]*)\.\s*\n+\s*(js|ts|io)\b/gi, '$1.$2')
+        .replace(/\b([A-Za-z][A-Za-z0-9+#-]*)\.\s+(js|ts|io)\b/gi, '$1.$2');
 
 const forceSentenceBreaks = (text = "") => {
-    const source = String(text || "");
+    const source = repairBrokenTechTokens(String(text || ""));
     if (!source) return source;
 
     // Preserve authored structure (lists/newlines) and only split single-line blobs.
@@ -497,14 +503,54 @@ const normalizeInlineOptions = (text = "") =>
         // Common AI output: "... question? 1. Option A"
         .replace(/\?\s*(\d+)\.\s+/g, '?\n$1. ')
         // Fallback for prompt formats like "Please choose: 1. A"
-        .replace(/:\s*(\d+)\.\s+/g, ':\n$1. ');
+        .replace(/:\s*(\d+)\.\s+/g, ':\n$1. ')
+        // Split chained inline options: "1. A 2. B 3. C"
+        .replace(/([^\n])\s+(\d+)\.\s+(?=[A-Za-z])/g, '$1\n$2. ');
+
+const hasNestedOptionMarker = (text = "") => /\b\d+\.\s+\S/.test(String(text || ""));
+
+const dedupeOptionEntries = (optionEntries = []) => {
+    const bestByNumber = new Map();
+
+    for (const entry of optionEntries) {
+        const number = String(entry?.number || '').trim();
+        const text = String(entry?.text || '').trim();
+        if (!number || !text) continue;
+
+        const existing = bestByNumber.get(number);
+        if (!existing) {
+            bestByNumber.set(number, { ...entry, number, text });
+            continue;
+        }
+
+        const existingHasNested = hasNestedOptionMarker(existing.text);
+        const incomingHasNested = hasNestedOptionMarker(text);
+        const shouldReplace =
+            (existingHasNested && !incomingHasNested)
+            || (existingHasNested === incomingHasNested && text.length < existing.text.length);
+
+        if (shouldReplace) {
+            bestByNumber.set(number, { ...entry, number, text });
+        }
+    }
+
+    return Array.from(bestByNumber.values()).sort(
+        (a, b) => Number(a.number) - Number(b.number)
+    );
+};
 
 const splitContextAndQuestion = (text = "") => {
-    const source = String(text || "").trim();
+    const source = repairBrokenTechTokens(String(text || "")).trim();
     if (!source) return { contextText: "", questionText: "" };
     if (!source.includes("?")) return { contextText: source, questionText: "" };
 
-    const sentenceMatches = source.match(/[^.!?\n]+[.!?]+/g) || [source];
+    const protectedSource = source.replace(
+        /\b([A-Za-z][A-Za-z0-9+#-]*)\.(js|ts|io)\b/gi,
+        '$1__DOT__$2'
+    );
+    const restoreProtectedDots = (value = "") => String(value || "").replace(/__DOT__/g, '.');
+
+    const sentenceMatches = protectedSource.match(/[^.!?\n]+[.!?]+/g) || [protectedSource];
     let questionIdx = -1;
 
     for (let idx = sentenceMatches.length - 1; idx >= 0; idx -= 1) {
@@ -524,12 +570,12 @@ const splitContextAndQuestion = (text = "") => {
             return { contextText: source, questionText: "" };
         }
         return {
-            contextText: lines.slice(0, -1).join("\n\n").trim(),
-            questionText: lastLine
+            contextText: restoreProtectedDots(lines.slice(0, -1).join("\n\n").trim()),
+            questionText: restoreProtectedDots(lastLine)
         };
     }
 
-    const questionText = sentenceMatches[questionIdx].trim();
+    const questionText = restoreProtectedDots(sentenceMatches[questionIdx].trim());
     const contextText = sentenceMatches
         .filter((_, idx) => idx !== questionIdx)
         .map((sentence) => sentence.trim())
@@ -538,12 +584,14 @@ const splitContextAndQuestion = (text = "") => {
         .join("\n\n")
         .trim();
 
-    return { contextText, questionText };
+    return { contextText: restoreProtectedDots(contextText), questionText };
 };
 
-const parseAssistantMessageLayout = (content = "") => {
+const parseAssistantMessageLayout = (content = "", { forceInteractiveOptions = false } = {}) => {
     const normalized = normalizeInlineOptions(
-        normalizeMarkdownContent(content).replace(/\r/g, "").trim()
+        repairBrokenTechTokens(
+            normalizeMarkdownContent(content).replace(/\r/g, "").trim()
+        )
     );
     if (!normalized) {
         return { contextText: "", questionText: "", options: [] };
@@ -561,12 +609,13 @@ const parseAssistantMessageLayout = (content = "") => {
             return { idx, number: match[1], text: match[2].trim() };
         })
         .filter(Boolean);
+    const normalizedOptionEntries = dedupeOptionEntries(optionEntries);
 
     const hasQuestionLine = lines.some((line) => QUESTION_LINE_REGEX.test(line));
     const isLikelyInteractivePrompt =
-        optionEntries.length >= 2 &&
-        optionEntries.length <= 12 &&
-        (hasQuestionLine || OPTION_PROMPT_CUE_REGEX.test(normalized));
+        normalizedOptionEntries.length >= 2 &&
+        normalizedOptionEntries.length <= 12 &&
+        (hasQuestionLine || OPTION_PROMPT_CUE_REGEX.test(normalized) || forceInteractiveOptions);
 
     // Keep numbered informational answers as normal markdown instead of forcing
     // question/option card layout.
@@ -623,7 +672,7 @@ const parseAssistantMessageLayout = (content = "") => {
     return {
         contextText: forceSentenceBreaks(contextText),
         questionText: forceSentenceBreaks(questionText),
-        options: optionEntries.map((option) => ({
+        options: normalizedOptionEntries.map((option) => ({
             number: option.number,
             text: option.text
         }))
@@ -634,13 +683,16 @@ const AssistantMessageBody = ({
     content,
     isDark,
     enableOptionClick = false,
+    forceInteractiveOptions = false,
     onOptionClick = () => { },
     isOptionSelected = () => false,
     isMultiInput = false,
     selectedCount = 0,
     onSubmitMulti = () => { }
 }) => {
-    const { contextText, questionText, options } = parseAssistantMessageLayout(content);
+    const { contextText, questionText, options } = parseAssistantMessageLayout(content, {
+        forceInteractiveOptions,
+    });
     const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
     const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.97rem] leading-7 prose-p:my-2.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
         ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white prose-a:text-amber-300'
@@ -2024,6 +2076,8 @@ const GuestAIDemo = () => {
                             );
                             const proposalCard = msg.role === 'assistant' && isProposalMessage(messageContent || msg.content);
                             const messageKey = `${msg.role}-${idx}`;
+                            const isLatestAssistantMessage = msg.role === 'assistant' && idx === messages.length - 1;
+                            const shouldEnableOptionClick = isLatestAssistantMessage && !isTyping && hasOptionInput;
 
                             return (
                                 <motion.div
@@ -2074,12 +2128,8 @@ const GuestAIDemo = () => {
                                                 <AssistantMessageBody
                                                     content={messageContent || msg.content}
                                                     isDark={isDark}
-                                                    enableOptionClick={
-                                                        msg.role === 'assistant' &&
-                                                        idx === messages.length - 1 &&
-                                                        !isTyping &&
-                                                        hasOptionInput
-                                                    }
+                                                    enableOptionClick={shouldEnableOptionClick}
+                                                    forceInteractiveOptions={shouldEnableOptionClick}
                                                     onOptionClick={handleChatOptionClick}
                                                     isOptionSelected={isOptionSelectedByText}
                                                     isMultiInput={isMultiInput}
