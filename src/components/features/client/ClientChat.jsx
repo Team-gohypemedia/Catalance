@@ -21,6 +21,7 @@ import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { useSearchParams } from "react-router-dom";
 import ProposalPanel from "./ProposalPanel";
@@ -1107,7 +1108,14 @@ const ClientChatContent = () => {
         )}
           </div>
         </div>
+
       </main>
+
+      <div className="px-4 md:px-8 lg:px-12">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <ClientDashboardFooter className="mt-0" />
+        </div>
+      </div>
     </div>
   );
 };

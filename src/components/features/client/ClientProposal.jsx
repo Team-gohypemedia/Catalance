@@ -11,6 +11,7 @@ import Send from "lucide-react/dist/esm/icons/send";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
@@ -2260,6 +2261,8 @@ const ClientProposalContent = () => {
               )}
             </TabsContent>
           </Tabs>
+
+          <ClientDashboardFooter variant="workspace" />
         </main>
       </div>
 

@@ -11,6 +11,7 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
@@ -397,6 +398,8 @@ const ClientPaymentsContent = () => {
               </CardContent>
             </Card>
           </section>
+
+          <ClientDashboardFooter />
         </div>
       </main>
     </div>

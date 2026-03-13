@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import {
   Card,
@@ -837,6 +838,8 @@ const ClientProfileContent = () => {
             </div>
           </form>
           </div>
+
+          <ClientDashboardFooter />
         </div>
       </main>
 

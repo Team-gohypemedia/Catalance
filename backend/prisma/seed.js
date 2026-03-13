@@ -1,6 +1,7 @@
 import { env } from "../src/config/env.js";
 import { prisma } from "../src/lib/prisma.js";
 import { hashPassword } from "../src/modules/users/password.utils.js";
+import { seedFreelancerShowcaseAccounts } from "./seed-freelancers.js";
 
 const main = async () => {
   console.log(`Seeding database for ${env.NODE_ENV}...`);
@@ -90,6 +91,11 @@ const main = async () => {
       projectId: project.id
     }
   });
+
+  const seededFreelancers = await seedFreelancerShowcaseAccounts();
+  console.log(
+    `Freelancer showcase accounts ready: ${seededFreelancers.total} total (${seededFreelancers.createdCount} created, ${seededFreelancers.updatedCount} updated).`
+  );
 
   console.log("Seed complete.");
 };

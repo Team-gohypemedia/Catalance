@@ -1420,9 +1420,10 @@ const replaceFreelancerProjects = async (freelancerId, projects = []) => {
     }
 
     await tx.freelancerProject.createMany({
-      data: rows.map((project) => ({
+      data: rows.map(({ deliveryTime, ...project }) => ({
         freelancerId,
-        ...project
+        ...project,
+        timeline: project.timeline || deliveryTime || null
       }))
     });
   });
