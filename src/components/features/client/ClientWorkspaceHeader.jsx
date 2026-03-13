@@ -184,7 +184,7 @@ const ClientWorkspaceHeader = ({
 
   return (
     <header className={cn("space-y-7", className)}>
-      <div className="mx-auto w-full rounded-[40px] border border-white/10 bg-[#171717]/70 px-4 py-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:px-6 xl:w-[70%]">
+      <div className="mx-auto w-full rounded-[40px] border border-white/10 bg-[#171717]/70 p-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:p-4 xl:w-[70%]">
         <div className="flex items-center justify-between gap-4">
           <Link to="/">
             <BrandMark />

@@ -812,6 +812,146 @@ const formatDashboardRelativeTime = (value) => {
   return `${diffDays}d ago`;
 };
 
+const RUNNING_PROJECT_PROGRESS_BY_STATUS = Object.freeze({
+  DRAFT: 14,
+  OPEN: 24,
+  AWAITING_PAYMENT: 76,
+  IN_PROGRESS: 45,
+  COMPLETED: 100,
+});
+
+const getRunningProjectStatusMeta = (status) => {
+  const normalizedStatus = String(status || "").toUpperCase();
+
+  if (normalizedStatus === "COMPLETED") {
+    return { label: "Completed", tone: "success" };
+  }
+
+  if (normalizedStatus === "IN_PROGRESS") {
+    return { label: "In Progress", tone: "warning" };
+  }
+
+  if (normalizedStatus === "AWAITING_PAYMENT") {
+    return { label: "Payment Due", tone: "warning" };
+  }
+
+  if (normalizedStatus === "OPEN") {
+    return { label: "Open", tone: "slate" };
+  }
+
+  if (normalizedStatus === "DRAFT") {
+    return { label: "Draft", tone: "slate" };
+  }
+
+  return {
+    label:
+      String(status || "Pending")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase()),
+    tone: "slate",
+  };
+};
+
+const resolveRunningProjectProgress = (project = {}) => {
+  const explicitProgress = Number(project?.progress);
+  if (Number.isFinite(explicitProgress) && explicitProgress > 0) {
+    return Math.max(0, Math.min(100, Math.round(explicitProgress)));
+  }
+
+  const normalizedStatus = String(project?.status || "").toUpperCase();
+  return RUNNING_PROJECT_PROGRESS_BY_STATUS[normalizedStatus] ?? 18;
+};
+
+const resolveRunningProjectDateMeta = (project = {}, acceptedProposal = null) => {
+  const deadlineCandidates = [
+    project?.deadline,
+    project?.dueDate,
+    project?.targetDate,
+    acceptedProposal?.deadline,
+  ];
+
+  for (const candidate of deadlineCandidates) {
+    if (!candidate) continue;
+    const parsedDate = new Date(candidate);
+    if (Number.isNaN(parsedDate.getTime())) continue;
+
+    return {
+      label: "Deadline",
+      value: formatDashboardDate(parsedDate, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    };
+  }
+
+  const timeline = String(project?.timeline || acceptedProposal?.timeline || "").trim();
+  if (timeline) {
+    return { label: "Timeline", value: timeline };
+  }
+
+  return { label: "Timeline", value: "To be finalized" };
+};
+
+const buildRunningProjectMilestones = ({
+  status,
+  hasAcceptedProposal = false,
+  pendingCount = 0,
+  hasPaymentDue = false,
+}) => {
+  const normalizedStatus = String(status || "").toUpperCase();
+
+  if (normalizedStatus === "COMPLETED") {
+    return [
+      { label: "Proposal Accepted", state: "complete" },
+      { label: "Freelancer Started", state: "complete" },
+      { label: "Payment Received", state: "complete" },
+    ];
+  }
+
+  if (normalizedStatus === "AWAITING_PAYMENT" || hasPaymentDue) {
+    return [
+      {
+        label: hasAcceptedProposal ? "Freelancer Assigned" : "Proposal Accepted",
+        state: "complete",
+      },
+      { label: "Work Delivered", state: "complete" },
+      { label: "Release Payment", state: "current" },
+    ];
+  }
+
+  if (normalizedStatus === "IN_PROGRESS") {
+    return [
+      {
+        label: hasAcceptedProposal ? "Freelancer Assigned" : "Proposal Accepted",
+        state: "complete",
+      },
+      { label: "Work in Progress", state: "current" },
+      { label: "Final Handover", state: "pending" },
+    ];
+  }
+
+  if (normalizedStatus === "OPEN") {
+    return [
+      { label: "Brief Published", state: "complete" },
+      {
+        label:
+          pendingCount > 0
+            ? `${pendingCount} Pending Proposal${pendingCount > 1 ? "s" : ""}`
+            : "Awaiting Proposals",
+        state: "current",
+      },
+      { label: "Freelancer Assignment", state: "pending" },
+    ];
+  }
+
+  return [
+    { label: "Brief Started", state: "complete" },
+    { label: "Scope Review", state: "current" },
+    { label: "Invite Freelancers", state: "pending" },
+  ];
+};
+
 const getChatMessagePreview = (message) => {
   if (typeof message === "string") {
     return message.trim();
@@ -1974,19 +2114,6 @@ const ClientDashboardContent = () => {
     [navigate],
   );
 
-  const handleFooterAction = useCallback(
-    (key) => {
-      const routes = {
-        privacy: "/privacy",
-        terms: "/terms",
-        support: "/help",
-      };
-
-      navigate(routes[key] || "/client");
-    },
-    [navigate],
-  );
-
   const handleOpenNotifications = useCallback(() => {
     navigate("/client/messages");
   }, [navigate]);
@@ -2382,16 +2509,24 @@ const ClientDashboardContent = () => {
     const items = uniqueProjects
       .filter((project) => {
         const status = String(project?.status || "").toUpperCase();
-        return ["IN_PROGRESS", "AWAITING_PAYMENT", "OPEN", "DRAFT"].includes(status);
+        const acceptedProposal = getProjectAcceptedProposal(project);
+        return Boolean(acceptedProposal) && !CLOSED_PROJECT_STATUSES.has(status);
       })
       .slice(0, 3)
       .map((project) => {
         const acceptedProposal = getProjectAcceptedProposal(project);
         const pendingProposals = getProjectPendingProposals(project);
-        const statusInfo = getStatusBadge(project.status);
+        const spotlightFreelancer =
+          acceptedProposal?.freelancer || pendingProposals[0]?.freelancer || null;
+        const statusMeta = getRunningProjectStatusMeta(project.status);
         const dueInstallment = project?.paymentPlan?.nextDueInstallment;
+        const dateMeta = resolveRunningProjectDateMeta(project, acceptedProposal);
+        const progressValue = resolveRunningProjectProgress(project);
+        const hasAcceptedProposal = Boolean(acceptedProposal);
+        const pendingProposalCount = pendingProposals.length;
         let buttonLabel = "View Project";
         let buttonTone = "slate";
+        let actionDisabled = false;
         let onAction = () =>
           navigate(`/client/project/${encodeURIComponent(project.id)}`);
 
@@ -2405,6 +2540,7 @@ const ClientDashboardContent = () => {
               ? "Processing..."
               : `Pay ${dueInstallment.percentage}%`;
           buttonTone = "amber";
+          actionDisabled = isProcessingPayment && projectToPay?.id === project.id;
           onAction = () => {
             void handlePaymentClick(project);
           };
@@ -2416,84 +2552,54 @@ const ClientDashboardContent = () => {
 
         return {
           id: `project-${project.id}`,
-          eyebrow:
-            acceptedProposal?.freelancer?.fullName?.split(" ")[0] ||
-            statusInfo.label,
+          sectionLabel: "Active Project",
+          statusLabel: statusMeta.label,
+          statusTone: statusMeta.tone,
           title: project.title || "Untitled Project",
-          amount: formatINR(project.budget || 0),
-          secondaryAmount:
-            pendingProposals.length > 0
-              ? `${pendingProposals.length} invite${pendingProposals.length > 1 ? "s" : ""}`
-              : formatDashboardRelativeTime(project.updatedAt || project.createdAt),
-          metricPrimary: acceptedProposal ? statusInfo.label : String(pendingProposals.length || 1),
-          metricSecondary: acceptedProposal
-            ? acceptedProposal?.freelancer?.fullName || "Assigned freelancer"
-            : pendingProposals.length > 0
-              ? "pending proposals"
-              : "workspace ready",
+          personName:
+            spotlightFreelancer?.fullName ||
+            (pendingProposalCount > 0 ? "Proposal Spotlight" : "Catalance Workspace"),
+          personRole: hasAcceptedProposal
+            ? spotlightFreelancer?.jobTitle || "Assigned freelancer"
+            : spotlightFreelancer?.jobTitle ||
+              (pendingProposalCount > 0
+                ? `${pendingProposalCount} pending proposal${pendingProposalCount > 1 ? "s" : ""}`
+                : "Scope and invite freelancers"),
+          personAvatar: spotlightFreelancer?.avatar || "",
+          personInitial: (
+            spotlightFreelancer?.fullName ||
+            project.title ||
+            "C"
+          )
+            .charAt(0)
+            .toUpperCase(),
+          budgetLabel: "Budget",
+          budgetValue: formatINR(project.budget || 0),
+          dateLabel: dateMeta.label,
+          dateValue: dateMeta.value,
+          progressValue,
+          progressText: `${progressValue}%`,
+          milestones: buildRunningProjectMilestones({
+            status: project.status,
+            hasAcceptedProposal,
+            pendingCount: pendingProposalCount,
+            hasPaymentDue: hasProjectPaymentDue(project),
+          }),
           buttonLabel,
           buttonTone,
+          actionDisabled,
           onClick: () => navigate(`/client/project/${encodeURIComponent(project.id)}`),
           onAction,
         };
       });
 
-    if (items.length < 3) {
-      savedProposals.forEach((proposal) => {
-        if (items.length >= 3) return;
-
-        items.push({
-          id: `proposal-${proposal.id}`,
-          eyebrow: resolveProposalServiceLabel(proposal).split(" ")[0] || "Draft",
-          title: resolveProposalTitle(proposal),
-          amount: formatBudget(proposal.budget),
-          secondaryAmount: formatProposalUpdatedAt(proposal),
-          metricPrimary: proposal.timeline || "Draft ready",
-          metricSecondary: "proposal workspace",
-          buttonLabel: "Send Proposal",
-          buttonTone: "amber",
-          onClick: () => {
-            setActiveProposalId(proposal.id);
-            persistActiveProposalSelection(savedProposals, proposal.id, storageKeys);
-            setShowViewProposal(true);
-          },
-          onAction: () => {
-            setActiveProposalId(proposal.id);
-            persistActiveProposalSelection(savedProposals, proposal.id, storageKeys);
-            openFreelancerSelection();
-          },
-        });
-      });
-    }
-
-    while (items.length < 3) {
-      const placeholderId = `placeholder-${items.length}`;
-      items.push({
-        id: placeholderId,
-        eyebrow: "Catalance",
-        title: "Start your next project brief",
-        amount: "Ready",
-        secondaryAmount: "New workspace",
-        metricPrimary: "Fast setup",
-        metricSecondary: "create a proposal in minutes",
-        buttonLabel: "Create Proposal",
-        buttonTone: "amber",
-        onClick: () => navigate("/service"),
-        onAction: () => navigate("/service"),
-      });
-    }
-
-    return items.slice(0, 3);
+    return items;
   }, [
-    getStatusBadge,
     handleIncreaseBudgetClick,
     handlePaymentClick,
     isProcessingPayment,
     navigate,
-    openFreelancerSelection,
     projectToPay?.id,
-    savedProposals,
-    storageKeys,
     uniqueProjects,
   ]);
 
@@ -2581,7 +2687,6 @@ const ClientDashboardContent = () => {
         onOpenViewProposals={handleOpenViewProposals}
         onOpenViewProjects={handleOpenViewProjects}
         onOpenHireFreelancer={handleOpenHireFreelancer}
-        onFooterAction={handleFooterAction}
       />
       {renderLegacyDashboard && (
       <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">

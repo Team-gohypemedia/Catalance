@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
@@ -456,6 +457,8 @@ const ClientProjectsContent = () => {
               </Card>
             )}
           </div>
+
+          <ClientDashboardFooter />
         </div>
       </main>
     </div>

@@ -30,6 +30,7 @@ import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/features/appointments/BookAppointment";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import { Input } from "@/components/ui/input";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
@@ -2430,6 +2431,8 @@ const ProjectDashboard = () => {
 
             </div>
           </div>
+
+          <ClientDashboardFooter />
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import {
   Dialog,
   DialogContent,
@@ -354,6 +355,8 @@ const ProposalDraftsContent = () => {
           ))}
         </div>
       )}
+
+      <ClientDashboardFooter />
 
       <Dialog open={Boolean(activeDraft)} onOpenChange={() => setActiveDraft(null)}>
         <DialogContent className="sm:max-w-[760px]">

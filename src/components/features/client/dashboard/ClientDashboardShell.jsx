@@ -1,13 +1,11 @@
 "use client";
 
 import React from "react";
-import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
-import Heart from "lucide-react/dist/esm/icons/heart";
 import MessageSquareText from "lucide-react/dist/esm/icons/message-square-text";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
@@ -15,16 +13,13 @@ import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Users from "lucide-react/dist/esm/icons/users";
-import Zap from "lucide-react/dist/esm/icons/zap";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { cn } from "@/shared/lib/utils";
-
-const FIGMA_PROJECT_IMAGE =
-  "https://www.figma.com/api/mcp/asset/4acce3fe-79ed-4308-b085-bac7b8198fb2";
 
 const metricIconMap = {
   proposals: ClipboardList,
@@ -55,11 +50,26 @@ const draftToneMap = {
   violet: "bg-[#3d2459] text-[#c084fc]",
 };
 
-const footerLinks = [
-  { label: "Privacy Policy", key: "privacy" },
-  { label: "Terms of Service", key: "terms" },
-  { label: "Support Center", key: "support" },
-];
+const runningProjectStatusToneMap = {
+  success: "border-[#14532d] bg-[#0c2616] text-[#34d399]",
+  warning: "border-[#5a3b0d] bg-[#2f1e05] text-[#fbbf24]",
+  slate: "border-white/[0.08] bg-white/[0.04] text-[#cbd5e1]",
+  amber: "border-[#5a4304] bg-[#312404] text-[#facc15]",
+};
+
+const runningProjectButtonToneMap = {
+  amber: "bg-[#ffc107] text-black hover:bg-[#ffd54f] disabled:bg-[#ffc107]/70",
+  slate: "bg-white/[0.08] text-white hover:bg-white/[0.12] disabled:bg-white/[0.08]",
+  success: "bg-[#14311f] text-[#dcfce7] hover:bg-[#194428] disabled:bg-[#14311f]",
+  warning: "bg-[#3a2607] text-[#fde68a] hover:bg-[#53350a] disabled:bg-[#3a2607]",
+};
+
+const runningProjectProgressTextToneMap = {
+  success: "text-[#34d399]",
+  warning: "text-[#fbbf24]",
+  slate: "text-[#cbd5e1]",
+  amber: "text-[#facc15]",
+};
 
 const fallbackProgressProjects = [
   {
@@ -162,77 +172,146 @@ const CreateProposalCard = ({ onClick }) => (
   </button>
 );
 
-const RunningProjectCard = ({ item }) => (
-  <article
-    role="button"
-    tabIndex={0}
-    onClick={item.onClick}
-    onKeyDown={(event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        item.onClick?.();
-      }
-    }}
-    className="group flex w-full cursor-pointer flex-col overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#101010] shadow-[0_20px_45px_rgba(0,0,0,0.28)] transition-transform hover:-translate-y-1"
-  >
-    <div className="relative aspect-[1.08/1] overflow-hidden bg-[#e5e7eb]">
-      <img
-        src={item.imageSrc || FIGMA_PROJECT_IMAGE}
-        alt=""
-        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-        loading="lazy"
-      />
-      <div className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-white/70 text-[#ef4444]">
-        <Heart className="size-4 fill-current" />
-      </div>
-    </div>
+const RunningProjectMilestone = ({ item }) => {
+  const isComplete = item.state === "complete";
+  const isCurrent = item.state === "current";
 
-    <div className="flex flex-1 flex-col gap-4 bg-[#0d0d0d] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="truncate text-sm text-[#6f6f6f]">{item.eyebrow}</span>
-          <div className="flex items-center gap-1.5">
-            {["#d7ddd6", "#f59e0b", "#ec4899"].map((color) => (
-              <span
-                key={color}
-                className="size-3 rounded-[2px] border border-white/10"
-                style={{ backgroundColor: color }}
-              />
-            ))}
+  return (
+    <div className="flex items-center gap-3">
+      {isComplete ? (
+        <CheckCircle2 className="size-5 shrink-0 fill-[#ffc107] text-[#ffc107]" />
+      ) : isCurrent ? (
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-[#ffc107]/50">
+          <span className="size-1.5 rounded-full bg-[#ffc107]" />
+        </span>
+      ) : (
+        <span className="size-5 shrink-0 rounded-full border border-white/[0.1]" />
+      )}
+
+      <span
+        className={cn(
+          "text-[0.98rem] leading-6",
+          isComplete || isCurrent ? "text-[#f3f4f6]" : "text-[#6b7280]",
+        )}
+      >
+        {item.label}
+      </span>
+    </div>
+  );
+};
+
+const RunningProjectCard = ({ item }) => {
+  const progressValue = Math.max(0, Math.min(100, Number(item.progressValue) || 0));
+  const handleAction = item.onAction || item.onClick;
+
+  return (
+    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-[#232323]/90 p-5 backdrop-blur-[10px] transition-transform duration-200 hover:-translate-y-1">
+      <button
+        type="button"
+        onClick={item.onClick}
+        className="flex flex-1 flex-col text-left"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#9ca3af]">
+            {item.sectionLabel || "Active Project"}
+          </span>
+
+          <span
+            className={cn(
+              "inline-flex rounded-full border px-3 py-1 text-[0.82rem] font-semibold",
+              runningProjectStatusToneMap[item.statusTone] || runningProjectStatusToneMap.slate,
+            )}
+          >
+            {item.statusLabel || "Open"}
+          </span>
+        </div>
+
+        <h3 className="mt-5 text-[clamp(1.55rem,2vw,2rem)] font-semibold tracking-[-0.04em] text-white">
+          {item.title}
+        </h3>
+
+        <div className="mt-6 flex items-center gap-3">
+          <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_12px_24px_rgba(0,0,0,0.24)]">
+            <AvatarImage src={item.personAvatar} alt={item.personName} />
+            <AvatarFallback className="bg-[#1f2937] text-sm text-white">
+              {item.personInitial || "C"}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="min-w-0">
+            <p className="truncate text-[1rem] font-medium text-white">
+              {item.personName || "Catalance Workspace"}
+            </p>
+            <p className="truncate text-sm text-[#8f96a3]">
+              {item.personRole || "Project workspace"}
+            </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 text-white">
-          <BadgeCheck className="size-4 text-white/85" />
-          <span className="text-[1.15rem] font-medium">{item.amount}</span>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="rounded-[14px] border border-white/[0.05] bg-black/20 p-4">
+            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
+              {item.budgetLabel || "Budget"}
+            </p>
+            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+              {item.budgetValue || "Flexible"}
+            </p>
+          </div>
+
+          <div className="rounded-[14px] border border-white/[0.05] bg-black/20 p-4">
+            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
+              {item.dateLabel || "Timeline"}
+            </p>
+            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+              {item.dateValue || "To be finalized"}
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-start justify-between gap-3">
-        <p className="line-clamp-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
-          {item.title}
-        </p>
-        <span className="shrink-0 pt-1 text-xs text-[#6b7280]">{item.secondaryAmount}</span>
-      </div>
+        <div className="mt-7 flex items-center justify-between gap-3">
+          <span className="text-sm text-[#9ca3af]">Overall Progress</span>
+          <span
+            className={cn(
+              "text-sm font-semibold",
+              runningProjectProgressTextToneMap[item.statusTone] ||
+                runningProjectProgressTextToneMap.slate,
+            )}
+          >
+            {item.progressText || `${progressValue}%`}
+          </span>
+        </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        <Star className="size-4 fill-[#ffc107] text-[#ffc107]" />
-        <span className="font-semibold text-white">{item.metricPrimary}</span>
-        <span className="text-xs text-[#a3a3a3]">{item.metricSecondary}</span>
-      </div>
+        <div className="mt-3 h-2 rounded-full bg-white/[0.08]">
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.62))]"
+            style={{ width: `${progressValue}%` }}
+          />
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {(item.milestones || []).map((milestone) => (
+            <RunningProjectMilestone
+              key={`${item.id}-${milestone.label}`}
+              item={milestone}
+            />
+          ))}
+        </div>
+      </button>
 
       <button
         type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          item.onAction?.();
-        }}
-        className="mt-auto rounded-[8px] bg-[#667368] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#7a8a7d]"
+        disabled={item.actionDisabled}
+        onClick={handleAction}
+        className={cn(
+          "mt-6 rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
+          runningProjectButtonToneMap[item.buttonTone] || runningProjectButtonToneMap.slate,
+        )}
       >
         {item.buttonLabel || "View Project"}
       </button>
-    </div>
-  </article>
-);
+    </article>
+  );
+};
 
 const ActivityRow = ({ item }) => {
   const Icon = activityIconMap[item.iconKey] || FolderKanban;
@@ -357,16 +436,6 @@ const InterestedFreelancerRow = ({ item }) => (
       </div>
     </div>
   </div>
-);
-
-const FooterLink = ({ item, onAction }) => (
-  <button
-    type="button"
-    onClick={() => onAction(item.key)}
-    className="text-xs text-[#64748b] transition-colors hover:text-[#f1f5f9]"
-  >
-    {item.label}
-  </button>
 );
 
 const ProjectProgressChartCard = ({ project }) => {
@@ -591,7 +660,6 @@ const ClientDashboardShell = ({
   onOpenViewProposals,
   onOpenViewProjects,
   onOpenHireFreelancer,
-  onFooterAction,
 }) => (
   <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
     <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px] xl:w-[90%] xl:max-w-none">
@@ -637,11 +705,24 @@ const ClientDashboardShell = ({
             </span>
           </div>
 
-          <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
-            {showcaseItems.map((item) => (
-              <RunningProjectCard key={item.id} item={item} />
-            ))}
-          </div>
+          {showcaseItems.length > 0 ? (
+            <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
+              {showcaseItems.map((item) => (
+                <RunningProjectCard key={item.id} item={item} />
+              ))}
+            </div>
+          ) : (
+            <DashboardPanel className="flex min-h-[220px] items-center justify-center p-8 text-center">
+              <div className="max-w-md">
+                <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                  No active projects yet
+                </p>
+                <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+                  Projects will appear here once a freelancer is assigned and work has started.
+                </p>
+              </div>
+            </DashboardPanel>
+          )}
         </section>
 
         <section className="mt-14 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -763,20 +844,7 @@ const ClientDashboardShell = ({
         <ProjectProgressSection progressProjects={progressProjects} />
       </main>
 
-      <footer className="mt-8 border-t border-white/[0.05] px-2 py-8">
-        <div className="flex flex-col gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
-          <div className="flex items-center justify-center gap-2 text-xs text-[#64748b] sm:justify-start">
-            <Zap className="size-3.5 text-[#ffc107]" />
-            <span>&copy; 2026 Catalance. All rights reserved.</span>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:justify-end">
-            {footerLinks.map((item) => (
-              <FooterLink key={item.key} item={item} onAction={onFooterAction} />
-            ))}
-          </div>
-        </div>
-      </footer>
+      <ClientDashboardFooter variant="workspace" />
     </div>
   </div>
 );
