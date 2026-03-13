@@ -30,6 +30,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -699,7 +700,7 @@ const ProposalRowCard = ({
   const showSecondaryAction = canSendToFreelancers || Boolean(proposal.requiresPayment && onPay);
 
   return (
-    <Card className="overflow-hidden rounded-[2.9rem] border border-white/6 bg-[#2b2b2d] shadow-[0_30px_80px_-52px_rgba(0,0,0,0.98)] transition duration-200 hover:border-white/10">
+    <Card className="overflow-hidden rounded-[2.9rem] border border-white/6 bg-[#2b2b2d] shadow-none transition duration-200 hover:border-white/10">
       <CardContent className="p-7 sm:p-8 lg:p-9">
         <div className="space-y-8">
           <div className="flex items-start justify-between gap-4">
@@ -957,6 +958,25 @@ const mapLocalDraftProposal = (proposal) => {
   };
 };
 
+const buildEditableProposalDraft = (proposal) => {
+  const details = extractProposalDetails(proposal);
+
+  return {
+    title: resolveProposalTitle(proposal),
+    service: resolveProposalServiceLabel(proposal),
+    budget:
+      proposal?.budget !== undefined && proposal?.budget !== null
+        ? String(proposal.budget)
+        : details.budget === "Not set"
+          ? ""
+          : String(details.budget),
+    timeline:
+      proposal?.timeline ||
+      (details.delivery === "Not set" ? "" : details.delivery),
+    content: proposal?.content || "",
+  };
+};
+
 const getProposalMergeKey = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
 
@@ -1025,8 +1045,10 @@ const ClientProposalContent = () => {
   const [isLoadingProposal, setIsLoadingProposal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("draft");
-  const [isEditingContent, setIsEditingContent] = useState(false);
-  const [editableProposalContent, setEditableProposalContent] = useState("");
+  const [isEditingProposal, setIsEditingProposal] = useState(false);
+  const [editableProposalDraft, setEditableProposalDraft] = useState(() =>
+    buildEditableProposalDraft(null),
+  );
   const [processingPaymentProposalId, setProcessingPaymentProposalId] =
     useState(null);
   const [sendingProposalId, setSendingProposalId] = useState(null);
@@ -1229,9 +1251,9 @@ const ClientProposalContent = () => {
   }, [deepLinkProjectId, deepLinkTab, deepLinkAction]);
 
   useEffect(() => {
-    setEditableProposalContent(activeProposal?.content || "");
-    setIsEditingContent(false);
-  }, [activeProposal?.id, activeProposal?.content]);
+    setEditableProposalDraft(buildEditableProposalDraft(activeProposal));
+    setIsEditingProposal(false);
+  }, [activeProposal]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1462,10 +1484,27 @@ const ClientProposalContent = () => {
     [authFetch],
   );
 
-  const handleSaveProposalContent = useCallback(() => {
+  const handleEditableProposalDraftChange = useCallback((field, value) => {
+    setEditableProposalDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }, []);
+
+  const handleSaveProposalChanges = useCallback(() => {
     if (!activeProposal) return;
 
-    const nextContent = String(editableProposalContent || "").trim();
+    const nextTitle = String(editableProposalDraft.title || "").trim();
+    const nextService = String(editableProposalDraft.service || "").trim();
+    const nextBudget = String(editableProposalDraft.budget || "").trim();
+    const nextTimeline = String(editableProposalDraft.timeline || "").trim();
+    const nextContent = String(editableProposalDraft.content || "").trim();
+
+    if (!nextTitle) {
+      toast.error("Proposal title cannot be empty.");
+      return;
+    }
+
     if (!nextContent) {
       toast.error("Proposal content cannot be empty.");
       return;
@@ -1482,18 +1521,15 @@ const ClientProposalContent = () => {
           ? activeProposal.id
           : `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
       ownerId: user?.id || null,
-      projectTitle: resolveProposalTitle(activeProposal),
-      title: resolveProposalTitle(activeProposal),
-      service: resolveProposalServiceLabel(activeProposal),
+      projectTitle: nextTitle,
+      title: nextTitle,
+      service: nextService || resolveProposalServiceLabel(activeProposal),
       serviceKey:
-        activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
+        nextService || activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
       summary: nextContent,
       content: nextContent,
-      budget: activeProposal.budget || "",
-      timeline:
-        activeProposal.timeline ||
-        extractProposalDetails(activeProposal).delivery ||
-        "",
+      budget: nextBudget,
+      timeline: nextTimeline,
       recipientName: activeProposal.recipientName || "Not assigned",
       recipientId: activeProposal.recipientId || "LOCAL_DRAFT",
       freelancerId: activeProposal.freelancerId || null,
@@ -1592,9 +1628,9 @@ const ClientProposalContent = () => {
         : current,
     );
 
-    setIsEditingContent(false);
-    toast.success("Proposal content updated.");
-  }, [activeProposal, editableProposalContent, user?.id]);
+    setIsEditingProposal(false);
+    toast.success("Proposal updated.");
+  }, [activeProposal, editableProposalDraft, user?.id]);
 
   const sendProposalToFreelancer = useCallback(
     async (freelancer) => {
@@ -2071,6 +2107,7 @@ const ClientProposalContent = () => {
   const currentTabItems = grouped[activeTab] || [];
   const currentTabMeta = tabCopy[activeTab] || tabCopy.draft;
   const headerDisplayName = getDisplayName(user);
+  const activeProposalDetails = activeProposal ? extractProposalDetails(activeProposal) : null;
 
   return (
     <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
@@ -2238,9 +2275,23 @@ const ClientProposalContent = () => {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
-                    {activeProposal?.title || "Proposal"}
-                  </DialogTitle>
+                  {activeProposal?.status === "draft" && isEditingProposal ? (
+                    <>
+                      <DialogTitle className="sr-only">Edit Proposal</DialogTitle>
+                      <Input
+                        value={editableProposalDraft.title}
+                        onChange={(event) =>
+                          handleEditableProposalDraftChange("title", event.target.value)
+                        }
+                        className="h-11 min-w-[16rem] border-white/10 bg-[#111214] text-xl font-semibold tracking-tight text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20 sm:min-w-[22rem]"
+                        placeholder="Proposal title"
+                      />
+                    </>
+                  ) : (
+                    <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
+                      {activeProposal?.title || "Proposal"}
+                    </DialogTitle>
+                  )}
                   {activeProposal?.status ? (
                     <Badge
                       variant="outline"
@@ -2275,16 +2326,36 @@ const ClientProposalContent = () => {
                 icon={FileText}
                 label="Budget"
                 value={
-                  activeProposal ? extractProposalDetails(activeProposal).budget : "Not set"
+                  isEditingProposal ? (
+                    <Input
+                      value={editableProposalDraft.budget}
+                      onChange={(event) =>
+                        handleEditableProposalDraftChange("budget", event.target.value)
+                      }
+                      className="h-11 border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                      placeholder="e.g. 40000"
+                    />
+                  ) : (
+                    activeProposalDetails?.budget || "Not set"
+                  )
                 }
               />
               <ProposalMetric
                 icon={Clock3}
                 label="Timeline"
                 value={
-                  activeProposal
-                    ? extractProposalDetails(activeProposal).delivery
-                    : "Not set"
+                  isEditingProposal ? (
+                    <Input
+                      value={editableProposalDraft.timeline}
+                      onChange={(event) =>
+                        handleEditableProposalDraftChange("timeline", event.target.value)
+                      }
+                      className="h-11 border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                      placeholder="e.g. 3+ months"
+                    />
+                  ) : (
+                    activeProposalDetails?.delivery || "Not set"
+                  )
                 }
               />
               <ProposalMetric
@@ -2304,7 +2375,20 @@ const ClientProposalContent = () => {
               <ProposalMetric
                 icon={Layers3}
                 label="Service"
-                value={resolveProposalServiceLabel(activeProposal)}
+                value={
+                  isEditingProposal ? (
+                    <Input
+                      value={editableProposalDraft.service}
+                      onChange={(event) =>
+                        handleEditableProposalDraftChange("service", event.target.value)
+                      }
+                      className="h-11 border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                      placeholder="Service"
+                    />
+                  ) : (
+                    resolveProposalServiceLabel(activeProposal)
+                  )
+                }
               />
             </div>
 
@@ -2322,21 +2406,21 @@ const ClientProposalContent = () => {
 
                   {activeProposal?.status === "draft" ? (
                     <div className="flex flex-wrap gap-2">
-                      {isEditingContent ? (
+                      {isEditingProposal ? (
                         <>
                           <Button
                             variant="outline"
                             className="rounded-full border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06]"
                             onClick={() => {
-                              setEditableProposalContent(activeProposal?.content || "");
-                              setIsEditingContent(false);
+                              setEditableProposalDraft(buildEditableProposalDraft(activeProposal));
+                              setIsEditingProposal(false);
                             }}
                           >
                             Cancel
                           </Button>
                           <Button
                             className="rounded-full bg-primary text-[#141414] hover:bg-primary/90"
-                            onClick={handleSaveProposalContent}
+                            onClick={handleSaveProposalChanges}
                           >
                             Save Changes
                           </Button>
@@ -2345,9 +2429,9 @@ const ClientProposalContent = () => {
                         <Button
                           variant="outline"
                           className="rounded-full border-primary/25 bg-primary/10 text-primary hover:bg-primary/15"
-                          onClick={() => setIsEditingContent(true)}
+                          onClick={() => setIsEditingProposal(true)}
                         >
-                          Edit Content
+                          Edit Proposal
                         </Button>
                       )}
                     </div>
@@ -2360,10 +2444,12 @@ const ClientProposalContent = () => {
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading details...
                     </div>
-                  ) : isEditingContent ? (
+                  ) : isEditingProposal ? (
                     <Textarea
-                      value={editableProposalContent}
-                      onChange={(event) => setEditableProposalContent(event.target.value)}
+                      value={editableProposalDraft.content}
+                      onChange={(event) =>
+                        handleEditableProposalDraftChange("content", event.target.value)
+                      }
                       className="min-h-[320px] border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
                       placeholder="Update the proposal content here..."
                     />
