@@ -1,6 +1,5 @@
-import { Prisma } from "@prisma/client";
 import { asyncHandler } from "../utils/async-handler.js";
-import { prisma } from "../lib/prisma.js";
+import { Prisma, prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 

@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { env } from "../config/env.js";
@@ -14,15 +14,44 @@ let servicesCatalogLastSyncAt = 0;
 let servicesCatalogSyncPromise = null;
 let servicesCatalogLoadWarned = false;
 
-const rawServicesData = readFileSync(
-  FILE_SERVICE_CATALOG_PATH,
-  "utf-8"
-);
-// Strip BOM/control chars and leading whitespace before JSON.parse
-const fileServicesData = JSON.parse(
-  rawServicesData.replace(/^[\u0000-\u001F\uFEFF]+/, "").trimStart()
-);
-let servicesData = fileServicesData;
+const createEmptyServicesCatalog = () => ({
+  schema_version: null,
+  currency: "INR",
+  global_rules: {},
+  services: []
+});
+
+const loadServiceCatalogFromFile = () => {
+  if (!existsSync(FILE_SERVICE_CATALOG_PATH)) {
+    if (!servicesCatalogLoadWarned) {
+      console.warn(
+        `[AI] Service catalog file not found at ${FILE_SERVICE_CATALOG_PATH}. Continuing with an empty fallback catalog.`
+      );
+      servicesCatalogLoadWarned = true;
+    }
+    return createEmptyServicesCatalog();
+  }
+
+  try {
+    const rawServicesData = readFileSync(FILE_SERVICE_CATALOG_PATH, "utf-8");
+    const parsed = JSON.parse(
+      rawServicesData.replace(/^[\u0000-\u001F\uFEFF]+/, "").trimStart()
+    );
+    return parsed && typeof parsed === "object"
+      ? parsed
+      : createEmptyServicesCatalog();
+  } catch (error) {
+    if (!servicesCatalogLoadWarned) {
+      console.warn(
+        `[AI] Failed to read local service catalog file. Continuing with an empty fallback catalog: ${error?.message || error}`
+      );
+      servicesCatalogLoadWarned = true;
+    }
+    return createEmptyServicesCatalog();
+  }
+};
+
+let servicesData = loadServiceCatalogFromFile();
 
 const denormalizeCollection = (node) => {
   if (Array.isArray(node)) return node;
@@ -140,8 +169,8 @@ const ensureServicesCatalogLoaded = async (force = false) => {
     if (dbCatalog?.services?.length) {
       servicesData = dbCatalog;
     } else {
-      // Fallback to file if DB fails or empty (though we migrated)
-      // We keep 'servicesData' as initialized from file at top of script
+      // Fall back to the bundled file (or the empty-safe fallback when unavailable).
+      servicesData = loadServiceCatalogFromFile();
       console.log("Using file-based catalog as fallback or initial state.");
     }
     servicesCatalogLastSyncAt = Date.now();
@@ -154,8 +183,6 @@ const ensureServicesCatalogLoaded = async (force = false) => {
     servicesCatalogSyncPromise = null;
   }
 };
-
-void ensureServicesCatalogLoaded(true);
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL =

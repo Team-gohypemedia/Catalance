@@ -1,7 +1,12 @@
-import { PrismaClient } from "@prisma/client";
 import { env } from "../config/env.js";
 
 const globalForPrisma = globalThis;
+const PRISMA_FALLBACK = Object.freeze({
+  PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {},
+  TransactionIsolationLevel: {
+    Serializable: "Serializable"
+  }
+});
 const queryLogFlag = String(process.env.PRISMA_LOG_QUERIES || "")
   .trim()
   .toLowerCase();
@@ -316,8 +321,19 @@ const createConnectivityRetryExtension = (prismaClient) => ({
 });
 
 let prismaInitError = null;
+let PrismaClient = null;
+let Prisma = PRISMA_FALLBACK;
 
-if (!globalForPrisma.__prisma) {
+try {
+  const prismaModule = await import("@prisma/client");
+  PrismaClient = prismaModule.PrismaClient;
+  Prisma = prismaModule.Prisma || PRISMA_FALLBACK;
+} catch (error) {
+  console.error("Failed to load @prisma/client:", error);
+  prismaInitError = error;
+}
+
+if (!globalForPrisma.__prisma && PrismaClient) {
   try {
     const prismaClient = new PrismaClient({
       datasources: prismaDatasourceOptions,
@@ -331,11 +347,11 @@ if (!globalForPrisma.__prisma) {
   } catch (error) {
     // Capture initialization errors (e.g. missing generated client on Vercel)
     console.error("Prisma client initialization failed:", error);
-    prismaInitError = error;
+    prismaInitError = prismaInitError || error;
     globalForPrisma.__prismaBase = null;
     globalForPrisma.__prisma = null;
   }
 }
 
 export const prisma = globalForPrisma.__prisma;
-export { prismaInitError };
+export { Prisma, prismaInitError };

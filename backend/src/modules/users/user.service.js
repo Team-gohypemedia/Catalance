@@ -1,7 +1,6 @@
-import { Prisma } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { prisma } from "../../lib/prisma.js";
+import { Prisma, prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/app-error.js";
 import { extractBioText } from "../../utils/bio-utils.js";
 import {

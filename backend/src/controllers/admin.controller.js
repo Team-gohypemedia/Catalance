@@ -1,18 +1,8 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
-// Import fs to read the default file if needed
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { sendEmail } from "../lib/email-service.js";
-import { invalidateServicesCatalogCache } from "../services/ai.service.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const FILE_SERVICE_CATALOG_PATH = join(__dirname, "../data/servicesComplete.json");
-const SERVICE_CATALOG_KEY = "services_complete_nested";
 
 // Helper to get or initialize catalog - DEPRECATED
 // We now use relational tables Service and ServiceQuestion
@@ -669,6 +659,9 @@ export const upsertService = asyncHandler(async (req, res) => {
   });
 
   // Bust the cached catalog so /ai/services immediately reflects the change
+  const { invalidateServicesCatalogCache } = await import(
+    "../services/ai.service.js"
+  );
   invalidateServicesCatalogCache();
 
   res.json({ data: { success: true } });
