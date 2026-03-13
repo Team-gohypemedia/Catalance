@@ -215,9 +215,18 @@ const ProjectDetailsPage = () => {
                                ))}
                                {freelancerProfile.skills.length > 4 && <span className="text-[9px] font-bold text-slate-400">+{freelancerProfile.skills.length - 4}</span>}
                             </div>
-                            <Button variant="outline" className="w-full h-11 rounded-xl border-slate-100 bg-slate-50 text-[10px] font-black tracking-widest text-slate-600 hover:bg-white hover:border-indigo-100 hover:text-indigo-600 transition-all uppercase" onClick={() => window.open(freelancerProfile.portfolio || '#', '_blank')}>
-                               VIEW FULL PORTFOLIO
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="outline" className="flex-1 h-11 rounded-xl border-slate-100 bg-slate-50 text-[10px] font-black tracking-widest text-slate-600 hover:bg-white hover:border-indigo-100 hover:text-indigo-600 transition-all uppercase" onClick={() => window.open(freelancerProfile.portfolio || '#', '_blank')}>
+                                    VIEW FULL PORTFOLIO
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    className="flex-1 h-11 rounded-xl border-rose-100 bg-rose-50 text-[10px] font-black tracking-widest text-rose-600 hover:bg-rose-100 transition-all uppercase"
+                                    onClick={() => navigate(`/project-manager/marketplace?projectId=${projectId}&reassign=true`)}
+                                >
+                                    REASSIGN LEAD
+                                </Button>
+                            </div>
                         </>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-48 space-y-3 border-2 border-dashed border-slate-100 rounded-[24px] bg-slate-50/30">

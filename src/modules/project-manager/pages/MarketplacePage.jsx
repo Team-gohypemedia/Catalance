@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Search from "lucide-react/dist/esm/icons/search";
 import Filter from "lucide-react/dist/esm/icons/filter";
@@ -9,6 +8,7 @@ import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Zap from "lucide-react/dist/esm/icons/zap";
 import Award from "lucide-react/dist/esm/icons/award";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { useAuth } from "@/shared/context/AuthContext";
 import { PmShell } from "@/modules/project-manager/components/PmShell";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
@@ -22,8 +22,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const MarketplacePage = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("Developers");
+  const [assigningId, setAssigningId] = useState(null);
+
+  const projectId = searchParams.get("projectId");
+  const isReassign = searchParams.get("reassign") === "true";
 
   const tabs = ["Developers", "Designers", "Content Writers", "Marketing", "Video Editors"];
 
@@ -165,10 +170,31 @@ const MarketplacePage = () => {
         
                         <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-slate-50">
                            <Button 
-                             className="h-14 flex-1 rounded-[24px] bg-slate-900 font-black text-[10px] tracking-[0.2em] uppercase text-white shadow-xl shadow-slate-900/10 hover:bg-blue-600 hover:shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-95" 
-                             onClick={() => toast.success("Talent successfully shortlisted for project.")}
+                             className={`h-14 flex-1 rounded-[24px] font-black text-[10px] tracking-[0.2em] uppercase text-white shadow-xl transition-all hover:scale-[1.02] active:scale-95 ${projectId ? 'bg-blue-600 shadow-blue-600/20 hover:bg-blue-700' : 'bg-slate-900 shadow-slate-900/10 hover:bg-blue-600'}`} 
+                             disabled={assigningId === f.id}
+                             onClick={async () => {
+                               if (projectId) {
+                                   setAssigningId(f.id);
+                                   try {
+                                       if (isReassign) {
+                                           await pmApi.replaceFreelancer(authFetch, projectId, f.id);
+                                           toast.success("Lead reassigned successfully");
+                                       } else {
+                                           await pmApi.inviteFreelancer(authFetch, f.id, { projectId });
+                                           toast.success("Invitation sent successfully");
+                                       }
+                                       navigate(`/project-manager/projects/${projectId}`);
+                                   } catch (e) {
+                                       toast.error(e.message || "Operation failed");
+                                   } finally {
+                                       setAssigningId(null);
+                                   }
+                               } else {
+                                   toast.success("Talent successfully shortlisted for project.");
+                               }
+                             }}
                            >
-                             Initiate Booking
+                             {assigningId === f.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (projectId ? (isReassign ? "Confirm Reassignment" : "Assign to Project") : "Initiate Booking")}
                            </Button>
                            <Button 
                              variant="outline" 

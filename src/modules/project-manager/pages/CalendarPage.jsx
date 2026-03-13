@@ -95,10 +95,20 @@ const CalendarPage = () => {
                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Ops Schedule</p>
                 </div>
                 <div className="flex gap-3">
-                   <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-slate-100 hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all">
+                   <Button 
+                     variant="outline" 
+                     size="icon" 
+                     className="h-12 w-12 rounded-2xl border-slate-100 hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all"
+                     onClick={() => setDate(new Date(date.setMonth(date.getMonth() - 1)))}
+                   >
                       <ChevronLeft className="h-6 w-6" />
                    </Button>
-                   <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-slate-100 hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all">
+                   <Button 
+                     variant="outline" 
+                     size="icon" 
+                     className="h-12 w-12 rounded-2xl border-slate-100 hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all"
+                     onClick={() => setDate(new Date(date.setMonth(date.getMonth() + 1)))}
+                   >
                       <ChevronRight className="h-6 w-6" />
                    </Button>
                 </div>
