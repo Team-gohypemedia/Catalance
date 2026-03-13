@@ -42,10 +42,10 @@ export const googleLoginHandler = asyncHandler(async (req, res) => {
 });
 
 export const profileHandler = asyncHandler(async (req, res) => {
-  const userId = req.user?.sub;
+  const userId = req.user?.sub || req.user?.id;
 
   if (!userId) {
-    throw new AppError("User not found", 404);
+    throw new AppError("Authentication required", 401);
   }
 
   const user = await getUserById(userId);
@@ -55,7 +55,7 @@ export const profileHandler = asyncHandler(async (req, res) => {
 });
 
 export const updateProfileHandler = asyncHandler(async (req, res) => {
-  const userId = req.user?.sub;
+  const userId = req.user?.sub || req.user?.id;
   if (!userId) throw new AppError("Authentication required", 401);
 
   const updatedUser = await updateUserProfile(userId, req.body);

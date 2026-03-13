@@ -1,5 +1,3 @@
-import { pmSeedDashboard, pmSeedReports } from "@/modules/project-manager/data/seed";
-
 const asQuery = (params = {}) => {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -25,11 +23,7 @@ const request = async (authFetch, path, options = {}) => {
 
 export const pmApi = {
   async getDashboard(authFetch) {
-    try {
-      return await request(authFetch, "/pm/dashboard/summary");
-    } catch {
-      return pmSeedDashboard;
-    }
+    return await request(authFetch, "/pm/dashboard/summary");
   },
 
   getUpcomingMeetings(authFetch) {
@@ -167,11 +161,7 @@ export const pmApi = {
   },
 
   async listReports(authFetch) {
-    try {
-      return await request(authFetch, "/pm/reports");
-    } catch {
-      return pmSeedReports;
-    }
+    return await request(authFetch, "/pm/reports");
   },
 
   createReport(authFetch, payload) {

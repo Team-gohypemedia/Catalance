@@ -1,9 +1,38 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { getSopFromTitle } from "../../../src/shared/data/sopTemplates.js";
 
 const PM_ROLE = "PROJECT_MANAGER";
 const getUserId = (req) => req.user?.id || req.user?.sub || null;
+
+const toTaskKeySet = (value) => {
+    if (Array.isArray(value)) {
+        return new Set(value.map((item) => String(item || "").trim()).filter(Boolean));
+    }
+
+    if (typeof value === "string") {
+        try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) {
+                return new Set(parsed.map((item) => String(item || "").trim()).filter(Boolean));
+            }
+        } catch {
+            return new Set();
+        }
+    }
+
+    return new Set();
+};
+
+const hasFirstTaskCompletion = (project) => {
+    const sop = getSopFromTitle(project?.title || "");
+    const firstTask = Array.isArray(sop?.tasks) ? sop.tasks[0] : null;
+    if (!firstTask) return false;
+
+    const taskKey = `${firstTask.phase}-${firstTask.id}`;
+    return toTaskKeySet(project?.completedTasks).has(taskKey);
+};
 
 export const getDashboard = asyncHandler(async (req, res) => {
     const userId = getUserId(req);
@@ -176,8 +205,8 @@ export const createMilestoneApproval = asyncHandler(async (req, res) => {
             .map((item) => Number(item.phase))
     );
 
-    if (phaseNumber === 2 && Number(project.spent || 0) <= 0) {
-        throw new AppError("Phase 2 approval requires kickoff funding confirmation.", 400);
+    if (phaseNumber === 2 && !hasFirstTaskCompletion(project)) {
+        throw new AppError("Phase 2 approval unlocks only after freelancer completes the first task.", 400);
     }
     if (phaseNumber === 3 && !approvedPhases.has(2)) {
         throw new AppError("Phase 3 is locked until Phase 2 is approved.", 400);

@@ -67,6 +67,41 @@ const ensureProjectChatAccess = async ({
   return project;
 };
 
+const resolveProjectChatRecipientIds = async ({
+  serviceKey = "",
+  senderId = null
+}) => {
+  const projectId = parseProjectIdFromChatService(serviceKey);
+  if (!projectId) return [];
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      ownerId: true,
+      managerId: true,
+      proposals: {
+        where: { status: "ACCEPTED" },
+        select: { freelancerId: true },
+        orderBy: { createdAt: "desc" },
+        take: 1
+      }
+    }
+  });
+
+  if (!project) return [];
+
+  const acceptedFreelancerId = project.proposals?.[0]?.freelancerId || null;
+  const recipients = [
+    project.ownerId,
+    project.managerId,
+    acceptedFreelancerId
+  ]
+    .filter(Boolean)
+    .filter((id) => String(id) !== String(senderId));
+
+  return Array.from(new Set(recipients.map((id) => String(id))));
+};
+
 const serializeMessage = (message) => ({
   id: message.id,
   conversationId: message.conversationId,
@@ -474,34 +509,51 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
   const actualSenderId = senderId || req.user?.sub;
 
   if (convService.startsWith("CHAT:")) {
-    const parts = convService.split(":");
-    let recipientId = null;
+    const preview =
+      typeof content === "string" && content.trim()
+        ? content.trim()
+        : attachment?.name || "Sent an attachment";
 
-    if (parts.length === 4) {
-      const [, , clientId, freelancerId] = parts;
-      recipientId =
-        String(actualSenderId) === String(clientId) ? freelancerId : clientId;
-    } else if (parts.length >= 3) {
-      const [, id1, id2] = parts;
-      recipientId = String(actualSenderId) === String(id1) ? id2 : id1;
+    let recipientIds = await resolveProjectChatRecipientIds({
+      serviceKey: convService,
+      senderId: actualSenderId
+    });
+
+    // Legacy two-user fallback
+    if (!recipientIds.length) {
+      const parts = convService.split(":");
+      let recipientId = null;
+
+      if (parts.length === 4) {
+        const [, , clientId, freelancerId] = parts;
+        recipientId =
+          String(actualSenderId) === String(clientId) ? freelancerId : clientId;
+      } else if (parts.length >= 3) {
+        const [, id1, id2] = parts;
+        recipientId = String(actualSenderId) === String(id1) ? id2 : id1;
+      }
+
+      recipientIds = recipientId ? [String(recipientId)] : [];
     }
 
-    if (recipientId && String(recipientId) !== String(actualSenderId)) {
-      const preview =
-        typeof content === "string" && content.trim()
-          ? content.trim()
-          : attachment?.name || "Sent an attachment";
-      sendNotificationToUser(recipientId, {
-        type: "chat",
-        title: "New Message",
-        message: `${senderName || "Someone"}: ${preview.slice(0, 50)}${preview.length > 50 ? "..." : ""}`,
-        data: {
-          conversationId: conversation.id,
-          messageId: userMessage.id,
-          service: convService,
-          senderId: actualSenderId
-        }
-      });
+    if (recipientIds.length) {
+      await Promise.all(
+        recipientIds
+          .filter((id) => String(id) !== String(actualSenderId))
+          .map((recipientId) =>
+            sendNotificationToUser(recipientId, {
+              type: "chat",
+              title: "New Message",
+              message: `${senderName || "Someone"}: ${preview.slice(0, 50)}${preview.length > 50 ? "..." : ""}`,
+              data: {
+                conversationId: conversation.id,
+                messageId: userMessage.id,
+                service: convService,
+                senderId: actualSenderId
+              }
+            }).catch(() => null)
+          )
+      );
     }
   }
 

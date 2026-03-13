@@ -4,9 +4,9 @@ import { ManagerTopBar } from "@/components/features/project-manager/ManagerTopB
 
 export const PmShell = ({ title = "Management", subtitle, actions, children, hideHeader, className }) => (
   <RoleAwareSidebar>
-    <div className={`min-h-screen bg-white text-slate-900 ${className || ""}`}>
+    <div className={`min-h-screen overflow-x-hidden bg-white text-slate-900 ${className || ""}`}>
       <ManagerTopBar />
-      <div className="mx-auto w-full max-w-[1400px] space-y-8 p-8 md:p-12">
+      <div className="mx-auto w-full max-w-[1400px] min-w-0 space-y-6 p-4 md:p-6">
         {!hideHeader && (
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div>
