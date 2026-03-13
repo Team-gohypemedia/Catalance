@@ -12,7 +12,6 @@ import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import User from "lucide-react/dist/esm/icons/user";
 import Users from "lucide-react/dist/esm/icons/users";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
-import History from "lucide-react/dist/esm/icons/history";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 
 import { NavMain } from "@/components/layout/nav-main";
@@ -141,30 +140,33 @@ const navConfigs = {
       icon: LayoutDashboard,
     },
     {
-      title: "Active Projects",
-      url: "/project-manager?view=active-disputes",
-      icon: AlertCircle,
+      title: "Projects",
+      url: "/project-manager/projects",
+      icon: Briefcase,
     },
     {
       title: "Appointments",
       url: "/project-manager/appointments",
       icon: ClipboardList,
-      items: [
-        {
-          title: "Pending Requests",
-          url: "/project-manager/appointments?status=pending",
-        },
-        { title: "My Availability", url: "/project-manager/availability" },
-      ],
+    },
+    {
+      title: "Find Talent",
+      url: "/project-manager/marketplace",
+      icon: Users,
+    },
+    {
+      title: "Messages",
+      url: "/project-manager/messages",
+      icon: MessageSquare,
+    },
+    {
+      title: "Reports",
+      url: "/project-manager/reports",
+      icon: BarChart,
     },
 
     {
-      title: "Resolved History",
-      url: "/project-manager?view=resolved-history",
-      icon: History,
-    },
-    {
-      title: "Profile",
+      title: "Settings",
       url: "/project-manager/profile",
       icon: User,
     },

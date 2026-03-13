@@ -40,25 +40,34 @@ const ClientPayments = lazy(
   () => import("@/components/features/client/ClientPayments.jsx"),
 );
 const ProjectManagerDashboard = lazy(
-  () => import("@/components/features/project-manager/ProjectManagerDashboard"),
+  () => import("@/modules/project-manager/pages/DashboardPage"),
 );
 const ManagerAvailability = lazy(
-  () => import("@/components/features/project-manager/ManagerAvailability"),
+  () => import("@/modules/project-manager/pages/CalendarPage"),
 );
 const ManagerAppointments = lazy(
-  () => import("@/components/features/project-manager/ManagerAppointments"),
+  () => import("@/modules/project-manager/pages/CalendarPage"),
 );
 const ManagerProjects = lazy(
-  () => import("@/components/features/project-manager/ManagerProjects"),
+  () => import("@/modules/project-manager/pages/ProjectsPage"),
 );
 const ManagerProjectDetail = lazy(
-  () => import("@/components/features/project-manager/ManagerProjectDetail"),
+  () => import("@/modules/project-manager/pages/ProjectDetailsPage"),
 );
 const ManagerChat = lazy(
-  () => import("@/components/features/project-manager/ManagerChat"),
+  () => import("@/modules/project-manager/pages/MessagesPage"),
 );
 const ManagerProfile = lazy(
-  () => import("@/components/features/project-manager/ManagerProfile"),
+  () => import("@/modules/project-manager/pages/ProfessionalProfilePage"),
+);
+const ManagerMarketplace = lazy(
+  () => import("@/modules/project-manager/pages/MarketplacePage"),
+);
+const ManagerReports = lazy(
+  () => import("@/modules/project-manager/pages/ReportsPage"),
+);
+const ManagerProjectSetup = lazy(
+  () => import("@/modules/project-manager/pages/ProjectSetupPage"),
 );
 const SignupPage = lazy(
   () => import("@/components/features/auth/forms/Signup"),
@@ -392,7 +401,10 @@ const App = () => {
             <Route
               path="/project-manager"
               element={
-                <ProtectedRoute loginPath="/project-manager/login">
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
                   <ProjectManagerDashboard />
                 </ProtectedRoute>
               }
@@ -400,7 +412,10 @@ const App = () => {
             <Route
               path="/project-manager/availability"
               element={
-                <ProtectedRoute loginPath="/project-manager/login">
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
                   <ManagerAvailability />
                 </ProtectedRoute>
               }
@@ -408,7 +423,10 @@ const App = () => {
             <Route
               path="/project-manager/appointments"
               element={
-                <ProtectedRoute loginPath="/project-manager/login">
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
                   <ManagerAppointments />
                 </ProtectedRoute>
               }
@@ -416,7 +434,10 @@ const App = () => {
             <Route
               path="/project-manager/projects"
               element={
-                <ProtectedRoute loginPath="/project-manager/login">
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
                   <ManagerProjects />
                 </ProtectedRoute>
               }
@@ -424,7 +445,10 @@ const App = () => {
             <Route
               path="/project-manager/projects/:projectId"
               element={
-                <ProtectedRoute loginPath="/project-manager/login">
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
                   <ManagerProjectDetail />
                 </ProtectedRoute>
               }
@@ -432,16 +456,66 @@ const App = () => {
             <Route
               path="/project-manager/messages"
               element={
-                <ProtectedRoute loginPath="/project-manager/login">
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
                   <ManagerChat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/project-manager/profile/:id"
+              element={
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
+                  <ManagerProfile />
                 </ProtectedRoute>
               }
             />
             <Route
               path="/project-manager/profile"
               element={
-                <ProtectedRoute loginPath="/project-manager/login">
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
                   <ManagerProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/project-manager/marketplace"
+              element={
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
+                  <ManagerMarketplace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/project-manager/reports"
+              element={
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
+                  <ManagerReports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/project-manager/create-project"
+              element={
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
+                  <ManagerProjectSetup />
                 </ProtectedRoute>
               }
             />
@@ -651,8 +725,8 @@ LayoutWithNavbar.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-const ProtectedRoute = ({ children, loginPath = "/login" }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+const ProtectedRoute = ({ children, loginPath = "/login", allowedRoles = null }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -666,12 +740,20 @@ const ProtectedRoute = ({ children, loginPath = "/login" }) => {
     return <Navigate to={loginPath} replace />;
   }
 
+  if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+    const currentRole = String(user?.role || "").toUpperCase();
+    if (!allowedRoles.includes(currentRole)) {
+      return <Navigate to="/" replace />;
+    }
+  }
+
   return children;
 };
 
 ProtectedRoute.propTypes = {
   children: PropTypes.node.isRequired,
   loginPath: PropTypes.string,
+  allowedRoles: PropTypes.arrayOf(PropTypes.string),
 };
 
 const NotFound = () => (

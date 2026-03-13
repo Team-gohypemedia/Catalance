@@ -87,11 +87,13 @@ const flattenFreelancerProfile = (freelancer = null) => {
 
 const hydrateProjectForResponse = (project) => {
   if (!project || typeof project !== "object") return project;
+  const safeProject = { ...project };
+  delete safeProject.internalReviews;
 
   return attachProjectPaymentPlan({
-    ...project,
-    proposals: Array.isArray(project.proposals)
-      ? project.proposals.map((proposal) => ({
+    ...safeProject,
+    proposals: Array.isArray(safeProject.proposals)
+      ? safeProject.proposals.map((proposal) => ({
         ...proposal,
         freelancer: flattenFreelancerProfile(proposal.freelancer),
       }))

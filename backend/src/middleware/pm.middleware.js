@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 
 export const requirePm = async (req, res, next) => {
     try {
-        const userId = req.user?.sub;
+        const userId = req.user?.id;
         if (!userId) {
             throw new AppError("Authentication required", 401);
         }
