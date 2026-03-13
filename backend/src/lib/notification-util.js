@@ -1,8 +1,19 @@
-import { sendPushNotification } from "./firebase-admin.js";
 import { sendSocketNotification } from "./socket-manager.js";
 import { prisma } from "./prisma.js";
 
 import { sendEmail } from "./email-service.js";
+
+let sendPushNotificationImpl = null;
+
+const getSendPushNotification = async () => {
+  if (sendPushNotificationImpl) {
+    return sendPushNotificationImpl;
+  }
+
+  const firebaseAdmin = await import("./firebase-admin.js");
+  sendPushNotificationImpl = firebaseAdmin.sendPushNotification;
+  return sendPushNotificationImpl;
+};
 
 // Send a notification to a specific user via DB, Firebase Push AND Socket.io
 export const sendNotificationToUser = async (userId, notification, shouldEmail = true) => {
@@ -84,6 +95,7 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
 
   // 4. Send via Firebase Cloud Messaging
   try {
+    const sendPushNotification = await getSendPushNotification();
     const pushResult = await sendPushNotification(userId, notification);
     if (pushResult.success) {
       console.log(`[NotificationUtil] ✅ Push sent`);

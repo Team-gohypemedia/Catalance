@@ -16,7 +16,9 @@ const allowedOrigins = [
   normalizeOrigin(env.LOCAL_CORS_ORIGIN || ""),
   normalizeOrigin(env.VERCEL_CORS_ORIGIN || ""),
   "http://localhost:5173",
-  "http://localhost:5174"
+  "http://localhost:5174",
+  "https://catalance.in",
+  "https://www.catalance.in"
 ].filter(Boolean);
 
 const serializeMessage = (message) => ({

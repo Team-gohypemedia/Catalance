@@ -8,7 +8,6 @@ import { errorHandler } from "./middlewares/error-handler.js";
 import { notFoundHandler } from "./middlewares/not-found.js";
 import { apiRouter } from "./routes/index.js";
 import { prisma, prismaInitError } from "./lib/prisma.js";
-import { initSocket } from "./lib/socket.js";
 import { startCronJobs } from "./services/cron.service.js";
 
 const runningInVercel = process.env.VERCEL === "1";
@@ -32,7 +31,8 @@ export const createApp = () => {
     "http://localhost:5174",
     "https://localhost:5173",
     "https://freelancer-self.vercel.app",
-    "https://catalance.in"
+    "https://catalance.in",
+    "https://www.catalance.in"
   ];
 
   const configuredOrigins = [
@@ -47,10 +47,17 @@ export const createApp = () => {
   const allowAllOrigins =
     configuredOrigins.length === 0 || configuredOrigins.includes("*");
 
+  const baseCorsOptions = {
+    credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 204
+  };
+
   const corsOptions = allowAllOrigins
-    ? { origin: true, credentials: true }
+    ? { ...baseCorsOptions, origin: true }
     : {
-      credentials: true,
+      ...baseCorsOptions,
       origin: (origin, callback) => {
         // In Vercel, fail-safe: if we cannot match, allow the requesting origin
         // to avoid mismatched Access-Control-Allow-Origin in serverless context.
@@ -137,7 +144,8 @@ if (prismaInitError) {
   }
 }
 
-if (!runningInVercel) {
+const startLocalServer = async () => {
+  const { initSocket } = await import("./lib/socket.js");
   const httpServer = createServer(app);
   const io = initSocket(httpServer);
 
@@ -209,6 +217,10 @@ if (!runningInVercel) {
 
   process.on("SIGINT", gracefulShutdown);
   process.on("SIGTERM", gracefulShutdown);
+};
+
+if (!runningInVercel) {
+  void startLocalServer();
 }
 
 export default app;

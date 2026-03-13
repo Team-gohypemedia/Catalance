@@ -33,6 +33,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import {
@@ -71,7 +72,7 @@ const statusLabels = {
 };
 
 const proposalPanelClassName =
-  "rounded-[24px] border border-[#1e293b] bg-[#303030]/40 shadow-[0px_0px_20px_0px_rgba(255,193,5,0.03)] backdrop-blur-[6px]";
+  "rounded-[24px] border border-[#1e293b] bg-[#303030]/40 backdrop-blur-[6px]";
 
 const proposalCardStatusClasses = {
   draft: "border-white/10 bg-[#2f3135] text-[#d4d7dd]",
@@ -341,6 +342,57 @@ const formatRating = (value) => {
 
 const normalizeProposalRecord = (proposal) => proposal ?? {};
 
+const isAssignedFreelancerName = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  return Boolean(normalized) && normalized !== "not assigned";
+};
+
+const getProposalDraftGroupKey = (proposal = {}) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+
+  if (normalizedProposal.projectId) {
+    return `draft-project:${normalizedProposal.projectId}`;
+  }
+
+  if (normalizedProposal.draftSignature) {
+    return `draft-signature:${normalizedProposal.draftSignature}`;
+  }
+
+  return `draft:${
+    normalizedProposal.id ||
+    normalizedProposal.title ||
+    normalizedProposal.submittedDate ||
+    "proposal"
+  }`;
+};
+
+const getProposalInvitee = (proposal = {}) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const name =
+    normalizedProposal.recipientName ||
+    normalizedProposal.freelancerName ||
+    normalizedProposal.freelancer?.fullName ||
+    normalizedProposal.freelancer?.name ||
+    "";
+
+  if (!isAssignedFreelancerName(name)) return null;
+
+  const inviteeId =
+    normalizedProposal.freelancerId ||
+    normalizedProposal.recipientId ||
+    normalizedProposal.freelancer?.id ||
+    name.toLowerCase();
+
+  return {
+    id: String(inviteeId),
+    name: String(name).trim(),
+    avatar:
+      normalizedProposal.avatar ||
+      normalizedProposal.freelancer?.avatar ||
+      "",
+  };
+};
+
 const resolveProposalTitle = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
 
@@ -439,9 +491,9 @@ const ProposalMetric = ({ icon: Icon, label, value, valueClassName }) => (
       <Icon className="h-3.5 w-3.5 text-primary" />
       <span>{label}</span>
     </div>
-    <p className={cn("mt-3 text-base font-semibold text-foreground", valueClassName)}>
+    <div className={cn("mt-3 text-base font-semibold text-foreground", valueClassName)}>
       {value}
-    </p>
+    </div>
   </div>
 );
 
@@ -455,6 +507,51 @@ const ProposalSummaryItem = ({ label, value, valueClassName }) => (
     </div>
   </div>
 );
+
+const ProposalFreelancerAvatars = ({
+  proposal,
+  avatarClassName = "h-10 w-10",
+  stackClassName,
+  maxVisible = 4,
+}) => {
+  const sentFreelancers = Array.isArray(proposal?.sentFreelancers)
+    ? proposal.sentFreelancers.filter(Boolean)
+    : [];
+  const fallbackAvatarName = isAssignedFreelancerName(proposal?.recipientName)
+    ? proposal.recipientName
+    : "Not assigned";
+  const initials = getInitials(fallbackAvatarName);
+
+  if (sentFreelancers.length > 0) {
+    return (
+      <div className={cn("flex items-center -space-x-3", stackClassName)}>
+        {sentFreelancers.slice(0, maxVisible).map((freelancer) => (
+          <Avatar
+            key={freelancer.id}
+            className={cn(
+              avatarClassName,
+              "border-2 border-[#2b2b2d]",
+            )}
+          >
+            <AvatarImage src={freelancer.avatar} alt={freelancer.name} />
+            <AvatarFallback className="bg-[#111214] text-xs font-bold text-primary">
+              {getInitials(freelancer.name)}
+            </AvatarFallback>
+          </Avatar>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <Avatar className={cn(avatarClassName, "border border-white/10")}>
+      <AvatarImage src={proposal?.avatar} alt={fallbackAvatarName} />
+      <AvatarFallback className="bg-[#111214] text-xs font-bold text-primary">
+        {initials}
+      </AvatarFallback>
+    </Avatar>
+  );
+};
 
 const NotificationPopoverButton = ({
   notifications,
@@ -599,11 +696,6 @@ const ProposalRowCard = ({
   const details = extractProposalDetails(proposal);
   const isDraft = proposal.status === "draft";
   const canSendToFreelancers = isDraft && !proposal.requiresPayment && onSend;
-  const hasAssignedFreelancer =
-    Boolean(proposal.freelancerId) &&
-    String(proposal.recipientName || "").trim().toLowerCase() !== "not assigned";
-  const displayName = hasAssignedFreelancer ? proposal.recipientName : "Not assigned";
-  const initials = getInitials(displayName);
   const showSecondaryAction = canSendToFreelancers || Boolean(proposal.requiresPayment && onPay);
 
   return (
@@ -649,22 +741,7 @@ const ProposalRowCard = ({
             <ProposalSummaryItem
               label="Freelancer"
               value={
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 border border-white/10">
-                    <AvatarImage src={proposal.avatar} alt={displayName} />
-                    <AvatarFallback className="bg-[#111214] text-xs font-bold text-primary">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span
-                    className={cn(
-                      "max-w-[11rem] text-base font-semibold leading-5 text-white",
-                      !hasAssignedFreelancer && "text-[#8d96a7]",
-                    )}
-                  >
-                    {displayName}
-                  </span>
-                </div>
+                <ProposalFreelancerAvatars proposal={proposal} />
               }
             />
             <ProposalSummaryItem
@@ -948,6 +1025,8 @@ const ClientProposalContent = () => {
   const [isLoadingProposal, setIsLoadingProposal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("draft");
+  const [isEditingContent, setIsEditingContent] = useState(false);
+  const [editableProposalContent, setEditableProposalContent] = useState("");
   const [processingPaymentProposalId, setProcessingPaymentProposalId] =
     useState(null);
   const [sendingProposalId, setSendingProposalId] = useState(null);
@@ -1148,6 +1227,11 @@ const ClientProposalContent = () => {
   useEffect(() => {
     setHasHandledDeepLink(false);
   }, [deepLinkProjectId, deepLinkTab, deepLinkAction]);
+
+  useEffect(() => {
+    setEditableProposalContent(activeProposal?.content || "");
+    setIsEditingContent(false);
+  }, [activeProposal?.id, activeProposal?.content]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1378,6 +1462,140 @@ const ClientProposalContent = () => {
     [authFetch],
   );
 
+  const handleSaveProposalContent = useCallback(() => {
+    if (!activeProposal) return;
+
+    const nextContent = String(editableProposalContent || "").trim();
+    if (!nextContent) {
+      toast.error("Proposal content cannot be empty.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const storageKeys = getProposalStorageKeys(user?.id);
+    const { proposals: savedProposals, activeId } = loadSavedProposalsFromStorage(user?.id);
+    const draftGroupKey = getProposalDraftGroupKey(activeProposal);
+
+    const localDraftPayload = {
+      id:
+        activeProposal.isLocalDraft
+          ? activeProposal.id
+          : `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      ownerId: user?.id || null,
+      projectTitle: resolveProposalTitle(activeProposal),
+      title: resolveProposalTitle(activeProposal),
+      service: resolveProposalServiceLabel(activeProposal),
+      serviceKey:
+        activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
+      summary: nextContent,
+      content: nextContent,
+      budget: activeProposal.budget || "",
+      timeline:
+        activeProposal.timeline ||
+        extractProposalDetails(activeProposal).delivery ||
+        "",
+      recipientName: activeProposal.recipientName || "Not assigned",
+      recipientId: activeProposal.recipientId || "LOCAL_DRAFT",
+      freelancerId: activeProposal.freelancerId || null,
+      avatar: activeProposal.avatar || "",
+      projectId: activeProposal.projectId || activeProposal.syncedProjectId || null,
+      syncedProjectId:
+        activeProposal.syncedProjectId || activeProposal.projectId || null,
+      syncedAt: activeProposal.syncedAt || null,
+      proposalContext: activeProposal.proposalContext || null,
+      createdAt: activeProposal.createdAt || now,
+      updatedAt: now,
+    };
+
+    let nextActiveId = localDraftPayload.id;
+    let hasMatchedSavedDraft = false;
+
+    const updatedSavedProposals = savedProposals.map((savedProposal) => {
+      const isSameDraft =
+        savedProposal.id === activeProposal.id ||
+        getProposalDraftGroupKey(savedProposal) === draftGroupKey;
+
+      if (!isSameDraft) return savedProposal;
+
+      hasMatchedSavedDraft = true;
+      nextActiveId = savedProposal.id || localDraftPayload.id;
+
+      return {
+        ...savedProposal,
+        ...localDraftPayload,
+        id: savedProposal.id || localDraftPayload.id,
+        createdAt: savedProposal.createdAt || localDraftPayload.createdAt,
+      };
+    });
+
+    const nextSavedProposals = hasMatchedSavedDraft
+      ? updatedSavedProposals
+      : [...updatedSavedProposals, localDraftPayload];
+
+    const resolvedActiveId = resolveActiveProposalId(
+      nextSavedProposals,
+      nextActiveId,
+      activeId,
+    );
+
+    persistSavedProposalsToStorage(nextSavedProposals, resolvedActiveId, storageKeys);
+
+    const savedDraftRecord =
+      nextSavedProposals.find((proposal) => proposal.id === resolvedActiveId) ||
+      nextSavedProposals.find(
+        (proposal) => getProposalDraftGroupKey(proposal) === draftGroupKey,
+      ) ||
+      localDraftPayload;
+
+    const mappedLocalDraft = mapLocalDraftProposal(savedDraftRecord);
+
+    setProposals((current) => {
+      let didReplaceLocalDraft = false;
+
+      const next = current.map((entry) => {
+        const isSameLocalDraft =
+          entry.isLocalDraft && getProposalDraftGroupKey(entry) === draftGroupKey;
+
+        if (!isSameLocalDraft) return entry;
+
+        didReplaceLocalDraft = true;
+        return {
+          ...entry,
+          ...mappedLocalDraft,
+        };
+      });
+
+      if (!didReplaceLocalDraft) {
+        next.push(mappedLocalDraft);
+      }
+
+      return next;
+    });
+
+    setSelectedProposalForSend((current) =>
+      current && getProposalDraftGroupKey(current) === draftGroupKey
+        ? {
+            ...current,
+            ...mappedLocalDraft,
+            sentFreelancers: current.sentFreelancers,
+          }
+        : current,
+    );
+
+    setActiveProposal((current) =>
+      current
+        ? {
+            ...current,
+            ...mappedLocalDraft,
+            sentFreelancers: current.sentFreelancers,
+          }
+        : current,
+    );
+
+    setIsEditingContent(false);
+    toast.success("Proposal content updated.");
+  }, [activeProposal, editableProposalContent, user?.id]);
+
   const sendProposalToFreelancer = useCallback(
     async (freelancer) => {
       const proposal = selectedProposalForSend;
@@ -1521,37 +1739,101 @@ const ClientProposalContent = () => {
   }, [deepLinkProjectId, proposals]);
 
   const grouped = useMemo(
-    () =>
-      scopedProposals.reduce(
-        (acc, proposal) => {
-          if (proposal.status === "accepted" && !proposal.requiresPayment) return acc;
+    () => {
+      const acceptedProjectKeys = new Set(
+        scopedProposals
+          .filter((proposal) => proposal.status === "accepted" && proposal.projectId)
+          .map((proposal) => String(proposal.projectId)),
+      );
+      const sentFreelancersByDraftKey = scopedProposals.reduce((acc, proposal) => {
+        if (proposal.status === "draft") return acc;
 
-          if (proposal.status === "accepted" && proposal.requiresPayment) {
-            acc.pending.push(proposal);
-            return acc;
+        const draftKey = getProposalDraftGroupKey(proposal);
+        const invitee = getProposalInvitee(proposal);
+        if (!draftKey || !invitee) return acc;
+
+        const current = acc.get(draftKey) || [];
+        if (current.some((entry) => entry.id === invitee.id)) return acc;
+
+        acc.set(draftKey, [...current, invitee]);
+        return acc;
+      }, new Map());
+
+      const draftIndexes = new Map();
+      const groupedBuckets = { draft: [], pending: [], rejected: [] };
+
+      const pushDraftOnce = (proposal, options = {}) => {
+        const draftKey = getProposalDraftGroupKey(proposal);
+        const sentFreelancers = sentFreelancersByDraftKey.get(draftKey) || [];
+        const nextDraft =
+          sentFreelancers.length > 0
+            ? { ...proposal, sentFreelancers }
+            : proposal;
+
+        if (draftIndexes.has(draftKey)) {
+          if (options.preferSavedDraft) {
+            groupedBuckets.draft[draftIndexes.get(draftKey)] = nextDraft;
           }
+          return;
+        }
 
-          if (proposal.status === "draft") {
-            acc.draft.push(proposal);
-          } else if (proposal.status === "rejected") {
-            acc.rejected.push(proposal);
-          } else {
-            acc.pending.push(proposal);
+        draftIndexes.set(draftKey, groupedBuckets.draft.length);
+        groupedBuckets.draft.push(nextDraft);
+      };
+
+      scopedProposals.forEach((proposal) => {
+        const projectKey = proposal.projectId ? String(proposal.projectId) : null;
+        const hasAcceptedProposal = projectKey
+          ? acceptedProjectKeys.has(projectKey)
+          : false;
+
+        if (proposal.status === "accepted") {
+          if (proposal.requiresPayment) {
+            groupedBuckets.pending.push(proposal);
           }
+          return;
+        }
 
-          return acc;
-        },
-        { draft: [], pending: [], rejected: [] },
-      ),
+        if (proposal.status === "draft") {
+          if (!hasAcceptedProposal) {
+            pushDraftOnce(proposal, { preferSavedDraft: true });
+          }
+          return;
+        }
+
+        if (proposal.status === "rejected") {
+          groupedBuckets.rejected.push(proposal);
+          return;
+        }
+
+        groupedBuckets.pending.push(proposal);
+
+        if (!hasAcceptedProposal) {
+          pushDraftOnce({
+            ...proposal,
+            status: "draft",
+          });
+        }
+      });
+
+      return groupedBuckets;
+    },
     [scopedProposals],
   );
 
   const unassignedDraftCount = useMemo(
     () =>
       grouped.draft.filter(
-        (proposal) =>
-          !proposal.freelancerId ||
-          String(proposal.recipientName || "").trim().toLowerCase() === "not assigned",
+        (proposal) => {
+          if (Array.isArray(proposal.sentFreelancers) && proposal.sentFreelancers.length > 0) {
+            return false;
+          }
+
+          return (
+            !proposal.freelancerId ||
+            !isAssignedFreelancerName(proposal.recipientName)
+          );
+        },
       ).length,
     [grouped.draft],
   );
@@ -1878,10 +2160,6 @@ const ClientProposalContent = () => {
                       isSending={sendingProposalId === proposal.id}
                     />
                   ))}
-                  <ProposalWorkspaceHintCard
-                    activeTab={activeTab}
-                    hasProjectFilter={Boolean(deepLinkProjectId)}
-                  />
                 </div>
               ) : (
                 <EmptyStateCard
@@ -2012,7 +2290,16 @@ const ClientProposalContent = () => {
               <ProposalMetric
                 icon={UserRound}
                 label="Freelancer"
-                value={activeProposal?.recipientName || "Not assigned"}
+                value={
+                  activeProposal ? (
+                    <ProposalFreelancerAvatars
+                      proposal={activeProposal}
+                      avatarClassName="h-11 w-11"
+                    />
+                  ) : (
+                    "Not assigned"
+                  )
+                }
               />
               <ProposalMetric
                 icon={Layers3}
@@ -2023,13 +2310,48 @@ const ClientProposalContent = () => {
 
             <Card className="border-border/60 bg-card/55">
               <CardContent className="space-y-4 p-5">
-                <div className="space-y-1">
-                  <h4 className="text-lg font-semibold tracking-tight text-foreground">
-                    Proposal Details
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    Full scope, delivery notes, and proposal narrative.
-                  </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <h4 className="text-lg font-semibold tracking-tight text-foreground">
+                      Proposal Details
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Full scope, delivery notes, and proposal narrative.
+                    </p>
+                  </div>
+
+                  {activeProposal?.status === "draft" ? (
+                    <div className="flex flex-wrap gap-2">
+                      {isEditingContent ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            className="rounded-full border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06]"
+                            onClick={() => {
+                              setEditableProposalContent(activeProposal?.content || "");
+                              setIsEditingContent(false);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            className="rounded-full bg-primary text-[#141414] hover:bg-primary/90"
+                            onClick={handleSaveProposalContent}
+                          >
+                            Save Changes
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="rounded-full border-primary/25 bg-primary/10 text-primary hover:bg-primary/15"
+                          onClick={() => setIsEditingContent(true)}
+                        >
+                          Edit Content
+                        </Button>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="max-h-[48vh] overflow-y-auto rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -2038,6 +2360,13 @@ const ClientProposalContent = () => {
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading details...
                     </div>
+                  ) : isEditingContent ? (
+                    <Textarea
+                      value={editableProposalContent}
+                      onChange={(event) => setEditableProposalContent(event.target.value)}
+                      className="min-h-[320px] border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                      placeholder="Update the proposal content here..."
+                    />
                   ) : (
                     <ProposalContentRenderer content={activeProposal?.content} />
                   )}

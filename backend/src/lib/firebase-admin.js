@@ -1,46 +1,78 @@
 import admin from "firebase-admin";
 import { prisma } from "./prisma.js";
 
-// Initialize Firebase Admin SDK
-// For production, set GOOGLE_APPLICATION_CREDENTIALS environment variable 
-// pointing to your service account JSON file
-// For development, we initialize without a service account (works for token verification)
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "catalance-4dc1b";
 
-let firebaseApp;
+let firebaseApp = null;
 
-try {
-  // Check if already initialized
-  firebaseApp = admin.app();
-} catch (error) {
-  // Initialize with project config from environment variables
-  // For FCM to work, you need proper credentials
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-    : null;
-
-  if (serviceAccount) {
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.FIREBASE_PROJECT_ID || "catalance-4dc1b"
-    });
-    console.log("[Firebase Admin] Initialized with service account");
-  } else {
-    firebaseApp = admin.initializeApp({
-      projectId: process.env.FIREBASE_PROJECT_ID || "catalance-4dc1b"
-    });
-    console.log("[Firebase Admin] Initialized without service account (FCM won't work)");
+const parseServiceAccount = () => {
+  const rawValue = String(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || "").trim();
+  if (!rawValue) {
+    return null;
   }
-}
+
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(
+      `[Firebase Admin] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Falling back without service account. ${message}`,
+    );
+    return null;
+  }
+};
+
+const ensureFirebaseApp = () => {
+  if (firebaseApp) {
+    return firebaseApp;
+  }
+
+  try {
+    firebaseApp = admin.app();
+    return firebaseApp;
+  } catch {
+    // No-op: initialize a new app below.
+  }
+
+  const serviceAccount = parseServiceAccount();
+
+  try {
+    firebaseApp = serviceAccount
+      ? admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          projectId: FIREBASE_PROJECT_ID,
+        })
+      : admin.initializeApp({
+          projectId: FIREBASE_PROJECT_ID,
+        });
+
+    console.log(
+      serviceAccount
+        ? "[Firebase Admin] Initialized with service account"
+        : "[Firebase Admin] Initialized without service account (FCM may be unavailable)",
+    );
+
+    return firebaseApp;
+  } catch (error) {
+    console.error("[Firebase Admin] Initialization failed:", error);
+    return null;
+  }
+};
 
 export const verifyFirebaseToken = async (idToken) => {
+  const app = ensureFirebaseApp();
+  if (!app) {
+    throw new Error("Firebase Admin is not configured on the server");
+  }
+
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const decodedToken = await admin.auth(app).verifyIdToken(idToken);
     return {
       uid: decodedToken.uid,
       email: decodedToken.email,
       name: decodedToken.name || decodedToken.email?.split("@")[0],
       picture: decodedToken.picture,
-      emailVerified: decodedToken.email_verified
+      emailVerified: decodedToken.email_verified,
     };
   } catch (error) {
     console.error("Firebase token verification error:", error);
@@ -48,73 +80,79 @@ export const verifyFirebaseToken = async (idToken) => {
   }
 };
 
-// Send push notification to a user by their userId
 export const sendPushNotification = async (userId, notification) => {
+  const app = ensureFirebaseApp();
+  if (!app) {
+    return { success: false, reason: "firebase_unavailable" };
+  }
+
   try {
-    // Get user's FCM token from database
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { fcmToken: true, fullName: true, email: true }
+      select: { fcmToken: true, fullName: true, email: true },
     });
 
     if (!user?.fcmToken) {
-      console.log(`[Firebase Admin] ❌ No FCM token for user ${userId} (${user?.email || 'unknown email'})`);
+      console.log(
+        `[Firebase Admin] No FCM token for user ${userId} (${user?.email || "unknown email"})`,
+      );
       return { success: false, reason: "no_token" };
     }
 
-    console.log(`[Firebase Admin] 🔍 Found FCM token for ${user.email}: ${user.fcmToken.substring(0, 10)}...`);
+    console.log(
+      `[Firebase Admin] Found FCM token for ${user.email}: ${user.fcmToken.substring(0, 10)}...`,
+    );
 
     const message = {
       token: user.fcmToken,
       notification: {
         title: notification.title,
-        body: notification.message || notification.body
+        body: notification.message || notification.body,
       },
       data: {
         type: notification.type || "general",
-        ...(notification.data || {})
+        ...(notification.data || {}),
       },
       webpush: {
         notification: {
           icon: "/favicon.ico",
           badge: "/favicon.ico",
-          requireInteraction: true
+          requireInteraction: true,
         },
         fcmOptions: {
-          link: notification.link || "/"
-        }
-      }
+          link: notification.link || "/",
+        },
+      },
     };
 
-    console.log(`[Firebase Admin] 🚀 Attempting to send message to ${userId}...`);
-    const response = await admin.messaging().send(message);
-    console.log(`[Firebase Admin] ✅ Push notification sent successfully! Message ID:`, response);
+    console.log(`[Firebase Admin] Attempting to send message to ${userId}...`);
+    const response = await admin.messaging(app).send(message);
+    console.log("[Firebase Admin] Push notification sent successfully. Message ID:", response);
     return { success: true, messageId: response };
   } catch (error) {
-    console.error(`[Firebase Admin] ❌ CRITICAL ERROR sending to user ${userId}:`, error);
+    console.error(`[Firebase Admin] Error sending to user ${userId}:`, error);
     if (error.code) console.error(`[Firebase Admin] Error Code: ${error.code}`);
-    
-    // If token is invalid, remove it from database
-    if (error.code === "messaging/invalid-registration-token" || 
-        error.code === "messaging/registration-token-not-registered") {
+
+    if (
+      error.code === "messaging/invalid-registration-token" ||
+      error.code === "messaging/registration-token-not-registered"
+    ) {
       await prisma.user.update({
         where: { id: userId },
-        data: { fcmToken: null }
+        data: { fcmToken: null },
       });
-      console.log(`[Firebase Admin] 🗑️ Removed invalid FCM token for user ${userId}`);
+      console.log(`[Firebase Admin] Removed invalid FCM token for user ${userId}`);
     }
-    
+
     return { success: false, error: error.message };
   }
 };
 
-// Send push notification to multiple users
 export const sendPushNotificationToMany = async (userIds, notification) => {
   const results = await Promise.all(
-    userIds.map(userId => sendPushNotification(userId, notification))
+    userIds.map((userId) => sendPushNotification(userId, notification)),
   );
   return results;
 };
 
 export { firebaseApp };
-
