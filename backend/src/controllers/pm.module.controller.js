@@ -26,6 +26,9 @@ const REPORT_CATEGORIES = [
 const REPORT_SEVERITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
 const normalizeText = (value) => String(value || "").trim();
+const asObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const asArray = (value) => (Array.isArray(value) ? value : []);
 const parseCsv = (value) =>
   String(value || "")
     .split(",")
@@ -33,14 +36,50 @@ const parseCsv = (value) =>
     .filter(Boolean);
 
 const toFiniteNumberOrNull = (value) => {
-  const direct = Number(value);
-  if (Number.isFinite(direct) && direct > 0) return direct;
+  if (value === null || value === undefined || value === "") return null;
 
-  if (typeof value === "string") {
-    const normalized = value.replace(/[^0-9.]/g, "");
-    const parsed = Number(normalized);
-    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? value : null;
   }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const raw = normalizeText(value);
+  if (!raw) return null;
+
+  const lower = raw.toLowerCase();
+  if (
+    /less|under|over|year|years|yrs|experience|beginner|intermediate|advanced|not\s*set|n\/a/.test(
+      lower
+    )
+  ) {
+    return null;
+  }
+
+  if (/^\d+_\d+$/.test(lower) || /^\d+\+(_\w+)?$/.test(lower)) {
+    return null;
+  }
+
+  const compactNumeric = raw.replace(/[, ]+/g, "");
+  if (/^\d+(\.\d+)?$/.test(compactNumeric)) {
+    const parsed = Number(compactNumeric);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  const hasHourlyContext = /\/\s*hr|per\s*hour|hourly/.test(lower);
+  const hasCurrencyContext = /inr|usd|eur|gbp|₹|\$|€|£/.test(lower);
+  if (!hasHourlyContext && !hasCurrencyContext) return null;
+
+  if (!hasHourlyContext && /-| to /.test(lower)) {
+    return null;
+  }
+
+  const firstNumber = raw.match(/\d[\d,]*(?:\.\d+)?/);
+  if (!firstNumber) return null;
+  const parsed = Number(firstNumber[0].replace(/,/g, ""));
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
 
   return null;
 };
@@ -55,7 +94,7 @@ const resolveHourlyRateFromProfileDetails = (profileDetails = {}) => {
     pricing.ratePerHour,
     profileDetails?.hourlyRate,
     profileDetails?.ratePerHour,
-    profileDetails?.rate,
+    pricing?.baseHourlyRate,
   ];
 
   for (const candidate of directCandidates) {
@@ -73,8 +112,7 @@ const resolveHourlyRateFromProfileDetails = (profileDetails = {}) => {
       detail?.hourlyRate,
       detail?.ratePerHour,
       detail?.baseRate,
-      detail?.averagePrice,
-      detail?.averageProjectPrice,
+      detail?.baseHourlyRate,
     ];
     for (const candidate of candidates) {
       const parsed = toFiniteNumberOrNull(candidate);
@@ -131,6 +169,90 @@ const resolveAvailabilityLabel = ({ available, profileDetails = {} }) => {
   if (timeline) return `Available - ${timeline}`;
 
   return "Available";
+};
+
+const normalizePortfolioEntry = (entry, index = 0) => {
+  if (typeof entry === "string") {
+    const link = normalizeText(entry);
+    if (!link) return null;
+    return {
+      title: `Project ${index + 1}`,
+      link,
+      image: "",
+      summary: "",
+    };
+  }
+
+  if (!entry || typeof entry !== "object") return null;
+
+  const title = normalizeText(
+    entry.title || entry.name || entry.serviceName || entry.professionalTitle
+  );
+  const link = normalizeText(
+    entry.link || entry.url || entry.fileUrl || entry.website || entry.portfolio
+  );
+  const image = normalizeText(entry.image || entry.thumbnail || entry.coverImage);
+  const summary = normalizeText(entry.summary || entry.description || entry.readme);
+
+  if (!title && !link && !summary) return null;
+
+  return {
+    title: title || `Project ${index + 1}`,
+    link,
+    image,
+    summary,
+  };
+};
+
+const mergePortfolioEntries = (...sources) => {
+  const dedupe = new Map();
+
+  sources.forEach((source) => {
+    asArray(source).forEach((entry, index) => {
+      const normalized = normalizePortfolioEntry(entry, index);
+      if (!normalized) return;
+      const dedupeKey = `${normalized.link.toLowerCase()}::${normalized.title.toLowerCase()}`;
+      if (!dedupe.has(dedupeKey)) dedupe.set(dedupeKey, normalized);
+    });
+  });
+
+  return Array.from(dedupe.values());
+};
+
+const isMarketplaceReadyFreelancer = (user = {}) => {
+  const skills = asArray(user?.skills);
+  const services = asArray(user?.services);
+  const portfolioProjects = asArray(user?.portfolioProjects);
+  const freelancerProjects = asArray(user?.freelancerProjects);
+  const profileDetails = asObject(user?.profileDetails);
+
+  const hasEssentialIdentity = Boolean(
+    normalizeText(user?.id) &&
+      normalizeText(user?.fullName || user?.name) &&
+      normalizeText(user?.email)
+  );
+  const hasFreelancerContent = Boolean(
+    normalizeText(user?.bio) ||
+      normalizeText(user?.jobTitle) ||
+      normalizeText(user?.portfolio) ||
+      skills.length ||
+      services.length ||
+      portfolioProjects.length ||
+      freelancerProjects.length ||
+      Object.keys(profileDetails).length
+  );
+
+  return hasEssentialIdentity && hasFreelancerContent;
+};
+
+const hasFreelancerRole = (user = {}) => {
+  const primaryRole = normalizeText(user?.role).toUpperCase();
+  if (primaryRole === "FREELANCER") return true;
+
+  const additionalRoles = Array.isArray(user?.roles)
+    ? user.roles.map((role) => normalizeText(role).toUpperCase()).filter(Boolean)
+    : [];
+  return additionalRoles.includes("FREELANCER");
 };
 
 const toIsoOrNull = (value) => {
@@ -1270,6 +1392,9 @@ export const getPmFreelancerDetails = asyncHandler(async (req, res) => {
     include: {
       freelancerProfile: true,
       marketplace: true,
+      freelancerProjects: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      },
       subjectInternalReviews: {
         include: { manager: { select: { fullName: true } } },
         orderBy: { createdAt: "desc" },
@@ -1277,7 +1402,7 @@ export const getPmFreelancerDetails = asyncHandler(async (req, res) => {
     },
   });
 
-  if (!freelancer || freelancer.role !== "FREELANCER") {
+  if (!freelancer || !hasFreelancerRole(freelancer)) {
     throw new AppError("Freelancer not found.", 404);
   }
 
@@ -1289,6 +1414,34 @@ export const getPmFreelancerDetails = asyncHandler(async (req, res) => {
     freelancer?.freelancerProfile?.languages
   );
   const timeCommitment = resolveTimeCommitmentFromProfileDetails(details);
+  const profilePortfolio = asArray(freelancer?.freelancerProfile?.portfolioProjects);
+  const detailsPortfolio = extractPortfolioProjectsFromProfileDetails(details);
+  const profileServiceDetails = asObject(details?.serviceDetails);
+  const serviceRows = Array.from(
+    new Set(
+      [
+        ...asArray(freelancer?.freelancerProfile?.services),
+        ...Object.keys(profileServiceDetails),
+      ]
+        .map((entry) => normalizeText(entry))
+        .filter(Boolean),
+    ),
+  );
+  const freelancerProjectRows = asArray(freelancer?.freelancerProjects).map((project, index) => ({
+    title: normalizeText(project?.title || project?.serviceName || project?.professionalTitle) || `Project ${index + 1}`,
+    link: normalizeText(project?.link || project?.fileUrl),
+    image: "",
+    summary: normalizeText(project?.description || project?.readme),
+    serviceKey: normalizeText(project?.serviceKey),
+    serviceName: normalizeText(project?.serviceName),
+    activeTechnologies: asArray(project?.activeTechnologies),
+  }));
+  const portfolioRows = mergePortfolioEntries(
+    detailsPortfolio,
+    profilePortfolio,
+    freelancerProjectRows
+  );
+  const profileDetails = asObject(details);
 
   res.json({
     data: {
@@ -1307,8 +1460,12 @@ export const getPmFreelancerDetails = asyncHandler(async (req, res) => {
         normalizeText(details?.professionalBio || "") ||
         "",
       skills: Array.isArray(freelancer.freelancerProfile?.skills) ? freelancer.freelancerProfile.skills : [],
+      services: serviceRows,
+      experienceYears: Number(freelancer.freelancerProfile?.experienceYears || 0),
       experience: extractWorkExperienceFromProfileDetails(details),
-      portfolio: extractPortfolioProjectsFromProfileDetails(details),
+      portfolio: portfolioRows,
+      profileDetails,
+      freelancerProjects: freelancerProjectRows,
       testimonials: (Array.isArray(freelancer.subjectInternalReviews) ? freelancer.subjectInternalReviews : []).map(r => ({
         name: r.manager?.fullName || "PM",
         role: "Project Manager",
@@ -1344,8 +1501,9 @@ export const searchPmFreelancers = asyncHandler(async (req, res) => {
     onboardingComplete: true,
     requiredSkills: skills.join(","),
   });
+  const marketplaceUsers = users.filter(isMarketplaceReadyFreelancer);
 
-  const freelancerIds = users.map((item) => item.id);
+  const freelancerIds = marketplaceUsers.map((item) => item.id);
   const reviews = freelancerIds.length
     ? await prisma.internalFreelancerReview.findMany({
         where: { freelancerId: { in: freelancerIds } },
@@ -1361,7 +1519,7 @@ export const searchPmFreelancers = asyncHandler(async (req, res) => {
     }
   }
 
-  const freelancers = users
+  const freelancers = marketplaceUsers
     .filter((user) => {
       if (availability === "available" && !user.available) return false;
       if (availability === "unavailable" && user.available) return false;
@@ -1389,6 +1547,8 @@ export const searchPmFreelancers = asyncHandler(async (req, res) => {
         user?.profileDetails && typeof user.profileDetails === "object"
           ? user.profileDetails
           : {};
+      const profilePortfolio = asArray(user?.portfolioProjects);
+      const freelancerProjectRows = asArray(user?.freelancerProjects);
       const hourlyRate = resolveHourlyRateFromProfileDetails(profileDetails);
       const languages = resolveLanguagesFromProfileDetails(
         profileDetails,
@@ -1426,6 +1586,9 @@ export const searchPmFreelancers = asyncHandler(async (req, res) => {
         }),
         projectExperience: Number(user.experienceYears || 0),
         portfolio: user.portfolio || null,
+        profileDetails,
+        portfolioProjects: profilePortfolio,
+        freelancerProjects: freelancerProjectRows,
         bestMatch,
         internalReviewSnippet: review
           ? {
@@ -1476,7 +1639,7 @@ export const invitePmFreelancer = asyncHandler(async (req, res) => {
     where: { id: freelancerId },
     select: { id: true, role: true, fullName: true },
   });
-  if (!freelancer || freelancer.role !== "FREELANCER") {
+  if (!freelancer || !hasFreelancerRole(freelancer)) {
     throw new AppError("Freelancer not found.", 404);
   }
 
@@ -1534,7 +1697,7 @@ export const replacePmProjectFreelancer = asyncHandler(async (req, res) => {
     where: { id: freelancerId },
     select: { id: true, role: true, fullName: true },
   });
-  if (!freelancer || freelancer.role !== "FREELANCER") {
+  if (!freelancer || !hasFreelancerRole(freelancer)) {
     throw new AppError("Freelancer not found.", 404);
   }
 

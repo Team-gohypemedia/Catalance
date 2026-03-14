@@ -116,6 +116,19 @@ export const createApp = () => {
     return app;
   }
 
+  // Keep API responses fresh for authenticated dashboard routes and avoid
+  // browser conditional revalidation logs (304) on dynamic endpoints.
+  app.use("/api", (req, res, next) => {
+    if (!req.path.startsWith("/images/")) {
+      delete req.headers["if-none-match"];
+      delete req.headers["if-modified-since"];
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
+    next();
+  });
+
   app.use("/api", apiRouter);
 
   app.use(notFoundHandler);

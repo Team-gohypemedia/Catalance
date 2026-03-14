@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { PhaseAccordionItem } from "@/modules/project-manager/components/PhaseAccordionItem";
 
@@ -48,13 +49,6 @@ const TASK_ROLE_FILTERS = [
   { value: "FREELANCER", label: "Freelancer" },
   { value: "PROJECT_MANAGER", label: "Project Manager" },
 ];
-
-const normalizeExternalLink = (value) => {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (/^https?:\/\//i.test(raw)) return raw;
-  return `https://${raw}`;
-};
 
 const toLocalDateTimeInputValue = (value) => {
   const date = value instanceof Date ? value : new Date(value);
@@ -91,6 +85,8 @@ const ProjectDetailsPage = () => {
   const [composer, setComposer] = useState("");
   const [sending, setSending] = useState(false);
   const [clientProfileOpen, setClientProfileOpen] = useState(false);
+  const [freelancerProfileOpen, setFreelancerProfileOpen] = useState(false);
+  const [projectSummaryOpen, setProjectSummaryOpen] = useState(false);
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [meetingSubmitting, setMeetingSubmitting] = useState(false);
   const [meetingForm, setMeetingForm] = useState(() => buildMeetingFormDefaults());
@@ -169,25 +165,27 @@ const ProjectDetailsPage = () => {
     }
   };
 
-  const handleOpenPortfolio = () => {
-    if (!freelancerProfile) return;
+  const handleViewFreelancerProfile = () => {
+    if (!viewingFreelancerProfile) {
+      toast.info("Freelancer profile is not available yet.");
+      return;
+    }
+    setFreelancerProfileOpen(true);
+  };
 
-    const directPortfolioUrl = normalizeExternalLink(freelancerProfile.portfolio);
-    const fallbackPortfolioUrl = normalizeExternalLink(
-      freelancerProfile.portfolioProjects?.[0]?.link
+  const handleViewClientProfile = () => {
+    const hasClientData = Boolean(
+      clientProfile?.clientName || clientProfile?.id || clientProfile?.email
     );
-
-    if (directPortfolioUrl || fallbackPortfolioUrl) {
-      window.open(directPortfolioUrl || fallbackPortfolioUrl, "_blank", "noopener,noreferrer");
+    if (!hasClientData) {
+      toast.info("Client profile is not available yet.");
       return;
     }
+    setClientProfileOpen(true);
+  };
 
-    if (freelancerProfile.id) {
-      navigate(`/project-manager/profile/${freelancerProfile.id}`);
-      return;
-    }
-
-    toast.info("Portfolio is not available yet.");
+  const handleViewProject = () => {
+    setProjectSummaryOpen(true);
   };
 
   const handleScheduleMeeting = async () => {
@@ -250,6 +248,38 @@ const ProjectDetailsPage = () => {
   const project = details.data?.project || {};
   const clientProfile = details.data?.clientProfile || {};
   const freelancerProfile = details.data?.freelancerProfile || null;
+  const viewingFreelancerProfile = useMemo(() => {
+    if (!freelancerProfile) return null;
+
+    const skills = Array.isArray(freelancerProfile.skills)
+      ? freelancerProfile.skills
+      : [];
+    const portfolioProjects = Array.isArray(freelancerProfile.portfolioProjects)
+      ? freelancerProfile.portfolioProjects
+      : [];
+    const displayName = freelancerProfile.freelancerName || "Freelancer";
+
+    return {
+      id: freelancerProfile.id || "",
+      fullName: displayName,
+      name: displayName,
+      avatar: freelancerProfile.avatar || "",
+      rating: Number(freelancerProfile.rating || 0),
+      reviewCount: Number(freelancerProfile.reviewsCount || 0),
+      reviewsCount: Number(freelancerProfile.reviewsCount || 0),
+      skills,
+      portfolio: freelancerProfile.portfolio || "",
+      freelancerProjects: portfolioProjects,
+      profileDetails: {
+        role: "Freelancer",
+        fullName: displayName,
+        skills,
+        experienceYears: Number(freelancerProfile.experienceYears || 0),
+        portfolio: freelancerProfile.portfolio || "",
+        portfolioProjects,
+      },
+    };
+  }, [freelancerProfile]);
   const milestoneRows = useMemo(
     () => (Array.isArray(details.data?.milestones) ? details.data.milestones : []),
     [details.data?.milestones]
@@ -476,7 +506,7 @@ const ProjectDetailsPage = () => {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="h-10 rounded-xl border-blue-100 bg-blue-50 px-5 text-xs font-bold text-blue-600 hover:bg-blue-100"
+            className="h-10 rounded-xl !border-blue-300 !bg-blue-100 px-5 text-xs font-bold !text-blue-700 shadow-sm hover:!bg-blue-200"
             onClick={() => setMeetingDialogOpen(true)}
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -484,7 +514,7 @@ const ProjectDetailsPage = () => {
           </Button>
           <Button
             variant="outline"
-            className="h-10 rounded-xl border-rose-100 bg-rose-50 px-5 text-xs font-bold text-rose-600 hover:bg-rose-100"
+            className="h-10 rounded-xl !border-rose-300 !bg-rose-100 px-5 text-xs font-bold !text-rose-700 shadow-sm hover:!bg-rose-200"
             onClick={() => toast.info("Escalation module opening...")}
           >
             <AlertTriangle className="mr-2 h-4 w-4" />
@@ -510,10 +540,10 @@ const ProjectDetailsPage = () => {
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-6 h-auto w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-          <TabsTrigger value="overview" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:border-blue-100 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Overview</TabsTrigger>
-          <TabsTrigger value="messages" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:border-blue-100 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Messages</TabsTrigger>
-          <TabsTrigger value="milestones" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:border-blue-100 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Milestones</TabsTrigger>
-          <TabsTrigger value="notifications" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:border-blue-100 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Notifications</TabsTrigger>
+          <TabsTrigger value="overview" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-blue-200 data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Overview</TabsTrigger>
+          <TabsTrigger value="messages" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-blue-200 data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Messages</TabsTrigger>
+          <TabsTrigger value="milestones" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-blue-200 data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Milestones</TabsTrigger>
+          <TabsTrigger value="notifications" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-blue-200 data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Notifications</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-0 overflow-x-clip">
@@ -549,13 +579,22 @@ const ProjectDetailsPage = () => {
                           <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Budget Allocation</p>
                           <p className="text-xl font-black text-slate-900">INR {Number(project.budget || 0).toLocaleString("en-IN")}</p>
                        </div>
-                       <Button
-                          variant="outline"
-                          className="h-11 w-full rounded-xl border-slate-200 bg-white text-[10px] font-black tracking-widest text-slate-600 hover:bg-slate-50 uppercase"
-                          onClick={() => setClientProfileOpen(true)}
-                       >
-                          VIEW CLIENT PROFILE
-                       </Button>
+                       <div className="grid gap-2 sm:grid-cols-2">
+                          <Button
+                             variant="outline"
+                             className="h-11 rounded-xl !border-blue-200 !bg-blue-50 text-[10px] font-black tracking-widest !text-blue-700 hover:!bg-blue-100 uppercase shadow-sm"
+                             onClick={handleViewProject}
+                          >
+                             VIEW PROJECT
+                          </Button>
+                          <Button
+                             variant="outline"
+                             className="h-11 rounded-xl !border-blue-200 !bg-blue-50 text-[10px] font-black tracking-widest !text-blue-700 hover:!bg-blue-100 uppercase shadow-sm"
+                             onClick={handleViewClientProfile}
+                          >
+                             VIEW CLIENT PROFILE
+                          </Button>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -593,12 +632,12 @@ const ProjectDetailsPage = () => {
                                {freelancerProfile.skills.length > 4 && <span className="text-[9px] font-bold text-slate-600">+{freelancerProfile.skills.length - 4}</span>}
                             </div>
                             <div className="flex gap-2">
-                                <Button variant="outline" className="flex-1 h-11 rounded-xl border-slate-100 bg-slate-50 text-[10px] font-black tracking-widest text-slate-600 hover:bg-white hover:border-indigo-100 hover:text-indigo-600 transition-all uppercase" onClick={handleOpenPortfolio}>
-                                    VIEW FULL PORTFOLIO
+                                <Button variant="outline" className="flex-1 h-11 rounded-xl !border-indigo-200 !bg-indigo-50 text-[10px] font-black tracking-widest !text-indigo-700 hover:!bg-indigo-100 transition-all uppercase shadow-sm" onClick={handleViewFreelancerProfile}>
+                                    VIEW FULL PROFILE
                                 </Button>
                                 <Button 
                                     variant="outline" 
-                                    className="flex-1 h-11 rounded-xl border-rose-100 bg-rose-50 text-[10px] font-black tracking-widest text-rose-600 hover:bg-rose-100 transition-all uppercase"
+                                    className="flex-1 h-11 rounded-xl !border-rose-200 !bg-rose-50 text-[10px] font-black tracking-widest !text-rose-700 hover:!bg-rose-100 transition-all uppercase shadow-sm"
                                     onClick={() => navigate(`/project-manager/marketplace?projectId=${projectId}&reassign=true`)}
                                 >
                                     REASSIGN FREELANCER
@@ -679,7 +718,11 @@ const ProjectDetailsPage = () => {
                         type="single"
                         collapsible
                         value={activePhaseValue}
-                        onValueChange={setActivePhaseValue}
+                        onValueChange={(nextValue) =>
+                          setActivePhaseValue((currentValue) =>
+                            currentValue === nextValue ? "" : nextValue
+                          )
+                        }
                         className="space-y-3"
                       >
                         {phaseInsightRows.map((milestone) => (
@@ -882,7 +925,7 @@ const ProjectDetailsPage = () => {
                     <div className="flex justify-end border-t border-slate-100 bg-white px-4 py-3">
                       <Button
                         variant="outline"
-                        className="h-9 rounded-lg border-slate-200 px-3 text-[11px] font-semibold text-slate-700"
+                        className="h-9 rounded-lg !border-blue-200 !bg-blue-50 px-3 text-[11px] font-semibold !text-blue-700 shadow-sm hover:!bg-blue-100"
                         onClick={() => setShowAllTaskRows((current) => !current)}
                       >
                         {showAllTaskRows
@@ -908,27 +951,27 @@ const ProjectDetailsPage = () => {
                           Ensure all deliverables, source files, and credentials have been securely verified by you before initiating Final Release.
                        </p>
                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white/60 hover:bg-white transition-colors border border-slate-100">
+                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-blue-50/60 transition-colors border border-blue-100 shadow-sm">
                              <Checkbox 
                                 checked={checklist.sourceCodeTransferred} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, sourceCodeTransferred: !!v}))}
-                                className="h-5 w-5 rounded-lg border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
+                                className="h-5 w-5 rounded-md border-blue-300 bg-white data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
                              />
                              <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Sources</span>
                           </label>
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white/60 hover:bg-white transition-colors border border-slate-100">
+                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-blue-50/60 transition-colors border border-blue-100 shadow-sm">
                              <Checkbox 
                                 checked={checklist.documentationFinalized} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, documentationFinalized: !!v}))}
-                                className="h-5 w-5 rounded-lg border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
+                                className="h-5 w-5 rounded-md border-blue-300 bg-white data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
                              />
                              <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Docs</span>
                           </label>
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white/60 hover:bg-white transition-colors border border-slate-100">
+                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-blue-50/60 transition-colors border border-blue-100 shadow-sm">
                              <Checkbox 
                                 checked={checklist.credentialsShared} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, credentialsShared: !!v}))}
-                                className="h-5 w-5 rounded-lg border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
+                                className="h-5 w-5 rounded-md border-blue-300 bg-white data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shadow-sm" 
                              />
                              <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Access</span>
                           </label>
@@ -936,7 +979,7 @@ const ProjectDetailsPage = () => {
                        <Button 
                            onClick={handleFinalizeHandover}
                            disabled={!checklist.sourceCodeTransferred || !checklist.documentationFinalized || !checklist.credentialsShared}
-                           className="h-14 rounded-2xl bg-blue-600 px-10 text-xs font-black tracking-widest uppercase text-white shadow-xl shadow-blue-600/30 hover:bg-blue-700 disabled:opacity-30 disabled:grayscale transition-all hover:scale-105 active:scale-95"
+                           className="h-14 rounded-2xl bg-blue-600 px-10 text-xs font-black tracking-widest uppercase text-white shadow-xl shadow-blue-600/30 hover:bg-blue-700 disabled:bg-blue-300 disabled:text-white/95 disabled:opacity-100 disabled:grayscale-0 transition-all hover:scale-105 active:scale-95"
                        >
                           Finalize Project Closure
                        </Button>
@@ -955,7 +998,7 @@ const ProjectDetailsPage = () => {
                         </div>
                         <Button
                           variant="outline"
-                          className="h-8 rounded-lg border-blue-100 bg-blue-50 px-3 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-100"
+                          className="h-8 rounded-lg !border-blue-300 !bg-blue-100 px-3 text-[10px] font-black uppercase tracking-widest !text-blue-700 hover:!bg-blue-200 shadow-sm"
                           onClick={() => setMeetingDialogOpen(true)}
                         >
                           Schedule
@@ -1026,7 +1069,7 @@ const ProjectDetailsPage = () => {
                         <Input 
                            value={composer}
                            onChange={(e) => setComposer(e.target.value)}
-                           className="h-14 w-full rounded-2xl border-none bg-slate-50 px-6 pr-14 text-sm font-medium placeholder:text-slate-600 focus-visible:ring-2 focus-visible:ring-blue-600/20" 
+                           className="h-14 w-full rounded-2xl border !border-blue-200 !bg-white px-6 pr-14 text-sm font-medium !text-slate-800 placeholder:text-slate-600 shadow-sm focus-visible:ring-2 focus-visible:ring-blue-600/20" 
                            placeholder="Drop an update or ask a question..."
                            disabled={sending}
                         />
@@ -1372,6 +1415,109 @@ const ProjectDetailsPage = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={projectSummaryOpen} onOpenChange={setProjectSummaryOpen}>
+        <DialogContent className="max-w-2xl rounded-3xl border-slate-100 p-0">
+          <DialogHeader className="border-b border-slate-100 p-6 pb-4">
+            <DialogTitle className="text-lg font-black text-slate-900">
+              Project Overview
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-700">
+              Dynamic project details with full manager visibility.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 p-6">
+            <div className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Project Name
+                </p>
+                <p className="mt-1 text-sm font-bold text-slate-900">
+                  {project.title || "Untitled Project"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Project ID
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-700">
+                  #{project.id || projectId}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Status
+                </p>
+                <p className="mt-1 text-sm font-bold text-slate-900">
+                  {project.status?.label || "Active"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Budget
+                </p>
+                <p className="mt-1 text-sm font-bold text-slate-900">
+                  INR {Number(project.budget || 0).toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Created
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-700">
+                  {project.createdAt ? new Date(project.createdAt).toLocaleString() : "Not available"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Updated
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-700">
+                  {project.updatedAt ? new Date(project.updatedAt).toLocaleString() : "Not available"}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                Project Description
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                {project.description || "No description available."}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl border-slate-200 bg-white px-4 text-xs font-bold text-slate-600"
+                onClick={() => {
+                  setProjectSummaryOpen(false);
+                  handleViewClientProfile();
+                }}
+              >
+                View Client Profile
+              </Button>
+              <Button
+                className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700"
+                onClick={() => {
+                  setProjectSummaryOpen(false);
+                  navigate(`/project-manager/projects/${projectId}`);
+                }}
+              >
+                Open Full Project Page
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <FreelancerProfileDialog
+        open={freelancerProfileOpen}
+        onOpenChange={setFreelancerProfileOpen}
+        viewingFreelancer={viewingFreelancerProfile}
+      />
+
       <Dialog open={clientProfileOpen} onOpenChange={setClientProfileOpen}>
         <DialogContent className="max-w-xl rounded-3xl border-slate-100 p-0">
           <DialogHeader className="border-b border-slate-100 p-6 pb-4">
@@ -1426,6 +1572,28 @@ const ProjectDetailsPage = () => {
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 {clientProfile.requirements || project.description || "No requirements shared yet."}
               </p>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl border-slate-200 bg-white px-4 text-xs font-bold text-slate-600"
+                onClick={() => {
+                  setClientProfileOpen(false);
+                  setProjectSummaryOpen(true);
+                }}
+              >
+                View Project
+              </Button>
+              <Button
+                className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700"
+                onClick={() => {
+                  setClientProfileOpen(false);
+                  navigate(`/project-manager/projects/${projectId}`);
+                }}
+              >
+                Open Full Project Page
+              </Button>
             </div>
           </div>
         </DialogContent>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Search from "lucide-react/dist/esm/icons/search";
@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 
 const MarketplacePage = () => {
   const { authFetch } = useAuth();
@@ -27,6 +28,9 @@ const MarketplacePage = () => {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("Developers");
   const [assigningId, setAssigningId] = useState(null);
+  const [loadingProfileId, setLoadingProfileId] = useState(null);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [viewingFreelancer, setViewingFreelancer] = useState(null);
 
   const projectId = searchParams.get("projectId");
   const isReassign = searchParams.get("reassign") === "true";
@@ -63,6 +67,31 @@ const MarketplacePage = () => {
       .sort((left, right) => right[1] - left[1])
       .slice(0, 5);
   }, [freelancerList]);
+
+  const handleViewFreelancerProfile = useCallback(async (freelancerCard) => {
+    if (!freelancerCard?.id) return;
+
+    setLoadingProfileId(freelancerCard.id);
+    try {
+      const detail = await pmApi.getFreelancerDetails(authFetch, freelancerCard.id);
+      const resolvedName = detail?.name || freelancerCard?.name || "Freelancer";
+      const mergedFreelancer = {
+        ...freelancerCard,
+        ...detail,
+        id: detail?.id || freelancerCard.id,
+        name: resolvedName,
+        fullName: resolvedName,
+        reviewCount: Number(detail?.reviewCount ?? freelancerCard?.reviewsCount ?? 0),
+        reviewsCount: Number(detail?.reviewCount ?? freelancerCard?.reviewsCount ?? 0),
+      };
+      setViewingFreelancer(mergedFreelancer);
+      setProfileDialogOpen(true);
+    } catch (e) {
+      toast.error(e.message || "Unable to load freelancer profile.");
+    } finally {
+      setLoadingProfileId(null);
+    }
+  }, [authFetch]);
 
   return (
     <PmShell
@@ -221,10 +250,17 @@ const MarketplacePage = () => {
                            <Button 
                              variant="outline" 
                              className="h-14 flex-1 rounded-[24px] border-slate-200 bg-white font-black text-[10px] tracking-[0.2em] uppercase text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-3" 
-                             onClick={() => navigate(`/project-manager/profile/${f.id}`)}
+                             disabled={loadingProfileId === f.id}
+                             onClick={() => handleViewFreelancerProfile(f)}
                            >
-                              Review Portfolio
-                              <ChevronRight className="h-4 w-4" />
+                              {loadingProfileId === f.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  View Freelancer Profile
+                                  <ChevronRight className="h-4 w-4" />
+                                </>
+                              )}
                            </Button>
                         </div>
                       </div>
@@ -316,6 +352,12 @@ const MarketplacePage = () => {
            </Card>
         </div>
       </div>
+
+      <FreelancerProfileDialog
+        open={profileDialogOpen}
+        onOpenChange={setProfileDialogOpen}
+        viewingFreelancer={viewingFreelancer}
+      />
     </PmShell>
   );
 };
