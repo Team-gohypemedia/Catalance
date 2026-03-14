@@ -3,6 +3,7 @@ import {
   listUserConversations,
   createConversation,
   getConversationMessages,
+  clearConversationMessages,
   addConversationMessage,
   getProjectMessages
 } from "../controllers/chat.controller.js";
@@ -16,5 +17,6 @@ chatRouter.get("/conversations", requireAuth, listUserConversations);
 chatRouter.post("/conversations", optionalAuth, createConversation);
 chatRouter.get("/conversations/:id/messages", optionalAuth, getConversationMessages);
 chatRouter.post("/conversations/:id/messages", optionalAuth, addConversationMessage);
+chatRouter.delete("/conversations/:id/messages", requireAuth, clearConversationMessages);
 // Project Manager route to get project messages
 chatRouter.get("/projects/:projectId/messages", requireAuth, getProjectMessages);

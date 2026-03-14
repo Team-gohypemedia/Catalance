@@ -51,13 +51,18 @@ export const getChatFile = asyncHandler(async (req, res) => {
     const response = await s3Client.send(command);
 
     // Set appropriate headers
+    const contentType = String(response.ContentType || "").toLowerCase();
+    const isPdf = contentType.includes("application/pdf") || /\.pdf$/i.test(String(key || ""));
+
     if (response.ContentType) {
       res.setHeader("Content-Type", response.ContentType);
     }
     if (response.ContentLength) {
       res.setHeader("Content-Length", response.ContentLength);
     }
-    if (response.ContentDisposition) {
+    if (isPdf) {
+      res.setHeader("Content-Disposition", "inline");
+    } else if (response.ContentDisposition) {
       res.setHeader("Content-Disposition", response.ContentDisposition);
     }
     

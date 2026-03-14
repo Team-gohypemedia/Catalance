@@ -1248,8 +1248,12 @@ const ClientProposalContent = () => {
   );
 
   useEffect(() => {
-    setHasHandledDeepLink(false);
-  }, [deepLinkProjectId, deepLinkTab, deepLinkAction]);
+    if (deepLinkProjectId) return;
+    const validTabs = new Set(["draft", "pending", "rejected"]);
+    if (validTabs.has(deepLinkTab)) {
+      setActiveTab(deepLinkTab);
+    }
+  }, [deepLinkTab, deepLinkProjectId]);
 
   useEffect(() => {
     setEditableProposalDraft(buildEditableProposalDraft(activeProposal));
@@ -2132,56 +2136,60 @@ const ClientProposalContent = () => {
         />
 
         <main className="flex-1 pb-12">
-          <section className="mt-14 space-y-4">
-            <div>
-              <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
-                Project Proposals
-              </h1>
-              <p className="mt-2 max-w-[34rem] text-sm text-[#94a3b8]">
-                Manage your draft, pending, and rejected proposals. Keep your
-                potential collaborations moving.
-              </p>
-            </div>
-
-            <div className="flex min-h-7 flex-wrap items-center gap-3 text-sm text-[#94a3b8]">
-              {deepLinkProjectId ? (
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-primary/20 bg-primary/10 px-4 py-1.5 text-primary"
-                >
-                  Filtered to the selected project
-                </Badge>
-              ) : null}
-              {activeTab === "draft" && grouped.draft.length > 0 ? (
-                <span>
-                  {unassignedDraftCount} draft
-                  {unassignedDraftCount === 1 ? "" : "s"} ready for freelancer outreach.
-                </span>
-              ) : null}
-            </div>
-          </section>
-
           <Tabs
             defaultValue="draft"
             value={activeTab}
             onValueChange={setActiveTab}
-            className="mt-12 w-full space-y-8"
+            className="mt-14 w-full space-y-8"
           >
-            <TabsList className="inline-flex h-auto w-fit flex-wrap rounded-full border border-white/8 bg-[#262628] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-              {[
-                { value: "draft", label: "Draft" },
-                { value: "pending", label: "Pending Approval" },
-                { value: "rejected", label: "Rejected" },
-              ].map((item) => (
-                <TabsTrigger
-                  key={item.value}
-                  value={item.value}
-                  className="h-11 rounded-full border border-transparent px-6 text-[0.95rem] font-semibold text-[#a3a6ad] shadow-none transition hover:text-white data-[state=active]:!border-[#ffc107]/70 data-[state=active]:!bg-[#ffc107] data-[state=active]:!text-[#141414] data-[state=active]:!shadow-none"
-                >
-                  {item.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            <section className="space-y-4">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
+                    Project Proposals
+                  </h1>
+                  <p className="mt-2 max-w-[34rem] text-sm text-[#94a3b8]">
+                    Manage your draft, pending, and rejected proposals. Keep your
+                    potential collaborations moving.
+                  </p>
+                </div>
+
+                <div className="flex justify-start lg:justify-end">
+                  <TabsList className="inline-flex h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    {[
+                      { value: "draft", label: "Draft" },
+                      { value: "pending", label: "Pending Approval" },
+                      { value: "rejected", label: "Rejected" },
+                    ].map((item) => (
+                      <TabsTrigger
+                        key={item.value}
+                        value={item.value}
+                        className="h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold text-[#a3a6ad] shadow-none transition hover:text-white data-[state=active]:!border-[#ffc107]/70 data-[state=active]:!bg-[#ffc107] data-[state=active]:!text-[#141414] data-[state=active]:!shadow-none"
+                      >
+                        {item.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+              </div>
+
+              <div className="flex min-h-7 flex-wrap items-center gap-3 text-sm text-[#94a3b8]">
+                {deepLinkProjectId ? (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-primary/20 bg-primary/10 px-4 py-1.5 text-primary"
+                  >
+                    Filtered to the selected project
+                  </Badge>
+                ) : null}
+                {activeTab === "draft" && grouped.draft.length > 0 ? (
+                  <span>
+                    {unassignedDraftCount} draft
+                    {unassignedDraftCount === 1 ? "" : "s"} ready for freelancer outreach.
+                  </span>
+                ) : null}
+              </div>
+            </section>
 
             <TabsContent value="draft" className="m-0">
               {isLoading ? (

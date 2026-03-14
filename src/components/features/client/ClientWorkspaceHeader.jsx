@@ -2,8 +2,15 @@
 
 import React from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useNotifications } from "@/shared/context/NotificationContext";
 import { cn } from "@/shared/lib/utils";
 
 const marketingNavItems = [
@@ -44,6 +51,130 @@ const BrandMark = () => (
     </span>
   </div>
 );
+
+const DefaultNotificationPopoverButton = ({
+  unreadCount: unreadCountProp,
+  notificationTo = "/client/messages",
+}) => {
+  const navigate = useNavigate();
+  const [open, setOpen] = React.useState(false);
+  const {
+    notifications = [],
+    unreadCount: contextUnreadCount = 0,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
+
+  const unreadCount = unreadCountProp ?? contextUnreadCount;
+
+  const handleNotificationClick = (notification) => {
+    if (!notification?.id) return;
+
+    markAsRead(notification.id);
+    setOpen(false);
+
+    if (notification.type === "chat" && notification.data) {
+      const service = notification.data.service || "";
+      const parts = service.split(":");
+      let projectId = notification.data.projectId;
+
+      if (!projectId && parts.length >= 4 && parts[0] === "CHAT") {
+        projectId = parts[1];
+      }
+
+      navigate(projectId ? `/client/messages?projectId=${projectId}` : "/client/messages");
+      return;
+    }
+
+    if (notification.type === "proposal") {
+      navigate("/client/proposal");
+      return;
+    }
+
+    if (
+      (notification.type === "task_completed" ||
+        notification.type === "task_verified" ||
+        notification.type === "freelancer_change_resolved") &&
+      notification.data?.projectId
+    ) {
+      navigate(`/client/project/${notification.data.projectId}`);
+      return;
+    }
+
+    navigate(notificationTo);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <PopoverTrigger
+        className="relative flex size-9 items-center justify-center text-[#94a3b8] transition-colors hover:text-white"
+        aria-label="Open notifications"
+      >
+        <Bell className="size-4.5" />
+        {unreadCount > 0 ? (
+          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
+        ) : null}
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={10}
+        className="w-[22rem] border border-white/10 bg-[#171718] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+      >
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <h4 className="text-sm font-semibold">Notifications</h4>
+          {unreadCount > 0 ? (
+            <button
+              type="button"
+              className="text-xs font-medium text-primary transition hover:text-primary/80"
+              onClick={() => {
+                void markAllAsRead();
+              }}
+            >
+              Mark all as read
+            </button>
+          ) : null}
+        </div>
+        <ScrollArea className="h-72">
+          {notifications.length === 0 ? (
+            <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 px-6 text-center text-[#7e8392]">
+              <Bell className="h-8 w-8 opacity-40" />
+              <p className="text-sm">No notifications yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/6">
+              {notifications.slice(0, 20).map((notification) => (
+                <button
+                  key={notification.id}
+                  type="button"
+                  onClick={() => handleNotificationClick(notification)}
+                  className={cn(
+                    "flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-white/5",
+                    !notification.read && "bg-primary/5",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                      !notification.read ? "bg-primary" : "bg-white/15",
+                    )}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">
+                      {notification.title}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#8f96a3]">
+                      {notification.message}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }) => {
   const className = mobile
@@ -122,7 +253,7 @@ const ClientWorkspaceHeader = ({
   primaryActionTo = "/marketplace",
   primaryActionIcon: PrimaryActionIcon = null,
   notificationNode,
-  onOpenNotifications,
+  onOpenNotifications: _onOpenNotifications,
   notificationTo = "/client/messages",
   unreadCount = 0,
   className,
@@ -150,35 +281,11 @@ const ClientWorkspaceHeader = ({
   );
 
   const notificationButton = notificationNode || (() => {
-    const content = (
-      <>
-        <Bell className="size-4.5" />
-        {unreadCount > 0 ? (
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[#ffc107]" />
-        ) : null}
-      </>
-    );
-
-    const className =
-      "relative flex size-9 items-center justify-center text-[#94a3b8] transition-colors hover:text-white";
-
-    if (typeof onOpenNotifications === "function") {
-      return (
-        <button
-          type="button"
-          onClick={onOpenNotifications}
-          className={className}
-          aria-label="Open notifications"
-        >
-          {content}
-        </button>
-      );
-    }
-
     return (
-      <Link to={notificationTo} className={className} aria-label="Open notifications">
-        {content}
-      </Link>
+      <DefaultNotificationPopoverButton
+        unreadCount={unreadCount}
+        notificationTo={notificationTo}
+      />
     );
   })();
 

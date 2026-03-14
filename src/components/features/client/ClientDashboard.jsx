@@ -2302,41 +2302,106 @@ const ClientDashboardContent = () => {
   }, [freelancers, navigate, suggestedFreelancers]);
 
   const progressProjects = useMemo(() => {
-    const statusCurves = {
-      DRAFT: [4, 12, 18, 18, 18],
-      OPEN: [6, 20, 30, 34, 36],
-      AWAITING_PAYMENT: [8, 24, 40, 48, 52],
-      IN_PROGRESS: [8, 32, 55, 72, 78],
-      COMPLETED: [12, 40, 70, 82, 100],
+    // Helper to build phases from real project data or fallback to synthetic
+    const buildProjectPhases = (project, normalizedStatus) => {
+      // If project has real phases/milestones data from API
+      if (project?.phases && Array.isArray(project.phases) && project.phases.length > 0) {
+        return project.phases.map((phase, index) => ({
+          label: phase.label || phase.name || `Phase ${index + 1}`,
+          value: Math.max(0, Math.min(100, Number(phase.progress || phase.value || 0))),
+        }));
+      }
+
+      // If project has milestones with completion status
+      if (project?.milestones && Array.isArray(project.milestones) && project.milestones.length > 0) {
+        const total = project.milestones.length;
+        const completed = project.milestones.filter(m => m.completed || m.status === 'COMPLETED').length;
+        const baseProgress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        
+        return project.milestones.map((milestone, index) => {
+          const isCompleted = milestone.completed || milestone.status === 'COMPLETED';
+          const milestoneProgress = isCompleted ? 100 : Math.max(0, Number(milestone.progress || 0));
+          return {
+            label: milestone.label || milestone.name || `Phase ${index + 1}`,
+            value: Math.round((index / Math.max(total - 1, 1)) * baseProgress + (milestoneProgress / total)),
+          };
+        });
+      }
+
+      // If project has explicit progress percentage, generate realistic curve
+      const explicitProgress = Number(project?.progress || project?.completionPercentage);
+      if (Number.isFinite(explicitProgress) && explicitProgress > 0) {
+        const targetProgress = Math.max(0, Math.min(100, explicitProgress));
+        // Generate a curve that ends at the actual progress
+        return [
+          { label: "Phase 1", value: Math.round(targetProgress * 0.15) },
+          { label: "Phase 2", value: Math.round(targetProgress * 0.35) },
+          { label: "Phase 3", value: Math.round(targetProgress * 0.60) },
+          { label: "Phase 4", value: Math.round(targetProgress * 0.85) },
+          { label: "Phase 5", value: targetProgress },
+        ];
+      }
+
+      // Fallback to status-based synthetic curves
+      const statusCurves = {
+        DRAFT: [4, 12, 18, 18, 18],
+        OPEN: [6, 20, 30, 34, 36],
+        AWAITING_PAYMENT: [8, 24, 40, 48, 52],
+        IN_PROGRESS: [8, 32, 55, 72, 78],
+        COMPLETED: [12, 40, 70, 82, 100],
+      };
+      const curve = statusCurves[normalizedStatus] || statusCurves.OPEN;
+      return curve.map((value, index) => ({
+        label: `Phase ${index + 1}`,
+        value,
+      }));
+    };
+
+    // Helper to determine highlight index based on real data
+    const determineHighlightIndex = (project, phases, normalizedStatus) => {
+      // If project has currentPhaseIndex, use it
+      if (Number.isFinite(project?.currentPhaseIndex) && project.currentPhaseIndex >= 0) {
+        return Math.min(project.currentPhaseIndex, phases.length - 1);
+      }
+
+      // Calculate based on progress
+      const currentProgress = phases.length > 0 
+        ? phases[phases.length - 1]?.value || 0 
+        : 0;
+      
+      if (normalizedStatus === "COMPLETED" || currentProgress >= 100) return 4;
+      if (currentProgress >= 75) return 3;
+      if (currentProgress >= 50) return 2;
+      if (currentProgress >= 25) return 1;
+      return 1;
     };
 
     return uniqueProjects.slice(0, 3).map((project, index) => {
       const normalizedStatus = String(project?.status || "").toUpperCase();
-      const phaseValues = statusCurves[normalizedStatus] || statusCurves.OPEN;
+      const phases = buildProjectPhases(project, normalizedStatus);
+      const highlightIndex = determineHighlightIndex(project, phases, normalizedStatus);
       const pendingCount = getProjectPendingProposals(project).length;
-      const highlightIndex =
-        normalizedStatus === "COMPLETED"
-          ? 4
-          : normalizedStatus === "IN_PROGRESS"
-            ? 3
-            : 1;
+      
+      // Get callout detail based on real project data
+      let calloutDetail = "Workspace active";
+      if (pendingCount > 0) {
+        calloutDetail = `${pendingCount} task${pendingCount > 1 ? "s" : ""} pending`;
+      } else if (normalizedStatus === "COMPLETED") {
+        calloutDetail = "Ready for delivery";
+      } else if (project?.nextMilestone) {
+        calloutDetail = project.nextMilestone;
+      } else if (project?.currentTask) {
+        calloutDetail = project.currentTask;
+      }
 
       return {
         id: project.id || `progress-${index}`,
-        label: `Project ${index + 1}`,
-        calloutLabel: `Phase ${highlightIndex + 1}`,
-        calloutValue: `${phaseValues[highlightIndex]}%`,
-        calloutDetail:
-          pendingCount > 0
-            ? `${pendingCount} task${pendingCount > 1 ? "s" : ""} pending`
-            : normalizedStatus === "COMPLETED"
-              ? "Ready for delivery"
-              : "Workspace active",
+        label: project.title || `Project ${index + 1}`,
+        calloutLabel: phases[highlightIndex]?.label || `Phase ${highlightIndex + 1}`,
+        calloutValue: `${phases[highlightIndex]?.value || 0}%`,
+        calloutDetail,
         highlightIndex,
-        phases: phaseValues.map((value, phaseIndex) => ({
-          label: `Phase ${phaseIndex + 1}`,
-          value,
-        })),
+        phases,
       };
     });
   }, [getProjectPendingProposals, uniqueProjects]);

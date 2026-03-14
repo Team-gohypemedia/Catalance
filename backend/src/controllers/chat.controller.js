@@ -309,7 +309,7 @@ export const createConversation = asyncHandler(async (req, res) => {
     if (!conversation && serviceKey.startsWith("CHAT:")) {
       const parts = serviceKey.split(":");
       if (parts.length === 4) {
-        const [, projectId, clientId, freelancerId] = parts;
+        const [, , clientId, freelancerId] = parts;
         const legacyKey = `CHAT:${clientId}:${freelancerId}`;
 
         const legacyCandidates = await prisma.chatConversation.findMany({
@@ -389,6 +389,47 @@ export const getConversationMessages = asyncHandler(async (req, res) => {
   });
 });
 
+export const clearConversationMessages = asyncHandler(async (req, res) => {
+  const conversationId = req.params?.id;
+
+  if (!conversationId) {
+    throw new AppError("Conversation id is required", 400);
+  }
+
+  if (!req.user?.sub) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const conversation = await prisma.chatConversation.findUnique({
+    where: { id: conversationId }
+  });
+
+  if (!conversation) {
+    throw new AppError("Conversation not found", 404);
+  }
+
+  await ensureProjectChatAccess({
+    conversationService: conversation.service,
+    userId: req.user?.sub
+  });
+
+  const result = await prisma.chatMessage.deleteMany({
+    where: { conversationId }
+  });
+
+  await prisma.chatConversation.update({
+    where: { id: conversationId },
+    data: { updatedAt: new Date() }
+  });
+
+  res.json({
+    data: {
+      conversationId,
+      deletedCount: result.count || 0
+    }
+  });
+});
+
 export const addConversationMessage = asyncHandler(async (req, res) => {
   const conversationId = req.params?.id;
   const {
@@ -456,7 +497,7 @@ export const addConversationMessage = asyncHandler(async (req, res) => {
   const userMessage = await prisma.chatMessage.create({
     data: {
       conversationId: conversation.id,
-      senderId: senderId || null,
+      senderId: actorUserId || senderId || null,
       senderName: senderName || null,
       senderRole: senderRole || null,
       role: "user",

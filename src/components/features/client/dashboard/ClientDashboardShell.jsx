@@ -13,6 +13,7 @@ import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Users from "lucide-react/dist/esm/icons/users";
+import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -205,7 +206,7 @@ const RunningProjectCard = ({ item }) => {
   const handleAction = item.onAction || item.onClick;
 
   return (
-    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-[#232323]/90 p-5 backdrop-blur-[10px] transition-transform duration-200 hover:-translate-y-1">
+    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-accent p-5 backdrop-blur-[10px] transition-transform duration-200 hover:-translate-y-1">
       <button
         type="button"
         onClick={item.onClick}
@@ -365,13 +366,12 @@ const DraftProposalRow = ({ item }) => (
         {item.budget}
       </span>
 
-      <button
-        type="button"
-        onClick={item.onView}
+      <Link
+        to="/client/proposal?tab=draft"
         className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#f2f2f2]"
       >
         View Details
-      </button>
+      </Link>
 
       <button
         type="button"
@@ -482,7 +482,7 @@ const ProjectProgressChartCard = ({ project }) => {
         };
 
   return (
-    <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-[#232323]/90 text-white shadow-none backdrop-blur-[10px]">
+    <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
       <CardContent className="px-4 py-5 sm:px-6">
         <div className="relative">
           <Card
@@ -618,7 +618,7 @@ const ProjectProgressSection = ({ progressProjects }) => {
             </p>
           </div>
 
-          <TabsList className="h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-[#232323] p-1.5">
+          <TabsList className="h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5">
             {projects.map((project) => (
               <TabsTrigger
                 key={project.id}
@@ -727,7 +727,7 @@ const ClientDashboardShell = ({
 
         <section className="mt-14 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="flex flex-col gap-7">
-            <DashboardPanel className="overflow-hidden">
+            <DashboardPanel className="overflow-hidden bg-accent">
               <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-5">
                 <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
                   Recent Activity
@@ -747,7 +747,7 @@ const ClientDashboardShell = ({
               </div>
             </DashboardPanel>
 
-            <DashboardPanel className="overflow-hidden">
+            <DashboardPanel className="overflow-hidden bg-accent">
               <div className="px-6 py-5">
                 <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
                   Draft Proposals
@@ -778,7 +778,7 @@ const ClientDashboardShell = ({
           </div>
 
           <div className="flex flex-col gap-7">
-            <DashboardPanel className="p-5">
+            <DashboardPanel className="bg-accent p-5">
               <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-white">
                 Action Center
               </h2>
@@ -801,7 +801,7 @@ const ClientDashboardShell = ({
               </div>
             </DashboardPanel>
 
-            <DashboardPanel className="w-full overflow-hidden rounded-[20px] px-6 pb-6 pt-7">
+            <DashboardPanel className="w-full overflow-hidden rounded-[20px] bg-accent px-6 pb-6 pt-7">
               <h2 className="text-[1.6rem] font-semibold tracking-[-0.04em] text-white">
                 Interested Freelancers
               </h2>

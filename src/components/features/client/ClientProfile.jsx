@@ -839,7 +839,7 @@ const ClientProfileContent = () => {
           </form>
           </div>
 
-          <ClientDashboardFooter />
+          <ClientDashboardFooter variant="workspace" />
         </div>
       </main>
 
