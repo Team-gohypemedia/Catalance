@@ -1192,7 +1192,7 @@ const ClientDashboardContent = () => {
     const normalized = rankedSuggestedFreelancers.map((entry) =>
       normalizeFreelancerCardData(entry),
     );
-    const matched = projectRequiredSkills.length
+    const skillMatched = projectRequiredSkills.length
       ? normalized.filter((freelancer) => {
         const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
         return projectRequiredSkills.some((requiredSkill) =>
@@ -1200,6 +1200,11 @@ const ClientDashboardContent = () => {
         );
       })
       : normalized;
+
+    const matched =
+      projectRequiredSkills.length && skillMatched.length >= 3
+        ? skillMatched
+        : normalized;
 
     const available = matched.filter((freelancer) => {
       if (alreadyInvitedIds.has(freelancer.id)) return false;
@@ -2191,23 +2196,43 @@ const ClientDashboardContent = () => {
   const dashboardMetricCards = useMemo(
     () => [
       {
-        title: "Proposal Draft",
-        value: String(savedProposals.length).padStart(2, "0"),
+        title: "ACTIVE PROJECTS",
+        value: String(uniqueProjects.filter((p) => {
+          const status = String(p.status || "").toUpperCase();
+          return status === "IN_PROGRESS" || status === "AWAITING_PAYMENT";
+        }).length).padStart(2, "0"),
+        iconKey: "projects",
+      },
+      {
+        title: "PENDING PROPOSALS",
+        value: String(pendingFreelancerRequests).padStart(2, "0"),
+        detail: pendingFreelancerRequests === 1 ? "New Request" : "New Requests",
         iconKey: "proposals",
       },
       {
-        title: "Freelancers Approach",
-        value: String(pendingFreelancerRequests).padStart(2, "0"),
-        detail: pendingFreelancerRequests === 1 ? "New Request" : "New Requests",
+        title: "HIRED FREELANCERS",
+        value: String(uniqueProjects.reduce((count, project) => {
+          const accepted = (project.proposals || []).find(
+            (p) => (p.status || "").toUpperCase() === "ACCEPTED"
+          );
+          return count + (accepted ? 1 : 0);
+        }, 0)).padStart(2, "0"),
         iconKey: "freelancers",
       },
       {
-        title: "Task Requiring Action",
-        value: String(actionRequiredCount),
-        iconKey: "tasks",
+        title: "PENDING PAYMENTS",
+        value: formatINR(uniqueProjects.reduce((total, project) => {
+          const status = String(project.status || "").toUpperCase();
+          if (status === "AWAITING_PAYMENT" && project.paymentPlan?.nextDueInstallment) {
+            const amount = Math.round((parseInt(project.budget) || 0) * (project.paymentPlan.nextDueInstallment.percentage / 100));
+            return total + amount;
+          }
+          return total;
+        }, 0)),
+        iconKey: "payments",
       },
     ],
-    [actionRequiredCount, pendingFreelancerRequests, savedProposals.length],
+    [pendingFreelancerRequests, uniqueProjects],
   );
 
   const draftProposalRows = useMemo(() => {
@@ -2335,20 +2360,19 @@ const ClientDashboardContent = () => {
         // Generate a curve that ends at the actual progress
         return [
           { label: "Phase 1", value: Math.round(targetProgress * 0.15) },
-          { label: "Phase 2", value: Math.round(targetProgress * 0.35) },
-          { label: "Phase 3", value: Math.round(targetProgress * 0.60) },
-          { label: "Phase 4", value: Math.round(targetProgress * 0.85) },
-          { label: "Phase 5", value: targetProgress },
+          { label: "Phase 2", value: Math.round(targetProgress * 0.40) },
+          { label: "Phase 3", value: Math.round(targetProgress * 0.70) },
+          { label: "Phase 4", value: targetProgress },
         ];
       }
 
       // Fallback to status-based synthetic curves
       const statusCurves = {
-        DRAFT: [4, 12, 18, 18, 18],
-        OPEN: [6, 20, 30, 34, 36],
-        AWAITING_PAYMENT: [8, 24, 40, 48, 52],
-        IN_PROGRESS: [8, 32, 55, 72, 78],
-        COMPLETED: [12, 40, 70, 82, 100],
+        DRAFT: [4, 12, 18, 18],
+        OPEN: [6, 20, 30, 36],
+        AWAITING_PAYMENT: [8, 24, 40, 52],
+        IN_PROGRESS: [8, 32, 55, 78],
+        COMPLETED: [12, 40, 70, 100],
       };
       const curve = statusCurves[normalizedStatus] || statusCurves.OPEN;
       return curve.map((value, index) => ({
@@ -2369,10 +2393,10 @@ const ClientDashboardContent = () => {
         ? phases[phases.length - 1]?.value || 0 
         : 0;
       
-      if (normalizedStatus === "COMPLETED" || currentProgress >= 100) return 4;
-      if (currentProgress >= 75) return 3;
-      if (currentProgress >= 50) return 2;
-      if (currentProgress >= 25) return 1;
+      if (normalizedStatus === "COMPLETED" || currentProgress >= 100) return 3;
+      if (currentProgress >= 75) return 2;
+      if (currentProgress >= 40) return 2;
+      if (currentProgress >= 20) return 1;
       return 1;
     };
 
@@ -2396,6 +2420,11 @@ const ClientDashboardContent = () => {
 
       return {
         id: project.id || `progress-${index}`,
+        status: normalizedStatus,
+        progressCategory:
+          normalizedStatus === "COMPLETED" || Number(phases[phases.length - 1]?.value || 0) >= 100
+            ? "completed"
+            : "ongoing",
         label: project.title || `Project ${index + 1}`,
         calloutLabel: phases[highlightIndex]?.label || `Phase ${highlightIndex + 1}`,
         calloutValue: `${phases[highlightIndex]?.value || 0}%`,
@@ -2752,6 +2781,7 @@ const ClientDashboardContent = () => {
         onOpenViewProposals={handleOpenViewProposals}
         onOpenViewProjects={handleOpenViewProjects}
         onOpenHireFreelancer={handleOpenHireFreelancer}
+        onViewProject={(projectId) => navigate(`/client/project/${encodeURIComponent(projectId)}`)}
       />
       {renderLegacyDashboard && (
       <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">

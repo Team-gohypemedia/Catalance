@@ -765,6 +765,7 @@ const ProposalRowCard = ({
                 className="h-11 rounded-full bg-primary px-6 font-semibold text-[#141414] hover:bg-primary/90 lg:w-full"
                 onClick={() => onOpen?.(proposal)}
               >
+                <FileText className="mr-2 h-3.5 w-3.5" />
                 View Details
               </Button>
 
@@ -781,7 +782,7 @@ const ProposalRowCard = ({
                       ) : (
                         <Send className="mr-2 h-3.5 w-3.5" />
                       )}
-                      {isSending ? "Sending..." : "Send"}
+                      {isSending ? "Sending Proposal..." : "Send Proposal"}
                     </Button>
                   ) : null}
 
@@ -1950,7 +1951,7 @@ const ClientProposalContent = () => {
     const normalized = rankedSuggestedFreelancers.map((entry) =>
       normalizeFreelancerCardData(entry),
     );
-    const matched = projectRequiredSkills.length
+    const skillMatched = projectRequiredSkills.length
       ? normalized.filter((freelancer) => {
           const freelancerSkillTokens = collectFreelancerSkillTokens(freelancer);
           return projectRequiredSkills.some((requiredSkill) =>
@@ -1958,6 +1959,11 @@ const ClientProposalContent = () => {
           );
         })
       : normalized;
+
+    const matched =
+      projectRequiredSkills.length && skillMatched.length >= 3
+        ? skillMatched
+        : normalized;
 
     const available = matched.filter((freelancer) => {
       if (alreadyInvitedIds.has(freelancer.id)) return false;

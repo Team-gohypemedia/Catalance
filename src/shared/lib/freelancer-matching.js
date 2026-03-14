@@ -1599,6 +1599,7 @@ function computeScoreForProject(freelancer, serviceProject, requirements) {
   const techHardFilterPassed =
     !requirements.technologyCanonicals.length || technology.matchedCount > 0;
   const budgetHardFilterPassed = !budget.hardRejected;
+  const overallHardFilterPassed = techHardFilterPassed;
 
   return {
     totalScore: Math.round(totalScore),
@@ -1627,7 +1628,7 @@ function computeScoreForProject(freelancer, serviceProject, requirements) {
     hardFilters: {
       technology: techHardFilterPassed,
       budget: budgetHardFilterPassed,
-      passed: techHardFilterPassed && budgetHardFilterPassed,
+      passed: overallHardFilterPassed,
     },
   };
 }
@@ -1840,14 +1841,6 @@ function prioritizeByTechCoverage(scoredFreelancers, requirements) {
     (freelancer) => safeNumber(freelancer?.techMatch?.matchedCount, 0) > 0,
   );
   if (!techMatched.length) return [];
-
-  const fullMatches = techMatched.filter(
-    (freelancer) => freelancer?.techMatch?.fullMatch === true,
-  );
-
-  if (fullMatches.length > 0) {
-    return fullMatches;
-  }
 
   return techMatched;
 }

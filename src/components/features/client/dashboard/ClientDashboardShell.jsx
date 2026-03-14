@@ -5,6 +5,7 @@ import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
 import MessageSquareText from "lucide-react/dist/esm/icons/message-square-text";
 import Plus from "lucide-react/dist/esm/icons/plus";
@@ -26,6 +27,8 @@ const metricIconMap = {
   proposals: ClipboardList,
   freelancers: Users,
   tasks: ShieldAlert,
+  projects: FolderKanban,
+  payments: CreditCard,
 };
 
 const activityIconMap = {
@@ -75,6 +78,7 @@ const runningProjectProgressTextToneMap = {
 const fallbackProgressProjects = [
   {
     id: "project-1",
+    progressCategory: "completed",
     label: "Project 1",
     calloutLabel: "Phase 2",
     calloutValue: "40%",
@@ -83,13 +87,13 @@ const fallbackProgressProjects = [
     phases: [
       { label: "Phase 1", value: 8 },
       { label: "Phase 2", value: 40 },
-      { label: "Phase 3", value: 62 },
-      { label: "Phase 4", value: 78 },
-      { label: "Phase 5", value: 100 },
+      { label: "Phase 3", value: 72 },
+      { label: "Phase 4", value: 100 },
     ],
   },
   {
     id: "project-2",
+    progressCategory: "ongoing",
     label: "Project 2",
     calloutLabel: "Phase 3",
     calloutValue: "55%",
@@ -99,23 +103,22 @@ const fallbackProgressProjects = [
       { label: "Phase 1", value: 10 },
       { label: "Phase 2", value: 28 },
       { label: "Phase 3", value: 55 },
-      { label: "Phase 4", value: 70 },
-      { label: "Phase 5", value: 88 },
+      { label: "Phase 4", value: 88 },
     ],
   },
   {
     id: "project-3",
+    progressCategory: "ongoing",
     label: "Project 3",
-    calloutLabel: "Phase 4",
+    calloutLabel: "Phase 3",
     calloutValue: "72%",
     calloutDetail: "Ready for delivery",
-    highlightIndex: 3,
+    highlightIndex: 2,
     phases: [
       { label: "Phase 1", value: 12 },
       { label: "Phase 2", value: 35 },
-      { label: "Phase 3", value: 50 },
-      { label: "Phase 4", value: 72 },
-      { label: "Phase 5", value: 94 },
+      { label: "Phase 3", value: 72 },
+      { label: "Phase 4", value: 94 },
     ],
   },
 ];
@@ -135,21 +138,22 @@ const OverviewMetricCard = ({ item }) => {
   const Icon = metricIconMap[item.iconKey] || ClipboardList;
 
   return (
-    <DashboardPanel className="min-h-[128px] border-transparent bg-accent p-5">
-      <div className="flex h-full flex-col justify-between">
+    <DashboardPanel className="min-h-[110px] border-transparent bg-accent p-5">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-white/10 text-white/85">
-            <Icon className="size-5" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af]">
+            <Icon className="size-4" />
           </div>
-          <p className="text-sm font-medium text-[#94a3b8]">{item.title}</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6b7280]">
+            {item.title}
+          </p>
         </div>
-
-        <div className="mt-7 flex items-end gap-2">
-          <p className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-white">
+        <div className="flex items-baseline gap-2">
+          <p className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white">
             {item.value}
           </p>
           {item.detail ? (
-            <p className="pb-1 text-sm text-[#f1f5f9]">{item.detail}</p>
+            <p className="text-xs text-[#6b7280]">{item.detail}</p>
           ) : null}
         </div>
       </div>
@@ -171,6 +175,37 @@ const CreateProposalCard = ({ onClick }) => (
     </p>
     <p className="text-sm leading-5 text-[#94a3b8]">Start a new project</p>
   </button>
+);
+
+const DraftProposalsPanel = ({ draftProposalRows, onOpenQuickProject }) => (
+  <DashboardPanel className="overflow-hidden bg-accent">
+    <div className="px-6 py-5">
+      <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
+        Draft Proposals
+      </h2>
+    </div>
+
+    {draftProposalRows.length === 0 ? (
+      <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+        <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
+          <ClipboardList className="size-7" />
+        </div>
+        <p className="mt-6 text-base font-medium text-white">No draft proposals yet</p>
+        <p className="mt-2 max-w-[320px] text-sm text-[#8f96a3]">
+          Start a new proposal to build your project brief and invite freelancers.
+        </p>
+        <button
+          type="button"
+          onClick={onOpenQuickProject}
+          className="mt-6 rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+        >
+          Create New Proposal
+        </button>
+      </div>
+    ) : (
+      draftProposalRows.map((item) => <DraftProposalRow key={item.id} item={item} />)
+    )}
+  </DashboardPanel>
 );
 
 const RunningProjectMilestone = ({ item }) => {
@@ -438,7 +473,12 @@ const InterestedFreelancerRow = ({ item }) => (
   </div>
 );
 
-const ProjectProgressChartCard = ({ project }) => {
+const ProjectProgressChartCard = ({
+  project,
+  onViewProject,
+  activeProgressTab,
+  onChangeProgressTab,
+}) => {
   const chartWidth = 960;
   const chartHeight = 360;
   const leftPadding = 74;
@@ -484,6 +524,35 @@ const ProjectProgressChartCard = ({ project }) => {
   return (
     <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
       <CardContent className="px-4 py-5 sm:px-6">
+        <div className="mb-3 flex justify-end">
+          <div className="inline-flex h-auto w-fit flex-wrap gap-2 rounded-full border border-white/[0.14] bg-white/[0.08] p-1.5">
+            <button
+              type="button"
+              onClick={() => onChangeProgressTab("ongoing")}
+              className={cn(
+                "inline-flex min-w-[128px] items-center justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold transition-colors",
+                activeProgressTab === "ongoing"
+                  ? "bg-white text-[#171717]"
+                  : "text-[#a6b0c0] hover:bg-white/[0.12] hover:text-white",
+              )}
+            >
+              Ongoing
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeProgressTab("completed")}
+              className={cn(
+                "inline-flex min-w-[128px] items-center justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold transition-colors",
+                activeProgressTab === "completed"
+                  ? "bg-white text-[#171717]"
+                  : "text-[#a6b0c0] hover:bg-white/[0.12] hover:text-white",
+              )}
+            >
+              Completed
+            </button>
+          </div>
+        </div>
+
         <div className="relative">
           <Card
             className="pointer-events-none absolute min-w-[156px] rounded-[24px] border border-white/[0.08] bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01),rgba(255,255,255,0.05))] px-5 py-4 text-white shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
@@ -586,7 +655,7 @@ const ProjectProgressChartCard = ({ project }) => {
         </div>
       </CardContent>
 
-      <CardFooter className="gap-3 border-t border-white/[0.05] px-4 py-5 text-[#d4d4d4] sm:px-6">
+      <CardFooter className="flex items-center justify-between gap-3 border-t border-white/[0.05] px-4 py-5 text-[#d4d4d4] sm:px-6">
         <Badge
           variant="outline"
           className="gap-3 border-0 bg-transparent px-0 py-0 text-sm font-medium text-[#d4d4d4] shadow-none"
@@ -594,21 +663,68 @@ const ProjectProgressChartCard = ({ project }) => {
           <span aria-hidden="true" className="size-3 rounded-full bg-[#facc15]" />
           Milestones
         </Badge>
+        <button
+          type="button"
+          onClick={() => onViewProject?.(project.id)}
+          className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#171717] transition-colors hover:bg-white/90"
+        >
+          View Project
+          <ChevronRight className="size-4 stroke-[2]" />
+        </button>
       </CardFooter>
     </Card>
   );
 };
 
-const ProjectProgressSection = ({ progressProjects }) => {
+const ProjectProgressSection = ({ progressProjects, onViewProject }) => {
   const projects = progressProjects?.length ? progressProjects : fallbackProgressProjects;
-  const [activeProjectId, setActiveProjectId] = React.useState(projects[0]?.id || "");
+  const resolveCategory = React.useCallback((project) => {
+    const rawCategory = String(
+      project?.progressCategory || project?.status || "",
+    ).toLowerCase();
+
+    if (rawCategory === "completed") {
+      return "completed";
+    }
+
+    if (rawCategory === "ongoing") {
+      return "ongoing";
+    }
+
+    const finalPhaseValue = Number(project?.phases?.[project.phases.length - 1]?.value || 0);
+    return finalPhaseValue >= 100 ? "completed" : "ongoing";
+  }, []);
+
+  const [activeProgressTab, setActiveProgressTab] = React.useState(
+    projects.some((project) => resolveCategory(project) === "ongoing")
+      ? "ongoing"
+      : "completed",
+  );
+  const filteredProjects = React.useMemo(
+    () => projects.filter((project) => resolveCategory(project) === activeProgressTab),
+    [activeProgressTab, projects, resolveCategory],
+  );
+  const [activeProjectId, setActiveProjectId] = React.useState(filteredProjects[0]?.id || "");
+
+  React.useEffect(() => {
+    if (!filteredProjects.length) {
+      setActiveProjectId("");
+      return;
+    }
+
+    if (!filteredProjects.some((project) => project.id === activeProjectId)) {
+      setActiveProjectId(filteredProjects[0]?.id || "");
+    }
+  }, [activeProjectId, filteredProjects]);
+
   const activeProject =
-    projects.find((project) => project.id === activeProjectId) || projects[0];
+    filteredProjects.find((project) => project.id === activeProjectId) || filteredProjects[0];
+  const activeTabsValue = activeProject?.id || "";
 
   return (
     <section className="mt-16">
-      <Tabs value={activeProject.id} onValueChange={setActiveProjectId} className="gap-0">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <Tabs value={activeTabsValue} onValueChange={setActiveProjectId} className="gap-0">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
               Project Progress
@@ -618,24 +734,46 @@ const ProjectProgressSection = ({ progressProjects }) => {
             </p>
           </div>
 
-          <TabsList className="h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5">
-            {projects.map((project) => (
-              <TabsTrigger
-                key={project.id}
-                value={project.id}
-                className="rounded-full border border-transparent px-5 py-2 text-sm text-[#8f96a3] shadow-none transition-colors data-[state=active]:border-[#ffc107]/50 data-[state=active]:bg-[#2a2406] data-[state=active]:text-[#ffc107] data-[state=active]:shadow-none hover:text-white"
-              >
-                {project.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          {filteredProjects.length > 0 ? (
+            <TabsList className="h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5">
+              {filteredProjects.map((project) => (
+                <TabsTrigger
+                  key={project.id}
+                  value={project.id}
+                  className="rounded-full border border-transparent px-5 py-2 text-sm text-[#8f96a3] shadow-none transition-colors data-[state=active]:border-transparent data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:shadow-none hover:text-white"
+                >
+                  {project.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          ) : null}
         </div>
 
-        {projects.map((project) => (
-          <TabsContent key={project.id} value={project.id} className="mt-8">
-            <ProjectProgressChartCard project={project} />
-          </TabsContent>
-        ))}
+        {filteredProjects.length > 0 ? (
+          filteredProjects.map((project) => (
+            <TabsContent key={project.id} value={project.id} className="mt-3">
+              <ProjectProgressChartCard
+                project={project}
+                onViewProject={onViewProject}
+                activeProgressTab={activeProgressTab}
+                onChangeProgressTab={setActiveProgressTab}
+              />
+            </TabsContent>
+          ))
+        ) : (
+          <DashboardPanel className="mt-3 flex min-h-[220px] items-center justify-center p-8 text-center">
+            <div className="max-w-md">
+              <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                No {activeProgressTab} projects yet
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+                {activeProgressTab === "completed"
+                  ? "Completed projects will appear here once milestones are fully closed."
+                  : "Ongoing projects will appear here once work has started."}
+              </p>
+            </div>
+          </DashboardPanel>
+        )}
       </Tabs>
     </section>
   );
@@ -660,6 +798,7 @@ const ClientDashboardShell = ({
   onOpenViewProposals,
   onOpenViewProjects,
   onOpenHireFreelancer,
+  onViewProject,
 }) => (
   <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
     <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px] xl:w-[90%] xl:max-w-none">
@@ -689,11 +828,19 @@ const ClientDashboardShell = ({
         </section>
 
         <section className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {metrics.slice(0, 3).map((item) => (
+          {metrics.map((item) => (
             <OverviewMetricCard key={item.title} item={item} />
           ))}
-          <CreateProposalCard onClick={onOpenQuickProject} />
         </section>
+
+        {showcaseItems.length === 0 ? (
+          <section className="mt-14">
+            <DraftProposalsPanel
+              draftProposalRows={draftProposalRows}
+              onOpenQuickProject={onOpenQuickProject}
+            />
+          </section>
+        ) : null}
 
         <section className="mt-14">
           <div className="mb-6 flex items-center gap-3">
@@ -727,6 +874,12 @@ const ClientDashboardShell = ({
 
         <section className="mt-14 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="flex flex-col gap-7">
+            {showcaseItems.length > 0 ? (
+              <DraftProposalsPanel
+                draftProposalRows={draftProposalRows}
+                onOpenQuickProject={onOpenQuickProject}
+              />
+            ) : null}
             <DashboardPanel className="overflow-hidden bg-accent">
               <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-5">
                 <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
@@ -746,35 +899,6 @@ const ClientDashboardShell = ({
                 ))}
               </div>
             </DashboardPanel>
-
-            <DashboardPanel className="overflow-hidden bg-accent">
-              <div className="px-6 py-5">
-                <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
-                  Draft Proposals
-                </h2>
-              </div>
-
-              {draftProposalRows.length === 0 ? (
-                <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-                  <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
-                    <ClipboardList className="size-7" />
-                  </div>
-                  <p className="mt-6 text-base font-medium text-white">No draft proposals yet</p>
-                  <p className="mt-2 max-w-[320px] text-sm text-[#8f96a3]">
-                    Start a new proposal to build your project brief and invite freelancers.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={onOpenQuickProject}
-                    className="mt-6 rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
-                  >
-                    Create New Proposal
-                  </button>
-                </div>
-              ) : (
-                draftProposalRows.map((item) => <DraftProposalRow key={item.id} item={item} />)
-              )}
-            </DashboardPanel>
           </div>
 
           <div className="flex flex-col gap-7">
@@ -787,14 +911,14 @@ const ClientDashboardShell = ({
                 <button
                   type="button"
                   onClick={onOpenViewProposals}
-                  className="w-full rounded-[18px] bg-[#17253a] px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-[#1c314f]"
+                  className="w-full rounded-[18px] bg-primary px-4 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   View Proposals
                 </button>
                 <button
                   type="button"
                   onClick={onOpenViewProjects}
-                  className="w-full rounded-[18px] bg-[#17253a] px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-[#1c314f]"
+                  className="w-full rounded-[18px] bg-white px-4 py-3 text-base font-semibold text-[#171717] transition-colors hover:bg-white/90"
                 >
                   View Projects
                 </button>
@@ -841,7 +965,7 @@ const ClientDashboardShell = ({
           </div>
         </section>
 
-        <ProjectProgressSection progressProjects={progressProjects} />
+        <ProjectProgressSection progressProjects={progressProjects} onViewProject={onViewProject || onOpenViewProjects} />
       </main>
 
       <ClientDashboardFooter variant="workspace" />

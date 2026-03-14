@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getSession } from "@/shared/lib/auth-storage";
 import { useNotifications } from "@/shared/context/NotificationContext";
-import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
+import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 
-export const FreelancerTopBar = ({ label }) => {
+export const FreelancerTopBar = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -18,16 +18,50 @@ export const FreelancerTopBar = ({ label }) => {
     setSessionUser(session?.user ?? null);
   }, []);
 
-  const computedLabel = useMemo(() => {
-    if (label) return label;
-    if (pathname.startsWith("/freelancer/profile")) return "Profile";
-    if (pathname.startsWith("/freelancer/proposals")) return "Proposals";
-    if (pathname.startsWith("/freelancer/messages")) return "Messages";
-    if (pathname.startsWith("/freelancer/project/")) return "Project Detail";
-    if (pathname.startsWith("/freelancer/project")) return "Projects";
-    return "Dashboard";
-  }, [label, pathname]);
-  const showProposalButton = !pathname.startsWith("/freelancer/proposals");
+  const activeWorkspaceKey = useMemo(() => {
+    if (pathname.startsWith("/freelancer/proposals")) return "proposals";
+    if (pathname.startsWith("/freelancer/project")) return "projects";
+    if (pathname.startsWith("/freelancer/messages")) return "messages";
+    if (pathname.startsWith("/freelancer/payments")) return "payments";
+    return "dashboard";
+  }, [pathname]);
+  const profile = useMemo(() => {
+    const displayName =
+      sessionUser?.fullName ||
+      sessionUser?.name ||
+      sessionUser?.email ||
+      "Freelancer";
+
+    return {
+      name: displayName,
+      avatar: sessionUser?.avatar || "",
+      initial: String(displayName).charAt(0).toUpperCase(),
+    };
+  }, [sessionUser?.avatar, sessionUser?.email, sessionUser?.fullName, sessionUser?.name]);
+  const handleWorkspaceNav = useCallback(
+    (key) => {
+      if (key === "dashboard") {
+        navigate("/freelancer");
+        return;
+      }
+      if (key === "proposals") {
+        navigate("/freelancer/proposals");
+        return;
+      }
+      if (key === "projects") {
+        navigate("/freelancer/project");
+        return;
+      }
+      if (key === "messages") {
+        navigate("/freelancer/messages");
+        return;
+      }
+      if (key === "payments") {
+        navigate("/freelancer/payments");
+      }
+    },
+    [navigate],
+  );
 
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
@@ -73,15 +107,23 @@ export const FreelancerTopBar = ({ label }) => {
   };
 
   return (
-    <DashboardHeader
-      userName={sessionUser?.fullName}
-      tabLabel={computedLabel}
-      notifications={notifications}
-      unreadCount={unreadCount}
-      markAllAsRead={markAllAsRead}
-      handleNotificationClick={handleNotificationClick}
-      showProposalButton={showProposalButton}
-    />
+    <div className="px-4 pt-5 sm:px-6 md:px-8 lg:px-12">
+      <FreelancerWorkspaceHeader
+        profile={profile}
+        activeWorkspaceKey={activeWorkspaceKey}
+        onWorkspaceNav={handleWorkspaceNav}
+        onOpenProfile={() => navigate("/freelancer/profile")}
+        onPrimaryAction={
+          activeWorkspaceKey !== "proposals"
+            ? () => navigate("/freelancer/proposals")
+            : undefined
+        }
+        notifications={notifications}
+        unreadCount={unreadCount}
+        markAllAsRead={markAllAsRead}
+        onNotificationClick={handleNotificationClick}
+      />
+    </div>
   );
 };
 

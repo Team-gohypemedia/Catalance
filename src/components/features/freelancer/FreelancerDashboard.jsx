@@ -8,7 +8,7 @@ import Clock from "lucide-react/dist/esm/icons/clock";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { useNotifications } from "@/shared/context/NotificationContext";
-import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
+import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { getSession } from "@/shared/lib/auth-storage";
 import { Button } from "@/components/ui/button";
 import {
@@ -562,6 +562,50 @@ export const DashboardContent = ({ _roleOverride }) => {
     Math.min(100, Number(profileCompletion.percent) || 0)
   );
   const profileCompletionComplete = profileCompletionPercent >= 90;
+  const activeWorkspaceKey = useMemo(() => {
+    if (location.pathname.startsWith("/freelancer/proposals")) return "proposals";
+    if (location.pathname.startsWith("/freelancer/project")) return "projects";
+    if (location.pathname.startsWith("/freelancer/messages")) return "messages";
+    if (location.pathname.startsWith("/freelancer/payments")) return "payments";
+    return "dashboard";
+  }, [location.pathname]);
+  const headerProfile = useMemo(() => {
+    const displayName =
+      effectiveUser?.fullName ||
+      effectiveUser?.name ||
+      effectiveUser?.email ||
+      "Freelancer";
+
+    return {
+      name: displayName,
+      avatar: effectiveUser?.avatar || "",
+      initial: String(displayName).charAt(0).toUpperCase(),
+    };
+  }, [effectiveUser?.avatar, effectiveUser?.email, effectiveUser?.fullName, effectiveUser?.name]);
+  const handleWorkspaceNav = useCallback(
+    (key) => {
+      if (key === "dashboard") {
+        navigate("/freelancer");
+        return;
+      }
+      if (key === "proposals") {
+        navigate("/freelancer/proposals");
+        return;
+      }
+      if (key === "projects") {
+        navigate("/freelancer/project");
+        return;
+      }
+      if (key === "messages") {
+        navigate("/freelancer/messages");
+        return;
+      }
+      if (key === "payments") {
+        navigate("/freelancer/payments");
+      }
+    },
+    [navigate],
+  );
 
   useEffect(() => {
     const session = getSession();
@@ -984,14 +1028,23 @@ export const DashboardContent = ({ _roleOverride }) => {
         </DialogContent>
       </Dialog>
 
-      <DashboardHeader
-        userName={sessionUser?.fullName}
-        tabLabel="Dashboard"
-        notifications={notifications}
-        unreadCount={unreadCount}
-        markAllAsRead={markAllAsRead}
-        handleNotificationClick={handleNotificationClick}
-      />
+      <div className="px-4 pt-5 sm:px-6 md:px-8 lg:px-12">
+        <FreelancerWorkspaceHeader
+          profile={headerProfile}
+          activeWorkspaceKey={activeWorkspaceKey}
+          onWorkspaceNav={handleWorkspaceNav}
+          onOpenProfile={() => navigate("/freelancer/profile")}
+          onPrimaryAction={
+            activeWorkspaceKey !== "proposals"
+              ? () => navigate("/freelancer/proposals")
+              : undefined
+          }
+          notifications={notifications}
+          unreadCount={unreadCount}
+          markAllAsRead={markAllAsRead}
+          onNotificationClick={handleNotificationClick}
+        />
+      </div>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
