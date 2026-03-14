@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Send from "lucide-react/dist/esm/icons/send";
@@ -18,6 +18,7 @@ const MessagesPage = () => {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [composer, setComposer] = useState("");
   const [sending, setSending] = useState(false);
+  const listEndRef = useRef(null);
 
   const dashboard = useAsyncResource(() => pmApi.getDashboard(authFetch), [authFetch]);
   const messages = useAsyncResource(
@@ -26,12 +27,32 @@ const MessagesPage = () => {
   );
 
   const projects = useMemo(() => dashboard.data?.projects || [], [dashboard.data?.projects]);
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) || null,
+    [projects, selectedProjectId]
+  );
+  const conversationRows = useMemo(
+    () => (Array.isArray(messages.data?.messages) ? messages.data.messages : []),
+    [messages.data?.messages]
+  );
 
   useEffect(() => {
     const projectIdFromQuery = searchParams.get("projectId");
     if (!projectIdFromQuery) return;
     setSelectedProjectId(projectIdFromQuery);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!projects.length) return;
+    const isValidSelection = projects.some((project) => project.id === selectedProjectId);
+    if (!isValidSelection) {
+      setSelectedProjectId(projects[0].id);
+    }
+  }, [projects, selectedProjectId]);
+
+  useEffect(() => {
+    listEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [conversationRows.length, selectedProjectId]);
 
   const sendMessage = async () => {
     if (!selectedProjectId || !composer.trim()) return;
@@ -52,32 +73,36 @@ const MessagesPage = () => {
       title="Project Messages"
       subtitle="View all client and freelancer communication for assigned projects."
     >
-      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-        <Card className="h-fit">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Projects</CardTitle>
+      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <Card className="flex max-h-[calc(100vh-230px)] min-h-[420px] flex-col overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm lg:min-h-[560px]">
+          <CardHeader className="border-b border-slate-100 pb-3">
+            <CardTitle className="text-base font-black text-slate-900">
+              Projects ({projects.length})
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="flex-1 space-y-2 overflow-y-auto p-4">
             {dashboard.loading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading chats...
               </div>
             ) : projects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No assigned projects.</p>
+              <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-muted-foreground">
+                No assigned projects.
+              </div>
             ) : (
               projects.map((project) => (
                 <button
                   type="button"
                   key={project.id}
-                  className={`w-full rounded-lg border p-3 text-left text-sm ${
+                  className={`w-full rounded-xl border p-3 text-left text-sm transition-colors ${
                     selectedProjectId === project.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border/60 bg-muted/20"
+                      ? "border-blue-200 bg-blue-50/70"
+                      : "border-slate-200 bg-white hover:bg-slate-50"
                   }`}
                   onClick={() => setSelectedProjectId(project.id)}
                 >
-                  <p className="line-clamp-1 font-medium">{project.projectName}</p>
+                  <p className="line-clamp-1 font-semibold text-slate-900">{project.projectName}</p>
                   <p className="text-xs text-muted-foreground">{project.clientName}</p>
                   <div className="mt-1 flex items-center gap-2 text-xs">
                     <Badge variant="secondary">{project.totalMessages} msgs</Badge>
@@ -91,38 +116,84 @@ const MessagesPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Conversation</CardTitle>
+        <Card className="flex max-h-[calc(100vh-230px)] min-h-[420px] flex-col overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm lg:min-h-[560px]">
+          <CardHeader className="border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base font-black text-slate-900">Conversation</CardTitle>
+              {selectedProject ? (
+                <Badge className="bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  {selectedProject.projectName}
+                </Badge>
+              ) : null}
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="flex flex-1 flex-col p-4">
             {!selectedProjectId ? (
-              <div className="rounded border border-dashed p-8 text-center text-sm text-muted-foreground">
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-muted-foreground">
                 Select a project chat to continue.
               </div>
             ) : (
               <>
-                <div className="max-h-[480px] space-y-2 overflow-y-auto rounded border border-border/70 p-3">
-                  {(messages.data?.messages || []).map((message) => (
-                    <div key={message.id} className="rounded bg-muted/30 p-2">
-                      <p className="text-xs font-medium">{message.senderLabel}</p>
-                      <p className="text-sm">{message.content}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {message.createdAt ? new Date(message.createdAt).toLocaleString() : ""}
-                      </p>
+                <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/40 p-3">
+                  {messages.loading ? (
+                    <div className="flex h-full min-h-[200px] items-center justify-center text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading conversation...
                     </div>
-                  ))}
+                  ) : conversationRows.length > 0 ? (
+                    conversationRows.map((message) => {
+                      const isPm = String(message.senderRole || "").toUpperCase() === "PROJECT_MANAGER";
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex flex-col ${isPm ? "items-end" : "items-start"}`}
+                        >
+                          <p className="mb-1 text-[11px] font-semibold text-slate-500">
+                            {message.senderLabel}
+                          </p>
+                          <div
+                            className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                              isPm
+                                ? "rounded-tr-none bg-blue-600 text-white"
+                                : "rounded-tl-none border border-slate-200 bg-white text-slate-900"
+                            }`}
+                          >
+                            {message.content}
+                          </div>
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            {message.createdAt ? new Date(message.createdAt).toLocaleString() : ""}
+                          </p>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex h-full min-h-[200px] items-center justify-center text-sm text-muted-foreground">
+                      No messages yet for this project.
+                    </div>
+                  )}
+                  <div ref={listEndRef} />
                 </div>
-                <div className="flex gap-2">
+                <form
+                  className="mt-3 flex items-end gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    sendMessage();
+                  }}
+                >
                   <Textarea
                     placeholder="Write as Project Manager"
                     value={composer}
                     onChange={(event) => setComposer(event.target.value)}
+                    className="min-h-[80px] resize-none border-slate-200 bg-white"
                   />
-                  <Button onClick={sendMessage} disabled={sending || !composer.trim()}>
+                  <Button
+                    type="submit"
+                    className="h-10 w-10 shrink-0 rounded-xl bg-blue-600 p-0 hover:bg-blue-700"
+                    disabled={sending || !composer.trim()}
+                  >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
-                </div>
+                </form>
               </>
             )}
           </CardContent>

@@ -14,9 +14,11 @@ export const requireAuth = (req, _res, next) => {
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET);
+    const resolvedUserId = payload?.sub || payload?.id || null;
     req.user = {
       ...payload,
-      id: payload?.id || payload?.sub || null,
+      id: resolvedUserId,
+      sub: resolvedUserId
     };
     return next();
   } catch (error) {

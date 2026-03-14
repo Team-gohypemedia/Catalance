@@ -1675,12 +1675,7 @@ export const listUsers = async (filters = {}) => {
   if (normalizedRoleFilter === "FREELANCER") {
     where.AND = [
       ...(Array.isArray(where.AND) ? where.AND : []),
-      {
-        OR: [
-          { freelancerProfile: { is: null } },
-          { freelancerProfile: { is: { available: true } } }
-        ]
-      }
+      { freelancerProfile: { isNot: null } }
     ];
   }
 

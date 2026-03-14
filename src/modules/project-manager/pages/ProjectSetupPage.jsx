@@ -1,19 +1,17 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Users from "lucide-react/dist/esm/icons/users";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
-import Eye from "lucide-react/dist/esm/icons/eye";
 import Lock from "lucide-react/dist/esm/icons/lock";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import Lightbulb from "lucide-react/dist/esm/icons/lightbulb";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import { useAuth } from "@/shared/context/AuthContext";
 import { PmShell } from "@/modules/project-manager/components/PmShell";
-import { PROJECT_SETUP_STEPS } from "@/modules/project-manager/constants";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
 import { useAsyncResource } from "@/modules/project-manager/hooks/use-async-resource";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,9 +36,11 @@ const fetchUsers = async (authFetch, role) => {
 const ProjectSetupPage = () => {
   const { authFetch, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [result, setResult] = useState(null);
+  const preselectedFreelancerId = String(searchParams.get("freelancerId") || "").trim();
 
   const [step1, setStep1] = useState({
     projectName: "",
@@ -70,6 +70,22 @@ const ProjectSetupPage = () => {
   const clients = useAsyncResource(() => fetchUsers(authFetch, "CLIENT"), [authFetch]);
   const pms = useAsyncResource(() => fetchUsers(authFetch, "PROJECT_MANAGER"), [authFetch]);
   const freelancers = useAsyncResource(() => fetchUsers(authFetch, "FREELANCER"), [authFetch]);
+
+  useEffect(() => {
+    if (!preselectedFreelancerId) return;
+    const rows = Array.isArray(freelancers.data) ? freelancers.data : [];
+    const hasFreelancer = rows.some(
+      (entry) => String(entry?.id || "") === preselectedFreelancerId
+    );
+    if (!hasFreelancer) return;
+
+    setStep3((prev) =>
+      prev.freelancerId === preselectedFreelancerId
+        ? prev
+        : { ...prev, freelancerId: preselectedFreelancerId }
+    );
+    setStep((current) => (current < 2 ? 2 : current));
+  }, [freelancers.data, preselectedFreelancerId]);
 
   const milestoneTotal = useMemo(() => sumMilestones(step2.milestones), [step2.milestones]);
   const progress = Math.round(((step + 1) / 4) * 100);
@@ -539,5 +555,3 @@ const ProjectSetupPage = () => {
 };
 
 export default ProjectSetupPage;
-
-

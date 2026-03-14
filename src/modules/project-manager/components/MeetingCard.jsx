@@ -16,7 +16,7 @@ export const MeetingCard = ({ type = "video", status, title, project, participan
   const Icon = iconMap[type] || Video;
   
   return (
-    <Card className={`relative min-w-[340px] overflow-hidden rounded-[40px] border-2 transition-all duration-700 hover:shadow-2xl hover:-translate-y-1 ${highlight ? "border-slate-800 bg-slate-900 text-white shadow-xl shadow-blue-500/10" : "border-slate-50 bg-white"}`}>
+    <Card className={`relative w-full min-w-0 overflow-hidden rounded-[40px] border-2 transition-all duration-700 hover:shadow-2xl hover:-translate-y-1 ${highlight ? "border-slate-800 bg-slate-900 text-white shadow-xl shadow-blue-500/10" : "border-slate-50 bg-white"}`}>
       {highlight && (
          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
             <Clock className="h-40 w-40 text-blue-400 rotate-12" />
@@ -47,7 +47,7 @@ export const MeetingCard = ({ type = "video", status, title, project, participan
         
         <div className={`flex items-center justify-between pt-8 border-t border-dashed ${highlight ? 'border-white/10' : 'border-slate-100'}`}>
           <div className="flex flex-col gap-3">
-             <span className={`text-[9px] font-black uppercase tracking-widest ${highlight ? "text-slate-500" : "text-slate-400"}`}>OPERATIONAL LEADERS</span>
+             <span className={`text-[9px] font-black uppercase tracking-widest ${highlight ? "text-slate-500" : "text-slate-400"}`}>Participants</span>
              <div className="flex -space-x-3">
                {participants.map((p, i) => (
                  <Avatar key={i} className={`h-10 w-10 border-4 shadow-xl ${highlight ? 'border-slate-900' : 'border-white'}`}>

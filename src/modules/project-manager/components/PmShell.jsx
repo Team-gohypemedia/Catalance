@@ -1,26 +1,46 @@
 import PropTypes from "prop-types";
+import { useEffect } from "react";
 import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { ManagerTopBar } from "@/components/features/project-manager/ManagerTopBar";
 
-export const PmShell = ({ title = "Management", subtitle, actions, children, hideHeader, className }) => (
-  <RoleAwareSidebar>
-    <div className={`min-h-screen bg-white text-slate-900 ${className || ""}`}>
-      <ManagerTopBar />
-      <div className="mx-auto w-full max-w-[1400px] space-y-8 p-8 md:p-12">
-        {!hideHeader && (
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-slate-900">{title}</h1>
-              {subtitle ? <p className="mt-2 text-base font-medium text-slate-400">{subtitle}</p> : null}
+export const PmShell = ({ title = "Management", subtitle, actions, children, hideHeader, className }) => {
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const htmlHadDark = html.classList.contains("dark");
+    const bodyHadDark = body.classList.contains("dark");
+
+    html.classList.remove("dark");
+    body.classList.remove("dark");
+    html.classList.add("pm-light");
+
+    return () => {
+      html.classList.remove("pm-light");
+      if (htmlHadDark) html.classList.add("dark");
+      if (bodyHadDark) body.classList.add("dark");
+    };
+  }, []);
+
+  return (
+    <RoleAwareSidebar>
+      <div className={`pm-light-theme min-h-dvh overflow-x-clip bg-white text-slate-900 ${className || ""}`}>
+        <ManagerTopBar />
+        <div className="mx-auto w-full max-w-[1400px] min-w-0 space-y-6 p-4 pb-4 md:p-6 md:pb-6">
+          {!hideHeader && (
+            <div className="flex flex-wrap items-start justify-between gap-6">
+              <div>
+                <h1 className="text-4xl font-bold tracking-tight text-slate-900">{title}</h1>
+                {subtitle ? <p className="mt-2 text-base font-medium text-slate-500">{subtitle}</p> : null}
+              </div>
+              {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
             </div>
-            {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
-          </div>
-        )}
-        {children}
+          )}
+          {children}
+        </div>
       </div>
-    </div>
-  </RoleAwareSidebar>
-);
+    </RoleAwareSidebar>
+  );
+};
 
 PmShell.propTypes = {
   title: PropTypes.string,

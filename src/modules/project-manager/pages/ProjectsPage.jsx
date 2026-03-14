@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Plus from "lucide-react/dist/esm/icons/plus";
+import Funnel from "lucide-react/dist/esm/icons/funnel";
 import Search from "lucide-react/dist/esm/icons/search";
 import { useAuth } from "@/shared/context/AuthContext";
 import { PmShell } from "@/modules/project-manager/components/PmShell";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
 import { useAsyncResource } from "@/modules/project-manager/hooks/use-async-resource";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/modules/project-manager/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 
@@ -47,9 +47,11 @@ const mapProjectRow = (project) => {
 const ProjectsPage = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [assignmentFilter, setAssignmentFilter] = useState("ALL");
+  const [syncFilter, setSyncFilter] = useState("ALL");
 
-  const { data, loading, refresh } = useAsyncResource(
+  const { data, loading } = useAsyncResource(
     () => pmApi.getProjects(authFetch),
     [authFetch]
   );
@@ -59,42 +61,83 @@ const ProjectsPage = () => {
     [data]
   );
 
-  const filteredRows = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return rows;
-    return rows.filter((row) =>
-      [row.title, row.clientName, row.freelancerName, row.status]
-        .join(" ")
-        .toLowerCase()
-        .includes(term)
-    );
-  }, [rows, search]);
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (statusFilter !== "ALL" && row.status !== statusFilter) return false;
+
+        if (assignmentFilter === "ASSIGNED" && row.freelancerName === "Unassigned") return false;
+        if (assignmentFilter === "UNASSIGNED" && row.freelancerName !== "Unassigned") return false;
+
+        if (syncFilter !== "ALL") {
+          const updatedAt = row.updatedAt ? new Date(row.updatedAt) : null;
+          if (!updatedAt || Number.isNaN(updatedAt.getTime())) return false;
+
+          const now = Date.now();
+          const diffDays = (now - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+          if (syncFilter === "LAST_7_DAYS" && diffDays > 7) return false;
+          if (syncFilter === "LAST_30_DAYS" && diffDays > 30) return false;
+        }
+
+        return true;
+      }),
+    [rows, statusFilter, assignmentFilter, syncFilter]
+  );
 
   return (
     <PmShell
       title="Project Master List"
       subtitle="Comprehensive view of all active and historical project workspaces under your management."
-      actions={
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 rounded-xl border-slate-200 bg-white px-5 text-xs font-bold text-slate-600 hover:bg-slate-50" onClick={() => refresh()}>
-            Sync Data
-          </Button>
-          <Button className="h-10 rounded-xl bg-blue-600 px-5 text-xs font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all" onClick={() => navigate("/project-manager/create-project")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Launch Project
-          </Button>
-        </div>
-      }
     >
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-         <div className="relative w-full max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-               className="h-12 w-full rounded-2xl border-slate-100 bg-white pl-12 pr-4 text-sm font-medium placeholder:text-slate-400 focus-visible:ring-4 focus-visible:ring-blue-100 transition-all shadow-sm"
-               placeholder="Search by title, client, or role..."
-               value={search}
-               onChange={(event) => setSearch(event.target.value)}
-            />
+         <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+               <Funnel className="h-4 w-4 text-slate-400" />
+               Project Filters
+            </div>
+            <div className="grid w-full gap-3 sm:grid-cols-3">
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700"
+              >
+                <option value="ALL">All Status</option>
+                <option value="Started">Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Issue Raised">Issue Raised</option>
+                <option value="Proposal">Proposal</option>
+              </select>
+              <select
+                value={assignmentFilter}
+                onChange={(event) => setAssignmentFilter(event.target.value)}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700"
+              >
+                <option value="ALL">All Assignment</option>
+                <option value="ASSIGNED">Assigned Freelancer</option>
+                <option value="UNASSIGNED">Unassigned Freelancer</option>
+              </select>
+              <select
+                value={syncFilter}
+                onChange={(event) => setSyncFilter(event.target.value)}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-700"
+              >
+                <option value="ALL">Any Sync Date</option>
+                <option value="LAST_7_DAYS">Synced in 7 days</option>
+                <option value="LAST_30_DAYS">Synced in 30 days</option>
+              </select>
+            </div>
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl border-slate-200 px-4 text-xs font-black uppercase tracking-wider text-slate-600"
+              onClick={() => {
+                setStatusFilter("ALL");
+                setAssignmentFilter("ALL");
+                setSyncFilter("ALL");
+              }}
+            >
+              Reset
+            </Button>
          </div>
          <div className="flex items-center gap-2">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Managed:</span>
@@ -113,7 +156,17 @@ const ProjectsPage = () => {
                  <Search className="h-8 w-8 text-slate-300" />
               </div>
               <p className="text-sm font-bold text-slate-400 italic">No matching projects found.</p>
-              <Button variant="link" onClick={() => setSearch("")} className="text-blue-600 font-black text-xs uppercase mt-2">Clear Filter</Button>
+              <Button
+                variant="link"
+                onClick={() => {
+                  setStatusFilter("ALL");
+                  setAssignmentFilter("ALL");
+                  setSyncFilter("ALL");
+                }}
+                className="text-blue-600 font-black text-xs uppercase mt-2"
+              >
+                Clear Filter
+              </Button>
            </div>
          ) : (
            <div className="grid gap-4">
@@ -153,7 +206,7 @@ const ProjectsPage = () => {
                       className="h-12 w-12 md:w-auto md:px-6 rounded-2xl bg-slate-900 text-[10px] font-black tracking-widest uppercase text-white shadow-lg shadow-slate-900/10 hover:bg-blue-600 transition-all hover:scale-105 active:scale-95"
                       onClick={() => navigate(`/project-manager/projects/${row.id}`)}
                     >
-                      <span className="hidden md:inline">Open Vault</span>
+                      <span className="hidden md:inline">Open Project</span>
                       <Plus className="md:hidden h-5 w-5" />
                     </Button>
                  </div>
@@ -167,4 +220,3 @@ const ProjectsPage = () => {
 };
 
 export default ProjectsPage;
-

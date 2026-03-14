@@ -11,7 +11,6 @@ import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import User from "lucide-react/dist/esm/icons/user";
 import Users from "lucide-react/dist/esm/icons/users";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 
 import { NavMain } from "@/components/layout/nav-main";
@@ -150,11 +149,6 @@ const navConfigs = {
       icon: ClipboardList,
     },
     {
-      title: "Find Talent",
-      url: "/project-manager/marketplace",
-      icon: Users,
-    },
-    {
       title: "Messages",
       url: "/project-manager/messages",
       icon: MessageSquare,
@@ -259,7 +253,7 @@ export function AppSidebar({ ...props }) {
       <SidebarHeader>
         <TeamSwitcher brand={brand} />
       </SidebarHeader>
-      <SidebarContent className="overflow-hidden!">
+      <SidebarContent className="overflow-x-hidden">
         <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
