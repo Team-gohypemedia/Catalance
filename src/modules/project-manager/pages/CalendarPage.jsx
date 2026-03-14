@@ -149,9 +149,10 @@ const CalendarPage = () => {
     <PmShell
       title="Appointments & Meetings"
       subtitle="View all upcoming, current, and previous meetings with project-wise filters."
+      className="overflow-x-clip"
     >
-      <div className="grid gap-8 lg:grid-cols-[320px_1fr_420px]">
-        <div className="space-y-6">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
@@ -228,8 +229,8 @@ const CalendarPage = () => {
           </Button>
         </div>
 
-        <div className="space-y-6">
-          <Card className="rounded-[48px] border-slate-50 p-10 bg-white shadow-xl shadow-slate-200/40">
+        <div className="min-w-0 space-y-6">
+          <Card className="min-w-0 overflow-hidden rounded-3xl border-slate-100 bg-white p-6 shadow-lg shadow-slate-200/40 md:p-8">
             <div className="mb-10 flex items-center justify-between">
               <div className="space-y-1">
                 <h2 className="text-2xl font-black text-slate-900">
@@ -271,27 +272,27 @@ const CalendarPage = () => {
               mode="single"
               selected={date}
               onSelect={setDate}
-              className="w-full"
+              className="w-full min-w-0"
               classNames={{
                 months: "w-full",
-                month: "w-full space-y-10",
+                month: "w-full space-y-6",
                 caption: "hidden",
-                head_row: "flex w-full justify-between mb-6",
+                head_row: "mb-3 flex w-full justify-between md:mb-4",
                 head_cell:
-                  "text-slate-400 w-16 font-black text-[10px] uppercase tracking-[0.3em]",
-                row: "flex w-full justify-between mt-4",
-                cell: "h-20 w-20 text-center text-sm p-0 relative focus-within:z-20",
-                day: "h-16 w-16 p-0 font-black aria-selected:opacity-100 hover:bg-blue-50 hover:text-blue-600 rounded-[28px] transition-all flex items-center justify-center border-2 border-transparent",
+                  "w-10 text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] sm:w-12 lg:w-14 xl:w-16",
+                row: "mt-1.5 flex w-full justify-between sm:mt-2 lg:mt-3",
+                cell: "relative h-12 w-10 p-0 text-center text-sm focus-within:z-20 sm:h-14 sm:w-12 lg:h-16 lg:w-14 xl:h-20 xl:w-16",
+                day: "flex h-10 w-10 items-center justify-center rounded-2xl border-2 border-transparent p-0 font-black transition-all hover:bg-blue-50 hover:text-blue-600 aria-selected:opacity-100 sm:h-12 sm:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 xl:rounded-[28px]",
                 day_selected:
-                  "bg-slate-900 text-white hover:bg-slate-950 rounded-[28px] shadow-2xl border-slate-900",
-                day_today: "bg-blue-50 text-blue-600 rounded-[28px] border-blue-100",
+                  "rounded-2xl border-slate-900 bg-slate-900 text-white shadow-lg hover:bg-slate-950 xl:rounded-[28px]",
+                day_today: "rounded-2xl border-blue-100 bg-blue-50 text-blue-600 xl:rounded-[28px]",
                 day_outside: "text-slate-300 opacity-30",
               }}
             />
           </Card>
         </div>
 
-        <div className="space-y-8">
+        <div className="min-w-0 space-y-6 lg:col-span-2 xl:col-span-1">
           <div className="px-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">
               Meeting Timeline
@@ -372,7 +373,7 @@ const CalendarPage = () => {
                             </div>
 
                             <p className="truncate text-[11px] font-semibold text-slate-500">
-                              {session.projectName || "General"} Â· Scope:{" "}
+                              {session.projectName || "General"} • Scope:{" "}
                               {session.participantScope || "BOTH"}
                             </p>
 
@@ -424,3 +425,4 @@ const CalendarPage = () => {
 };
 
 export default CalendarPage;
+

@@ -6,7 +6,7 @@ const RoleAwareSidebar = ({ children }) => {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="min-h-screen flex-1 bg-background">
+      <SidebarInset className="min-h-dvh flex-1 overflow-x-clip bg-background">
         {children}
       </SidebarInset>
     </SidebarProvider>
