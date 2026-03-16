@@ -47,6 +47,7 @@ const getInitials = (value) => {
 
 /* ─── Dropdown Popup ─────────────────────────────────────────────────────── */
 const UserDropdown = ({ user, dashboardPath }) => {
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [isFreelancer, setIsFreelancer] = useState(
     dashboardPath === "/freelancer"
@@ -85,9 +86,9 @@ const UserDropdown = ({ user, dashboardPath }) => {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm font-bold text-black transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
+        className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-bold text-white backdrop-blur-md transition duration-200 hover:bg-white/10 hover:shadow-lg"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-xs font-bold text-yellow-400">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-black">
           {user?.avatar ? (
             <img
               src={user.avatar}
@@ -102,7 +103,7 @@ const UserDropdown = ({ user, dashboardPath }) => {
         {/* Chevron */}
         <svg
           className={cn(
-            "h-3.5 w-3.5 text-gray-400 transition-transform duration-200",
+            "h-3.5 w-3.5 text-white/40 transition-transform duration-200",
             open ? "rotate-180" : ""
           )}
           fill="none"
@@ -117,12 +118,12 @@ const UserDropdown = ({ user, dashboardPath }) => {
       {/* Dropdown panel */}
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-56 origin-top-right rounded-xl border border-gray-100 bg-white shadow-2xl"
+          className="absolute right-0 top-full mt-2 w-58 origin-top-right rounded-2xl border border-white/10 bg-[#171717] p-1.5 shadow-2xl backdrop-blur-xl"
           style={{ zIndex: 99999 }}
         >
           {/* User info header */}
-          <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-sm font-bold text-yellow-400">
+          <div className="flex items-center gap-3 border-b border-white/5 px-3 py-2.5 mb-0.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-black">
               {user?.avatar ? (
                 <img
                   src={user.avatar}
@@ -134,57 +135,40 @@ const UserDropdown = ({ user, dashboardPath }) => {
               )}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-gray-900">{displayName}</p>
-              <p className="truncate text-xs text-gray-400">{user?.email}</p>
+              <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+              <p className="truncate text-[10px] text-white/40 leading-none">{user?.email}</p>
             </div>
           </div>
 
           {/* Menu items */}
-          <div className="p-1.5">
-            {/* Profile */}
-            <Link
-              to="/profile"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-100 text-gray-500">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </span>
-              Profile
-            </Link>
-
+          <div className="space-y-0.5">
             {/* Dashboard */}
             <Link
               to={dashboardPath}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/70 transition-all hover:bg-white/5 hover:text-white"
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-100 text-gray-500">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-white/40 group-hover:text-white/80">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
               </span>
               Dashboard
             </Link>
 
-            {/* Divider */}
-            <div className="my-1.5 border-t border-gray-100" />
-
             {/* Client ↔ Freelancer Toggle */}
-            <div className="flex items-center justify-between rounded-lg px-3 py-2.5">
+            <div className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-white/5 group transition-all">
               <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-100 text-gray-500">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-white/40 group-hover:text-white/80">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-white/70 group-hover:text-white/90">
                     {isFreelancer ? "Freelancer" : "Client"}
                   </p>
-                  <p className="text-xs text-gray-400">Switch view</p>
+                  <p className="text-[10px] text-white/30 leading-none">Switch view</p>
                 </div>
               </div>
 
@@ -193,21 +177,54 @@ const UserDropdown = ({ user, dashboardPath }) => {
                 type="button"
                 onClick={handleToggle}
                 className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
                   "transition-colors duration-200 ease-in-out focus:outline-none",
-                  isFreelancer ? "bg-black" : "bg-gray-300"
+                  isFreelancer ? "bg-yellow-400" : "bg-white/10"
                 )}
                 aria-label="Switch between Client and Freelancer"
               >
                 <span
                   className={cn(
-                    "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md",
+                    "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg",
                     "transform transition-transform duration-200 ease-in-out",
-                    isFreelancer ? "translate-x-5" : "translate-x-0"
+                    isFreelancer ? "translate-x-4" : "translate-x-0"
                   )}
                 />
               </button>
             </div>
+
+            {/* Divider */}
+            <div className="my-1 border-t border-white/5" />
+
+            {/* Profile */}
+            <Link
+              to={isFreelancer ? "/freelancer/profile" : "/client/profile"}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/70 transition-all hover:bg-white/5 hover:text-white"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-white/40 group-hover:text-white/80">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </span>
+              Profile
+            </Link>
+
+            {/* Log Out */}
+            <button
+              onClick={() => {
+                setOpen(false);
+                logout();
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-400/80 transition-all hover:bg-red-500/10 hover:text-red-400"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500/10 text-red-500/60">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </span>
+              Log Out
+            </button>
           </div>
         </div>
       )}
@@ -307,7 +324,7 @@ const Navbar = () => {
             <>
               <NavbarButton
                 as={Link}
-                to="/profile"
+                to={dashboardPath === "/freelancer" ? "/freelancer/profile" : "/client/profile"}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 !text-black"
                 onClick={closeMobileMenu}
               >
@@ -331,6 +348,16 @@ const Navbar = () => {
                   )}
                 </span>
                 <span className="truncate text-black">{getDisplayName(user)}</span>
+              </NavbarButton>
+              <NavbarButton
+                as="button"
+                onClick={() => {
+                  closeMobileMenu();
+                  logout();
+                }}
+                className="inline-flex w-full items-center justify-center gap-2 !text-red-600 !bg-red-50 hover:!bg-red-100 mt-2"
+              >
+                Log Out
               </NavbarButton>
             </>
           ) : (
