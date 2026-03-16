@@ -65,6 +65,23 @@ const formatTimelineDateTime = (value) => {
   return date.toLocaleString();
 };
 
+const normalizeRequirementsText = (value) => {
+  const raw = String(value || "")
+    .replace(/```(?:markdown)?/gi, "")
+    .replace(/'''/g, "")
+    .replace(/\r\n/g, "\n")
+    .trim();
+  if (!raw) return "";
+
+  return raw
+    .replace(/\s{2,}/g, " ")
+    .replace(
+      /\s(?=(Client Name:|Business Name:|Service Type:|Project Overview:|Primary Objectives:|Features\/Deliverables Included:|Launch Timeline:|Budget:|Website Type:|Design Style:|Website Build Type:|Frontend Framework:|Backend Technology:|Database:|Hosting:|Page Count:))/g,
+      "\n"
+    )
+    .trim();
+};
+
 const buildMeetingFormDefaults = () => {
   const now = new Date();
   const startsAt = new Date(now);
@@ -255,6 +272,13 @@ const ProjectDetailsPage = () => {
   const project = details.data?.project || {};
   const clientProfile = details.data?.clientProfile || {};
   const freelancerProfile = details.data?.freelancerProfile || null;
+  const requirementsText = useMemo(
+    () =>
+      normalizeRequirementsText(
+        clientProfile.requirements || project.description || ""
+      ),
+    [clientProfile.requirements, project.description]
+  );
   const freelancerAssignmentHistory = Array.isArray(details.data?.freelancerAssignmentHistory)
     ? details.data.freelancerAssignmentHistory
     : [];
@@ -1568,23 +1592,50 @@ const ProjectDetailsPage = () => {
       />
 
       <Dialog open={clientProfileOpen} onOpenChange={setClientProfileOpen}>
-        <DialogContent className="max-w-xl rounded-3xl border-slate-100 p-0">
-          <DialogHeader className="border-b border-slate-100 p-6 pb-4">
-            <DialogTitle className="text-lg font-black text-slate-900">
+        <DialogContent className="max-w-3xl rounded-[2rem] border-slate-200 p-0 shadow-2xl">
+          <DialogHeader className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50 p-6 pb-5">
+            <DialogTitle className="text-xl font-black text-slate-900">
               Client Profile
             </DialogTitle>
-            <DialogDescription className="text-sm text-slate-700">
-              Project manager view for this client and project summary.
+            <DialogDescription className="text-sm font-medium text-slate-700">
+              PM-ready snapshot with client details and project requirement brief.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 p-6">
-            <div className="grid gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
+          <div className="space-y-6 p-6">
+            <div className="flex flex-col gap-4 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12 rounded-xl border border-blue-100">
+                  <AvatarImage src={clientProfile.avatar || ""} />
+                  <AvatarFallback className="bg-blue-600 text-sm font-black text-white">
+                    {(clientProfile.clientName || "Client")
+                      .split(" ")
+                      .map((part) => part?.[0] || "")
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-base font-black text-slate-900">
+                    {clientProfile.clientName || "Unknown Client"}
+                  </p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-blue-700">
+                    {clientProfile.company || "Direct Client"}
+                  </p>
+                </div>
+              </div>
+              <Badge className="w-fit rounded-full bg-blue-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                Active Engagement
+              </Badge>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                   Client Name
                 </p>
-                <p className="mt-1 text-sm font-bold text-slate-900">
+                <p className="mt-1 text-sm font-bold text-slate-900 break-words">
                   {clientProfile.clientName || "Unknown"}
                 </p>
               </div>
@@ -1612,21 +1663,57 @@ const ProjectDetailsPage = () => {
                   INR {Number(project.budget || 0).toLocaleString("en-IN")}
                 </p>
               </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Project
+                </p>
+                <p className="mt-1 text-sm font-bold text-slate-900 break-words">
+                  {project.title || "Untitled Project"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Project ID
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-700 break-all">
+                  #{project.id || projectId}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Status
+                </p>
+                <p className="mt-1 text-sm font-bold text-slate-900">
+                  {project.status?.label || "Active"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  Last Updated
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-700">
+                  {project.updatedAt
+                    ? new Date(project.updatedAt).toLocaleString()
+                    : "Not available"}
+                </p>
+              </div>
             </div>
 
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                 Requirements
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {clientProfile.requirements || project.description || "No requirements shared yet."}
-              </p>
+              <div className="mt-2 max-h-[44vh] overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700 font-medium">
+                  {requirementsText || "No requirements shared yet."}
+                </pre>
+              </div>
             </div>
 
-            <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
               <Button
                 variant="outline"
-                className="h-10 rounded-xl border-slate-200 bg-white px-4 text-xs font-bold text-slate-600"
+                className="h-11 rounded-xl border-slate-200 bg-white px-4 text-xs font-black tracking-widest text-slate-700 uppercase"
                 onClick={() => {
                   setClientProfileOpen(false);
                   setProjectSummaryOpen(true);
@@ -1635,7 +1722,7 @@ const ProjectDetailsPage = () => {
                 View Project
               </Button>
               <Button
-                className="h-10 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700"
+                className="h-11 rounded-xl bg-blue-600 px-4 text-xs font-black tracking-widest text-white uppercase hover:bg-blue-700"
                 onClick={() => {
                   setClientProfileOpen(false);
                   navigate(`/project-manager/projects/${projectId}`);
