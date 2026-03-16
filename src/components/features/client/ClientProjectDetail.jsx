@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import Star from "lucide-react/dist/esm/icons/star";
 import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Info from "lucide-react/dist/esm/icons/info";
@@ -384,6 +385,11 @@ const ProjectDashboard = () => {
   const [deliverableReviews, setDeliverableReviews] = useState({});
   const [reviewingDeliverableId, setReviewingDeliverableId] = useState(null);
   const [isProcessingInstallment, setIsProcessingInstallment] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [isSubmittingFreelancerReview, setIsSubmittingFreelancerReview] =
+    useState(false);
+  const [reviewPromptDeferred, setReviewPromptDeferred] = useState(false);
 
   const syncProjectState = useCallback((data) => {
     if (!data) return;
@@ -921,8 +927,19 @@ const ProjectDashboard = () => {
   ) => {
     if (!project?.id) return;
 
-    // Optimistic update
-    setProject((prev) => ({ ...prev, progress: newProgress }));
+    // Optimistic update keeps task status stable while request is in-flight.
+    setProject((prev) =>
+      prev
+        ? {
+            ...prev,
+            progress: newProgress,
+            completedTasks: completedArr,
+            verifiedTasks: verifiedArr,
+          }
+        : prev
+    );
+    setCompletedTaskIds(new Set(completedArr));
+    setVerifiedTaskIds(new Set(verifiedArr));
 
     try {
       const payload = {
@@ -941,12 +958,10 @@ const ProjectDashboard = () => {
         body: JSON.stringify(payload),
       });
 
-      if (updateRes.ok) {
-        const refreshRes = await authFetch(`/projects/${project.id}`);
-        const refreshPayload = await refreshRes.json().catch(() => null);
-        if (refreshRes.ok && refreshPayload?.data) {
-          syncProjectState(refreshPayload.data);
-        }
+      const updatePayload = await updateRes.json().catch(() => null);
+
+      if (updateRes.ok && updatePayload?.data) {
+        syncProjectState(updatePayload.data);
       }
     } catch (error) {
       console.error("Failed to update project progress:", error);
@@ -1267,6 +1282,59 @@ const ProjectDashboard = () => {
       setIsProcessingInstallment(false);
     }
   };
+
+  const handleSubmitFreelancerReview = async () => {
+    if (!project?.id) return;
+
+    if (!Number.isInteger(reviewRating) || reviewRating < 1 || reviewRating > 5) {
+      toast.error("Please select a rating between 1 and 5 stars.");
+      return;
+    }
+
+    const trimmedComment = reviewComment.trim();
+    if (trimmedComment.length < 5) {
+      toast.error("Please write at least 5 characters for your review.");
+      return;
+    }
+
+    setIsSubmittingFreelancerReview(true);
+    try {
+      const response = await authFetch(`/projects/${project.id}/freelancer-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: reviewRating,
+          comment: trimmedComment,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to submit freelancer review.");
+      }
+
+      if (payload?.data?.project) {
+        syncProjectState(payload.data.project);
+      }
+
+      setReviewRating(0);
+      setReviewComment("");
+      setReviewDeferredState(false);
+      toast.success(payload?.message || "Thanks for reviewing your freelancer.");
+    } catch (error) {
+      console.error("Failed to submit freelancer review:", error);
+      toast.error(error?.message || "Failed to submit freelancer review.");
+    } finally {
+      setIsSubmittingFreelancerReview(false);
+    }
+  };
+
+  const handleDeferFreelancerReview = () => {
+    setReviewDeferredState(true);
+    toast.success("No problem. You can review the freelancer later from this project page.");
+  };
+
   const docs = useMemo(() => {
     return messages.filter((m) => m.attachment).map((m) => m.attachment);
   }, [messages]);
@@ -1312,6 +1380,26 @@ const ProjectDashboard = () => {
   }, [project]);
 
   const dueInstallment = paymentPlan?.nextDueInstallment || null;
+  const phaseGateInstallmentsByPhase = useMemo(() => {
+    const grouped = {};
+    const installments = Array.isArray(paymentPlan?.installments)
+      ? paymentPlan.installments
+      : [];
+
+    installments.forEach((installment) => {
+      const gate = Number(installment?.dueAfterCompletedPhases || 0);
+      if (!Number.isFinite(gate) || gate <= 0) return;
+
+      const key = String(gate);
+      if (!Array.isArray(grouped[key])) {
+        grouped[key] = [];
+      }
+      grouped[key].push(installment);
+    });
+
+    return grouped;
+  }, [paymentPlan]);
+
   const freelancerChangeRequests = useMemo(
     () =>
       Array.isArray(project?.freelancerChangeRequests)
@@ -1347,6 +1435,61 @@ const ProjectDashboard = () => {
   const freelancer = useMemo(() => {
     return project?.proposals?.find((p) => p.status === "ACCEPTED")?.freelancer;
   }, [project]);
+
+  const reviewDeferStorageKey = useMemo(
+    () =>
+      project?.id
+        ? `project-freelancer-review-deferred:${project.id}`
+        : "",
+    [project?.id]
+  );
+  const existingFreelancerReview = project?.clientFreelancerReview || null;
+  const isProjectCompleted = String(project?.status || "").toUpperCase() === "COMPLETED";
+  const shouldCollectFreelancerReview = isProjectCompleted && Boolean(freelancer);
+
+  const setReviewDeferredState = useCallback(
+    (isDeferred) => {
+      setReviewPromptDeferred(isDeferred);
+
+      if (!reviewDeferStorageKey || typeof window === "undefined") {
+        return;
+      }
+
+      if (isDeferred) {
+        window.localStorage.setItem(reviewDeferStorageKey, "1");
+      } else {
+        window.localStorage.removeItem(reviewDeferStorageKey);
+      }
+    },
+    [reviewDeferStorageKey]
+  );
+
+  useEffect(() => {
+    if (!reviewDeferStorageKey || typeof window === "undefined") {
+      setReviewPromptDeferred(false);
+      return;
+    }
+
+    setReviewPromptDeferred(
+      window.localStorage.getItem(reviewDeferStorageKey) === "1"
+    );
+  }, [reviewDeferStorageKey]);
+
+  useEffect(() => {
+    if (!existingFreelancerReview) return;
+    setReviewDeferredState(false);
+  }, [existingFreelancerReview, setReviewDeferredState]);
+
+  const shouldShowFreelancerReviewPrompt =
+    shouldCollectFreelancerReview &&
+    !existingFreelancerReview &&
+    !reviewPromptDeferred;
+
+  const shouldShowFreelancerReviewReminder =
+    shouldCollectFreelancerReview &&
+    !existingFreelancerReview &&
+    reviewPromptDeferred;
+
   const canRequestFreelancerChange =
     Boolean(freelancer) &&
     !pendingFreelancerChangeRequest &&
@@ -1811,113 +1954,184 @@ const ProjectDashboard = () => {
                     defaultValue={currentActivePhase?.id}
                     className="w-full"
                   >
-                    {tasksByPhase.map((phaseGroup) => (
-                      <AccordionItem
-                        key={phaseGroup.phaseId}
-                        value={phaseGroup.phaseId}
-                        className="border-border/60"
-                      >
-                        <AccordionTrigger className="hover:no-underline py-3">
-                          <div className="flex items-center gap-3 flex-1">
-                            {getPhaseIcon(phaseGroup.phaseStatus)}
-                            <div className="flex-1 text-left">
-                              <div className="font-semibold text-sm text-foreground">
-                                Phase {phaseGroup.phaseId}:{" "}
-                                {phaseGroup.phaseName}
+                    {tasksByPhase.map((phaseGroup) => {
+                      const phaseInstallments =
+                        phaseGateInstallmentsByPhase[String(phaseGroup.phaseId)] || [];
+
+                      return (
+                        <AccordionItem
+                          key={phaseGroup.phaseId}
+                          value={phaseGroup.phaseId}
+                          className="border-border/60"
+                        >
+                          <AccordionTrigger className="hover:no-underline py-3">
+                            <div className="flex items-center gap-3 flex-1">
+                              {getPhaseIcon(phaseGroup.phaseStatus)}
+                              <div className="flex-1 text-left">
+                                <div className="font-semibold text-sm text-foreground">
+                                  Phase {phaseGroup.phaseId}:{" "}
+                                  {phaseGroup.phaseName}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {
+                                    phaseGroup.tasks.filter((t) => t.verified)
+                                      .length
+                                  }{" "}
+                                  of {phaseGroup.tasks.length} verified
+                                </div>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {
-                                  phaseGroup.tasks.filter((t) => t.verified)
-                                    .length
-                                }{" "}
-                                of {phaseGroup.tasks.length} verified
-                              </div>
-                            </div>
-                            <Badge
-                              variant={
-                                phaseGroup.phaseStatus === "completed"
-                                  ? "default"
-                                  : "outline"
-                              }
-                              className={
-                                phaseGroup.phaseStatus === "completed"
-                                  ? "bg-emerald-500 text-white"
-                                  : ""
-                              }
-                            >
-                              {phaseGroup.phaseStatus === "completed"
-                                ? "Completed"
-                                : phaseGroup.phaseStatus === "in-progress"
-                                ? "In Progress"
-                                : "Pending"}
-                            </Badge>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="space-y-2 pt-2">
-                            {phaseGroup.tasks.map((task) => (
-                              <div
-                                key={task.uniqueKey}
-                                className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
-                                  phaseGroup.isLocked
-                                    ? "opacity-50 pointer-events-none bg-muted/50"
-                                    : "hover:bg-accent/60 cursor-pointer"
-                                }`}
-                                onClick={(e) =>
-                                  !phaseGroup.isLocked &&
-                                  handleTaskClick(e, task.uniqueKey)
+                              <Badge
+                                variant={
+                                  phaseGroup.phaseStatus === "completed"
+                                    ? "default"
+                                    : "outline"
+                                }
+                                className={
+                                  phaseGroup.phaseStatus === "completed"
+                                    ? "bg-emerald-500 text-white"
+                                    : ""
                                 }
                               >
-                                {task.status === "completed" ? (
-                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                                ) : (
-                                  <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
-                                )}
-                                <span
-                                  className={`flex-1 text-sm ${
-                                    task.status === "completed"
-                                      ? "line-through text-muted-foreground"
-                                      : "text-foreground"
+                                {phaseGroup.phaseStatus === "completed"
+                                  ? "Completed"
+                                  : phaseGroup.phaseStatus === "in-progress"
+                                  ? "In Progress"
+                                  : "Pending"}
+                              </Badge>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-2 pt-2">
+                              {phaseGroup.tasks.map((task) => (
+                                <div
+                                  key={task.uniqueKey}
+                                  className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
+                                    phaseGroup.isLocked
+                                      ? "opacity-50 pointer-events-none bg-muted/50"
+                                      : "hover:bg-accent/60 cursor-pointer"
                                   }`}
+                                  onClick={(e) =>
+                                    !phaseGroup.isLocked &&
+                                    handleTaskClick(e, task.uniqueKey)
+                                  }
                                 >
-                                  {task.title}
-                                  {phaseGroup.isLocked && (
-                                    <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
-                                      (Locked)
-                                    </span>
+                                  {task.status === "completed" ? (
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                                  ) : (
+                                    <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
                                   )}
-                                </span>
-                                {task.status === "completed" && (
-                                  <Button
-                                    size="sm"
-                                    variant={
-                                      task.verified ? "default" : "outline"
-                                    }
-                                    disabled={phaseGroup.isLocked}
-                                    className={`h-7 px-3 text-xs transition-all ${
-                                      task.verified
-                                        ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent"
-                                        : "border-primary text-primary hover:bg-primary/10"
+                                  <span
+                                    className={`flex-1 text-sm ${
+                                      task.status === "completed"
+                                        ? "line-through text-muted-foreground"
+                                        : "text-foreground"
                                     }`}
-                                    onClick={(e) =>
-                                      !phaseGroup.isLocked &&
-                                      promptVerifyTask(
-                                        e,
-                                        task.uniqueKey,
-                                        task.title,
-                                        task.verified
-                                      )
-                                    }
                                   >
-                                    {task.verified ? "Verified" : "Verify"}
-                                  </Button>
-                                )}
+                                    {task.title}
+                                    {phaseGroup.isLocked && (
+                                      <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
+                                        (Locked)
+                                      </span>
+                                    )}
+                                  </span>
+                                  {task.status === "completed" && (
+                                    <Button
+                                      size="sm"
+                                      variant={
+                                        task.verified ? "default" : "outline"
+                                      }
+                                      disabled={phaseGroup.isLocked}
+                                      className={`h-7 px-3 text-xs transition-all ${
+                                        task.verified
+                                          ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent"
+                                          : "border-primary text-primary hover:bg-primary/10"
+                                      }`}
+                                      onClick={(e) =>
+                                        !phaseGroup.isLocked &&
+                                        promptVerifyTask(
+                                          e,
+                                          task.uniqueKey,
+                                          task.title,
+                                          task.verified
+                                        )
+                                      }
+                                    >
+                                      {task.verified ? "Verified" : "Verify"}
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            {phaseInstallments.length > 0 ? (
+                              <div className="mt-4 space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Payment Checkpoint
+                                </p>
+                                {phaseInstallments.map((installment) => {
+                                  const isDueNow = Boolean(installment?.isDue);
+                                  const isPaid = Boolean(installment?.isPaid);
+                                  const canPayInstallment =
+                                    isDueNow &&
+                                    dueInstallment?.sequence === installment.sequence;
+
+                                  return (
+                                    <div
+                                      key={`installment-${phaseGroup.phaseId}-${installment.sequence}`}
+                                      className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/70 px-3 py-2"
+                                    >
+                                      <div>
+                                        <p className="text-sm font-semibold text-foreground">
+                                          {installment.label}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {installment.dueLabel || "Auto-unlocked at this phase gate."}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Badge
+                                          variant={isDueNow ? "secondary" : "outline"}
+                                          className={
+                                            isPaid
+                                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                                              : isDueNow
+                                              ? "border-primary/30 bg-primary/20 text-foreground"
+                                              : ""
+                                          }
+                                        >
+                                          {isPaid
+                                            ? "Paid"
+                                            : isDueNow
+                                            ? "Due now"
+                                            : "Scheduled"}
+                                        </Badge>
+                                        {canPayInstallment ? (
+                                          <Button
+                                            size="sm"
+                                            className="h-8 px-3 text-xs"
+                                            onClick={handlePayDueInstallment}
+                                            disabled={isProcessingInstallment}
+                                          >
+                                            {isProcessingInstallment ? (
+                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : (
+                                              <CreditCard className="h-3.5 w-3.5" />
+                                            )}
+                                            {isProcessingInstallment
+                                              ? "Processing"
+                                              : `Pay ${installment.percentage}%`}
+                                          </Button>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
+                            ) : null}
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
                   </Accordion>
                 </CardContent>
               </Card>
@@ -2428,6 +2642,129 @@ const ProjectDashboard = () => {
                   ) : null}
                 </CardContent>
               </Card>
+
+              {shouldCollectFreelancerReview ? (
+                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base text-foreground">
+                      Freelancer Review
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                      {existingFreelancerReview
+                        ? "Thanks for sharing your feedback for this completed project."
+                        : "Project completed. Please rate your freelancer experience."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {existingFreelancerReview ? (
+                      <>
+                        <div className="flex items-center gap-1.5">
+                          {Array.from({ length: 5 }).map((_, index) => {
+                            const filled = index < Number(existingFreelancerReview.rating || 0);
+                            return (
+                              <Star
+                                key={`reviewed-star-${index + 1}`}
+                                className={cn(
+                                  "h-4 w-4",
+                                  filled
+                                    ? "fill-amber-400 text-amber-400"
+                                    : "text-muted-foreground"
+                                )}
+                              />
+                            );
+                          })}
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            {Number(existingFreelancerReview.rating || 0)} / 5
+                          </span>
+                        </div>
+                        <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-sm text-foreground">
+                          {existingFreelancerReview.comment}
+                        </div>
+                      </>
+                    ) : shouldShowFreelancerReviewPrompt ? (
+                      <>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Your rating
+                          </p>
+                          <div className="mt-2 flex items-center gap-1">
+                            {Array.from({ length: 5 }).map((_, index) => {
+                              const value = index + 1;
+                              const selected = value <= reviewRating;
+
+                              return (
+                                <button
+                                  key={`pending-review-star-${value}`}
+                                  type="button"
+                                  onClick={() => setReviewRating(value)}
+                                  className="rounded p-0.5 transition-transform hover:scale-105"
+                                  aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
+                                >
+                                  <Star
+                                    className={cn(
+                                      "h-5 w-5",
+                                      selected
+                                        ? "fill-amber-400 text-amber-400"
+                                        : "text-muted-foreground"
+                                    )}
+                                  />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Your feedback
+                          </p>
+                          <Textarea
+                            className="mt-2"
+                            rows={4}
+                            placeholder="Share a quick feedback for the freelancer..."
+                            value={reviewComment}
+                            onChange={(event) => setReviewComment(event.target.value)}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            className="flex-1"
+                            onClick={handleSubmitFreelancerReview}
+                            disabled={isSubmittingFreelancerReview}
+                          >
+                            {isSubmittingFreelancerReview ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : null}
+                            {isSubmittingFreelancerReview ? "Submitting" : "Submit Review"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={handleDeferFreelancerReview}
+                            disabled={isSubmittingFreelancerReview}
+                          >
+                            Not now
+                          </Button>
+                        </div>
+                      </>
+                    ) : shouldShowFreelancerReviewReminder ? (
+                      <div className="rounded-lg border border-border/60 bg-background/50 p-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          Review pending
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          You can submit your freelancer review anytime from this project section.
+                        </p>
+                        <Button
+                          className="mt-3 w-full"
+                          variant="outline"
+                          onClick={() => setReviewDeferredState(false)}
+                        >
+                          Review now
+                        </Button>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ) : null}
 
             </div>
           </div>

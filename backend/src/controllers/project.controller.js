@@ -85,6 +85,22 @@ const flattenFreelancerProfile = (freelancer = null) => {
   };
 };
 
+const getProjectFreelancerReviewServiceId = (projectId) =>
+  `project:${projectId}`;
+
+const formatProjectFreelancerReview = (review) => {
+  if (!review || typeof review !== "object") return null;
+
+  return {
+    id: review.id,
+    rating: Number(review.rating || 0),
+    comment: review.comment || "",
+    clientId: review.clientId || null,
+    clientName: review.clientName || "Client",
+    createdAt: review.createdAt,
+  };
+};
+
 const hydrateProjectForResponse = (project) => {
   if (!project || typeof project !== "object") return project;
   const safeProject = { ...project };
@@ -438,7 +454,25 @@ export const getProject = asyncHandler(async (req, res) => {
   }
 
   const hydratedProject = hydrateProjectForResponse(project);
-  res.json({ data: hydratedProject });
+  let clientFreelancerReview = null;
+  if (project.ownerId === userId) {
+    const reviewRecord = await prisma.review.findFirst({
+      where: {
+        serviceId: getProjectFreelancerReviewServiceId(project.id),
+        clientId: userId,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    clientFreelancerReview = formatProjectFreelancerReview(reviewRecord);
+  }
+
+  res.json({
+    data: {
+      ...hydratedProject,
+      clientFreelancerReview,
+    },
+  });
 });
 export const updateProject = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
@@ -699,6 +733,119 @@ export const requestFreelancerChange = asyncHandler(async (req, res) => {
   res.status(201).json({
     data: hydrateProjectForResponse(updatedProject),
     message: "Your freelancer change request has been sent to the Project Manager.",
+  });
+});
+
+export const submitProjectFreelancerReview = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const { id } = req.params;
+  const ratingValue = Number(req.body?.rating);
+  const comment = String(req.body?.comment || "").trim();
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+    throw new AppError("Rating must be an integer between 1 and 5.", 400);
+  }
+
+  if (comment.length < 5) {
+    throw new AppError("Please add at least 5 characters in your review.", 400);
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      owner: {
+        select: { id: true, fullName: true },
+      },
+      proposals: {
+        where: { status: "ACCEPTED" },
+        include: {
+          freelancer: {
+            select: { id: true, fullName: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  if (project.ownerId !== userId) {
+    throw new AppError("Only the project owner can submit this review.", 403);
+  }
+
+  if (String(project.status || "").toUpperCase() !== "COMPLETED") {
+    throw new AppError("You can review the freelancer after project completion.", 400);
+  }
+
+  const acceptedProposal = project.proposals?.[0] || null;
+  if (!acceptedProposal?.freelancerId) {
+    throw new AppError("No assigned freelancer found for this project.", 400);
+  }
+
+  const serviceId = getProjectFreelancerReviewServiceId(project.id);
+  const existingReview = await prisma.review.findFirst({
+    where: {
+      serviceId,
+      clientId: userId,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  let review;
+  if (existingReview) {
+    review = await prisma.review.update({
+      where: { id: existingReview.id },
+      data: {
+        rating: ratingValue,
+        comment,
+      },
+    });
+  } else {
+    review = await prisma.review.create({
+      data: {
+        serviceId,
+        clientId: userId,
+        clientName: project.owner?.fullName || "Client",
+        rating: ratingValue,
+        comment,
+      },
+    });
+  }
+
+  try {
+    await sendNotificationToUser(acceptedProposal.freelancerId, {
+      type: "freelancer_review",
+      title: "New Client Review",
+      message: `Client reviewed your work for project \"${project.title}\".`,
+      data: {
+        projectId: project.id,
+        rating: review.rating,
+      },
+    });
+  } catch (notificationError) {
+    console.error("Failed to notify freelancer about review:", notificationError);
+  }
+
+  const refreshedProject = await getProjectForResponse(id);
+  const hydratedProject = hydrateProjectForResponse(refreshedProject);
+
+  res.status(existingReview ? 200 : 201).json({
+    data: {
+      review: formatProjectFreelancerReview(review),
+      project: {
+        ...hydratedProject,
+        clientFreelancerReview: formatProjectFreelancerReview(review),
+      },
+    },
+    message: existingReview
+      ? "Freelancer review updated successfully."
+      : "Thanks for reviewing your freelancer.",
   });
 });
 

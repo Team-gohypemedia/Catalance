@@ -2327,83 +2327,236 @@ const ClientDashboardContent = () => {
   }, [freelancers, navigate, suggestedFreelancers]);
 
   const progressProjects = useMemo(() => {
-    // Helper to build phases from real project data or fallback to synthetic
-    const buildProjectPhases = (project, normalizedStatus) => {
-      // If project has real phases/milestones data from API
-      if (project?.phases && Array.isArray(project.phases) && project.phases.length > 0) {
+    const clampProgress = (value) => {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) return 0;
+      return Math.max(0, Math.min(100, Math.round(numericValue)));
+    };
+
+    const resolvePhaseSummary = (phaseLike, fallbackLabel = "Upcoming") => {
+      const explicitSummary = [
+        phaseLike?.subLabel,
+        phaseLike?.subtitle,
+        phaseLike?.detail,
+        phaseLike?.description,
+        phaseLike?.summary,
+      ].find((value) => typeof value === "string" && value.trim());
+
+      if (explicitSummary) {
+        return explicitSummary.trim();
+      }
+
+      const totalTasks = Math.max(0, Number(phaseLike?.totalTasks || phaseLike?.taskCount || 0));
+      const completedTasks = Math.max(
+        0,
+        Number(
+          phaseLike?.verifiedTasks ?? phaseLike?.completedTasks ?? phaseLike?.doneTasks ?? 0,
+        ),
+      );
+
+      if (totalTasks > 0) {
+        return `${Math.min(completedTasks, totalTasks)}/${totalTasks} tasks done`;
+      }
+
+      return fallbackLabel;
+    };
+
+    const buildDefaultPhases = (count = 4) =>
+      Array.from({ length: Math.max(1, count) }, (_, index) => ({
+        label: `Phase ${index + 1}`,
+        value: Math.round(((index + 1) / Math.max(count, 1)) * 100),
+      }));
+
+    const buildProjectPhases = (project) => {
+      const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
+        ? project.paymentPlan.phases
+        : [];
+
+      if (Array.isArray(project?.phases) && project.phases.length > 0) {
         return project.phases.map((phase, index) => ({
           label: phase.label || phase.name || `Phase ${index + 1}`,
-          value: Math.max(0, Math.min(100, Number(phase.progress || phase.value || 0))),
+          value: clampProgress(phase.progress ?? phase.value),
+          subLabel: resolvePhaseSummary(paymentPlanPhases[index] || phase),
         }));
       }
 
-      // If project has milestones with completion status
-      if (project?.milestones && Array.isArray(project.milestones) && project.milestones.length > 0) {
-        const total = project.milestones.length;
-        const completed = project.milestones.filter(m => m.completed || m.status === 'COMPLETED').length;
-        const baseProgress = total > 0 ? Math.round((completed / total) * 100) : 0;
-        
-        return project.milestones.map((milestone, index) => {
-          const isCompleted = milestone.completed || milestone.status === 'COMPLETED';
-          const milestoneProgress = isCompleted ? 100 : Math.max(0, Number(milestone.progress || 0));
+      if (paymentPlanPhases.length > 0) {
+        let completedBefore = 0;
+
+        return paymentPlanPhases.map((phase, index) => {
+          const totalTasks = Math.max(0, Number(phase?.totalTasks || 0));
+          const verifiedTasks = Math.max(0, Number(phase?.verifiedTasks || 0));
+          const phaseCompletion =
+            totalTasks > 0 ? Math.min(verifiedTasks / totalTasks, 1) : phase?.isComplete ? 1 : 0;
+          const value = Math.round(
+            ((completedBefore + phaseCompletion) / paymentPlanPhases.length) * 100,
+          );
+
+          if (phase?.isComplete) {
+            completedBefore += 1;
+          }
+
           return {
-            label: milestone.label || milestone.name || `Phase ${index + 1}`,
-            value: Math.round((index / Math.max(total - 1, 1)) * baseProgress + (milestoneProgress / total)),
+            label: phase?.name || `Phase ${index + 1}`,
+            value,
+            subLabel: resolvePhaseSummary(phase, phase?.isComplete ? "Completed" : "Pending"),
           };
         });
       }
 
-      // If project has explicit progress percentage, generate realistic curve
-      const explicitProgress = Number(project?.progress || project?.completionPercentage);
-      if (Number.isFinite(explicitProgress) && explicitProgress > 0) {
-        const targetProgress = Math.max(0, Math.min(100, explicitProgress));
-        // Generate a curve that ends at the actual progress
-        return [
-          { label: "Phase 1", value: Math.round(targetProgress * 0.15) },
-          { label: "Phase 2", value: Math.round(targetProgress * 0.40) },
-          { label: "Phase 3", value: Math.round(targetProgress * 0.70) },
-          { label: "Phase 4", value: targetProgress },
-        ];
+      if (Array.isArray(project?.milestones) && project.milestones.length > 0) {
+        let completedBefore = 0;
+
+        return project.milestones.map((milestone, index) => {
+          const isCompleted =
+            milestone?.completed ||
+            String(milestone?.status || "").toUpperCase() === "COMPLETED";
+          const milestoneProgress = isCompleted ? 1 : clampProgress(milestone?.progress) / 100;
+          const value = Math.round(
+            ((completedBefore + milestoneProgress) / project.milestones.length) * 100,
+          );
+
+          if (isCompleted) {
+            completedBefore += 1;
+          }
+
+          return {
+            label: milestone?.label || milestone?.name || `Phase ${index + 1}`,
+            value,
+            subLabel: isCompleted
+              ? "Completed"
+              : clampProgress(milestone?.progress) > 0
+                ? `${clampProgress(milestone?.progress)}% complete`
+                : "Pending",
+          };
+        });
       }
 
-      // Fallback to status-based synthetic curves
-      const statusCurves = {
-        DRAFT: [4, 12, 18, 18],
-        OPEN: [6, 20, 30, 36],
-        AWAITING_PAYMENT: [8, 24, 40, 52],
-        IN_PROGRESS: [8, 32, 55, 78],
-        COMPLETED: [12, 40, 70, 100],
-      };
-      const curve = statusCurves[normalizedStatus] || statusCurves.OPEN;
-      return curve.map((value, index) => ({
-        label: `Phase ${index + 1}`,
-        value,
-      }));
+      return buildDefaultPhases(Number(project?.phaseCount) || 4);
     };
 
-    // Helper to determine highlight index based on real data
-    const determineHighlightIndex = (project, phases, normalizedStatus) => {
-      // If project has currentPhaseIndex, use it
+    const resolveCurrentProgress = (project, phases, normalizedStatus) => {
+      const explicitProgress = clampProgress(
+        project?.progress ?? project?.completionPercentage ?? project?.milestoneProgress,
+      );
+
+      if (explicitProgress > 0 || normalizedStatus === "COMPLETED") {
+        return normalizedStatus === "COMPLETED" ? 100 : explicitProgress;
+      }
+
+      const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
+        ? project.paymentPlan.phases
+        : [];
+      if (paymentPlanPhases.length > 0) {
+        const firstIncompleteIndex = paymentPlanPhases.findIndex((phase) => !phase?.isComplete);
+        if (firstIncompleteIndex === -1) return 100;
+
+        const currentPhase = paymentPlanPhases[firstIncompleteIndex];
+        const totalTasks = Math.max(0, Number(currentPhase?.totalTasks || 0));
+        const verifiedTasks = Math.max(0, Number(currentPhase?.verifiedTasks || 0));
+        const phaseCompletion = totalTasks > 0 ? Math.min(verifiedTasks / totalTasks, 1) : 0;
+
+        return clampProgress(
+          ((firstIncompleteIndex + phaseCompletion) / paymentPlanPhases.length) * 100,
+        );
+      }
+
+      if (Array.isArray(project?.milestones) && project.milestones.length > 0) {
+        const currentMilestoneIndex = project.milestones.findIndex((milestone) => {
+          const status = String(milestone?.status || "").toUpperCase();
+          return !(milestone?.completed || status === "COMPLETED");
+        });
+
+        if (currentMilestoneIndex === -1) return 100;
+
+        const currentMilestone = project.milestones[currentMilestoneIndex];
+        const milestoneProgress = clampProgress(currentMilestone?.progress) / 100;
+
+        return clampProgress(
+          ((currentMilestoneIndex + milestoneProgress) / project.milestones.length) * 100,
+        );
+      }
+
+      if (Number.isFinite(project?.currentPhaseIndex) && phases.length > 0) {
+        const phaseIndex = Math.min(project.currentPhaseIndex, phases.length - 1);
+        return clampProgress(phases[phaseIndex]?.value);
+      }
+
+      const statusProgressMap = {
+        DRAFT: 8,
+        OPEN: 20,
+        AWAITING_PAYMENT: 40,
+        IN_PROGRESS: 55,
+        COMPLETED: 100,
+      };
+
+      return statusProgressMap[normalizedStatus] ?? clampProgress(phases[phases.length - 1]?.value);
+    };
+
+    const determineHighlightIndex = (project, phases, normalizedStatus, currentProgress) => {
       if (Number.isFinite(project?.currentPhaseIndex) && project.currentPhaseIndex >= 0) {
         return Math.min(project.currentPhaseIndex, phases.length - 1);
       }
 
-      // Calculate based on progress
-      const currentProgress = phases.length > 0 
-        ? phases[phases.length - 1]?.value || 0 
-        : 0;
-      
-      if (normalizedStatus === "COMPLETED" || currentProgress >= 100) return 3;
-      if (currentProgress >= 75) return 2;
-      if (currentProgress >= 40) return 2;
-      if (currentProgress >= 20) return 1;
-      return 1;
+      const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
+        ? project.paymentPlan.phases
+        : [];
+      if (paymentPlanPhases.length > 0) {
+        const firstIncompleteIndex = paymentPlanPhases.findIndex((phase) => !phase?.isComplete);
+        return firstIncompleteIndex === -1
+          ? paymentPlanPhases.length - 1
+          : firstIncompleteIndex;
+      }
+
+      if (Array.isArray(project?.milestones) && project.milestones.length > 0) {
+        const currentMilestoneIndex = project.milestones.findIndex((milestone) => {
+          const status = String(milestone?.status || "").toUpperCase();
+          return !(milestone?.completed || status === "COMPLETED");
+        });
+        return currentMilestoneIndex === -1
+          ? project.milestones.length - 1
+          : currentMilestoneIndex;
+      }
+
+      const fallbackStatusIndexMap = {
+        DRAFT: 0,
+        OPEN: 1,
+        AWAITING_PAYMENT: 2,
+        IN_PROGRESS: 2,
+      };
+      if (normalizedStatus === "COMPLETED" || currentProgress >= 100) {
+        return phases.length - 1;
+      }
+
+      if (fallbackStatusIndexMap[normalizedStatus] !== undefined) {
+        return Math.min(fallbackStatusIndexMap[normalizedStatus], phases.length - 1);
+      }
+
+      const phaseStep = 100 / Math.max(phases.length, 1);
+      return Math.min(Math.floor(currentProgress / phaseStep), phases.length - 1);
+    };
+
+    const buildFallbackSubLabel = (phaseIndex, currentPhaseIndex) => {
+      if (phaseIndex < currentPhaseIndex) return "Completed";
+      if (phaseIndex === currentPhaseIndex) return "Current phase";
+      return "Upcoming";
     };
 
     return uniqueProjects.slice(0, 3).map((project, index) => {
       const normalizedStatus = String(project?.status || "").toUpperCase();
-      const phases = buildProjectPhases(project, normalizedStatus);
-      const highlightIndex = determineHighlightIndex(project, phases, normalizedStatus);
+      const basePhases = buildProjectPhases(project);
+      const currentProgress = resolveCurrentProgress(project, basePhases, normalizedStatus);
+      const highlightIndex = determineHighlightIndex(
+        project,
+        basePhases,
+        normalizedStatus,
+        currentProgress,
+      );
+      const phases = basePhases.map((phase, phaseIndex) => ({
+        ...phase,
+        value: phaseIndex === highlightIndex ? currentProgress : phase.value,
+        subLabel: phase.subLabel || buildFallbackSubLabel(phaseIndex, highlightIndex),
+      }));
       const pendingCount = getProjectPendingProposals(project).length;
       
       // Get callout detail based on real project data
@@ -2422,18 +2575,20 @@ const ClientDashboardContent = () => {
         id: project.id || `progress-${index}`,
         status: normalizedStatus,
         progressCategory:
-          normalizedStatus === "COMPLETED" || Number(phases[phases.length - 1]?.value || 0) >= 100
+          normalizedStatus === "COMPLETED" || currentProgress >= 100
             ? "completed"
             : "ongoing",
         label: project.title || `Project ${index + 1}`,
         calloutLabel: phases[highlightIndex]?.label || `Phase ${highlightIndex + 1}`,
-        calloutValue: `${phases[highlightIndex]?.value || 0}%`,
+        calloutValue: `${currentProgress}%`,
         calloutDetail,
         highlightIndex,
+        currentPhaseIndex: highlightIndex,
+        progressValue: currentProgress,
         phases,
       };
     });
-  }, [getProjectPendingProposals, uniqueProjects]);
+  }, [uniqueProjects]);
 
   const recentActivities = useMemo(() => {
     const fromNotifications = Array.isArray(notifications)

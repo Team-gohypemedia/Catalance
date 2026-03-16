@@ -2,10 +2,10 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Download from "lucide-react/dist/esm/icons/download";
-import Eye from "lucide-react/dist/esm/icons/eye";
-import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import FolderOpen from "lucide-react/dist/esm/icons/folder-open";
 import Landmark from "lucide-react/dist/esm/icons/landmark";
@@ -116,50 +116,34 @@ const PaymentSummaryCard = ({
   value,
   helper,
   visible,
+  icon: Icon,
   kind = "currency",
   tone = "default",
 }) => (
-  <div className="rounded-[28px] border border-white/[0.05] bg-accent px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]">{label}</p>
-    <p
-      className={cn(
-        "mt-4 text-[clamp(2rem,3vw,3rem)] font-bold tracking-[-0.9px]",
-        tone === "success"
-          ? "text-[#22c55e]"
-          : tone === "warning"
-            ? "text-[#ffc107]"
-            : "text-[#f8fafc]",
-      )}
-    >
-      {kind === "currency" ? maskCurrency(value, visible) : value}
-    </p>
-    {helper ? <p className="mt-3 text-xs text-[#7c828d]">{helper}</p> : null}
-  </div>
-);
-
-const BillingInsight = ({
-  label,
-  value,
-  hint,
-  visible,
-  tone = "default",
-  kind = "currency",
-}) => (
-  <div className="space-y-3 lg:border-r lg:border-white/[0.05] lg:pr-8 last:lg:border-r-0 last:lg:pr-0">
-    <p className="text-sm text-[#a1a1aa]">{label}</p>
-    <p
-      className={cn(
-        "text-[clamp(1.8rem,3vw,2.6rem)] font-bold tracking-[-0.8px]",
-        tone === "success"
-          ? "text-[#22c55e]"
-          : tone === "warning"
-            ? "text-[#ffc107]"
-            : "text-[#f8fafc]",
-      )}
-    >
-      {kind === "currency" ? maskCurrency(value, visible) : value}
-    </p>
-    <p className="text-xs text-[#7c828d]">{hint}</p>
+  <div className="rounded-[20px] border border-white/[0.05] bg-accent px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8f96a3]">{label}</p>
+        <p
+          className={cn(
+            "mt-2 truncate text-[2rem] font-semibold leading-none tracking-[-0.04em]",
+            tone === "success"
+              ? "text-[#34d399]"
+              : tone === "warning"
+                ? "text-[#facc15]"
+                : "text-white",
+          )}
+        >
+          {kind === "currency" ? maskCurrency(value, visible) : value}
+        </p>
+      </div>
+      {Icon ? (
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[#2b2b2b] text-[#facc15]">
+          <Icon className="size-4" />
+        </div>
+      ) : null}
+    </div>
+    {helper ? <p className="mt-4 text-xs text-[#7c828d]">{helper}</p> : null}
   </div>
 );
 
@@ -175,16 +159,16 @@ const BillingToolRow = ({
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className="group flex w-full items-center gap-4 rounded-[20px] border border-white/[0.05] bg-white/[0.01] px-4 py-4 text-left transition hover:border-white/[0.08] hover:bg-white/[0.02] disabled:cursor-not-allowed disabled:opacity-60"
+    className="group flex w-full items-center gap-3 rounded-[16px] border border-white/[0.05] bg-white/[0.01] px-4 py-3 text-left transition hover:border-white/[0.08] hover:bg-white/[0.02] disabled:cursor-not-allowed disabled:opacity-60"
   >
-    <div className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-[#171717] text-[#e5e7eb]">
-      {loading ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4.5" />}
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[#141414] text-[#e5e7eb]">
+      {loading ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
     </div>
     <div className="min-w-0 flex-1">
-      <p className="text-[1rem] font-medium text-[#f8fafc]">{label}</p>
-      <p className="mt-0.5 text-sm text-[#8f96a3]">{subtitle}</p>
+      <p className="text-sm font-semibold text-white">{label}</p>
+      <p className="mt-0.5 text-xs text-[#8f96a3]">{subtitle}</p>
     </div>
-    <ArrowRight className="size-4.5 text-[#8f96a3] transition group-hover:text-white" />
+    <ArrowRight className="size-4 text-[#8f96a3] transition group-hover:text-white" />
   </button>
 );
 
@@ -209,226 +193,324 @@ const getProjectBillingState = (project) => {
   };
 };
 
-const InstallmentChip = ({ installment }) => {
-  const classes = installment?.isPaid
-    ? "border-[#22c55e]/15 bg-[#22c55e]/10 text-[#86efac]"
-    : installment?.isDue
-      ? "border-[#ffc107]/15 bg-[#ffc107]/10 text-[#ffd54f]"
-      : "border-white/[0.08] bg-white/[0.03] text-[#a1a1aa]";
+const TransactionRow = ({ transaction, visible, onOpenProject }) => {
+  const amount = transaction?.isPaid ? transaction.amountPaid : transaction.amountDue;
 
   return (
-    <div
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium",
-        classes,
-      )}
+    <button
+      type="button"
+      onClick={() => onOpenProject(transaction?.projectId)}
+      className="flex w-full items-center justify-between gap-3 border-b border-white/[0.05] py-3 text-left last:border-b-0"
     >
-      <span className="max-w-[11rem] truncate">{installment?.label || "Milestone"}</span>
-      <span className="text-[11px] opacity-80">
-        {installment?.isPaid ? "Paid" : installment?.isDue ? "Due" : "Upcoming"}
-      </span>
-    </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-white">{transaction.installmentLabel}</p>
+        <p className="truncate text-xs text-[#8f96a3]">{transaction.freelancerName}</p>
+      </div>
+      <div className="text-right">
+        <p
+          className={cn(
+            "text-sm font-semibold",
+            transaction.isDue ? "text-[#facc15]" : "text-white",
+          )}
+        >
+          {maskCurrency(amount, visible)}
+        </p>
+        <p className="mt-0.5 text-[11px] text-[#7c828d]">{formatShortDate(transaction.issuedAt)}</p>
+      </div>
+    </button>
   );
 };
 
-const ReceiptRow = ({ receipt, visible, onDownloadReceipt, onOpenProject }) => (
-  <div className="rounded-[22px] border border-white/[0.05] bg-[#171717] px-4 py-4">
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-white">{receipt.installmentLabel}</p>
-        <p className="mt-1 truncate text-xs text-[#8f96a3]">
-          {receipt.projectTitle} • {receipt.freelancerName}
-        </p>
-      </div>
-      <p className="shrink-0 text-sm font-semibold text-white">
-        {maskCurrency(receipt.amountPaid, visible)}
-      </p>
-    </div>
-
-    <div className="mt-4 flex items-center justify-between gap-3 text-xs text-[#8f96a3]">
-      <span>{formatShortDate(receipt.issuedAt)}</span>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => onDownloadReceipt(receipt)}
-          className="inline-flex items-center gap-1 text-[#cbd5e1] transition hover:text-white"
-        >
-          <Download className="size-3.5" />
-          Receipt
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpenProject(receipt.projectId)}
-          className="inline-flex items-center gap-1 text-primary transition hover:text-[#ffd54f]"
-        >
-          <FolderOpen className="size-3.5" />
-          Project
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
-const ProjectBillingCard = ({
+const ActiveProjectPaymentsPanel = ({
   project,
   showAmounts,
   processingInvoiceId,
   onPay,
-  onDownloadReceipt,
   onOpenProject,
+  onOpenProjects,
+  onOpenProposals,
 }) => {
-  const billingState = getProjectBillingState(project);
-  const nextDuePaymentId = project?.nextDueInstallment
-    ? `${project.id}-${project.nextDueInstallment.sequence}`
-    : null;
+  if (!project) {
+    return (
+      <div className="rounded-[24px] border border-white/[0.05] bg-accent p-6">
+        <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Active Project Payments</h2>
+        <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.1] bg-[#2a2a2a] p-6 text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-white/[0.04] text-[#facc15]">
+            <CreditCard className="size-6" />
+          </div>
+          <p className="mt-4 text-lg font-semibold text-white">No active payment timeline yet</p>
+          <p className="mx-auto mt-2 max-w-[30rem] text-sm text-[#8f96a3]">
+            Accepted projects will appear here with milestone-based payment schedule, due amounts, and release actions.
+          </p>
+
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={onOpenProposals}
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+            >
+              Open Proposals
+            </button>
+            <button
+              type="button"
+              onClick={onOpenProjects}
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-white/[0.08] px-5 text-sm font-semibold text-white transition hover:border-white/[0.14] hover:bg-white/[0.03]"
+            >
+              View Projects
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const dueInstallment = project.nextDueInstallment;
+  const releasePaymentId = dueInstallment ? `${project.id}-${dueInstallment.sequence}` : null;
+  const isProcessingRelease = Boolean(releasePaymentId && processingInvoiceId === releasePaymentId);
+  const scheduleItems = Array.isArray(project.installments)
+    ? project.installments.slice(0, 4)
+    : [];
 
   return (
-    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-[#171717] p-6">
+    <div className="rounded-[24px] border border-white/[0.05] bg-accent p-6">
+      <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Active Project Payments</h2>
+
+      <div className="mt-5 rounded-[18px] border border-white/[0.05] bg-[#2a2a2a] p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="truncate text-[1.45rem] font-semibold tracking-[-0.02em] text-white">
+              {project.title}
+            </h3>
+            <p className="mt-1 truncate text-xs text-[#8f96a3]">Freelancer: {project.freelancerName}</p>
+          </div>
+          <p className="shrink-0 text-[1.6rem] font-semibold text-[#facc15]">
+            {maskCurrency(dueInstallment?.amount || project.remainingAmount, showAmounts)}
+          </p>
+        </div>
+
+        <div className="mt-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[2rem] font-semibold leading-none tracking-[-0.03em] text-white">
+              {maskCurrency(project.paidAmount, showAmounts)}
+            </p>
+            <p className="mt-2 text-xs text-[#8f96a3]">
+              {maskCurrency(project.totalAmount, showAmounts)} total budget
+            </p>
+          </div>
+          <p className="text-[11px] uppercase tracking-[0.12em] text-[#8f96a3]">
+            {project.paidPercentage}% funded • {project.paidInstallmentCount}/{project.totalInstallments} milestones completed
+          </p>
+        </div>
+
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+          <div
+            className="h-full rounded-full bg-[#facc15] transition-[width]"
+            style={{ width: `${Math.max(0, Math.min(project.paidPercentage, 100))}%` }}
+          />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => onOpenProject(project.id)}
+            className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+          >
+            View Project
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              dueInstallment &&
+              onPay({
+                id: releasePaymentId,
+                projectId: project.id,
+                projectTitle: project.title,
+                installmentLabel: dueInstallment.label,
+              })
+            }
+            disabled={!dueInstallment || isProcessingRelease}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-white/[0.08] px-5 text-sm font-semibold text-white transition hover:border-white/[0.14] hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isProcessingRelease ? <Loader2 className="size-4 animate-spin" /> : null}
+            {dueInstallment ? "Release Milestone" : "No Milestone Due"}
+          </button>
+        </div>
+
+        <div className="mt-6 border-t border-white/[0.06] pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">Payment Schedule</p>
+          <div className="mt-3 space-y-2">
+            {scheduleItems.map((installment, index) => {
+              const statusDotClass = installment?.isPaid
+                ? "bg-[#22c55e]"
+                : installment?.isDue
+                  ? "bg-[#facc15]"
+                  : "bg-[#6b7280]";
+
+              return (
+                <div
+                  key={`${project.id}-${installment?.sequence || index + 1}`}
+                  className="flex items-center justify-between gap-3 rounded-[10px] border border-white/[0.05] bg-[#262626] px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className={cn("size-2.5 rounded-full", statusDotClass)} />
+                    <p className="truncate text-sm text-white">
+                      {installment?.label || `Milestone ${installment?.sequence || index + 1}`}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-white">
+                      {maskCurrency(Number(installment?.amount) || 0, showAmounts)}
+                    </p>
+                    <p className="text-[10px] text-[#8f96a3]">
+                      {installment?.isPaid ? "Paid" : installment?.isDue ? "Due now" : "Upcoming"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ProjectBillingCard = ({ project, showAmounts, onDownloadReceipt, onOpenProject }) => {
+  const billingState = getProjectBillingState(project);
+  const installments = Array.isArray(project.installments) ? project.installments.slice(0, 3) : [];
+  const statusChipClass = project?.isFullyPaid
+    ? "bg-[#0f3220] text-[#34d399]"
+    : project?.nextDueInstallment
+      ? "bg-[#3f2e0b] text-[#facc15]"
+      : "bg-[#3a3328] text-[#f59e0b]";
+  const activityDate = formatShortDate(project.updatedAt);
+
+  return (
+    <article className="h-full min-h-[700px] rounded-[22px] border border-white/[0.06] bg-[#2f2f30] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]">
-            Client billing
-          </p>
-          <h3 className="mt-3 truncate text-[1.85rem] font-semibold tracking-[-0.6px] text-white">
+          <h3 className="truncate text-[clamp(1.55rem,1.9vw,2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
             {project.title}
           </h3>
-          <p className="mt-2 truncate text-sm text-[#94a3b8]">{project.freelancerName}</p>
+          <p className="mt-1.5 truncate text-[0.9rem] text-[#9ca3af]">{project.freelancerName}</p>
         </div>
         <span
-          className={cn(
-            "inline-flex shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold",
-            billingState.className,
-          )}
+          className={cn("inline-flex shrink-0 rounded-[10px] px-3 py-1 text-xs font-semibold", statusChipClass)}
         >
           {billingState.label}
         </span>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[18px] border border-white/[0.05] bg-white/[0.02] px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f96a3]">Total budget</p>
-          <p className="mt-3 text-xl font-semibold text-white">
+      <div className="mt-5 grid grid-cols-3 text-[10px] uppercase tracking-[0.12em] text-[#8f96a3]">
+        <div className="min-w-0 pr-3">
+          <p>Total budget</p>
+          <p className="mt-1 text-[1.35rem] font-semibold tracking-[-0.02em] normal-case text-white">
             {maskCurrency(project.totalAmount, showAmounts)}
           </p>
         </div>
-        <div className="rounded-[18px] border border-white/[0.05] bg-white/[0.02] px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f96a3]">Paid so far</p>
-          <p className="mt-3 text-xl font-semibold text-white">
+        <div className="min-w-0 border-l border-white/[0.08] px-3">
+          <p>Paid so far</p>
+          <p className="mt-1 text-[1.35rem] font-semibold tracking-[-0.02em] normal-case text-white">
             {maskCurrency(project.paidAmount, showAmounts)}
           </p>
         </div>
-        <div className="rounded-[18px] border border-white/[0.05] bg-white/[0.02] px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-[#8f96a3]">Remaining</p>
-          <p className="mt-3 text-xl font-semibold text-white">
+        <div className="min-w-0 border-l border-white/[0.08] pl-3">
+          <p>Remaining</p>
+          <p className="mt-1 text-[1.35rem] font-semibold tracking-[-0.02em] normal-case text-white">
             {maskCurrency(project.remainingAmount, showAmounts)}
           </p>
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3 text-sm text-[#a1a1aa]">
-        <span>{project.paidPercentage}% funded</span>
-        <span>
-          {project.paidInstallmentCount}/{project.totalInstallments} installments cleared
-        </span>
-      </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#334155]">
         <div
-          className="h-full rounded-full bg-[#ffc107] transition-[width]"
+          className="h-full rounded-full bg-[#facc15] transition-[width]"
           style={{ width: `${Math.max(0, Math.min(project.paidPercentage, 100))}%` }}
         />
       </div>
+      <p className="mt-2 text-[0.9rem] text-[#9ca3af]">{project.paidPercentage}% funded</p>
 
-      <div className="mt-5 flex flex-wrap gap-2">
-        {project.installments.map((installment) => (
-          <InstallmentChip
-            key={`${project.id}-${installment.sequence}`}
-            installment={installment}
-          />
+      <div className="mt-5 space-y-2.5">
+        {installments.map((installment, index) => (
+          <div
+            key={`${project.id}-${installment?.sequence || index + 1}`}
+            className="flex items-center justify-between gap-3 text-[0.9rem]"
+          >
+            <div className="flex min-w-0 items-center gap-2.5 text-[#d4d4d8]">
+              <span
+                className={cn(
+                  "size-2 rounded-full",
+                  installment?.isPaid
+                    ? "bg-[#22c55e]"
+                    : installment?.isDue
+                      ? "bg-[#facc15]"
+                      : "bg-[#6b7280]",
+                )}
+              />
+              <span className="truncate text-[0.9rem] text-[#d4d4d8]">
+                {installment?.label || `Milestone ${installment?.sequence || index + 1}`}
+              </span>
+            </div>
+            <span
+              className={cn(
+                "shrink-0 text-[0.9rem]",
+                installment?.isPaid
+                  ? "text-[#34d399]"
+                  : installment?.isDue
+                    ? "text-[#facc15]"
+                    : "text-[#9ca3af]",
+              )}
+            >
+              {installment?.isPaid ? "Paid" : installment?.isDue ? "Due" : "Upcoming"}
+            </span>
+          </div>
         ))}
       </div>
 
-      <div className="mt-5 rounded-[20px] border border-white/[0.05] bg-white/[0.02] px-4 py-4">
-        <p className="text-sm font-medium text-white">
-          {project.nextDueInstallment
-            ? `${project.nextDueInstallment.label} is ready to be paid.`
-            : project.isFullyPaid
-              ? "All scheduled client payments are complete."
-              : "No payment is due right now. The next installment will unlock after the required phase is verified."}
-        </p>
-        <p className="mt-1 text-xs leading-5 text-[#8f96a3]">
-          {project.nextDueInstallment
-            ? project.nextDueInstallment.dueLabel
-            : `Last billing activity on ${formatShortDate(project.updatedAt)}.`}
-        </p>
-      </div>
+      <p className="mt-6 text-[0.95rem] leading-7 text-[#e5e7eb]">
+        {project.nextDueInstallment
+          ? project.nextDueInstallment.dueLabel
+          : "No payment is due right now. The next installment will unlock after the required phase is verified."}
+      </p>
+      <p className="mt-1 text-xs text-[#8f96a3]">Last billing activity on {activityDate}.</p>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        {project.nextDueInstallment ? (
-          <button
-            type="button"
-            onClick={() =>
-              onPay({
-                id: nextDuePaymentId,
-                projectId: project.id,
-                projectTitle: project.title,
-                installmentLabel: project.nextDueInstallment.label,
-              })
-            }
-            disabled={processingInvoiceId === nextDuePaymentId}
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[16px] bg-[#ffc107] px-5 text-sm font-bold text-[#141414] transition hover:bg-[#ffd54f] disabled:cursor-not-allowed disabled:bg-[#ffc107]/60"
-          >
-            {processingInvoiceId === nextDuePaymentId ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <CreditCard className="size-4" />
-            )}
-            Pay now
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onOpenProject(project.id)}
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[16px] bg-[#ffc107] px-5 text-sm font-bold text-[#141414] transition hover:bg-[#ffd54f]"
-          >
-            <FolderOpen className="size-4" />
-            View project
-          </button>
-        )}
-
-        {project.latestPaidReceipt ? (
-          <button
-            type="button"
-            onClick={() => onDownloadReceipt(project.latestPaidReceipt)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-[16px] border border-white/[0.06] px-5 text-sm font-semibold text-white transition hover:border-white/[0.1] hover:bg-white/[0.02]"
-          >
-            <Download className="size-4" />
-            Latest receipt
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onOpenProject(project.id)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-[16px] border border-white/[0.06] px-5 text-sm font-semibold text-white transition hover:border-white/[0.1] hover:bg-white/[0.02]"
-          >
-            <ArrowRight className="size-4" />
-            Open details
-          </button>
-        )}
+      <div className="mt-6 flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={() => onOpenProject(project.id)}
+          className="inline-flex h-10 items-center justify-center rounded-full bg-[#facc15] px-7 text-[0.95rem] font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+        >
+          View project
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            project.latestPaidReceipt
+              ? onDownloadReceipt(project.latestPaidReceipt)
+              : onOpenProject(project.id)
+          }
+          className="inline-flex items-center gap-1.5 text-[0.9rem] text-[#a1a1aa] transition hover:text-white"
+        >
+          <Download className="size-3.5" />
+          {project.latestPaidReceipt ? "Latest receipt" : "Open details"}
+        </button>
       </div>
     </article>
   );
 };
 
-const MonthlyPaymentsChart = ({ points, visible }) => {
+const MonthlyPaymentsChart = ({ points, visible, compact = false }) => {
   const width = 320;
-  const height = 190;
-  const topPadding = 18;
+  const height = compact ? 145 : 190;
+  const topPadding = compact ? 16 : 18;
   const rightPadding = 18;
-  const bottomPadding = 30;
+  const bottomPadding = compact ? 22 : 30;
   const leftPadding = 18;
   const maxValue = Math.max(...points.map((point) => point.value), 0);
   const chartMax = maxValue > 0 ? Math.ceil(maxValue / 20000) * 20000 : 60000;
-  const gridLevels = [chartMax, Math.round(chartMax * 0.66), Math.round(chartMax * 0.33)];
+  const gridLevels = compact
+    ? [chartMax, Math.round(chartMax * 0.5)]
+    : [chartMax, Math.round(chartMax * 0.66), Math.round(chartMax * 0.33)];
   const usableWidth = width - leftPadding - rightPadding;
   const usableHeight = height - topPadding - bottomPadding;
   const pointCount = Math.max(points.length - 1, 1);
@@ -438,14 +520,20 @@ const MonthlyPaymentsChart = ({ points, visible }) => {
     const y = topPadding + usableHeight - usableHeight * ratio;
     return { ...point, x, y };
   });
-  const pathData = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  const pathData = coordinates
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
   const lastPoint = coordinates[coordinates.length - 1];
 
   return (
-    <div className="relative mt-7">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-[220px] w-full overflow-visible">
+    <div className={cn("relative", compact ? "mt-4" : "mt-7")}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className={cn(compact ? "h-[150px]" : "h-[220px]", "w-full overflow-visible")}
+      >
         {gridLevels.map((level) => {
-          const y = topPadding + usableHeight - usableHeight * (chartMax === 0 ? 0 : level / chartMax);
+          const y =
+            topPadding + usableHeight - usableHeight * (chartMax === 0 ? 0 : level / chartMax);
 
           return (
             <g key={level}>
@@ -457,24 +545,34 @@ const MonthlyPaymentsChart = ({ points, visible }) => {
                 stroke="rgba(255,255,255,0.08)"
                 strokeWidth="1"
               />
-              <text x={leftPadding - 2} y={y - 6} fill="#7c828d" fontSize="10" textAnchor="start">
-                {visible ? formatCompactCurrency(level) : "Rs.--"}
-              </text>
+              {!compact ? (
+                <text x={leftPadding - 2} y={y - 6} fill="#7c828d" fontSize="10" textAnchor="start">
+                  {visible ? formatCompactCurrency(level) : "Rs.--"}
+                </text>
+              ) : null}
             </g>
           );
         })}
+
         <path
           d={pathData}
           fill="none"
           stroke="#d4af16"
-          strokeWidth="4"
+          strokeWidth={compact ? 3 : 4}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
         {coordinates.map((point, index) => (
           <g key={point.key}>
-            <circle cx={point.x} cy={point.y} r={index === coordinates.length - 1 ? 7 : 4.5} fill="#d4af16" />
-            <text x={point.x} y={height - 8} fill="#8f96a3" fontSize="11" textAnchor="middle">
+            <circle cx={point.x} cy={point.y} r={index === coordinates.length - 1 ? 6 : 4} fill="#d4af16" />
+            <text
+              x={point.x}
+              y={height - 6}
+              fill="#8f96a3"
+              fontSize={compact ? "10" : "11"}
+              textAnchor="middle"
+            >
               {point.shortLabel}
             </text>
           </g>
@@ -483,15 +581,15 @@ const MonthlyPaymentsChart = ({ points, visible }) => {
 
       {lastPoint ? (
         <div
-          className="pointer-events-none absolute rounded-[14px] bg-[#0f0f10] px-3 py-2 shadow-[0_18px_35px_-28px_rgba(0,0,0,0.8)]"
+          className="pointer-events-none absolute rounded-[12px] bg-[#111214] px-3 py-2 shadow-[0_18px_35px_-28px_rgba(0,0,0,0.8)]"
           style={{
             left: `${(lastPoint.x / width) * 100}%`,
             top: `${(lastPoint.y / height) * 100}%`,
-            transform: "translate(-78%, -110%)",
+            transform: "translate(-76%, -115%)",
           }}
         >
           <p className="text-[10px] text-[#8f96a3]">{lastPoint.fullLabel}</p>
-          <p className="text-lg font-bold text-white">
+          <p className={cn(compact ? "text-sm" : "text-lg", "font-semibold text-white") }>
             {visible ? formatCurrency(lastPoint.value) : "Rs. --,--"}
           </p>
         </div>
@@ -502,33 +600,32 @@ const MonthlyPaymentsChart = ({ points, visible }) => {
 
 const PaymentsLoadingState = () => (
   <>
-    <section className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-      {[1, 2, 3, 4].map((item) => (
-        <Skeleton key={item} className="h-[118px] rounded-[28px] bg-white/[0.04]" />
+    <section className="mt-8 grid gap-4 md:grid-cols-3">
+      {[1, 2, 3].map((item) => (
+        <Skeleton key={item} className="h-[120px] rounded-[20px] bg-white/[0.04]" />
       ))}
     </section>
 
-    <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(340px,0.8fr)]">
-      <Skeleton className="h-[308px] rounded-[32px] bg-white/[0.04]" />
-      <Skeleton className="h-[308px] rounded-[32px] bg-white/[0.04]" />
+    <section className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.78fr)]">
+      <Skeleton className="h-[440px] rounded-[24px] bg-white/[0.04]" />
+      <Skeleton className="h-[440px] rounded-[24px] bg-white/[0.04]" />
     </section>
 
-    <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(340px,0.8fr)]">
-      <Skeleton className="h-[360px] rounded-[32px] bg-white/[0.04]" />
-      <Skeleton className="h-[360px] rounded-[32px] bg-white/[0.04]" />
+    <section className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.78fr)]">
+      <Skeleton className="h-[430px] rounded-[24px] bg-white/[0.04]" />
+      <Skeleton className="h-[270px] rounded-[24px] bg-white/[0.04]" />
     </section>
   </>
 );
 
 const EmptyPaymentsState = () => (
-  <div className="mt-12 rounded-[32px] border border-dashed border-white/[0.08] bg-accent px-6 py-16 text-center">
+  <div className="mt-8 rounded-[24px] border border-dashed border-white/[0.08] bg-accent px-6 py-16 text-center">
     <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-white/[0.04] text-primary">
       <Wallet className="size-7" />
     </div>
-    <h2 className="mt-6 text-2xl font-semibold text-white">No client billing activity yet</h2>
+    <h2 className="mt-6 text-2xl font-semibold text-white">No billing activity yet</h2>
     <p className="mx-auto mt-3 max-w-[32rem] text-sm text-[#8f96a3]">
-      Once you accept a proposal and a payment plan is available, your project funding, due installments,
-      and receipts will appear here.
+      Once a project proposal is accepted and billing milestones are created, this dashboard will populate automatically.
     </p>
   </div>
 );
@@ -537,11 +634,12 @@ const ClientPaymentsContent = () => {
   const navigate = useNavigate();
   const { user, authFetch, isAuthenticated } = useAuth();
   const { unreadCount } = useNotifications();
+  const projectBillingCarouselRef = React.useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [processingInvoiceId, setProcessingInvoiceId] = useState(null);
-  const [showAmounts, setShowAmounts] = useState(true);
+  const [showAmounts] = useState(true);
 
   const loadProjects = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -763,6 +861,8 @@ const ClientPaymentsContent = () => {
     [billingProjects],
   );
 
+  const recentTransactions = useMemo(() => paymentRows.slice(0, 4), [paymentRows]);
+
   const recentReceipts = useMemo(
     () => paymentRows.filter((row) => row.isPaid).slice(0, 4),
     [paymentRows],
@@ -864,6 +964,20 @@ const ClientPaymentsContent = () => {
     [navigate],
   );
 
+  const handleProjectBillingCarouselScroll = useCallback((direction) => {
+    const container = projectBillingCarouselRef.current;
+    if (!container) return;
+
+    const firstCard = container.querySelector("[data-project-billing-card='true']");
+    const cardWidth = firstCard?.getBoundingClientRect().width || container.clientWidth * 0.9;
+    const gap = 16;
+
+    container.scrollBy({
+      left: (cardWidth + gap) * direction,
+      behavior: "smooth",
+    });
+  }, []);
+
   const handleMethodAction = async (action) => {
     if (action === "portal") {
       await handleOpenCustomerPortal();
@@ -886,10 +1000,6 @@ const ClientPaymentsContent = () => {
   };
 
   const headerDisplayName = useMemo(() => getDisplayName(user), [user]);
-  const paidCoverage =
-    summary.totalBudgeted > 0
-      ? Math.round((summary.paidSoFar / summary.totalBudgeted) * 100)
-      : 0;
 
   return (
     <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
@@ -905,26 +1015,39 @@ const ClientPaymentsContent = () => {
         />
 
         <main className="flex-1 pb-12">
-          <section className="mt-14">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f8fafc]">
-                  Payments
-                </h1>
-                <p className="mt-2 max-w-[38rem] text-sm text-[#94a3b8]">
-                  Review project funding, pay due installments, and keep receipts and escrow visibility in one place.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowAmounts((previous) => !previous)}
-                className="inline-flex h-11 items-center gap-2 self-start rounded-[14px] border border-white/[0.06] bg-transparent px-4 text-sm font-medium text-white transition hover:border-white/[0.1] hover:bg-white/[0.02] lg:self-auto"
-              >
-                {showAmounts ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                {showAmounts ? "Hide" : "Show"}
-              </button>
+          <section className="mt-14 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
+                Financial Overview
+              </h1>
+              <p className="mt-2 text-sm text-[#94a3b8]">
+                Manage your freelance earnings and project milestones.
+              </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (nextDueInvoice) {
+                  void handlePayInstallment(nextDueInvoice);
+                  return;
+                }
+
+                if (nextDueProject) {
+                  handleOpenProject(nextDueProject.id);
+                  return;
+                }
+
+                void handleOpenCustomerPortal();
+              }}
+              disabled={Boolean(nextDueInvoice && processingInvoiceId === nextDueInvoice.id)}
+              className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] disabled:cursor-not-allowed disabled:opacity-60 lg:self-auto"
+            >
+              {nextDueInvoice && processingInvoiceId === nextDueInvoice.id ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              Approve Payment
+            </button>
           </section>
 
           {isLoading ? (
@@ -933,316 +1056,176 @@ const ClientPaymentsContent = () => {
             <EmptyPaymentsState />
           ) : (
             <>
-              <section className="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              <section className="mt-6 grid gap-4 md:grid-cols-3">
                 <PaymentSummaryCard
-                  label="Total Budgeted"
+                  label="Total Budget"
                   value={summary.totalBudgeted}
                   visible={showAmounts}
-                  helper={`${billingProjects.length} project${billingProjects.length === 1 ? "" : "s"} under billing`}
+                  icon={Wallet}
+                  helper={`Across ${billingProjects.length} active project${billingProjects.length === 1 ? "" : "s"}`}
                 />
                 <PaymentSummaryCard
                   label="Paid So Far"
                   value={summary.paidSoFar}
                   visible={showAmounts}
-                  helper={`${paidCoverage}% of committed project budget funded`}
+                  icon={ShieldCheck}
+                  helper={`${maskCurrency(summary.escrowProtected, showAmounts)} in escrow`}
                 />
                 <PaymentSummaryCard
-                  label="Due Now"
-                  value={summary.dueNow}
+                  label="Remaining Budget"
+                  value={summary.remainingBudget}
                   visible={showAmounts}
-                  tone="warning"
+                  icon={Landmark}
                   helper={
-                    summary.projectsAwaitingAction > 0
-                      ? `${summary.projectsAwaitingAction} project${summary.projectsAwaitingAction === 1 ? "" : "s"} waiting on payment`
-                      : "No immediate payment action needed"
+                    summary.dueNow > 0
+                      ? `${maskCurrency(summary.dueNow, showAmounts)} pending milestone approval`
+                      : "No pending milestone approval"
                   }
-                />
-                <PaymentSummaryCard
-                  label="Protected in Escrow"
-                  value={summary.escrowProtected}
-                  visible={showAmounts}
-                  helper="Held securely until delivery checkpoints are verified"
                 />
               </section>
 
-              <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.82fr)]">
-                <div className="rounded-[32px] border border-white/[0.05] bg-accent px-8 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-                  <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="max-w-[40rem]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]">
-                        Billing focus
-                      </p>
-                      <h2 className="mt-3 text-[2rem] font-semibold tracking-[-0.65px] text-[#f8fafc]">
-                        {nextDueInvoice ? "Next payment ready to fund" : "You are caught up on current payments"}
-                      </h2>
-                      <p className="mt-2 text-sm text-[#8f96a3]">
-                        {nextDueInvoice
-                          ? "Stay ahead of milestone gates by clearing the next due installment directly from this section."
-                          : "All unlocked installments are settled right now. Keep an eye on project progress and upcoming receipts here."}
-                      </p>
-                    </div>
+              <section className="mt-7 grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.78fr)]">
+                <div className="flex h-full flex-col gap-6">
+                  <ActiveProjectPaymentsPanel
+                    project={nextDueProject}
+                    showAmounts={showAmounts}
+                    processingInvoiceId={processingInvoiceId}
+                    onPay={handlePayInstallment}
+                    onOpenProject={handleOpenProject}
+                    onOpenProjects={() => navigate("/client/project")}
+                    onOpenProposals={() => navigate("/client/proposal")}
+                  />
 
-                    <div className="rounded-[24px] border border-white/[0.05] bg-[#171717] px-5 py-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]">
-                        Immediate action
-                      </p>
-                      <p className="mt-3 text-[1.9rem] font-semibold tracking-[-0.55px] text-white">
-                        {maskCurrency(summary.dueNow, showAmounts)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-10 grid gap-8 lg:grid-cols-3">
-                    <BillingInsight
-                      label="Remaining budget"
-                      value={summary.remainingBudget}
-                      visible={showAmounts}
-                      hint="The part of your accepted project budgets that has not been funded yet."
-                    />
-                    <BillingInsight
-                      label="Projects awaiting payment"
-                      value={String(summary.projectsAwaitingAction)}
-                      visible
-                      kind="text"
-                      tone={summary.projectsAwaitingAction > 0 ? "warning" : "default"}
-                      hint="Projects with an unlocked installment waiting on your approval."
-                    />
-                    <BillingInsight
-                      label="This month funded"
-                      value={summary.thisMonthSpent}
-                      visible={showAmounts}
-                      tone="success"
-                      hint="Billing activity recorded during the current calendar month."
-                    />
-                  </div>
-
-                  <div className="mt-10 rounded-[28px] border border-white/[0.05] bg-[#171717] p-6">
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8f96a3]">
-                          {nextDueProject?.nextDueInstallment ? "Project awaiting payment" : "Billing status"}
-                        </p>
-                        <h3 className="mt-3 truncate text-[1.8rem] font-semibold tracking-[-0.55px] text-white">
-                          {nextDueProject?.title || "No active project selected"}
-                        </h3>
-                        <p className="mt-2 truncate text-sm text-[#94a3b8]">
-                          {nextDueProject?.freelancerName || "Assigned freelancer"}
+                  <div className="flex-1 rounded-[24px] border border-white/[0.05] bg-accent p-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-white">Project billing</h2>
+                        <p className="mt-2 text-sm text-[#8f96a3]">
+                          Each accepted project keeps its own payment schedule, receipts, and funding progress.
                         </p>
                       </div>
 
-                      {nextDueProject?.nextDueInstallment ? (
-                        <div className="rounded-[20px] border border-[#ffc107]/15 bg-[#ffc107]/10 px-4 py-3 text-right">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ffd54f]">
-                            Due installment
-                          </p>
-                          <p className="mt-2 text-xl font-semibold text-white">
-                            {maskCurrency(nextDueProject.nextDueInstallment.amount, showAmounts)}
-                          </p>
+                      {billingProjects.length > 1 ? (
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => handleProjectBillingCarouselScroll(-1)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-transparent text-[#cbd5e1] transition hover:border-white/[0.14] hover:bg-white/[0.03] hover:text-white"
+                            aria-label="Previous project billing cards"
+                          >
+                            <ChevronLeft className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleProjectBillingCarouselScroll(1)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-transparent text-[#cbd5e1] transition hover:border-white/[0.14] hover:bg-white/[0.03] hover:text-white"
+                            aria-label="Next project billing cards"
+                          >
+                            <ChevronRight className="size-4" />
+                          </button>
                         </div>
                       ) : null}
                     </div>
 
-                    <p className="mt-5 text-sm leading-6 text-[#8f96a3]">
-                      {nextDueProject?.nextDueInstallment
-                        ? nextDueProject.nextDueInstallment.dueLabel
-                        : nextDueProject
-                          ? "No installment is due right now. The next payment will unlock automatically when the matching project phase is verified."
-                          : "Accepted projects with payment plans will surface here once billing becomes active."}
-                    </p>
-
-                    {nextDueProject ? (
-                      <>
-                        <div className="mt-6 flex items-center justify-between gap-3 text-sm text-[#a1a1aa]">
-                          <span>{nextDueProject.paidPercentage}% funded</span>
-                          <span>
-                            {nextDueProject.paidInstallmentCount}/{nextDueProject.totalInstallments} installments cleared
-                          </span>
-                        </div>
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                          <div
-                            className="h-full rounded-full bg-[#ffc107] transition-[width]"
-                            style={{
-                              width: `${Math.max(0, Math.min(nextDueProject.paidPercentage, 100))}%`,
-                            }}
+                    <div
+                      ref={projectBillingCarouselRef}
+                      className="mt-5 flex items-start snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-0 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      {billingProjects.map((project) => (
+                        <div
+                          key={project.id}
+                          data-project-billing-card="true"
+                          className="h-full w-[92%] shrink-0 snap-start sm:w-[78%] md:w-[calc((100%-1rem)/2)]"
+                        >
+                          <ProjectBillingCard
+                            project={project}
+                            showAmounts={showAmounts}
+                            onDownloadReceipt={downloadReceipt}
+                            onOpenProject={handleOpenProject}
                           />
                         </div>
-
-                        <div className="mt-5 flex flex-wrap gap-2">
-                          {nextDueProject.installments.map((installment) => (
-                            <InstallmentChip
-                              key={`${nextDueProject.id}-${installment.sequence}`}
-                              installment={installment}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    ) : null}
-
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (nextDueInvoice) {
-                            void handlePayInstallment(nextDueInvoice);
-                            return;
-                          }
-
-                          if (nextDueProject) {
-                            handleOpenProject(nextDueProject.id);
-                            return;
-                          }
-
-                          void handleOpenCustomerPortal();
-                        }}
-                        disabled={Boolean(nextDueInvoice && processingInvoiceId === nextDueInvoice.id)}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[16px] bg-[#ffc107] px-6 text-sm font-bold text-[#141414] transition hover:bg-[#ffd54f] disabled:cursor-not-allowed disabled:bg-[#ffc107]/60"
-                      >
-                        {nextDueInvoice && processingInvoiceId === nextDueInvoice.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : nextDueInvoice ? (
-                          <CreditCard className="size-4" />
-                        ) : (
-                          <FolderOpen className="size-4" />
-                        )}
-                        {nextDueInvoice
-                          ? "Pay due installment"
-                          : nextDueProject
-                            ? "Open project billing"
-                            : "Open billing portal"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (latestPaidInvoice) {
-                            downloadReceipt(latestPaidInvoice);
-                            return;
-                          }
-
-                          void handleOpenCustomerPortal();
-                        }}
-                        disabled={portalLoading}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-[16px] border border-white/[0.05] bg-white/[0.02] px-6 text-sm font-semibold text-white transition hover:border-white/[0.08] hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {portalLoading ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : latestPaidInvoice ? (
-                          <Download className="size-4" />
-                        ) : (
-                          <Plus className="size-4" />
-                        )}
-                        {latestPaidInvoice ? "Download latest receipt" : "Manage billing methods"}
-                      </button>
+                      ))}
                     </div>
-                  </div>
-                </div>
-
-                <div className="rounded-[32px] border border-white/[0.05] bg-accent px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-                  <div>
-                    <h2 className="text-[2rem] font-semibold tracking-[-0.65px] text-[#f8fafc]">
-                      Billing tools
-                    </h2>
-                    <p className="mt-2 text-sm text-[#8f96a3]">
-                      Quick access to payment methods, receipts, and escrow visibility.
-                    </p>
-                  </div>
-
-                  <div className="mt-7 space-y-4">
-                    {billingTools.map((method) => (
-                      <BillingToolRow
-                        key={method.id}
-                        label={method.label}
-                        subtitle={method.subtitle}
-                        icon={method.icon}
-                        loading={portalLoading && method.onClick === "portal"}
-                        disabled={portalLoading || method.disabled}
-                        onClick={() => {
-                          void handleMethodAction(method.onClick);
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleOpenCustomerPortal()}
-                    disabled={portalLoading}
-                    className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-white/[0.05] bg-transparent text-sm font-medium text-[#a1a1aa] transition hover:border-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Plus className="size-4 text-primary" />
-                    Open billing portal
-                  </button>
-                </div>
-              </section>
-
-              <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.82fr)]">
-                <div className="rounded-[32px] border border-white/[0.05] bg-accent px-8 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-                  <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-                    <div>
-                      <h2 className="text-[2rem] font-semibold tracking-[-0.65px] text-[#f8fafc]">
-                        Project billing
-                      </h2>
-                      <p className="text-sm text-[#8f96a3]">
-                        Each accepted project keeps its own payment schedule, receipts, and funding progress.
-                      </p>
-                    </div>
-                    <p className="text-sm text-[#7c828d]">
-                      {billingProjects.length} project{billingProjects.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-
-                  <div className="mt-8 grid gap-4 xl:grid-cols-2">
-                    {billingProjects.map((project) => (
-                      <ProjectBillingCard
-                        key={project.id}
-                        project={project}
-                        showAmounts={showAmounts}
-                        processingInvoiceId={processingInvoiceId}
-                        onPay={handlePayInstallment}
-                        onDownloadReceipt={downloadReceipt}
-                        onOpenProject={handleOpenProject}
-                      />
-                    ))}
                   </div>
                 </div>
 
                 <div className="space-y-6">
-                  <div className="rounded-[32px] border border-white/[0.05] bg-accent px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-                    <h2 className="text-[2rem] font-semibold tracking-[-0.65px] text-[#f8fafc]">
-                      Recent receipts
+                  <div className="rounded-[24px] border border-white/[0.05] bg-accent p-5">
+                    <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">
+                      Recent Transactions
                     </h2>
-                    <p className="mt-2 text-sm text-[#8f96a3]">
-                      Download the latest proof of payment without leaving your workspace.
-                    </p>
 
-                    <div className="mt-7 space-y-4">
-                      {recentReceipts.length > 0 ? (
-                        recentReceipts.map((receipt) => (
-                          <ReceiptRow
-                            key={receipt.id}
-                            receipt={receipt}
+                    <div className="mt-4">
+                      {recentTransactions.length > 0 ? (
+                        recentTransactions.map((transaction) => (
+                          <TransactionRow
+                            key={transaction.id}
+                            transaction={transaction}
                             visible={showAmounts}
-                            onDownloadReceipt={downloadReceipt}
                             onOpenProject={handleOpenProject}
                           />
                         ))
                       ) : (
-                        <div className="rounded-[22px] border border-white/[0.05] bg-[#171717] px-5 py-6 text-sm text-[#8f96a3]">
-                          Your first receipt will appear here once an installment payment is completed.
-                        </div>
+                        <p className="rounded-[12px] border border-white/[0.05] bg-[#262626] px-3 py-4 text-sm text-[#8f96a3]">
+                          Transactions will appear here after your first payment.
+                        </p>
                       )}
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (recentTransactions[0]?.projectId) {
+                          handleOpenProject(recentTransactions[0].projectId);
+                        }
+                      }}
+                      className="mt-3 inline-flex items-center gap-1 text-sm text-[#8f96a3] transition hover:text-white"
+                    >
+                      View all
+                      <ArrowRight className="size-3.5" />
+                    </button>
                   </div>
 
-                  <div className="rounded-[32px] border border-white/[0.05] bg-accent px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-                    <h2 className="text-[2rem] font-semibold tracking-[-0.65px] text-[#f8fafc]">
-                      Monthly spend
-                    </h2>
-                    <p className="mt-2 text-sm text-[#8f96a3]">
-                      A simple view of how your funded project budget has moved over the last few months.
+                  <div className="rounded-[24px] border border-white/[0.05] bg-accent p-5">
+                    <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Billing tools</h2>
+                    <p className="mt-1 text-sm text-[#8f96a3]">
+                      Quick access to payment methods, receipts, and escrow visibility.
                     </p>
 
-                    <MonthlyPaymentsChart points={monthlySeries} visible={showAmounts} />
+                    <div className="mt-5 space-y-3">
+                      {billingTools.map((method) => (
+                        <BillingToolRow
+                          key={method.id}
+                          label={method.label}
+                          subtitle={method.subtitle}
+                          icon={method.icon}
+                          loading={portalLoading && method.onClick === "portal"}
+                          disabled={portalLoading || method.disabled}
+                          onClick={() => {
+                            void handleMethodAction(method.onClick);
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleOpenCustomerPortal()}
+                      disabled={portalLoading}
+                      className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-white/[0.05] text-sm text-[#a1a1aa] transition hover:border-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Plus className="size-4 text-primary" />
+                      Open billing portal
+                    </button>
+                  </div>
+
+                  <div className="rounded-[24px] border border-white/[0.05] bg-accent p-5">
+                    <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Monthly spend</h2>
+                    <p className="mt-1 text-xs text-[#8f96a3]">
+                      A simple view of your funded project budget movement.
+                    </p>
+
+                    <MonthlyPaymentsChart points={monthlySeries} visible={showAmounts} compact />
                   </div>
                 </div>
               </section>

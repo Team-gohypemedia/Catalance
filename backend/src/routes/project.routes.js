@@ -11,6 +11,7 @@ import {
   verifyUpfrontPayment,
   payProjectInstallment,
   requestFreelancerChange,
+  submitProjectFreelancerReview,
 } from "../controllers/project.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 import { validateResource } from "../middlewares/validate-resource.js";
@@ -29,6 +30,7 @@ projectRouter.post("/:id/pay-upfront/order", requireAuth, createUpfrontPaymentOr
 projectRouter.post("/:id/pay-upfront/verify", requireAuth, verifyUpfrontPayment);
 projectRouter.post("/:id/pay-upfront", requireAuth, payUpfront);
 projectRouter.post("/:id/request-freelancer-change", requireAuth, requestFreelancerChange);
+projectRouter.post("/:id/freelancer-review", requireAuth, submitProjectFreelancerReview);
 
 // Project Manager Upgrade Routes
 import {

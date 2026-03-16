@@ -8,7 +8,6 @@ import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
 import MessageSquareText from "lucide-react/dist/esm/icons/message-square-text";
-import Plus from "lucide-react/dist/esm/icons/plus";
 import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
@@ -80,15 +79,17 @@ const fallbackProgressProjects = [
     id: "project-1",
     progressCategory: "completed",
     label: "Project 1",
-    calloutLabel: "Phase 2",
-    calloutValue: "40%",
-    calloutDetail: "2 tasks pending",
-    highlightIndex: 1,
+    calloutLabel: "Phase 4",
+    calloutValue: "100%",
+    calloutDetail: "Project wrapped",
+    highlightIndex: 3,
+    currentPhaseIndex: 3,
+    progressValue: 100,
     phases: [
-      { label: "Phase 1", value: 8 },
-      { label: "Phase 2", value: 40 },
-      { label: "Phase 3", value: 72 },
-      { label: "Phase 4", value: 100 },
+      { label: "Phase 1", value: 8, subLabel: "Brief locked" },
+      { label: "Phase 2", value: 40, subLabel: "2/5 tasks done" },
+      { label: "Phase 3", value: 72, subLabel: "Upcoming" },
+      { label: "Phase 4", value: 100, subLabel: "Upcoming" },
     ],
   },
   {
@@ -99,11 +100,13 @@ const fallbackProgressProjects = [
     calloutValue: "55%",
     calloutDetail: "3 reviews pending",
     highlightIndex: 2,
+    currentPhaseIndex: 2,
+    progressValue: 55,
     phases: [
-      { label: "Phase 1", value: 10 },
-      { label: "Phase 2", value: 28 },
-      { label: "Phase 3", value: 55 },
-      { label: "Phase 4", value: 88 },
+      { label: "Phase 1", value: 10, subLabel: "Discovery done" },
+      { label: "Phase 2", value: 28, subLabel: "Scope approved" },
+      { label: "Phase 3", value: 55, subLabel: "3 reviews pending" },
+      { label: "Phase 4", value: 88, subLabel: "Upcoming" },
     ],
   },
   {
@@ -114,14 +117,34 @@ const fallbackProgressProjects = [
     calloutValue: "72%",
     calloutDetail: "Ready for delivery",
     highlightIndex: 2,
+    currentPhaseIndex: 2,
+    progressValue: 72,
     phases: [
-      { label: "Phase 1", value: 12 },
-      { label: "Phase 2", value: 35 },
-      { label: "Phase 3", value: 72 },
-      { label: "Phase 4", value: 94 },
+      { label: "Phase 1", value: 12, subLabel: "Kickoff done" },
+      { label: "Phase 2", value: 35, subLabel: "Build stable" },
+      { label: "Phase 3", value: 72, subLabel: "Ready for delivery" },
+      { label: "Phase 4", value: 94, subLabel: "Upcoming" },
     ],
   },
 ];
+
+const truncatePhaseSubLabel = (value, maxLength = 24) => {
+  if (typeof value !== "string") return "";
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "";
+  return trimmedValue.length > maxLength
+    ? `${trimmedValue.slice(0, maxLength - 3).trimEnd()}...`
+    : trimmedValue;
+};
+
+const truncatePhaseLabel = (value, maxLength = 28) => {
+  if (typeof value !== "string") return "";
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "";
+  return trimmedValue.length > maxLength
+    ? `${trimmedValue.slice(0, maxLength - 3).trimEnd()}...`
+    : trimmedValue;
+};
 
 const DashboardPanel = ({ className, children }) => (
   <div
@@ -160,22 +183,6 @@ const OverviewMetricCard = ({ item }) => {
     </DashboardPanel>
   );
 };
-
-const CreateProposalCard = ({ onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className="flex min-h-[128px] w-full flex-col items-center justify-center gap-3 rounded-[28px] border border-transparent bg-accent px-6 py-6 text-center transition-colors hover:border-primary/60 hover:bg-accent/90"
-  >
-    <div className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-      <Plus className="size-5" />
-    </div>
-    <p className="text-[1.35rem] font-semibold leading-tight tracking-[-0.03em] text-white">
-      Create New Proposal
-    </p>
-    <p className="text-sm leading-5 text-[#94a3b8]">Start a new project</p>
-  </button>
-);
 
 const DraftProposalsPanel = ({ draftProposalRows, onOpenQuickProject }) => (
   <DashboardPanel className="overflow-hidden bg-accent">
@@ -473,6 +480,44 @@ const InterestedFreelancerRow = ({ item }) => (
   </div>
 );
 
+const ProgressCategoryToggle = ({
+  activeProgressTab,
+  onChangeProgressTab,
+  className,
+}) => (
+  <div
+    className={cn(
+      "inline-flex h-auto w-fit flex-wrap gap-2 rounded-full border border-white/[0.14] bg-white/[0.08] p-1.5",
+      className,
+    )}
+  >
+    <button
+      type="button"
+      onClick={() => onChangeProgressTab("ongoing")}
+      className={cn(
+        "inline-flex min-w-[128px] items-center justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold transition-colors",
+        activeProgressTab === "ongoing"
+          ? "bg-white text-[#171717]"
+          : "text-[#a6b0c0] hover:bg-white/[0.12] hover:text-white",
+      )}
+    >
+      Ongoing
+    </button>
+    <button
+      type="button"
+      onClick={() => onChangeProgressTab("completed")}
+      className={cn(
+        "inline-flex min-w-[128px] items-center justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold transition-colors",
+        activeProgressTab === "completed"
+          ? "bg-white text-[#171717]"
+          : "text-[#a6b0c0] hover:bg-white/[0.12] hover:text-white",
+      )}
+    >
+      Completed
+    </button>
+  </div>
+);
+
 const ProjectProgressChartCard = ({
   project,
   onViewProject,
@@ -480,25 +525,54 @@ const ProjectProgressChartCard = ({
   onChangeProgressTab,
 }) => {
   const chartWidth = 960;
-  const chartHeight = 360;
+  const chartHeight = 388;
   const leftPadding = 74;
   const rightPadding = 34;
   const topPadding = 36;
-  const bottomPadding = 66;
+  const bottomPadding = 88;
   const usableWidth = chartWidth - leftPadding - rightPadding;
   const usableHeight = chartHeight - topPadding - bottomPadding;
 
-  const chartPoints = project.phases.map((phase, index) => {
+  const normalizedPhases = React.useMemo(() => {
+    const sourcePhases = Array.isArray(project?.phases) ? project.phases : [];
+
+    if (sourcePhases.length === 0) {
+      return [{ label: "Phase 1", value: 0, subLabel: "Current phase" }];
+    }
+
+    return sourcePhases.map((phase, index) => {
+      const numericValue = Number(phase?.value);
+      const value = Number.isFinite(numericValue)
+        ? Math.max(0, Math.min(100, numericValue))
+        : 0;
+
+      return {
+        ...phase,
+        label: phase?.label || `Phase ${index + 1}`,
+        value,
+      };
+    });
+  }, [project?.phases]);
+
+  const chartPoints = normalizedPhases.map((phase, index) => {
     const x =
       leftPadding +
-      (index / Math.max(project.phases.length - 1, 1)) * usableWidth;
+      (index / Math.max(normalizedPhases.length - 1, 1)) * usableWidth;
     const y = topPadding + ((100 - phase.value) / 100) * usableHeight;
-    return { ...phase, x, y };
+    return { ...phase, index, x, y };
   });
 
-  const polylinePoints = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const activePhaseIndex = Math.min(
+    Number.isFinite(project?.currentPhaseIndex)
+      ? project.currentPhaseIndex
+      : project?.highlightIndex || 0,
+    Math.max(chartPoints.length - 1, 0),
+  );
+  const visibleChartPoints = chartPoints.slice(0, activePhaseIndex + 1);
+  const basePolylinePoints = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const polylinePoints = visibleChartPoints.map((point) => `${point.x},${point.y}`).join(" ");
   const highlightPoint =
-    chartPoints[project.highlightIndex] || chartPoints[Math.min(1, chartPoints.length - 1)];
+    visibleChartPoints[visibleChartPoints.length - 1] || chartPoints[0];
   const isNearRightEdge = highlightPoint.x >= chartWidth - rightPadding - 48;
   const isNearLeftEdge = highlightPoint.x <= leftPadding + 48;
   const isNearTopEdge = highlightPoint.y <= topPadding + 24;
@@ -525,32 +599,10 @@ const ProjectProgressChartCard = ({
     <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
       <CardContent className="px-4 py-5 sm:px-6">
         <div className="mb-3 flex justify-end">
-          <div className="inline-flex h-auto w-fit flex-wrap gap-2 rounded-full border border-white/[0.14] bg-white/[0.08] p-1.5">
-            <button
-              type="button"
-              onClick={() => onChangeProgressTab("ongoing")}
-              className={cn(
-                "inline-flex min-w-[128px] items-center justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold transition-colors",
-                activeProgressTab === "ongoing"
-                  ? "bg-white text-[#171717]"
-                  : "text-[#a6b0c0] hover:bg-white/[0.12] hover:text-white",
-              )}
-            >
-              Ongoing
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeProgressTab("completed")}
-              className={cn(
-                "inline-flex min-w-[128px] items-center justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold transition-colors",
-                activeProgressTab === "completed"
-                  ? "bg-white text-[#171717]"
-                  : "text-[#a6b0c0] hover:bg-white/[0.12] hover:text-white",
-              )}
-            >
-              Completed
-            </button>
-          </div>
+          <ProgressCategoryToggle
+            activeProgressTab={activeProgressTab}
+            onChangeProgressTab={onChangeProgressTab}
+          />
         </div>
 
         <div className="relative">
@@ -595,7 +647,16 @@ const ProjectProgressChartCard = ({
               );
             })}
 
-            {chartPoints.map((point) => (
+            <polyline
+              points={basePolylinePoints}
+              fill="none"
+              stroke="rgba(255,255,255,0.28)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {visibleChartPoints.map((point) => (
               <line
                 key={`${point.label}-grid`}
                 x1={point.x}
@@ -617,7 +678,7 @@ const ProjectProgressChartCard = ({
               strokeLinejoin="round"
             />
 
-            {chartPoints.map((point) => (
+            {visibleChartPoints.map((point) => (
               <circle
                 key={point.label}
                 cx={point.x}
@@ -638,19 +699,55 @@ const ProjectProgressChartCard = ({
               strokeWidth="1"
             />
 
-            {chartPoints.map((point) => (
-              <text
-                key={`${point.label}-axis`}
-                x={point.x}
-                y={chartHeight - 18}
-                textAnchor="middle"
-                fill="#d4d4d4"
-                fontSize="14"
-                fontWeight="500"
-              >
-                {point.label}
-              </text>
-            ))}
+            {chartPoints.map((point) => {
+              const isCompletedPhase = point.index < activePhaseIndex;
+              const isCurrentPhase = point.index === activePhaseIndex;
+              const isFirstPhase = point.index === 0;
+              const isLastPhase = point.index === chartPoints.length - 1;
+              const phaseLabel = truncatePhaseLabel(point.label);
+              const phaseSubLabel = truncatePhaseSubLabel(point.subLabel);
+              const labelX = isFirstPhase ? point.x - 8 : isLastPhase ? point.x + 8 : point.x;
+              const labelAnchor = isFirstPhase ? "start" : isLastPhase ? "end" : "middle";
+
+              return (
+                <g key={`${point.label}-axis`}>
+                  <text
+                    x={labelX}
+                    y={phaseSubLabel ? chartHeight - 34 : chartHeight - 20}
+                    textAnchor={labelAnchor}
+                    fill={
+                      isCurrentPhase
+                        ? "#f3f4f6"
+                        : isCompletedPhase
+                          ? "#d4d4d4"
+                          : "#8b95a5"
+                    }
+                    fontSize="14"
+                    fontWeight="600"
+                  >
+                    {phaseLabel}
+                  </text>
+                  {phaseSubLabel ? (
+                    <text
+                      x={labelX}
+                      y={chartHeight - 14}
+                      textAnchor={labelAnchor}
+                      fill={
+                        isCurrentPhase
+                          ? "#facc15"
+                          : isCompletedPhase
+                            ? "#94a3b8"
+                            : "#6b7280"
+                      }
+                      fontSize="11"
+                      fontWeight="500"
+                    >
+                      {phaseSubLabel}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
           </svg>
         </div>
       </CardContent>
@@ -676,30 +773,87 @@ const ProjectProgressChartCard = ({
   );
 };
 
-const ProjectProgressSection = ({ progressProjects, onViewProject }) => {
+const ProjectProgressSection = ({
+  progressProjects,
+  onViewProject,
+  onOpenQuickProject,
+}) => {
   const projects = progressProjects?.length ? progressProjects : fallbackProgressProjects;
   const resolveCategory = React.useCallback((project) => {
-    const rawCategory = String(
-      project?.progressCategory || project?.status || "",
-    ).toLowerCase();
+    const rawCategory = String(project?.progressCategory || "")
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_");
+    const normalizedStatus = String(project?.status || "")
+      .toUpperCase()
+      .trim();
 
     if (rawCategory === "completed") {
       return "completed";
     }
 
-    if (rawCategory === "ongoing") {
+    if (rawCategory === "ongoing" || rawCategory === "in_progress") {
       return "ongoing";
     }
 
-    const finalPhaseValue = Number(project?.phases?.[project.phases.length - 1]?.value || 0);
+    const completedStatuses = new Set([
+      "COMPLETED",
+      "CANCELLED",
+      "CANCELED",
+      "CLOSED",
+      "ARCHIVED",
+    ]);
+    if (completedStatuses.has(normalizedStatus)) {
+      return "completed";
+    }
+
+    const ongoingStatuses = new Set([
+      "DRAFT",
+      "OPEN",
+      "AWAITING_PAYMENT",
+      "IN_PROGRESS",
+      "ONGOING",
+      "ACTIVE",
+      "PENDING",
+      "IN_REVIEW",
+      "ON_HOLD",
+      "PAUSED",
+    ]);
+    if (ongoingStatuses.has(normalizedStatus)) {
+      return "ongoing";
+    }
+
+    const explicitProgress = Number(
+      project?.progressValue ??
+        project?.progress ??
+        project?.completionPercentage ??
+        project?.milestoneProgress,
+    );
+    if (Number.isFinite(explicitProgress)) {
+      return explicitProgress >= 100 ? "completed" : "ongoing";
+    }
+
+    const phases = Array.isArray(project?.phases) ? project.phases : [];
+    if (!phases.length) {
+      return "ongoing";
+    }
+
+    const finalPhaseValue = Number(phases[phases.length - 1]?.value || 0);
     return finalPhaseValue >= 100 ? "completed" : "ongoing";
   }, []);
 
-  const [activeProgressTab, setActiveProgressTab] = React.useState(
-    projects.some((project) => resolveCategory(project) === "ongoing")
-      ? "ongoing"
-      : "completed",
+  const hasOngoingProjects = React.useMemo(
+    () => projects.some((project) => resolveCategory(project) === "ongoing"),
+    [projects, resolveCategory],
   );
+  const hasCompletedProjects = React.useMemo(
+    () => projects.some((project) => resolveCategory(project) === "completed"),
+    [projects, resolveCategory],
+  );
+
+  const [activeProgressTab, setActiveProgressTab] = React.useState(
+    hasOngoingProjects ? "ongoing" : "completed",
+  );
+
   const filteredProjects = React.useMemo(
     () => projects.filter((project) => resolveCategory(project) === activeProgressTab),
     [activeProgressTab, projects, resolveCategory],
@@ -720,6 +874,31 @@ const ProjectProgressSection = ({ progressProjects, onViewProject }) => {
   const activeProject =
     filteredProjects.find((project) => project.id === activeProjectId) || filteredProjects[0];
   const activeTabsValue = activeProject?.id || "";
+
+  const emptyDescription =
+    activeProgressTab === "completed"
+      ? "Completed projects will appear here once milestones are fully closed."
+      : hasCompletedProjects
+        ? "No active work right now. You can still review completed projects."
+        : "Ongoing projects will appear here once work has started.";
+
+  const emptyAction =
+    activeProgressTab === "ongoing" && hasCompletedProjects
+      ? {
+          label: "View Completed Projects",
+          onClick: () => setActiveProgressTab("completed"),
+        }
+      : activeProgressTab === "completed" && hasOngoingProjects
+        ? {
+            label: "View Ongoing Projects",
+            onClick: () => setActiveProgressTab("ongoing"),
+          }
+        : typeof onOpenQuickProject === "function"
+          ? {
+              label: "Start New Project",
+              onClick: onOpenQuickProject,
+            }
+          : null;
 
   return (
     <section className="mt-16">
@@ -761,16 +940,34 @@ const ProjectProgressSection = ({ progressProjects, onViewProject }) => {
             </TabsContent>
           ))
         ) : (
-          <DashboardPanel className="mt-3 flex min-h-[220px] items-center justify-center p-8 text-center">
-            <div className="max-w-md">
-              <p className="text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
-                No {activeProgressTab} projects yet
-              </p>
-              <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
-                {activeProgressTab === "completed"
-                  ? "Completed projects will appear here once milestones are fully closed."
-                  : "Ongoing projects will appear here once work has started."}
-              </p>
+          <DashboardPanel className="mt-3 min-h-[220px] p-5 sm:p-8">
+            <div className="flex justify-end">
+              <ProgressCategoryToggle
+                activeProgressTab={activeProgressTab}
+                onChangeProgressTab={setActiveProgressTab}
+              />
+            </div>
+            <div className="flex min-h-[140px] items-center justify-center text-center sm:min-h-[170px]">
+              <div className="max-w-md">
+                <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-[#cbd5e1]">
+                  <FolderKanban className="size-6" />
+                </div>
+                <p className="mt-5 text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+                  No {activeProgressTab} projects yet
+                </p>
+                <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+                  {emptyDescription}
+                </p>
+                {emptyAction ? (
+                  <button
+                    type="button"
+                    onClick={emptyAction.onClick}
+                    className="mt-6 rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+                  >
+                    {emptyAction.label}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </DashboardPanel>
         )}
@@ -965,7 +1162,11 @@ const ClientDashboardShell = ({
           </div>
         </section>
 
-        <ProjectProgressSection progressProjects={progressProjects} onViewProject={onViewProject || onOpenViewProjects} />
+        <ProjectProgressSection
+          progressProjects={progressProjects}
+          onViewProject={onViewProject || onOpenViewProjects}
+          onOpenQuickProject={onOpenQuickProject}
+        />
       </main>
 
       <ClientDashboardFooter variant="workspace" />
