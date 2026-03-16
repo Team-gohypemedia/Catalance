@@ -11,10 +11,12 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 
 /* ─── Profile Dropdown (shared) ─────────────────────────────────────────── */
 const ProfileDropdown = ({ profile, displayName, profileInitial, currentDashboard = "client" }) => {
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
   const [isFreelancer, setIsFreelancer] = React.useState(currentDashboard === "freelancer");
@@ -68,15 +70,15 @@ const ProfileDropdown = ({ profile, displayName, profileInitial, currentDashboar
         </div>
 
         {/* Menu */}
-        <div className="p-1.5">
+        <div className="p-1 space-y-0.5">
           {/* Dashboard */}
           <Link
             to={currentDashboard === "freelancer" ? "/freelancer" : "/client"}
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/8 hover:text-white"
+            className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/80 transition-colors hover:bg-white/8 hover:text-white"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white/60">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/10 text-white/60">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
             </span>
@@ -84,52 +86,68 @@ const ProfileDropdown = ({ profile, displayName, profileInitial, currentDashboar
           </Link>
 
           {/* Toggle */}
-          <div className="flex items-center justify-between rounded-lg px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-white/5 transition-all">
             <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white/60">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/10 text-white/60">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
               </span>
               <div>
                 <p className="text-sm font-medium text-white/80">{isFreelancer ? "Freelancer" : "Client"}</p>
-                <p className="text-xs text-white/40">Switch view</p>
+                <p className="text-[10px] text-white/40 leading-none">Switch view</p>
               </div>
             </div>
             <button
               type="button"
               onClick={handleToggle}
               className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                "relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
                 isFreelancer ? "bg-[#ffc107]" : "bg-white/20"
               )}
               aria-label="Switch between Client and Freelancer"
             >
               <span
                 className={cn(
-                  "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out",
-                  isFreelancer ? "translate-x-5" : "translate-x-0"
+                  "pointer-events-none inline-block h-3.5 w-3.5 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out",
+                  isFreelancer ? "translate-x-3.5" : "translate-x-0"
                 )}
               />
             </button>
           </div>
 
           {/* Divider */}
-          <div className="my-1.5 border-t border-white/10" />
+          <div className="my-1 border-t border-white/10" />
 
           {/* Profile */}
           <Link
             to={currentDashboard === "freelancer" ? "/freelancer/profile" : "/client/profile"}
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/8 hover:text-white"
+            className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/80 transition-colors hover:bg-white/8 hover:text-white"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white/60">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/10 text-white/60">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </span>
             Profile
           </Link>
+
+          {/* Log Out */}
+          <button
+            onClick={() => {
+              setOpen(false);
+              logout();
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500/10 text-red-400">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </span>
+            Log Out
+          </button>
         </div>
       </PopoverContent>
     </Popover>
