@@ -289,7 +289,7 @@ const App = () => {
               path="/services"
               element={
                 <LayoutWithNavbar>
-                  <Services />
+                  <GuestAIDemo />
                 </LayoutWithNavbar>
               }
             />
@@ -523,7 +523,7 @@ const App = () => {
               path="/service"
               element={
                 <LayoutWithNavbar>
-                  <Client />
+                  <GuestAIDemo />
                 </LayoutWithNavbar>
               }
             />
