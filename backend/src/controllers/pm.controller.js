@@ -45,8 +45,10 @@ export const getDashboard = asyncHandler(async (req, res) => {
         include: {
             owner: { select: { id: true, fullName: true, avatar: true } },
             proposals: {
-                where: { status: "ACCEPTED" },
-                include: { freelancer: { select: { id: true, fullName: true, avatar: true } } }
+                where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+                include: { freelancer: { select: { id: true, fullName: true, avatar: true } } },
+                orderBy: { createdAt: "desc" },
+                take: 1
             },
             disputes: { select: { id: true, status: true } }
         },
@@ -116,8 +118,10 @@ export const getAssignedProjects = asyncHandler(async (req, res) => {
         include: {
             owner: { select: { fullName: true } },
             proposals: {
-                where: { status: "ACCEPTED" },
-                include: { freelancer: { select: { fullName: true } } }
+                where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+                include: { freelancer: { select: { fullName: true } } },
+                orderBy: { createdAt: "desc" },
+                take: 1
             }
         },
         orderBy: { createdAt: "desc" }

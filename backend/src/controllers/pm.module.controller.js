@@ -338,6 +338,77 @@ const getAcceptedProposal = (project) => {
   );
 };
 
+const getFreelancerChangeRequests = (project = {}) =>
+  Array.isArray(project?.freelancerChangeRequests)
+    ? project.freelancerChangeRequests
+    : [];
+
+const getLatestPendingFreelancerChangeRequest = (project = {}) =>
+  [...getFreelancerChangeRequests(project)]
+    .reverse()
+    .find(
+      (request) => String(request?.status || "").toUpperCase() === "PENDING"
+    ) || null;
+
+const resolveFreelancerChangeRequestsAfterAssignment = ({
+  requests = [],
+  resolverId,
+  replacementFreelancer,
+}) => {
+  let resolved = false;
+
+  return requests.map((request) => {
+    if (
+      resolved ||
+      String(request?.status || "").toUpperCase() !== "PENDING"
+    ) {
+      return request;
+    }
+
+    resolved = true;
+
+    return {
+      ...request,
+      status: "RESOLVED",
+      resolvedAt: new Date().toISOString(),
+      resolvedById: resolverId,
+      replacementFreelancerId: replacementFreelancer?.id || null,
+      replacementFreelancerName: replacementFreelancer?.fullName || null,
+    };
+  });
+};
+
+const buildFreelancerAssignmentHistory = (project = {}) => {
+  const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+
+  return proposals
+    .filter((proposal) => {
+      const status = String(proposal?.status || "").toUpperCase();
+      return (
+        (status === "ACCEPTED" || status === "REPLACED") &&
+        proposal?.freelancer
+      );
+    })
+    .map((proposal) => {
+      const status = String(proposal?.status || "").toUpperCase();
+      const startedAt = toIsoOrNull(proposal.createdAt);
+      const replacedAt =
+        status === "REPLACED" ? toIsoOrNull(proposal.updatedAt) : null;
+
+      return {
+        proposalId: proposal.id,
+        freelancerId: proposal.freelancer.id,
+        freelancerName: proposal.freelancer.fullName || "Freelancer",
+        freelancerAvatar: proposal.freelancer.avatar || null,
+        status: status === "ACCEPTED" ? "CURRENT" : "REPLACED",
+        startedAt,
+        endedAt: replacedAt,
+      };
+    })
+    .filter((entry) => entry.startedAt)
+    .sort((left, right) => new Date(right.startedAt) - new Date(left.startedAt));
+};
+
 const toTaskKeySet = (value) => {
   if (Array.isArray(value)) {
     return new Set(value.map((item) => String(item || "").trim()).filter(Boolean));
@@ -560,6 +631,7 @@ export const getPmDashboardSummary = asyncHandler(async (req, res) => {
           proposals: {
             where: { status: { in: ["ACCEPTED", "REPLACED"] } },
             include: { freelancer: { select: { id: true, fullName: true, avatar: true } } },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
         },
@@ -573,16 +645,32 @@ export const getPmDashboardSummary = asyncHandler(async (req, res) => {
   let totalUnread = 0;
 
   for (const project of projects) {
-    const conversation = await prisma.chatConversation.findFirst({
-      where: {
-        OR: [{ service: { startsWith: `CHAT:${project.id}:` } }, { service: { contains: project.id } }],
-      },
-      include: {
-        messages: { orderBy: { createdAt: "desc" }, take: 1 },
-        _count: { select: { messages: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    const activeProposal = getAcceptedProposal(project);
+    const activeServiceKey =
+      project?.ownerId && activeProposal?.freelancerId
+        ? `CHAT:${project.id}:${project.ownerId}:${activeProposal.freelancerId}`
+        : null;
+
+    const conversation = (activeServiceKey
+      ? await prisma.chatConversation.findFirst({
+          where: { service: activeServiceKey },
+          include: {
+            messages: { orderBy: { createdAt: "desc" }, take: 1 },
+            _count: { select: { messages: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+        })
+      : null) ||
+      (await prisma.chatConversation.findFirst({
+        where: {
+          OR: [{ service: { startsWith: `CHAT:${project.id}:` } }, { service: { contains: project.id } }],
+        },
+        include: {
+          messages: { orderBy: { createdAt: "desc" }, take: 1 },
+          _count: { select: { messages: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+      }));
 
     const unreadMessages = conversation?.id
       ? await prisma.chatMessage.count({
@@ -596,7 +684,7 @@ export const getPmDashboardSummary = asyncHandler(async (req, res) => {
 
     totalUnread += unreadMessages;
 
-    const freelancer = getAcceptedProposal(project)?.freelancer;
+    const freelancer = activeProposal?.freelancer;
     const mappedStatus = mapProjectStatusForPm(project);
     const milestones = buildMilestonesForProject(project);
     const completedMilestones = countCompletedMilestones(milestones);
@@ -722,16 +810,32 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
 
   if (!project) throw new AppError("Project not found.", 404);
 
-  const conversation = await prisma.chatConversation.findFirst({
-    where: {
-      OR: [{ service: { startsWith: `CHAT:${project.id}:` } }, { service: { contains: project.id } }],
-    },
-    include: {
-      messages: { orderBy: { createdAt: "desc" }, take: 1 },
-      _count: { select: { messages: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+  const activeProposal = getAcceptedProposal(project);
+  const activeServiceKey =
+    project?.ownerId && activeProposal?.freelancerId
+      ? `CHAT:${project.id}:${project.ownerId}:${activeProposal.freelancerId}`
+      : null;
+
+  const conversation = (activeServiceKey
+    ? await prisma.chatConversation.findFirst({
+        where: { service: activeServiceKey },
+        include: {
+          messages: { orderBy: { createdAt: "desc" }, take: 1 },
+          _count: { select: { messages: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+      })
+    : null) ||
+    (await prisma.chatConversation.findFirst({
+      where: {
+        OR: [{ service: { startsWith: `CHAT:${project.id}:` } }, { service: { contains: project.id } }],
+      },
+      include: {
+        messages: { orderBy: { createdAt: "desc" }, take: 1 },
+        _count: { select: { messages: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+    }));
 
   const unreadMessages = conversation?.id
     ? await prisma.chatMessage.count({
@@ -745,7 +849,8 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
 
   const mappedStatus = mapProjectStatusForPm(project);
   const milestones = buildMilestonesForProject(project);
-  const freelancer = getAcceptedProposal(project)?.freelancer || null;
+  const freelancer = activeProposal?.freelancer || null;
+  const freelancerAssignmentHistory = buildFreelancerAssignmentHistory(project);
   const portfolioProjects = freelancer
     ? extractPortfolioProjectsFromProfileDetails(freelancer.freelancerProfile?.profileDetails || {})
     : [];
@@ -828,6 +933,7 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
             experienceYears: Number(freelancer.freelancerProfile?.experienceYears || 0),
           }
         : null,
+      freelancerAssignmentHistory,
       milestones,
       handoverChecklist: {
         sourceCodeTransferred: Boolean(project.closureHandoverConfirmed),
@@ -861,6 +967,7 @@ export const getPmUpcomingMeetings = asyncHandler(async (req, res) => {
           proposals: {
             where: { status: { in: ["ACCEPTED", "REPLACED"] } },
             include: { freelancer: { select: { id: true, fullName: true, avatar: true } } },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
         },
@@ -882,12 +989,40 @@ export const getPmProjectMessages = asyncHandler(async (req, res) => {
 
   await ensureAssignedPm({ projectId, pmId: userId });
 
-  const conversation = await prisma.chatConversation.findFirst({
-    where: {
-      OR: [{ service: { startsWith: `CHAT:${projectId}:` } }, { service: { contains: projectId } }],
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      ownerId: true,
+      proposals: {
+        where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+        select: { freelancerId: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
     },
-    orderBy: { updatedAt: "desc" },
   });
+
+  if (!project) throw new AppError("Project not found.", 404);
+
+  const activeFreelancerId = project?.proposals?.[0]?.freelancerId || null;
+  const activeServiceKey =
+    project.ownerId && activeFreelancerId
+      ? `CHAT:${projectId}:${project.ownerId}:${activeFreelancerId}`
+      : null;
+
+  const conversation = (activeServiceKey
+    ? await prisma.chatConversation.findFirst({
+        where: { service: activeServiceKey },
+        orderBy: { updatedAt: "desc" },
+      })
+    : null) ||
+    (await prisma.chatConversation.findFirst({
+      where: {
+        OR: [{ service: { startsWith: `CHAT:${projectId}:` } }, { service: { contains: projectId } }],
+      },
+      orderBy: { updatedAt: "desc" },
+    }));
 
   if (!conversation) {
     res.json({ data: { conversation: null, messages: [] } });
@@ -1183,6 +1318,7 @@ export const listPmMeetings = asyncHandler(async (req, res) => {
           proposals: {
             where: { status: { in: ["ACCEPTED", "REPLACED"] } },
             include: { freelancer: { select: { id: true, fullName: true, avatar: true } } },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
         },
@@ -1282,6 +1418,7 @@ export const createPmMeeting = asyncHandler(async (req, res) => {
           proposals: {
             where: { status: { in: ["ACCEPTED", "REPLACED"] } },
             include: { freelancer: { select: { id: true, fullName: true, avatar: true } } },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
         },
@@ -1369,6 +1506,7 @@ export const reschedulePmMeeting = asyncHandler(async (req, res) => {
           proposals: {
             where: { status: { in: ["ACCEPTED", "REPLACED"] } },
             include: { freelancer: { select: { id: true, fullName: true, avatar: true } } },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
         },
@@ -1704,34 +1842,118 @@ export const replacePmProjectFreelancer = asyncHandler(async (req, res) => {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
-      proposals: { where: { status: "ACCEPTED" }, orderBy: { createdAt: "desc" } },
+      owner: {
+        select: { id: true, fullName: true },
+      },
+      proposals: {
+        where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+        include: {
+          freelancer: {
+            select: { id: true, fullName: true, email: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
-  const current = project?.proposals?.[0];
-  if (current && String(current.freelancerId || "") === String(freelancerId)) {
+  if (!project) {
+    throw new AppError("Project not found.", 404);
+  }
+
+  const currentAssignment = getAcceptedProposal(project);
+  if (currentAssignment && String(currentAssignment.freelancerId || "") === String(freelancerId)) {
     throw new AppError("This freelancer is already assigned.", 400);
   }
+
+  const currentRequests = getFreelancerChangeRequests(project);
+  const hasPendingRequest = Boolean(getLatestPendingFreelancerChangeRequest(project));
+  const replacementAmount = Number(currentAssignment?.amount || project?.budget || 0);
+  const nextProjectStatus =
+    project.status === "PAUSED"
+      ? Number(project.spent || 0) > 0
+        ? "IN_PROGRESS"
+        : "OPEN"
+      : project.status;
 
   await prisma.$transaction(async (tx) => {
     await tx.proposal.updateMany({
       where: { projectId, status: "ACCEPTED" },
-      data: { status: "REPLACED" },
+      data: {
+        status: "REPLACED",
+        rejectionReason: "Reassigned by Project Manager to another freelancer.",
+        rejectionReasonKey: "project_manager_reassignment",
+      },
     });
 
     await tx.proposal.create({
       data: {
         projectId,
         freelancerId,
-        amount: Number(project?.budget || 0),
-        coverLetter: "Reassigned by Project Manager.",
+        amount: replacementAmount,
+        coverLetter: hasPendingRequest
+          ? "Reassigned by Project Manager after a client freelancer change request."
+          : "Reassigned by Project Manager.",
         status: "ACCEPTED",
+      },
+    });
+
+    await tx.project.update({
+      where: { id: projectId },
+      data: {
+        status: nextProjectStatus,
+        freelancerChangeRequests: resolveFreelancerChangeRequestsAfterAssignment({
+          requests: currentRequests,
+          resolverId: userId,
+          replacementFreelancer: freelancer,
+        }),
       },
     });
   });
 
+  if (project.ownerId) {
+    await sendNotificationToUser(project.ownerId, {
+      type: "freelancer_change_resolved",
+      title: "Freelancer updated",
+      message: `${freelancer.fullName} has been assigned to "${project.title}".`,
+      data: {
+        projectId,
+        freelancerId: freelancer.id,
+      },
+    }).catch(() => null);
+  }
+
+  await sendNotificationToUser(freelancer.id, {
+    type: "proposal",
+    title: "You were assigned to a project",
+    message: `You have been assigned to "${project.title}".`,
+    data: {
+      projectId,
+      status: "ACCEPTED",
+    },
+  }).catch(() => null);
+
+  if (
+    currentAssignment?.freelancerId &&
+    String(currentAssignment.freelancerId) !== String(freelancer.id)
+  ) {
+    await sendNotificationToUser(currentAssignment.freelancerId, {
+      type: "proposal",
+      title: "Project assignment updated",
+      message: `You have been removed from "${project.title}".`,
+      data: {
+        projectId,
+        status: "REPLACED",
+      },
+    }).catch(() => null);
+  }
+
   res.json({
-    data: { projectId, freelancerId },
+    data: {
+      projectId,
+      freelancerId,
+      previousFreelancerId: currentAssignment?.freelancerId || null,
+    },
     message: `${freelancer.fullName} is now assigned to this project.`,
   });
 });

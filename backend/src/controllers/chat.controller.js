@@ -35,6 +35,7 @@ const ensureProjectChatAccess = async ({
       proposals: {
         where: { status: "ACCEPTED" },
         select: { freelancerId: true },
+        orderBy: { createdAt: "desc" },
         take: 1
       }
     }

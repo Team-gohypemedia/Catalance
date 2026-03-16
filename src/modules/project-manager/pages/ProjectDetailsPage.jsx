@@ -58,6 +58,13 @@ const toLocalDateTimeInputValue = (value) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
+const formatTimelineDateTime = (value) => {
+  if (!value) return "Present";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return date.toLocaleString();
+};
+
 const buildMeetingFormDefaults = () => {
   const now = new Date();
   const startsAt = new Date(now);
@@ -248,6 +255,9 @@ const ProjectDetailsPage = () => {
   const project = details.data?.project || {};
   const clientProfile = details.data?.clientProfile || {};
   const freelancerProfile = details.data?.freelancerProfile || null;
+  const freelancerAssignmentHistory = Array.isArray(details.data?.freelancerAssignmentHistory)
+    ? details.data.freelancerAssignmentHistory
+    : [];
   const viewingFreelancerProfile = useMemo(() => {
     if (!freelancerProfile) return null;
 
@@ -625,15 +635,54 @@ const ProjectDetailsPage = () => {
                                   </div>
                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-1.5 mb-6">
-                               {freelancerProfile.skills.slice(0, 4).map(skill => (
-                                 <Badge key={skill} variant="secondary" className="bg-white border border-slate-100 text-slate-600 text-[9px] font-bold rounded-lg px-2 py-0.5 shadow-sm">{skill.toUpperCase()}</Badge>
-                               ))}
-                               {freelancerProfile.skills.length > 4 && <span className="text-[9px] font-bold text-slate-600">+{freelancerProfile.skills.length - 4}</span>}
-                            </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" className="flex-1 h-11 rounded-xl !border-indigo-200 !bg-indigo-50 text-[10px] font-black tracking-widest !text-indigo-700 hover:!bg-indigo-100 transition-all uppercase shadow-sm" onClick={handleViewFreelancerProfile}>
-                                    VIEW FULL PROFILE
+                             <div className="flex flex-wrap gap-1.5 mb-6">
+                                {freelancerProfile.skills.slice(0, 4).map(skill => (
+                                  <Badge key={skill} variant="secondary" className="bg-white border border-slate-100 text-slate-600 text-[9px] font-bold rounded-lg px-2 py-0.5 shadow-sm">{skill.toUpperCase()}</Badge>
+                                ))}
+                                {freelancerProfile.skills.length > 4 && <span className="text-[9px] font-bold text-slate-600">+{freelancerProfile.skills.length - 4}</span>}
+                             </div>
+                             <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                                  Assignment Timeline
+                                </p>
+                                {freelancerAssignmentHistory.length > 0 ? (
+                                  <div className="mt-2 space-y-2">
+                                    {freelancerAssignmentHistory.slice(0, 3).map((entry) => (
+                                      <div
+                                        key={entry.proposalId}
+                                        className="rounded-xl border border-slate-100 bg-white p-2.5"
+                                      >
+                                        <div className="flex items-center justify-between gap-2">
+                                          <p className="text-xs font-bold text-slate-900">
+                                            {entry.freelancerName}
+                                          </p>
+                                          <Badge
+                                            variant="outline"
+                                            className={`text-[9px] font-black uppercase tracking-widest ${
+                                              entry.status === "CURRENT"
+                                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                : "border-slate-200 bg-slate-100 text-slate-700"
+                                            }`}
+                                          >
+                                            {entry.status}
+                                          </Badge>
+                                        </div>
+                                        <p className="mt-1 text-[10px] font-medium text-slate-600">
+                                          {formatTimelineDateTime(entry.startedAt)} -{" "}
+                                          {entry.endedAt ? formatTimelineDateTime(entry.endedAt) : "Present"}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 text-[11px] font-medium text-slate-600">
+                                    No freelancer assignment history yet.
+                                  </p>
+                                )}
+                             </div>
+                             <div className="flex gap-2">
+                                 <Button variant="outline" className="flex-1 h-11 rounded-xl !border-indigo-200 !bg-indigo-50 text-[10px] font-black tracking-widest !text-indigo-700 hover:!bg-indigo-100 transition-all uppercase shadow-sm" onClick={handleViewFreelancerProfile}>
+                                     VIEW FULL PROFILE
                                 </Button>
                                 <Button 
                                     variant="outline" 

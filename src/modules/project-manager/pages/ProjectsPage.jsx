@@ -29,8 +29,19 @@ const mapProjectRow = (project) => {
     ? "Issue Raised"
     : statusMap[String(project?.status || "").toUpperCase()] || "Started";
 
-  const freelancer = (Array.isArray(project?.proposals) ? project.proposals : []).find(
-    (proposal) => proposal?.freelancer
+  const proposalRows = Array.isArray(project?.proposals) ? project.proposals : [];
+  const freelancer = (
+    proposalRows.find(
+      (proposal) =>
+        String(proposal?.status || "").toUpperCase() === "ACCEPTED" &&
+        proposal?.freelancer
+    ) ||
+    proposalRows.find(
+      (proposal) =>
+        String(proposal?.status || "").toUpperCase() === "REPLACED" &&
+        proposal?.freelancer
+    ) ||
+    proposalRows.find((proposal) => proposal?.freelancer)
   )?.freelancer;
 
   return {
