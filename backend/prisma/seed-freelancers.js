@@ -746,6 +746,237 @@ const WEB_DEVELOPMENT_SEED_SKILLS = Object.freeze([
   "Tailwind CSS"
 ]);
 
+const WEB_DEVELOPMENT_PROFILE_VARIANTS = Object.freeze({
+  saas: Object.freeze({
+    specializations: ["SaaS Platforms", "Corporate / Business", "Landing Pages"],
+    techStackGroups: ["React / Next.js", "Node.js", "Custom CMS"],
+    deliveryServices: [
+      "Speed Optimization",
+      "API Integrations",
+      "Security Setup",
+      "Maintenance Support"
+    ],
+    niches: ["Technology", "Startups", "B2B SaaS"],
+    extraTechnologies: ["TypeScript", "Vercel", "Prisma", "Git/GitHub"],
+    caseStudyGoal:
+      "Improve lead-to-demo conversion while giving internal teams a cleaner product and content management flow.",
+    caseStudyResults:
+      "Improved activation quality, reduced internal content turnaround, and gave the team a faster launch cadence for new releases.",
+    projectTemplates: [
+      {
+        titleSuffix: "Growth Website System",
+        description:
+          "Designed a modular acquisition site with CMS sections, lead routing, and higher-performing page templates for launch campaigns.",
+        role: "Lead frontend engineer",
+        tags: ["SaaS", "Growth Site", "CMS"],
+        techStack: ["TypeScript", "Vercel", "Framer Motion"],
+        budgetMultiplier: 0.72,
+        timeline: "3-4 weeks"
+      },
+      {
+        titleSuffix: "Account Workspace",
+        description:
+          "Built an authenticated workspace with onboarding flows, billing-ready account areas, and reporting modules for customer teams.",
+        role: "Full-stack product engineer",
+        tags: ["Dashboard", "Auth", "Reporting"],
+        techStack: ["Prisma", "PostgreSQL", "API Integrations"],
+        budgetMultiplier: 0.88,
+        timeline: "5-6 weeks"
+      }
+    ]
+  }),
+  ecommerce: Object.freeze({
+    specializations: ["E-commerce", "Landing Pages", "Corporate / Business"],
+    techStackGroups: ["React / Next.js", "Node.js", "Shopify"],
+    deliveryServices: [
+      "Speed Optimization",
+      "SEO-Friendly Development",
+      "API Integrations",
+      "Maintenance Support"
+    ],
+    niches: ["E-commerce", "D2C Brands", "Fashion & Apparel"],
+    extraTechnologies: ["Shopify", "WooCommerce", "Vercel", "Cloudflare"],
+    caseStudyGoal:
+      "Increase conversion rate, improve merchandising agility, and keep campaign pages easy to ship without bottlenecks.",
+    caseStudyResults:
+      "Improved mobile conversion paths, reduced checkout friction, and gave the brand a repeatable merchandising system for launches.",
+    projectTemplates: [
+      {
+        titleSuffix: "Conversion Landing Suite",
+        description:
+          "Created reusable campaign landing pages, merchandising sections, and mobile-first product storytelling modules for launches.",
+        role: "Frontend conversion engineer",
+        tags: ["E-commerce", "Landing Pages", "Conversion"],
+        techStack: ["Shopify", "Tailwind CSS", "Vercel"],
+        budgetMultiplier: 0.68,
+        timeline: "2-4 weeks"
+      },
+      {
+        titleSuffix: "Merchandising Dashboard",
+        description:
+          "Built an internal storefront operations panel for campaign scheduling, product syncing, and launch readiness checks.",
+        role: "Full-stack commerce developer",
+        tags: ["Operations", "Dashboard", "Commerce"],
+        techStack: ["Node.js", "PostgreSQL", "API Integrations"],
+        budgetMultiplier: 0.83,
+        timeline: "4-5 weeks"
+      }
+    ]
+  }),
+  dashboard: Object.freeze({
+    specializations: ["SaaS Platforms", "Corporate / Business", "Marketplace Websites"],
+    techStackGroups: ["React / Next.js", "Node.js", "Custom CMS"],
+    deliveryServices: [
+      "API Integrations",
+      "Security Setup",
+      "Maintenance Support",
+      "Speed Optimization"
+    ],
+    niches: ["Fintech", "Operations", "Analytics"],
+    extraTechnologies: ["TypeScript", "Prisma", "PostgreSQL", "Cloudflare"],
+    caseStudyGoal:
+      "Give teams a clearer command center for operational decisions, reporting, and day-to-day workflows.",
+    caseStudyResults:
+      "Reduced manual reporting, improved team visibility, and made day-to-day operations easier to manage from one interface.",
+    projectTemplates: [
+      {
+        titleSuffix: "Reporting Cockpit",
+        description:
+          "Implemented a reporting-first interface with saved views, filtering patterns, and clean information hierarchy for fast decisions.",
+        role: "Dashboard product engineer",
+        tags: ["Analytics", "Reporting", "Operations"],
+        techStack: ["TypeScript", "PostgreSQL", "Prisma"],
+        budgetMultiplier: 0.76,
+        timeline: "4-5 weeks"
+      },
+      {
+        titleSuffix: "Workflow Control Panel",
+        description:
+          "Connected approval states, notifications, and operational shortcuts into one panel to reduce back-and-forth across teams.",
+        role: "Full-stack workflow engineer",
+        tags: ["Workflow", "Admin Panel", "Automation"],
+        techStack: ["Node.js", "API Integrations", "Cloudflare"],
+        budgetMultiplier: 0.9,
+        timeline: "5-7 weeks"
+      }
+    ]
+  }),
+  marketing: Object.freeze({
+    specializations: ["Landing Pages", "Corporate / Business", "SaaS Platforms"],
+    techStackGroups: ["React / Next.js", "Webflow", "Custom CMS"],
+    deliveryServices: [
+      "Speed Optimization",
+      "SEO-Friendly Development",
+      "Maintenance Support",
+      "API Integrations"
+    ],
+    niches: ["B2B Services", "Technology", "Creator Economy"],
+    extraTechnologies: ["TypeScript", "Framer Motion", "Vercel", "Cloudflare"],
+    caseStudyGoal:
+      "Ship faster campaign pages and improve conversion performance without increasing maintenance overhead.",
+    caseStudyResults:
+      "Improved Core Web Vitals, made campaign launches more self-serve, and created cleaner conversion paths across the site.",
+    projectTemplates: [
+      {
+        titleSuffix: "Campaign Microsite Library",
+        description:
+          "Built a reusable bank of campaign pages, launch sections, and signup flows for product and growth experiments.",
+        role: "Frontend growth engineer",
+        tags: ["Campaigns", "Microsites", "Growth"],
+        techStack: ["Framer Motion", "Tailwind CSS", "Vercel"],
+        budgetMultiplier: 0.62,
+        timeline: "2-4 weeks"
+      },
+      {
+        titleSuffix: "Headless CMS Rebuild",
+        description:
+          "Re-platformed a content-heavy website to a cleaner component system with editor-friendly workflows and performance guardrails.",
+        role: "Frontend systems developer",
+        tags: ["CMS", "Performance", "Marketing Site"],
+        techStack: ["TypeScript", "Cloudflare", "Custom CMS"],
+        budgetMultiplier: 0.8,
+        timeline: "4-6 weeks"
+      }
+    ]
+  }),
+  marketplace: Object.freeze({
+    specializations: ["Marketplace Websites", "Corporate / Business", "Landing Pages"],
+    techStackGroups: ["React / Next.js", "Node.js", "Custom CMS"],
+    deliveryServices: [
+      "API Integrations",
+      "Security Setup",
+      "Maintenance Support",
+      "Speed Optimization"
+    ],
+    niches: ["Marketplaces", "Local Businesses", "Services"],
+    extraTechnologies: ["TypeScript", "Prisma", "PostgreSQL", "Vercel"],
+    caseStudyGoal:
+      "Launch marketplace workflows that make request handling, vendor onboarding, and customer matching feel simple and dependable.",
+    caseStudyResults:
+      "Improved request routing clarity, reduced admin follow-up, and made the marketplace easier to operate for both sides.",
+    projectTemplates: [
+      {
+        titleSuffix: "Vendor Onboarding Flow",
+        description:
+          "Built intake, verification, and approval experiences that helped operators onboard new vendors with less manual coordination.",
+        role: "Marketplace workflow engineer",
+        tags: ["Marketplace", "Onboarding", "Operations"],
+        techStack: ["TypeScript", "API Integrations", "Prisma"],
+        budgetMultiplier: 0.7,
+        timeline: "3-5 weeks"
+      },
+      {
+        titleSuffix: "Request Routing Dashboard",
+        description:
+          "Created a routing and moderation dashboard with filters, status handling, and team visibility for faster request fulfillment.",
+        role: "Full-stack marketplace developer",
+        tags: ["Dashboard", "Routing", "Admin Panel"],
+        techStack: ["Node.js", "PostgreSQL", "Vercel"],
+        budgetMultiplier: 0.87,
+        timeline: "5-6 weeks"
+      }
+    ]
+  }),
+  portal: Object.freeze({
+    specializations: ["Corporate / Business", "SaaS Platforms", "Landing Pages"],
+    techStackGroups: ["React / Next.js", "Node.js", "Custom CMS"],
+    deliveryServices: [
+      "API Integrations",
+      "Security Setup",
+      "SEO-Friendly Development",
+      "Maintenance Support"
+    ],
+    niches: ["Education", "Healthcare", "Professional Services"],
+    extraTechnologies: ["TypeScript", "PostgreSQL", "Cloudflare", "Git/GitHub"],
+    caseStudyGoal:
+      "Create a dependable portal experience where clients, students, or partners can complete key workflows without friction.",
+    caseStudyResults:
+      "Improved handoff clarity, reduced support dependency, and gave stakeholders a cleaner self-serve experience across devices.",
+    projectTemplates: [
+      {
+        titleSuffix: "Client Intake Portal",
+        description:
+          "Delivered a structured intake flow with document uploads, milestone tracking, and clearer stakeholder communication moments.",
+        role: "Portal product engineer",
+        tags: ["Portal", "Self-Serve", "Forms"],
+        techStack: ["TypeScript", "Cloudflare", "Node.js"],
+        budgetMultiplier: 0.69,
+        timeline: "3-5 weeks"
+      },
+      {
+        titleSuffix: "Admin Operations Panel",
+        description:
+          "Built a supporting admin panel for approvals, content updates, and internal coordination across portal workflows.",
+        role: "Full-stack application engineer",
+        tags: ["Admin Panel", "Workflows", "Operations"],
+        techStack: ["PostgreSQL", "API Integrations", "Git/GitHub"],
+        budgetMultiplier: 0.84,
+        timeline: "4-6 weeks"
+      }
+    ]
+  })
+});
+
 const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
   [
     {
@@ -1190,6 +1421,7 @@ const WEB_DEVELOPMENT_FREELANCER_SEEDS = Object.freeze(
     }
   ].map((seed) => ({
     key: "web_development",
+    detailedProfile: true,
     skills: [...WEB_DEVELOPMENT_SEED_SKILLS],
     ...seed
   }))
@@ -1224,6 +1456,150 @@ const buildSkillLevels = (skills = []) =>
     return acc;
   }, {});
 
+const uniqueTextList = (values = [], { max = 120 } = {}) =>
+  Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [])
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+    )
+  ).slice(0, max);
+
+const mapYearsToExperienceValue = (years = 0) => {
+  const normalizedYears = Number.isFinite(Number(years)) ? Number(years) : 0;
+  if (normalizedYears >= 5) return "5_plus";
+  if (normalizedYears >= 3) return "3_5";
+  if (normalizedYears >= 1) return "1_3";
+  return "less_than_1";
+};
+
+const mapYearsToWorkingLevel = (years = 0) => {
+  const normalizedYears = Number.isFinite(Number(years)) ? Number(years) : 0;
+  if (normalizedYears >= 6) return "advanced";
+  if (normalizedYears >= 3) return "intermediate";
+  return "beginner";
+};
+
+const mapBudgetToAverageProjectPrice = (budget = 0) => {
+  const normalizedBudget = Number.isFinite(Number(budget)) ? Number(budget) : 0;
+  if (normalizedBudget < 5000) return "Under INR 5,000";
+  if (normalizedBudget < 10000) return "INR 5,000 - 10,000";
+  if (normalizedBudget < 25000) return "INR 10,000 - 25,000";
+  if (normalizedBudget < 50000) return "INR 25,000 - 50,000";
+  if (normalizedBudget < 100000) return "INR 50,000 - 1 Lakh";
+  if (normalizedBudget < 200000) return "INR 1 Lakh - 2 Lakhs";
+  if (normalizedBudget < 500000) return "INR 2 Lakhs - 5 Lakhs";
+  if (normalizedBudget < 1000000) return "INR 5 Lakhs - 10 Lakhs";
+  return "Over INR 10 Lakhs";
+};
+
+const mapBudgetToCaseStudyRange = (budget = 0) => {
+  const normalizedBudget = Number.isFinite(Number(budget)) ? Number(budget) : 0;
+  if (normalizedBudget < 10000) return "under_10k";
+  if (normalizedBudget < 50000) return "10k_50k";
+  if (normalizedBudget < 100000) return "50k_1l";
+  if (normalizedBudget < 200000) return "1l_2l";
+  if (normalizedBudget < 500000) return "2l_5l";
+  if (normalizedBudget < 1000000) return "5l_10l";
+  return "over_10l";
+};
+
+const mapDeliveryTimeToTimelineValue = (deliveryTime = "") => {
+  const normalized = String(deliveryTime || "").toLowerCase();
+
+  if (
+    normalized.includes("monthly") ||
+    normalized.includes("retainer") ||
+    normalized.includes("8-10 weeks") ||
+    normalized.includes("6-8 weeks") ||
+    normalized.includes("6-8") ||
+    normalized.includes("8 weeks")
+  ) {
+    return "1_3_months";
+  }
+
+  if (
+    normalized.includes("5-7 weeks") ||
+    normalized.includes("5-6 weeks") ||
+    normalized.includes("4-6 weeks") ||
+    normalized.includes("4-5 weeks") ||
+    normalized.includes("4 weeks")
+  ) {
+    return "1_3_months";
+  }
+
+  if (
+    normalized.includes("3-5 weeks") ||
+    normalized.includes("3-4 weeks") ||
+    normalized.includes("2-4 weeks") ||
+    normalized.includes("2-3 weeks") ||
+    normalized.includes("3 weeks")
+  ) {
+    return "2_4_weeks";
+  }
+
+  return "less_than_2_weeks";
+};
+
+const mapComplexityToValue = (value = "") => {
+  const normalized = String(value || "").toLowerCase();
+  if (
+    /marketplace|dashboard|workspace|platform|portal|analytics|enterprise|complex/.test(
+      normalized
+    )
+  ) {
+    return "large";
+  }
+
+  if (/microsite|landing|campaign|website|rebuild|migration/.test(normalized)) {
+    return "medium";
+  }
+
+  return "medium";
+};
+
+const resolveWebDevelopmentVariant = (seed = {}) => {
+  const text = [
+    seed.headline,
+    seed.projectName,
+    seed.projectSummary,
+    seed.serviceDescription,
+    seed.projectComplexity,
+    ...(Array.isArray(seed.industries) ? seed.industries : [])
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (/marketplace/.test(text)) return WEB_DEVELOPMENT_PROFILE_VARIANTS.marketplace;
+  if (/storefront|commerce|e-?commerce|checkout|merchandis/.test(text)) {
+    return WEB_DEVELOPMENT_PROFILE_VARIANTS.ecommerce;
+  }
+  if (/dashboard|console|reporting|analytics|ops|tracking|workspace/.test(text)) {
+    return WEB_DEVELOPMENT_PROFILE_VARIANTS.dashboard;
+  }
+  if (/portal|booking|lead|student|partner|intake/.test(text)) {
+    return WEB_DEVELOPMENT_PROFILE_VARIANTS.portal;
+  }
+  if (/marketing|campaign|microsite|migration|growth|acquisition|website rebuild/.test(text)) {
+    return WEB_DEVELOPMENT_PROFILE_VARIANTS.marketing;
+  }
+  return WEB_DEVELOPMENT_PROFILE_VARIANTS.saas;
+};
+
+const buildWebDevelopmentPlatformLinks = ({
+  slug,
+  portfolioUrl,
+  githubUrl,
+  linkedinUrl
+}) => ({
+  liveProjects: `https://demo.catalance.dev/${slug}`,
+  github: githubUrl,
+  dribbble: `https://dribbble.com/${slug}`,
+  portfolio: portfolioUrl,
+  website: portfolioUrl,
+  linkedin: linkedinUrl
+});
+
 const buildEducationEntry = (seed) => ({
   school: seed.school,
   degree: seed.degree,
@@ -1250,6 +1626,32 @@ const buildWorkExperienceEntry = (seed, portfolioUrl, linkedinUrl) => ({
   linkedinUrl
 });
 
+const buildPreviousWorkExperienceEntry = (seed, portfolioUrl, linkedinUrl) => ({
+  title: `Senior ${seed.headline} Consultant`,
+  period: "2018 - 2021",
+  description: `Led delivery for ${seed.industries.join(
+    " and "
+  )} teams, translating business requirements into production-ready web experiences with clearer QA and handoff systems.`,
+  location: `${seed.city}, ${DEFAULT_COUNTRY}`,
+  locationType: "Hybrid",
+  employmentType: "Full-time",
+  companyWebsite: portfolioUrl,
+  linkedinUrl
+});
+
+const buildWorkExperienceEntries = (seed, portfolioUrl, linkedinUrl) => {
+  const currentEntry = buildWorkExperienceEntry(seed, portfolioUrl, linkedinUrl);
+
+  if (!seed.detailedProfile || seed.key !== "web_development") {
+    return [currentEntry];
+  }
+
+  return [
+    currentEntry,
+    buildPreviousWorkExperienceEntry(seed, portfolioUrl, linkedinUrl)
+  ];
+};
+
 const buildPortfolioProject = (seed, slug, coverImage, effectiveSkills) => ({
   title: seed.projectName,
   description: seed.projectSummary,
@@ -1262,6 +1664,64 @@ const buildPortfolioProject = (seed, slug, coverImage, effectiveSkills) => ({
   tags: effectiveSkills.slice(0, 3),
   techStack: effectiveSkills
 });
+
+const buildSupplementalWebProject = ({
+  seed,
+  slug,
+  coverImage,
+  effectiveSkills,
+  template,
+  projectIndex
+}) => {
+  const baseName = String(seed.companyName || seed.employer || seed.fullName || "Catalance")
+    .split(/\s+/)
+    .filter(Boolean)[0];
+  const projectBudget = Math.max(
+    90000,
+    Math.round(seed.seedBudget * template.budgetMultiplier)
+  );
+  const techStack = uniqueTextList(
+    [...effectiveSkills, ...(Array.isArray(template.techStack) ? template.techStack : [])],
+    { max: 10 }
+  );
+
+  return {
+    title: `${baseName} ${template.titleSuffix}`,
+    description: `${template.description} Built for ${seed.industries.join(
+      " and "
+    )} teams that needed clearer delivery and more dependable product execution.`,
+    link: `https://portfolio.catalance.dev/${slug}/${seed.key}/project-${projectIndex + 2}`,
+    readme: `https://portfolio.catalance.dev/${slug}/${seed.key}/project-${projectIndex + 2}/case-study`,
+    image: coverImage,
+    role: template.role,
+    timeline: template.timeline,
+    budget: projectBudget,
+    tags: uniqueTextList(template.tags, { max: 3 }),
+    techStack
+  };
+};
+
+const buildPortfolioProjects = (seed, slug, coverImage, effectiveSkills) => {
+  const primaryProject = buildPortfolioProject(seed, slug, coverImage, effectiveSkills);
+
+  if (!seed.detailedProfile || seed.key !== "web_development") {
+    return [primaryProject];
+  }
+
+  const variant = resolveWebDevelopmentVariant(seed);
+  const supplementalProjects = variant.projectTemplates.map((template, index) =>
+    buildSupplementalWebProject({
+      seed,
+      slug,
+      coverImage,
+      effectiveSkills,
+      template,
+      projectIndex: index
+    })
+  );
+
+  return [primaryProject, ...supplementalProjects];
+};
 
 const buildEffectiveSkills = (seed) => {
   const preferred = STRICT_PROFILE_SKILLS_BY_KEY[seed.key] || seed.skills;
@@ -1277,6 +1737,84 @@ const buildEffectiveSkills = (seed) => {
   return effective;
 };
 
+const buildServiceDetailPayload = ({
+  seed,
+  slug,
+  coverImage,
+  effectiveSkills,
+  portfolioProjects,
+  portfolioUrl,
+  linkedinUrl,
+  githubUrl
+}) => {
+  const baseDetail = {
+    serviceDescription: seed.serviceDescription,
+    coverImage,
+    averageProjectPrice: `INR ${seed.seedBudget.toLocaleString("en-IN")}`,
+    deliveryTime: seed.deliveryTime,
+    projectComplexity: seed.projectComplexity,
+    skillsAndTechnologies: effectiveSkills,
+    projects: portfolioProjects,
+    platformLinks: {
+      portfolio: portfolioUrl,
+      linkedin: linkedinUrl,
+      github: githubUrl
+    }
+  };
+
+  if (!seed.detailedProfile || seed.key !== "web_development") {
+    return baseDetail;
+  }
+
+  const variant = resolveWebDevelopmentVariant(seed);
+  const expandedTechnologies = uniqueTextList(
+    [...effectiveSkills, ...variant.extraTechnologies],
+    { max: 12 }
+  );
+  const platformLinks = buildWebDevelopmentPlatformLinks({
+    slug,
+    portfolioUrl,
+    githubUrl,
+    linkedinUrl
+  });
+
+  return {
+    ...baseDetail,
+    experienceYears: mapYearsToExperienceValue(seed.experienceYears),
+    workingLevel: mapYearsToWorkingLevel(seed.experienceYears),
+    skillsAndTechnologies: expandedTechnologies,
+    platformLinks,
+    hasPreviousProjects: "yes",
+    caseStudy: {
+      projectTitle: seed.projectName,
+      industry: seed.industries?.[0] || "Technology",
+      goal: variant.caseStudyGoal,
+      role: "full_execution",
+      techStack: expandedTechnologies.slice(0, 5),
+      techStackOther: expandedTechnologies.slice(5).join(", "),
+      timeline: mapDeliveryTimeToTimelineValue(seed.deliveryTime),
+      budgetRange: mapBudgetToCaseStudyRange(seed.seedBudget),
+      results: `${seed.projectSummary} ${variant.caseStudyResults}`
+    },
+    hasSampleWork: "yes",
+    averagePrice: mapBudgetToAverageProjectPrice(seed.seedBudget),
+    averageProjectPrice: mapBudgetToAverageProjectPrice(seed.seedBudget),
+    groups: {
+      website_specialization: variant.specializations,
+      website_tech_stack: variant.techStackGroups,
+      website_performance: variant.deliveryServices
+    },
+    groupOther: {
+      website_tech_stack: variant.extraTechnologies.slice(0, 3)
+    },
+    industryFocus: seed.industries?.[0] || "",
+    niches: variant.niches,
+    otherNiche: "",
+    preferOnlyIndustries: "open",
+    projectComplexity: mapComplexityToValue(seed.projectComplexity)
+  };
+};
+
 const buildFreelancerSeedPayload = (seed, index) => {
   const slug = slugify(seed.fullName);
   const username = buildUsername(seed.fullName, index);
@@ -1288,11 +1826,26 @@ const buildFreelancerSeedPayload = (seed, index) => {
   const resume = `https://cdn.catalance.dev/resumes/${slug}.pdf`;
   const effectiveSkills = buildEffectiveSkills(seed);
   const education = [buildEducationEntry(seed)];
-  const workExperience = [buildWorkExperienceEntry(seed, portfolioUrl, linkedinUrl)];
-  const portfolioProjects = [buildPortfolioProject(seed, slug, coverImage, effectiveSkills)];
+  const workExperience = buildWorkExperienceEntries(seed, portfolioUrl, linkedinUrl);
+  const portfolioProjects = buildPortfolioProjects(
+    seed,
+    slug,
+    coverImage,
+    effectiveSkills
+  );
   const bio = `${seed.serviceDescription} I usually partner with ${seed.industries.join(
     " and "
   )} teams that want polished execution and dependable communication.`;
+  const serviceDetail = buildServiceDetailPayload({
+    seed,
+    slug,
+    coverImage,
+    effectiveSkills,
+    portfolioProjects,
+    portfolioUrl,
+    linkedinUrl,
+    githubUrl
+  });
   const profileDetails = {
     role: "individual",
     professionalBio: bio,
@@ -1306,20 +1859,7 @@ const buildFreelancerSeedPayload = (seed, index) => {
     education,
     services: [seed.key],
     serviceDetails: {
-      [seed.key]: {
-        serviceDescription: seed.serviceDescription,
-        coverImage,
-        averageProjectPrice: `INR ${seed.seedBudget.toLocaleString("en-IN")}`,
-        deliveryTime: seed.deliveryTime,
-        projectComplexity: seed.projectComplexity,
-        skillsAndTechnologies: effectiveSkills,
-        projects: portfolioProjects,
-        platformLinks: {
-          portfolio: portfolioUrl,
-          linkedin: linkedinUrl,
-          github: githubUrl
-        }
-      }
+      [seed.key]: serviceDetail
     },
     availability: {
       hoursPerWeek: DEFAULT_WORK_HOURS,
@@ -1361,7 +1901,13 @@ const buildFreelancerSeedPayload = (seed, index) => {
     resume,
     workExperience,
     portfolioProjects,
-    profileDetails
+    profileDetails,
+    seedMeta: seed.detailedProfile
+      ? {
+          targetProfileScore: 100,
+          richWebDevelopmentProfile: true
+        }
+      : undefined
   };
 };
 
@@ -1407,6 +1953,38 @@ const assertCompleteFreelancerPayload = (payload) => {
 
   if (checklist.some((item) => !item)) {
     throw new Error(`Seeded freelancer payload for ${payload.email} is incomplete.`);
+  }
+
+  if (payload?.seedMeta?.richWebDevelopmentProfile) {
+    const webDetail = serviceDetails.web_development || {};
+    const richChecklist = [
+      Array.isArray(payload.portfolioProjects) && payload.portfolioProjects.length >= 3,
+      Array.isArray(payload.workExperience) && payload.workExperience.length >= 2,
+      Array.isArray(webDetail.projects) && webDetail.projects.length >= 3,
+      hasText(webDetail.experienceYears),
+      hasText(webDetail.workingLevel),
+      hasText(webDetail.averageProjectPrice),
+      hasText(webDetail.deliveryTime),
+      hasText(webDetail.projectComplexity),
+      Array.isArray(webDetail.skillsAndTechnologies) &&
+        webDetail.skillsAndTechnologies.length >= 7,
+      Array.isArray(webDetail.groups?.website_specialization) &&
+        webDetail.groups.website_specialization.length >= 2,
+      Array.isArray(webDetail.groups?.website_tech_stack) &&
+        webDetail.groups.website_tech_stack.length >= 2,
+      Array.isArray(webDetail.niches) && webDetail.niches.length >= 2,
+      hasText(webDetail.caseStudy?.goal),
+      Array.isArray(webDetail.caseStudy?.techStack) &&
+        webDetail.caseStudy.techStack.length >= 3,
+      hasText(webDetail.caseStudy?.results),
+      Object.values(webDetail.platformLinks || {}).filter(hasText).length >= 4
+    ];
+
+    if (richChecklist.some((item) => !item)) {
+      throw new Error(
+        `Seeded freelancer payload for ${payload.email} is not detailed enough for matching.`
+      );
+    }
   }
 };
 

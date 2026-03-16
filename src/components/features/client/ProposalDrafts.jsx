@@ -356,7 +356,7 @@ const ProposalDraftsContent = () => {
         </div>
       )}
 
-      <ClientDashboardFooter />
+      <ClientDashboardFooter variant="workspace" />
 
       <Dialog open={Boolean(activeDraft)} onOpenChange={() => setActiveDraft(null)}>
         <DialogContent className="sm:max-w-[760px]">

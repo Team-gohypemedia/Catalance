@@ -14,6 +14,7 @@ import { useTheme } from "@/components/providers/theme-provider";
 import SparklesIcon from "@/components/ui/sparkles-icon";
 import { Spotlight } from "@/components/sections/home/spotlight-new";
 import DecorativeIcons from "@/components/ui/decorative-icons";
+import MascotImage from "@/assets/mascot.png";
 
 const CatalanceHero = () => {
   const [isMounted, setIsMounted] = useState(false);
@@ -167,7 +168,7 @@ const CatalanceHero = () => {
               }`}
             style={{ animationDelay: "300ms" }}
           >
-            <div className="grid md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-8 md:gap-12 lg:gap-2 relative">
+            <div className="relative z-10 grid items-stretch gap-8 md:grid-cols-2 md:gap-12 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-2">
 
               {/* Business Card */}
               <Link to="/service" className="block">
@@ -256,8 +257,20 @@ const CatalanceHero = () => {
               </div>
 
               {/* Freelancer Card */}
-              <Link to="/signup?role=freelancer" className="block">
-                <div className={`group relative p-5 sm:p-6 rounded-3xl flex flex-col border backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02] ${cardSurfaceClass}`}>
+              <Link to="/signup?role=freelancer" className="relative block">
+                <div className="pointer-events-none absolute -right-24 bottom-2 z-0 hidden w-[215px] rotate-[45deg] md:block lg:-right-40 lg:bottom-3 lg:w-[310px]">
+                  <div className="absolute inset-x-5 bottom-5 h-16 rounded-full bg-primary/24 blur-3xl" />
+                  <img
+                    src={MascotImage}
+                    alt="Catalance mascot"
+                    loading="eager"
+                    decoding="async"
+                    fetchPriority="high"
+                    className="relative z-10 w-full object-contain drop-shadow-[0_28px_38px_rgba(255,204,0,0.24)]"
+                  />
+                </div>
+
+                <div className={`group relative z-10 p-5 sm:p-6 rounded-3xl flex flex-col border backdrop-blur-xl text-left min-h-[430px] sm:min-h-[450px] cursor-pointer transition-all duration-300 hover:scale-[1.02] ${cardSurfaceClass}`}>
                   <div className="mb-6 flex flex-col items-start">
                     <div className="px-0 py-2">
                       <Zap className="w-5 h-5 text-primary" />

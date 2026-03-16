@@ -2432,7 +2432,7 @@ const ProjectDashboard = () => {
             </div>
           </div>
 
-          <ClientDashboardFooter />
+          <ClientDashboardFooter variant="workspace" />
         </div>
       </div>
 
