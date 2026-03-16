@@ -6,7 +6,6 @@ import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { getSession } from "@/shared/lib/auth-storage";
@@ -989,8 +988,126 @@ export const DashboardContent = ({ _roleOverride }) => {
     [activityItems]
   );
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  }, []);
+
+  const firstName = useMemo(() => {
+    const rawName = String(headerProfile?.name || "Freelancer").trim();
+    if (!rawName) return "Freelancer";
+    return rawName.split(/\s+/)[0] || "Freelancer";
+  }, [headerProfile?.name]);
+
+  const inquiryCards = useMemo(
+    () =>
+      metrics.pendingProposals.slice(0, 4).map((proposal, index) => {
+        const ownerName =
+          proposal?.project?.owner?.fullName || proposal?.project?.owner?.name || "Client";
+        const requestTime = formatDashboardActivityTime(
+          proposal?.updatedAt || proposal?.createdAt
+        );
+
+        return {
+          id: proposal.id || `inquiry-${index}`,
+          ownerName,
+          ownerInitial: String(ownerName).charAt(0).toUpperCase(),
+          title: proposal?.project?.title || "Untitled project request",
+          preview:
+            proposal?.project?.description ||
+            "Hi! I am looking for a reliable freelancer to start this project quickly.",
+          requestTime,
+          projectId: proposal?.project?.id,
+        };
+      }),
+    [metrics.pendingProposals]
+  );
+
+  const recentChatUpdates = useMemo(
+    () =>
+      notifications
+        .filter((item) => String(item?.type || "").toLowerCase() === "chat")
+        .slice(0, 3),
+    [notifications]
+  );
+
+  const resolveProjectProgress = useCallback((proposal, index = 0) => {
+    const explicitProgress = Number(proposal?.project?.progress);
+    if (Number.isFinite(explicitProgress)) {
+      return Math.max(0, Math.min(100, Math.round(explicitProgress)));
+    }
+
+    const proposalAmount = Number(proposal?.amount) || 0;
+    const projectSpent = Number(proposal?.project?.spent);
+    if (proposalAmount > 0 && Number.isFinite(projectSpent)) {
+      return Math.max(12, Math.min(100, Math.round((projectSpent / proposalAmount) * 100)));
+    }
+
+    const fallbackProgress = [75, 54, 38, 66];
+    return fallbackProgress[index % fallbackProgress.length];
+  }, []);
+
+  const monthlyEarningsSeries = useMemo(() => {
+    const fallback = [48, 50, 46, 64, 42, 61];
+    const source = metrics.acceptedProposals
+      .slice(0, 6)
+      .map((proposal) => Number(proposal?.amount) || 0)
+      .filter((value) => value > 0);
+
+    if (!source.length) return fallback;
+
+    while (source.length < 6) {
+      source.unshift(source[0]);
+    }
+
+    const minValue = Math.min(...source);
+    const maxValue = Math.max(...source);
+    if (maxValue === minValue) return fallback;
+
+    return source.map((value) => {
+      const normalized = (value - minValue) / (maxValue - minValue);
+      return Math.round(36 + normalized * 30);
+    });
+  }, [metrics.acceptedProposals]);
+
+  const monthlyEarningsPath = useMemo(() => {
+    const chartWidth = 320;
+    const chartHeight = 120;
+    const steps = monthlyEarningsSeries.length - 1;
+    if (steps <= 0) return "M0,60 L320,60";
+
+    return monthlyEarningsSeries
+      .map((value, index) => {
+        const x = (chartWidth / steps) * index;
+        const y = chartHeight - value;
+        return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(" ");
+  }, [monthlyEarningsSeries]);
+
+  const proposalStats = useMemo(
+    () => ({
+      sent: metrics.totalProposals,
+      accepted: metrics.acceptedProposals.length,
+      pending: metrics.pendingProposals.length,
+    }),
+    [
+      metrics.acceptedProposals.length,
+      metrics.pendingProposals.length,
+      metrics.totalProposals,
+    ]
+  );
+
+  const activeProjectCards = useMemo(
+    () => metrics.acceptedProposals.slice(0, 3),
+    [metrics.acceptedProposals]
+  );
+
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
+    <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
 
       <SuspensionAlert
         open={showSuspensionAlert}
@@ -1028,628 +1145,577 @@ export const DashboardContent = ({ _roleOverride }) => {
         </DialogContent>
       </Dialog>
 
-      <div className="px-4 pt-5 sm:px-6 md:px-8 lg:px-12">
-        <FreelancerWorkspaceHeader
-          profile={headerProfile}
-          activeWorkspaceKey={activeWorkspaceKey}
-          onWorkspaceNav={handleWorkspaceNav}
-          onOpenProfile={() => navigate("/freelancer/profile")}
-          onPrimaryAction={
-            activeWorkspaceKey !== "proposals"
-              ? () => navigate("/freelancer/proposals")
-              : undefined
-          }
-          notifications={notifications}
-          unreadCount={unreadCount}
-          markAllAsRead={markAllAsRead}
-          onNotificationClick={handleNotificationClick}
-        />
-      </div>
+      <FreelancerWorkspaceHeader
+        profile={headerProfile}
+        activeWorkspaceKey={activeWorkspaceKey}
+        onWorkspaceNav={handleWorkspaceNav}
+        onOpenProfile={() => navigate("/freelancer/profile")}
+        onPrimaryAction={
+          activeWorkspaceKey !== "proposals"
+            ? () => navigate("/freelancer/proposals")
+            : undefined
+        }
+        notifications={notifications}
+        unreadCount={unreadCount}
+        markAllAsRead={markAllAsRead}
+        onNotificationClick={handleNotificationClick}
+      />
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
-        <div className="max-w-400 mx-auto">
-          <div className="flex flex-col lg:flex-row gap-10">
-            {/* Left Column (Stats + Pipeline + Table) */}
-            <div className="flex-1 min-w-0 flex flex-col gap-10">
-              {/* Page Title Wrapper - Removed */}
-
-              {showOnboardingAlert ? (
-                <div className="bg-card/40 border-l-4 border-l-yellow-500 border-border rounded-xl p-5 flex flex-col sm:flex-row items-center gap-5 relative overflow-hidden group transition-all duration-300 hover:bg-card/60">
-                  <div className="flex-1 text-center sm:text-left">
-                    <h4 className="text-base font-bold text-foreground mb-1 flex items-center justify-center sm:justify-start gap-2">
-                      <Sparkles className="h-4 w-4 text-yellow-500" />
-                      Complete your onboarding to start getting projects
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Add your profile details and services so clients can
-                      discover and hire you.
-                    </p>
-                  </div>
-
-                  <Button
-                    size="sm"
-                    className="w-full sm:w-auto font-bold bg-yellow-500 text-black hover:bg-yellow-600 transition-all rounded-xl px-6"
-                    onClick={() => navigate("/freelancer/onboarding")}
-                  >
-                    Start Onboarding
-                  </Button>
+      <main className="relative z-10 flex-1 pb-10 pt-5">
+        <div className="flex w-full flex-col gap-6">
+          {showOnboardingAlert ? (
+            <div className="relative overflow-hidden rounded-2xl border border-[#facc15]/30 bg-[#252116] px-5 py-4">
+              <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-[#facc15]/15 blur-3xl" />
+              <div className="relative z-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#facc15]">
+                    Onboarding Required
+                  </p>
+                  <h3 className="mt-1 text-base font-semibold text-zinc-100">
+                    Complete your profile to start getting matched with higher-value projects.
+                  </h3>
                 </div>
-              ) : null}
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {/* Total Earnings */}
-                <div className="bg-card p-8 rounded-xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-primary/40 transition-all relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
-                  <div className="relative z-10">
-                    <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
-                      Total Amount
-                    </p>
-                    <h3 className="text-4xl font-black tracking-tight text-foreground">
-                      {formatCurrency(metrics.earnings)}
-                    </h3>
-                    <p className="text-sm text-green-500 mt-3 flex items-center font-bold">
-                      <TrendingUp className="h-4 w-4 mr-1.5" /> Estimated (70%
-                      share)
-                    </p>
-                  </div>
-                </div>
-
-                {/* Active Projects */}
-                <div className="bg-card p-8 rounded-xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-blue-500/40 transition-all relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
-                  <div className="relative z-10">
-                    <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
-                      Active Projects
-                    </p>
-                    <h3 className="text-4xl font-black tracking-tight text-foreground">
-                      {metrics.activeProjects}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-3">
-                      <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500 rounded-full"
-                          style={{
-                            width: `${Math.min(
-                              (metrics.activeProjects / 5) * 100,
-                              100
-                            )}%`,
-                          }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-blue-500">
-                        Utilization
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Proposals Sent */}
-                <div className="bg-card p-8 rounded-xl border border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-purple-500/40 transition-all relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform duration-500 group-hover:scale-110"></div>
-                  <div className="relative z-10">
-                    <p className="text-muted-foreground text-xs font-bold mb-2 uppercase tracking-widest">
-                      Pending Proposals
-                    </p>
-                    <h3 className="text-4xl font-black tracking-tight text-foreground">
-                      {metrics.proposalsReceived}
-                    </h3>
-                    <p className="text-sm text-purple-500 mt-3 flex items-center font-bold">
-                      <Clock className="h-4 w-4 mr-1.5" /> Awaiting client
-                      response
-                    </p>
-                  </div>
-                </div>
+                <Button
+                  className="h-9 rounded-full bg-[#facc15] px-5 text-xs font-bold text-black hover:bg-[#eab308]"
+                  onClick={() => navigate("/freelancer/onboarding")}
+                >
+                  Start Onboarding
+                </Button>
               </div>
+            </div>
+          ) : null}
 
-              {/* Activity Feed */}
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-foreground">Activity</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Proposal decisions, project starts, meetings, and milestone
-                      updates appear here.
-                    </p>
+          <section>
+            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-[34px]">
+              {greeting}, {firstName}
+            </h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              Here&apos;s a summary of your freelance business.
+            </p>
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <article className="rounded-2xl border border-white/[0.06] bg-accent p-5">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#3a3d44] bg-[#17191d]">
+                    <TrendingUp className="h-3.5 w-3.5" />
                   </div>
-                  <Badge
-                    variant="secondary"
-                    className="w-fit border border-border/70 bg-secondary/40 text-foreground"
-                  >
-                    {unreadActivityCount > 0
-                      ? `${unreadActivityCount} new`
-                      : "Live feed"}
-                  </Badge>
+                  <p className="text-xs font-medium tracking-wide">Total Earnings</p>
                 </div>
+                <span className="rounded-full bg-[#22c55e]/15 px-2 py-0.5 text-[10px] font-semibold text-[#4ade80]">
+                  {metrics.earnings > 0
+                    ? `+${Math.round((metrics.receivedEarnings / metrics.earnings) * 100)}%`
+                    : "New"}
+                </span>
+              </div>
+              <p className="mt-4 text-[30px] font-extrabold tracking-tight text-zinc-100">
+                {formatCurrency(metrics.earnings)}
+              </p>
+            </article>
 
-                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
-                  {activityItems.map((item, index) => {
-                    const Icon = item.icon;
-                    const tone =
-                      ACTIVITY_TONE_STYLES[item.tone] || ACTIVITY_TONE_STYLES.slate;
+            <article className="rounded-2xl border border-white/[0.06] bg-accent p-5">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#3a3d44] bg-[#17191d]">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </div>
+                <p className="text-xs font-medium tracking-wide">Active Projects</p>
+              </div>
+              <p className="mt-4 text-[30px] font-extrabold tracking-tight text-zinc-100">
+                {String(metrics.activeProjects).padStart(2, "0")}
+              </p>
+            </article>
 
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={item.onClick}
-                        className={`flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-secondary/20 ${
-                          index < activityItems.length - 1 ? "border-b border-border/70" : ""
-                        }`}
-                      >
-                        <div
-                          className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${tone.icon}`}
-                        >
-                          <Icon className="h-4 w-4" />
+            <article className="rounded-2xl border border-white/[0.06] bg-accent p-5">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#3a3d44] bg-[#17191d]">
+                  <Clock className="h-3.5 w-3.5" />
+                </div>
+                <p className="text-xs font-medium tracking-wide">Pending Payments</p>
+              </div>
+              <p className="mt-4 text-[30px] font-extrabold tracking-tight text-zinc-100">
+                {formatCurrency(metrics.pendingEarnings)}
+              </p>
+            </article>
+
+            <article className="rounded-2xl border border-white/[0.06] bg-accent p-5">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#3a3d44] bg-[#17191d]">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                  </div>
+                  <p className="text-xs font-medium tracking-wide">Client&apos;s Request</p>
+                </div>
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#facc15]" />
+              </div>
+              <p className="mt-4 text-[30px] font-extrabold tracking-tight text-zinc-100">
+                {String(metrics.pendingProposals.length).padStart(2, "0")}
+              </p>
+            </article>
+          </section>
+
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_350px]">
+            <article className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+              <h2 className="text-xl font-semibold text-zinc-100">
+                Client Inquiries
+              </h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                Manage your incoming project requests and potential collaborations.
+              </p>
+
+              {inquiryCards.length === 0 ? (
+                <div className="mt-5 rounded-xl border border-dashed border-white/[0.06] bg-background p-6 text-sm text-zinc-400">
+                  No client inquiries yet. New requests will appear here.
+                </div>
+              ) : (
+                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {inquiryCards.map((inquiry) => (
+                    <div
+                      key={inquiry.id}
+                      className="flex flex-col justify-between rounded-2xl border border-white/[0.06] bg-accent p-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2a2d34] text-base font-bold text-zinc-100">
+                          {inquiry.ownerInitial}
                         </div>
-
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-semibold text-foreground">
-                                  {item.title}
-                                </p>
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ${tone.badge}`}
-                                >
-                                  {item.badge}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {item.subtitle}
-                              </p>
-                            </div>
-
-                            <span className="shrink-0 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                              {item.timeLabel}
+                          <p className="text-sm font-bold text-zinc-100">{inquiry.ownerName}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <Badge className="h-5 rounded-full border-0 bg-[#facc15]/15 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#facc15]">
+                              {inquiry.title}
+                            </Badge>
+                            <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                              <Clock className="h-3 w-3" />
+                              {inquiry.requestTime}
                             </span>
                           </div>
                         </div>
+                      </div>
 
-                        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                      </button>
-                    );
-                  })}
+                      <p className="mt-3 line-clamp-2 text-sm text-zinc-300">
+                        &ldquo;{inquiry.preview}
+                      </p>
+
+                      <div className="mt-4 flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-9 flex-1 rounded-xl border-white/10 bg-transparent text-xs font-semibold text-zinc-200 hover:bg-white/[0.06]"
+                          onClick={() =>
+                            navigate(
+                              inquiry.projectId
+                                ? `/freelancer/messages?projectId=${inquiry.projectId}`
+                                : "/freelancer/messages"
+                            )
+                          }
+                        >
+                          Reply
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-9 flex-1 rounded-xl border-white/10 bg-transparent text-xs font-semibold text-zinc-200 hover:bg-white/[0.06]"
+                          onClick={() =>
+                            navigate(
+                              inquiry.projectId
+                                ? `/freelancer/project/${inquiry.projectId}`
+                                : "/freelancer/proposals"
+                            )
+                          }
+                        >
+                          View Profile
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
+            </article>
 
-              {/* Active Projects Table */}
-              <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
+              <article className="rounded-2xl border border-white/[0.06] bg-accent p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-foreground">
-                    Active Jobs Overview
-                  </h3>
-                  <Button
-                    variant="link"
-                    className="text-primary hover:text-primary/80 h-auto p-0 font-semibold"
-                    onClick={() => navigate("/freelancer/project?view=ongoing")}
-                  >
-                    View All <ArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
+                  <h3 className="text-sm font-semibold text-zinc-100">Profile Completion</h3>
+                  <span className="text-sm font-bold text-[#facc15]">{profileCompletionPercent}%</span>
                 </div>
-
-                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-secondary/40 border-b border-border">
-                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Project Name
-                        </th>
-                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Status
-                        </th>
-                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Client
-                        </th>
-                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Budget
-                        </th>
-                        <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-muted-foreground text-right">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {metrics.acceptedProposals.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan="5"
-                            className="px-6 py-8 text-center text-muted-foreground text-sm"
-                          >
-                            No active jobs yet.
-                          </td>
-                        </tr>
-                      ) : (
-                        metrics.acceptedProposals.map((proposal) => (
-                          <tr
-                            key={proposal.id}
-                            className="group hover:bg-secondary/30 transition-colors"
-                          >
-                            <td className="px-6 py-4">
-                              <div className="font-bold text-foreground">
-                                {proposal.project?.title || "Untitled Project"}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(
-                                  proposal.project?.createdAt || Date.now()
-                                ).toLocaleDateString()}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50">
-                                Active
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-xs font-bold border border-border">
-                                  {(
-                                    proposal.project?.owner?.fullName || "C"
-                                  ).charAt(0)}
-                                </div>
-                                <span className="text-sm font-medium">
-                                  {proposal.project?.owner?.fullName ||
-                                    "Client"}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-bold text-foreground">
-                                {formatCurrency(proposal.amount * 0.7)}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                onClick={() =>
-                                  navigate(
-                                    `/freelancer/project/${proposal.project?.id}`
-                                  )
-                                }
-                              >
-                                <ArrowRight className="h-4 w-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Sidebar - Widgets (Merged) */}
-            <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6">
-              {/* Dynamic Upcoming Meeting Widget (Moved to TOP for visibility) */}
-              {/* Dynamic Upcoming Meeting Widget (Moved to TOP for visibility) */}
-              {(() => {
-                // If no upcoming meeting, hide the widget
-                if (!upcomingMeeting) return null;
-
-                const meetingDate = new Date(upcomingMeeting.date);
-                const isToday =
-                  new Date().toDateString() === meetingDate.toDateString();
-                const dateDisplay = isToday
-                  ? "Today"
-                  : meetingDate.toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  });
-                const timeDisplay = `${upcomingMeeting.startHour}:00 - ${upcomingMeeting.endHour}:00`;
-
-                return (
-                  <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex flex-col items-center justify-center shrink-0 min-w-60 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -mr-6 -mt-6"></div>
-                    <h3 className="font-bold text-lg text-foreground mb-2 flex items-center gap-2 relative z-10">
-                      <Video className="h-5 w-5 text-primary" />
-                      Upcoming Meeting
-                    </h3>
-                    <div className="relative z-10 mb-4">
-                      <p className="text-sm font-bold text-foreground">
-                        {upcomingMeeting.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {dateDisplay} • {timeDisplay}
-                      </p>
-                      {upcomingMeeting.manager && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          with {upcomingMeeting.manager.fullName}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2 relative z-10">
-                      <Button
-                        className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-lg shadow-primary/20 text-xs sm:text-sm"
-                        onClick={() =>
-                          window.open(
-                            upcomingMeeting.meetingLink ||
-                            "https://meet.google.com/",
-                            "_blank"
-                          )
-                        }
-                        disabled={
-                          !upcomingMeeting.meetingLink &&
-                          !upcomingMeeting.meetingLink?.startsWith("http")
-                        }
-                      >
-                        Join Meeting
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="flex-1 font-bold text-xs sm:text-sm"
-                      >
-                        Details
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Pending Proposals Widget */}
-              <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-bold text-lg text-foreground">
-                    Profile Completion
-                  </h3>
-                  <span
-                    className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                      profileCompletionComplete
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-primary/15 text-primary"
-                    }`}
-                  >
-                    {profileCompletionPercent}%
-                  </span>
-                </div>
-
-                <div className="mt-4 h-2 rounded-full bg-secondary/80 overflow-hidden">
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-background">
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      profileCompletionComplete ? "bg-green-500" : "bg-primary"
-                    }`}
+                    className="h-full rounded-full bg-[#facc15] transition-all duration-700"
                     style={{ width: `${profileCompletionPercent}%` }}
                   />
                 </div>
-
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {profileCompletion.message}
-                </p>
-
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {profileCompletion.completedSections}/{profileCompletion.totalSections} sections completed
-                  {profileCompletion.partialSections > 0
-                    ? ` | ${profileCompletion.partialSections} in progress`
-                    : ""}
-                </p>
-
-                {!profileCompletion.isLoading && profileCompletion.missingDetails.length > 0 ? (
-                  <ul className="mt-3 space-y-1.5">
-                    {profileCompletion.missingDetails.slice(0, 2).map((item, index) => (
-                      <li key={`${item}-${index}`} className="text-xs text-muted-foreground">
-                        • {item}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-
+                <p className="mt-3 text-xs text-zinc-400">{profileCompletion.message}</p>
                 <Button
-                  className="mt-4 w-full font-bold"
+                  className="mt-4 h-9 w-full rounded-lg bg-zinc-100 text-xs font-semibold text-zinc-900 hover:bg-zinc-200"
                   onClick={() => navigate("/freelancer/profile")}
                 >
                   {profileCompletionComplete ? "View Profile" : "Complete Profile"}
                 </Button>
+              </article>
+
+              <article className="rounded-2xl border border-white/[0.06] bg-accent p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                <h3 className="text-sm font-semibold text-zinc-100">Monthly Earnings</h3>
+                <div className="mt-4 rounded-xl border border-[#30333a] bg-[#16181b] p-3">
+                  <svg viewBox="0 0 320 120" className="h-28 w-full" role="img" aria-label="Monthly earnings trend">
+                    <defs>
+                      <linearGradient id="freelancerMonthlyArea" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#facc15" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#facc15" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path d={`${monthlyEarningsPath} L320,120 L0,120 Z`} fill="url(#freelancerMonthlyArea)" />
+                    <path
+                      d={monthlyEarningsPath}
+                      fill="none"
+                      stroke="#facc15"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="mt-1 grid grid-cols-6 text-center text-[11px] text-zinc-500">
+                    {[
+                      "Jan",
+                      "Feb",
+                      "Mar",
+                      "Apr",
+                      "May",
+                      "Jun",
+                    ].map((label) => (
+                      <span key={label}>{label}</span>
+                    ))}
+                  </div>
+                </div>
+              </article>
+
+              <article className="rounded-2xl border border-white/[0.06] bg-accent p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                <h3 className="text-sm font-semibold text-zinc-100">New Messages</h3>
+                {recentChatUpdates.length === 0 ? (
+                  <p className="mt-3 text-xs text-zinc-400">No new messages right now.</p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {recentChatUpdates.map((message) => (
+                      <li key={message.id || message.createdAt} className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-200">
+                          {String(message?.title || "M").charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-zinc-100">
+                            {message?.title || "New message"}
+                          </p>
+                          <p className="line-clamp-1 text-[11px] text-zinc-500">
+                            {message?.message || "You have a new conversation update."}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+
+              <article className="rounded-2xl border border-white/[0.06] bg-accent p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                <h3 className="text-sm font-semibold text-zinc-100">Proposals</h3>
+                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-2xl font-extrabold text-zinc-100">{proposalStats.sent}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Sent</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-[#facc15]">{proposalStats.accepted}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Accepted</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-extrabold text-zinc-100">{proposalStats.pending}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Pending</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-xl font-semibold text-zinc-100">Recent Activity</h3>
+              <Button
+                variant="link"
+                className="h-auto p-0 text-xs font-semibold uppercase tracking-[0.16em] text-[#facc15] hover:text-[#facc15]/80"
+                onClick={() => navigate("/freelancer/proposals")}
+              >
+                View all
+              </Button>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-accent">
+              {activityItems.map((item, index) => {
+                const Icon = item.icon;
+                const tone =
+                  ACTIVITY_TONE_STYLES[item.tone] || ACTIVITY_TONE_STYLES.slate;
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={item.onClick}
+                    className={`flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.04] ${
+                      index < activityItems.length - 1 ? "border-b border-white/[0.06]" : ""
+                    }`}
+                  >
+                    <div
+                      className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${tone.icon}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-zinc-100">{item.title}</p>
+                          <p className="line-clamp-1 text-xs text-zinc-400">{item.subtitle}</p>
+                        </div>
+                        <span className="shrink-0 text-[11px] text-zinc-500">{item.timeLabel}</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="mt-3 text-xs text-zinc-500">
+              {unreadActivityCount > 0
+                ? `${unreadActivityCount} unread updates`
+                : "No unread updates"}
+            </p>
+          </section>
+
+          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_350px]">
+            <article className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-zinc-100">Active Projects</h3>
+                <Button
+                  variant="link"
+                  className="h-auto p-0 text-xs font-semibold uppercase tracking-[0.16em] text-[#facc15] hover:text-[#facc15]/80"
+                  onClick={() => navigate("/freelancer/project?view=ongoing")}
+                >
+                  View all
+                </Button>
               </div>
 
-              {/* Pending Proposals Widget */}
-              <div className="bg-primary/5 dark:bg-card rounded-xl p-8 border border-primary/10 dark:border-border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] relative overflow-hidden">
-                <div className="absolute -top-6 -right-6 w-32 h-32 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
-                <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-foreground relative z-10">
-                  <Gavel className="text-primary h-5 w-5" /> Pending Proposals
-                  <Badge className="bg-primary text-black hover:bg-primary/90 ml-auto font-bold">
-                    {metrics.proposalsReceived}
-                  </Badge>
-                </h3>
+              {activeProjectCards.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#3a3d44] bg-[#17191d] p-6 text-sm text-zinc-400">
+                  No active projects yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activeProjectCards.map((proposal, index) => {
+                    const projectId = proposal?.project?.id;
+                    const projectTitle = proposal?.project?.title || "Untitled Project";
+                    const progress = resolveProjectProgress(proposal, index);
+                    const budget = formatCurrency((Number(proposal?.amount) || 0) * 0.7);
+                    const dueDate = proposal?.project?.deadline
+                      ? new Date(proposal.project.deadline).toLocaleDateString()
+                      : "Ongoing";
 
-                <div className="flex flex-col gap-3 relative z-10">
-                  {metrics.pendingProposals.length === 0 ? (
-                    <div className="text-sm text-muted-foreground italic">
-                      No pending proposals.
-                    </div>
-                  ) : (
-                    metrics.pendingProposals.slice(0, 3).map((p) => (
+                    return (
                       <div
-                        key={p.id}
-                        className="bg-background/80 backdrop-blur-sm p-4 rounded-xl border border-border hover:border-primary/30 transition-all"
+                        key={proposal.id || `active-${index}`}
+                        className="rounded-xl border border-white/[0.06] bg-accent p-4"
                       >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1 min-w-0 pr-2">
-                            <p className="text-sm font-bold text-foreground truncate">
-                              {p.project?.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Client: {p.project?.owner?.fullName}
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-zinc-100">{projectTitle}</p>
+                            <p className="text-xs text-zinc-500">
+                              {budget} • Due {dueDate}
                             </p>
                           </div>
-                          <span className="text-xs font-bold text-foreground whitespace-nowrap">
-                            {formatCurrency(p.amount * 0.7)}
-                          </span>
-                        </div>
-                        <div className="flex gap-2 mt-2">
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="w-full text-xs h-7 font-bold"
-                            onClick={() => navigate("/freelancer/proposals")}
+                            className="h-8 rounded-lg bg-zinc-100 px-4 text-xs font-semibold text-zinc-900 hover:bg-zinc-200"
+                            onClick={() =>
+                              navigate(
+                                projectId
+                                  ? `/freelancer/project/${projectId}`
+                                  : "/freelancer/project?view=ongoing"
+                              )
+                            }
                           >
-                            View Details
+                            View Project
                           </Button>
                         </div>
+
+                        <div className="mt-3 flex items-center gap-3">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-background">
+                            <div
+                              className="h-full rounded-full bg-[#facc15]"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <span className="w-10 text-right text-xs font-semibold text-zinc-300">
+                            {progress}%
+                          </span>
+                        </div>
                       </div>
-                    ))
-                  )}
+                    );
+                  })}
                 </div>
-              </div>
+              )}
+            </article>
 
-              {/* Earnings Goal / Payment Status Widget */}
-              <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
-                <h3 className="font-bold text-lg text-foreground mb-6">
-                  Earnings Goal
-                </h3>
-                <div className="flex items-center gap-6">
-                  {/* Circular Progress */}
-                  <div className="relative w-28 h-28 shrink-0">
-                    <svg
-                      className="w-full h-full transform -rotate-90"
-                      viewBox="0 0 100 100"
-                    >
-                      {/* Track */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        stroke="currentColor"
-                        strokeWidth="12"
-                        fill="transparent"
-                        className="text-secondary dark:text-zinc-800"
-                      />
-                      {/* Progress */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        stroke="currentColor"
-                        strokeWidth="12"
-                        fill="transparent"
-                        strokeDasharray={263.89}
-                        strokeDashoffset={
-                          263.89 -
-                          263.89 *
-                          (metrics.earnings > 0
-                            ? metrics.receivedEarnings / metrics.earnings
-                            : 0)
-                        }
-                        className="text-primary transition-all duration-1000 ease-out"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-black text-foreground">
-                        {metrics.earnings > 0
-                          ? Math.round(
-                            (metrics.receivedEarnings / metrics.earnings) *
-                            100
-                          )
-                          : 0}
-                        %
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Legend */}
-                  <div className="flex flex-col gap-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                        Received Payment
-                      </p>
-                      <p className="text-xl font-black text-foreground leading-none">
-                        {formatCurrency(metrics.receivedEarnings || 0)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                        Pending Payment
-                      </p>
-                      <p className="text-xl font-black text-foreground leading-none">
-                        {formatCurrency(metrics.pendingEarnings || 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Active Clients (Was Assigned Talent) */}
-              <div className="bg-card rounded-xl border border-border p-8 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-lg text-foreground">
-                    Active Clients
-                  </h3>
+            <article className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+              <h3 className="text-sm font-semibold text-zinc-100">Quick Status</h3>
+              {upcomingMeeting ? (
+                <div className="mt-4 rounded-xl border border-white/[0.06] bg-accent p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#facc15]">
+                    Upcoming Meeting
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-zinc-100">
+                    {upcomingMeeting.title || "Client Meeting"}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    {new Date(upcomingMeeting.date).toLocaleDateString()} •
+                    {` ${upcomingMeeting.startHour}:00 - ${upcomingMeeting.endHour}:00`}
+                  </p>
                   <Button
-                    variant="link"
-                    className="text-primary hover:text-primary/80 h-auto p-0 font-semibold text-sm"
-                    onClick={() => navigate("/freelancer/messages")}
+                    className="mt-3 h-8 w-full rounded-lg bg-[#facc15] text-xs font-semibold text-black hover:bg-[#eab308]"
+                    onClick={() =>
+                      window.open(
+                        upcomingMeeting.meetingLink || "https://meet.google.com/",
+                        "_blank"
+                      )
+                    }
                   >
-                    View All
+                    Join Meeting
                   </Button>
                 </div>
-                <ul className="flex flex-col gap-4">
+              ) : (
+                <div className="mt-4 rounded-xl border border-dashed border-white/[0.06] bg-accent p-4 text-xs text-zinc-400">
+                  No upcoming meetings scheduled.
+                </div>
+              )}
+
+              <div className="mt-4 rounded-xl border border-white/[0.06] bg-accent p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">
+                  Payment Split
+                </p>
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-300">
+                    <span>Received</span>
+                    <span className="font-semibold text-zinc-100">
+                      {formatCurrency(metrics.receivedEarnings)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-zinc-300">
+                    <span>Pending</span>
+                    <span className="font-semibold text-zinc-100">
+                      {formatCurrency(metrics.pendingEarnings)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-2xl font-semibold text-zinc-100">Active Jobs Overview</h3>
+              <Button
+                variant="link"
+                className="h-auto p-0 text-xs font-semibold uppercase tracking-[0.16em] text-[#facc15] hover:text-[#facc15]/80"
+                onClick={() => navigate("/freelancer/project?view=ongoing")}
+              >
+                View all
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-accent">
+              <table className="min-w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-white/[0.06] bg-accent">
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                      Project Name
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                      Client
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                      Budget
+                    </th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
                   {metrics.acceptedProposals.length === 0 ? (
-                    <div className="text-sm text-muted-foreground italic">
-                      No active clients yet.
-                    </div>
+                    <tr>
+                      <td colSpan="5" className="px-4 py-8 text-center text-sm text-zinc-400">
+                        No active jobs yet.
+                      </td>
+                    </tr>
                   ) : (
-                    // List all accepted proposals (Active Clients/Projects)
-                    metrics.acceptedProposals.slice(0, 5).map((proposal) => (
-                      <li key={proposal.id} className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-foreground font-bold border-2 border-background ring-2 ring-border/20">
-                            {(proposal.project?.owner?.fullName || "C").charAt(
-                              0
-                            )}
-                          </div>
-                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full"></span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-foreground truncate">
-                            {proposal.project?.owner?.fullName || "Client"}
+                    metrics.acceptedProposals.map((proposal) => (
+                      <tr
+                        key={proposal.id}
+                        className="border-b border-white/[0.06] text-sm text-zinc-200 transition-colors last:border-b-0 hover:bg-white/[0.04]"
+                      >
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-zinc-100">
+                            {proposal.project?.title || "Untitled Project"}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {proposal.project?.title}
+                          <p className="text-xs text-zinc-500">
+                            Due {proposal.project?.deadline
+                              ? new Date(proposal.project.deadline).toLocaleDateString()
+                              : "soon"}
                           </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary rounded-full transition-colors"
-                          onClick={() =>
-                            navigate(
-                              `/freelancer/messages?projectId=${proposal.projectId}`
-                            )
-                          }
-                        >
-                          <MessageSquare className="h-5 w-5" />
-                        </Button>
-                      </li>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+                            Active
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {proposal.project?.owner?.fullName || "Client"}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-zinc-100">
+                          {formatCurrency((Number(proposal?.amount) || 0) * 0.7)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-zinc-400 hover:bg-[#2f333a] hover:text-[#facc15]"
+                            onClick={() =>
+                              navigate(
+                                proposal.project?.id
+                                  ? `/freelancer/project/${proposal.project.id}`
+                                  : "/freelancer/project?view=ongoing"
+                              )
+                            }
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
                     ))
                   )}
-                </ul>
-              </div>
+                </tbody>
+              </table>
             </div>
-          </div>
+          </section>
         </div>
       </main>
+      </div>
     </div>
   );
 };
 
 const FreelancerDashboard = () => {
-  return (
-    <RoleAwareSidebar>
-      <DashboardContent />
-    </RoleAwareSidebar>
-  );
+  return <DashboardContent />;
 };
 
 export const ClientDashboard = () => {
-  return (
-    <RoleAwareSidebar>
-      <DashboardContent _roleOverride="CLIENT" />
-    </RoleAwareSidebar>
-  );
+  return <DashboardContent _roleOverride="CLIENT" />;
 };
 
 export default FreelancerDashboard;

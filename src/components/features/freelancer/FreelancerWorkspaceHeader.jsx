@@ -10,7 +10,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 
@@ -275,7 +274,7 @@ const NotificationPopoverButton = ({
     <PopoverContent
       align="end"
       sideOffset={10}
-      className="w-[22rem] border border-white/10 bg-[#171718] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+        className="w-[22rem] border border-white/10 bg-[#171718] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
     >
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <h4 className="text-sm font-semibold">Notifications</h4>
@@ -347,7 +346,6 @@ const FreelancerWorkspaceHeader = ({
   unreadCount = 0,
   markAllAsRead,
   onNotificationClick,
-  showSidebarTrigger = true,
   className,
 }) => {
   const displayName = String(profile?.name || "Freelancer").trim() || "Freelancer";
@@ -400,25 +398,20 @@ const FreelancerWorkspaceHeader = ({
 
       <div className="mt-7 border-b border-[#ffc107]/10 pb-3">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3 lg:items-center">
-            {showSidebarTrigger ? (
-              <SidebarTrigger className="mt-0.5 rounded-full border border-white/10 bg-[#1f1f1f] p-2 text-[#94a3b8] transition-colors hover:text-white lg:mt-0" />
-            ) : null}
-            <div className="space-y-3">
-              <HeaderNav
-                items={workspaceNavItems}
-                activeKey={activeWorkspaceKey}
-                onSelect={onWorkspaceNav}
-                variant="workspace"
-              />
-              <HeaderNav
-                items={workspaceNavItems}
-                activeKey={activeWorkspaceKey}
-                onSelect={onWorkspaceNav}
-                mobile
-                variant="workspace"
-              />
-            </div>
+          <div className="space-y-3">
+            <HeaderNav
+              items={workspaceNavItems}
+              activeKey={activeWorkspaceKey}
+              onSelect={onWorkspaceNav}
+              variant="workspace"
+            />
+            <HeaderNav
+              items={workspaceNavItems}
+              activeKey={activeWorkspaceKey}
+              onSelect={onWorkspaceNav}
+              mobile
+              variant="workspace"
+            />
           </div>
 
           <div className="flex items-center gap-5">
