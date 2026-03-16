@@ -13,6 +13,129 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { cn } from "@/shared/lib/utils";
 
+/* ─── Profile Dropdown (shared) ─────────────────────────────────────────── */
+const ProfileDropdown = ({ profile, displayName, profileInitial, currentDashboard = "client" }) => {
+  const navigate = useNavigate();
+  const [open, setOpen] = React.useState(false);
+  const [isFreelancer, setIsFreelancer] = React.useState(currentDashboard === "freelancer");
+
+  const handleToggle = () => {
+    const next = !isFreelancer;
+    setIsFreelancer(next);
+    navigate(next ? "/freelancer" : "/client");
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-full border border-white/10 bg-[#222222] px-3 py-2 text-sm font-semibold text-white transition-colors hover:border-white/15 hover:bg-[#292929]"
+        >
+          <Avatar className="size-7 border border-black/10">
+            <AvatarImage src={profile?.avatar} alt={displayName} />
+            <AvatarFallback className="bg-black/5 text-xs font-semibold text-black">
+              {profileInitial}
+            </AvatarFallback>
+          </Avatar>
+          <span className="max-w-[120px] truncate">{displayName}</span>
+          <svg
+            className={cn("h-3.5 w-3.5 text-white/40 transition-transform duration-200", open ? "rotate-180" : "")}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={10}
+        className="w-56 border border-white/10 bg-[#1a1a1b] p-0 text-white shadow-[0_24px_70px_-36px_rgba(0,0,0,0.95)]"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+          <Avatar className="size-9 border border-white/10">
+            <AvatarImage src={profile?.avatar} alt={displayName} />
+            <AvatarFallback className="bg-white/10 text-sm font-bold text-white">
+              {profileInitial}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+            <p className="truncate text-xs text-white/40">{profile?.email}</p>
+          </div>
+        </div>
+
+        {/* Menu */}
+        <div className="p-1.5">
+          {/* Profile */}
+          <Link
+            to={currentDashboard === "freelancer" ? "/freelancer/profile" : "/client/profile"}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/8 hover:text-white"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white/60">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </span>
+            Profile
+          </Link>
+
+          {/* Dashboard */}
+          <Link
+            to={currentDashboard === "freelancer" ? "/freelancer" : "/client"}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/8 hover:text-white"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white/60">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </span>
+            Dashboard
+          </Link>
+
+          {/* Divider */}
+          <div className="my-1.5 border-t border-white/10" />
+
+          {/* Toggle */}
+          <div className="flex items-center justify-between rounded-lg px-3 py-2.5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white/60">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </span>
+              <div>
+                <p className="text-sm font-medium text-white/80">{isFreelancer ? "Freelancer" : "Client"}</p>
+                <p className="text-xs text-white/40">Switch view</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggle}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                isFreelancer ? "bg-[#ffc107]" : "bg-white/20"
+              )}
+              aria-label="Switch between Client and Freelancer"
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out",
+                  isFreelancer ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
   { label: "Marketplace", key: "marketplace", to: "/marketplace" },
@@ -302,22 +425,12 @@ const ClientWorkspaceHeader = ({
             onSelect={onSiteNav}
           />
 
-          {typeof onOpenProfile === "function" ? (
-            <button
-              type="button"
-              onClick={onOpenProfile}
-              className="flex items-center gap-2 rounded-full border border-white/10 bg-[#222222] px-3 py-2 text-sm font-semibold text-white transition-colors hover:border-white/15 hover:bg-[#292929]"
-            >
-              {profileContent}
-            </button>
-          ) : (
-            <Link
-              to={profileTo}
-              className="flex items-center gap-2 rounded-full border border-white/10 bg-[#222222] px-3 py-2 text-sm font-semibold text-white transition-colors hover:border-white/15 hover:bg-[#292929]"
-            >
-              {profileContent}
-            </Link>
-          )}
+          <ProfileDropdown
+            profile={profile}
+            displayName={displayName}
+            profileInitial={profileInitial}
+            currentDashboard="client"
+          />
         </div>
 
         <div className="mt-4 lg:hidden">
