@@ -69,20 +69,6 @@ const ProfileDropdown = ({ profile, displayName, profileInitial, currentDashboar
 
         {/* Menu */}
         <div className="p-1.5">
-          {/* Profile */}
-          <Link
-            to={currentDashboard === "freelancer" ? "/freelancer/profile" : "/client/profile"}
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/8 hover:text-white"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white/60">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </span>
-            Profile
-          </Link>
-
           {/* Dashboard */}
           <Link
             to={currentDashboard === "freelancer" ? "/freelancer" : "/client"}
@@ -96,9 +82,6 @@ const ProfileDropdown = ({ profile, displayName, profileInitial, currentDashboar
             </span>
             Dashboard
           </Link>
-
-          {/* Divider */}
-          <div className="my-1.5 border-t border-white/10" />
 
           {/* Toggle */}
           <div className="flex items-center justify-between rounded-lg px-3 py-2.5">
@@ -130,6 +113,23 @@ const ProfileDropdown = ({ profile, displayName, profileInitial, currentDashboar
               />
             </button>
           </div>
+
+          {/* Divider */}
+          <div className="my-1.5 border-t border-white/10" />
+
+          {/* Profile */}
+          <Link
+            to={currentDashboard === "freelancer" ? "/freelancer/profile" : "/client/profile"}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/8 hover:text-white"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-white/60">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </span>
+            Profile
+          </Link>
         </div>
       </PopoverContent>
     </Popover>
@@ -371,8 +371,8 @@ const ClientWorkspaceHeader = ({
   onOpenProfile,
   profileTo = "/client/profile",
   onPrimaryAction,
-  primaryActionLabel = "Hire Freelancer",
-  primaryActionTo = "/marketplace",
+  primaryActionLabel = "New Proposal",
+  primaryActionTo = "/service",
   primaryActionIcon: PrimaryActionIcon = null,
   notificationNode,
   onOpenNotifications: _onOpenNotifications,
@@ -412,7 +412,7 @@ const ClientWorkspaceHeader = ({
   })();
 
   return (
-    <header className={cn("space-y-7", className)}>
+    <header className={cn("sticky top-0 z-50 space-y-4 bg-[#212121] pb-3 pt-3", className)}>
       <div className="mx-auto w-full rounded-[40px] border border-white/10 bg-[#171717]/70 p-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:p-4 xl:w-[70%]">
         <div className="flex items-center justify-between gap-4">
           <Link to="/">

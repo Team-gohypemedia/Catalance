@@ -141,20 +141,6 @@ const UserDropdown = ({ user, dashboardPath }) => {
 
           {/* Menu items */}
           <div className="p-1.5">
-            {/* Profile */}
-            <Link
-              to="/profile"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-100 text-gray-500">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </span>
-              Profile
-            </Link>
-
             {/* Dashboard */}
             <Link
               to={dashboardPath}
@@ -168,9 +154,6 @@ const UserDropdown = ({ user, dashboardPath }) => {
               </span>
               Dashboard
             </Link>
-
-            {/* Divider */}
-            <div className="my-1.5 border-t border-gray-100" />
 
             {/* Client ↔ Freelancer Toggle */}
             <div className="flex items-center justify-between rounded-lg px-3 py-2.5">
@@ -208,6 +191,23 @@ const UserDropdown = ({ user, dashboardPath }) => {
                 />
               </button>
             </div>
+
+            {/* Divider */}
+            <div className="my-1.5 border-t border-gray-100" />
+
+            {/* Profile */}
+            <Link
+              to={isFreelancer ? "/freelancer/profile" : "/client/profile"}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-100 text-gray-500">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </span>
+              Profile
+            </Link>
           </div>
         </div>
       )}
@@ -307,7 +307,7 @@ const Navbar = () => {
             <>
               <NavbarButton
                 as={Link}
-                to="/profile"
+                to={dashboardPath === "/freelancer" ? "/freelancer/profile" : "/client/profile"}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 !text-black"
                 onClick={closeMobileMenu}
               >
