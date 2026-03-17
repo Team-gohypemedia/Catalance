@@ -107,7 +107,7 @@ export const FreelancerTopBar = () => {
   };
 
   return (
-    <div className="px-4 pt-5 sm:px-6 md:px-8 lg:px-12">
+    <div className="mx-auto w-full max-w-[1536px] px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
       <FreelancerWorkspaceHeader
         profile={profile}
         activeWorkspaceKey={activeWorkspaceKey}
