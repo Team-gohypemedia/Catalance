@@ -799,11 +799,69 @@ const normalizeProposalKey = (value = '') =>
         .replace(/[^a-z0-9]+/g, ' ')
         .trim();
 
+const escapeRegExp = (value = '') =>
+    String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const stripMarkdownDecorators = (value = '') =>
     String(value)
         .replace(/\*\*/g, '')
         .replace(/`/g, '')
         .trim();
+
+const PROPOSAL_INLINE_FIELD_LABELS = [
+    'Client Name',
+    'Business Name',
+    'Service Type',
+    'Project Overview',
+    'Primary Objectives',
+    'Features/Deliverables Included',
+    'Website Type',
+    'Design Style',
+    'Website Build Type',
+    'Frontend Framework',
+    'Backend Technology',
+    'Database',
+    'Hosting',
+    'Page Count',
+    'Creative Type',
+    'Volume',
+    'Engagement Model',
+    'Brand Stage',
+    'Brand Deliverables',
+    'Target Audience',
+    'Business Category',
+    'Target Locations',
+    'SEO Goals',
+    'Duration',
+    'App Type',
+    'App Features',
+    'Platform Requirements',
+    'Additional Confirmed Inputs',
+    'Launch Timeline',
+    'Budget',
+];
+
+const normalizeProposalPreviewContent = (content = '') => {
+    let normalized = normalizeMarkdownContent(content).replace(/\r/g, '');
+
+    normalized = normalized.replace(/([^\n])\s+(#{1,6}\s+)/g, '$1\n$2');
+
+    PROPOSAL_INLINE_FIELD_LABELS.forEach((label) => {
+        const escaped = escapeRegExp(label);
+        const patterns = [
+            new RegExp(`([^\\n])\\s+(#{1,6}\\s*${escaped}\\s*:)`, 'gi'),
+            new RegExp(`([^\\n])\\s+(\\*\\*${escaped}\\*\\*\\s*:)`, 'gi'),
+            new RegExp(`([^\\n])\\s+(\\*\\*${escaped}:\\*\\*)`, 'gi'),
+            new RegExp(`([^\\n])\\s+(${escaped}\\s*:)`, 'gi'),
+        ];
+
+        patterns.forEach((pattern) => {
+            normalized = normalized.replace(pattern, '$1\n$2');
+        });
+    });
+
+    return normalized.replace(/\n{3,}/g, '\n\n').trim();
+};
 
 const PROPOSAL_META_KEY_MAP = {
     'client name': 'clientName',
@@ -825,7 +883,7 @@ const ensureProposalSection = (sectionsMap, rawTitle = '') => {
 };
 
 const parseProposalContent = (content = '') => {
-    const normalized = normalizeMarkdownContent(content).replace(/\r/g, '');
+    const normalized = normalizeProposalPreviewContent(content);
     const lines = normalized.split('\n');
     const fields = {};
     const sectionsMap = new Map();
@@ -897,7 +955,7 @@ const ProposalPreview = ({ content, isDark }) => {
     if (!parsed.hasStructuredData) {
         return (
             <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
-                <ReactMarkdown>{normalizeMarkdownContent(content)}</ReactMarkdown>
+                <ReactMarkdown>{normalizeProposalPreviewContent(content)}</ReactMarkdown>
             </div>
         );
     }
@@ -1802,7 +1860,7 @@ const GuestAIDemo = () => {
     }
 
     return (
-        <div className={`flex h-screen overflow-hidden ${isDark
+        <div className={`mt-20 flex h-[calc(100svh-5rem)] overflow-hidden lg:mt-24 lg:h-[calc(100svh-6rem)] ${isDark
             ? 'bg-[#050507] bg-[radial-gradient(ellipse_at_top,rgba(245,158,11,0.17),transparent_52%)]'
             : 'bg-[#f5f7fb] bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.22),transparent_58%)]'
             }`}
@@ -2067,8 +2125,8 @@ const GuestAIDemo = () => {
                     </div>
                 </div>
 
-                <ScrollArea ref={scrollRef} className="flex-1 min-h-0 px-4 py-6 md:px-8 md:py-8">
-                    <div className="mx-auto w-full max-w-6xl space-y-6 pb-10">
+                <ScrollArea ref={scrollRef} className="flex-1 min-h-0 px-4 pt-2 pb-6 md:px-8 md:pt-3 md:pb-8">
+                    <div className="mx-auto w-full max-w-6xl space-y-5 pb-8">
                         {messages.map((msg, idx) => {
                             const { text: messageContent, attachments: messageAttachments } = parseMessageContentWithAttachments(
                                 msg.content,
