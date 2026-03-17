@@ -1214,6 +1214,17 @@ export const getPmProjectMessages = asyncHandler(async (req, res) => {
     return;
   }
 
+  await prisma.chatMessage.updateMany({
+    where: {
+      conversationId: { in: conversationIds },
+      readAt: null,
+      NOT: [{ senderId: userId }, { senderRole: PM_ROLE }],
+    },
+    data: {
+      readAt: new Date(),
+    },
+  });
+
   const latestConversation = [...conversations].sort(compareProjectChatConversations)[0] || null;
   const messages = await prisma.chatMessage.findMany({
     where: { conversationId: { in: conversationIds } },

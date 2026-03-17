@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import Send from "lucide-react/dist/esm/icons/send";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useNotifications } from "@/shared/context/NotificationContext";
 import { PmShell } from "@/modules/project-manager/components/PmShell";
 import { useAsyncResource } from "@/modules/project-manager/hooks/use-async-resource";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
@@ -12,8 +13,26 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
+const POLL_INTERVAL_MS = 3000;
+
+const resolveNotificationProjectId = (notification) => {
+  const directProjectId = notification?.data?.projectId;
+  if (directProjectId) {
+    return String(directProjectId);
+  }
+
+  const service = String(notification?.data?.service || "");
+  const parts = service.split(":");
+  if (parts.length >= 4 && parts[0] === "CHAT") {
+    return parts[1];
+  }
+
+  return "";
+};
+
 const MessagesPage = () => {
   const { authFetch } = useAuth();
+  const { notifications, markChatAsRead } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [composer, setComposer] = useState("");
@@ -49,6 +68,18 @@ const MessagesPage = () => {
     () => (Array.isArray(messages.data?.messages) ? messages.data.messages : []),
     [messages.data?.messages]
   );
+  const latestChatNotification = useMemo(
+    () =>
+      notifications.find(
+        (notification) => String(notification?.type || "").toLowerCase() === "chat"
+      ) || null,
+    [notifications]
+  );
+  const latestChatNotificationId = latestChatNotification?.id || "";
+  const latestChatNotificationProjectId = useMemo(
+    () => resolveNotificationProjectId(latestChatNotification),
+    [latestChatNotification]
+  );
 
   const syncProjectQuery = useCallback(
     (projectId) => {
@@ -70,6 +101,61 @@ const MessagesPage = () => {
     },
     [syncProjectQuery]
   );
+
+  const clearSelectedProjectUnread = useCallback(() => {
+    if (!selectedProjectId) return;
+
+    dashboard.setData((current) => {
+      if (!current || !Array.isArray(current.projects)) {
+        return current;
+      }
+
+      let unreadDelta = 0;
+      const nextProjects = current.projects.map((project) => {
+        if (project.id !== selectedProjectId || Number(project.unreadMessages || 0) <= 0) {
+          return project;
+        }
+
+        unreadDelta += Number(project.unreadMessages || 0);
+        return {
+          ...project,
+          unreadMessages: 0,
+        };
+      });
+
+      if (!unreadDelta) {
+        return current;
+      }
+
+      return {
+        ...current,
+        stats: current.stats
+          ? {
+              ...current.stats,
+              unreadMessages: Math.max(
+                0,
+                Number(current.stats.unreadMessages || 0) - unreadDelta
+              ),
+            }
+          : current.stats,
+        projects: nextProjects,
+      };
+    });
+  }, [dashboard.setData, selectedProjectId]);
+
+  const refreshChatState = useCallback(async () => {
+    if (!selectedProjectId || !selectedProjectExists) {
+      await dashboard.refresh();
+      return;
+    }
+
+    await Promise.all([dashboard.refresh(), messages.refresh()]);
+  }, [
+    dashboard.refresh,
+    messages.refresh,
+    selectedProjectExists,
+    selectedProjectId,
+  ]);
 
   useEffect(() => {
     const projectIdFromQuery = searchParams.get("projectId");
@@ -98,14 +184,53 @@ const MessagesPage = () => {
   }, [conversationRows.length, selectedProjectId]);
 
   useEffect(() => {
+    markChatAsRead().catch(() => null);
+  }, [markChatAsRead]);
+
+  useEffect(() => {
     if (!selectedProjectId || !selectedProjectExists) return undefined;
 
     const intervalId = window.setInterval(() => {
-      messages.refresh().catch(() => null);
-    }, 5000);
+      if (document.visibilityState !== "visible") return;
+      refreshChatState().catch(() => null);
+    }, POLL_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [messages.refresh, selectedProjectExists, selectedProjectId]);
+  }, [refreshChatState, selectedProjectExists, selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId || messages.loading || messages.error) return;
+    clearSelectedProjectUnread();
+  }, [
+    clearSelectedProjectUnread,
+    messages.error,
+    messages.loading,
+    selectedProjectId,
+    conversationRows.length,
+  ]);
+
+  useEffect(() => {
+    if (!latestChatNotificationId) return;
+
+    const notificationProjectId = latestChatNotificationProjectId;
+    const shouldRefreshConversation =
+      !notificationProjectId || notificationProjectId === selectedProjectId;
+
+    if (shouldRefreshConversation) {
+      refreshChatState().catch(() => null);
+    } else {
+      dashboard.refresh().catch(() => null);
+    }
+
+    markChatAsRead().catch(() => null);
+  }, [
+    dashboard.refresh,
+    latestChatNotificationId,
+    latestChatNotificationProjectId,
+    markChatAsRead,
+    refreshChatState,
+    selectedProjectId,
+  ]);
 
   useEffect(() => {
     if (messages.error?.status !== 404 || !selectedProjectId) return undefined;
@@ -140,7 +265,7 @@ const MessagesPage = () => {
     try {
       await pmApi.sendProjectMessage(authFetch, selectedProjectId, composer.trim());
       setComposer("");
-      await messages.refresh();
+      await refreshChatState();
     } catch (error) {
       toast.error(error.message || "Message failed");
     } finally {
