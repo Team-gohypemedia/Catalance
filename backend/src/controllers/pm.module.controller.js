@@ -350,6 +350,130 @@ const getAcceptedProposal = (project) => {
   );
 };
 
+const getProjectChatFreelancerIds = (project = {}) =>
+  Array.from(
+    new Set(
+      asArray(project?.proposals)
+        .map((proposal) => normalizeText(proposal?.freelancerId))
+        .filter(Boolean)
+    )
+  );
+
+const getCanonicalProjectChatServiceKey = (project = {}) => {
+  const projectId = normalizeText(project?.id);
+  const ownerId = normalizeText(project?.ownerId);
+  const activeProposal = getAcceptedProposal(project);
+  const freelancerId = normalizeText(activeProposal?.freelancerId);
+
+  if (projectId && ownerId && freelancerId) {
+    return `CHAT:${projectId}:${ownerId}:${freelancerId}`;
+  }
+
+  return projectId ? `project:${projectId}` : "";
+};
+
+const compareProjectChatConversations = (left = {}, right = {}) => {
+  const leftMessageCount = Number(left?._count?.messages || 0);
+  const rightMessageCount = Number(right?._count?.messages || 0);
+
+  if (leftMessageCount !== rightMessageCount) {
+    return rightMessageCount - leftMessageCount;
+  }
+
+  const leftLastMessageAt = left?.messages?.[0]?.createdAt
+    ? new Date(left.messages[0].createdAt).getTime()
+    : 0;
+  const rightLastMessageAt = right?.messages?.[0]?.createdAt
+    ? new Date(right.messages[0].createdAt).getTime()
+    : 0;
+
+  if (leftLastMessageAt !== rightLastMessageAt) {
+    return rightLastMessageAt - leftLastMessageAt;
+  }
+
+  return new Date(right?.updatedAt || 0).getTime() - new Date(left?.updatedAt || 0).getTime();
+};
+
+const listProjectScopedChatConversations = async (projectId) => {
+  const normalizedProjectId = normalizeText(projectId);
+  if (!normalizedProjectId) return [];
+
+  const conversations = await prisma.chatConversation.findMany({
+    where: {
+      OR: [
+        { service: { startsWith: `CHAT:${normalizedProjectId}:` } },
+        { service: `project:${normalizedProjectId}` },
+      ],
+    },
+    include: {
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      _count: { select: { messages: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return conversations.sort(compareProjectChatConversations);
+};
+
+const findLegacyProjectConversation = async (project = {}) => {
+  const ownerId = normalizeText(project?.ownerId);
+  const legacyKeys = ownerId
+    ? getProjectChatFreelancerIds(project).map(
+        (freelancerId) => `CHAT:${ownerId}:${freelancerId}`
+      )
+    : [];
+
+  if (!legacyKeys.length) return null;
+
+  const conversations = await prisma.chatConversation.findMany({
+    where: {
+      service: { in: legacyKeys },
+    },
+    include: {
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      _count: { select: { messages: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const [bestConversation] = conversations.sort(compareProjectChatConversations);
+  return bestConversation || null;
+};
+
+const resolvePmProjectChatConversations = async (project = {}) => {
+  const projectId = normalizeText(project?.id);
+  if (!projectId) return [];
+
+  const scopedConversations = await listProjectScopedChatConversations(projectId);
+  if (scopedConversations.length) {
+    return scopedConversations;
+  }
+
+  const legacyConversation = await findLegacyProjectConversation(project);
+  if (!legacyConversation) {
+    return [];
+  }
+
+  const canonicalServiceKey = getCanonicalProjectChatServiceKey(project);
+  if (!canonicalServiceKey || canonicalServiceKey === legacyConversation.service) {
+    return [legacyConversation];
+  }
+
+  const migratedConversation = await prisma.chatConversation.update({
+    where: { id: legacyConversation.id },
+    data: {
+      service: canonicalServiceKey,
+      projectTitle: project?.title || legacyConversation.projectTitle || "Project Chat",
+    },
+    include: {
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      _count: { select: { messages: true } },
+    },
+  });
+
+  return [migratedConversation];
+};
+
 const getFreelancerChangeRequests = (project = {}) =>
   Array.isArray(project?.freelancerChangeRequests)
     ? project.freelancerChangeRequests
@@ -729,78 +853,68 @@ export const getPmDashboardSummary = asyncHandler(async (req, res) => {
     take: 12,
   });
 
-  const cards = [];
-  let totalUnread = 0;
+  const cardRows = await Promise.all(
+    projects.map(async (project) => {
+      const activeProposal = getAcceptedProposal(project);
+      const conversations = await resolvePmProjectChatConversations(project);
+      const conversationIds = conversations.map((conversation) => conversation.id);
 
-  for (const project of projects) {
-    const activeProposal = getAcceptedProposal(project);
-    const activeServiceKey =
-      project?.ownerId && activeProposal?.freelancerId
-        ? `CHAT:${project.id}:${project.ownerId}:${activeProposal.freelancerId}`
-        : null;
+      const unreadMessages = conversationIds.length
+        ? await prisma.chatMessage.count({
+            where: {
+              conversationId: { in: conversationIds },
+              readAt: null,
+              NOT: [{ senderId: userId }, { senderRole: PM_ROLE }],
+            },
+          })
+        : 0;
 
-    const conversation = (activeServiceKey
-      ? await prisma.chatConversation.findFirst({
-          where: { service: activeServiceKey },
-          include: {
-            messages: { orderBy: { createdAt: "desc" }, take: 1 },
-            _count: { select: { messages: true } },
-          },
-          orderBy: { updatedAt: "desc" },
-        })
-      : null) ||
-      (await prisma.chatConversation.findFirst({
-        where: {
-          OR: [{ service: { startsWith: `CHAT:${project.id}:` } }, { service: { contains: project.id } }],
+      const latestConversation = [...conversations].sort(compareProjectChatConversations)[0] || null;
+      const latestMessage = latestConversation?.messages?.[0] || null;
+      const totalMessages = conversations.reduce(
+        (sum, conversation) => sum + Number(conversation?._count?.messages || 0),
+        0
+      );
+
+      const freelancer = activeProposal?.freelancer;
+      const mappedStatus = mapProjectStatusForPm(project);
+      const milestones = buildMilestonesForProject(project);
+      const completedMilestones = countCompletedMilestones(milestones);
+
+      const nextMeeting = meetings.find((meeting) => String(meeting.projectId || "") === String(project.id));
+      const nextMeetingWindow = nextMeeting ? getMeetingWindow(nextMeeting) : null;
+
+      return {
+        unreadMessages,
+        card: {
+          id: project.id,
+          projectName: project.title,
+          clientName: project?.owner?.fullName || "Unknown Client",
+          assignedFreelancer: freelancer?.fullName || "Unassigned",
+          freelancerAvatar: freelancer?.avatar || null,
+          status: mappedStatus.label,
+          statusColor: mappedStatus.color,
+          totalMessages,
+          unreadMessages,
+          lastMessageSender:
+            String(latestMessage?.senderRole || "").toUpperCase() === PM_ROLE
+              ? "Project Manager"
+              : latestMessage?.senderName || latestMessage?.senderRole || null,
+          lastActivityTime: toIsoOrNull(latestMessage?.createdAt || project.updatedAt),
+          milestoneProgress: Math.round((completedMilestones / 4) * 100),
+          upcomingMeeting: nextMeetingWindow ? nextMeetingWindow.startsAt.toISOString() : null,
+          urgentMeeting: nextMeetingWindow ? getRelativeMeetingFlags(nextMeetingWindow.startsAt).isInThirtyMinutes : false,
+          hasIssue: mappedStatus.label === "Issue Raised",
         },
-        include: {
-          messages: { orderBy: { createdAt: "desc" }, take: 1 },
-          _count: { select: { messages: true } },
-        },
-        orderBy: { updatedAt: "desc" },
-      }));
+      };
+    })
+  );
 
-    const unreadMessages = conversation?.id
-      ? await prisma.chatMessage.count({
-          where: {
-            conversationId: conversation.id,
-            readAt: null,
-            NOT: [{ senderId: userId }, { senderRole: PM_ROLE }],
-          },
-        })
-      : 0;
-
-    totalUnread += unreadMessages;
-
-    const freelancer = activeProposal?.freelancer;
-    const mappedStatus = mapProjectStatusForPm(project);
-    const milestones = buildMilestonesForProject(project);
-    const completedMilestones = countCompletedMilestones(milestones);
-
-    const nextMeeting = meetings.find((meeting) => String(meeting.projectId || "") === String(project.id));
-    const nextMeetingWindow = nextMeeting ? getMeetingWindow(nextMeeting) : null;
-
-    cards.push({
-      id: project.id,
-      projectName: project.title,
-      clientName: project?.owner?.fullName || "Unknown Client",
-      assignedFreelancer: freelancer?.fullName || "Unassigned",
-      freelancerAvatar: freelancer?.avatar || null,
-      status: mappedStatus.label,
-      statusColor: mappedStatus.color,
-      totalMessages: conversation?._count?.messages || 0,
-      unreadMessages,
-      lastMessageSender:
-        conversation?.messages?.[0]?.senderRole === PM_ROLE
-          ? "Project Manager"
-          : conversation?.messages?.[0]?.senderName || conversation?.messages?.[0]?.senderRole || null,
-      lastActivityTime: toIsoOrNull(conversation?.messages?.[0]?.createdAt || project.updatedAt),
-      milestoneProgress: Math.round((completedMilestones / 4) * 100),
-      upcomingMeeting: nextMeetingWindow ? nextMeetingWindow.startsAt.toISOString() : null,
-      urgentMeeting: nextMeetingWindow ? getRelativeMeetingFlags(nextMeetingWindow.startsAt).isInThirtyMinutes : false,
-      hasIssue: mappedStatus.label === "Issue Raised",
-    });
-  }
+  const cards = cardRows.map((entry) => entry.card);
+  const totalUnread = cardRows.reduce(
+    (sum, entry) => sum + Number(entry?.unreadMessages || 0),
+    0
+  );
 
   const activeCount = await prisma.project.count({
     where: {
@@ -1081,57 +1195,49 @@ export const getPmProjectMessages = asyncHandler(async (req, res) => {
     where: { id: projectId },
     select: {
       id: true,
+      title: true,
       ownerId: true,
       proposals: {
         where: { status: { in: ["ACCEPTED", "REPLACED"] } },
         select: { freelancerId: true },
         orderBy: { createdAt: "desc" },
-        take: 1,
       },
     },
   });
 
   if (!project) throw new AppError("Project not found.", 404);
+  const conversations = await resolvePmProjectChatConversations(project);
+  const conversationIds = conversations.map((conversation) => conversation.id);
 
-  const activeFreelancerId = project?.proposals?.[0]?.freelancerId || null;
-  const activeServiceKey =
-    project.ownerId && activeFreelancerId
-      ? `CHAT:${projectId}:${project.ownerId}:${activeFreelancerId}`
-      : null;
-
-  const conversation = (activeServiceKey
-    ? await prisma.chatConversation.findFirst({
-        where: { service: activeServiceKey },
-        orderBy: { updatedAt: "desc" },
-      })
-    : null) ||
-    (await prisma.chatConversation.findFirst({
-      where: {
-        OR: [{ service: { startsWith: `CHAT:${projectId}:` } }, { service: { contains: projectId } }],
-      },
-      orderBy: { updatedAt: "desc" },
-    }));
-
-  if (!conversation) {
-    res.json({ data: { conversation: null, messages: [] } });
+  if (!conversationIds.length) {
+    res.json({ data: { conversation: null, conversations: [], messages: [] } });
     return;
   }
 
+  const latestConversation = [...conversations].sort(compareProjectChatConversations)[0] || null;
   const messages = await prisma.chatMessage.findMany({
-    where: { conversationId: conversation.id },
-    orderBy: { createdAt: "asc" },
+    where: { conversationId: { in: conversationIds } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: 1000,
   });
 
   res.json({
     data: {
-      conversation: {
+      conversation: latestConversation
+        ? {
+            id: latestConversation.id,
+            service: latestConversation.service,
+            projectTitle: latestConversation.projectTitle,
+          }
+        : null,
+      conversations: conversations.map((conversation) => ({
         id: conversation.id,
         service: conversation.service,
         projectTitle: conversation.projectTitle,
-      },
+      })),
       messages: messages.map((message) => ({
         id: message.id,
+        conversationId: message.conversationId,
         content: message.content,
         senderRole: message.senderRole,
         senderLabel:
@@ -1160,7 +1266,6 @@ export const sendPmProjectMessage = asyncHandler(async (req, res) => {
         where: { status: { in: ["ACCEPTED", "REPLACED"] } },
         select: { freelancerId: true },
         orderBy: { createdAt: "desc" },
-        take: 1,
       },
     },
   });
@@ -1170,8 +1275,9 @@ export const sendPmProjectMessage = asyncHandler(async (req, res) => {
     throw new AppError("Only assigned Project Manager can send project messages.", 403);
   }
 
-  const freelancerId = project?.proposals?.[0]?.freelancerId || "unknown";
-  const serviceKey = `CHAT:${projectId}:${project.ownerId}:${freelancerId}`;
+  const activeProposal = getAcceptedProposal(project);
+  const freelancerId = normalizeText(activeProposal?.freelancerId) || "unknown";
+  const serviceKey = getCanonicalProjectChatServiceKey(project);
 
   let conversation = await prisma.chatConversation.findFirst({
     where: { service: serviceKey },

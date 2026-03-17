@@ -37,6 +37,10 @@ const DashboardPage = () => {
   const meetings = useMemo(() => data?.upcomingMeetings || [], [data?.upcomingMeetings]);
   const stats = data?.stats || { activeProjects: 0, openIssues: 0, unreadMessages: 0, upcomingMeetings: 0 };
   const [portfolioView, setPortfolioView] = useState("grid");
+  const openMeetingProject = (projectId) => {
+    if (!projectId) return;
+    navigate(`/project-manager/projects/${projectId}`);
+  };
 
   return (
     <PmShell
@@ -101,6 +105,7 @@ const DashboardPage = () => {
                  time={new Date(meeting.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                  status={meeting.isToday ? "TODAY" : meeting.isTomorrow ? "TOMORROW" : meeting.status}
                  highlight={meeting.isInThirtyMinutes}
+                 onOpen={meeting.projectId ? () => openMeetingProject(meeting.projectId) : undefined}
                />
              ))}
            </div>

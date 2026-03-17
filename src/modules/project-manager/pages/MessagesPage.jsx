@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Send from "lucide-react/dist/esm/icons/send";
@@ -14,19 +14,33 @@ import { Badge } from "@/components/ui/badge";
 
 const MessagesPage = () => {
   const { authFetch } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [composer, setComposer] = useState("");
   const [sending, setSending] = useState(false);
   const listEndRef = useRef(null);
 
   const dashboard = useAsyncResource(() => pmApi.getDashboard(authFetch), [authFetch]);
+  const projects = useMemo(() => dashboard.data?.projects || [], [dashboard.data?.projects]);
+  const selectedProjectExists = useMemo(
+    () => projects.some((project) => project.id === selectedProjectId),
+    [projects, selectedProjectId]
+  );
   const messages = useAsyncResource(
-    () => (selectedProjectId ? pmApi.getProjectMessages(authFetch, selectedProjectId) : Promise.resolve({ messages: [] })),
-    [authFetch, selectedProjectId]
+    () => {
+      if (!selectedProjectId) {
+        return Promise.resolve({ messages: [] });
+      }
+
+      if (!dashboard.loading && projects.length > 0 && !selectedProjectExists) {
+        return Promise.resolve({ messages: [] });
+      }
+
+      return pmApi.getProjectMessages(authFetch, selectedProjectId);
+    },
+    [authFetch, dashboard.loading, projects.length, selectedProjectExists, selectedProjectId]
   );
 
-  const projects = useMemo(() => dashboard.data?.projects || [], [dashboard.data?.projects]);
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) || null,
     [projects, selectedProjectId]
@@ -36,6 +50,27 @@ const MessagesPage = () => {
     [messages.data?.messages]
   );
 
+  const syncProjectQuery = useCallback(
+    (projectId) => {
+      const nextParams = new URLSearchParams(searchParams);
+      if (projectId) {
+        nextParams.set("projectId", projectId);
+      } else {
+        nextParams.delete("projectId");
+      }
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const selectProject = useCallback(
+    (projectId) => {
+      setSelectedProjectId(projectId);
+      syncProjectQuery(projectId);
+    },
+    [syncProjectQuery]
+  );
+
   useEffect(() => {
     const projectIdFromQuery = searchParams.get("projectId");
     if (!projectIdFromQuery) return;
@@ -43,16 +78,61 @@ const MessagesPage = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!projects.length) return;
-    const isValidSelection = projects.some((project) => project.id === selectedProjectId);
-    if (!isValidSelection) {
-      setSelectedProjectId(projects[0].id);
+    if (dashboard.loading) return;
+
+    if (!projects.length) {
+      if (selectedProjectId) {
+        setSelectedProjectId("");
+        syncProjectQuery("");
+      }
+      return;
     }
-  }, [projects, selectedProjectId]);
+
+    if (!selectedProjectExists) {
+      selectProject(projects[0].id);
+    }
+  }, [dashboard.loading, projects, selectProject, selectedProjectExists, selectedProjectId, syncProjectQuery]);
 
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [conversationRows.length, selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId || !selectedProjectExists) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      messages.refresh().catch(() => null);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [messages.refresh, selectedProjectExists, selectedProjectId]);
+
+  useEffect(() => {
+    if (messages.error?.status !== 404 || !selectedProjectId) return undefined;
+
+    let cancelled = false;
+
+    const recoverSelection = async () => {
+      const nextDashboard = await dashboard.refresh().catch(() => null);
+      if (cancelled) return;
+
+      const nextProjects = Array.isArray(nextDashboard?.projects) ? nextDashboard.projects : [];
+      const stillExists = nextProjects.some((project) => project.id === selectedProjectId);
+
+      if (stillExists) return;
+
+      const fallbackProjectId = nextProjects[0]?.id || "";
+      setSelectedProjectId(fallbackProjectId);
+      syncProjectQuery(fallbackProjectId);
+      toast.error("Selected project chat is no longer available.");
+    };
+
+    recoverSelection().catch(() => null);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboard.refresh, messages.error, selectedProjectId, syncProjectQuery]);
 
   const sendMessage = async () => {
     if (!selectedProjectId || !composer.trim()) return;
@@ -86,6 +166,10 @@ const MessagesPage = () => {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading chats...
               </div>
+            ) : dashboard.error ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                Failed to load assigned project chats.
+              </div>
             ) : projects.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-muted-foreground">
                 No assigned projects.
@@ -100,7 +184,7 @@ const MessagesPage = () => {
                       ? "border-blue-200 bg-blue-50/70"
                       : "border-slate-200 bg-white hover:bg-slate-50"
                   }`}
-                  onClick={() => setSelectedProjectId(project.id)}
+                  onClick={() => selectProject(project.id)}
                 >
                   <p className="line-clamp-1 font-semibold text-slate-900">{project.projectName}</p>
                   <p className="text-xs text-muted-foreground">{project.clientName}</p>
@@ -139,6 +223,18 @@ const MessagesPage = () => {
                     <div className="flex h-full min-h-[200px] items-center justify-center text-sm text-muted-foreground">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Loading conversation...
+                    </div>
+                  ) : messages.error ? (
+                    <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center text-sm text-red-600">
+                      <p>Conversation load failed. Please retry.</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-slate-200 bg-white text-slate-700"
+                        onClick={() => messages.refresh().catch(() => null)}
+                      >
+                        Retry
+                      </Button>
                     </div>
                   ) : conversationRows.length > 0 ? (
                     conversationRows.map((message) => {

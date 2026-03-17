@@ -145,6 +145,11 @@ const CalendarPage = () => {
     [visibleSections]
   );
 
+  const openMeetingProject = (projectId) => {
+    if (!projectId) return;
+    navigate(`/project-manager/projects/${projectId}`);
+  };
+
   return (
     <PmShell
       title="Appointments & Meetings"
@@ -343,9 +348,16 @@ const CalendarPage = () => {
                         freelancer?.name || session?.projectName || "Meeting";
 
                       return (
-                        <div
+                        <button
                           key={session.id}
-                          className="group relative flex items-start gap-4 rounded-[26px] border border-slate-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                          type="button"
+                          onClick={() => openMeetingProject(session.projectId)}
+                          disabled={!session.projectId}
+                          className={`group relative flex w-full items-start gap-4 rounded-[26px] border border-slate-100 bg-white p-4 text-left shadow-sm transition-all ${
+                            session.projectId
+                              ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-lg"
+                              : "cursor-default"
+                          }`}
                         >
                           <Avatar className="h-12 w-12 rounded-xl border-2 border-white shadow-sm">
                             <AvatarImage src={freelancer?.avatar || null} />
@@ -373,7 +385,7 @@ const CalendarPage = () => {
                             </div>
 
                             <p className="truncate text-[11px] font-semibold text-slate-500">
-                              {session.projectName || "General"} • Scope:{" "}
+                              {session.projectName || "General"} â€¢ Scope:{" "}
                               {session.participantScope || "BOTH"}
                             </p>
 
@@ -397,7 +409,7 @@ const CalendarPage = () => {
                               </Badge>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       );
                     })
                   ) : (
