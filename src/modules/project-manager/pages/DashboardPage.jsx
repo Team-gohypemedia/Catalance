@@ -37,6 +37,49 @@ const DashboardPage = () => {
   const meetings = useMemo(() => data?.upcomingMeetings || [], [data?.upcomingMeetings]);
   const stats = data?.stats || { activeProjects: 0, openIssues: 0, unreadMessages: 0, upcomingMeetings: 0 };
   const [portfolioView, setPortfolioView] = useState("grid");
+  const firstUnreadProjectId = useMemo(
+    () => projects.find((project) => Number(project?.unreadMessages || 0) > 0)?.id || null,
+    [projects]
+  );
+  const statCards = useMemo(
+    () => [
+      {
+        label: "Active Projects",
+        value: stats.activeProjects,
+        icon: LayoutGrid,
+        color: "blue",
+        sub: "Running now",
+        href: "/project-manager/projects?preset=active",
+      },
+      {
+        label: "Open Issues",
+        value: stats.openIssues,
+        icon: AlertCircle,
+        color: "rose",
+        sub: "Needs attention",
+        href: "/project-manager/projects?preset=issues",
+      },
+      {
+        label: "Unread Comms",
+        value: stats.unreadMessages,
+        icon: MessageCircle,
+        color: "indigo",
+        sub: "Inbound updates",
+        href: firstUnreadProjectId
+          ? `/project-manager/messages?projectId=${firstUnreadProjectId}`
+          : "/project-manager/messages",
+      },
+      {
+        label: "Today Meetings",
+        value: stats.upcomingMeetings,
+        icon: CalendarIcon,
+        color: "amber",
+        sub: "Upcoming syncs",
+        href: "/project-manager/appointments?time=UPCOMING",
+      },
+    ],
+    [firstUnreadProjectId, stats.activeProjects, stats.openIssues, stats.unreadMessages, stats.upcomingMeetings]
+  );
   const openMeetingProject = (projectId) => {
     if (!projectId) return;
     navigate(`/project-manager/projects/${projectId}`);
@@ -49,13 +92,15 @@ const DashboardPage = () => {
 
     >
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-         {[
-            { label: 'Active Projects', value: stats.activeProjects, icon: LayoutGrid, color: 'blue', sub: 'Running now' },
-            { label: 'Open Issues', value: stats.openIssues, icon: AlertCircle, color: 'rose', sub: 'Needs attention' },
-            { label: 'Unread Comms', value: stats.unreadMessages, icon: MessageCircle, color: 'indigo', sub: 'Inbound updates' },
-            { label: 'Today Meetings', value: stats.upcomingMeetings, icon: CalendarIcon, color: 'amber', sub: 'Upcoming syncs' },
-         ].map((stat, i) => (
-           <Card key={i} className="rounded-[7px] border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white">
+         {statCards.map((stat) => (
+           <button
+             key={stat.label}
+             type="button"
+             onClick={() => navigate(stat.href)}
+             className="w-full text-left"
+             aria-label={`Open ${stat.label}`}
+           >
+             <Card className="rounded-[7px] border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white hover:-translate-y-0.5">
               <CardContent className="p-8">
                  <div className={`mb-6 flex h-12 w-12 items-center justify-center rounded-[7px] transition-transform group-hover:scale-110 ${STAT_COLOR_CLASS[stat.color]?.bg || "bg-slate-50"}`}>
                     <stat.icon className={`h-6 w-6 ${STAT_COLOR_CLASS[stat.color]?.text || "text-slate-600"}`} />
@@ -66,7 +111,8 @@ const DashboardPage = () => {
                     <p className="text-[10px] font-bold text-slate-400 italic mb-1">{stat.sub}</p>
                  </div>
               </CardContent>
-           </Card>
+             </Card>
+           </button>
          ))}
       </div>
 
@@ -84,7 +130,7 @@ const DashboardPage = () => {
            <Button 
              variant="link" 
              className="text-[10px] font-black text-blue-600 uppercase tracking-widest p-0 h-auto hover:text-blue-700 transition-colors flex items-center gap-2 group" 
-             onClick={() => navigate("/project-manager/calendar")}
+             onClick={() => navigate("/project-manager/appointments?time=UPCOMING")}
            >
               Expanded View
               <ArrowUpRight className="h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />

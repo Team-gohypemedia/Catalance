@@ -80,6 +80,11 @@ const MessagesPage = () => {
     () => resolveNotificationProjectId(latestChatNotification),
     [latestChatNotification]
   );
+  const isDashboardInitialLoading = dashboard.loading && !dashboard.data;
+  const hasProjectRows = projects.length > 0;
+  const isMessagesInitialLoading =
+    messages.loading && !Array.isArray(messages.data?.messages);
+  const hasConversationRows = conversationRows.length > 0;
 
   const syncProjectQuery = useCallback(
     (projectId) => {
@@ -278,20 +283,28 @@ const MessagesPage = () => {
       title="Project Messages"
       subtitle="View all client and freelancer communication for assigned projects."
     >
-      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <Card className="flex max-h-[calc(100vh-230px)] min-h-[420px] flex-col overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm lg:min-h-[560px]">
+      <div className="grid min-w-0 gap-4 xl:h-[calc(100dvh-14.5rem)] xl:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
+        <Card className="flex min-h-[280px] min-w-0 flex-col overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0">
           <CardHeader className="border-b border-slate-100 pb-3">
-            <CardTitle className="text-base font-black text-slate-900">
-              Projects ({projects.length})
-            </CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base font-black text-slate-900">
+                Projects ({projects.length})
+              </CardTitle>
+              {dashboard.loading && hasProjectRows ? (
+                <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Syncing
+                </div>
+              ) : null}
+            </div>
           </CardHeader>
-          <CardContent className="flex-1 space-y-2 overflow-y-auto p-4">
-            {dashboard.loading ? (
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-4">
+            {isDashboardInitialLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading chats...
               </div>
-            ) : dashboard.error ? (
+            ) : dashboard.error && !hasProjectRows ? (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 Failed to load assigned project chats.
               </div>
@@ -325,31 +338,40 @@ const MessagesPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="flex max-h-[calc(100vh-230px)] min-h-[420px] flex-col overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm lg:min-h-[560px]">
+        <Card className="flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0">
           <CardHeader className="border-b border-slate-100 pb-3">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle className="text-base font-black text-slate-900">Conversation</CardTitle>
-              {selectedProject ? (
-                <Badge className="bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  {selectedProject.projectName}
-                </Badge>
-              ) : null}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {messages.loading && selectedProjectId && (hasConversationRows || messages.data) ? (
+                  <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Syncing
+                  </div>
+                ) : null}
+                {selectedProject ? (
+                  <Badge className="bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                    {selectedProject.projectName}
+                  </Badge>
+                ) : null}
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col p-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col p-3 sm:p-4">
             {!selectedProjectId ? (
               <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-muted-foreground">
                 Select a project chat to continue.
               </div>
             ) : (
               <>
-                <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/40 p-3">
-                  {messages.loading ? (
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50/40">
+                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
+                  {isMessagesInitialLoading ? (
                     <div className="flex h-full min-h-[200px] items-center justify-center text-sm text-muted-foreground">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Loading conversation...
                     </div>
-                  ) : messages.error ? (
+                  ) : messages.error && !hasConversationRows ? (
                     <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center text-sm text-red-600">
                       <p>Conversation load failed. Please retry.</p>
                       <Button
@@ -373,7 +395,7 @@ const MessagesPage = () => {
                             {message.senderLabel}
                           </p>
                           <div
-                            className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                            className={`max-w-[92%] break-words rounded-2xl px-3 py-2 text-sm sm:max-w-[85%] xl:max-w-[80%] ${
                               isPm
                                 ? "rounded-tr-none bg-blue-600 text-white"
                                 : "rounded-tl-none border border-slate-200 bg-white text-slate-900"
@@ -393,9 +415,10 @@ const MessagesPage = () => {
                     </div>
                   )}
                   <div ref={listEndRef} />
+                  </div>
                 </div>
                 <form
-                  className="mt-3 flex items-end gap-2"
+                  className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end"
                   onSubmit={(event) => {
                     event.preventDefault();
                     sendMessage();
@@ -405,11 +428,11 @@ const MessagesPage = () => {
                     placeholder="Write as Project Manager"
                     value={composer}
                     onChange={(event) => setComposer(event.target.value)}
-                    className="min-h-[80px] resize-none border-slate-200 bg-white"
+                    className="min-h-[72px] resize-none border-slate-200 bg-white sm:min-h-[80px]"
                   />
                   <Button
                     type="submit"
-                    className="h-10 w-10 shrink-0 rounded-xl bg-blue-600 p-0 hover:bg-blue-700"
+                    className="h-11 w-full shrink-0 rounded-xl bg-blue-600 p-0 hover:bg-blue-700 sm:h-10 sm:w-10"
                     disabled={sending || !composer.trim()}
                   >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

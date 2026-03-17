@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Funnel from "lucide-react/dist/esm/icons/funnel";
 import Search from "lucide-react/dist/esm/icons/search";
@@ -71,6 +71,28 @@ const deriveProjectStatus = (project) => {
   return "Started";
 };
 
+const ACTIVE_PROJECT_STATUSES = new Set(["Started", "In Progress"]);
+
+const normalizeStatusFilter = (value) => {
+  const allowed = new Set(["ALL", "Started", "In Progress", "Completed", "Issue Raised", "Proposal"]);
+  return allowed.has(value) ? value : "ALL";
+};
+
+const normalizeAssignmentFilter = (value) => {
+  const allowed = new Set(["ALL", "ASSIGNED", "UNASSIGNED"]);
+  return allowed.has(value) ? value : "ALL";
+};
+
+const normalizeSyncFilter = (value) => {
+  const allowed = new Set(["ALL", "LAST_7_DAYS", "LAST_30_DAYS"]);
+  return allowed.has(value) ? value : "ALL";
+};
+
+const normalizePresetFilter = (value) => {
+  const normalized = String(value || "").trim().toUpperCase();
+  return normalized === "ACTIVE" || normalized === "ISSUES" ? normalized : "ALL";
+};
+
 const mapProjectRow = (project) => {
   const proposalRows = Array.isArray(project?.proposals) ? project.proposals : [];
   const freelancer = (
@@ -101,9 +123,11 @@ const mapProjectRow = (project) => {
 const ProjectsPage = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [assignmentFilter, setAssignmentFilter] = useState("ALL");
   const [syncFilter, setSyncFilter] = useState("ALL");
+  const [presetFilter, setPresetFilter] = useState("ALL");
 
   const { data, loading } = useAsyncResource(
     () => pmApi.getProjects(authFetch),
@@ -115,9 +139,18 @@ const ProjectsPage = () => {
     [data]
   );
 
+  useEffect(() => {
+    setStatusFilter(normalizeStatusFilter(searchParams.get("status")));
+    setAssignmentFilter(normalizeAssignmentFilter(searchParams.get("assignment")));
+    setSyncFilter(normalizeSyncFilter(searchParams.get("sync")));
+    setPresetFilter(normalizePresetFilter(searchParams.get("preset")));
+  }, [searchParams]);
+
   const filteredRows = useMemo(
     () =>
       rows.filter((row) => {
+        if (presetFilter === "ACTIVE" && !ACTIVE_PROJECT_STATUSES.has(row.status)) return false;
+        if (presetFilter === "ISSUES" && row.status !== "Issue Raised") return false;
         if (statusFilter !== "ALL" && row.status !== statusFilter) return false;
 
         if (assignmentFilter === "ASSIGNED" && row.freelancerName === "Unassigned") return false;
@@ -135,7 +168,7 @@ const ProjectsPage = () => {
 
         return true;
       }),
-    [rows, statusFilter, assignmentFilter, syncFilter]
+    [rows, presetFilter, statusFilter, assignmentFilter, syncFilter]
   );
 
   return (
@@ -188,12 +221,19 @@ const ProjectsPage = () => {
                 setStatusFilter("ALL");
                 setAssignmentFilter("ALL");
                 setSyncFilter("ALL");
+                setPresetFilter("ALL");
+                navigate("/project-manager/projects");
               }}
             >
               Reset
             </Button>
          </div>
          <div className="flex items-center gap-2">
+            {presetFilter !== "ALL" ? (
+              <Badge className="bg-blue-50 text-[10px] font-black text-blue-700 hover:bg-blue-50">
+                {presetFilter === "ACTIVE" ? "Active Projects View" : "Issue Queue View"}
+              </Badge>
+            ) : null}
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Managed:</span>
             <Badge className="bg-slate-900 text-[10px] font-black">{rows.length}</Badge>
          </div>
@@ -216,6 +256,8 @@ const ProjectsPage = () => {
                   setStatusFilter("ALL");
                   setAssignmentFilter("ALL");
                   setSyncFilter("ALL");
+                  setPresetFilter("ALL");
+                  navigate("/project-manager/projects");
                 }}
                 className="text-blue-600 font-black text-xs uppercase mt-2"
               >

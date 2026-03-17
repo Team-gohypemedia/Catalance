@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Search from "lucide-react/dist/esm/icons/search";
 import Filter from "lucide-react/dist/esm/icons/filter";
 import Plus from "lucide-react/dist/esm/icons/plus";
@@ -48,6 +48,7 @@ const getMeetingWindowType = (meeting) => {
 const CalendarPage = () => {
   const navigate = useNavigate();
   const { authFetch } = useAuth();
+  const [searchParams] = useSearchParams();
   const [date, setDate] = useState(new Date());
   const [search, setSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState("ALL");
@@ -66,6 +67,15 @@ const CalendarPage = () => {
     () => (Array.isArray(data?.meetings) ? data.meetings : []),
     [data?.meetings]
   );
+
+  useEffect(() => {
+    const requestedTimeFilter = String(searchParams.get("time") || "").toUpperCase();
+    if (MEETING_FILTERS.some((filter) => filter.value === requestedTimeFilter)) {
+      setTimeFilter(requestedTimeFilter);
+      return;
+    }
+    setTimeFilter("ALL");
+  }, [searchParams]);
 
   const projectOptions = useMemo(() => {
     const grouped = new Map();

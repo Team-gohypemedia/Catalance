@@ -80,10 +80,10 @@ export const ManagerTopBar = () => {
   );
 
   return (
-    <div className="sticky top-0 z-50 flex h-20 w-full items-center justify-between border-b border-slate-100 bg-white/80 px-4 backdrop-blur-md">
-      <div className="w-full max-w-xl" />
+    <div className="sticky top-0 z-50 flex min-h-16 w-full items-center justify-between gap-3 border-b border-slate-100 bg-white/80 px-3 py-3 backdrop-blur-md sm:px-4 md:h-20 md:px-4">
+      <div className="hidden flex-1 lg:block" />
 
-      <div className="flex items-center gap-2">
+      <div className="ml-auto flex min-w-0 items-center gap-2">
         <div className="flex items-center gap-2 rounded-[7px] border border-slate-100 bg-slate-50/50 p-1">
           <Popover>
             <PopoverTrigger asChild>
@@ -164,14 +164,14 @@ export const ManagerTopBar = () => {
           </Button>
         </div>
 
-        <div className="mx-2 h-8 w-[1px] bg-slate-100" />
+        <div className="mx-1 hidden h-8 w-[1px] bg-slate-100 sm:block md:mx-2" />
 
         <button
           type="button"
           onClick={() => navigate("/project-manager/profile")}
-          className="group flex items-center gap-3 pl-2"
+          className="group flex min-w-0 items-center gap-2 pl-1 sm:gap-3 sm:pl-2"
         >
-          <div className="flex flex-col items-end text-right">
+          <div className="hidden min-w-0 flex-col items-end text-right sm:flex">
             <span className="text-sm font-bold leading-none text-slate-900">
               {sessionUser?.fullName || "Project Manager"}
             </span>
@@ -179,7 +179,7 @@ export const ManagerTopBar = () => {
               Management Portal
             </span>
           </div>
-          <Avatar className="h-11 w-11 rounded-2xl border-2 border-white shadow-md ring-1 ring-slate-100 transition-transform group-hover:scale-105">
+          <Avatar className="h-10 w-10 rounded-2xl border-2 border-white shadow-md ring-1 ring-slate-100 transition-transform group-hover:scale-105 sm:h-11 sm:w-11">
             <AvatarImage src={sessionUser?.avatar} />
             <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-700 text-[10px] font-bold uppercase text-white">
               {sessionUser?.fullName?.split(" ").map((name) => name[0]).join("") || "PM"}
