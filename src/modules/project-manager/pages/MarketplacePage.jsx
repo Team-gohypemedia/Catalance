@@ -228,8 +228,12 @@ const MarketplacePage = () => {
                                    setAssigningId(f.id);
                                    try {
                                        if (isReassign) {
-                                           await pmApi.replaceFreelancer(authFetch, projectId, f.id);
-                                           toast.success("Freelancer reassigned successfully");
+                                           const result = await pmApi.replaceFreelancer(authFetch, projectId, f.id);
+                                           if (result?.approvalRequired) {
+                                             toast.success("Admin approval request sent for this reassignment");
+                                           } else {
+                                             toast.success("Freelancer reassigned successfully");
+                                           }
                                        } else {
                                            await pmApi.inviteFreelancer(authFetch, f.id, { projectId });
                                            toast.success("Invitation sent successfully");

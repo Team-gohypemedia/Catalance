@@ -166,6 +166,8 @@ const PROJECT_RESPONSE_INCLUDE = {
 };
 
 const MAX_FREELANCER_CHANGE_REQUESTS = 2;
+const MAX_PM_DIRECT_REASSIGNMENTS = 2;
+const PM_REASSIGNMENT_APPROVAL_SOURCE = "PM_FREELANCER_REASSIGNMENT_APPROVAL";
 
 const findLeastLoadedActiveProjectManager = async () => {
   const managers = await prisma.user.findMany({
@@ -215,6 +217,17 @@ const getLatestPendingFreelancerChangeRequest = (project = {}) =>
       (request) => String(request?.status || "").toUpperCase() === "PENDING"
     ) || null;
 
+const safeJsonParse = (value, fallback = {}) => {
+  if (!value || typeof value !== "string") return fallback;
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const resolveLatestAssignmentProposal = (project = {}) => {
   const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
 
@@ -224,6 +237,55 @@ const resolveLatestAssignmentProposal = (project = {}) => {
     proposals.find((proposal) => proposal?.status === "REJECTED") ||
     proposals[0] ||
     null
+  );
+};
+
+const countPmFreelancerReassignments = (project = {}) => {
+  const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+
+  return proposals.filter((proposal) => {
+    if (String(proposal?.status || "").toUpperCase() !== "REPLACED") return false;
+
+    const reasonKey = String(proposal?.rejectionReasonKey || "").toLowerCase();
+    return (
+      reasonKey === "project_manager_reassignment" ||
+      reasonKey === "project_manager_reassignment_admin_approved"
+    );
+  }).length;
+};
+
+const findOpenPmReassignmentApprovalRequest = async (projectId) =>
+  prisma.adminEscalation.findFirst({
+    where: {
+      projectId,
+      status: "OPEN",
+      notes: {
+        contains: `"source":"${PM_REASSIGNMENT_APPROVAL_SOURCE}"`,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+const notifyAdminsAboutPmReassignmentApproval = async ({
+  projectId,
+  projectTitle,
+  requestedByName,
+  freelancerName,
+}) => {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN", status: "ACTIVE" },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    admins.map((admin) =>
+      sendNotificationToUser(admin.id, {
+        type: "admin_approval_required",
+        title: "Freelancer reassignment approval required",
+        message: `${requestedByName} requested Admin approval to assign ${freelancerName} on "${projectTitle}".`,
+        data: { projectId },
+      }).catch(() => null)
+    )
   );
 };
 
@@ -1407,6 +1469,11 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
   if (!userId) throw new AppError("Authentication required", 401);
   await requirePmOrAdmin(userId, id);
 
+  const actingUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, fullName: true },
+  });
+
   if (!newFreelancerId && !newFreelancerEmail) {
     throw new AppError(
       "Replacement freelancer selection is required.",
@@ -1457,6 +1524,78 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
     );
   }
 
+  const directReassignmentCount = countPmFreelancerReassignments(project);
+  const pendingApprovalRequest = await findOpenPmReassignmentApprovalRequest(id);
+  if (
+    actingUser?.role === "PROJECT_MANAGER" &&
+    directReassignmentCount >= MAX_PM_DIRECT_REASSIGNMENTS
+  ) {
+    if (pendingApprovalRequest) {
+      const pendingMeta = safeJsonParse(pendingApprovalRequest.notes, {});
+
+      res.status(202).json({
+        data: {
+          approvalRequired: true,
+          pendingApprovalId: pendingApprovalRequest.id,
+          reassignmentCount: directReassignmentCount,
+          maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+          requestedFreelancerId: pendingMeta.requestedFreelancerId || freelancer.id,
+          requestedFreelancerName: pendingMeta.requestedFreelancerName || freelancer.fullName,
+        },
+        message: "Admin approval is already pending for an additional freelancer reassignment.",
+      });
+      return;
+    }
+
+    const approvalRequest = await prisma.adminEscalation.create({
+      data: {
+        projectId: id,
+        raisedById: userId,
+        reason: "Freelancer reassignment approval required",
+        description: `Direct PM reassignment limit reached for "${project.title}". Approval requested to assign ${freelancer.fullName}.`,
+        status: "OPEN",
+        notes: JSON.stringify({
+          source: PM_REASSIGNMENT_APPROVAL_SOURCE,
+          requestedFreelancerId: freelancer.id,
+          requestedFreelancerName: freelancer.fullName,
+          previousFreelancerId: currentAssignment?.freelancerId || null,
+          previousFreelancerName: currentAssignment?.freelancer?.fullName || null,
+          directReassignmentCount,
+          maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+          requestedAt: new Date().toISOString(),
+        }),
+      },
+    });
+
+    await notifyAdminsAboutPmReassignmentApproval({
+      projectId: id,
+      projectTitle: project.title,
+      requestedByName: actingUser?.fullName || "Project Manager",
+      freelancerName: freelancer.fullName,
+    }).catch(() => null);
+
+    res.status(202).json({
+      data: {
+        approvalRequired: true,
+        pendingApprovalId: approvalRequest.id,
+        reassignmentCount: directReassignmentCount,
+        maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+        requestedFreelancerId: freelancer.id,
+        requestedFreelancerName: freelancer.fullName,
+      },
+      message: "Direct reassignment limit reached. Approval request sent to Admin.",
+    });
+    return;
+  }
+
+  const pendingApprovalMeta = safeJsonParse(pendingApprovalRequest?.notes, {});
+  const resolvesPendingAdminApproval = Boolean(
+    actingUser?.role === "ADMIN" &&
+      pendingApprovalRequest &&
+      (!pendingApprovalMeta.requestedFreelancerId ||
+        String(pendingApprovalMeta.requestedFreelancerId) === String(freelancer.id))
+  );
+
   const currentRequests = getFreelancerChangeRequests(project);
   const hasPendingRequest = Boolean(
     getLatestPendingFreelancerChangeRequest(project)
@@ -1481,7 +1620,9 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
         status: "REPLACED",
         rejectionReason:
           "Reassigned by Project Manager to another freelancer.",
-        rejectionReasonKey: "project_manager_reassignment",
+        rejectionReasonKey: resolvesPendingAdminApproval
+          ? "project_manager_reassignment_admin_approved"
+          : "project_manager_reassignment",
       },
     });
 
@@ -1561,6 +1702,32 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
         notificationError
       );
     }
+  }
+
+  if (resolvesPendingAdminApproval) {
+    await prisma.adminEscalation.update({
+      where: { id: pendingApprovalRequest.id },
+      data: {
+        status: "RESOLVED",
+        notes: JSON.stringify({
+          ...pendingApprovalMeta,
+          approvedAt: new Date().toISOString(),
+          approvedById: userId,
+          approvedFreelancerId: freelancer.id,
+          approvedFreelancerName: freelancer.fullName,
+        }),
+      },
+    });
+
+    await sendNotificationToUser(pendingApprovalRequest.raisedById, {
+      type: "freelancer_change_resolved",
+      title: "Admin approved reassignment",
+      message: `${freelancer.fullName} has been approved and assigned to "${project.title}".`,
+      data: {
+        projectId: id,
+        freelancerId: freelancer.id,
+      },
+    }).catch(() => null);
   }
 
   const updatedProject = await getProjectForResponse(id);

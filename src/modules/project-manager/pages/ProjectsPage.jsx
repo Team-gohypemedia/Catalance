@@ -12,23 +12,66 @@ import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/modules/project-manager/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 
-const mapProjectRow = (project) => {
+const toTaskKeySet = (value) => {
+  if (Array.isArray(value)) {
+    return new Set(value.map((item) => String(item || "").trim()).filter(Boolean));
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return new Set(parsed.map((item) => String(item || "").trim()).filter(Boolean));
+      }
+    } catch {
+      return new Set();
+    }
+  }
+
+  return new Set();
+};
+
+const hasPhaseOneProgress = (project) => {
+  const completedTasks = toTaskKeySet(project?.completedTasks);
+  if (completedTasks.size > 0) return true;
+
+  const approvedPhases = new Set(
+    (Array.isArray(project?.milestoneApprovals) ? project.milestoneApprovals : [])
+      .map((item) => Number(item?.phase))
+      .filter(Number.isFinite)
+  );
+
+  return approvedPhases.has(2) || approvedPhases.has(3) || approvedPhases.has(4);
+};
+
+const deriveProjectStatus = (project) => {
   const hasIssue = Array.isArray(project?.disputes)
     ? project.disputes.some((item) => String(item.status || "").toUpperCase() !== "RESOLVED")
     : false;
+  if (hasIssue) return "Issue Raised";
 
-  const statusMap = {
-    DRAFT: "Proposal",
-    OPEN: "Started",
-    AWAITING_PAYMENT: "Started",
-    IN_PROGRESS: "In Progress",
-    COMPLETED: "Completed",
-  };
+  if (project?.displayStatus) return project.displayStatus;
 
-  const status = hasIssue
-    ? "Issue Raised"
-    : statusMap[String(project?.status || "").toUpperCase()] || "Started";
+  const approvedPhases = new Set(
+    (Array.isArray(project?.milestoneApprovals) ? project.milestoneApprovals : [])
+      .map((item) => Number(item?.phase))
+      .filter(Number.isFinite)
+  );
+  const completedPhases = [
+    hasPhaseOneProgress(project),
+    approvedPhases.has(2),
+    approvedPhases.has(3),
+    approvedPhases.has(4),
+  ].filter(Boolean).length;
 
+  const rawStatus = String(project?.status || "").toUpperCase();
+  if (rawStatus === "DRAFT") return "Proposal";
+  if (completedPhases >= 4) return "Completed";
+  if (rawStatus === "IN_PROGRESS" || completedPhases > 0) return "In Progress";
+  return "Started";
+};
+
+const mapProjectRow = (project) => {
   const proposalRows = Array.isArray(project?.proposals) ? project.proposals : [];
   const freelancer = (
     proposalRows.find(
@@ -49,7 +92,7 @@ const mapProjectRow = (project) => {
     title: project.title,
     clientName: project?.owner?.fullName || "Unknown",
     freelancerName: freelancer?.fullName || "Unassigned",
-    status,
+    status: deriveProjectStatus(project),
     budget: Number(project?.budget || 0),
     updatedAt: project?.updatedAt || project?.createdAt,
   };

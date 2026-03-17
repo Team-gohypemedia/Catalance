@@ -24,6 +24,8 @@ const REPORT_CATEGORIES = [
   "Communication problems",
 ];
 const REPORT_SEVERITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+const MAX_PM_DIRECT_REASSIGNMENTS = 2;
+const PM_REASSIGNMENT_APPROVAL_SOURCE = "PM_FREELANCER_REASSIGNMENT_APPROVAL";
 
 const normalizeText = (value) => String(value || "").trim();
 const asObject = (value) =>
@@ -34,6 +36,16 @@ const parseCsv = (value) =>
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+const safeJsonParse = (value, fallback = {}) => {
+  if (!value || typeof value !== "string") return fallback;
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 const toFiniteNumberOrNull = (value) => {
   if (value === null || value === undefined || value === "") return null;
@@ -437,6 +449,76 @@ const hasFirstTaskCompletion = (project) => {
   return toTaskKeySet(project?.completedTasks).has(taskKey);
 };
 
+const getApprovedPhaseSet = (project = {}) =>
+  new Set(
+    (Array.isArray(project?.milestoneApprovals) ? project.milestoneApprovals : [])
+      .map((item) => Number(item?.phase))
+      .filter(Number.isFinite)
+  );
+
+const countCompletedLifecyclePhases = (project = {}) => {
+  const approved = getApprovedPhaseSet(project);
+  const phase1Done =
+    hasFirstTaskCompletion(project) ||
+    approved.has(2) ||
+    approved.has(3) ||
+    approved.has(4);
+
+  return [phase1Done, approved.has(2), approved.has(3), approved.has(4)].filter(Boolean).length;
+};
+
+const isProjectOperationallyCompleted = (project = {}) =>
+  countCompletedLifecyclePhases(project) >= 4;
+
+const countPmFreelancerReassignments = (project = {}) => {
+  const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+
+  return proposals.filter((proposal) => {
+    if (String(proposal?.status || "").toUpperCase() !== "REPLACED") return false;
+
+    const reasonKey = String(proposal?.rejectionReasonKey || "").toLowerCase();
+    return (
+      reasonKey === "project_manager_reassignment" ||
+      reasonKey === "project_manager_reassignment_admin_approved"
+    );
+  }).length;
+};
+
+const findOpenPmReassignmentApprovalRequest = async (projectId) =>
+  prisma.adminEscalation.findFirst({
+    where: {
+      projectId,
+      status: "OPEN",
+      notes: {
+        contains: `"source":"${PM_REASSIGNMENT_APPROVAL_SOURCE}"`,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+const notifyAdminsAboutPmReassignmentApproval = async ({
+  projectId,
+  projectTitle,
+  requestedByName,
+  freelancerName,
+}) => {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN", status: "ACTIVE" },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    admins.map((admin) =>
+      sendNotificationToUser(admin.id, {
+        type: "admin_approval_required",
+        title: "Freelancer reassignment approval required",
+        message: `${requestedByName} requested Admin approval to assign ${freelancerName} on "${projectTitle}".`,
+        data: { projectId },
+      }).catch(() => null)
+    )
+  );
+};
+
 const mapProjectStatusForPm = (project) => {
   const hasIssue = Array.isArray(project?.disputes)
     ? project.disputes.some((entry) => String(entry.status || "").toUpperCase() !== "RESOLVED")
@@ -446,9 +528,15 @@ const mapProjectStatusForPm = (project) => {
 
   const status = String(project?.status || "").toUpperCase();
   if (status === "DRAFT") return { label: "Proposal", color: "gray" };
-  if (status === "OPEN" || status === "AWAITING_PAYMENT") return { label: "Started", color: "blue" };
-  if (status === "IN_PROGRESS") return { label: "In Progress", color: "indigo" };
-  if (status === "COMPLETED") return { label: "Completed", color: "green" };
+  if (isProjectOperationallyCompleted(project)) {
+    return { label: "Completed", color: "green" };
+  }
+  if (status === "IN_PROGRESS" || countCompletedLifecyclePhases(project) > 0) {
+    return { label: "In Progress", color: "indigo" };
+  }
+  if (status === "OPEN" || status === "AWAITING_PAYMENT" || status === "COMPLETED") {
+    return { label: "Started", color: "blue" };
+  }
 
   return { label: "Started", color: "blue" };
 };
@@ -1864,6 +1952,67 @@ export const replacePmProjectFreelancer = asyncHandler(async (req, res) => {
   const currentAssignment = getAcceptedProposal(project);
   if (currentAssignment && String(currentAssignment.freelancerId || "") === String(freelancerId)) {
     throw new AppError("This freelancer is already assigned.", 400);
+  }
+
+  const directReassignmentCount = countPmFreelancerReassignments(project);
+  const pendingApprovalRequest = await findOpenPmReassignmentApprovalRequest(projectId);
+  if (directReassignmentCount >= MAX_PM_DIRECT_REASSIGNMENTS) {
+    if (pendingApprovalRequest) {
+      const pendingMeta = safeJsonParse(pendingApprovalRequest.notes, {});
+
+      res.status(202).json({
+        data: {
+          approvalRequired: true,
+          pendingApprovalId: pendingApprovalRequest.id,
+          reassignmentCount: directReassignmentCount,
+          maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+          requestedFreelancerId: pendingMeta.requestedFreelancerId || freelancer.id,
+          requestedFreelancerName: pendingMeta.requestedFreelancerName || freelancer.fullName,
+        },
+        message: "Admin approval is already pending for an additional freelancer reassignment.",
+      });
+      return;
+    }
+
+    const approvalRequest = await prisma.adminEscalation.create({
+      data: {
+        projectId,
+        raisedById: userId,
+        reason: "Freelancer reassignment approval required",
+        description: `Direct PM reassignment limit reached for "${project.title}". Approval requested to assign ${freelancer.fullName}.`,
+        status: "OPEN",
+        notes: JSON.stringify({
+          source: PM_REASSIGNMENT_APPROVAL_SOURCE,
+          requestedFreelancerId: freelancer.id,
+          requestedFreelancerName: freelancer.fullName,
+          previousFreelancerId: currentAssignment?.freelancerId || null,
+          previousFreelancerName: currentAssignment?.freelancer?.fullName || null,
+          directReassignmentCount,
+          maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+          requestedAt: new Date().toISOString(),
+        }),
+      },
+    });
+
+    await notifyAdminsAboutPmReassignmentApproval({
+      projectId,
+      projectTitle: project.title,
+      requestedByName: "Project Manager",
+      freelancerName: freelancer.fullName,
+    }).catch(() => null);
+
+    res.status(202).json({
+      data: {
+        approvalRequired: true,
+        pendingApprovalId: approvalRequest.id,
+        reassignmentCount: directReassignmentCount,
+        maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+        requestedFreelancerId: freelancer.id,
+        requestedFreelancerName: freelancer.fullName,
+      },
+      message: "Direct reassignment limit reached. Approval request sent to Admin.",
+    });
+    return;
   }
 
   const currentRequests = getFreelancerChangeRequests(project);
