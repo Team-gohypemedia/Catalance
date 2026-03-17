@@ -57,6 +57,12 @@ export const ClientTopBar = ({ label, title }) => {
     }
 
     if (notification.type === "proposal") {
+      const proposalStatus = String(notification.data?.status || "").toUpperCase();
+      if (proposalStatus === "ACCEPTED" && notification.data?.projectId) {
+        navigate("/client/project");
+        return;
+      }
+
       navigate("/client/proposal");
       return;
     }

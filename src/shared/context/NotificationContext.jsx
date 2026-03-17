@@ -51,7 +51,7 @@ export const NotificationProvider = ({ children }) => {
       type: notification.type || "general",
       title: notification.title || "Notification",
       message: notification.message || "",
-      read: false,
+      read: Boolean(notification.read),
       createdAt: notification.createdAt || new Date().toISOString(),
       data: notification.data || {},
     };
@@ -75,13 +75,13 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // Remove a notification when clicked/read
+  // Mark a notification as read while keeping it visible in the list
   const markAsRead = useCallback(async (notificationId) => {
-    // Optimistically remove from UI and update counters
+    // Optimistically update the read state and unread counters
     setNotifications((prev) => {
       const target = prev.find((n) => n.id === notificationId);
 
-      if (target) {
+      if (target && !target.read) {
         setUnreadCount((prevCount) => Math.max(0, prevCount - 1));
 
         if (target.type === "chat") {
@@ -91,7 +91,11 @@ export const NotificationProvider = ({ children }) => {
           setProposalUnreadCount((prevCount) => Math.max(0, prevCount - 1));
         }
 
-        return prev.filter((n) => n.id !== notificationId);
+        return prev.map((notification) =>
+          notification.id === notificationId
+            ? { ...notification, read: true }
+            : notification,
+        );
       }
       return prev;
     });
@@ -107,11 +111,22 @@ export const NotificationProvider = ({ children }) => {
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
-    // Optimistically clear all
-    setNotifications([]);
-    setUnreadCount(0);
-    setChatUnreadCount(0);
-    setProposalUnreadCount(0);
+    // Optimistically mark every notification as read while keeping history visible
+    setNotifications((prev) => {
+      const hasUnreadNotifications = prev.some((notification) => !notification.read);
+
+      if (!hasUnreadNotifications) {
+        return prev;
+      }
+
+      setUnreadCount(0);
+      setChatUnreadCount(0);
+      setProposalUnreadCount(0);
+
+      return prev.map((notification) =>
+        notification.read ? notification : { ...notification, read: true },
+      );
+    });
 
     try {
       await apiClient("/notifications/read-all", { method: "PATCH" });
@@ -178,7 +193,7 @@ export const NotificationProvider = ({ children }) => {
       toast.error("Failed to request permission");
       return null;
     }
-  }, []);
+  }, [addNotification]);
 
   // Set up FCM foreground message listener
   useEffect(() => {
@@ -222,9 +237,7 @@ export const NotificationProvider = ({ children }) => {
       try {
         const data = await apiClient("/notifications");
 
-        // User wants notifications to be "one time" (removed when read)
-        // So we only filter unread ones
-        setNotifications((data.notifications || []).filter((n) => !n.read));
+        setNotifications(data.notifications || []);
         setUnreadCount(data.unreadCount || 0);
         setChatUnreadCount(data.chatUnreadCount || 0);
         setProposalUnreadCount(data.proposalUnreadCount || 0);

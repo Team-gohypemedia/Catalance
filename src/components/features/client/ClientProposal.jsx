@@ -24,6 +24,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -56,6 +57,7 @@ const MIN_FREELANCER_MATCH_SCORE = 50;
 const PROPOSAL_BLOCKED_STATUSES = new Set(["pending", "accepted", "sent"]);
 const CLOSED_PROJECT_STATUSES = new Set(["completed", "paused"]);
 const DRAFT_PROJECT_STATUSES = new Set(["draft", "local_draft"]);
+const HIDDEN_REJECTION_REASON_KEYS = new Set(["system_awarded_to_another"]);
 
 const statusColors = {
   draft: "border-sky-400/30 bg-sky-500/10 text-sky-200",
@@ -344,6 +346,87 @@ const formatRating = (value) => {
 
 const normalizeProposalRecord = (proposal) => proposal ?? {};
 
+const getFirstNonEmptyText = (...values) => {
+  for (const value of values.flat()) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+
+  return "";
+};
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const extractProposalLabeledValue = (value = "", labels = []) => {
+  const source = String(value || "");
+  if (!source) return "";
+
+  for (const label of labels) {
+    const match = source.match(
+      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
+    );
+    const extracted = match?.[1]?.trim();
+    if (extracted) return extracted;
+  }
+
+  return "";
+};
+
+const extractProposalQuestionAnswer = (answers = {}, patterns = []) => {
+  if (!answers || typeof answers !== "object") return "";
+
+  for (const [question, answer] of Object.entries(answers)) {
+    const normalizedQuestion = String(question || "").trim();
+    if (!normalizedQuestion) continue;
+
+    const isMatch = patterns.some((pattern) => pattern.test(normalizedQuestion));
+    if (!isMatch) continue;
+
+    const extracted = collectStringValues(answer)
+      .map((value) => String(value || "").trim())
+      .find(Boolean);
+
+    if (extracted) return extracted;
+  }
+
+  return "";
+};
+
+const normalizeComparableText = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
+const toDisplayTitleCase = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s/-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
+
+const stripServiceNameFromProjectTitle = (projectTitle = "", serviceLabel = "") => {
+  const normalizedProjectTitle = String(projectTitle || "").trim();
+  const normalizedServiceLabel = String(serviceLabel || "").trim();
+
+  if (!normalizedProjectTitle) return "";
+  if (!normalizedServiceLabel) return normalizedProjectTitle;
+
+  const titleParts = normalizedProjectTitle
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (titleParts.length === 2) {
+    if (normalizeComparableText(titleParts[0]) === normalizeComparableText(normalizedServiceLabel)) {
+      return titleParts[1];
+    }
+
+    if (normalizeComparableText(titleParts[1]) === normalizeComparableText(normalizedServiceLabel)) {
+      return titleParts[0];
+    }
+  }
+
+  return normalizedProjectTitle;
+};
+
 const isAssignedFreelancerName = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
   return Boolean(normalized) && normalized !== "not assigned";
@@ -388,34 +471,194 @@ const getProposalInvitee = (proposal = {}) => {
   return {
     id: String(inviteeId),
     name: String(name).trim(),
+    proposalId: normalizedProposal.id || null,
+    status: normalizeProposalStatus(normalizedProposal.status || "PENDING"),
+    submittedDate: formatProposalDate(
+      normalizedProposal.updatedAt || normalizedProposal.createdAt,
+    ),
     avatar:
       normalizedProposal.avatar ||
       normalizedProposal.freelancer?.avatar ||
       "",
+    rejectionReason: normalizedProposal.rejectionReason || null,
+    rejectionReasonKey: normalizedProposal.rejectionReasonKey || null,
   };
 };
 
-const resolveProposalTitle = (proposal) => {
-  const normalizedProposal = normalizeProposalRecord(proposal);
+const getProposalFreelancerRecipients = (proposal = {}) => {
+  const sentFreelancers = Array.isArray(proposal?.sentFreelancers)
+    ? proposal.sentFreelancers.filter(Boolean)
+    : [];
 
-  return (
-    normalizedProposal.projectTitle ||
-    normalizedProposal.title ||
-    normalizedProposal.service ||
-    normalizedProposal.serviceKey ||
-    "Proposal"
+  if (sentFreelancers.length > 0) {
+    return sentFreelancers;
+  }
+
+  const invitee = getProposalInvitee(proposal);
+  return invitee ? [invitee] : [];
+};
+
+const canUnsendProposalInvitee = (invitee = {}) => {
+  const status = String(invitee?.status || "").toLowerCase();
+  return Boolean(invitee?.proposalId) && status !== "accepted" && status !== "rejected";
+};
+
+const shouldHideRejectedProposal = (proposal = {}) =>
+  HIDDEN_REJECTION_REASON_KEYS.has(
+    String(proposal?.rejectionReasonKey || "").trim().toLowerCase(),
   );
+
+const mergeInviteeCollections = (current = [], incoming = []) => {
+  const merged = Array.isArray(current) ? [...current] : [];
+
+  (Array.isArray(incoming) ? incoming : []).forEach((invitee) => {
+    if (!invitee) return;
+    if (merged.some((entry) => entry?.id === invitee.id)) return;
+    merged.push(invitee);
+  });
+
+  return merged;
 };
 
 const resolveProposalServiceLabel = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
+  const proposalContext =
+    normalizedProposal.proposalContext &&
+    typeof normalizedProposal.proposalContext === "object"
+      ? normalizedProposal.proposalContext
+      : {};
+  const questionnaireAnswersBySlug =
+    proposalContext.questionnaireAnswersBySlug &&
+    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      ? proposalContext.questionnaireAnswersBySlug
+      : {};
+  const questionnaireAnswers =
+    proposalContext.questionnaireAnswers &&
+    typeof proposalContext.questionnaireAnswers === "object"
+      ? proposalContext.questionnaireAnswers
+      : {};
+  const contentServiceType = extractProposalLabeledValue(
+    normalizedProposal.content || normalizedProposal.summary || "",
+    ["Service Type", "Service", "Category"],
+  );
+  const questionnaireServiceType = getFirstNonEmptyText(
+    proposalContext.serviceName,
+    proposalContext.serviceType,
+    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+      /service[-_\s]?type/i,
+      /service[-_\s]?name/i,
+      /^service$/i,
+      /^category$/i,
+    ]),
+    extractProposalQuestionAnswer(questionnaireAnswers, [
+      /service type/i,
+      /service name/i,
+      /category/i,
+    ]),
+  );
 
   return (
+    contentServiceType ||
+    questionnaireServiceType ||
     normalizedProposal.service ||
     normalizedProposal.serviceName ||
     normalizedProposal.serviceKey ||
     normalizedProposal.category ||
+    normalizedProposal.project?.service ||
+    normalizedProposal.project?.serviceName ||
     "General"
+  );
+};
+
+const resolveProposalProjectName = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const proposalContext =
+    normalizedProposal.proposalContext &&
+    typeof normalizedProposal.proposalContext === "object"
+      ? normalizedProposal.proposalContext
+      : {};
+  const questionnaireAnswersBySlug =
+    proposalContext.questionnaireAnswersBySlug &&
+    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      ? proposalContext.questionnaireAnswersBySlug
+      : {};
+  const questionnaireAnswers =
+    proposalContext.questionnaireAnswers &&
+    typeof proposalContext.questionnaireAnswers === "object"
+      ? proposalContext.questionnaireAnswers
+      : {};
+  const serviceLabel = resolveProposalServiceLabel(normalizedProposal);
+  const contentProjectName = extractProposalLabeledValue(
+    normalizedProposal.content || normalizedProposal.summary || "",
+    ["Project Name", "Project Title", "Project"],
+  );
+  const questionnaireProjectName = getFirstNonEmptyText(
+    proposalContext.projectTitle,
+    proposalContext.projectName,
+    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+      /project[-_\s]?name/i,
+      /project[-_\s]?title/i,
+      /^title$/i,
+    ]),
+    extractProposalQuestionAnswer(questionnaireAnswers, [
+      /project name/i,
+      /project title/i,
+    ]),
+  );
+  const projectTitle = getFirstNonEmptyText(
+    normalizedProposal.project?.title,
+    normalizedProposal.project?.name,
+    normalizedProposal.projectTitle,
+    normalizedProposal.projectName,
+    questionnaireProjectName,
+    contentProjectName,
+    normalizedProposal.title,
+  );
+  const cleanedProjectTitle = stripServiceNameFromProjectTitle(projectTitle, serviceLabel);
+
+  return cleanedProjectTitle || serviceLabel || "Proposal";
+};
+
+const resolveProposalTitle = (proposal) => resolveProposalProjectName(proposal);
+
+const resolveProposalBusinessName = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const proposalContext =
+    normalizedProposal.proposalContext &&
+    typeof normalizedProposal.proposalContext === "object"
+      ? normalizedProposal.proposalContext
+      : {};
+  const questionnaireAnswersBySlug =
+    proposalContext.questionnaireAnswersBySlug &&
+    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      ? proposalContext.questionnaireAnswersBySlug
+      : {};
+  const questionnaireAnswers =
+    proposalContext.questionnaireAnswers &&
+    typeof proposalContext.questionnaireAnswers === "object"
+      ? proposalContext.questionnaireAnswers
+      : {};
+
+  return getFirstNonEmptyText(
+    proposalContext.businessName,
+    proposalContext.companyName,
+    normalizedProposal.businessName,
+    normalizedProposal.companyName,
+    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+      /business[-_\s]?name/i,
+      /company[-_\s]?name/i,
+      /brand[-_\s]?name/i,
+    ]),
+    extractProposalQuestionAnswer(questionnaireAnswers, [
+      /business name/i,
+      /company name/i,
+      /brand name/i,
+    ]),
+    extractProposalLabeledValue(normalizedProposal.content || normalizedProposal.summary || "", [
+      "Business Name",
+      "Company Name",
+      "Brand Name",
+    ]),
   );
 };
 
@@ -658,40 +901,13 @@ const ProposalLoadingState = () => (
   </Card>
 );
 
-const ProposalWorkspaceHintCard = ({ activeTab, hasProjectFilter }) => {
-  const title =
-    activeTab === "rejected" ? "Need a replacement proposal?" : "Submit a new proposal";
-  const description = hasProjectFilter
-    ? "This workspace is currently scoped to one project, so all related proposal movement will stay grouped here."
-    : activeTab === "draft"
-      ? "Accept a newly generated draft or build out a project brief to keep your proposal pipeline moving."
-      : activeTab === "pending"
-        ? "Open any proposal above to review scope details, continue the conversation, or complete payment approval."
-        : "Use a rejected scope as a starting point, revise the brief, and send a stronger version back out.";
-
-  return (
-    <Card className={cn("shadow-none", proposalPanelClassName)}>
-      <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-4 px-6 py-14 text-center">
-        <div className="rounded-xl bg-[#ffc107]/10 p-3 text-[#ffc107]">
-          <FileText className="h-6 w-6" />
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-[1.85rem] font-semibold tracking-[-0.03em] text-[#f1f5f9]">
-            {title}
-          </h3>
-          <p className="max-w-lg text-sm leading-6 text-[#94a3b8]">{description}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
 const ProposalRowCard = ({
   proposal,
   onDelete,
   onOpen,
   onPay,
   onSend,
+  onViewFreelancers,
   isPaying,
   isSending,
 }) => {
@@ -699,6 +915,25 @@ const ProposalRowCard = ({
   const isDraft = proposal.status === "draft";
   const canSendToFreelancers = isDraft && !proposal.requiresPayment && onSend;
   const showSecondaryAction = canSendToFreelancers || Boolean(proposal.requiresPayment && onPay);
+  const businessName = resolveProposalBusinessName(proposal);
+  const displayBusinessName = businessName ? toDisplayTitleCase(businessName) : "";
+  const projectName = resolveProposalProjectName(proposal);
+  const serviceLabel = resolveProposalServiceLabel(proposal);
+  const cardTitle = displayBusinessName || projectName || serviceLabel || "Proposal";
+  const useBusinessNameTitle = Boolean(displayBusinessName);
+  const showServiceLabel =
+    Boolean(serviceLabel) &&
+    normalizeComparableText(serviceLabel) !== normalizeComparableText(cardTitle);
+  const freelancerRecipients = getProposalFreelancerRecipients(proposal);
+  const canViewFreelancerDetails =
+    freelancerRecipients.length > 0 && Boolean(onViewFreelancers);
+  const canDeleteProposal =
+    Boolean(onDelete) && !proposal.requiresPayment && !proposal.isGroupedPending;
+  const rejectionReasonText = shouldHideRejectedProposal(proposal)
+    ? ""
+    : getFirstNonEmptyText(proposal.rejectionReason);
+  const showRightSideRejectionReason =
+    proposal.status === "rejected" && Boolean(rejectionReasonText);
 
   return (
     <Card className="overflow-hidden rounded-[2.9rem] border border-white/6 bg-[#2b2b2d] shadow-none transition duration-200 hover:border-white/10">
@@ -721,21 +956,49 @@ const ProposalRowCard = ({
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-[2rem] font-semibold tracking-[-0.04em] text-white sm:text-[2.2rem]">
-                  {resolveProposalTitle(proposal)}
+                <h3
+                  className={cn(
+                    "text-[2rem] font-semibold tracking-[-0.04em] text-white sm:text-[2.2rem]",
+                    useBusinessNameTitle && "capitalize",
+                  )}
+                >
+                  {cardTitle}
                 </h3>
+                {showServiceLabel ? (
+                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#8d96a7]">
+                    {serviceLabel}
+                  </p>
+                ) : null}
               </div>
             </div>
 
-            {onDelete && !proposal.requiresPayment ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 shrink-0 rounded-full text-[#8d96a7] hover:bg-white/5 hover:text-white"
-                onClick={() => onDelete(proposal)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+            {showRightSideRejectionReason || canDeleteProposal ? (
+              <div className="flex shrink-0 flex-col items-end gap-3">
+                {canDeleteProposal ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-full text-[#8d96a7] hover:bg-white/5 hover:text-white"
+                    onClick={() => onDelete(proposal)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
+
+                {showRightSideRejectionReason ? (
+                  <div className="max-w-[16rem] bg-transparent px-3 py-2 text-right">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-rose-300/75">
+                      Freelancer response
+                    </p>
+                    <p
+                      className="mt-0.5 truncate text-xs font-medium text-rose-200"
+                      title={rejectionReasonText}
+                    >
+                      {rejectionReasonText}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
           </div>
 
@@ -743,7 +1006,18 @@ const ProposalRowCard = ({
             <ProposalSummaryItem
               label="Freelancer"
               value={
-                <ProposalFreelancerAvatars proposal={proposal} />
+                <div className="flex flex-col items-start gap-2.5">
+                  <ProposalFreelancerAvatars proposal={proposal} />
+                  {canViewFreelancerDetails ? (
+                    <button
+                      type="button"
+                      className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary transition hover:text-primary/80"
+                      onClick={() => onViewFreelancers?.(proposal)}
+                    >
+                      View details
+                    </button>
+                  ) : null}
+                </div>
               }
             />
             <ProposalSummaryItem
@@ -810,6 +1084,123 @@ const ProposalRowCard = ({
   );
 };
 
+const ProposalFreelancerDetailsDialog = ({
+  proposal,
+  open,
+  onOpenChange,
+  onUnsend,
+  unsendingProposalId,
+}) => {
+  const recipients = useMemo(
+    () => getProposalFreelancerRecipients(proposal),
+    [proposal],
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[90vh] max-w-[52rem] flex-col overflow-hidden border border-white/10 bg-[linear-gradient(180deg,rgba(18,18,20,0.98),rgba(23,23,25,0.98))] p-0 text-white">
+        <div className="flex-shrink-0 border-b border-white/10 px-6 py-5">
+          <DialogHeader className="space-y-1.5 text-left">
+            <DialogTitle className="text-xl font-semibold tracking-tight text-white">
+              Freelancer details
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-[#94a3b8]">
+              {recipients.length > 1
+                ? `${recipients.length} freelancers have received this proposal for ${
+                    resolveProposalTitle(proposal) || "this project"
+                  }.`
+                : `Review who received this proposal for ${
+                    resolveProposalTitle(proposal) || "this project"
+                  }.`}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {recipients.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {recipients.map((invitee) => {
+                const status = String(invitee?.status || "").toLowerCase();
+                const canUnsend = canUnsendProposalInvitee(invitee);
+                const isUnsending = unsendingProposalId === invitee?.proposalId;
+
+                return (
+                  <div
+                    key={invitee?.proposalId || invitee?.id}
+                    className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/15 hover:bg-white/[0.05]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-11 w-11 shrink-0 border border-white/10">
+                        <AvatarImage src={invitee?.avatar} alt={invitee?.name} />
+                        <AvatarFallback className="bg-[#111214] text-sm font-bold text-primary">
+                          {getInitials(invitee?.name)}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {invitee?.name || "Freelancer"}
+                        </p>
+                        <p className="mt-0.5 text-xs text-[#94a3b8]">
+                          Sent {invitee?.submittedDate || "recently"}
+                        </p>
+                      </div>
+
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "shrink-0 rounded-full border px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em]",
+                          proposalCardStatusClasses[status] || proposalCardStatusClasses.pending,
+                        )}
+                      >
+                        {statusLabels[status] || "Pending"}
+                      </Badge>
+                    </div>
+
+                    {invitee.rejectionReason && status === "rejected" ? (
+                      <div className="rounded-xl border border-rose-500/20 bg-[linear-gradient(145deg,rgba(244,63,94,0.14),rgba(244,63,94,0.04))] px-3.5 py-3">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-rose-300/85">
+                          Freelancer response
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-rose-100">
+                          {invitee.rejectionReason}
+                        </p>
+                      </div>
+                    ) : canUnsend ? (
+                      <Button
+                        className="h-8 w-full rounded-full bg-white px-4 text-xs font-semibold text-[#141414] hover:bg-white/90"
+                        onClick={() => onUnsend?.(invitee)}
+                        disabled={isUnsending}
+                      >
+                        {isUnsending ? (
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="mr-1.5 h-3 w-3" />
+                        )}
+                        {isUnsending ? "Unsending..." : "Unsend Proposal"}
+                      </Button>
+                    ) : (
+                      <p className="text-center text-[11px] text-[#7f8795]">
+                        Invite can no longer be unsent
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-[22px] border border-dashed border-white/10 bg-white/[0.02] px-5 py-8 text-center">
+              <p className="text-sm text-[#94a3b8]">
+                No freelancers have been linked to this proposal yet.
+              </p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const normalizeProposalStatus = (status = "") => {
   switch (String(status).toUpperCase()) {
     case "DRAFT":
@@ -828,6 +1219,8 @@ const normalizeProposalStatus = (status = "") => {
 
 const mapApiProposal = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
+  const projectTitle = resolveProposalProjectName(normalizedProposal);
+  const serviceLabel = resolveProposalServiceLabel(normalizedProposal);
   const freelancerName =
     normalizedProposal.freelancer?.fullName ||
     normalizedProposal.freelancer?.name ||
@@ -845,20 +1238,10 @@ const mapApiProposal = (proposal) => {
 
   return {
     id: normalizedProposal.id,
-    title:
-      normalizedProposal.project?.title || normalizedProposal.title || "Proposal",
-    category:
-      normalizedProposal.service ||
-      normalizedProposal.project?.service ||
-      normalizedProposal.project?.category ||
-      normalizedProposal.category ||
-      "General",
-    service:
-      normalizedProposal.service ||
-      normalizedProposal.project?.service ||
-      normalizedProposal.project?.category ||
-      normalizedProposal.category ||
-      "General",
+    projectTitle,
+    title: projectTitle || "Proposal",
+    category: serviceLabel,
+    service: serviceLabel,
     serviceKey:
       normalizedProposal.serviceKey ||
       normalizedProposal.project?.serviceKey ||
@@ -900,24 +1283,22 @@ const mapApiProposal = (proposal) => {
     syncedProjectId:
       normalizedProposal.projectId || normalizedProposal.project?.id || null,
     proposalContext: normalizedProposal.proposalContext || null,
+    rejectionReason: normalizedProposal.rejectionReason || null,
+    rejectionReasonKey: normalizedProposal.rejectionReasonKey || null,
   };
 };
 
 const mapLocalDraftProposal = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
+  const projectTitle = resolveProposalProjectName(normalizedProposal);
+  const serviceLabel = resolveProposalServiceLabel(normalizedProposal);
 
   return {
     id: normalizedProposal.id,
-    title:
-      normalizedProposal.projectTitle ||
-      normalizedProposal.title ||
-      normalizedProposal.service ||
-      normalizedProposal.serviceKey ||
-      "Proposal Draft",
-    category:
-      normalizedProposal.service || normalizedProposal.serviceKey || "General",
-    service:
-      normalizedProposal.service || normalizedProposal.serviceKey || "General",
+    projectTitle,
+    title: projectTitle || "Proposal Draft",
+    category: serviceLabel,
+    service: serviceLabel,
     serviceKey:
       normalizedProposal.serviceKey || normalizedProposal.service || "",
     status: "draft",
@@ -1054,10 +1435,13 @@ const ClientProposalContent = () => {
   const [processingPaymentProposalId, setProcessingPaymentProposalId] =
     useState(null);
   const [sendingProposalId, setSendingProposalId] = useState(null);
+  const [sendingFreelancerId, setSendingFreelancerId] = useState(null);
+  const [unsendingProposalId, setUnsendingProposalId] = useState(null);
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
   const [showFreelancerSelect, setShowFreelancerSelect] = useState(false);
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
+  const [freelancerDetailsProposal, setFreelancerDetailsProposal] = useState(null);
   const [freelancerSearch, setFreelancerSearch] = useState("");
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]);
   const [isFreelancersLoading, setIsFreelancersLoading] = useState(false);
@@ -1095,6 +1479,12 @@ const ClientProposalContent = () => {
       }
 
       if (notification.type === "proposal") {
+        const proposalStatus = String(notification.data?.status || "").toUpperCase();
+        if (proposalStatus === "ACCEPTED" && notification.data?.projectId) {
+          navigate("/client/project");
+          return;
+        }
+
         navigate("/client/proposal");
         return;
       }
@@ -1384,6 +1774,48 @@ const ClientProposalContent = () => {
     [activeProposal?.id, authFetch, user?.id],
   );
 
+  const handleOpenFreelancerDetails = useCallback((proposal) => {
+    if (!proposal) return;
+    setFreelancerDetailsProposal(proposal);
+  }, []);
+
+  const handleUnsendProposalFromFreelancer = useCallback(
+    async (invitee) => {
+      if (!invitee?.proposalId) {
+        toast.error("This proposal cannot be unsent right now.");
+        return;
+      }
+
+      setUnsendingProposalId(invitee.proposalId);
+
+      try {
+        const response = await authFetch(`/proposals/${invitee.proposalId}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(payload?.message || "Unable to unsend proposal.");
+        }
+
+        if (activeProposal?.id === invitee.proposalId) {
+          setActiveProposal(null);
+          setIsViewing(false);
+        }
+
+        setFreelancerDetailsProposal(null);
+        toast.success(`Proposal unsent from ${invitee.name || "freelancer"}.`);
+        await fetchProposals();
+      } catch (error) {
+        console.error("Failed to unsend proposal:", error);
+        toast.error(error?.message || "Unable to unsend proposal right now.");
+      } finally {
+        setUnsendingProposalId(null);
+      }
+    },
+    [activeProposal?.id, authFetch, fetchProposals],
+  );
+
   const handleApproveAndPay = useCallback(
     async (proposal) => {
       if (!proposal?.projectId) {
@@ -1644,6 +2076,7 @@ const ClientProposalContent = () => {
       if (!proposal || !freelancer) return;
 
       setSendingProposalId(proposal.id);
+      setSendingFreelancerId(freelancer.id);
 
       try {
         const normalizedBudget = parseProposalBudgetValue(proposal.budget);
@@ -1762,6 +2195,7 @@ const ClientProposalContent = () => {
         toast.error(error?.message || "Failed to send proposal. Please try again.");
       } finally {
         setSendingProposalId(null);
+        setSendingFreelancerId(null);
       }
     },
     [
@@ -1802,6 +2236,7 @@ const ClientProposalContent = () => {
       }, new Map());
 
       const draftIndexes = new Map();
+      const pendingIndexes = new Map();
       const groupedBuckets = { draft: [], pending: [], rejected: [] };
 
       const pushDraftOnce = (proposal, options = {}) => {
@@ -1823,6 +2258,47 @@ const ClientProposalContent = () => {
         groupedBuckets.draft.push(nextDraft);
       };
 
+      const pushPendingOnce = (proposal) => {
+        const draftKey = getProposalDraftGroupKey(proposal);
+        const sentFreelancers = sentFreelancersByDraftKey.get(draftKey) || [];
+        const hasPendingInvite = sentFreelancers.some(
+          (invitee) => String(invitee?.status || "").toLowerCase() === "pending",
+        );
+        const nextPending =
+          sentFreelancers.length > 0
+            ? {
+                ...proposal,
+                sentFreelancers,
+                status: hasPendingInvite ? "pending" : proposal.status,
+                isGroupedPending: sentFreelancers.length > 1,
+              }
+            : proposal;
+
+        if (pendingIndexes.has(draftKey)) {
+          const currentIndex = pendingIndexes.get(draftKey);
+          const currentProposal = groupedBuckets.pending[currentIndex];
+          const mergedInvitees = mergeInviteeCollections(
+            currentProposal?.sentFreelancers,
+            nextPending.sentFreelancers,
+          );
+          const status =
+            currentProposal?.status === "pending" || nextPending.status === "pending"
+              ? "pending"
+              : currentProposal?.status || nextPending.status;
+
+          groupedBuckets.pending[currentIndex] = {
+            ...(currentProposal?.status === "pending" ? currentProposal : nextPending),
+            sentFreelancers: mergedInvitees,
+            status,
+            isGroupedPending: mergedInvitees.length > 1,
+          };
+          return;
+        }
+
+        pendingIndexes.set(draftKey, groupedBuckets.pending.length);
+        groupedBuckets.pending.push(nextPending);
+      };
+
       scopedProposals.forEach((proposal) => {
         const projectKey = proposal.projectId ? String(proposal.projectId) : null;
         const hasAcceptedProposal = projectKey
@@ -1830,9 +2306,6 @@ const ClientProposalContent = () => {
           : false;
 
         if (proposal.status === "accepted") {
-          if (proposal.requiresPayment) {
-            groupedBuckets.pending.push(proposal);
-          }
           return;
         }
 
@@ -1844,11 +2317,13 @@ const ClientProposalContent = () => {
         }
 
         if (proposal.status === "rejected") {
-          groupedBuckets.rejected.push(proposal);
+          if (!shouldHideRejectedProposal(proposal)) {
+            groupedBuckets.rejected.push(proposal);
+          }
           return;
         }
 
-        groupedBuckets.pending.push(proposal);
+        pushPendingOnce(proposal);
 
         if (!hasAcceptedProposal) {
           pushDraftOnce({
@@ -2209,6 +2684,7 @@ const ClientProposalContent = () => {
                       onOpen={handleOpenProposal}
                       onDelete={handleDelete}
                       onSend={openFreelancerSelection}
+                      onViewFreelancers={handleOpenFreelancerDetails}
                       isSending={sendingProposalId === proposal.id}
                     />
                   ))}
@@ -2233,13 +2709,10 @@ const ClientProposalContent = () => {
                       onOpen={handleOpenProposal}
                       onDelete={handleDelete}
                       onPay={handleApproveAndPay}
+                      onViewFreelancers={handleOpenFreelancerDetails}
                       isPaying={processingPaymentProposalId === proposal.id}
                     />
                   ))}
-                  <ProposalWorkspaceHintCard
-                    activeTab={activeTab}
-                    hasProjectFilter={Boolean(deepLinkProjectId)}
-                  />
                 </div>
               ) : (
                 <EmptyStateCard
@@ -2260,12 +2733,9 @@ const ClientProposalContent = () => {
                       proposal={proposal}
                       onOpen={handleOpenProposal}
                       onDelete={handleDelete}
+                      onViewFreelancers={handleOpenFreelancerDetails}
                     />
                   ))}
-                  <ProposalWorkspaceHintCard
-                    activeTab={activeTab}
-                    hasProjectFilter={Boolean(deepLinkProjectId)}
-                  />
                 </div>
               ) : (
                 <EmptyStateCard
@@ -2276,9 +2746,20 @@ const ClientProposalContent = () => {
             </TabsContent>
           </Tabs>
 
-          <ClientDashboardFooter variant="workspace" />
         </main>
+
+        <ClientDashboardFooter variant="workspace" />
       </div>
+
+      <ProposalFreelancerDetailsDialog
+        proposal={freelancerDetailsProposal}
+        open={Boolean(freelancerDetailsProposal)}
+        onOpenChange={(open) => {
+          if (!open) setFreelancerDetailsProposal(null);
+        }}
+        onUnsend={handleUnsendProposalFromFreelancer}
+        unsendingProposalId={unsendingProposalId}
+      />
 
       <Dialog
         open={isViewing && Boolean(activeProposal)}
@@ -2306,7 +2787,7 @@ const ClientProposalContent = () => {
                     </>
                   ) : (
                     <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
-                      {activeProposal?.title || "Proposal"}
+                      {resolveProposalTitle(activeProposal) || "Proposal"}
                     </DialogTitle>
                   )}
                   {activeProposal?.status ? (
@@ -2518,7 +2999,9 @@ const ClientProposalContent = () => {
                 </Button>
               ) : null}
 
-              {activeProposal && !activeProposal.requiresPayment ? (
+              {activeProposal &&
+              !activeProposal.requiresPayment &&
+              !activeProposal.isGroupedPending ? (
                 <Button
                   variant="ghost"
                   className="rounded-full text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
@@ -2538,7 +3021,10 @@ const ClientProposalContent = () => {
         onOpenChange={setShowFreelancerSelect}
         savedProposal={proposalForFreelancerSelection}
         isLoadingFreelancers={isFreelancersLoading}
-        isSendingProposal={Boolean(sendingProposalId)}
+        isSendingProposal={
+          sendingProposalId === (proposalForFreelancerSelection?.id ?? null)
+        }
+        sendingFreelancerId={sendingFreelancerId}
         freelancerSearch={freelancerSearch}
         onFreelancerSearchChange={setFreelancerSearch}
         filteredFreelancers={filteredFreelancers}

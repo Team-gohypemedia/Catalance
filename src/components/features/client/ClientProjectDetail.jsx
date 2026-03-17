@@ -74,6 +74,7 @@ import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
 import { cn } from "@/shared/lib/utils";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
+import { hasUnlockedProjectChat } from "@/shared/lib/project-chat-access";
 import {
   Tooltip,
   TooltipContent,
@@ -972,10 +973,8 @@ const ProjectDashboard = () => {
   const [conversationId, setConversationId] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const isChatLockedUntilPayment = useMemo(() => {
-    const status = String(project?.status || "").toUpperCase();
-    const spent = Number(project?.spent || 0);
-    return status === "AWAITING_PAYMENT" || spent <= 0;
-  }, [project?.status, project?.spent]);
+    return !hasUnlockedProjectChat(project);
+  }, [project]);
 
   // 1. Ensure Conversation Exists
   useEffect(() => {

@@ -236,7 +236,8 @@ export const listUserConversations = asyncHandler(async (req, res) => {
         proposal.freelancer?.email ||
         "Freelancer",
       projectTitle: proposal.project?.title || "Project Chat",
-      freelancer: proposal.freelancer
+      freelancer: proposal.freelancer,
+      projectStatus: String(proposal.project?.status || "").toUpperCase(),
     });
   }
 
@@ -284,15 +285,31 @@ export const listUserConversations = asyncHandler(async (req, res) => {
 
   for (const key of serviceKeys) {
     if (!byService.has(key)) {
+      const meta = serviceMeta.get(key) || {};
+      if (meta.projectStatus === "COMPLETED") {
+        continue;
+      }
+
       const convo = await prisma.chatConversation.create({
         data: { service: key, createdById: userId }
       });
-      byService.set(key, { ...convo, messages: [] });
+      byService.set(key, {
+        ...convo,
+        messages: [],
+        _count: { messages: 0 }
+      });
     }
   }
 
   const data = Array.from(byService.values())
     .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+    .filter((conversation) => {
+      const meta = serviceMeta.get(conversation.service) || {};
+      const hasMessages =
+        conversation.messages.length > 0 || (conversation._count?.messages || 0) > 0;
+
+      return meta.projectStatus !== "COMPLETED" || hasMessages;
+    })
     .map((conversation) => {
       const meta = serviceMeta.get(conversation.service) || {};
       return {
@@ -306,7 +323,9 @@ export const listUserConversations = asyncHandler(async (req, res) => {
         lastMessage: conversation.messages?.[0]
           ? serializeMessage(conversation.messages[0])
           : null,
-        freelancer: meta.freelancer
+        messageCount: conversation._count?.messages || 0,
+        freelancer: meta.freelancer,
+        projectStatus: meta.projectStatus || null
       };
     });
 

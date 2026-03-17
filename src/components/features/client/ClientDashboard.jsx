@@ -40,6 +40,10 @@ import { useNotifications } from "@/shared/context/NotificationContext";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import BookAppointment from "@/components/features/appointments/BookAppointment";
 import ClientDashboardShell from "@/components/features/client/dashboard/ClientDashboardShell";
+import {
+  buildProjectCardModel,
+  normalizeClientProjects,
+} from "@/components/features/client/ClientProjects";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import EditProposalDialog from "@/components/features/client/dashboard/EditProposalDialog";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
@@ -54,6 +58,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getSopFromTitle } from "@/shared/data/sopTemplates";
 const MIN_FREELANCER_MATCH_SCORE = 50;
 const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);
 const CLOSED_PROJECT_STATUSES = new Set(["COMPLETED", "PAUSED"]);
@@ -1006,8 +1011,125 @@ const getProjectPendingProposals = (project = {}) =>
         )
     : [];
 
+const getFirstNonEmptyText = (...values) => {
+  for (const value of values.flat()) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+
+  return "";
+};
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const extractLabeledValue = (value = "", labels = []) => {
+  const source = String(value || "");
+  if (!source) return "";
+
+  for (const label of labels) {
+    const match = source.match(
+      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
+    );
+    const extracted = match?.[1]?.trim();
+    if (extracted) return extracted;
+  }
+
+  return "";
+};
+
+const toTaskIdArray = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const toDisplayTitleCase = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s/-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
+
 const hasProjectPaymentDue = (project = {}) =>
   Boolean(project?.paymentPlan?.nextDueInstallment);
+
+const getFirstProjectInstallment = (project = {}) =>
+  Array.isArray(project?.paymentPlan?.installments)
+    ? project.paymentPlan.installments[0] || null
+    : null;
+
+const isProjectProgressEligible = (project = {}) => {
+  const normalizedStatus = String(project?.status || "").toUpperCase();
+  const ongoingStatuses = new Set([
+    "AWAITING_PAYMENT",
+    "IN_PROGRESS",
+    "ONGOING",
+    "ACTIVE",
+    "IN_REVIEW",
+    "ON_HOLD",
+    "PAUSED",
+  ]);
+
+  if (ongoingStatuses.has(normalizedStatus)) {
+    return true;
+  }
+
+  return false;
+};
+
+const hasUnlockedProjectProgress = (project = {}) => {
+  const normalizedStatus = String(project?.status || "").toUpperCase();
+  if (normalizedStatus === "IN_PROGRESS" || normalizedStatus === "COMPLETED") {
+    return true;
+  }
+
+  const firstInstallment = getFirstProjectInstallment(project);
+  if (!firstInstallment) {
+    return false;
+  }
+
+  if (firstInstallment.isPaid) {
+    return true;
+  }
+
+  const firstInstallmentAmount = Number(firstInstallment.amount || 0);
+  const paidAmount = Number(project?.paymentPlan?.paidAmount ?? project?.spent ?? 0);
+  return firstInstallmentAmount > 0 && paidAmount >= firstInstallmentAmount;
+};
+
+const resolveProjectBusinessName = (project = {}) => {
+  const acceptedProposal = getProjectAcceptedProposal(project);
+
+  return getFirstNonEmptyText(
+    project?.businessName,
+    project?.companyName,
+    acceptedProposal?.businessName,
+    acceptedProposal?.companyName,
+    extractLabeledValue(project?.description || "", [
+      "Business Name",
+      "Company Name",
+      "Brand Name",
+    ]),
+    extractLabeledValue(acceptedProposal?.coverLetter || "", [
+      "Business Name",
+      "Company Name",
+      "Brand Name",
+    ]),
+  );
+};
 
 const hasStalePendingProposal = (project = {}) => {
   const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -1034,6 +1156,7 @@ const ClientDashboardContent = () => {
   const [savedProposals, setSavedProposals] = useState([]);
   const [activeProposalId, setActiveProposalId] = useState(null);
   const [isSendingProposal, setIsSendingProposal] = useState(false);
+  const [sendingFreelancerId, setSendingFreelancerId] = useState(null);
   const [isSyncingDrafts, setIsSyncingDrafts] = useState(false);
   const [showViewProposal, setShowViewProposal] = useState(false);
   const [showEditProposal, setShowEditProposal] = useState(false);
@@ -1781,6 +1904,7 @@ const ClientDashboardContent = () => {
 
     try {
       setIsSendingProposal(true);
+      setSendingFreelancerId(freelancer.id);
 
       const normalizedBudget =
         parseInt(String(savedProposal.budget || "0").replace(/[^0-9]/g, "")) ||
@@ -1915,6 +2039,7 @@ const ClientDashboardContent = () => {
       toast.error(error?.message || "Failed to send proposal. Please try again.");
     } finally {
       setIsSendingProposal(false);
+      setSendingFreelancerId(null);
     }
   };
 
@@ -2210,14 +2335,13 @@ const ClientDashboardContent = () => {
         iconKey: "proposals",
       },
       {
-        title: "HIRED FREELANCERS",
-        value: String(uniqueProjects.reduce((count, project) => {
-          const accepted = (project.proposals || []).find(
-            (p) => (p.status || "").toUpperCase() === "ACCEPTED"
-          );
-          return count + (accepted ? 1 : 0);
-        }, 0)).padStart(2, "0"),
-        iconKey: "freelancers",
+        title: "COMPLETED PROJECTS",
+        value: String(
+          uniqueProjects.filter(
+            (project) => String(project.status || "").toUpperCase() === "COMPLETED",
+          ).length,
+        ).padStart(2, "0"),
+        iconKey: "projects",
       },
       {
         title: "PENDING PAYMENTS",
@@ -2367,7 +2491,33 @@ const ClientDashboardContent = () => {
         value: Math.round(((index + 1) / Math.max(count, 1)) * 100),
       }));
 
+    const buildProjectPhaseSteps = (project) => {
+      const sop = getSopFromTitle(project?.title || "");
+      const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
+      const completedTaskIds = new Set(toTaskIdArray(project?.completedTasks));
+
+      return (Array.isArray(sop?.phases) ? sop.phases : []).map((phase) => {
+        const phaseTasks = Array.isArray(sop?.tasks)
+          ? sop.tasks.filter((task) => String(task?.phase) === String(phase?.id))
+          : [];
+
+        return phaseTasks.map((task, taskIndex) => {
+          const taskKey = `${task.phase}-${task.id}`;
+          const isVerified = verifiedTaskIds.has(taskKey);
+          const isCompleted = completedTaskIds.has(taskKey);
+
+          return {
+            id: taskKey,
+            sequence: taskIndex + 1,
+            title: task?.title || `Step ${taskIndex + 1}`,
+            state: isVerified ? "completed" : isCompleted ? "in_progress" : "pending",
+          };
+        });
+      });
+    };
+
     const buildProjectPhases = (project) => {
+      const phaseSteps = buildProjectPhaseSteps(project);
       const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
         ? project.paymentPlan.phases
         : [];
@@ -2377,6 +2527,7 @@ const ClientDashboardContent = () => {
           label: phase.label || phase.name || `Phase ${index + 1}`,
           value: clampProgress(phase.progress ?? phase.value),
           subLabel: resolvePhaseSummary(paymentPlanPhases[index] || phase),
+          steps: phaseSteps[index] || [],
         }));
       }
 
@@ -2400,6 +2551,7 @@ const ClientDashboardContent = () => {
             label: phase?.name || `Phase ${index + 1}`,
             value,
             subLabel: resolvePhaseSummary(phase, phase?.isComplete ? "Completed" : "Pending"),
+            steps: phaseSteps[index] || [],
           };
         });
       }
@@ -2428,11 +2580,15 @@ const ClientDashboardContent = () => {
               : clampProgress(milestone?.progress) > 0
                 ? `${clampProgress(milestone?.progress)}% complete`
                 : "Pending",
+            steps: phaseSteps[index] || [],
           };
         });
       }
 
-      return buildDefaultPhases(Number(project?.phaseCount) || 4);
+      return buildDefaultPhases(Number(project?.phaseCount) || 4).map((phase, index) => ({
+        ...phase,
+        steps: phaseSteps[index] || [],
+      }));
     };
 
     const resolveCurrentProgress = (project, phases, normalizedStatus) => {
@@ -2542,52 +2698,84 @@ const ClientDashboardContent = () => {
       return "Upcoming";
     };
 
-    return uniqueProjects.slice(0, 3).map((project, index) => {
-      const normalizedStatus = String(project?.status || "").toUpperCase();
-      const basePhases = buildProjectPhases(project);
-      const currentProgress = resolveCurrentProgress(project, basePhases, normalizedStatus);
-      const highlightIndex = determineHighlightIndex(
-        project,
-        basePhases,
-        normalizedStatus,
-        currentProgress,
-      );
-      const phases = basePhases.map((phase, phaseIndex) => ({
-        ...phase,
-        value: phaseIndex === highlightIndex ? currentProgress : phase.value,
-        subLabel: phase.subLabel || buildFallbackSubLabel(phaseIndex, highlightIndex),
-      }));
-      const pendingCount = getProjectPendingProposals(project).length;
-      
-      // Get callout detail based on real project data
-      let calloutDetail = "Workspace active";
-      if (pendingCount > 0) {
-        calloutDetail = `${pendingCount} task${pendingCount > 1 ? "s" : ""} pending`;
-      } else if (normalizedStatus === "COMPLETED") {
-        calloutDetail = "Ready for delivery";
-      } else if (project?.nextMilestone) {
-        calloutDetail = project.nextMilestone;
-      } else if (project?.currentTask) {
-        calloutDetail = project.currentTask;
-      }
+    return uniqueProjects
+      .filter(isProjectProgressEligible)
+      .map((project, index) => {
+        const normalizedStatus = String(project?.status || "").toUpperCase();
+        const firstInstallment = getFirstProjectInstallment(project);
+        const isProgressUnlocked = hasUnlockedProjectProgress(project);
+        const basePhases = buildProjectPhases(project);
+        const currentProgress = resolveCurrentProgress(project, basePhases, normalizedStatus);
+        const highlightIndex = determineHighlightIndex(
+          project,
+          basePhases,
+          normalizedStatus,
+          currentProgress,
+        );
+        const phases = basePhases.map((phase, phaseIndex) => ({
+          ...phase,
+          value: phaseIndex === highlightIndex ? currentProgress : phase.value,
+          subLabel: phase.subLabel || buildFallbackSubLabel(phaseIndex, highlightIndex),
+          steps: Array.isArray(phase.steps)
+            ? phase.steps.map((step, stepIndex, collection) => {
+                const firstPendingIndex = collection.findIndex(
+                  (entry) => entry?.state !== "completed",
+                );
 
-      return {
-        id: project.id || `progress-${index}`,
-        status: normalizedStatus,
-        progressCategory:
-          normalizedStatus === "COMPLETED" || currentProgress >= 100
-            ? "completed"
-            : "ongoing",
-        label: project.title || `Project ${index + 1}`,
-        calloutLabel: phases[highlightIndex]?.label || `Phase ${highlightIndex + 1}`,
-        calloutValue: `${currentProgress}%`,
-        calloutDetail,
-        highlightIndex,
-        currentPhaseIndex: highlightIndex,
-        progressValue: currentProgress,
-        phases,
-      };
-    });
+                return {
+                  ...step,
+                  state:
+                    phaseIndex === highlightIndex &&
+                    step.state === "pending" &&
+                    firstPendingIndex === stepIndex
+                      ? "current"
+                      : step.state,
+                };
+              })
+            : [],
+        }));
+        const pendingCount = getProjectPendingProposals(project).length;
+
+        let calloutDetail = "Workspace active";
+        if (pendingCount > 0) {
+          calloutDetail = `${pendingCount} task${pendingCount > 1 ? "s" : ""} pending`;
+        } else if (project?.nextMilestone) {
+          calloutDetail = project.nextMilestone;
+        } else if (project?.currentTask) {
+          calloutDetail = project.currentTask;
+        }
+
+        return {
+          id: project.id || `progress-${index}`,
+          status: normalizedStatus,
+          progressCategory: currentProgress >= 100 ? "completed" : "ongoing",
+          label:
+            toDisplayTitleCase(resolveProjectBusinessName(project)) ||
+            project.title ||
+            `Project ${index + 1}`,
+          calloutLabel: phases[highlightIndex]?.label || `Phase ${highlightIndex + 1}`,
+          calloutValue: `${currentProgress}%`,
+          calloutDetail,
+          highlightIndex,
+          currentPhaseIndex: highlightIndex,
+          progressValue: currentProgress,
+          isProgressUnlocked,
+          isProgressLocked: !isProgressUnlocked,
+          lockedPaymentLabel:
+            firstInstallment?.label || "Initial project payment",
+          lockedPaymentValue:
+            Number(firstInstallment?.amount || 0) > 0
+              ? formatINR(Number(firstInstallment.amount || 0))
+              : "",
+          lockedDescription:
+            firstInstallment?.label
+              ? `${firstInstallment.label} must be paid before the project progress graph appears.`
+              : "The project progress graph will appear after the initial project amount is paid.",
+          phases,
+        };
+      })
+      .filter((project) => project.progressCategory === "ongoing")
+      .slice(0, 3);
   }, [uniqueProjects]);
 
   const recentActivities = useMemo(() => {
@@ -2618,6 +2806,7 @@ const ClientDashboardContent = () => {
           }
 
           if (type === "proposal") {
+            const proposalStatus = String(notification?.data?.status || "").toUpperCase();
             return {
               id: notification?.id || `notification-proposal-${index}`,
               iconKey: "proposal",
@@ -2625,7 +2814,12 @@ const ClientDashboardContent = () => {
               title: notification?.title || "Proposal Update",
               subtitle: notification?.message || "Your proposal workflow has a new update.",
               timeLabel: formatDashboardRelativeTime(createdAt),
-              onClick: () => navigate("/client/proposal"),
+              onClick: () =>
+                navigate(
+                  proposalStatus === "ACCEPTED" && notification?.data?.projectId
+                    ? "/client/project"
+                    : "/client/proposal",
+                ),
             };
           }
 
@@ -2755,102 +2949,11 @@ const ClientDashboardContent = () => {
   }, [freelancers, navigate, notifications, savedProposal, uniqueProjects]);
 
   const showcaseItems = useMemo(() => {
-    const items = uniqueProjects
-      .filter((project) => {
-        const status = String(project?.status || "").toUpperCase();
-        const acceptedProposal = getProjectAcceptedProposal(project);
-        return Boolean(acceptedProposal) && !CLOSED_PROJECT_STATUSES.has(status);
-      })
-      .slice(0, 3)
-      .map((project) => {
-        const acceptedProposal = getProjectAcceptedProposal(project);
-        const pendingProposals = getProjectPendingProposals(project);
-        const spotlightFreelancer =
-          acceptedProposal?.freelancer || pendingProposals[0]?.freelancer || null;
-        const statusMeta = getRunningProjectStatusMeta(project.status);
-        const dueInstallment = project?.paymentPlan?.nextDueInstallment;
-        const dateMeta = resolveRunningProjectDateMeta(project, acceptedProposal);
-        const progressValue = resolveRunningProjectProgress(project);
-        const hasAcceptedProposal = Boolean(acceptedProposal);
-        const pendingProposalCount = pendingProposals.length;
-        let buttonLabel = "View Project";
-        let buttonTone = "slate";
-        let actionDisabled = false;
-        let onAction = () =>
-          navigate(`/client/project/${encodeURIComponent(project.id)}`);
-
-        if (
-          String(project?.status || "").toUpperCase() === "AWAITING_PAYMENT" &&
-          hasProjectPaymentDue(project) &&
-          dueInstallment
-        ) {
-          buttonLabel =
-            isProcessingPayment && projectToPay?.id === project.id
-              ? "Processing..."
-              : `Pay ${dueInstallment.percentage}%`;
-          buttonTone = "amber";
-          actionDisabled = isProcessingPayment && projectToPay?.id === project.id;
-          onAction = () => {
-            void handlePaymentClick(project);
-          };
-        } else if (hasStalePendingProposal(project)) {
-          buttonLabel = "Increase Budget";
-          buttonTone = "amber";
-          onAction = () => handleIncreaseBudgetClick(project);
-        }
-
-        return {
-          id: `project-${project.id}`,
-          sectionLabel: "Active Project",
-          statusLabel: statusMeta.label,
-          statusTone: statusMeta.tone,
-          title: project.title || "Untitled Project",
-          personName:
-            spotlightFreelancer?.fullName ||
-            (pendingProposalCount > 0 ? "Proposal Spotlight" : "Catalance Workspace"),
-          personRole: hasAcceptedProposal
-            ? spotlightFreelancer?.jobTitle || "Assigned freelancer"
-            : spotlightFreelancer?.jobTitle ||
-              (pendingProposalCount > 0
-                ? `${pendingProposalCount} pending proposal${pendingProposalCount > 1 ? "s" : ""}`
-                : "Scope and invite freelancers"),
-          personAvatar: spotlightFreelancer?.avatar || "",
-          personInitial: (
-            spotlightFreelancer?.fullName ||
-            project.title ||
-            "C"
-          )
-            .charAt(0)
-            .toUpperCase(),
-          budgetLabel: "Budget",
-          budgetValue: formatINR(project.budget || 0),
-          dateLabel: dateMeta.label,
-          dateValue: dateMeta.value,
-          progressValue,
-          progressText: `${progressValue}%`,
-          milestones: buildRunningProjectMilestones({
-            status: project.status,
-            hasAcceptedProposal,
-            pendingCount: pendingProposalCount,
-            hasPaymentDue: hasProjectPaymentDue(project),
-          }),
-          buttonLabel,
-          buttonTone,
-          actionDisabled,
-          onClick: () => navigate(`/client/project/${encodeURIComponent(project.id)}`),
-          onAction,
-        };
-      });
-
-    return items;
-  }, [
-    handleIncreaseBudgetClick,
-    handlePaymentClick,
-    isProcessingPayment,
-    navigate,
-    projectToPay?.id,
-    uniqueProjects,
-  ]);
+    return normalizeClientProjects(uniqueProjects)
+      .map((project) => buildProjectCardModel(project))
+      .filter((project) => project.statusMeta.label !== "Completed")
+      .slice(0, 3);
+  }, [uniqueProjects]);
 
   const activeChats = useMemo(
     () =>
@@ -2936,6 +3039,8 @@ const ClientDashboardContent = () => {
         onOpenViewProposals={handleOpenViewProposals}
         onOpenViewProjects={handleOpenViewProjects}
         onOpenHireFreelancer={handleOpenHireFreelancer}
+        onPayRunningProject={handlePaymentClick}
+        runningProjectProcessingId={isProcessingPayment ? projectToPay?.id : null}
         onViewProject={(projectId) => navigate(`/client/project/${encodeURIComponent(projectId)}`)}
       />
       {renderLegacyDashboard && (
@@ -3870,6 +3975,7 @@ const ClientDashboardContent = () => {
         savedProposal={savedProposal}
         isLoadingFreelancers={isFreelancersLoading}
         isSendingProposal={isSendingProposal}
+        sendingFreelancerId={sendingFreelancerId}
         freelancerSearch={freelancerSearch}
         onFreelancerSearchChange={setFreelancerSearch}
         filteredFreelancers={filteredFreelancers}

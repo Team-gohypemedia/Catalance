@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
+import { ProjectProposalCard } from "@/components/features/client/ClientProjects";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { cn } from "@/shared/lib/utils";
 
@@ -52,81 +53,6 @@ const draftToneMap = {
   green: "bg-[#163822] text-[#34d399]",
   violet: "bg-[#3d2459] text-[#c084fc]",
 };
-
-const runningProjectStatusToneMap = {
-  success: "border-[#14532d] bg-[#0c2616] text-[#34d399]",
-  warning: "border-[#5a3b0d] bg-[#2f1e05] text-[#fbbf24]",
-  slate: "border-white/[0.08] bg-white/[0.04] text-[#cbd5e1]",
-  amber: "border-[#5a4304] bg-[#312404] text-[#facc15]",
-};
-
-const runningProjectButtonToneMap = {
-  amber: "bg-[#ffc107] text-black hover:bg-[#ffd54f] disabled:bg-[#ffc107]/70",
-  slate: "bg-white/[0.08] text-white hover:bg-white/[0.12] disabled:bg-white/[0.08]",
-  success: "bg-[#14311f] text-[#dcfce7] hover:bg-[#194428] disabled:bg-[#14311f]",
-  warning: "bg-[#3a2607] text-[#fde68a] hover:bg-[#53350a] disabled:bg-[#3a2607]",
-};
-
-const runningProjectProgressTextToneMap = {
-  success: "text-[#34d399]",
-  warning: "text-[#fbbf24]",
-  slate: "text-[#cbd5e1]",
-  amber: "text-[#facc15]",
-};
-
-const fallbackProgressProjects = [
-  {
-    id: "project-1",
-    progressCategory: "completed",
-    label: "Project 1",
-    calloutLabel: "Phase 4",
-    calloutValue: "100%",
-    calloutDetail: "Project wrapped",
-    highlightIndex: 3,
-    currentPhaseIndex: 3,
-    progressValue: 100,
-    phases: [
-      { label: "Phase 1", value: 8, subLabel: "Brief locked" },
-      { label: "Phase 2", value: 40, subLabel: "2/5 tasks done" },
-      { label: "Phase 3", value: 72, subLabel: "Upcoming" },
-      { label: "Phase 4", value: 100, subLabel: "Upcoming" },
-    ],
-  },
-  {
-    id: "project-2",
-    progressCategory: "ongoing",
-    label: "Project 2",
-    calloutLabel: "Phase 3",
-    calloutValue: "55%",
-    calloutDetail: "3 reviews pending",
-    highlightIndex: 2,
-    currentPhaseIndex: 2,
-    progressValue: 55,
-    phases: [
-      { label: "Phase 1", value: 10, subLabel: "Discovery done" },
-      { label: "Phase 2", value: 28, subLabel: "Scope approved" },
-      { label: "Phase 3", value: 55, subLabel: "3 reviews pending" },
-      { label: "Phase 4", value: 88, subLabel: "Upcoming" },
-    ],
-  },
-  {
-    id: "project-3",
-    progressCategory: "ongoing",
-    label: "Project 3",
-    calloutLabel: "Phase 3",
-    calloutValue: "72%",
-    calloutDetail: "Ready for delivery",
-    highlightIndex: 2,
-    currentPhaseIndex: 2,
-    progressValue: 72,
-    phases: [
-      { label: "Phase 1", value: 12, subLabel: "Kickoff done" },
-      { label: "Phase 2", value: 35, subLabel: "Build stable" },
-      { label: "Phase 3", value: 72, subLabel: "Ready for delivery" },
-      { label: "Phase 4", value: 94, subLabel: "Upcoming" },
-    ],
-  },
-];
 
 const truncatePhaseSubLabel = (value, maxLength = 24) => {
   if (typeof value !== "string") return "";
@@ -214,147 +140,6 @@ const DraftProposalsPanel = ({ draftProposalRows, onOpenQuickProject }) => (
     )}
   </DashboardPanel>
 );
-
-const RunningProjectMilestone = ({ item }) => {
-  const isComplete = item.state === "complete";
-  const isCurrent = item.state === "current";
-
-  return (
-    <div className="flex items-center gap-3">
-      {isComplete ? (
-        <CheckCircle2 className="size-5 shrink-0 fill-[#ffc107] text-[#ffc107]" />
-      ) : isCurrent ? (
-        <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-[#ffc107]/50">
-          <span className="size-1.5 rounded-full bg-[#ffc107]" />
-        </span>
-      ) : (
-        <span className="size-5 shrink-0 rounded-full border border-white/[0.1]" />
-      )}
-
-      <span
-        className={cn(
-          "text-[0.98rem] leading-6",
-          isComplete || isCurrent ? "text-[#f3f4f6]" : "text-[#6b7280]",
-        )}
-      >
-        {item.label}
-      </span>
-    </div>
-  );
-};
-
-const RunningProjectCard = ({ item }) => {
-  const progressValue = Math.max(0, Math.min(100, Number(item.progressValue) || 0));
-  const handleAction = item.onAction || item.onClick;
-
-  return (
-    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-accent p-5 backdrop-blur-[10px] transition-transform duration-200 hover:-translate-y-1">
-      <button
-        type="button"
-        onClick={item.onClick}
-        className="flex flex-1 flex-col text-left"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#9ca3af]">
-            {item.sectionLabel || "Active Project"}
-          </span>
-
-          <span
-            className={cn(
-              "inline-flex rounded-full border px-3 py-1 text-[0.82rem] font-semibold",
-              runningProjectStatusToneMap[item.statusTone] || runningProjectStatusToneMap.slate,
-            )}
-          >
-            {item.statusLabel || "Open"}
-          </span>
-        </div>
-
-        <h3 className="mt-5 text-[clamp(1.55rem,2vw,2rem)] font-semibold tracking-[-0.04em] text-white">
-          {item.title}
-        </h3>
-
-        <div className="mt-6 flex items-center gap-3">
-          <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_12px_24px_rgba(0,0,0,0.24)]">
-            <AvatarImage src={item.personAvatar} alt={item.personName} />
-            <AvatarFallback className="bg-[#1f2937] text-sm text-white">
-              {item.personInitial || "C"}
-            </AvatarFallback>
-          </Avatar>
-
-          <div className="min-w-0">
-            <p className="truncate text-[1rem] font-medium text-white">
-              {item.personName || "Catalance Workspace"}
-            </p>
-            <p className="truncate text-sm text-[#8f96a3]">
-              {item.personRole || "Project workspace"}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="rounded-[14px] border border-white/[0.05] bg-black/20 p-4">
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
-              {item.budgetLabel || "Budget"}
-            </p>
-            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
-              {item.budgetValue || "Flexible"}
-            </p>
-          </div>
-
-          <div className="rounded-[14px] border border-white/[0.05] bg-black/20 p-4">
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
-              {item.dateLabel || "Timeline"}
-            </p>
-            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
-              {item.dateValue || "To be finalized"}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-7 flex items-center justify-between gap-3">
-          <span className="text-sm text-[#9ca3af]">Overall Progress</span>
-          <span
-            className={cn(
-              "text-sm font-semibold",
-              runningProjectProgressTextToneMap[item.statusTone] ||
-                runningProjectProgressTextToneMap.slate,
-            )}
-          >
-            {item.progressText || `${progressValue}%`}
-          </span>
-        </div>
-
-        <div className="mt-3 h-2 rounded-full bg-white/[0.08]">
-          <div
-            className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.62))]"
-            style={{ width: `${progressValue}%` }}
-          />
-        </div>
-
-        <div className="mt-6 space-y-3">
-          {(item.milestones || []).map((milestone) => (
-            <RunningProjectMilestone
-              key={`${item.id}-${milestone.label}`}
-              item={milestone}
-            />
-          ))}
-        </div>
-      </button>
-
-      <button
-        type="button"
-        disabled={item.actionDisabled}
-        onClick={handleAction}
-        className={cn(
-          "mt-6 rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
-          runningProjectButtonToneMap[item.buttonTone] || runningProjectButtonToneMap.slate,
-        )}
-      >
-        {item.buttonLabel || "View Project"}
-      </button>
-    </article>
-  );
-};
 
 const ActivityRow = ({ item }) => {
   const Icon = activityIconMap[item.iconKey] || FolderKanban;
@@ -480,49 +265,68 @@ const InterestedFreelancerRow = ({ item }) => (
   </div>
 );
 
-const ProgressCategoryToggle = ({
-  activeProgressTab,
-  onChangeProgressTab,
-  className,
-}) => (
-  <div
-    className={cn(
-      "inline-flex h-auto w-fit flex-wrap gap-2 rounded-full border border-white/[0.14] bg-white/[0.08] p-1.5",
-      className,
-    )}
-  >
-    <button
-      type="button"
-      onClick={() => onChangeProgressTab("ongoing")}
-      className={cn(
-        "inline-flex min-w-[128px] items-center justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold transition-colors",
-        activeProgressTab === "ongoing"
-          ? "bg-white text-[#171717]"
-          : "text-[#a6b0c0] hover:bg-white/[0.12] hover:text-white",
-      )}
-    >
-      Ongoing
-    </button>
-    <button
-      type="button"
-      onClick={() => onChangeProgressTab("completed")}
-      className={cn(
-        "inline-flex min-w-[128px] items-center justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold transition-colors",
-        activeProgressTab === "completed"
-          ? "bg-white text-[#171717]"
-          : "text-[#a6b0c0] hover:bg-white/[0.12] hover:text-white",
-      )}
-    >
-      Completed
-    </button>
-  </div>
+const ProjectProgressLockedCard = ({ project, onViewProject }) => (
+  <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
+    <CardContent className="px-4 py-6 sm:px-6 sm:py-7">
+      <div className="flex min-h-[320px] flex-col justify-between gap-8 lg:flex-row lg:items-center">
+        <div className="max-w-2xl">
+          <Badge
+            variant="outline"
+            className="border-[#5a4304] bg-[#312404] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#facc15] shadow-none"
+          >
+            Initial Payment Pending
+          </Badge>
+          <h3 className="mt-5 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.04em] text-white">
+            Progress unlocks after the first payment
+          </h3>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#94a3b8]">
+            {project?.lockedDescription ||
+              "The project progress graph will appear after the initial project amount is paid."}
+          </p>
+        </div>
+
+        <div className="w-full max-w-[320px] rounded-[28px] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,193,7,0.16),rgba(255,255,255,0.04))] p-6">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-black/20 text-[#facc15]">
+            <CreditCard className="size-5" />
+          </div>
+          <p className="mt-5 text-sm font-medium uppercase tracking-[0.16em] text-[#fcd34d]">
+            Next unlock
+          </p>
+          <p className="mt-3 text-[1.6rem] font-semibold tracking-[-0.04em] text-white">
+            {project?.lockedPaymentLabel || "Initial project payment"}
+          </p>
+          {project?.lockedPaymentValue ? (
+            <p className="mt-2 text-sm font-medium text-[#d4d4d4]">
+              {project.lockedPaymentValue}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </CardContent>
+
+    <CardFooter className="flex items-center justify-between gap-3 border-t border-white/[0.05] px-4 py-5 text-[#d4d4d4] sm:px-6">
+      <Badge
+        variant="outline"
+        className="gap-3 border-0 bg-transparent px-0 py-0 text-sm font-medium text-[#d4d4d4] shadow-none"
+      >
+        <span aria-hidden="true" className="size-3 rounded-full bg-[#facc15]" />
+        Progress will appear after payment
+      </Badge>
+      <button
+        type="button"
+        onClick={() => onViewProject?.(project.id)}
+        className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#171717] transition-colors hover:bg-white/90"
+      >
+        View Project
+        <ChevronRight className="size-4 stroke-[2]" />
+      </button>
+    </CardFooter>
+  </Card>
 );
 
 const ProjectProgressChartCard = ({
   project,
   onViewProject,
-  activeProgressTab,
-  onChangeProgressTab,
 }) => {
   const chartWidth = 960;
   const chartHeight = 388;
@@ -553,6 +357,10 @@ const ProjectProgressChartCard = ({
       };
     });
   }, [project?.phases]);
+
+  if (project?.isProgressLocked) {
+    return <ProjectProgressLockedCard project={project} onViewProject={onViewProject} />;
+  }
 
   const chartPoints = normalizedPhases.map((phase, index) => {
     const x =
@@ -598,13 +406,6 @@ const ProjectProgressChartCard = ({
   return (
     <Card className="overflow-hidden rounded-[28px] border border-white/[0.06] bg-accent text-white shadow-none backdrop-blur-[10px]">
       <CardContent className="px-4 py-5 sm:px-6">
-        <div className="mb-3 flex justify-end">
-          <ProgressCategoryToggle
-            activeProgressTab={activeProgressTab}
-            onChangeProgressTab={onChangeProgressTab}
-          />
-        </div>
-
         <div className="relative">
           <Card
             className="pointer-events-none absolute min-w-[156px] rounded-[24px] border border-white/[0.08] bg-[linear-gradient(90deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01),rgba(255,255,255,0.05))] px-5 py-4 text-white shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
@@ -704,7 +505,7 @@ const ProjectProgressChartCard = ({
               const isCurrentPhase = point.index === activePhaseIndex;
               const isFirstPhase = point.index === 0;
               const isLastPhase = point.index === chartPoints.length - 1;
-              const phaseLabel = truncatePhaseLabel(point.label);
+              const phaseLabel = truncatePhaseLabel(point.label, 24);
               const phaseSubLabel = truncatePhaseSubLabel(point.subLabel);
               const labelX = isFirstPhase ? point.x - 8 : isLastPhase ? point.x + 8 : point.x;
               const labelAnchor = isFirstPhase ? "start" : isLastPhase ? "end" : "middle";
@@ -713,7 +514,7 @@ const ProjectProgressChartCard = ({
                 <g key={`${point.label}-axis`}>
                   <text
                     x={labelX}
-                    y={phaseSubLabel ? chartHeight - 34 : chartHeight - 20}
+                    y={phaseSubLabel ? chartHeight - 38 : chartHeight - 22}
                     textAnchor={labelAnchor}
                     fill={
                       isCurrentPhase
@@ -722,7 +523,7 @@ const ProjectProgressChartCard = ({
                           ? "#d4d4d4"
                           : "#8b95a5"
                     }
-                    fontSize="14"
+                    fontSize="11"
                     fontWeight="600"
                   >
                     {phaseLabel}
@@ -730,7 +531,7 @@ const ProjectProgressChartCard = ({
                   {phaseSubLabel ? (
                     <text
                       x={labelX}
-                      y={chartHeight - 14}
+                      y={chartHeight - 18}
                       textAnchor={labelAnchor}
                       fill={
                         isCurrentPhase
@@ -739,7 +540,7 @@ const ProjectProgressChartCard = ({
                             ? "#94a3b8"
                             : "#6b7280"
                       }
-                      fontSize="11"
+                      fontSize="9"
                       fontWeight="500"
                     >
                       {phaseSubLabel}
@@ -778,127 +579,26 @@ const ProjectProgressSection = ({
   onViewProject,
   onOpenQuickProject,
 }) => {
-  const projects = progressProjects?.length ? progressProjects : fallbackProgressProjects;
-  const resolveCategory = React.useCallback((project) => {
-    const rawCategory = String(project?.progressCategory || "")
-      .toLowerCase()
-      .replace(/[\s-]+/g, "_");
-    const normalizedStatus = String(project?.status || "")
-      .toUpperCase()
-      .trim();
-
-    if (rawCategory === "completed") {
-      return "completed";
-    }
-
-    if (rawCategory === "ongoing" || rawCategory === "in_progress") {
-      return "ongoing";
-    }
-
-    const completedStatuses = new Set([
-      "COMPLETED",
-      "CANCELLED",
-      "CANCELED",
-      "CLOSED",
-      "ARCHIVED",
-    ]);
-    if (completedStatuses.has(normalizedStatus)) {
-      return "completed";
-    }
-
-    const ongoingStatuses = new Set([
-      "DRAFT",
-      "OPEN",
-      "AWAITING_PAYMENT",
-      "IN_PROGRESS",
-      "ONGOING",
-      "ACTIVE",
-      "PENDING",
-      "IN_REVIEW",
-      "ON_HOLD",
-      "PAUSED",
-    ]);
-    if (ongoingStatuses.has(normalizedStatus)) {
-      return "ongoing";
-    }
-
-    const explicitProgress = Number(
-      project?.progressValue ??
-        project?.progress ??
-        project?.completionPercentage ??
-        project?.milestoneProgress,
-    );
-    if (Number.isFinite(explicitProgress)) {
-      return explicitProgress >= 100 ? "completed" : "ongoing";
-    }
-
-    const phases = Array.isArray(project?.phases) ? project.phases : [];
-    if (!phases.length) {
-      return "ongoing";
-    }
-
-    const finalPhaseValue = Number(phases[phases.length - 1]?.value || 0);
-    return finalPhaseValue >= 100 ? "completed" : "ongoing";
-  }, []);
-
-  const hasOngoingProjects = React.useMemo(
-    () => projects.some((project) => resolveCategory(project) === "ongoing"),
-    [projects, resolveCategory],
+  const projects = React.useMemo(
+    () => (Array.isArray(progressProjects) ? progressProjects : []),
+    [progressProjects],
   );
-  const hasCompletedProjects = React.useMemo(
-    () => projects.some((project) => resolveCategory(project) === "completed"),
-    [projects, resolveCategory],
-  );
-
-  const [activeProgressTab, setActiveProgressTab] = React.useState(
-    hasOngoingProjects ? "ongoing" : "completed",
-  );
-
-  const filteredProjects = React.useMemo(
-    () => projects.filter((project) => resolveCategory(project) === activeProgressTab),
-    [activeProgressTab, projects, resolveCategory],
-  );
-  const [activeProjectId, setActiveProjectId] = React.useState(filteredProjects[0]?.id || "");
+  const [activeProjectId, setActiveProjectId] = React.useState(projects[0]?.id || "");
 
   React.useEffect(() => {
-    if (!filteredProjects.length) {
+    if (!projects.length) {
       setActiveProjectId("");
       return;
     }
 
-    if (!filteredProjects.some((project) => project.id === activeProjectId)) {
-      setActiveProjectId(filteredProjects[0]?.id || "");
+    if (!projects.some((project) => project.id === activeProjectId)) {
+      setActiveProjectId(projects[0]?.id || "");
     }
-  }, [activeProjectId, filteredProjects]);
+  }, [activeProjectId, projects]);
 
   const activeProject =
-    filteredProjects.find((project) => project.id === activeProjectId) || filteredProjects[0];
+    projects.find((project) => project.id === activeProjectId) || projects[0];
   const activeTabsValue = activeProject?.id || "";
-
-  const emptyDescription =
-    activeProgressTab === "completed"
-      ? "Completed projects will appear here once milestones are fully closed."
-      : hasCompletedProjects
-        ? "No active work right now. You can still review completed projects."
-        : "Ongoing projects will appear here once work has started.";
-
-  const emptyAction =
-    activeProgressTab === "ongoing" && hasCompletedProjects
-      ? {
-          label: "View Completed Projects",
-          onClick: () => setActiveProgressTab("completed"),
-        }
-      : activeProgressTab === "completed" && hasOngoingProjects
-        ? {
-            label: "View Ongoing Projects",
-            onClick: () => setActiveProgressTab("ongoing"),
-          }
-        : typeof onOpenQuickProject === "function"
-          ? {
-              label: "Start New Project",
-              onClick: onOpenQuickProject,
-            }
-          : null;
 
   return (
     <section className="mt-16">
@@ -909,13 +609,13 @@ const ProjectProgressSection = ({
               Project Progress
             </h2>
             <p className="mt-2 text-sm text-[#94a3b8]">
-              Track the progress of project phases that require your attention.
+              Track ongoing project phases once the initial project payment has been completed.
             </p>
           </div>
 
-          {filteredProjects.length > 0 ? (
+          {projects.length > 0 ? (
             <TabsList className="h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5">
-              {filteredProjects.map((project) => (
+              {projects.map((project) => (
                 <TabsTrigger
                   key={project.id}
                   value={project.id}
@@ -928,43 +628,33 @@ const ProjectProgressSection = ({
           ) : null}
         </div>
 
-        {filteredProjects.length > 0 ? (
-          filteredProjects.map((project) => (
+        {projects.length > 0 ? (
+          projects.map((project) => (
             <TabsContent key={project.id} value={project.id} className="mt-3">
-              <ProjectProgressChartCard
-                project={project}
-                onViewProject={onViewProject}
-                activeProgressTab={activeProgressTab}
-                onChangeProgressTab={setActiveProgressTab}
-              />
+              <ProjectProgressChartCard project={project} onViewProject={onViewProject} />
             </TabsContent>
           ))
         ) : (
           <DashboardPanel className="mt-3 min-h-[220px] p-5 sm:p-8">
-            <div className="flex justify-end">
-              <ProgressCategoryToggle
-                activeProgressTab={activeProgressTab}
-                onChangeProgressTab={setActiveProgressTab}
-              />
-            </div>
             <div className="flex min-h-[140px] items-center justify-center text-center sm:min-h-[170px]">
               <div className="max-w-md">
                 <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-[#cbd5e1]">
                   <FolderKanban className="size-6" />
                 </div>
                 <p className="mt-5 text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
-                  No {activeProgressTab} projects yet
+                  No ongoing projects yet
                 </p>
                 <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
-                  {emptyDescription}
+                  Only ongoing projects appear here after a freelancer is assigned and the
+                  initial payment is completed.
                 </p>
-                {emptyAction ? (
+                {typeof onOpenQuickProject === "function" ? (
                   <button
                     type="button"
-                    onClick={emptyAction.onClick}
+                    onClick={onOpenQuickProject}
                     className="mt-6 rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
                   >
-                    {emptyAction.label}
+                    Start New Project
                   </button>
                 ) : null}
               </div>
@@ -995,6 +685,8 @@ const ClientDashboardShell = ({
   onOpenViewProposals,
   onOpenViewProjects,
   onOpenHireFreelancer,
+  onPayRunningProject,
+  runningProjectProcessingId = null,
   onViewProject,
 }) => (
   <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
@@ -1052,7 +744,12 @@ const ClientDashboardShell = ({
           {showcaseItems.length > 0 ? (
             <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
               {showcaseItems.map((item) => (
-                <RunningProjectCard key={item.id} item={item} />
+                <ProjectProposalCard
+                  key={item.id}
+                  project={item}
+                  onPay={onPayRunningProject}
+                  isPaying={runningProjectProcessingId === item.id}
+                />
               ))}
             </div>
           ) : (

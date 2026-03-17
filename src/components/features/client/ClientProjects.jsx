@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Circle from "lucide-react/dist/esm/icons/circle";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { Link } from "react-router-dom";
@@ -12,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { formatINR } from "@/shared/lib/currency";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { cn } from "@/shared/lib/utils";
@@ -35,7 +38,6 @@ const projectActionToneMap = {
   amber: "bg-[#ffc107] text-black hover:bg-[#ffd54f] disabled:bg-[#ffc107]/70",
   slate: "bg-white/[0.08] text-white hover:bg-white/[0.12] disabled:bg-white/[0.08]",
 };
-
 const projectFilterOptions = [
   { key: "ongoing", label: "Ongoing Projects" },
   { key: "completed", label: "Completed Projects" },
@@ -69,6 +71,149 @@ const formatProjectDate = (value) => {
   });
 };
 
+const getFirstNonEmptyText = (...values) => {
+  for (const value of values.flat()) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+
+  return "";
+};
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const extractLabeledValue = (value = "", labels = []) => {
+  const source = String(value || "");
+  if (!source) return "";
+
+  for (const label of labels) {
+    const match = source.match(
+      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
+    );
+    const extracted = match?.[1]?.trim();
+    if (extracted) return extracted;
+  }
+
+  return "";
+};
+
+const cleanDisplayText = (value = "") =>
+  String(value || "")
+    .replace(/\s*#+\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeComparableText = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
+const toDisplayTitleCase = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s/-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
+
+const resolveProjectBusinessName = (project = {}, acceptedProposal = null) =>
+  getFirstNonEmptyText(
+    project?.businessName,
+    project?.companyName,
+    acceptedProposal?.businessName,
+    acceptedProposal?.companyName,
+    extractLabeledValue(project?.description || "", [
+      "Business Name",
+      "Company Name",
+      "Brand Name",
+    ]),
+    extractLabeledValue(
+      acceptedProposal?.coverLetter || acceptedProposal?.description || "",
+      ["Business Name", "Company Name", "Brand Name"],
+    ),
+  );
+
+const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
+  getFirstNonEmptyText(
+    project?.service,
+    project?.serviceName,
+    project?.serviceKey,
+    project?.category,
+    acceptedProposal?.service,
+    acceptedProposal?.serviceName,
+    acceptedProposal?.serviceKey,
+    acceptedProposal?.category,
+    extractLabeledValue(project?.description || "", [
+      "Service Type",
+      "Service",
+      "Category",
+    ]),
+    extractLabeledValue(
+      acceptedProposal?.coverLetter || acceptedProposal?.description || "",
+      ["Service Type", "Service", "Category"],
+    ),
+    project?.title,
+  );
+
+const normalizeTimelineValue = (value = "") => {
+  const normalizedValue = cleanDisplayText(value);
+  if (!normalizedValue) return "";
+
+  const parsedDate = new Date(normalizedValue);
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return formatProjectDate(normalizedValue);
+  }
+
+  return normalizedValue;
+};
+
+const resolveProjectTimelineMeta = (project = {}, acceptedProposal = null) => {
+  const timelineText = getFirstNonEmptyText(
+    project?.timeline,
+    acceptedProposal?.timeline,
+    extractLabeledValue(project?.description || "", ["Timeline"]),
+    extractLabeledValue(
+      acceptedProposal?.coverLetter || acceptedProposal?.description || "",
+      ["Timeline"],
+    ),
+  );
+
+  if (timelineText) {
+    return {
+      label: "Timeline",
+      value: normalizeTimelineValue(timelineText),
+    };
+  }
+
+  const deadlineText = getFirstNonEmptyText(
+    project?.deadline,
+    project?.dueDate,
+    project?.targetDate,
+    acceptedProposal?.deadline,
+  );
+
+  return {
+    label: deadlineText ? "Deadline" : "Timeline",
+    value: normalizeTimelineValue(deadlineText),
+  };
+};
+
+const toTaskIdArray = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
 const clampProgress = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
 
 const resolveProjectProgress = (project) => {
@@ -97,68 +242,227 @@ const resolveProjectStatusMeta = (project) => {
     return { label: "Pending Review", tone: "slate" };
   }
 
+  if (project.initialPaymentPending) {
+    return { label: "Pending Payment", tone: "warning" };
+  }
+
   return { label: "In Progress", tone: "warning" };
 };
 
-const buildProjectMilestones = (project) => {
-  if (project.rawStatus === "COMPLETED") {
-    return [
-      { label: "Proposal Accepted", state: "complete" },
-      { label: "Freelancer Started", state: "complete" },
-      { label: "Payment Received", state: "complete" },
-    ];
+const resolvePhaseSummary = (phaseLike, fallbackLabel = "Upcoming") => {
+  const explicitSummary = [
+    phaseLike?.subLabel,
+    phaseLike?.subtitle,
+    phaseLike?.detail,
+    phaseLike?.description,
+    phaseLike?.summary,
+  ].find((value) => typeof value === "string" && value.trim());
+
+  if (explicitSummary) {
+    return explicitSummary.trim();
   }
 
-  if (project.awaitingFreelancerAcceptance) {
-    return [
-      { label: "Proposal Sent", state: "complete" },
-      { label: "Freelancer Acceptance", state: "current" },
-      { label: "Project Kickoff", state: "pending" },
-    ];
+  const totalTasks = Math.max(0, Number(phaseLike?.totalTasks || phaseLike?.taskCount || 0));
+  const completedTasks = Math.max(
+    0,
+    Number(phaseLike?.verifiedTasks ?? phaseLike?.completedTasks ?? phaseLike?.doneTasks ?? 0),
+  );
+
+  if (totalTasks > 0) {
+    return `${Math.min(completedTasks, totalTasks)}/${totalTasks} tasks done`;
   }
 
-  if (project.paymentPending) {
-    return [
-      { label: "Proposal Accepted", state: "complete" },
-      {
-        label: project.initialPaymentPending ? "Freelancer Onboarding" : "Work Delivered",
-        state: project.initialPaymentPending ? "current" : "complete",
-      },
-      {
-        label: project.initialPaymentPending ? "Release Kickoff Payment" : "Release Payment",
-        state: "current",
-      },
-    ];
-  }
-
-  return [
-    { label: "Proposal Accepted", state: "complete" },
-    { label: "Work in Progress", state: "current" },
-    { label: "Final Handover", state: "pending" },
-  ];
+  return fallbackLabel;
 };
 
-const normalizeClientProjects = (remote = []) =>
+const buildDefaultPhases = (count = 4) =>
+  Array.from({ length: Math.max(1, count) }, (_, index) => ({
+    label: `Phase ${index + 1}`,
+    value: Math.round(((index + 1) / Math.max(count, 1)) * 100),
+  }));
+
+const buildProjectPhaseSteps = (project) => {
+  const sop = getSopFromTitle(
+    project?.templateTitle || project?.serviceType || project?.sourceTitle || "",
+  );
+  const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
+  const completedTaskIds = new Set(toTaskIdArray(project?.completedTasks));
+
+  return (Array.isArray(sop?.phases) ? sop.phases : []).map((phase) => {
+    const phaseTasks = Array.isArray(sop?.tasks)
+      ? sop.tasks.filter((task) => String(task?.phase) === String(phase?.id))
+      : [];
+
+    return phaseTasks.map((task, taskIndex) => {
+      const taskKey = `${task.phase}-${task.id}`;
+      const isVerified = verifiedTaskIds.has(taskKey);
+      const isCompleted = completedTaskIds.has(taskKey);
+
+      return {
+        id: taskKey,
+        sequence: taskIndex + 1,
+        title: task?.title || `Step ${taskIndex + 1}`,
+        state: isVerified ? "complete" : isCompleted ? "current" : "pending",
+      };
+    });
+  });
+};
+
+const buildProjectPhases = (project) => {
+  const phaseSteps = buildProjectPhaseSteps(project);
+  const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
+    ? project.paymentPlan.phases
+    : [];
+
+  if (Array.isArray(project?.phases) && project.phases.length > 0) {
+    return project.phases.map((phase, index) => ({
+      label: phase?.label || phase?.name || `Phase ${index + 1}`,
+      value: clampProgress(phase?.progress ?? phase?.value),
+      progress: clampProgress(phase?.phaseProgress ?? phase?.progress ?? phase?.value),
+      subLabel: resolvePhaseSummary(paymentPlanPhases[index] || phase),
+      steps: phaseSteps[index] || [],
+    }));
+  }
+
+  if (paymentPlanPhases.length > 0) {
+    let completedBefore = 0;
+
+    return paymentPlanPhases.map((phase, index) => {
+      const totalTasks = Math.max(0, Number(phase?.totalTasks || 0));
+      const verifiedTasks = Math.max(0, Number(phase?.verifiedTasks || 0));
+      const phaseCompletion =
+        totalTasks > 0 ? Math.min(verifiedTasks / totalTasks, 1) : phase?.isComplete ? 1 : 0;
+      const value = Math.round(
+        ((completedBefore + phaseCompletion) / paymentPlanPhases.length) * 100,
+      );
+
+      if (phase?.isComplete) {
+        completedBefore += 1;
+      }
+
+      return {
+        label: phase?.name || `Phase ${index + 1}`,
+        value,
+        progress: Math.round(phaseCompletion * 100),
+        subLabel: resolvePhaseSummary(phase, phase?.isComplete ? "Completed" : "Pending"),
+        steps: phaseSteps[index] || [],
+      };
+    });
+  }
+
+  if (Array.isArray(project?.milestones) && project.milestones.length > 0) {
+    let completedBefore = 0;
+
+    return project.milestones.map((milestone, index) => {
+      const isCompleted =
+        milestone?.completed || String(milestone?.status || "").toUpperCase() === "COMPLETED";
+      const milestoneProgress = isCompleted ? 1 : clampProgress(milestone?.progress) / 100;
+      const value = Math.round(
+        ((completedBefore + milestoneProgress) / project.milestones.length) * 100,
+      );
+
+      if (isCompleted) {
+        completedBefore += 1;
+      }
+
+      return {
+        label: milestone?.label || milestone?.name || `Phase ${index + 1}`,
+        value,
+        progress: Math.round(milestoneProgress * 100),
+        subLabel: isCompleted
+          ? "Completed"
+          : clampProgress(milestone?.progress) > 0
+            ? `${clampProgress(milestone?.progress)}% complete`
+            : "Pending",
+        steps: phaseSteps[index] || [],
+      };
+    });
+  }
+
+  return buildDefaultPhases(Number(project?.phaseCount) || 4).map((phase, index) => ({
+    ...phase,
+    subLabel: index === 0 ? "Current phase" : "Upcoming",
+    steps: phaseSteps[index] || [],
+  }));
+};
+
+const resolveCurrentPhaseProgress = (phase, steps, fallbackValue = 0) => {
+  const normalizedSteps = Array.isArray(steps) ? steps : [];
+
+  if (normalizedSteps.length > 0) {
+    const completedSteps = normalizedSteps.filter(
+      (step) => String(step?.state || "").toLowerCase() === "complete",
+    ).length;
+
+    return clampProgress((completedSteps / normalizedSteps.length) * 100);
+  }
+
+  const taskSummaryMatch = String(phase?.subLabel || "").match(/(\d+)\s*\/\s*(\d+)\s*tasks?\s*done/i);
+  if (taskSummaryMatch) {
+    const completedTasks = Number(taskSummaryMatch[1]) || 0;
+    const totalTasks = Number(taskSummaryMatch[2]) || 0;
+
+    if (totalTasks > 0) {
+      return clampProgress((completedTasks / totalTasks) * 100);
+    }
+  }
+
+  const explicitPhaseProgress = Number(phase?.phaseProgress ?? phase?.progress);
+  if (Number.isFinite(explicitPhaseProgress)) {
+    return clampProgress(explicitPhaseProgress);
+  }
+
+  return clampProgress(fallbackValue);
+};
+
+const determineCurrentPhaseIndex = (project, phases) => {
+  if (Number.isFinite(project?.currentPhaseIndex) && project.currentPhaseIndex >= 0) {
+    return Math.min(project.currentPhaseIndex, Math.max(phases.length - 1, 0));
+  }
+
+  const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
+    ? project.paymentPlan.phases
+    : [];
+  if (paymentPlanPhases.length > 0) {
+    const firstIncompleteIndex = paymentPlanPhases.findIndex((phase) => !phase?.isComplete);
+    return firstIncompleteIndex === -1 ? paymentPlanPhases.length - 1 : firstIncompleteIndex;
+  }
+
+  if (Array.isArray(project?.phases) && project.phases.length > 0) {
+    const firstIncompleteIndex = project.phases.findIndex(
+      (phase) => clampProgress(phase?.progress ?? phase?.value) < 100,
+    );
+    return firstIncompleteIndex === -1 ? project.phases.length - 1 : firstIncompleteIndex;
+  }
+
+  if (Array.isArray(project?.milestones) && project.milestones.length > 0) {
+    const firstIncompleteIndex = project.milestones.findIndex((milestone) => {
+      const status = String(milestone?.status || "").toUpperCase();
+      return !(milestone?.completed || status === "COMPLETED");
+    });
+    return firstIncompleteIndex === -1 ? project.milestones.length - 1 : firstIncompleteIndex;
+  }
+
+  const phaseStep = 100 / Math.max(phases.length, 1);
+  return Math.min(Math.floor(resolveProjectProgress(project) / phaseStep), phases.length - 1);
+};
+
+export const normalizeClientProjects = (remote = []) =>
   remote
     .map((project) => {
       const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
       const acceptedProposal = proposals.find(
         (proposal) => String(proposal?.status || "").toUpperCase() === "ACCEPTED",
       );
-      const pendingProposals = proposals
-        .filter((proposal) => String(proposal?.status || "").toUpperCase() === "PENDING")
-        .sort(
-          (left, right) =>
-            new Date(right?.createdAt || 0).getTime() -
-            new Date(left?.createdAt || 0).getTime(),
-        );
 
-      if (!acceptedProposal && pendingProposals.length === 0) {
+      if (!acceptedProposal) {
         return null;
       }
 
-      const spotlightFreelancer =
-        acceptedProposal?.freelancer || pendingProposals[0]?.freelancer || null;
+      const spotlightFreelancer = acceptedProposal?.freelancer || null;
+      const businessName = resolveProjectBusinessName(project, acceptedProposal);
+      const serviceType = resolveProjectServiceType(project, acceptedProposal);
+      const timelineMeta = resolveProjectTimelineMeta(project, acceptedProposal);
       const paymentPlan =
         project?.paymentPlan && typeof project.paymentPlan === "object"
           ? project.paymentPlan
@@ -170,24 +474,23 @@ const normalizeClientProjects = (remote = []) =>
       return {
         id: project?.id,
         rawStatus,
-        title: project?.title || "Untitled Project",
-        sectionLabel: acceptedProposal ? "Active Project" : "Proposal In Review",
+        title:
+          (businessName ? toDisplayTitleCase(businessName) : "") ||
+          project?.title ||
+          serviceType ||
+          "Untitled Project",
+        serviceType,
+        sectionLabel: "Active Project",
         freelancerName:
           spotlightFreelancer?.fullName ||
           spotlightFreelancer?.name ||
-          (pendingProposals.length > 1
-            ? `${pendingProposals.length} invited freelancers`
-            : "Freelancer review"),
+          "Assigned Freelancer",
         freelancerAvatar: spotlightFreelancer?.avatar || "",
         freelancerRole:
           spotlightFreelancer?.jobTitle ||
           spotlightFreelancer?.professionalTitle ||
           spotlightFreelancer?.headline ||
-          (acceptedProposal
-            ? "Assigned Freelancer"
-            : pendingProposals.length > 1
-              ? `${pendingProposals.length} proposals pending`
-              : "Awaiting acceptance"),
+          "Assigned Freelancer",
         freelancerInitial: getInitials(
           spotlightFreelancer?.fullName ||
             spotlightFreelancer?.name ||
@@ -196,33 +499,70 @@ const normalizeClientProjects = (remote = []) =>
         ),
         budgetValue,
         budgetLabel: budgetValue > 0 ? formatINR(budgetValue) : "TBD",
-        timelineLabel: formatProjectDate(
-          project?.deadline ||
-            project?.dueDate ||
-            project?.targetDate ||
-            acceptedProposal?.deadline,
-        ),
+        timelineLabel: timelineMeta.value,
+        timelineDisplayLabel: timelineMeta.label,
         paymentPending: Boolean(dueInstallment),
         initialPaymentPending: Boolean(acceptedProposal) && dueInstallment?.sequence === 1,
-        awaitingFreelancerAcceptance: !acceptedProposal,
+        awaitingFreelancerAcceptance: false,
         dueInstallment,
         progress: Number(project?.progress) || 0,
+        paymentPlan,
+        phases: Array.isArray(project?.phases) ? project.phases : [],
+        milestones: Array.isArray(project?.milestones) ? project.milestones : [],
+        phaseCount: Number(project?.phaseCount) || 0,
+        currentPhaseIndex: Number(project?.currentPhaseIndex),
+        completedTasks: project?.completedTasks ?? null,
+        verifiedTasks: project?.verifiedTasks ?? null,
+        sourceTitle: project?.title || serviceType || "",
+        templateTitle: serviceType || project?.title || "",
       };
     })
     .filter(Boolean);
 
-const buildProjectCardModel = (project) => {
+export const buildProjectCardModel = (project) => {
   const statusMeta = resolveProjectStatusMeta(project);
   const progressValue = resolveProjectProgress(project);
-  const milestones = buildProjectMilestones(project);
+  const phases = buildProjectPhases(project);
+  const currentPhaseIndex = determineCurrentPhaseIndex(project, phases);
+  const shouldPromotePendingStep =
+    !project.initialPaymentPending && !project.awaitingFreelancerAcceptance;
+  const currentPhase = phases[currentPhaseIndex] || {
+    label: "Phase 1",
+    subLabel: "Current phase",
+    steps: [],
+  };
+  const currentPhaseSteps = Array.isArray(currentPhase?.steps)
+    ? currentPhase.steps.map((step, stepIndex, collection) => {
+        const firstPendingIndex = collection.findIndex(
+          (entry) => String(entry?.state || "").toLowerCase() !== "complete",
+        );
+
+        return {
+          ...step,
+          state:
+            shouldPromotePendingStep &&
+            String(step?.state || "").toLowerCase() === "pending" &&
+            firstPendingIndex === stepIndex
+              ? "current"
+              : step.state,
+        };
+      })
+    : [];
+  const phaseProgressValue = resolveCurrentPhaseProgress(currentPhase, currentPhaseSteps, progressValue);
+  const totalPhases = Math.max(phases.length, 1);
+  const phaseNumber = Math.min(currentPhaseIndex + 1, totalPhases);
+  const currentPhaseCountLabel = `Phase ${phaseNumber} of ${totalPhases}`;
 
   if (project.paymentPending) {
     return {
       ...project,
       statusMeta,
       progressValue,
-      milestones,
-      dateLabel: project.timelineLabel ? "Deadline" : "Timeline",
+      phaseProgressValue,
+      currentPhaseCountLabel,
+      currentPhase,
+      currentPhaseSteps,
+      dateLabel: project.timelineDisplayLabel || "Timeline",
       dateValue: project.timelineLabel || "To be finalized",
       actionType: "pay",
       actionLabel: `Pay ${project.dueInstallment?.percentage || ""}%`,
@@ -235,8 +575,11 @@ const buildProjectCardModel = (project) => {
       ...project,
       statusMeta,
       progressValue,
-      milestones,
-      dateLabel: project.timelineLabel ? "Deadline" : "Timeline",
+      phaseProgressValue,
+      currentPhaseCountLabel,
+      currentPhase,
+      currentPhaseSteps,
+      dateLabel: project.timelineDisplayLabel || "Timeline",
       dateValue: project.timelineLabel || "To be finalized",
       actionType: "link",
       actionHref: `/client/proposal?projectId=${encodeURIComponent(project.id)}&tab=pending&action=view`,
@@ -250,8 +593,11 @@ const buildProjectCardModel = (project) => {
       ...project,
       statusMeta,
       progressValue,
-      milestones,
-      dateLabel: project.timelineLabel ? "Deadline" : "Timeline",
+      phaseProgressValue,
+      currentPhaseCountLabel,
+      currentPhase,
+      currentPhaseSteps,
+      dateLabel: project.timelineDisplayLabel || "Timeline",
       dateValue: project.timelineLabel || "To be finalized",
       actionType: "link",
       actionHref: `/client/project/${project.id}`,
@@ -264,8 +610,11 @@ const buildProjectCardModel = (project) => {
     ...project,
     statusMeta,
     progressValue,
-    milestones,
-    dateLabel: project.timelineLabel ? "Deadline" : "Timeline",
+    phaseProgressValue,
+    currentPhaseCountLabel,
+    currentPhase,
+    currentPhaseSteps,
+    dateLabel: project.timelineDisplayLabel || "Timeline",
     dateValue: project.timelineLabel || "To be finalized",
     actionType: "link",
     actionHref: `/client/project/${project.id}`,
@@ -299,38 +648,71 @@ const ProjectCardSkeleton = () => (
   </div>
 );
 
-const ProjectMilestone = ({ item }) => {
-  const isComplete = item.state === "complete";
-  const isCurrent = item.state === "current";
+const ProjectPhaseStep = ({ item }) => {
+  const state = String(item?.state || "").toLowerCase();
+  const isComplete = state === "complete";
+  const isCurrent = state === "current" || state === "in_progress";
+  const statusMeta = isComplete
+    ? {
+        label: "Completed",
+        Icon: CheckCircle2,
+        badgeClassName: "border-[#166534]/50 bg-[#052e16] text-[#4ade80]",
+        textClassName: "text-[#f3f4f6]",
+        iconClassName: "text-[#22c55e]",
+      }
+    : isCurrent
+      ? {
+          label: "In Progress",
+          Icon: Clock3,
+          badgeClassName: "border-[#ffc107]/25 bg-[#3a2800] text-[#ffc107]",
+          textClassName: "text-[#f3f4f6]",
+          iconClassName: "text-[#ffc107]",
+        }
+      : {
+          label: "Pending",
+          Icon: Circle,
+          badgeClassName: "border-white/[0.08] bg-white/[0.04] text-[#94a3b8]",
+          textClassName: "text-[#6b7280]",
+          iconClassName: "text-[#94a3b8]",
+        };
+  const StatusIcon = statusMeta.Icon;
 
   return (
-    <div className="flex items-center gap-3">
-      {isComplete ? (
-        <CheckCircle2 className="size-5 shrink-0 fill-[#ffc107] text-[#ffc107]" />
-      ) : isCurrent ? (
-        <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-[#ffc107]/50">
-          <span className="size-1.5 rounded-full bg-[#ffc107]" />
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <StatusIcon className={cn("size-5 shrink-0", statusMeta.iconClassName)} />
+
+        <span
+          title={item.title || item.label}
+          className={cn("truncate text-[0.88rem] leading-5", statusMeta.textClassName)}
+        >
+          {item.title || item.label}
         </span>
-      ) : (
-        <span className="size-5 shrink-0 rounded-full border border-white/[0.1]" />
-      )}
+      </div>
 
       <span
         className={cn(
-          "text-[0.98rem] leading-6",
-          isComplete || isCurrent ? "text-[#f3f4f6]" : "text-[#6b7280]",
+          "inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em]",
+          statusMeta.badgeClassName,
         )}
       >
-        {item.label}
+        {statusMeta.label}
       </span>
     </div>
   );
 };
 
-const ProjectProposalCard = ({ project, onPay, isPaying }) => {
-  const progressText = `${project.progressValue}%`;
+export const ProjectProposalCard = ({ project, onPay, isPaying }) => {
+  const progressText = `${project.phaseProgressValue}%`;
+  const showServiceType =
+    Boolean(project.serviceType) &&
+    normalizeComparableText(project.serviceType) !==
+      normalizeComparableText(project.title);
+  const detailPanelClassName =
+    "border border-white/[0.06] bg-white/[0.035] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+  const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
   const actionClassName = cn(
-    "mt-8 flex w-full items-center justify-center rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
+    "flex w-full items-center justify-center rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
     projectActionToneMap[project.actionTone] || projectActionToneMap.slate,
   );
 
@@ -355,6 +737,11 @@ const ProjectProposalCard = ({ project, onPay, isPaying }) => {
         <h2 className="mt-5 text-[clamp(1.75rem,2vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
           {project.title}
         </h2>
+        {showServiceType ? (
+          <p className="mt-2 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+            {project.serviceType}
+          </p>
+        ) : null}
 
         <div className="mt-6 flex items-center gap-3">
           <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_12px_24px_rgba(0,0,0,0.24)]">
@@ -371,14 +758,14 @@ const ProjectProposalCard = ({ project, onPay, isPaying }) => {
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-4">
-          <div className="rounded-[14px] border border-white/[0.05] bg-black/20 p-4">
+          <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">Budget</p>
             <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
               {project.budgetLabel}
             </p>
           </div>
 
-          <div className="rounded-[14px] border border-white/[0.05] bg-black/20 p-4">
+          <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
             <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
               {project.dateLabel}
             </p>
@@ -389,47 +776,80 @@ const ProjectProposalCard = ({ project, onPay, isPaying }) => {
         </div>
 
         <div className="mt-7 flex items-center justify-between gap-3">
-          <span className="text-sm text-[#9ca3af]">Overall Progress</span>
+          <span className="text-sm text-[#9ca3af]">Current Phase Progress</span>
           <span className="text-sm font-semibold text-[#ffc107]">{progressText}</span>
         </div>
 
         <div className="mt-3 h-2 rounded-full bg-white/[0.08]">
           <div
             className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.62))]"
-            style={{ width: `${project.progressValue}%` }}
+            style={{ width: `${project.phaseProgressValue}%` }}
           />
         </div>
 
-        <div className="mt-6 space-y-3">
-          {project.milestones.map((milestone) => (
-            <ProjectMilestone key={`${project.id}-${milestone.label}`} item={milestone} />
-          ))}
+        <div className={cn("mt-5 flex min-h-[174px] flex-col rounded-[18px] p-3.5", detailPanelClassName)}>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#7f8794]">
+              Current Phase
+            </p>
+            <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+              {project.currentPhaseCountLabel}
+            </span>
+          </div>
+          <p
+            title={project.currentPhase?.label || "Phase 1"}
+            className="mt-2 line-clamp-1 text-[0.98rem] font-semibold tracking-[-0.02em] text-white"
+          >
+            {project.currentPhase?.label || "Phase 1"}
+          </p>
+          {project.currentPhase?.subLabel ? (
+            <p
+              title={project.currentPhase.subLabel}
+              className="mt-1 truncate text-sm text-[#8f96a3]"
+            >
+              {project.currentPhase.subLabel}
+            </p>
+          ) : null}
+
+          {phaseSteps.length > 0 ? (
+            <div className="mt-3 max-h-[104px] space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
+              {phaseSteps.map((step) => (
+                <ProjectPhaseStep key={`${project.id}-${step.id || step.title}`} item={step} />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-[#8f96a3]">
+              No subpoints are available for this phase yet.
+            </p>
+          )}
         </div>
 
-        {project.actionType === "pay" ? (
-          <button
-            type="button"
-            onClick={() => onPay(project)}
-            disabled={isPaying}
-            className={actionClassName}
-          >
-            {isPaying ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <CreditCard className="mr-2 size-4" />
-                {project.actionLabel}
-              </>
-            )}
-          </button>
-        ) : (
-          <Link to={project.actionHref} className={actionClassName}>
-            {project.actionLabel}
-          </Link>
-        )}
+        <div className="mt-auto pt-6">
+          {project.actionType === "pay" ? (
+            <button
+              type="button"
+              onClick={() => onPay(project)}
+              disabled={isPaying}
+              className={actionClassName}
+            >
+              {isPaying ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="mr-2 size-4" />
+                  {project.actionLabel}
+                </>
+              )}
+            </button>
+          ) : (
+            <Link to={project.actionHref} className={actionClassName}>
+              {project.actionLabel}
+            </Link>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -577,7 +997,7 @@ const ClientProjects = () => {
                   Project Proposals
                 </h1>
                 <p className="mt-2 max-w-[34rem] text-sm text-[#94a3b8]">
-                  Manage your active, pending, and completed project collaborations in one place.
+                  Manage your accepted, ongoing, and completed project collaborations in one place.
                 </p>
               </div>
 
@@ -637,7 +1057,7 @@ const ClientProjects = () => {
                 description={
                   activeFilter === "completed"
                     ? "Completed projects will appear here after final delivery and payment closure."
-                    : "Ongoing and in-review projects will appear here as soon as collaboration starts."
+                    : "Projects appear here after a freelancer accepts your proposal."
                 }
                 showAction={false}
               />

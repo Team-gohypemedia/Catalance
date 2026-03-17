@@ -124,6 +124,7 @@ const FreelancerSelectionDialog = ({
   savedProposal,
   isLoadingFreelancers,
   isSendingProposal = false,
+  sendingFreelancerId = null,
   freelancerSearch,
   onFreelancerSearchChange,
   filteredFreelancers,
@@ -274,6 +275,9 @@ const FreelancerSelectionDialog = ({
                 const cardBio = String(
                   freelancer?.cleanBio || freelancer?.bio || freelancer?.about || "",
                 ).trim();
+                const isSendingSelectedFreelancer =
+                  isSendingProposal &&
+                  String(sendingFreelancerId ?? "") === String(freelancer.id ?? "");
                 const performanceStats = [
                   {
                     key: "rating",
@@ -439,7 +443,7 @@ const FreelancerSelectionDialog = ({
                           }}
                           disabled={isSendingProposal}
                         >
-                          {isSendingProposal ? (
+                          {isSendingSelectedFreelancer ? (
                             <>
                               <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                               Sending...

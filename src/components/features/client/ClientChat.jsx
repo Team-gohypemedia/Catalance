@@ -47,6 +47,7 @@ import {
   SOCKET_IO_URL,
   SOCKET_OPTIONS,
 } from "@/shared/lib/api-client";
+import { hasUnlockedProjectChat } from "@/shared/lib/project-chat-access";
 import { cn } from "@/shared/lib/utils";
 
 const SERVICE_LABEL = "Project Chat";
@@ -299,6 +300,143 @@ const getMessagePreview = (item = {}) => {
   return "Open the conversation to continue the project discussion.";
 };
 
+const hasConversationHistory = (conversation = {}) =>
+  Boolean(
+    conversation?.lastMessage ||
+      Number(conversation?.messageCount || 0) > 0,
+  );
+
+const getFirstNonEmptyText = (...values) => {
+  for (const value of values.flat()) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+
+  return "";
+};
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const extractLabeledValue = (value = "", labels = []) => {
+  const source = String(value || "");
+  if (!source) return "";
+
+  for (const label of labels) {
+    const match = source.match(
+      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
+    );
+    const extracted = match?.[1]?.trim();
+    if (extracted) return extracted;
+  }
+
+  return "";
+};
+
+const normalizeComparableText = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
+const toDisplayTitleCase = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s/-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
+
+const getAcceptedProjectProposal = (project = {}) =>
+  Array.isArray(project?.proposals)
+    ? project.proposals.find(
+        (proposal) => String(proposal?.status || "").toUpperCase() === "ACCEPTED",
+      ) || null
+    : null;
+
+const resolveConversationBusinessName = (item = {}) =>
+  getFirstNonEmptyText(
+    item?.project?.businessName,
+    item?.project?.companyName,
+    item?.proposalContext?.businessName,
+    item?.proposalContext?.companyName,
+    item?.businessName,
+    item?.companyName,
+    extractLabeledValue(item?.project?.description || "", [
+      "Business Name",
+      "Company Name",
+      "Brand Name",
+    ]),
+    extractLabeledValue(
+      item?.coverLetter || item?.content || item?.summary || item?.description || "",
+      ["Business Name", "Company Name", "Brand Name"],
+    ),
+  );
+
+const resolveConversationServiceLabel = (item = {}) =>
+  getFirstNonEmptyText(
+    item?.project?.service,
+    item?.project?.serviceName,
+    item?.project?.serviceKey,
+    item?.project?.category,
+    item?.proposalContext?.serviceName,
+    item?.proposalContext?.serviceType,
+    item?.serviceName,
+    item?.serviceType,
+    item?.category,
+    extractLabeledValue(item?.project?.description || "", [
+      "Service Type",
+      "Service",
+      "Category",
+    ]),
+    extractLabeledValue(
+      item?.coverLetter || item?.content || item?.summary || item?.description || "",
+      ["Service Type", "Service", "Category"],
+    ),
+    item?.project?.title,
+  );
+
+const resolveConversationAvatarSrc = (item = {}) =>
+  getFirstNonEmptyText(
+    item?.project?.logo,
+    item?.project?.image,
+    item?.project?.imageUrl,
+    item?.project?.thumbnail,
+    item?.project?.coverImage,
+    item?.project?.coverUrl,
+    item?.project?.bannerImage,
+    item?.project?.heroImage,
+  );
+
+const getConversationDisplayTitle = (conversation = {}) => {
+  if (typeof conversation?.projectTitle === "string" && conversation.projectTitle.trim()) {
+    return conversation.projectTitle.trim();
+  }
+
+  if (typeof conversation?.label === "string" && conversation.label.trim()) {
+    return conversation.label.trim();
+  }
+
+  if (typeof conversation?.name === "string" && conversation.name.trim()) {
+    return conversation.name.trim();
+  }
+
+  return "Project chat";
+};
+
+const getConversationDisplaySubtitle = (conversation = {}) => {
+  const title = getConversationDisplayTitle(conversation);
+  const serviceLabel = getFirstNonEmptyText(
+    conversation?.projectServiceLabel,
+    conversation?.label,
+  );
+
+  if (serviceLabel && normalizeComparableText(serviceLabel) !== normalizeComparableText(title)) {
+    return serviceLabel;
+  }
+
+  if (typeof conversation?.name === "string" && conversation.name.trim()) {
+    return conversation.name.trim();
+  }
+
+  return serviceLabel || "Project chat";
+};
+
 const getMessageSignature = (message = {}) =>
   [
     String(message?.content || "").trim(),
@@ -406,6 +544,40 @@ const isOwnMessage = (message, currentUser, conversation) => {
   return false;
 };
 
+const formatRoleLabel = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+
+const getMessageRoleLabel = (message, ownMessage, conversation) => {
+  if (ownMessage) {
+    return "Client";
+  }
+
+  const senderRole = String(message?.senderRole || "").toUpperCase();
+  if (senderRole === "PROJECT_MANAGER") {
+    return "Project Manager";
+  }
+
+  if (senderRole === "CLIENT") {
+    return "Client";
+  }
+
+  if (senderRole === "FREELANCER" || isFreelancerMessage(message, conversation)) {
+    return "Freelancer";
+  }
+
+  if (senderRole) {
+    return formatRoleLabel(senderRole);
+  }
+
+  return "Project Manager";
+};
+
 const updateConversationDetails = (list, targetKey, updater) =>
   sortConversations(
     list.map((conversation) => {
@@ -440,65 +612,63 @@ const ConversationItem = ({
   onSelect,
   unreadCount = 0,
   showOnline = false,
-}) => (
-  <button
-    type="button"
-    onClick={onSelect}
-    className={cn(
-      "relative flex w-full items-center gap-4 rounded-[18px] border px-4 py-3 text-left transition",
-      isActive
-        ? "border-primary/20 bg-[linear-gradient(135deg,rgba(255,204,0,0.16),rgba(255,204,0,0.05))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_36px_-30px_rgba(255,204,0,0.38)]"
-        : "border-transparent text-white hover:border-white/[0.05] hover:bg-white/[0.03]",
-    )}
-  >
-    {isActive ? (
-      <span className="absolute inset-y-3 left-2 w-1 rounded-full bg-primary shadow-[0_0_14px_rgba(255,204,0,0.45)]" />
-    ) : null}
+}) => {
+  const displayTitle = getConversationDisplayTitle(conversation);
 
-    <div className="relative shrink-0">
-      <Avatar className={cn("size-12 border", isActive ? "border-primary/25" : "border-white/10")}>
-        <AvatarImage src={conversation.avatar} alt={conversation.name} />
-        <AvatarFallback className="bg-[#2b2b31] text-sm font-semibold text-white">
-          {getInitials(conversation.name)}
-        </AvatarFallback>
-      </Avatar>
-      {showOnline ? (
-        <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#171717] bg-[#22c55e]" />
-      ) : null}
-    </div>
-
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center justify-between gap-3">
-        <p className="truncate text-[0.98rem] font-semibold text-white">
-          {conversation.name}
-        </p>
-        <span
-          className={cn(
-            "shrink-0 text-[11px]",
-            isActive ? "text-primary" : "text-[#7f8795]",
-          )}
-        >
-          {formatConversationTimestamp(conversation.lastActivity)}
-        </span>
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "relative flex w-full items-center gap-4 rounded-[18px] border px-4 py-3 text-left transition",
+        isActive
+          ? "border-white/[0.08] bg-accent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+          : "border-transparent text-white hover:border-white/[0.05] hover:bg-white/[0.03]",
+      )}
+    >
+      <div className="relative shrink-0">
+        <Avatar className={cn("size-12 border", isActive ? "border-white/[0.12]" : "border-white/10")}>
+          <AvatarImage src={conversation.avatar || undefined} alt={displayTitle} />
+          <AvatarFallback className="bg-[#2b2b31] text-sm font-semibold text-white">
+            {getInitials(displayTitle)}
+          </AvatarFallback>
+        </Avatar>
+        {showOnline ? (
+          <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#171717] bg-[#22c55e]" />
+        ) : null}
       </div>
 
-      <p
-        className={cn(
-          "mt-1 truncate text-sm",
-          isActive ? "text-[#f4e5a6]" : "text-[#8f96a3]",
-        )}
-      >
-        {getMessagePreview(conversation)}
-      </p>
-    </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-3">
+          <p className="truncate text-[0.98rem] font-semibold text-white">{displayTitle}</p>
+          <span
+            className={cn(
+              "shrink-0 text-[11px]",
+              isActive ? "text-[#cbd5e1]" : "text-[#7f8795]",
+            )}
+          >
+            {formatConversationTimestamp(conversation.lastActivity)}
+          </span>
+        </div>
 
-    {unreadCount > 0 ? (
-      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#ef4444] px-1 text-[10px] font-bold text-white">
-        {unreadCount}
-      </span>
-    ) : null}
-  </button>
-);
+        <p
+          className={cn(
+            "mt-1 truncate text-sm",
+            isActive ? "text-[#cbd5e1]" : "text-[#8f96a3]",
+          )}
+        >
+          {getMessagePreview(conversation)}
+        </p>
+      </div>
+
+      {unreadCount > 0 ? (
+        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#ef4444] px-1 text-[10px] font-bold text-white">
+          {unreadCount}
+        </span>
+      ) : null}
+    </button>
+  );
+};
 
 const ChatArea = ({
   conversation,
@@ -514,11 +684,17 @@ const ChatArea = ({
   onDeleteAttachment,
   onClearChat,
   isClearingChat = false,
+  chatUnlocked = false,
 }) => {
-  const messagesEndRef = useRef(null);
+  const messagesViewportRef = useRef(null);
   const fileInputRef = useRef(null);
   const messageSearchInputRef = useRef(null);
   const composerInputRef = useRef(null);
+  const shouldAutoScrollRef = useRef(true);
+  const lastConversationKeyRef = useRef("");
+  const conversationTitle = getConversationDisplayTitle(conversation);
+  const conversationSubtitle = getConversationDisplaySubtitle(conversation);
+  const conversationAvatarLabel = conversationTitle || "Project chat";
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -549,8 +725,28 @@ const ChatArea = ({
   }, [deferredMessageSearch, messages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [typingUsers.length, visibleMessages]);
+    const viewport = messagesViewportRef.current;
+    const conversationKey = getConversationKey(conversation);
+    const conversationChanged = lastConversationKeyRef.current !== conversationKey;
+
+    if (conversationChanged) {
+      lastConversationKeyRef.current = conversationKey;
+      shouldAutoScrollRef.current = true;
+    }
+
+    if (!viewport || !shouldAutoScrollRef.current) {
+      return;
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior: conversationChanged ? "auto" : "smooth",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [conversation, typingUsers.length, visibleMessages.length]);
 
   useEffect(() => {
     setSelectedFile(null);
@@ -568,7 +764,20 @@ const ChatArea = ({
     }
   }, [showMessageSearch]);
 
+  const handleMessagesScroll = useCallback(() => {
+    const viewport = messagesViewportRef.current;
+    if (!viewport) return;
+
+    const distanceFromBottom =
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    shouldAutoScrollRef.current = distanceFromBottom <= 96;
+  }, []);
+
   const handleKeyPress = (event) => {
+    if (!chatUnlocked) {
+      return;
+    }
+
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void handleSend();
@@ -576,6 +785,10 @@ const ChatArea = ({
   };
 
   const handleEmojiSelect = (emoji) => {
+    if (!chatUnlocked) {
+      return;
+    }
+
     const input = composerInputRef.current;
     const currentValue = messageInput || "";
     const selectionStart = input?.selectionStart ?? currentValue.length;
@@ -594,6 +807,10 @@ const ChatArea = ({
   };
 
   const handleFileSelect = (event) => {
+    if (!chatUnlocked) {
+      return;
+    }
+
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -623,7 +840,7 @@ const ChatArea = ({
   };
 
   const handleSend = async () => {
-    if ((!messageInput.trim() && !selectedFile) || uploading) {
+    if (!chatUnlocked || (!messageInput.trim() && !selectedFile) || uploading) {
       return;
     }
 
@@ -917,9 +1134,9 @@ const ChatArea = ({
         <div className="flex min-w-0 items-center gap-4">
           <div className="relative shrink-0">
             <Avatar className="size-12 border border-white/10">
-              <AvatarImage src={conversation?.avatar} alt={conversation?.name} />
+              <AvatarImage src={conversation?.avatar || undefined} alt={conversationAvatarLabel} />
               <AvatarFallback className="bg-[#2b2b31] text-sm font-semibold text-white">
-                {getInitials(conversation?.name)}
+                {getInitials(conversationAvatarLabel)}
               </AvatarFallback>
             </Avatar>
             <span
@@ -932,10 +1149,10 @@ const ChatArea = ({
 
           <div className="min-w-0">
             <p className="truncate text-[1.15rem] font-semibold tracking-[-0.3px] text-white">
-              {conversation?.name || "Select a conversation"}
+              {conversationTitle}
             </p>
             <p className={cn("text-sm font-medium", online ? "text-[#facc15]" : "text-[#8f96a3]")}>
-              {online ? "Online" : conversation?.projectTitle || "Project chat"}
+              {online ? `${conversationSubtitle} • Online` : conversationSubtitle}
             </p>
           </div>
         </div>
@@ -991,7 +1208,11 @@ const ChatArea = ({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-accent px-2 py-6 md:px-2.5 lg:px-3 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.16] [&::-webkit-scrollbar-track]:bg-transparent">
+      <div
+        ref={messagesViewportRef}
+        onScroll={handleMessagesScroll}
+        className="min-h-0 flex-1 overflow-y-auto bg-accent px-2 py-6 md:px-2.5 lg:px-3 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.16] [&::-webkit-scrollbar-track]:bg-transparent"
+      >
         <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-4 pb-4">
           {visibleMessages.map((message, index) => {
             const ownMessage = isOwnMessage(message, currentUser, conversation);
@@ -999,11 +1220,20 @@ const ChatArea = ({
             const imageAttachment = isImageAttachment(message.attachment);
             const pdfAttachment = isPdfAttachment(message.attachment);
             const previousMessage = visibleMessages[index - 1];
+            const previousOwnMessage = previousMessage
+              ? isOwnMessage(previousMessage, currentUser, conversation)
+              : null;
             const messageDate = message.createdAt ? new Date(message.createdAt) : new Date();
             const previousDate = previousMessage?.createdAt
               ? new Date(previousMessage.createdAt)
               : null;
             const showDateDivider = !previousDate || !isSameDay(messageDate, previousDate);
+            const roleLabel = getMessageRoleLabel(message, ownMessage, conversation);
+            const previousRoleLabel = previousMessage
+              ? getMessageRoleLabel(previousMessage, previousOwnMessage, conversation)
+              : "";
+            const showRoleLabel =
+              showDateDivider || !previousMessage || ownMessage !== previousOwnMessage || roleLabel !== previousRoleLabel;
 
             return (
               <React.Fragment key={message.id || `${message.createdAt || index}-${index}`}>
@@ -1018,9 +1248,9 @@ const ChatArea = ({
                 <div className={cn("flex items-end gap-3", ownMessage ? "justify-end" : "justify-start")}>
                   {!ownMessage ? (
                     <Avatar className="hidden size-8 shrink-0 self-end border border-white/10 sm:flex">
-                      <AvatarImage src={conversation?.avatar} alt={conversation?.name} />
+                      <AvatarImage src={conversation?.avatar || undefined} alt={conversationAvatarLabel} />
                       <AvatarFallback className="bg-[#2b2b31] text-[11px] font-semibold text-white">
-                        {getInitials(conversation?.name)}
+                        {getInitials(conversationAvatarLabel)}
                       </AvatarFallback>
                     </Avatar>
                   ) : null}
@@ -1031,6 +1261,17 @@ const ChatArea = ({
                       ownMessage ? "items-end" : "items-start",
                     )}
                   >
+                    {showRoleLabel ? (
+                      <p
+                        className={cn(
+                          "mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]",
+                          ownMessage ? "text-right text-[#facc15]" : "text-left text-[#94a3b8]",
+                        )}
+                      >
+                        {roleLabel}
+                      </p>
+                    ) : null}
+
                     <div className="flex max-w-full flex-col gap-3">
                       {deleted ? (
                         <div
@@ -1157,12 +1398,16 @@ const ChatArea = ({
               </div>
             </div>
           ) : null}
-
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
       <div className="border-t border-white/[0.06] bg-accent px-4 py-4 md:px-6">
+        {!chatUnlocked ? (
+          <div className="mb-4 rounded-[18px] border border-[#5a3b0d] bg-[#2f1e05] px-4 py-3 text-sm text-[#f4d37c]">
+            Chat will unlock after the initial 20% payment is completed.
+          </div>
+        ) : null}
+
         {selectedFile ? (
           <div className="mb-4 flex items-center gap-3 rounded-[22px] border border-white/[0.06] bg-accent px-4 py-3">
             {filePreview ? (
@@ -1204,7 +1449,7 @@ const ChatArea = ({
           <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
             <PopoverTrigger
               aria-label="Emoji picker"
-              disabled={sending || uploading}
+              disabled={!chatUnlocked || sending || uploading}
               className="flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-white/[0.03] hover:text-white disabled:pointer-events-none disabled:opacity-50"
             >
               <Smile className="size-5" />
@@ -1237,7 +1482,7 @@ const ChatArea = ({
           <ChatIconButton
             aria-label="Attach file"
             onClick={() => fileInputRef.current?.click()}
-            disabled={sending || uploading}
+            disabled={!chatUnlocked || sending || uploading}
           >
             <Paperclip className="size-5" />
           </ChatIconButton>
@@ -1248,9 +1493,13 @@ const ChatArea = ({
               value={messageInput}
               onChange={(event) => onMessageInputChange(event.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Type your message..."
+              placeholder={
+                chatUnlocked
+                  ? "Type your message..."
+                  : "Chat unlocks after the initial 20% payment."
+              }
               className="h-12 rounded-none border-0 bg-transparent px-0 text-[15px] text-white shadow-none placeholder:text-[#6b7280] focus-visible:ring-0 dark:bg-transparent"
-              disabled={sending || uploading}
+              disabled={!chatUnlocked || sending || uploading}
             />
           </div>
 
@@ -1260,7 +1509,7 @@ const ChatArea = ({
               void handleSend();
             }}
             className="flex size-12 items-center justify-center rounded-full bg-[#ffc107] text-[#141414] transition hover:bg-[#ffd54f] disabled:cursor-not-allowed disabled:bg-[#ffc107]/60"
-            disabled={(sending || uploading) || (!messageInput.trim() && !selectedFile)}
+            disabled={!chatUnlocked || (sending || uploading) || (!messageInput.trim() && !selectedFile)}
             aria-label="Send message"
           >
             {uploading ? (
@@ -1297,12 +1546,28 @@ const ClientChat = () => {
   const deferredConversationSearch = useDeferredValue(conversationSearch);
   const [typingUsers, setTypingUsers] = useState([]);
   const [online, setOnline] = useState(false);
+  const [hasLockedAcceptedProjects, setHasLockedAcceptedProjects] = useState(false);
   const socketRef = useRef(null);
   const pollRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const drafts = useRef({});
 
-  const selectedConversationKey = getConversationKey(selectedConversation);
+  const selectedConversationFallbackKey = getConversationKey(selectedConversation);
+  const activeConversation = useMemo(() => {
+    if (!selectedConversationFallbackKey) {
+      return null;
+    }
+
+    return (
+      conversations.find(
+        (conversation) =>
+          getConversationKey(conversation) === selectedConversationFallbackKey,
+      ) || null
+    );
+  }, [conversations, selectedConversationFallbackKey]);
+
+  const selectedConversationKey = getConversationKey(activeConversation);
+  const selectedConversationChatUnlocked = Boolean(activeConversation?.chatUnlocked);
   const headerDisplayName = useMemo(() => getDisplayName(user), [user]);
 
   useEffect(() => {
@@ -1329,7 +1594,7 @@ const ClientChat = () => {
   }, []);
 
   const fetchMessages = useCallback(async () => {
-    if (!conversationId) return;
+    if (!conversationId || !selectedConversationChatUnlocked) return;
 
     try {
       let payload;
@@ -1368,10 +1633,10 @@ const ClientChat = () => {
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     }
-  }, [authFetch, conversationId, isAuthenticated, selectedConversationKey, token]);
+  }, [authFetch, conversationId, isAuthenticated, selectedConversationChatUnlocked, selectedConversationKey, token]);
 
   const emitTyping = useCallback(() => {
-    if (!useSocket || !socketRef.current || !conversationId) return;
+    if (!useSocket || !socketRef.current || !conversationId || !selectedConversationChatUnlocked) return;
 
     const payload = {
       conversationId,
@@ -1392,7 +1657,7 @@ const ClientChat = () => {
         typing: false,
       });
     }, 1500);
-  }, [conversationId, useSocket, user?.email, user?.fullName, user?.id, user?.name]);
+  }, [conversationId, selectedConversationChatUnlocked, useSocket, user?.email, user?.fullName, user?.id, user?.name]);
 
   const startPolling = useCallback(() => {
     stopPolling();
@@ -1405,16 +1670,29 @@ const ClientChat = () => {
 
     const loadConversations = async () => {
       if (!authFetch || !token || !isAuthenticated || authLoading) {
+        setHasLockedAcceptedProjects(false);
         setLoading(false);
         return;
       }
 
       try {
-        const response = await authFetch("/proposals?as=owner", {
-          skipLogoutOn401: true,
-        });
+        const [proposalsResponse, projectsResponse, chatConversationsResponse] = await Promise.all([
+          authFetch("/proposals?as=owner", {
+            skipLogoutOn401: true,
+          }),
+          authFetch("/projects", {
+            skipLogoutOn401: true,
+          }),
+          authFetch("/chat/conversations", {
+            skipLogoutOn401: true,
+          }),
+        ]);
 
-        if (response.status === 401) {
+        if (
+          proposalsResponse.status === 401 ||
+          projectsResponse.status === 401 ||
+          chatConversationsResponse.status === 401
+        ) {
           if (!cancelled) {
             setConversations([]);
             setSelectedConversation(null);
@@ -1422,54 +1700,131 @@ const ClientChat = () => {
           return;
         }
 
-        const payload = await response.json().catch(() => null);
-        const items = Array.isArray(payload?.data) ? payload.data : [];
+        if (!proposalsResponse.ok || !projectsResponse.ok || !chatConversationsResponse.ok) {
+          throw new Error(
+            `Failed to load chat sources (${proposalsResponse.status}/${projectsResponse.status}/${chatConversationsResponse.status})`,
+          );
+        }
+
+        const [proposalsPayload, projectsPayload, chatConversationsPayload] = await Promise.all([
+          proposalsResponse.json().catch(() => null),
+          projectsResponse.json().catch(() => null),
+          chatConversationsResponse.json().catch(() => null),
+        ]);
+        const items = Array.isArray(proposalsPayload?.data) ? proposalsPayload.data : [];
+        const projects = Array.isArray(projectsPayload?.data) ? projectsPayload.data : [];
+        const chatConversations = Array.isArray(chatConversationsPayload?.data)
+          ? chatConversationsPayload.data
+          : [];
+        const projectsById = new Map(
+          projects
+            .filter((project) => project?.id)
+            .map((project) => [String(project.id), project]),
+        );
+        const conversationsByService = new Map(
+          chatConversations
+            .filter((conversation) => conversation?.service)
+            .map((conversation) => [conversation.service, conversation]),
+        );
         const uniqueConversations = [];
         const seen = new Set();
+        let foundLockedAcceptedProject = false;
 
         for (const item of items) {
           if (item.status !== "ACCEPTED") continue;
 
-          const projectStatus = String(item.project?.status || "").toUpperCase();
-          const spentAmount = Number(item.project?.spent || 0);
-          const paymentPending =
-            projectStatus === "AWAITING_PAYMENT" || spentAmount <= 0;
-
-          if (paymentPending) continue;
-
-          const freelancer = item.freelancer;
-          if (!freelancer?.id || freelancer.id === user?.id) continue;
-
-          const projectId = item.project?.id;
+          const projectId = item.project?.id || item.projectId;
           if (!projectId) continue;
 
-          const serviceKey = `CHAT:${projectId}:${user?.id}:${freelancer.id}`;
+          const projectRecord = projectsById.get(String(projectId)) || null;
+          const mergedProject = projectRecord
+            ? {
+                ...(item.project || {}),
+                ...projectRecord,
+                paymentPlan: projectRecord.paymentPlan || item.project?.paymentPlan,
+                proposals: Array.isArray(projectRecord.proposals)
+                  ? projectRecord.proposals
+                  : item.project?.proposals,
+              }
+            : item.project || null;
+
+          const acceptedProposal = getAcceptedProjectProposal(mergedProject) || item;
+          const freelancerId =
+            item.freelancer?.id ||
+            acceptedProposal?.freelancer?.id ||
+            item.freelancerId ||
+            acceptedProposal?.freelancerId;
+
+          if (!freelancerId || freelancerId === user?.id) continue;
+
+          const serviceKey = `CHAT:${projectId}:${user?.id}:${freelancerId}`;
+          const conversationMeta = conversationsByService.get(serviceKey) || null;
+          const conversationSource = {
+            ...item,
+            freelancer: item.freelancer || acceptedProposal?.freelancer || null,
+            proposalContext: acceptedProposal,
+            project: mergedProject,
+          };
+
+          const chatUnlocked = hasUnlockedProjectChat(mergedProject);
+          if (!chatUnlocked) {
+            foundLockedAcceptedProject = true;
+            continue;
+          }
+
+          const projectStatus = String(mergedProject?.status || "").toUpperCase();
+          if (projectStatus === "COMPLETED" && !hasConversationHistory(conversationMeta)) {
+            continue;
+          }
+
           if (seen.has(serviceKey)) continue;
           seen.add(serviceKey);
+          const businessName = resolveConversationBusinessName(conversationSource);
+          const serviceLabel =
+            resolveConversationServiceLabel(conversationSource) || SERVICE_LABEL;
+          const projectTitle = businessName ? toDisplayTitleCase(businessName) : serviceLabel;
+          const projectAvatar = resolveConversationAvatarSrc(conversationSource);
+          const previewSource = conversationMeta?.lastMessage
+            ? conversationMeta.lastMessage
+            : { projectTitle: projectTitle || "Project conversation" };
 
           uniqueConversations.push({
-            id: projectId,
-            freelancerId: freelancer.id,
+            id: conversationMeta?.id || projectId,
+            projectId,
+            conversationId: conversationMeta?.id || null,
+            freelancerId,
             name:
-              freelancer.fullName ||
-              freelancer.name ||
-              freelancer.email ||
+              conversationSource.freelancer?.fullName ||
+              conversationSource.freelancer?.name ||
+              conversationSource.freelancer?.email ||
+              acceptedProposal?.freelancerName ||
               "Freelancer",
-            avatar: freelancer.avatar,
-            label: item.project?.title || SERVICE_LABEL,
-            projectTitle: item.project?.title || SERVICE_LABEL,
-            previewText: item.project?.title || "Project conversation",
+            avatar: projectAvatar,
+            label: serviceLabel,
+            projectTitle: projectTitle || SERVICE_LABEL,
+            projectServiceLabel: serviceLabel,
+            previewText: getMessagePreview(previewSource),
+            chatUnlocked,
             serviceKey,
             lastActivity: getTimestampValue(
-              item.lastActivity || item.updatedAt || item.createdAt,
+              conversationMeta?.lastMessage?.createdAt ||
+                conversationMeta?.updatedAt ||
+                item.lastActivity ||
+                acceptedProposal?.updatedAt ||
+                mergedProject?.updatedAt ||
+                item.updatedAt ||
+                item.createdAt,
             ),
             unreadCount: 0,
+            messageCount: Number(conversationMeta?.messageCount || 0),
+            lastMessage: conversationMeta?.lastMessage || null,
           });
         }
 
         const finalList = sortConversations(uniqueConversations);
 
         if (!cancelled) {
+          setHasLockedAcceptedProjects(foundLockedAcceptedProject);
           setConversations(finalList);
           setSelectedConversation((current) => {
             const currentKey = getConversationKey(current);
@@ -1482,9 +1837,10 @@ const ClientChat = () => {
 
             if (requestedProjectId) {
               const requestedConversation = finalList.find(
-                (conversation) => String(conversation.id) === String(requestedProjectId),
+                (conversation) => String(conversation.projectId || conversation.id) === String(requestedProjectId),
               );
               if (requestedConversation) return requestedConversation;
+              return null;
             }
 
             return finalList[0] || null;
@@ -1493,6 +1849,7 @@ const ClientChat = () => {
       } catch (error) {
         console.error("Failed to load conversations:", error);
         if (!cancelled) {
+          setHasLockedAcceptedProjects(false);
           setConversations([]);
         }
       } finally {
@@ -1510,15 +1867,26 @@ const ClientChat = () => {
   }, [authFetch, authLoading, isAuthenticated, requestedProjectId, token, user?.id]);
 
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (!activeConversation || !selectedConversationChatUnlocked) {
+      setConversationId(null);
+      return;
+    }
 
     let cancelled = false;
 
     const ensureConversation = async () => {
-      const baseKey = getConversationKey(selectedConversation);
+      const baseKey = getConversationKey(activeConversation);
       const storageKey = `markify:chatConversationId:${baseKey}`;
 
       try {
+        if (activeConversation?.conversationId) {
+          setConversationId(activeConversation.conversationId);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(storageKey, activeConversation.conversationId);
+          }
+          return;
+        }
+
         const storedId =
           typeof window !== "undefined"
             ? window.localStorage.getItem(storageKey)
@@ -1538,12 +1906,12 @@ const ClientChat = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             service:
-              selectedConversation.serviceKey ||
-              selectedConversation.label ||
+              activeConversation.serviceKey ||
+              activeConversation.label ||
               SERVICE_LABEL,
             projectTitle:
-              selectedConversation.projectTitle ||
-              selectedConversation.label ||
+              activeConversation.projectTitle ||
+              activeConversation.label ||
               SERVICE_LABEL,
           }),
           skipLogoutOn401: true,
@@ -1572,12 +1940,12 @@ const ClientChat = () => {
     return () => {
       cancelled = true;
     };
-  }, [authFetch, isAuthenticated, selectedConversation, token]);
+  }, [activeConversation, authFetch, isAuthenticated, selectedConversationChatUnlocked, token]);
 
   useEffect(() => {
-    if (!conversationId || !selectedConversation) return;
+    if (!conversationId || !activeConversation || !selectedConversationChatUnlocked) return;
 
-    const storageKey = `markify:chatConversationId:${getConversationKey(selectedConversation)}`;
+    const storageKey = `markify:chatConversationId:${getConversationKey(activeConversation)}`;
     const socket = useSocket && SOCKET_IO_URL ? io(SOCKET_IO_URL, SOCKET_OPTIONS) : null;
     socketRef.current = socket;
 
@@ -1589,8 +1957,8 @@ const ClientChat = () => {
     socket.emit("chat:join", {
       conversationId,
       service:
-        selectedConversation.serviceKey ||
-        selectedConversation.label ||
+        activeConversation.serviceKey ||
+        activeConversation.label ||
         SERVICE_LABEL,
       senderId: user?.id || null,
     });
@@ -1725,8 +2093,9 @@ const ClientChat = () => {
       socketRef.current = null;
     };
   }, [
+    activeConversation,
     conversationId,
-    selectedConversation,
+    selectedConversationChatUnlocked,
     selectedConversationKey,
     startPolling,
     stopPolling,
@@ -1828,7 +2197,7 @@ const ClientChat = () => {
   const handleSendMessage = (attachment = null) => {
     const trimmedMessage = messageInput.trim();
 
-    if ((!trimmedMessage && !attachment) || !conversationId) {
+    if ((!trimmedMessage && !attachment) || !conversationId || !selectedConversationChatUnlocked) {
       return;
     }
 
@@ -1965,6 +2334,10 @@ const ClientChat = () => {
 
       const nextKey = getConversationKey(conversation);
 
+      if (!conversation?.chatUnlocked) {
+        return;
+      }
+
       setSelectedConversation(conversation);
       setConversations((previous) =>
         previous.map((item) =>
@@ -2083,10 +2456,12 @@ const ClientChat = () => {
                         <SendHorizontal className="size-5" />
                       </div>
                       <p className="mt-4 text-base font-semibold text-white">
-                        No conversations yet
+                        {hasLockedAcceptedProjects ? "Chats unlock after kickoff payment" : "No conversations yet"}
                       </p>
                       <p className="mt-2 text-sm text-[#8f96a3]">
-                        Accepted project collaborations will appear here automatically.
+                        {hasLockedAcceptedProjects
+                          ? "Accepted projects will appear here after the initial 20% payment is completed."
+                          : "Accepted project collaborations will appear here automatically."}
                       </p>
                     </div>
                   )}
@@ -2094,9 +2469,9 @@ const ClientChat = () => {
               </aside>
 
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                {selectedConversation ? (
+                {activeConversation ? (
                   <ChatArea
-                    conversation={selectedConversation}
+                    conversation={activeConversation}
                     messages={messages}
                     messageInput={messageInput}
                     onMessageInputChange={handleInputChange}
@@ -2109,6 +2484,7 @@ const ClientChat = () => {
                     online={online}
                     onClearChat={handleClearChat}
                     isClearingChat={clearingChat}
+                    chatUnlocked={selectedConversationChatUnlocked}
                   />
                 ) : (
                   <div className="flex h-full min-h-0 items-center justify-center bg-accent px-6">
