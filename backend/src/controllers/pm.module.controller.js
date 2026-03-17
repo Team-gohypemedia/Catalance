@@ -24,6 +24,8 @@ const REPORT_CATEGORIES = [
   "Communication problems",
 ];
 const REPORT_SEVERITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+const MAX_PM_DIRECT_REASSIGNMENTS = 2;
+const PM_REASSIGNMENT_APPROVAL_SOURCE = "PM_FREELANCER_REASSIGNMENT_APPROVAL";
 
 const normalizeText = (value) => String(value || "").trim();
 const asObject = (value) =>
@@ -34,6 +36,16 @@ const parseCsv = (value) =>
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+const safeJsonParse = (value, fallback = {}) => {
+  if (!value || typeof value !== "string") return fallback;
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 const toFiniteNumberOrNull = (value) => {
   if (value === null || value === undefined || value === "") return null;
@@ -338,6 +350,130 @@ const getAcceptedProposal = (project) => {
   );
 };
 
+const getProjectChatFreelancerIds = (project = {}) =>
+  Array.from(
+    new Set(
+      asArray(project?.proposals)
+        .map((proposal) => normalizeText(proposal?.freelancerId))
+        .filter(Boolean)
+    )
+  );
+
+const getCanonicalProjectChatServiceKey = (project = {}) => {
+  const projectId = normalizeText(project?.id);
+  const ownerId = normalizeText(project?.ownerId);
+  const activeProposal = getAcceptedProposal(project);
+  const freelancerId = normalizeText(activeProposal?.freelancerId);
+
+  if (projectId && ownerId && freelancerId) {
+    return `CHAT:${projectId}:${ownerId}:${freelancerId}`;
+  }
+
+  return projectId ? `project:${projectId}` : "";
+};
+
+const compareProjectChatConversations = (left = {}, right = {}) => {
+  const leftMessageCount = Number(left?._count?.messages || 0);
+  const rightMessageCount = Number(right?._count?.messages || 0);
+
+  if (leftMessageCount !== rightMessageCount) {
+    return rightMessageCount - leftMessageCount;
+  }
+
+  const leftLastMessageAt = left?.messages?.[0]?.createdAt
+    ? new Date(left.messages[0].createdAt).getTime()
+    : 0;
+  const rightLastMessageAt = right?.messages?.[0]?.createdAt
+    ? new Date(right.messages[0].createdAt).getTime()
+    : 0;
+
+  if (leftLastMessageAt !== rightLastMessageAt) {
+    return rightLastMessageAt - leftLastMessageAt;
+  }
+
+  return new Date(right?.updatedAt || 0).getTime() - new Date(left?.updatedAt || 0).getTime();
+};
+
+const listProjectScopedChatConversations = async (projectId) => {
+  const normalizedProjectId = normalizeText(projectId);
+  if (!normalizedProjectId) return [];
+
+  const conversations = await prisma.chatConversation.findMany({
+    where: {
+      OR: [
+        { service: { startsWith: `CHAT:${normalizedProjectId}:` } },
+        { service: `project:${normalizedProjectId}` },
+      ],
+    },
+    include: {
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      _count: { select: { messages: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return conversations.sort(compareProjectChatConversations);
+};
+
+const findLegacyProjectConversation = async (project = {}) => {
+  const ownerId = normalizeText(project?.ownerId);
+  const legacyKeys = ownerId
+    ? getProjectChatFreelancerIds(project).map(
+        (freelancerId) => `CHAT:${ownerId}:${freelancerId}`
+      )
+    : [];
+
+  if (!legacyKeys.length) return null;
+
+  const conversations = await prisma.chatConversation.findMany({
+    where: {
+      service: { in: legacyKeys },
+    },
+    include: {
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      _count: { select: { messages: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const [bestConversation] = conversations.sort(compareProjectChatConversations);
+  return bestConversation || null;
+};
+
+const resolvePmProjectChatConversations = async (project = {}) => {
+  const projectId = normalizeText(project?.id);
+  if (!projectId) return [];
+
+  const scopedConversations = await listProjectScopedChatConversations(projectId);
+  if (scopedConversations.length) {
+    return scopedConversations;
+  }
+
+  const legacyConversation = await findLegacyProjectConversation(project);
+  if (!legacyConversation) {
+    return [];
+  }
+
+  const canonicalServiceKey = getCanonicalProjectChatServiceKey(project);
+  if (!canonicalServiceKey || canonicalServiceKey === legacyConversation.service) {
+    return [legacyConversation];
+  }
+
+  const migratedConversation = await prisma.chatConversation.update({
+    where: { id: legacyConversation.id },
+    data: {
+      service: canonicalServiceKey,
+      projectTitle: project?.title || legacyConversation.projectTitle || "Project Chat",
+    },
+    include: {
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      _count: { select: { messages: true } },
+    },
+  });
+
+  return [migratedConversation];
+};
+
 const getFreelancerChangeRequests = (project = {}) =>
   Array.isArray(project?.freelancerChangeRequests)
     ? project.freelancerChangeRequests
@@ -437,6 +573,76 @@ const hasFirstTaskCompletion = (project) => {
   return toTaskKeySet(project?.completedTasks).has(taskKey);
 };
 
+const getApprovedPhaseSet = (project = {}) =>
+  new Set(
+    (Array.isArray(project?.milestoneApprovals) ? project.milestoneApprovals : [])
+      .map((item) => Number(item?.phase))
+      .filter(Number.isFinite)
+  );
+
+const countCompletedLifecyclePhases = (project = {}) => {
+  const approved = getApprovedPhaseSet(project);
+  const phase1Done =
+    hasFirstTaskCompletion(project) ||
+    approved.has(2) ||
+    approved.has(3) ||
+    approved.has(4);
+
+  return [phase1Done, approved.has(2), approved.has(3), approved.has(4)].filter(Boolean).length;
+};
+
+const isProjectOperationallyCompleted = (project = {}) =>
+  countCompletedLifecyclePhases(project) >= 4;
+
+const countPmFreelancerReassignments = (project = {}) => {
+  const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
+
+  return proposals.filter((proposal) => {
+    if (String(proposal?.status || "").toUpperCase() !== "REPLACED") return false;
+
+    const reasonKey = String(proposal?.rejectionReasonKey || "").toLowerCase();
+    return (
+      reasonKey === "project_manager_reassignment" ||
+      reasonKey === "project_manager_reassignment_admin_approved"
+    );
+  }).length;
+};
+
+const findOpenPmReassignmentApprovalRequest = async (projectId) =>
+  prisma.adminEscalation.findFirst({
+    where: {
+      projectId,
+      status: "OPEN",
+      notes: {
+        contains: `"source":"${PM_REASSIGNMENT_APPROVAL_SOURCE}"`,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+const notifyAdminsAboutPmReassignmentApproval = async ({
+  projectId,
+  projectTitle,
+  requestedByName,
+  freelancerName,
+}) => {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN", status: "ACTIVE" },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    admins.map((admin) =>
+      sendNotificationToUser(admin.id, {
+        type: "admin_approval_required",
+        title: "Freelancer reassignment approval required",
+        message: `${requestedByName} requested Admin approval to assign ${freelancerName} on "${projectTitle}".`,
+        data: { projectId },
+      }).catch(() => null)
+    )
+  );
+};
+
 const mapProjectStatusForPm = (project) => {
   const hasIssue = Array.isArray(project?.disputes)
     ? project.disputes.some((entry) => String(entry.status || "").toUpperCase() !== "RESOLVED")
@@ -446,9 +652,15 @@ const mapProjectStatusForPm = (project) => {
 
   const status = String(project?.status || "").toUpperCase();
   if (status === "DRAFT") return { label: "Proposal", color: "gray" };
-  if (status === "OPEN" || status === "AWAITING_PAYMENT") return { label: "Started", color: "blue" };
-  if (status === "IN_PROGRESS") return { label: "In Progress", color: "indigo" };
-  if (status === "COMPLETED") return { label: "Completed", color: "green" };
+  if (isProjectOperationallyCompleted(project)) {
+    return { label: "Completed", color: "green" };
+  }
+  if (status === "IN_PROGRESS" || countCompletedLifecyclePhases(project) > 0) {
+    return { label: "In Progress", color: "indigo" };
+  }
+  if (status === "OPEN" || status === "AWAITING_PAYMENT" || status === "COMPLETED") {
+    return { label: "Started", color: "blue" };
+  }
 
   return { label: "Started", color: "blue" };
 };
@@ -641,78 +853,68 @@ export const getPmDashboardSummary = asyncHandler(async (req, res) => {
     take: 12,
   });
 
-  const cards = [];
-  let totalUnread = 0;
+  const cardRows = await Promise.all(
+    projects.map(async (project) => {
+      const activeProposal = getAcceptedProposal(project);
+      const conversations = await resolvePmProjectChatConversations(project);
+      const conversationIds = conversations.map((conversation) => conversation.id);
 
-  for (const project of projects) {
-    const activeProposal = getAcceptedProposal(project);
-    const activeServiceKey =
-      project?.ownerId && activeProposal?.freelancerId
-        ? `CHAT:${project.id}:${project.ownerId}:${activeProposal.freelancerId}`
-        : null;
+      const unreadMessages = conversationIds.length
+        ? await prisma.chatMessage.count({
+            where: {
+              conversationId: { in: conversationIds },
+              readAt: null,
+              NOT: [{ senderId: userId }, { senderRole: PM_ROLE }],
+            },
+          })
+        : 0;
 
-    const conversation = (activeServiceKey
-      ? await prisma.chatConversation.findFirst({
-          where: { service: activeServiceKey },
-          include: {
-            messages: { orderBy: { createdAt: "desc" }, take: 1 },
-            _count: { select: { messages: true } },
-          },
-          orderBy: { updatedAt: "desc" },
-        })
-      : null) ||
-      (await prisma.chatConversation.findFirst({
-        where: {
-          OR: [{ service: { startsWith: `CHAT:${project.id}:` } }, { service: { contains: project.id } }],
+      const latestConversation = [...conversations].sort(compareProjectChatConversations)[0] || null;
+      const latestMessage = latestConversation?.messages?.[0] || null;
+      const totalMessages = conversations.reduce(
+        (sum, conversation) => sum + Number(conversation?._count?.messages || 0),
+        0
+      );
+
+      const freelancer = activeProposal?.freelancer;
+      const mappedStatus = mapProjectStatusForPm(project);
+      const milestones = buildMilestonesForProject(project);
+      const completedMilestones = countCompletedMilestones(milestones);
+
+      const nextMeeting = meetings.find((meeting) => String(meeting.projectId || "") === String(project.id));
+      const nextMeetingWindow = nextMeeting ? getMeetingWindow(nextMeeting) : null;
+
+      return {
+        unreadMessages,
+        card: {
+          id: project.id,
+          projectName: project.title,
+          clientName: project?.owner?.fullName || "Unknown Client",
+          assignedFreelancer: freelancer?.fullName || "Unassigned",
+          freelancerAvatar: freelancer?.avatar || null,
+          status: mappedStatus.label,
+          statusColor: mappedStatus.color,
+          totalMessages,
+          unreadMessages,
+          lastMessageSender:
+            String(latestMessage?.senderRole || "").toUpperCase() === PM_ROLE
+              ? "Project Manager"
+              : latestMessage?.senderName || latestMessage?.senderRole || null,
+          lastActivityTime: toIsoOrNull(latestMessage?.createdAt || project.updatedAt),
+          milestoneProgress: Math.round((completedMilestones / 4) * 100),
+          upcomingMeeting: nextMeetingWindow ? nextMeetingWindow.startsAt.toISOString() : null,
+          urgentMeeting: nextMeetingWindow ? getRelativeMeetingFlags(nextMeetingWindow.startsAt).isInThirtyMinutes : false,
+          hasIssue: mappedStatus.label === "Issue Raised",
         },
-        include: {
-          messages: { orderBy: { createdAt: "desc" }, take: 1 },
-          _count: { select: { messages: true } },
-        },
-        orderBy: { updatedAt: "desc" },
-      }));
+      };
+    })
+  );
 
-    const unreadMessages = conversation?.id
-      ? await prisma.chatMessage.count({
-          where: {
-            conversationId: conversation.id,
-            readAt: null,
-            NOT: [{ senderId: userId }, { senderRole: PM_ROLE }],
-          },
-        })
-      : 0;
-
-    totalUnread += unreadMessages;
-
-    const freelancer = activeProposal?.freelancer;
-    const mappedStatus = mapProjectStatusForPm(project);
-    const milestones = buildMilestonesForProject(project);
-    const completedMilestones = countCompletedMilestones(milestones);
-
-    const nextMeeting = meetings.find((meeting) => String(meeting.projectId || "") === String(project.id));
-    const nextMeetingWindow = nextMeeting ? getMeetingWindow(nextMeeting) : null;
-
-    cards.push({
-      id: project.id,
-      projectName: project.title,
-      clientName: project?.owner?.fullName || "Unknown Client",
-      assignedFreelancer: freelancer?.fullName || "Unassigned",
-      freelancerAvatar: freelancer?.avatar || null,
-      status: mappedStatus.label,
-      statusColor: mappedStatus.color,
-      totalMessages: conversation?._count?.messages || 0,
-      unreadMessages,
-      lastMessageSender:
-        conversation?.messages?.[0]?.senderRole === PM_ROLE
-          ? "Project Manager"
-          : conversation?.messages?.[0]?.senderName || conversation?.messages?.[0]?.senderRole || null,
-      lastActivityTime: toIsoOrNull(conversation?.messages?.[0]?.createdAt || project.updatedAt),
-      milestoneProgress: Math.round((completedMilestones / 4) * 100),
-      upcomingMeeting: nextMeetingWindow ? nextMeetingWindow.startsAt.toISOString() : null,
-      urgentMeeting: nextMeetingWindow ? getRelativeMeetingFlags(nextMeetingWindow.startsAt).isInThirtyMinutes : false,
-      hasIssue: mappedStatus.label === "Issue Raised",
-    });
-  }
+  const cards = cardRows.map((entry) => entry.card);
+  const totalUnread = cardRows.reduce(
+    (sum, entry) => sum + Number(entry?.unreadMessages || 0),
+    0
+  );
 
   const activeCount = await prisma.project.count({
     where: {
@@ -993,57 +1195,60 @@ export const getPmProjectMessages = asyncHandler(async (req, res) => {
     where: { id: projectId },
     select: {
       id: true,
+      title: true,
       ownerId: true,
       proposals: {
         where: { status: { in: ["ACCEPTED", "REPLACED"] } },
         select: { freelancerId: true },
         orderBy: { createdAt: "desc" },
-        take: 1,
       },
     },
   });
 
   if (!project) throw new AppError("Project not found.", 404);
+  const conversations = await resolvePmProjectChatConversations(project);
+  const conversationIds = conversations.map((conversation) => conversation.id);
 
-  const activeFreelancerId = project?.proposals?.[0]?.freelancerId || null;
-  const activeServiceKey =
-    project.ownerId && activeFreelancerId
-      ? `CHAT:${projectId}:${project.ownerId}:${activeFreelancerId}`
-      : null;
-
-  const conversation = (activeServiceKey
-    ? await prisma.chatConversation.findFirst({
-        where: { service: activeServiceKey },
-        orderBy: { updatedAt: "desc" },
-      })
-    : null) ||
-    (await prisma.chatConversation.findFirst({
-      where: {
-        OR: [{ service: { startsWith: `CHAT:${projectId}:` } }, { service: { contains: projectId } }],
-      },
-      orderBy: { updatedAt: "desc" },
-    }));
-
-  if (!conversation) {
-    res.json({ data: { conversation: null, messages: [] } });
+  if (!conversationIds.length) {
+    res.json({ data: { conversation: null, conversations: [], messages: [] } });
     return;
   }
 
+  await prisma.chatMessage.updateMany({
+    where: {
+      conversationId: { in: conversationIds },
+      readAt: null,
+      NOT: [{ senderId: userId }, { senderRole: PM_ROLE }],
+    },
+    data: {
+      readAt: new Date(),
+    },
+  });
+
+  const latestConversation = [...conversations].sort(compareProjectChatConversations)[0] || null;
   const messages = await prisma.chatMessage.findMany({
-    where: { conversationId: conversation.id },
-    orderBy: { createdAt: "asc" },
+    where: { conversationId: { in: conversationIds } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: 1000,
   });
 
   res.json({
     data: {
-      conversation: {
+      conversation: latestConversation
+        ? {
+            id: latestConversation.id,
+            service: latestConversation.service,
+            projectTitle: latestConversation.projectTitle,
+          }
+        : null,
+      conversations: conversations.map((conversation) => ({
         id: conversation.id,
         service: conversation.service,
         projectTitle: conversation.projectTitle,
-      },
+      })),
       messages: messages.map((message) => ({
         id: message.id,
+        conversationId: message.conversationId,
         content: message.content,
         senderRole: message.senderRole,
         senderLabel:
@@ -1072,7 +1277,6 @@ export const sendPmProjectMessage = asyncHandler(async (req, res) => {
         where: { status: { in: ["ACCEPTED", "REPLACED"] } },
         select: { freelancerId: true },
         orderBy: { createdAt: "desc" },
-        take: 1,
       },
     },
   });
@@ -1082,8 +1286,9 @@ export const sendPmProjectMessage = asyncHandler(async (req, res) => {
     throw new AppError("Only assigned Project Manager can send project messages.", 403);
   }
 
-  const freelancerId = project?.proposals?.[0]?.freelancerId || "unknown";
-  const serviceKey = `CHAT:${projectId}:${project.ownerId}:${freelancerId}`;
+  const activeProposal = getAcceptedProposal(project);
+  const freelancerId = normalizeText(activeProposal?.freelancerId) || "unknown";
+  const serviceKey = getCanonicalProjectChatServiceKey(project);
 
   let conversation = await prisma.chatConversation.findFirst({
     where: { service: serviceKey },
@@ -1864,6 +2069,67 @@ export const replacePmProjectFreelancer = asyncHandler(async (req, res) => {
   const currentAssignment = getAcceptedProposal(project);
   if (currentAssignment && String(currentAssignment.freelancerId || "") === String(freelancerId)) {
     throw new AppError("This freelancer is already assigned.", 400);
+  }
+
+  const directReassignmentCount = countPmFreelancerReassignments(project);
+  const pendingApprovalRequest = await findOpenPmReassignmentApprovalRequest(projectId);
+  if (directReassignmentCount >= MAX_PM_DIRECT_REASSIGNMENTS) {
+    if (pendingApprovalRequest) {
+      const pendingMeta = safeJsonParse(pendingApprovalRequest.notes, {});
+
+      res.status(202).json({
+        data: {
+          approvalRequired: true,
+          pendingApprovalId: pendingApprovalRequest.id,
+          reassignmentCount: directReassignmentCount,
+          maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+          requestedFreelancerId: pendingMeta.requestedFreelancerId || freelancer.id,
+          requestedFreelancerName: pendingMeta.requestedFreelancerName || freelancer.fullName,
+        },
+        message: "Admin approval is already pending for an additional freelancer reassignment.",
+      });
+      return;
+    }
+
+    const approvalRequest = await prisma.adminEscalation.create({
+      data: {
+        projectId,
+        raisedById: userId,
+        reason: "Freelancer reassignment approval required",
+        description: `Direct PM reassignment limit reached for "${project.title}". Approval requested to assign ${freelancer.fullName}.`,
+        status: "OPEN",
+        notes: JSON.stringify({
+          source: PM_REASSIGNMENT_APPROVAL_SOURCE,
+          requestedFreelancerId: freelancer.id,
+          requestedFreelancerName: freelancer.fullName,
+          previousFreelancerId: currentAssignment?.freelancerId || null,
+          previousFreelancerName: currentAssignment?.freelancer?.fullName || null,
+          directReassignmentCount,
+          maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+          requestedAt: new Date().toISOString(),
+        }),
+      },
+    });
+
+    await notifyAdminsAboutPmReassignmentApproval({
+      projectId,
+      projectTitle: project.title,
+      requestedByName: "Project Manager",
+      freelancerName: freelancer.fullName,
+    }).catch(() => null);
+
+    res.status(202).json({
+      data: {
+        approvalRequired: true,
+        pendingApprovalId: approvalRequest.id,
+        reassignmentCount: directReassignmentCount,
+        maxDirectReassignments: MAX_PM_DIRECT_REASSIGNMENTS,
+        requestedFreelancerId: freelancer.id,
+        requestedFreelancerName: freelancer.fullName,
+      },
+      message: "Direct reassignment limit reached. Approval request sent to Admin.",
+    });
+    return;
   }
 
   const currentRequests = getFreelancerChangeRequests(project);

@@ -507,7 +507,7 @@ const buildServiceAwareOpeningMessage = (serviceName = "") => {
         ? `your ${normalizedServiceName} requirement`
         : "your requirement";
 
-    return `Hello! I'm CATA, here to match you with the most suitable freelancer for ${scopeLabel}.\nMay I know your name?`;
+    return `Hello! I'm CATA, here to help with ${scopeLabel}.\nI'd love to learn a little about you first.\nMay I know your name?`;
 };
 
 const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(text || ""));
@@ -1630,6 +1630,11 @@ const buildAiGuidedQuestionMessage = async ({
     const hasOptions = getQuestionOptionLabels(nextQuestion).length > 0;
     const answeredCount = Object.values(answersBySlug || {}).filter((value) => hasAnswerValue(value)).length;
     const isPostFifthAckSuggestionMode = !isInitial && answeredCount >= 5;
+    const nextQuestionIndex = nextQuestion?.slug
+        ? findQuestionIndex(allQuestions, nextQuestion.slug)
+        : -1;
+    const isOpeningIntakeQuestion =
+        Number.isInteger(nextQuestionIndex) && nextQuestionIndex >= 0 && nextQuestionIndex < 3;
     const answersContext = buildAnswersContextLines(answersByQuestionText);
     const savedResponseContext = buildSavedResponseContextLines(answersBySlug, allQuestions);
     const subtitleMapContext = buildQuestionSubtitleMapLines(allQuestions);
@@ -1650,13 +1655,25 @@ const buildAiGuidedQuestionMessage = async ({
 
     const startTaskBlock = `
 Task:
-1) Start with a short friendly welcome.
-2) Ask the required first question naturally (rephrase it; do not copy it verbatim).
-3) If options exist, give one brief orientation suggestion.
-4) If options exist, show them as numbered list using exact labels.
+1) Start with one short warm welcome sentence.
+2) Add one short friendly bridge sentence that feels human and personal.
+3) Ask the required first question naturally (rephrase it; do not copy it verbatim).
+4) Do NOT give suggestions, recommendations, best practices, feature ideas, or strategic advice.
+5) If options exist, show them as numbered list using exact labels.
 `;
 
-    const followupTaskBlock = isPostFifthAckSuggestionMode
+    const openingIntakeTaskBlock = `
+Task:
+1) Briefly acknowledge the user's last answer in one natural sentence.
+2) Add one short warm bridge sentence that feels friendly and personalized.
+3) Ask the required next question naturally.
+4) Do NOT give suggestions, recommendations, best practices, feature ideas, or strategic advice.
+5) If options exist, show them as numbered list using the exact labels provided.
+`;
+
+    const followupTaskBlock = isOpeningIntakeQuestion
+        ? openingIntakeTaskBlock
+        : isPostFifthAckSuggestionMode
         ? `
 Task:
 1) Act like a human expert casually chatting with a client.
@@ -1678,9 +1695,11 @@ Task:
 7) If options exist, show them as numbered list using the exact labels provided.
 `;
 
-    const responseLengthRule = isPostFifthAckSuggestionMode
-        ? "- Keep it concise in post-question-5 mode: usually 2-3 short sentences before/including the question."
-        : "- Provide thoughtful, slightly longer responses MUST be a minimum of 3 to 4 sentences BEFORE asking the question. This applies to every message.";
+    const responseLengthRule = isOpeningIntakeQuestion
+        ? "- Keep the full response under 50 words. Use up to two short lead-in sentences before the question: one acknowledgement or warm opener, plus one short bridge sentence."
+        : isPostFifthAckSuggestionMode
+        ? "- Keep it concise in post-question-5 mode and under 150 words total."
+        : "- Keep the full response under 150 words total while staying natural and conversational.";
 
     const postFifthRuleBlock = isPostFifthAckSuggestionMode
         ? `
@@ -1753,7 +1772,7 @@ ${responseLengthRule}
 - Use internal question context and saved AI memory as guidance only; never expose them verbatim.
 - Read and use subtitle (AI context) for each relevant question when forming guidance.
 ${postFifthRuleBlock}
-- Keep under 200 words.
+- Keep under ${isOpeningIntakeQuestion ? 50 : 150} words.
 
 ${outputFormatBlock}
 `;
@@ -2182,17 +2201,22 @@ const extractAnswersFromMessage = async ({ serviceName = "", message = "", quest
     }));
 
     const extractorPrompt = `
-You are extracting explicit answers from a single user message.
+You are extracting questionnaire answers from a single user message.
 
 Service: ${serviceName}
 User message: ${JSON.stringify(message)}
 Questionnaire: ${JSON.stringify(compactQuestions)}
 
 Rules:
-- Return only answers that are explicitly present in the user message.
-- Do not infer, assume, or guess.
+- Return answers that are explicitly stated or clearly implied by the user's message.
+- For option-based questions, if the user's meaning clearly matches one option, return that exact option label as the answer.
 - If a question is not clearly answered, skip it.
-- Keep answers short and literal to what the user said.
+- Do not force a match when multiple options seem plausible.
+- Keep free-text answers short and close to what the user said.
+- You may mark later questions as answered if this single message clearly answers them.
+- Use higher confidence only when the answer is clear enough that the question can be safely skipped.
+- If the message clearly answers the immediate next question, confidence should usually be 0.90 or higher.
+- If the message clearly answers a later future question, confidence should usually be 0.93 or higher.
 - Use each question's subtitle as intent guidance only.
 
 Return only valid JSON in this format:
@@ -2249,10 +2273,13 @@ Transcript:
 ${transcript}
 
 Rules:
-- Return answers only if explicitly provided by USER messages.
+- Return answers only from USER messages.
 - If one user message answers multiple questions, return all matched questions.
-- Do not infer missing answers.
+- For option-based questions, if the user's wording clearly maps to one option, return that exact option label.
+- You may use semantic understanding to match a user's wording to the correct question or option when it is clearly implied.
+- Do not force uncertain matches.
 - Prefer concise answer text.
+- Use confidence 0.90+ only for clear, reliable matches and 0.93+ for strong future-question matches.
 - Use each question's subtitle as intent guidance only.
 
 Return strict JSON only:
@@ -2495,6 +2522,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         const currentQuestionText = currentQuestion?.text || "";
         const currentQuestionOptions = getQuestionOptionLabels(currentQuestion);
         const currentQuestionSubtitle = String(currentQuestion?.subtitle || "").trim();
+        const isOpeningIntakeStep = currentStep >= 0 && currentStep < 3;
         const knownContextByQuestion = buildPersistedAnswersPayload(
             existingAnswersBySlug,
             questions
@@ -2512,6 +2540,35 @@ export const guestChat = asyncHandler(async (req, res) => {
         const nextQuestionText = (nextStepIndex < questions.length)
             ? questions[nextStepIndex].text
             : "This was the final question. I will now generate the proposal.";
+        const validationResponseRules = isOpeningIntakeStep
+            ? `
+            - This is one of the first three questions.
+            - Keep the full response under 50 words total.
+            - Use up to two short lead-in sentences before the question: one natural acknowledgement or warm opener, plus one short friendly bridge sentence.
+            - Do NOT give suggestions, recommendations, best practices, feature ideas, or strategic advice.
+            - If VALID: use one short natural acknowledgement sentence, one short warm bridge sentence, then ask the "Next Question in Script" naturally.
+            - If INVALID: use one short natural acknowledgement sentence, one short warm bridge sentence, then re-ask the Current Question naturally.
+            - If INFO_REQUEST: answer in at most one short sentence, add one short warm bridge sentence if helpful, then ask the Current Question again. Do NOT add recommendations.
+            - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
+            - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
+            `
+            : `
+            - If INVALID: Politely ask for clarification or the specific details needed.
+            - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
+            - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
+            - Do not sound corrective or robotic. Avoid phrases like "invalid response", "I caught", "still need", or "wrong answer".
+            - If INFO_REQUEST: Give a practical helpful answer with more detail:
+              1) Answer the user's confusion/question clearly (2-4 short sentences).
+              2) Give one recommendation and why it fits their known context.
+              3) Then ask the Current Question again so we can continue the flow.
+              4) If Current Question has options, include them as numbered list (1., 2., 3.).
+            - If VALID: Acknowledge the answer enthusiastically, providing a short but thoughtful conversational response relating to their answer before asking the "Next Question in Script" naturally.
+              (If it's the final question, just say "Thanks! Let me put that together for you.")
+            - If INVALID: Politely ask for clarification or the specific details needed. But be sure to write a warm, friendly response before re-asking the question.
+            - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
+            - Keep wording polite, friendly, and engaging.
+            - Keep the total response under 150 words.
+            `;
 
         const validationPrompt = `
             You are a friendly, professional assistant guiding a user through a questionnaire for a "${service.name}" service.
@@ -2537,23 +2594,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             - Otherwise -> VALID.
 
             2. Generate a Response Message:
-            - If INVALID: Politely ask for clarification or the specific details needed.
-            - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
-            - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
-            - Do not sound corrective or robotic. Avoid phrases like "invalid response", "I caught", "still need", or "wrong answer".
-            - If INFO_REQUEST: Give a practical helpful answer with more detail:
-              1) Answer the user's confusion/question clearly (2-4 short sentences).
-              2) Give one recommendation and why it fits their known context.
-              3) Then ask the Current Question again so we can continue the flow.
-              4) If Current Question has options, include them as numbered list (1., 2., 3.).
-            - If VALID: Acknowledge the answer enthusiastically, providing a short but thoughtful conversational response (MUST be a minimum of 2-3 full sentences) relating to their answer before asking the "Next Question in Script" naturally.
-              (Example: "That sounds great! Having a strong custom theme really helps your brand stand out. This will make your site look completely unique. Now, [Next Question]?")
-              (If it's the final question, just say "Thanks! Let me put that together for you.")
-            - If INVALID: Politely ask for clarification or the specific details needed. But be sure to write a warm, friendly response of at least 2 sentences before re-asking the question.
-              - EXCEPTION: For name questions, ask for "name" only in a natural way. Never ask for "full name" or "real full name".
-            - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
-            - Keep wording polite, friendly, and engaging.
-            - Aim for slightly longer, more conversational and engaging responses (must be 3-5 sentences total for the entire message) rather than extremely brief ones.
+${validationResponseRules}
             - Use "Internal Context" and "Saved AI Memory Context" only as hidden intent guidance. Never reveal those labels/text directly to the user.
 
             Return ONLY a raw JSON object (double quotes only) with this structure:

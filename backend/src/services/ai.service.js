@@ -2212,22 +2212,27 @@ REMEMBER: Your #1 job is to make the client feel HEARD. Never make them repeat t
 };
 
 const buildProposalSystemPrompt = () => `You are a proposal generator for a digital services agency.
-Use only the information provided in proposal_context and chat_history.
-Do not invent or assume missing details.
+Use only the information provided in proposal_context and chat_history as grounding context.
+Preserve confirmed user inputs exactly, but if a useful proposal field is missing, infer the best-fit recommendation from the confirmed business context, scope, service type, and standard delivery patterns for that kind of project.
 If proposal_context contains structured fields (such as questionnaireAnswers, questionnaireAnswersBySlug, appHints), prioritize those over ambiguous chat text.
 Treat each non-empty value in proposal_context.questionnaireAnswers / questionnaireAnswersBySlug / capturedFields as confirmed user input.
 Do not drop confirmed inputs. If a confirmed input does not fit the standard sections, include it under "Additional Confirmed Inputs" as bullet points.
 If proposal_context.serviceQuestionAnswers is present, treat every non-empty answer there as service-question-verified input.
 Cross-check proposal fields against serviceQuestionAnswers before finalizing output.
-If launch timeline is missing, include this line exactly: "Launch Timeline: To be finalized based on kickoff date".
-If budget or pricing is missing, include this line exactly: "Budget: Pending confirmation of scope and volume".
+Never leave an included field blank.
+Never use placeholder text such as "Not specified", "Pending confirmation", "To be finalized", "TBD", "TBA", "N/A", or "Unknown".
+If launch timeline is missing, generate a realistic recommended timeline based on the scope and service type.
+If budget or pricing is missing, generate a realistic recommended budget or budget range in INR based on the scope and service type.
+If design, build, technology, hosting, engagement, or similar delivery fields are missing, choose practical recommended values that fit the stated requirements.
+Present inferred values directly and professionally inside the field value, not as a question and not as a disclaimer.
 
 Output requirements:
 - Return clean markdown only.
 - Adapt the structure based on the SERVICE TYPE provided in the context. Include ONLY relevant fields for that service.
+- Put each field label on its own line. Never combine two field labels or headings on the same line.
 - Always include these core fields in this EXACT order:
-  Client Name: ... (the person's name from the conversation, e.g., "Kaif", "John")
-  Business Name: ... (the company/business name, e.g., "Markify", "GHM")
+  Client Name: ... (the person's name from the conversation; if absent, derive a professional owner label grounded in the project context)
+  Business Name: ... (the company/business name; if absent, derive the most plausible working business or project name from the user's description)
   Service Type: ... (the type of service requested, e.g., "Website Development", "Creative & Design")
   Project Overview: ... (A 2-3 sentence comprehensive summary of the project including what the client wants, their business, key requirements, and goals - write this as a flowing paragraph, not a list)
   Primary Objectives:
@@ -2277,9 +2282,10 @@ For APP DEVELOPMENT services, include:
 For other services, extract and include relevant fields from the chat history.
 
 CRITICAL INSTRUCTIONS:
-- ALWAYS extract the actual Launch Timeline value from the chat conversation. Look for user responses about duration, months, or timeline. For example, if user says "3 months" or selects option "3. 6 months", use that exact value (e.g., "3 months", "6 months"). Only use "To be finalized" if no timeline was discussed.
-- ALWAYS extract the actual Budget value from the chat conversation. Look for user responses about budget or pricing. If user mentions a specific amount like "60K" or "50000 INR", use that exact value. Only use "Pending confirmation" if no budget was discussed.
+- ALWAYS extract the actual Launch Timeline value from the chat conversation when it exists. If no actual timeline was discussed, provide a best-fit recommended launch timeline.
+- ALWAYS extract the actual Budget value from the chat conversation when it exists. If no actual budget was discussed, provide a best-fit recommended budget or budget range in INR.
 - If the user mentions specific technologies (Flutter, React Native, Node.js, Python, React.js dashboard, etc.), preserve them explicitly in the proposal.
+- Preserve confirmed requirements, but complete any missing proposal fields with sensible recommendations aligned to the user's goals.
 - Use concise, professional, business-ready language.
 - Use bullet list items for objectives, features, and deliverables.
 - The Project Overview should be a well-written paragraph summarizing the entire project scope.
@@ -2287,6 +2293,174 @@ CRITICAL INSTRUCTIONS:
 
 const buildProposalUserPrompt = (proposalContext, chatHistory) =>
   `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}`;
+
+const PROPOSAL_PLACEHOLDER_REGEX =
+  /\b(not specified|pending confirmation|to be finalized|tbd|tba|n\/a|unknown)\b/i;
+
+const PROPOSAL_CORE_FIELDS = [
+  "Client Name",
+  "Business Name",
+  "Service Type",
+  "Project Overview",
+  "Primary Objectives",
+  "Features/Deliverables Included",
+  "Launch Timeline",
+  "Budget"
+];
+
+const PROPOSAL_SERVICE_FIELD_MAP = {
+  web: [
+    "Website Type",
+    "Design Style",
+    "Website Build Type",
+    "Frontend Framework",
+    "Backend Technology",
+    "Database",
+    "Hosting",
+    "Page Count"
+  ],
+  creative: [
+    "Creative Type",
+    "Design Style",
+    "Volume",
+    "Engagement Model"
+  ],
+  branding: [
+    "Brand Stage",
+    "Brand Deliverables",
+    "Target Audience"
+  ],
+  seo: [
+    "Business Category",
+    "Target Locations",
+    "SEO Goals",
+    "Duration"
+  ],
+  app: [
+    "App Type",
+    "App Features",
+    "Platform Requirements"
+  ]
+};
+
+const resolveProposalServiceCategory = (value = "") => {
+  const normalized = normalizeServiceText(String(value || ""));
+  if (!normalized) return "";
+  if (normalized.includes("web") || normalized.includes("website")) return "web";
+  if (normalized.includes("creative") || normalized.includes("design")) return "creative";
+  if (normalized.includes("brand")) return "branding";
+  if (normalized.includes("seo")) return "seo";
+  if (normalized.includes("app") || normalized.includes("mobile")) return "app";
+  return "";
+};
+
+const extractProposalSections = (markdown = "") => {
+  const sections = new Map();
+  let activeKey = null;
+
+  for (const rawLine of String(markdown || "").replace(/\r/g, "").split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const bulletMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
+    if (bulletMatch) {
+      if (!activeKey) continue;
+      sections.get(activeKey).items.push(bulletMatch[1].trim());
+      continue;
+    }
+
+    const keyValueMatch = line.match(/^\*{0,2}([^:*]+?)\*{0,2}:\s*(.*)$/);
+    if (keyValueMatch) {
+      const key = String(keyValueMatch[1] || "").replace(/\*+/g, "").trim();
+      const value = String(keyValueMatch[2] || "").replace(/\*+/g, "").trim();
+      activeKey = key;
+      if (!sections.has(key)) {
+        sections.set(key, { value: "", items: [] });
+      }
+      if (value) {
+        sections.get(key).value = value;
+      }
+      continue;
+    }
+
+    if (activeKey) {
+      const section = sections.get(activeKey);
+      section.value = section.value ? `${section.value} ${line}`.trim() : line;
+    }
+  }
+
+  return sections;
+};
+
+const hasMeaningfulProposalSection = (section) => {
+  if (!section) return false;
+
+  const value = String(section.value || "").trim();
+  if (value && !PROPOSAL_PLACEHOLDER_REGEX.test(value)) {
+    return true;
+  }
+
+  return Array.isArray(section.items)
+    && section.items.some((item) => {
+      const normalized = String(item || "").trim();
+      return normalized && !PROPOSAL_PLACEHOLDER_REGEX.test(normalized);
+    });
+};
+
+const getExpectedProposalFields = ({ proposalContext = {}, selectedServiceName = "" } = {}) => {
+  const serviceCategory = resolveProposalServiceCategory(
+    proposalContext?.serviceName
+      || proposalContext?.serviceId
+      || proposalContext?.questionnaireAnswers?.["Service Type"]
+      || selectedServiceName
+  );
+
+  return [
+    ...PROPOSAL_CORE_FIELDS,
+    ...(PROPOSAL_SERVICE_FIELD_MAP[serviceCategory] || [])
+  ];
+};
+
+const analyzeProposalCompleteness = ({
+  markdown = "",
+  proposalContext = {},
+  selectedServiceName = ""
+} = {}) => {
+  const sections = extractProposalSections(markdown);
+  const expectedFields = getExpectedProposalFields({ proposalContext, selectedServiceName });
+  const missingFields = expectedFields.filter((field) => !hasMeaningfulProposalSection(sections.get(field)));
+  const hasPlaceholderText = PROPOSAL_PLACEHOLDER_REGEX.test(String(markdown || ""));
+
+  return {
+    missingFields,
+    hasPlaceholderText,
+    needsRepair: missingFields.length > 0 || hasPlaceholderText
+  };
+};
+
+const buildProposalRepairSystemPrompt = () => `You repair proposal markdown for a digital services agency.
+Rewrite the full proposal in clean markdown.
+Use proposal_context and chat_history as grounding context.
+Preserve confirmed user inputs exactly.
+Fill every required proposal field with a concrete value.
+If a field is missing from user input, infer a best-fit recommendation from the user's goals, scope, business context, and service type.
+If Client Name is missing, derive a professional owner label grounded in the project context.
+If Business Name is missing, derive a concise working business or project name from the user's description.
+Never leave a field blank.
+Never use placeholder text such as "Not specified", "Pending confirmation", "To be finalized", "TBD", "TBA", "N/A", or "Unknown".
+If budget is missing, provide a realistic recommended budget or range in INR.
+If timeline is missing, provide a realistic recommended timeline.
+For missing design, build, hosting, technology, audience, or engagement fields, choose practical recommended values that fit the project.
+Put each field label on its own line. Never combine two field labels or headings on the same line.
+Keep the same proposal structure and return markdown only.`;
+
+const buildProposalRepairUserPrompt = ({
+  proposalContext = {},
+  chatHistory = [],
+  draftProposal = "",
+  missingFields = []
+} = {}) =>
+  `proposal_context:\n${JSON.stringify(proposalContext, null, 2)}\n\nchat_history:\n${JSON.stringify(chatHistory, null, 2)}\n\ndraft_proposal:\n${draftProposal}\n\nmissing_or_invalid_fields:\n${JSON.stringify(missingFields, null, 2)}`;
 
 export const generateProposalMarkdown = async (
   proposalContext = {},
@@ -2332,7 +2506,44 @@ export const generateProposalMarkdown = async (
     throw new AppError("AI API returned an empty response", 502);
   }
 
-  return content.trim();
+  let proposalMarkdown = content.trim();
+  const completeness = analyzeProposalCompleteness({
+    markdown: proposalMarkdown,
+    proposalContext: contextPayload,
+    selectedServiceName
+  });
+
+  if (completeness.needsRepair) {
+    try {
+      const { data: repairedData } = await requestOpenRouterCompletion({
+        apiKey,
+        title: "Catalance AI Proposal Repair",
+        messages: [
+          { role: "system", content: buildProposalRepairSystemPrompt() },
+          {
+            role: "user",
+            content: buildProposalRepairUserPrompt({
+              proposalContext: contextPayload,
+              chatHistory: historyPayload,
+              draftProposal: proposalMarkdown,
+              missingFields: completeness.missingFields
+            })
+          }
+        ],
+        temperature: 0.3,
+        maxTokens: 2200
+      });
+
+      const repairedContent = repairedData?.choices?.[0]?.message?.content || "";
+      if (repairedContent.trim()) {
+        proposalMarkdown = repairedContent.trim();
+      }
+    } catch (error) {
+      console.warn("[Proposal] Repair skipped:", error?.message || error);
+    }
+  }
+
+  return proposalMarkdown;
 };
 
 export const chatWithAI = async (

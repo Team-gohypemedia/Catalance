@@ -57,3 +57,21 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
 
   res.status(200).json({ status: "success" });
 });
+
+export const markByTypeAsRead = asyncHandler(async (req, res) => {
+  const userId = req.user.sub;
+  const type = String(req.body?.type || req.query?.type || "")
+    .trim()
+    .toLowerCase();
+
+  if (!type) {
+    throw new AppError("Notification type is required", 400);
+  }
+
+  await prisma.notification.updateMany({
+    where: { userId, type, read: false },
+    data: { read: true }
+  });
+
+  res.status(200).json({ status: "success" });
+});

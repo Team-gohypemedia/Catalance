@@ -25,11 +25,69 @@ const getProposalStorageKeys = (userId) => {
   };
 };
 
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const PROPOSAL_INLINE_FIELD_LABELS = [
+  "Client Name",
+  "Business Name",
+  "Service Type",
+  "Project Overview",
+  "Primary Objectives",
+  "Features/Deliverables Included",
+  "Website Type",
+  "Design Style",
+  "Website Build Type",
+  "Frontend Framework",
+  "Backend Technology",
+  "Database",
+  "Hosting",
+  "Page Count",
+  "Creative Type",
+  "Volume",
+  "Engagement Model",
+  "Brand Stage",
+  "Brand Deliverables",
+  "Target Audience",
+  "Business Category",
+  "Target Locations",
+  "SEO Goals",
+  "Duration",
+  "App Type",
+  "App Features",
+  "Platform Requirements",
+  "Additional Confirmed Inputs",
+  "Launch Timeline",
+  "Budget",
+];
+
+const normalizeProposalPreviewContent = (markdown = "") => {
+  let normalized = String(markdown || "").replace(/\r/g, "").trim();
+
+  normalized = normalized.replace(/([^\n])\s+(#{1,6}\s+)/g, "$1\n$2");
+
+  PROPOSAL_INLINE_FIELD_LABELS.forEach((label) => {
+    const escaped = escapeRegExp(label);
+    const patterns = [
+      new RegExp(`([^\\n])\\s+(#{1,6}\\s*${escaped}\\s*:)`, "gi"),
+      new RegExp(`([^\\n])\\s+(\\*\\*${escaped}\\*\\*\\s*:)`, "gi"),
+      new RegExp(`([^\\n])\\s+(\\*\\*${escaped}:\\*\\*)`, "gi"),
+      new RegExp(`([^\\n])\\s+(${escaped}\\s*:)`, "gi"),
+    ];
+
+    patterns.forEach((pattern) => {
+      normalized = normalized.replace(pattern, "$1\n$2");
+    });
+  });
+
+  return normalized.replace(/\n{3,}/g, "\n\n").trim();
+};
+
 // --- Parser to extract structured data from markdown ---
 const parseProposalContent = (markdown) => {
   if (!markdown) return null;
 
-  const lines = markdown.split("\n");
+  const lines = normalizeProposalPreviewContent(markdown).split("\n");
   const extracted = {};
   let currentKey = null;
 
@@ -341,7 +399,6 @@ const ProposalCard = ({ data, services = [] }) => {
       if (found) return found;
       return findQuantityFromText(source, quantityUnit);
     }, null) || null;
-
   const perUnitBudget = parsePerUnitBudget(
     data.rawBudget || data.budget || "",
     quantityUnit,
@@ -349,13 +406,17 @@ const ProposalCard = ({ data, services = [] }) => {
   const totalBudget =
     isPerDeliverable && quantity && perUnitBudget
       ? perUnitBudget * quantity
-      : parseBudgetNumber(data.budget || "");
-
+      : null;
   const unitLabel = singularizeUnit(quantityUnit || "deliverables");
   const budgetSummary =
     isPerDeliverable && perUnitBudget && unitLabel
-      ? `${formatRupees(perUnitBudget)}/- per ${unitLabel}`
+      ? totalBudget
+        ? `${formatRupees(perUnitBudget)}/- per ${unitLabel} (${quantity} ${quantityUnit}, approx. ${formatRupees(totalBudget)} total)`
+        : `${formatRupees(perUnitBudget)}/- per ${unitLabel}`
       : data.budget || "";
+  const showTimeline = Boolean(data.timeline);
+  const showBudget = Boolean(budgetSummary);
+  const showFooterGrid = showTimeline || showBudget;
 
   return (
     <div className="space-y-4">
@@ -429,27 +490,32 @@ const ProposalCard = ({ data, services = [] }) => {
         )}
       </div>
 
-      {/* Footer Grid - Timeline & Budget */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="group bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50 hover:bg-slate-700/30 transition-colors cursor-default">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-4 h-4 text-primary" />
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Timeline</p>
-          </div>
-          <p className="text-white font-semibold text-sm">
-            {data.timeline || "To be finalized"}
-          </p>
+      {showFooterGrid && (
+        <div className={`grid gap-3 ${showTimeline && showBudget ? "grid-cols-2" : "grid-cols-1"}`}>
+          {showTimeline && (
+            <div className="group bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50 hover:bg-slate-700/30 transition-colors cursor-default">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Timeline</p>
+              </div>
+              <p className="text-white font-semibold text-sm">
+                {data.timeline}
+              </p>
+            </div>
+          )}
+          {showBudget && (
+            <div className="group bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50 hover:bg-slate-700/30 transition-colors cursor-default">
+              <div className="flex items-center gap-2 mb-2">
+                <IndianRupee className="w-4 h-4 text-emerald-400" />
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Budget</p>
+              </div>
+              <p className="text-white font-semibold text-sm">
+                {budgetSummary}
+              </p>
+            </div>
+          )}
         </div>
-        <div className="group bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50 hover:bg-slate-700/30 transition-colors cursor-default">
-          <div className="flex items-center gap-2 mb-2">
-            <IndianRupee className="w-4 h-4 text-emerald-400" />
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Budget</p>
-          </div>
-          <p className="text-white font-semibold text-sm">
-            {budgetSummary || "Pending confirmation"}
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

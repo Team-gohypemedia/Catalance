@@ -34,6 +34,41 @@ const hasFirstTaskCompletion = (project) => {
     return toTaskKeySet(project?.completedTasks).has(taskKey);
 };
 
+const getApprovedPhaseSet = (project = {}) =>
+    new Set(
+        (Array.isArray(project?.milestoneApprovals) ? project.milestoneApprovals : [])
+            .map((item) => Number(item?.phase))
+            .filter(Number.isFinite)
+    );
+
+const countCompletedLifecyclePhases = (project = {}) => {
+    const approved = getApprovedPhaseSet(project);
+    const phase1Done =
+        hasFirstTaskCompletion(project) ||
+        approved.has(2) ||
+        approved.has(3) ||
+        approved.has(4);
+
+    return [phase1Done, approved.has(2), approved.has(3), approved.has(4)].filter(Boolean).length;
+};
+
+const mapAssignedProjectStatus = (project = {}) => {
+    const hasIssue = Array.isArray(project?.disputes)
+        ? project.disputes.some((item) => String(item?.status || "").toUpperCase() !== "RESOLVED")
+        : false;
+
+    if (hasIssue) return "Issue Raised";
+
+    const rawStatus = String(project?.status || "").toUpperCase();
+    if (rawStatus === "DRAFT") return "Proposal";
+
+    const completedPhases = countCompletedLifecyclePhases(project);
+    if (completedPhases >= 4) return "Completed";
+    if (rawStatus === "IN_PROGRESS" || completedPhases > 0) return "In Progress";
+
+    return "Started";
+};
+
 export const getDashboard = asyncHandler(async (req, res) => {
     const userId = getUserId(req);
     if (!userId) {
@@ -122,11 +157,18 @@ export const getAssignedProjects = asyncHandler(async (req, res) => {
                 include: { freelancer: { select: { fullName: true } } },
                 orderBy: { createdAt: "desc" },
                 take: 1
-            }
+            },
+            disputes: { select: { id: true, status: true } },
+            milestoneApprovals: { select: { phase: true } },
         },
         orderBy: { createdAt: "desc" }
     });
-    res.json({ data: projects });
+    res.json({
+        data: projects.map((project) => ({
+            ...project,
+            displayStatus: mapAssignedProjectStatus(project),
+        })),
+    });
 });
 
 export const updateProfileRequest = asyncHandler(async (req, res) => {

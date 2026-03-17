@@ -12,17 +12,38 @@ const iconMap = {
   calendar: Calendar,
 };
 
-export const MeetingCard = ({ type = "video", status, title, project, participants = [], time, highlight }) => {
+export const MeetingCard = ({
+  type = "video",
+  status,
+  title,
+  project,
+  participants = [],
+  time,
+  highlight,
+  onOpen,
+}) => {
   const Icon = iconMap[type] || Video;
-  
+  const interactive = typeof onOpen === "function";
+
   return (
-    <Card className={`relative w-full min-w-0 overflow-hidden rounded-[40px] border-2 transition-all duration-700 hover:shadow-2xl hover:-translate-y-1 ${highlight ? "border-slate-800 bg-slate-900 text-white shadow-xl shadow-blue-500/10" : "border-slate-50 bg-white"}`}>
+    <Card
+      className={`relative w-full min-w-0 overflow-hidden rounded-[40px] border-2 transition-all duration-700 ${
+        interactive ? "cursor-pointer hover:-translate-y-1 hover:shadow-2xl focus-within:-translate-y-1 focus-within:shadow-2xl" : ""
+      } ${highlight ? "border-slate-800 bg-slate-900 text-white shadow-xl shadow-blue-500/10" : "border-slate-50 bg-white"}`}
+    >
       {highlight && (
          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
             <Clock className="h-40 w-40 text-blue-400 rotate-12" />
          </div>
       )}
-      <CardContent className="p-10 relative z-10">
+      <CardContent className="p-0 relative z-10">
+        <button
+          type="button"
+          className="block w-full appearance-none border-0 bg-transparent p-10 text-left"
+          onClick={onOpen}
+          disabled={!interactive}
+          aria-label={interactive ? `Open ${project} project details` : undefined}
+        >
         <div className="mb-8 flex items-center justify-between">
           <div className={`flex h-14 w-14 items-center justify-center rounded-[20px] shadow-lg ${highlight ? "bg-blue-600 text-white shadow-blue-600/20" : "bg-slate-50 text-slate-400"}`}>
             <Icon className="h-7 w-7" />
@@ -67,6 +88,7 @@ export const MeetingCard = ({ type = "video", status, title, project, participan
              <span className="text-xl font-black italic">{time}</span>
           </div>
         </div>
+        </button>
       </CardContent>
     </Card>
   );
@@ -82,5 +104,6 @@ MeetingCard.propTypes = {
     initials: PropTypes.string
   })),
   time: PropTypes.string.isRequired,
-  highlight: PropTypes.bool
+  highlight: PropTypes.bool,
+  onOpen: PropTypes.func,
 };

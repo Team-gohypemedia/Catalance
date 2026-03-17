@@ -124,14 +124,14 @@ export const CataButton = () => {
   const dashboardPrefixes = [
     "/client",
     "/freelancer",
-    "/project-manager",
     "/admin",
   ];
   const isOnDashboard = dashboardPrefixes.some((prefix) =>
     location.pathname.startsWith(prefix),
   );
+  const isProjectManagerRoute = location.pathname.startsWith("/project-manager");
 
-  if (!isOnDashboard) {
+  if (!isOnDashboard || isProjectManagerRoute) {
     return null;
   }
 

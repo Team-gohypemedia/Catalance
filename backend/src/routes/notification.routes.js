@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/require-auth.js";
-import { getNotifications, markAllAsRead, markAsRead } from "../controllers/notification.controller.js";
+import {
+  getNotifications,
+  markAllAsRead,
+  markAsRead,
+  markByTypeAsRead
+} from "../controllers/notification.controller.js";
 
 const router = Router();
 
@@ -11,6 +16,9 @@ router.route("/")
 
 router.route("/read-all")
   .patch(markAllAsRead);
+
+router.route("/read-by-type")
+  .patch(markByTypeAsRead);
 
 router.route("/:id/read")
   .patch(markAsRead);

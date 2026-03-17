@@ -11,7 +11,10 @@ const asQuery = (params = {}) => {
 const readJson = async (response) => {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(payload?.message || "Request failed");
+    const error = new Error(payload?.message || "Request failed");
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
   return payload?.data ?? payload ?? null;
 };

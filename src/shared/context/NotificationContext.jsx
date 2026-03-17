@@ -143,6 +143,48 @@ export const NotificationProvider = ({ children }) => {
     setProposalUnreadCount(0);
   }, []);
 
+  const markTypeAsRead = useCallback(async (type) => {
+    const normalizedType = String(type || "").trim().toLowerCase();
+    if (!normalizedType) return;
+
+    setNotifications((prev) => {
+      const removedCount = prev.filter(
+        (notification) =>
+          !notification.read &&
+          String(notification.type || "").toLowerCase() === normalizedType
+      ).length;
+
+      if (!removedCount) {
+        return prev;
+      }
+
+      setUnreadCount((current) => Math.max(0, current - removedCount));
+
+      if (normalizedType === "chat") {
+        setChatUnreadCount(0);
+      }
+
+      if (normalizedType === "proposal") {
+        setProposalUnreadCount(0);
+      }
+
+      return prev.filter(
+        (notification) =>
+          notification.read ||
+          String(notification.type || "").toLowerCase() !== normalizedType
+      );
+    });
+
+    try {
+      await apiClient("/notifications/read-by-type", {
+        method: "PATCH",
+        body: JSON.stringify({ type: normalizedType }),
+      });
+    } catch (error) {
+      console.error(`Failed to mark ${normalizedType} notifications as read`, error);
+    }
+  }, []);
+
   // Request push notification permission
   const requestPushPermission = useCallback(async () => {
     try {
@@ -341,13 +383,13 @@ export const NotificationProvider = ({ children }) => {
 
   // Function to mark chat notifications as read (when opening Messages)
   const markChatAsRead = useCallback(() => {
-    setChatUnreadCount(0);
-  }, []);
+    return markTypeAsRead("chat");
+  }, [markTypeAsRead]);
 
   // Function to mark proposal notifications as read
   const markProposalsAsRead = useCallback(() => {
-    setProposalUnreadCount(0);
-  }, []);
+    return markTypeAsRead("proposal");
+  }, [markTypeAsRead]);
 
   const value = useMemo(
     () => ({
