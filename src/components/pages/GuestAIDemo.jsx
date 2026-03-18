@@ -476,6 +476,7 @@ const appendSpeechTranscript = (
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
 const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|choice|choices|kindly|please|type|tap|reply|which one|which of these|here are)\b/i;
+const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other)\b/i;
 
 const repairBrokenTechTokens = (text = "") =>
     String(text || "")
@@ -496,6 +497,49 @@ const forceSentenceBreaks = (text = "") => {
         .replace(/\b(Dr|Mr|Mrs|Ms|e\.g|i\.e)\.\s/g, "$1_PROTECT_")
         .replace(/([a-z0-9][.?!])\s+(?=[A-Z])/g, "$1\n\n")
         .replace(/_PROTECT_/g, ". ");
+};
+
+const normalizeAssistantParagraphSpacing = (text = "") => {
+    const source = String(text || "").replace(/\r/g, "").trim();
+    if (!source) return source;
+
+    if (/(^|\n)\s*([-*]|\d+\.)\s+\S/m.test(source)) {
+        return source;
+    }
+
+    const normalizedLines = source
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join("\n\n");
+
+    return forceSentenceBreaks(normalizedLines);
+};
+
+const AssistantMarkdownBlocks = ({ content = '', className = '' }) => {
+    const normalized = normalizeAssistantParagraphSpacing(content);
+    const blocks = normalized
+        .split(/\n{2,}/)
+        .map((block) => block.trim())
+        .filter(Boolean);
+
+    if (blocks.length <= 1) {
+        return (
+            <div className={className}>
+                <ReactMarkdown>{normalized}</ReactMarkdown>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`${className} space-y-4`}>
+            {blocks.map((block, index) => (
+                <div key={`assistant-block-${index}`}>
+                    <ReactMarkdown>{block}</ReactMarkdown>
+                </div>
+            ))}
+        </div>
+    );
 };
 
 const normalizeInlineOptions = (text = "") =>
@@ -694,25 +738,19 @@ const AssistantMessageBody = ({
         forceInteractiveOptions,
     });
     const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
-    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.97rem] leading-7 prose-p:my-2.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
+    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.97rem] leading-7 prose-p:my-3.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
         ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white prose-a:text-amber-300'
         : 'prose-p:text-slate-700 prose-li:text-slate-700 prose-headings:text-slate-900 prose-a:text-amber-700'
         }`;
 
     if (!hasStructuredQuestion) {
-        return (
-            <div className={assistantMarkdownClassName}>
-                <ReactMarkdown>{forceSentenceBreaks(content)}</ReactMarkdown>
-            </div>
-        );
+        return <AssistantMarkdownBlocks content={content} className={assistantMarkdownClassName} />;
     }
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
             {contextText && (
-                <div className={assistantMarkdownClassName}>
-                    <ReactMarkdown>{contextText}</ReactMarkdown>
-                </div>
+                <AssistantMarkdownBlocks content={contextText} className={assistantMarkdownClassName} />
             )}
 
             {questionText && (
@@ -807,6 +845,192 @@ const stripMarkdownDecorators = (value = '') =>
         .replace(/\*\*/g, '')
         .replace(/`/g, '')
         .trim();
+
+const normalizeHelperIntentText = (value = '') =>
+    stripMarkdownDecorators(String(value || ''))
+        .toLowerCase()
+        .replace(/[—–-]/g, ' ')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const buildHistoryPersonalizationLead = (historyContext = '') => {
+    const normalized = normalizeHelperIntentText(historyContext);
+    if (!normalized) return '';
+
+    if (/\b(booking|appointment|appointments|schedule|scheduling|reservation)\b/.test(normalized)
+        && /\b(service|services)\b/.test(normalized)) {
+        return "Since you're planning a booking-focused services website, ";
+    }
+
+    if (/\b(marketplace|multi vendor|multivendor|vendors|sellers|buyers)\b/.test(normalized)) {
+        return "Since you're planning a marketplace-style platform, ";
+    }
+
+    if (/\b(e commerce|ecommerce|store|shop|products|catalog|checkout|payments)\b/.test(normalized)) {
+        return "Since you're planning a selling-focused project, ";
+    }
+
+    if (/\b(seo|search engine|organic traffic)\b/.test(normalized)
+        && /\b(next js|nextjs)\b/.test(normalized)) {
+        return 'Since strong SEO and performance matter for this project, ';
+    }
+
+    if (/\b(next js|nextjs)\b/.test(normalized)) {
+        return 'Since you already prefer Next.js for this project, ';
+    }
+
+    if (/\b(booking|appointment|appointments|schedule|scheduling|reservation)\b/.test(normalized)) {
+        return "Since you're planning a booking-focused project, ";
+    }
+
+    if (/\b(mobile app|app|ios|android)\b/.test(normalized)) {
+        return "Since you're planning an app, ";
+    }
+
+    if (/\b(website|web site|landing page)\b/.test(normalized)) {
+        return "Since you're planning a website, ";
+    }
+
+    if (/\b(service|services)\b/.test(normalized)) {
+        return "Since you're building around your services, ";
+    }
+
+    return '';
+};
+
+const buildFreeformOptionHelperCopy = ({
+    optionLabel = '',
+    questionText = '',
+    contextText = '',
+    serviceName = '',
+    historyContext = '',
+}) => {
+    const normalizedOption = normalizeHelperIntentText(optionLabel);
+    const combinedPrompt = `${normalizeHelperIntentText(questionText)} ${normalizeHelperIntentText(contextText)}`.trim();
+    const isNotSure = /\bnot sure\b/.test(normalizedOption);
+    const cleanedServiceName = stripMarkdownDecorators(serviceName || '').trim();
+    const serviceReference = cleanedServiceName ? ` for your ${cleanedServiceName.toLowerCase()} project` : '';
+    const personalizationLead = buildHistoryPersonalizationLead(historyContext);
+    const personalizeNotice = (notice = '') => {
+        const trimmedNotice = String(notice || '').trim();
+        if (!trimmedNotice || !personalizationLead) return trimmedNotice;
+
+        if (/^No problem\./i.test(trimmedNotice)) {
+            return trimmedNotice.replace(/^No problem\.\s*/i, `No problem. ${personalizationLead}`);
+        }
+
+        if (/^Got it\./i.test(trimmedNotice)) {
+            return trimmedNotice.replace(/^Got it\.\s*/i, `Got it. ${personalizationLead}`);
+        }
+
+        return `${personalizationLead}${trimmedNotice}`;
+    };
+
+    const guidanceByIntent = [
+        {
+            test: /\b(frontend|framework|next js|react|angular|vue)\b/,
+            notSureNotice: `No problem. Tell me what matters most for the frontend${serviceReference}, like SEO, speed, or flexibility, and I will suggest the best fit.`,
+            notSurePlaceholder: 'Share what matters most for the frontend...',
+            otherNotice: `Got it. Tell me which frontend approach you have in mind${serviceReference}, and I will tailor it around that.`,
+            otherPlaceholder: 'Describe the frontend approach you want...',
+        },
+        {
+            test: /\b(backend|server|api|technology)\b/,
+            notSureNotice: `No problem. Tell me what matters most for the backend${serviceReference}, like speed, integrations, or scalability, and I will suggest the best fit.`,
+            notSurePlaceholder: 'Share what matters most for the backend...',
+            otherNotice: `Got it. Tell me which backend setup you have in mind${serviceReference}, and I will tailor it around that.`,
+            otherPlaceholder: 'Describe the backend setup you want...',
+        },
+        {
+            test: /\b(database|mysql|postgresql|mongodb|firebase|supabase)\b/,
+            notSureNotice: `No problem. Tell me about the kind of data you expect${serviceReference}, and I will suggest a database that fits well.`,
+            notSurePlaceholder: 'Tell me about the data or usage you expect...',
+            otherNotice: `Got it. Tell me which database or data setup you want${serviceReference}, and I will tailor it around that.`,
+            otherPlaceholder: 'Describe the database setup you want...',
+        },
+        {
+            test: /\b(budget|price|pricing|cost)\b/,
+            notSureNotice: `No problem. Tell me your comfort range or budget expectation${serviceReference}, and I will help suggest the right scope.`,
+            notSurePlaceholder: 'Share the budget range you are comfortable with...',
+            otherNotice: `Got it. Tell me the budget range you have in mind${serviceReference}, and I will tailor the scope around it.`,
+            otherPlaceholder: 'Describe your budget range or expectation...',
+        },
+        {
+            test: /\b(timeline|ready|launch|deadline|when would you like)\b/,
+            notSureNotice: `No problem. Tell me your ideal launch timing${serviceReference}, and I will suggest a timeline that fits.`,
+            notSurePlaceholder: 'Share your ideal launch window...',
+            otherNotice: `Got it. Tell me the timeline you have in mind${serviceReference}, and I will tailor the plan around it.`,
+            otherPlaceholder: 'Describe your preferred timeline...',
+        },
+        {
+            test: /\b(design|style|look|feel|visual|branding)\b/,
+            notSureNotice: `No problem. Tell me the kind of look and feel you want${serviceReference}, and I will suggest a direction that fits.`,
+            notSurePlaceholder: 'Describe the look and feel you want...',
+            otherNotice: `Got it. Tell me the design direction you have in mind${serviceReference}, and I will tailor it around that.`,
+            otherPlaceholder: 'Describe your preferred design direction...',
+        },
+        {
+            test: /\b(page count|pages|home|about|contact|service detail)\b/,
+            notSureNotice: `No problem. Tell me which pages feel essential${serviceReference}, and I will suggest a structure that fits.`,
+            notSurePlaceholder: 'List the pages you think you may need...',
+            otherNotice: `Got it. Tell me the pages or sections you want${serviceReference}, and I will tailor the structure around them.`,
+            otherPlaceholder: 'Describe the pages or sections you want...',
+        },
+        {
+            test: /\b(features|deliverables|include|booking|appointments|functionality)\b/,
+            notSureNotice: `No problem. Tell me the must-have features${serviceReference}, and I will suggest the best fit.`,
+            notSurePlaceholder: 'Tell me the features you definitely want...',
+            otherNotice: `Got it. Tell me the features or deliverables you have in mind${serviceReference}, and I will tailor it around them.`,
+            otherPlaceholder: 'Describe the features or deliverables you want...',
+        },
+        {
+            test: /\b(hosting|deploy|deployment|vercel|aws|render)\b/,
+            notSureNotice: `No problem. Tell me what matters most for hosting${serviceReference}, like simplicity, scale, or budget, and I will suggest the best fit.`,
+            notSurePlaceholder: 'Share what matters most for hosting...',
+            otherNotice: `Got it. Tell me the hosting setup you have in mind${serviceReference}, and I will tailor it around that.`,
+            otherPlaceholder: 'Describe the hosting setup you want...',
+        },
+        {
+            test: /\b(what do you want to build|website type|mobile app|what kind of website|what kind of app|project type)\b/,
+            notSureNotice: `No problem. Tell me what you want people to do on the product${serviceReference}, and I will suggest the best fit.`,
+            notSurePlaceholder: 'Tell me what users should be able to do...',
+            otherNotice: `Got it. Tell me what kind of product you have in mind${serviceReference}, and I will tailor the direction around it.`,
+            otherPlaceholder: 'Describe the kind of product you want to build...',
+        },
+        {
+            test: /\b(developed|build type|wordpress|shopify|custom development|cms)\b/,
+            notSureNotice: `No problem. Tell me what matters most here${serviceReference}, like flexibility, easier updates, or budget, and I will suggest the best fit.`,
+            notSurePlaceholder: 'Tell me what matters most here, like flexibility or budget...',
+            otherNotice: `Got it. Tell me the website approach you have in mind${serviceReference}, and I will tailor it around that.`,
+            otherPlaceholder: 'Describe the website approach you want...',
+        },
+    ];
+
+    const matchedIntent = guidanceByIntent.find((entry) => entry.test.test(combinedPrompt));
+
+    if (matchedIntent) {
+        return isNotSure
+            ? {
+                notice: personalizeNotice(matchedIntent.notSureNotice),
+                placeholder: matchedIntent.notSurePlaceholder,
+            }
+            : {
+                notice: personalizeNotice(matchedIntent.otherNotice),
+                placeholder: matchedIntent.otherPlaceholder,
+            };
+    }
+
+    return isNotSure
+        ? {
+            notice: personalizeNotice(`No problem. Tell me a little more about what you need here${serviceReference}, and I will suggest the best fit.`),
+            placeholder: 'Tell me a bit more about what you need here...',
+        }
+        : {
+            notice: personalizeNotice(`Got it. Tell me what you have in mind here${serviceReference}, and I will tailor it for you.`),
+            placeholder: 'Tell me a bit more about what you have in mind...',
+        };
+};
 
 const PROPOSAL_INLINE_FIELD_LABELS = [
     'Client Name',
@@ -1059,6 +1283,7 @@ const GuestAIDemo = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [inputConfig, setInputConfig] = useState({ type: 'text', options: [] });
     const [selectedOptions, setSelectedOptions] = useState([]);
+    const [pendingOptionFollowup, setPendingOptionFollowup] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const [isSpeechSupported, setIsSpeechSupported] = useState(false);
     const [sidebarSize, setSidebarSize] = useState(() => readStoredSidebarSize());
@@ -1163,6 +1388,52 @@ const GuestAIDemo = () => {
     const normalizeOptionToken = (value = '') =>
         String(value || '').trim().toLowerCase();
 
+    const requiresFreeformOptionFollowup = (value = '') => {
+        const normalized = normalizeOptionToken(
+            stripMarkdownDecorators(String(value || '')).replace(/[—–-]/g, ' ')
+        );
+        return FREEFORM_FOLLOWUP_OPTION_REGEX.test(normalized);
+    };
+
+    const pendingOptionValue = String(pendingOptionFollowup?.optionValue || '').trim();
+    const pendingOptionLabel = stripMarkdownDecorators(pendingOptionValue);
+    const isPendingOptionFollowup = Boolean(pendingOptionValue);
+    const pendingOptionNormalized = normalizeOptionToken(
+        pendingOptionLabel.replace(/[—–-]/g, ' ')
+    );
+    const isNotSureFollowup = /\bnot sure\b/.test(pendingOptionNormalized);
+    const pendingOptionNotice = isPendingOptionFollowup
+        ? isNotSureFollowup
+            ? "No problem. Tell me a little about what you need, and I will suggest the best fit."
+            : `Got it. Tell me what you have in mind for ${pendingOptionLabel}, and I will tailor it for you.`
+        : "";
+    const pendingOptionPlaceholder = isPendingOptionFollowup
+        ? isNotSureFollowup
+            ? "Tell me a bit about what you are trying to build..."
+            : `Tell me a bit more about "${pendingOptionLabel}"...`
+        : "Message CATA AI...";
+    const latestAssistantMessage = [...messages].reverse().find((message) => message?.role === 'assistant');
+    const latestAssistantPrompt = latestAssistantMessage
+        ? parseAssistantMessageLayout(latestAssistantMessage.content || '', { forceInteractiveOptions: true })
+        : { questionText: '', contextText: '', options: [] };
+    const recentUserContext = messages
+        .filter((message) => message?.role === 'user')
+        .slice(-4)
+        .map((message) => parseMessageContentWithAttachments(message?.content || '', message?.attachments || []).text)
+        .filter(Boolean)
+        .join(' ');
+    const contextualPendingOptionHelperCopy = isPendingOptionFollowup
+        ? buildFreeformOptionHelperCopy({
+            optionLabel: pendingOptionLabel,
+            questionText: latestAssistantPrompt.questionText,
+            contextText: latestAssistantPrompt.contextText,
+            serviceName: selectedService?.name || '',
+            historyContext: recentUserContext,
+        })
+        : { notice: '', placeholder: 'Message CATA AI...' };
+    const contextualPendingOptionNotice = contextualPendingOptionHelperCopy.notice || pendingOptionNotice;
+    const contextualPendingOptionPlaceholder = contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder;
+
     const optionIsSelected = (value = '') =>
         selectedOptions.some((selected) => normalizeOptionToken(selected) === normalizeOptionToken(value));
 
@@ -1189,29 +1460,66 @@ const GuestAIDemo = () => {
         return String(typeof matched === 'string' ? matched : (matched.value ?? matched.label ?? raw));
     };
 
-    const isOptionSelectedByText = (optionText = '') =>
-        optionIsSelected(resolveConfiguredOptionValue(optionText));
+    const isOptionSelectedByText = (optionText = '') => {
+        const resolvedValue = resolveConfiguredOptionValue(optionText);
+        if (optionIsSelected(resolvedValue)) return true;
+        return isPendingOptionFollowup
+            && normalizeOptionToken(pendingOptionValue) === normalizeOptionToken(resolvedValue);
+    };
 
     const handleChatOptionClick = (optionText = '') => {
         const resolvedValue = resolveConfiguredOptionValue(optionText);
         if (!resolvedValue) return;
 
+        const needsFreeformFollowup = requiresFreeformOptionFollowup(resolvedValue);
+
         if (isMultiInput) {
+            const alreadySelected = optionIsSelected(resolvedValue);
             setSelectedOptions((prev) => {
-                const alreadySelected = prev.some(
+                const alreadyChosen = prev.some(
                     (v) => normalizeOptionToken(v) === normalizeOptionToken(resolvedValue)
                 );
-                if (alreadySelected) {
+                if (alreadyChosen) {
                     return prev.filter(
                         (v) => normalizeOptionToken(v) !== normalizeOptionToken(resolvedValue)
                     );
                 }
                 return [...prev, resolvedValue];
             });
+
+            if (needsFreeformFollowup) {
+                if (alreadySelected) {
+                    setPendingOptionFollowup((current) => (
+                        normalizeOptionToken(current?.optionValue || '') === normalizeOptionToken(resolvedValue)
+                            ? null
+                            : current
+                    ));
+                } else {
+                    setPendingOptionFollowup({ optionValue: resolvedValue });
+                    setInput('');
+                    toast.info(`Add a short detail for "${stripMarkdownDecorators(resolvedValue)}" and send it.`);
+                    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+                        window.requestAnimationFrame(() => focusMessageInput());
+                    }
+                }
+            }
             return;
         }
 
-        handleSendMessage(null, resolvedValue);
+        if (needsFreeformFollowup) {
+            setSelectedOptions([resolvedValue]);
+            setPendingOptionFollowup({ optionValue: resolvedValue });
+            setInput('');
+            toast.info(`Add a short detail for "${stripMarkdownDecorators(resolvedValue)}" and send it.`);
+            if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+                window.requestAnimationFrame(() => focusMessageInput());
+            }
+            return;
+        }
+
+        setPendingOptionFollowup(null);
+        setSelectedOptions([]);
+        handleSendMessage(null, resolvedValue, { ignorePendingOptionFollowup: true });
     };
 
     useEffect(() => {
@@ -1538,6 +1846,7 @@ const GuestAIDemo = () => {
         setInput('');
         setPendingAttachments([]);
         setSelectedOptions([]);
+        setPendingOptionFollowup(null);
         setMessages([]);
         setInputConfig({ type: 'text', options: [] });
 
@@ -1584,6 +1893,7 @@ const GuestAIDemo = () => {
         setInput('');
         setPendingAttachments([]);
         setSelectedOptions([]);
+        setPendingOptionFollowup(null);
         try {
             const response = await request('/guest/start', {
                 method: 'POST',
@@ -1619,9 +1929,31 @@ const GuestAIDemo = () => {
         }
     };
 
-    const handleSendMessage = async (e, forcedContent = null) => {
+    const handleSendMessage = async (e, forcedContent = null, options = {}) => {
         if (e) e.preventDefault();
-        const contentToSend = forcedContent ?? input;
+        const ignorePendingOptionFollowup = Boolean(options?.ignorePendingOptionFollowup);
+        let contentToSend = forcedContent ?? input;
+
+        if (!ignorePendingOptionFollowup && pendingOptionValue) {
+            const detailText = String(input || '').trim();
+            if (!detailText) {
+                toast.info(`Add a short detail for "${pendingOptionLabel}" before sending.`);
+                focusMessageInput();
+                return;
+            }
+
+            if (Array.isArray(contentToSend)) {
+                const mergedSelections = contentToSend
+                    .filter(Boolean)
+                    .map(String)
+                    .filter((value) => normalizeOptionToken(value) !== normalizeOptionToken(pendingOptionValue));
+
+                contentToSend = [...mergedSelections, `${pendingOptionValue}: ${detailText}`];
+            } else {
+                contentToSend = `${pendingOptionValue}: ${detailText}`;
+            }
+        }
+
         const isArrayPayload = Array.isArray(contentToSend);
         const normalizedArray = isArrayPayload
             ? contentToSend.filter(Boolean).map(String)
@@ -1663,6 +1995,7 @@ const GuestAIDemo = () => {
             setPendingAttachments([]);
             setInputConfig({ type: 'text', options: [] });
             setSelectedOptions([]);
+            setPendingOptionFollowup(null);
 
             const response = await request('/guest/chat', {
                 method: 'POST',
@@ -1724,6 +2057,7 @@ const GuestAIDemo = () => {
         setInput('');
         setPendingAttachments([]);
         setSelectedOptions([]);
+        setPendingOptionFollowup(null);
         setInputConfig({ type: 'text', options: [] });
     };
 
@@ -2292,6 +2626,30 @@ const GuestAIDemo = () => {
                                     : 'border-slate-300/70 bg-white'
                                     }`}
                             >
+                                {isPendingOptionFollowup && (
+                                    <div className={`mb-3 flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-2.5 text-sm ${isDark
+                                        ? 'border-amber-300/25 bg-amber-300/[0.08] text-amber-50'
+                                        : 'border-amber-300/40 bg-amber-50 text-amber-900'
+                                        }`}>
+                                        <p className="min-w-0 flex-1">
+                                            {contextualPendingOptionNotice}
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 shrink-0 rounded-full"
+                                            onClick={() => {
+                                                setPendingOptionFollowup(null);
+                                                setSelectedOptions([]);
+                                                setInput('');
+                                            }}
+                                            aria-label="Clear selected special option"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
                                 {pendingAttachments.length > 0 && (
                                     <div className="mb-3 flex flex-wrap gap-2">
                                         {pendingAttachments.map((file, index) => {
@@ -2332,7 +2690,7 @@ const GuestAIDemo = () => {
                                         autoFocus
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
-                                        placeholder="Message CATA AI..."
+                                        placeholder={contextualPendingOptionPlaceholder}
                                         className={`h-12 flex-1 rounded-2xl border-0 bg-transparent text-base ${isDark
                                             ? 'text-white placeholder:text-slate-400'
                                             : 'text-slate-900 placeholder:text-slate-500'
@@ -2382,7 +2740,7 @@ const GuestAIDemo = () => {
                                     <Button
                                         size="icon"
                                         type="submit"
-                                        disabled={(!input.trim() && pendingAttachments.length === 0) || isTyping || isUploadingAttachment}
+                                        disabled={((!input.trim() && pendingAttachments.length === 0) || (isPendingOptionFollowup && !input.trim())) || isTyping || isUploadingAttachment}
                                         className="h-10 w-10 rounded-xl bg-primary text-primary-foreground shadow-[0_14px_28px_-16px_rgba(245,158,11,0.9)] hover:bg-primary/90"
                                     >
                                         <Send className="h-4 w-4" />
