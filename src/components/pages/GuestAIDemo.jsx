@@ -499,6 +499,49 @@ const forceSentenceBreaks = (text = "") => {
         .replace(/_PROTECT_/g, ". ");
 };
 
+const normalizeAssistantParagraphSpacing = (text = "") => {
+    const source = String(text || "").replace(/\r/g, "").trim();
+    if (!source) return source;
+
+    if (/(^|\n)\s*([-*]|\d+\.)\s+\S/m.test(source)) {
+        return source;
+    }
+
+    const normalizedLines = source
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join("\n\n");
+
+    return forceSentenceBreaks(normalizedLines);
+};
+
+const AssistantMarkdownBlocks = ({ content = '', className = '' }) => {
+    const normalized = normalizeAssistantParagraphSpacing(content);
+    const blocks = normalized
+        .split(/\n{2,}/)
+        .map((block) => block.trim())
+        .filter(Boolean);
+
+    if (blocks.length <= 1) {
+        return (
+            <div className={className}>
+                <ReactMarkdown>{normalized}</ReactMarkdown>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`${className} space-y-4`}>
+            {blocks.map((block, index) => (
+                <div key={`assistant-block-${index}`}>
+                    <ReactMarkdown>{block}</ReactMarkdown>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const normalizeInlineOptions = (text = "") =>
     String(text || "")
         // Common AI output: "... question? 1. Option A"
@@ -695,25 +738,19 @@ const AssistantMessageBody = ({
         forceInteractiveOptions,
     });
     const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
-    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.97rem] leading-7 prose-p:my-2.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
+    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[0.97rem] leading-7 prose-p:my-3.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
         ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white prose-a:text-amber-300'
         : 'prose-p:text-slate-700 prose-li:text-slate-700 prose-headings:text-slate-900 prose-a:text-amber-700'
         }`;
 
     if (!hasStructuredQuestion) {
-        return (
-            <div className={assistantMarkdownClassName}>
-                <ReactMarkdown>{forceSentenceBreaks(content)}</ReactMarkdown>
-            </div>
-        );
+        return <AssistantMarkdownBlocks content={content} className={assistantMarkdownClassName} />;
     }
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
             {contextText && (
-                <div className={assistantMarkdownClassName}>
-                    <ReactMarkdown>{contextText}</ReactMarkdown>
-                </div>
+                <AssistantMarkdownBlocks content={contextText} className={assistantMarkdownClassName} />
             )}
 
             {questionText && (
