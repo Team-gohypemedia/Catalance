@@ -50,11 +50,24 @@ const DialogContent = React.forwardRef(({
   children,
   showCloseButton = true,
   overlayClassName,
+  disableScrollLock = false,
   ...props
 }, ref) => {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay className={overlayClassName} />
+      {disableScrollLock ? (
+        <DialogPrimitive.Close asChild>
+          <div
+            aria-hidden="true"
+            className={cn(
+              "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+              overlayClassName
+            )}
+          />
+        </DialogPrimitive.Close>
+      ) : (
+        <DialogOverlay className={overlayClassName} />
+      )}
       <DialogPrimitive.Content
         ref={ref}
         data-slot="dialog-content"
