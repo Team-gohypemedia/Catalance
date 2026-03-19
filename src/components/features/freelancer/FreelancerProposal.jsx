@@ -7,7 +7,6 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -349,13 +348,11 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   const [rejectCustomReason, setRejectCustomReason] = useState("");
 
   // Tab State
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState("pending");
 
   useEffect(() => {
-    if (filter === "accepted") setActiveTab("active");
-    else if (filter === "pending" || filter === "received")
-      setActiveTab("pending");
-    else if (filter === "rejected") setActiveTab("rejected");
+    if (filter === "rejected") setActiveTab("rejected");
+    else setActiveTab("pending");
   }, [filter]);
 
   const fetchProposals = useCallback(async () => {
@@ -411,74 +408,74 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
     setRejectCustomReason("");
   }, []);
 
-  const handleStatusChange = async (
-    id,
-    nextStatus,
-    rejectionReason = "",
-    rejectionReasonKeyValue = ""
-  ) => {
-    setProcessingId(id);
-    const apiStatus = nextStatus.toUpperCase();
+  const handleStatusChange = useCallback(
+    async (id, nextStatus, rejectionReason = "", rejectionReasonKeyValue = "") => {
+      setProcessingId(id);
+      const apiStatus = nextStatus.toUpperCase();
 
-    try {
-      const bodyPayload = { status: apiStatus };
-      if (apiStatus === "REJECTED") {
-        bodyPayload.rejectionReason = String(rejectionReason || "").trim();
-        bodyPayload.rejectionReasonKey = String(
-          rejectionReasonKeyValue || ""
-        ).trim();
-      }
+      try {
+        const bodyPayload = { status: apiStatus };
+        if (apiStatus === "REJECTED") {
+          bodyPayload.rejectionReason = String(rejectionReason || "").trim();
+          bodyPayload.rejectionReasonKey = String(
+            rejectionReasonKeyValue || ""
+          ).trim();
+        }
 
-      const response = await authFetch(`/proposals/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload),
-      });
+        const response = await authFetch(`/proposals/${id}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bodyPayload),
+        });
 
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
-        throw new Error(
-          errorPayload?.message ||
-            `Status update failed (${response.status})`
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(
+            errorPayload?.message ||
+              `Status update failed (${response.status})`
+          );
+        }
+
+        // Update local state
+        setProposals((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  status: normalizeProposalStatus(nextStatus),
+                  rejectionReason:
+                    apiStatus === "REJECTED"
+                      ? String(rejectionReason || "").trim()
+                      : p.rejectionReason,
+                }
+              : p
+          )
         );
-      }
 
-      // Update local state
-      setProposals((prev) =>
-        prev.map((p) =>
-          p.id === id
+        // Update selected proposal if open
+        setSelectedProposal((prev) =>
+          prev?.id === id
             ? {
-                ...p,
+                ...prev,
                 status: normalizeProposalStatus(nextStatus),
                 rejectionReason:
                   apiStatus === "REJECTED"
                     ? String(rejectionReason || "").trim()
-                    : p.rejectionReason,
+                    : prev?.rejectionReason || "",
               }
-            : p
-        )
-      );
+            : prev
+        );
 
-      // Update selected proposal if open
-      if (selectedProposal?.id === id) {
-        setSelectedProposal((prev) => ({
-          ...prev,
-          status: normalizeProposalStatus(nextStatus),
-          rejectionReason:
-            apiStatus === "REJECTED"
-              ? String(rejectionReason || "").trim()
-              : prev?.rejectionReason || "",
-        }));
+        toast.success(`Proposal marked as ${nextStatus}`);
+      } catch (error) {
+        console.error("Status update error:", error);
+        toast.error(error?.message || "Could not update status");
+      } finally {
+        setProcessingId(null);
       }
-
-      toast.success(`Proposal marked as ${nextStatus}`);
-    } catch (error) {
-      console.error("Status update error:", error);
-      toast.error(error?.message || "Could not update status");
-    } finally {
-      setProcessingId(null);
-    }
-  };
+    },
+    [authFetch]
+  );
 
   const handleConfirmReject = useCallback(async () => {
     if (!selectedProposal?.id) return;
@@ -519,20 +516,42 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   // Grouping
   const grouped = useMemo(() => {
     const groups = {
-      active: [],
       pending: [],
       rejected: [],
     };
 
     proposals.forEach((p) => {
-      if (p.status === "accepted") groups.active.push(p);
-      else if (p.status === "rejected" || p.status === "awarded")
+      if (p.status === "rejected" || p.status === "awarded") {
         groups.rejected.push(p);
-      else groups.pending.push(p); // pending or received
+        return;
+      }
+
+      if (p.status === "pending" || p.status === "received") {
+        groups.pending.push(p);
+      }
     });
 
     return groups;
   }, [proposals]);
+
+  const tabCopy = {
+    pending: {
+      title: "Pending approvals",
+      description:
+        "Review client proposals waiting for your response and keep new opportunities moving.",
+      emptyTitle: "No pending proposals",
+      emptyDescription:
+        "Client proposals awaiting your approval will show up here.",
+    },
+    rejected: {
+      title: "Rejected proposals",
+      description:
+        "Keep a record of proposals you turned down so you can revisit them later if needed.",
+      emptyTitle: "No rejected proposals",
+      emptyDescription:
+        "Rejected proposals will appear here once you decline a client offer.",
+    },
+  };
 
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
@@ -540,100 +559,92 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
         <div className="max-w-[1600px] mx-auto space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight mb-2">
-            My Proposals
-          </h2>
-          <p className="text-muted-foreground">
-            Manage your received offers and active contracts.
-          </p>
+          <Tabs
+            defaultValue="pending"
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full space-y-8"
+          >
+            <section className="space-y-4">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-foreground">
+                    My Proposals
+                  </h2>
+                  <p className="mt-2 max-w-[34rem] text-sm text-muted-foreground">
+                    Track proposals waiting for your approval and keep a record of
+                    the ones you rejected.
+                  </p>
+                </div>
+
+                <div className="flex justify-start lg:justify-end">
+                  <TabsList className="inline-flex h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    {[
+                      { value: "pending", label: "Pending Approval" },
+                      { value: "rejected", label: "Rejected" },
+                    ].map((item) => (
+                      <TabsTrigger
+                        key={item.value}
+                        value={item.value}
+                        className="h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold text-muted-foreground shadow-none transition hover:text-foreground data-[state=active]:!border-primary/70 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-none"
+                      >
+                        {item.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+              </div>
+
+              <div className="flex min-h-7 flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                {activeTab === "pending" && grouped.pending.length > 0 ? (
+                  <span>
+                    {grouped.pending.length} proposal
+                    {grouped.pending.length === 1 ? "" : "s"} awaiting your decision.
+                  </span>
+                ) : null}
+                {activeTab === "rejected" && grouped.rejected.length > 0 ? (
+                  <span>
+                    {grouped.rejected.length} rejected proposal
+                    {grouped.rejected.length === 1 ? "" : "s"} kept for reference.
+                  </span>
+                ) : null}
+              </div>
+            </section>
+
+            {["pending", "rejected"].map((tabValue) => (
+              <TabsContent key={tabValue} value={tabValue} className="m-0">
+                {(() => {
+                  const tabItems = grouped[tabValue] || [];
+                  const tabMeta = tabCopy[tabValue] || tabCopy.pending;
+
+                  return isLoading ? (
+                    <Skeleton className="h-32 w-full rounded-xl" />
+                  ) : tabItems.length > 0 ? (
+                    <div className="space-y-6">
+                      {tabItems.map((proposal) => (
+                        <ProposalRowCard
+                          key={proposal.id}
+                          proposal={proposal}
+                          onOpen={setSelectedProposal}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-3xl border border-dashed border-border/70 bg-card/40 px-6 py-14 text-center">
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {tabMeta.emptyTitle}
+                      </h3>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {tabMeta.emptyDescription}
+                      </p>
+                    </div>
+                  );
+                })()}
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
-
-        <Tabs
-          defaultValue="active"
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <TabsList className="bg-transparent p-0 h-auto w-full justify-start gap-4 mb-6">
-            <TabsTrigger
-              value="active"
-              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-green-500 data-[state=active]:text-white data-[state=active]:shadow-md"
-            >
-              Active Proposals
-            </TabsTrigger>
-            <TabsTrigger
-              value="pending"
-              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-500 data-[state=active]:text-white data-[state=active]:shadow-md"
-            >
-              Pending Approval
-            </TabsTrigger>
-            <TabsTrigger
-              value="rejected"
-              className="rounded-md border border-transparent px-4 py-2 font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:border-transparent data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-600 data-[state=active]:to-rose-500 data-[state=active]:text-white data-[state=active]:shadow-md"
-            >
-              Rejected
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="active" className="space-y-4 m-0">
-            {isLoading ? (
-              <Skeleton className="h-32 w-full rounded-xl" />
-            ) : grouped.active.length > 0 ? (
-              grouped.active.map((p) => (
-                <ProposalRowCard
-                  key={p.id}
-                  proposal={p}
-                  onOpen={setSelectedProposal}
-                  onDelete={handleDelete}
-                />
-              ))
-            ) : (
-              <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground bg-card/40">
-                No active proposals yet.
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="pending" className="space-y-4 m-0">
-            {isLoading ? (
-              <Skeleton className="h-32 w-full rounded-xl" />
-            ) : grouped.pending.length > 0 ? (
-              grouped.pending.map((p) => (
-                <ProposalRowCard
-                  key={p.id}
-                  proposal={p}
-                  onOpen={setSelectedProposal}
-                  onDelete={handleDelete}
-                />
-              ))
-            ) : (
-              <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground bg-card/40">
-                No pending proposals.
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="rejected" className="space-y-4 m-0">
-            {isLoading ? (
-              <Skeleton className="h-32 w-full rounded-xl" />
-            ) : grouped.rejected.length > 0 ? (
-              grouped.rejected.map((p) => (
-                <ProposalRowCard
-                  key={p.id}
-                  proposal={p}
-                  onOpen={setSelectedProposal}
-                  onDelete={handleDelete}
-                />
-              ))
-            ) : (
-              <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground bg-card/40">
-                No rejected proposals.
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
       </main>
 
       {/* Dialog */}
@@ -830,13 +841,9 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   );
 };
 
-const FreelancerProposal = ({ filter = "all" }) => {
-  return (
-    <RoleAwareSidebar>
-      <FreelancerProposalContent filter={filter} />
-    </RoleAwareSidebar>
-  );
-};
+const FreelancerProposal = ({ filter = "all" }) => (
+  <FreelancerProposalContent filter={filter} />
+);
 
 export default FreelancerProposal;
 

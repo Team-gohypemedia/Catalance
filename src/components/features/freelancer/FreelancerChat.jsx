@@ -1,16 +1,14 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import format from "date-fns/format";
 import isToday from "date-fns/isToday";
 import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
 import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
@@ -20,10 +18,12 @@ import Clock4 from "lucide-react/dist/esm/icons/clock-4";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Search from "lucide-react/dist/esm/icons/search";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shared/lib/api-client";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { useSearchParams } from "react-router-dom";
+import { cn } from "@/shared/lib/utils";
 
 const SERVICE_LABEL = "Project Chat";
 
@@ -33,6 +33,114 @@ const formatTime = (value) => {
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
+
+const getConversationKey = (conversation) =>
+  conversation?.serviceKey || conversation?.id || null;
+
+const sortConversations = (list = []) =>
+  [...list].sort((left, right) => (right.lastActivity || 0) - (left.lastActivity || 0));
+
+const getInitials = (value = "") => {
+  const parts = String(value)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "C";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const formatConversationTimestamp = (value) => {
+  if (!value) return "";
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  if (isToday(date)) return format(date, "h:mm a");
+  if (isYesterday(date)) return "YESTERDAY";
+
+  return format(date, "MMM dd").toUpperCase();
+};
+
+const getMessagePreview = (conversation = {}) => {
+  if (typeof conversation?.previewText === "string" && conversation.previewText.trim()) {
+    return conversation.previewText.trim();
+  }
+
+  if (typeof conversation?.projectTitle === "string" && conversation.projectTitle.trim()) {
+    return conversation.projectTitle.trim();
+  }
+
+  if (typeof conversation?.label === "string" && conversation.label.trim()) {
+    return conversation.label.trim();
+  }
+
+  return "Open the conversation to continue the project discussion.";
+};
+
+const ConversationItem = ({
+  conversation,
+  isActive,
+  onSelect,
+  unreadCount = 0,
+  showOnline = false,
+}) => (
+  <button
+    type="button"
+    onClick={onSelect}
+    className={cn(
+      "relative flex w-full items-center gap-4 rounded-[18px] border px-4 py-3 text-left transition",
+      isActive
+        ? "border-white/[0.08] bg-accent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+        : "border-transparent text-white hover:border-white/[0.05] hover:bg-white/[0.03]",
+    )}
+  >
+    <div className="relative shrink-0">
+      <Avatar className={cn("size-12 border", isActive ? "border-white/[0.12]" : "border-white/10")}>
+        <AvatarImage src={conversation.avatar || undefined} alt={conversation.label || conversation.name} />
+        <AvatarFallback className="bg-[#2b2b31] text-sm font-semibold text-white">
+          {getInitials(conversation.label || conversation.name)}
+        </AvatarFallback>
+      </Avatar>
+      {showOnline ? (
+        <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#171717] bg-[#22c55e]" />
+      ) : null}
+    </div>
+
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center justify-between gap-3">
+        <p className="truncate text-[0.98rem] font-semibold text-white">
+          {conversation.label || conversation.name || "Project chat"}
+        </p>
+        <span
+          className={cn(
+            "shrink-0 text-[11px]",
+            isActive ? "text-[#cbd5e1]" : "text-[#7f8795]",
+          )}
+        >
+          {formatConversationTimestamp(conversation.lastActivity)}
+        </span>
+      </div>
+
+      <p
+        className={cn(
+          "mt-1 truncate text-sm",
+          isActive ? "text-[#cbd5e1]" : "text-[#8f96a3]",
+        )}
+      >
+        {conversation.name ? `${conversation.name} • ${getMessagePreview(conversation)}` : getMessagePreview(conversation)}
+      </p>
+    </div>
+
+    {unreadCount > 0 ? (
+      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#ef4444] px-1 text-[10px] font-bold text-white">
+        {unreadCount}
+      </span>
+    ) : null}
+  </button>
+);
 
 const ChatArea = ({
   conversationName,
@@ -407,21 +515,27 @@ const FreelancerChatContent = () => {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [useSocket, setUseSocket] = useState(SOCKET_ENABLED);
+  const [conversationSearch, setConversationSearch] = useState("");
   const socketRef = useRef(null);
   const pollRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const drafts = useRef({});
   const [typingUsers, setTypingUsers] = useState([]);
   const [online, setOnline] = useState(false);
+  const deferredConversationSearch = useDeferredValue(conversationSearch);
+  const selectedConversationKey = useMemo(
+    () => getConversationKey(selectedConversation),
+    [selectedConversation],
+  );
 
-  const stopPolling = () => {
+  const stopPolling = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-  };
+  }, []);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
     try {
       const response = await authFetch(`/chat/conversations/${conversationId}/messages`, {
@@ -438,7 +552,7 @@ const FreelancerChatContent = () => {
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     }
-  };
+  }, [authFetch, conversationId]);
 
   const emitTyping = () => {
     if (!useSocket || !socketRef.current || !conversationId) return;
@@ -460,11 +574,11 @@ const FreelancerChatContent = () => {
     }, 1500);
   };
 
-  const startPolling = () => {
+  const startPolling = useCallback(() => {
     stopPolling();
     fetchMessages();
     pollRef.current = setInterval(fetchMessages, 5000);
-  };
+  }, [fetchMessages, stopPolling]);
 
   // Reset state when switching conversation to avoid cross-chat bleed.
   useEffect(() => {
@@ -523,8 +637,7 @@ const FreelancerChatContent = () => {
           });
         }
 
-        // Sort by most recent activity (newest first)
-        const finalList = uniq.sort((a, b) => b.lastActivity - a.lastActivity);
+        const finalList = sortConversations(uniq);
         if (!cancelled) {
           setConversations(finalList);
           // If we have conversations, select the first one by default.
@@ -556,7 +669,7 @@ const FreelancerChatContent = () => {
     return () => {
       cancelled = true;
     };
-  }, [authFetch]);
+  }, [authFetch, searchParams, user?.id]);
 
   useEffect(() => {
     if (!selectedConversation) return;
@@ -601,7 +714,7 @@ const FreelancerChatContent = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedConversation]);
+  }, [authFetch, selectedConversation, token]);
 
   useEffect(() => {
     if (!conversationId || !selectedConversation) return;
@@ -671,7 +784,7 @@ const FreelancerChatContent = () => {
           }
           return conv;
         });
-        return updated.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0));
+        return sortConversations(updated);
       });
 
       // If we are viewing this conversation, mark the new message as read immediately
@@ -722,7 +835,7 @@ const FreelancerChatContent = () => {
       }
       socketRef.current = null;
     };
-  }, [conversationId, selectedConversation, useSocket, user?.id]);
+  }, [conversationId, selectedConversation, startPolling, stopPolling, useSocket, user?.id]);
 
   // Separate effect for global notifications (sorting and unread counts)
   useEffect(() => {
@@ -752,7 +865,7 @@ const FreelancerChatContent = () => {
              return c;
            });
            
-           return updated.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0));
+           return sortConversations(updated);
          });
       }
     };
@@ -892,147 +1005,163 @@ const FreelancerChatContent = () => {
   };
 
   const activeMessages = useMemo(() => messages, [messages]);
+  const filteredConversations = useMemo(() => {
+    const query = deferredConversationSearch.trim().toLowerCase();
+
+    if (!query) {
+      return conversations;
+    }
+
+    return conversations.filter((conversation) => {
+      const haystack = [
+        conversation.name,
+        conversation.projectTitle,
+        conversation.label,
+        getMessagePreview(conversation),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [conversations, deferredConversationSearch]);
 
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
       <FreelancerTopBar />
 
-      <main className="flex-1 overflow-hidden p-4 md:p-8 lg:p-12 z-10 relative">
-        <div className="max-w-[1600px] mx-auto h-full">
-          <div className="grid h-full min-h-0 gap-4 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
-        <Card className="border border-border/50 bg-card/70">
-          <CardContent className="flex h-full flex-col gap-4 overflow-hidden p-4">
-            <div className="flex items-center justify-between border-b border-border/40 pb-4">
-              <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
-                Conversations
-              </p>
-              {selectedConversation?.name ? (
-                <p className="text-lg font-semibold">{selectedConversation.name}</p>
-              ) : null}
-            </div>
-            <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-              {loading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading chats...
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
+        <div className="max-w-[1600px] mx-auto min-h-full">
+          <section className="mt-7 flex min-h-0 flex-1">
+            <div className="flex h-[calc(100vh-13.5rem)] min-h-[720px] w-full flex-col overflow-hidden rounded-[28px] border border-white/[0.05] bg-accent lg:flex-row">
+              <aside className="flex w-full shrink-0 flex-col border-b border-white/[0.06] bg-accent lg:w-[360px] lg:border-b-0 lg:border-r lg:border-white/[0.06]">
+                <div className="px-6 pb-5 pt-7">
+                  <p className="text-[1.05rem] font-semibold text-white">Messages</p>
                 </div>
-              ) : conversations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center space-y-3 py-10 text-center text-sm text-muted-foreground">
-                  <div className="rounded-full bg-muted p-3">
-                    <SendHorizontal className="h-6 w-6 opacity-30" />
+
+                <div className="px-6 pb-6">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-[#6b7280]" />
+                    <Input
+                      value={conversationSearch}
+                      onChange={(event) => setConversationSearch(event.target.value)}
+                      placeholder="Search chats..."
+                      className="h-11 rounded-[16px] border-white/[0.1] bg-white/[0.02] pl-11 text-sm text-white placeholder:text-[#646b77] focus-visible:ring-0"
+                    />
                   </div>
-                  <p>No conversations yet.</p>
-                  <p className="text-xs opacity-60">
-                    Proposals or active projects will appear here.
-                  </p>
                 </div>
-              ) : (
-                conversations.map((conversation) => {
-                  const isActive =
-                    (conversation.serviceKey || conversation.id) ===
-                    (selectedConversation?.serviceKey || selectedConversation?.id);
-                  const nameClass = isActive ? "text-black font-bold" : "text-foreground";
-                  const labelClass = isActive ? "text-gray-800" : "text-muted-foreground";
-                  return (
-                    <button
-                      key={conversation.serviceKey || conversation.id}
-                      className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${isActive
-                        ? "bg-primary border-primary shadow-sm"
-                        : "border-border/50 hover:border-primary/30 hover:bg-muted/50"
-                      }`}
-                      onClick={() => {
-                        // Save draft for current conversation
-                        if (selectedConversation) {
-                          const currentKey = selectedConversation.serviceKey || selectedConversation.id;
-                          drafts.current[currentKey] = messageInput;
-                        }
 
-                        // Load draft for new conversation
-                        const newKey = conversation.serviceKey || conversation.id;
-                        setMessageInput(drafts.current[newKey] || "");
+                <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14] [&::-webkit-scrollbar-track]:bg-transparent">
+                  {loading ? (
+                    <div className="flex h-full min-h-[280px] items-center justify-center gap-3 text-sm text-[#8f96a3]">
+                      <Loader2 className="size-4 animate-spin" />
+                      <span>Loading chats...</span>
+                    </div>
+                  ) : filteredConversations.length > 0 ? (
+                    <div className="space-y-2">
+                      {filteredConversations.map((conversation) => {
+                        const conversationKey = getConversationKey(conversation);
+                        const isActive = conversationKey === selectedConversationKey;
 
-                        setMessages([]);
-                        setConversationId(null);
-                        setSelectedConversation(conversation);
-                        // Reset unread count
-                        setConversations(prev => prev.map(c => 
-                          (c.serviceKey === conversation.serviceKey) ? { ...c, unreadCount: 0 } : c
-                        ));
-                      }}
-                    >
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage
-                          src={conversation.avatar}
-                          alt={conversation.name}
-                        />
-                        <AvatarFallback className={`${isActive ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"} font-bold`}>
-                          {conversation.name?.[0] || "C"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 overflow-hidden">
-                        <div className="flex justify-between items-center mb-1">
-                          <p className={`truncate font-medium transition-colors ${nameClass}`}>
-                            {conversation.label}
-                          </p>
-                          {conversation.unreadCount > 0 && (
-                            <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                              {conversation.unreadCount}
-                            </span>
-                          )}
-                        </div>
-                        <p className={`truncate text-xs transition-colors ${labelClass}`}>
-                          {conversation.name}
-                        </p>
+                        return (
+                          <ConversationItem
+                            key={conversationKey}
+                            conversation={conversation}
+                            isActive={isActive}
+                            unreadCount={conversation.unreadCount}
+                            showOnline={isActive && online}
+                            onSelect={() => {
+                              if (selectedConversationKey) {
+                                drafts.current[selectedConversationKey] = messageInput;
+                              }
+
+                              const nextKey = getConversationKey(conversation);
+                              setMessageInput(drafts.current[nextKey] || "");
+                              setMessages([]);
+                              setConversationId(null);
+                              setSelectedConversation(conversation);
+                              setConversations((prev) =>
+                                prev.map((item) =>
+                                  getConversationKey(item) === nextKey
+                                    ? { ...item, unreadCount: 0 }
+                                    : item,
+                                ),
+                              );
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : conversations.length > 0 ? (
+                    <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
+                      <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+                        <Search className="size-5" />
                       </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                      <p className="mt-4 text-base font-semibold text-white">
+                        No matching conversations
+                      </p>
+                      <p className="mt-2 text-sm text-[#8f96a3]">
+                        Try a different client name or project title.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex h-full min-h-[280px] flex-col items-center justify-center px-6 text-center">
+                      <div className="rounded-full border border-white/[0.06] bg-[#202020] p-4 text-[#ffc107]">
+                        <SendHorizontal className="size-5" />
+                      </div>
+                      <p className="mt-4 text-base font-semibold text-white">
+                        No conversations yet
+                      </p>
+                      <p className="mt-2 text-sm text-[#8f96a3]">
+                        Accepted project collaborations will appear here automatically.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </aside>
 
-        {selectedConversation ? (
-          <ChatArea
-            conversationName={selectedConversation?.label || selectedConversation?.name || SERVICE_LABEL}
-            avatar={selectedConversation?.avatar}
-            messages={activeMessages}
-            messageInput={messageInput}
-            onMessageInputChange={handleInputChange}
-            onSendMessage={handleSendMessage}
-            onFileUpload={uploadChatFile}
-            onDeleteAttachment={deleteAttachment}
-            sending={sending}
-            currentUser={user}
-            typingUsers={typingUsers.map((u) => u.name)}
-            online={online}
-          />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-4 rounded-3xl border border-border/40 bg-card/30 p-8 text-center backdrop-blur-sm">
-            <div className="rounded-full bg-muted/50 p-6">
-              <Paperclip className="h-10 w-10 text-muted-foreground/50" />
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                {selectedConversation ? (
+                  <ChatArea
+                    conversationName={selectedConversation?.label || selectedConversation?.name || SERVICE_LABEL}
+                    avatar={selectedConversation?.avatar}
+                    messages={activeMessages}
+                    messageInput={messageInput}
+                    onMessageInputChange={handleInputChange}
+                    onSendMessage={handleSendMessage}
+                    onFileUpload={uploadChatFile}
+                    onDeleteAttachment={deleteAttachment}
+                    sending={sending}
+                    currentUser={user}
+                    typingUsers={typingUsers.map((u) => u.name)}
+                    online={online}
+                  />
+                ) : (
+                  <div className="flex h-full min-h-0 items-center justify-center bg-accent px-6">
+                    <div className="max-w-md text-center">
+                      <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-white/[0.06] bg-[#202020] text-[#ffc107]">
+                        <SendHorizontal className="size-6" />
+                      </div>
+                      <h2 className="mt-5 text-2xl font-semibold text-white">
+                        Select a conversation
+                      </h2>
+                      <p className="mt-3 text-sm leading-6 text-[#8f96a3]">
+                        Pick a project thread from the left to review updates, reply to clients, and keep delivery moving.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">No Chat Selected</h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
-                Select a conversation from the sidebar to send messages or view project history.
-              </p>
-            </div>
-          </div>
-        )}
-          </div>
+          </section>
         </div>
       </main>
     </div>
   );
 };
 
-const FreelancerChat = () => {
-  return (
-    <RoleAwareSidebar>
-      <FreelancerChatContent />
-    </RoleAwareSidebar>
-  );
-};
+const FreelancerChat = () => <FreelancerChatContent />;
 
 export default FreelancerChat;
 

@@ -1,393 +1,928 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
-import Clock from "lucide-react/dist/esm/icons/clock";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
-import Zap from "lucide-react/dist/esm/icons/zap";
-import { motion } from "framer-motion";
+import Circle from "lucide-react/dist/esm/icons/circle";
+import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import Clock3 from "lucide-react/dist/esm/icons/clock-3";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import { Link, useSearchParams } from "react-router-dom";
 
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
-import { useAuth } from "@/shared/context/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/shared/context/AuthContext";
+import { getSopFromTitle } from "@/shared/data/sopTemplates";
+import { formatINR, getFreelancerVisibleBudgetValue } from "@/shared/lib/currency";
+import { cn } from "@/shared/lib/utils";
 
-// Skeleton for project cards while loading
-const ProjectCardSkeleton = () => (
-  <Card className="border border-border/60 bg-card/80">
-    <CardContent className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-6 w-20 rounded-full" />
-      </div>
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-      </div>
-      <div className="flex gap-4">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-4 w-24" />
-      </div>
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Skeleton className="h-3 w-16" />
-          <Skeleton className="h-3 w-10" />
-        </div>
-        <Skeleton className="h-2 w-full" />
-      </div>
-      <Skeleton className="h-10 w-full" />
-    </CardContent>
-  </Card>
-);
+const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
+  COMPLETED: 100,
+  IN_PROGRESS: 48,
+  OPEN: 24,
+  DRAFT: 14,
+});
 
-const statusConfig = {
-  "in-progress": {
-    label: "In Progress",
-    icon: Clock,
-    gradient: "from-primary to-yellow-400",
-    badgeClass:
-      "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800",
-  },
-  completed: {
-    label: "Completed",
-    icon: CheckCircle2,
-    gradient: "from-emerald-500 to-teal-500",
-    badgeClass:
-      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
-  },
-  pending: {
-    label: "Pending",
-    icon: AlertCircle,
-    gradient: "from-orange-500 to-red-500",
-    badgeClass:
-      "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800",
-  },
+const projectStatusToneMap = {
+  success: "border-[#14532d] bg-[#0c2616] text-[#34d399]",
+  warning: "border-[#5a3b0d] bg-[#2f1e05] text-[#fbbf24]",
+  slate: "border-white/[0.08] bg-white/[0.04] text-[#cbd5e1]",
 };
 
-const CircularProgress = ({ progress, gradient, size = 52, strokeWidth = 4 }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (progress / 100) * circumference;
+const projectActionToneMap = {
+  amber: "bg-[#ffc107] text-black hover:bg-[#ffd54f]",
+  slate: "bg-white/[0.08] text-white hover:bg-white/[0.12]",
+};
+
+const projectFilterOptions = [
+  { key: "ongoing", label: "Ongoing Projects" },
+  { key: "completed", label: "Completed Projects" },
+];
+
+const getInitials = (value = "") => {
+  const parts = String(value)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "C";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const formatProjectDate = (value) => {
+  if (!value) return "";
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return parsedDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const getFirstNonEmptyText = (...values) => {
+  for (const value of values.flat()) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+
+  return "";
+};
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const extractLabeledValue = (value = "", labels = []) => {
+  const source = String(value || "");
+  if (!source) return "";
+
+  for (const label of labels) {
+    const match = source.match(
+      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
+    );
+    const extracted = match?.[1]?.trim();
+    if (extracted) return extracted;
+  }
+
+  return "";
+};
+
+const cleanDisplayText = (value = "") =>
+  String(value || "")
+    .replace(/\s*#+\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeComparableText = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
+const toDisplayTitleCase = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s/-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
+
+const normalizeTimelineValue = (value = "") => {
+  const normalizedValue = cleanDisplayText(value);
+  if (!normalizedValue) return "";
+
+  const parsedDate = new Date(normalizedValue);
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return formatProjectDate(normalizedValue);
+  }
+
+  return normalizedValue;
+};
+
+const resolveProjectBusinessName = (project = {}, acceptedProposal = null) =>
+  getFirstNonEmptyText(
+    project?.businessName,
+    project?.companyName,
+    acceptedProposal?.businessName,
+    acceptedProposal?.companyName,
+    extractLabeledValue(project?.description || "", [
+      "Business Name",
+      "Company Name",
+      "Brand Name",
+    ]),
+    extractLabeledValue(
+      acceptedProposal?.coverLetter || acceptedProposal?.description || "",
+      ["Business Name", "Company Name", "Brand Name"],
+    ),
+  );
+
+const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
+  getFirstNonEmptyText(
+    project?.service,
+    project?.serviceName,
+    project?.serviceKey,
+    project?.category,
+    acceptedProposal?.service,
+    acceptedProposal?.serviceName,
+    acceptedProposal?.serviceKey,
+    acceptedProposal?.category,
+    extractLabeledValue(project?.description || "", [
+      "Service Type",
+      "Service",
+      "Category",
+    ]),
+    extractLabeledValue(
+      acceptedProposal?.coverLetter || acceptedProposal?.description || "",
+      ["Service Type", "Service", "Category"],
+    ),
+    project?.title,
+  );
+
+const resolveProjectTimelineMeta = (project = {}, acceptedProposal = null) => {
+  const timelineText = getFirstNonEmptyText(
+    project?.timeline,
+    acceptedProposal?.timeline,
+    extractLabeledValue(project?.description || "", ["Timeline"]),
+    extractLabeledValue(
+      acceptedProposal?.coverLetter || acceptedProposal?.description || "",
+      ["Timeline"],
+    ),
+  );
+
+  if (timelineText) {
+    return {
+      label: "Timeline",
+      value: normalizeTimelineValue(timelineText),
+    };
+  }
+
+  const deadlineText = getFirstNonEmptyText(
+    project?.deadline,
+    project?.dueDate,
+    project?.targetDate,
+    acceptedProposal?.deadline,
+  );
+
+  return {
+    label: deadlineText ? "Deadline" : "Timeline",
+    value: normalizeTimelineValue(deadlineText),
+  };
+};
+
+const toTaskIdArray = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const clampProgress = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+
+const resolveProjectProgress = (project) => {
+  const explicitProgress = Number(project?.progress);
+  if (Number.isFinite(explicitProgress) && explicitProgress > 0) {
+    return clampProgress(explicitProgress);
+  }
+
+  return PROJECT_PROGRESS_BY_STATUS[project?.rawStatus] ?? 18;
+};
+
+const resolveProjectStatusMeta = (project) => {
+  const progressValue = resolveProjectProgress(project);
+
+  if (project?.rawStatus === "COMPLETED" || progressValue >= 100) {
+    return { label: "Completed", tone: "success" };
+  }
+
+  if (progressValue > 0) {
+    return { label: "In Progress", tone: "warning" };
+  }
+
+  return { label: "Starting Soon", tone: "slate" };
+};
+
+const resolvePhaseSummary = (phaseLike, fallbackLabel = "Upcoming") => {
+  const explicitSummary = [
+    phaseLike?.subLabel,
+    phaseLike?.subtitle,
+    phaseLike?.detail,
+    phaseLike?.description,
+    phaseLike?.summary,
+  ].find((value) => typeof value === "string" && value.trim());
+
+  if (explicitSummary) {
+    return explicitSummary.trim();
+  }
+
+  const totalTasks = Math.max(0, Number(phaseLike?.totalTasks || phaseLike?.taskCount || 0));
+  const completedTasks = Math.max(
+    0,
+    Number(phaseLike?.verifiedTasks ?? phaseLike?.completedTasks ?? phaseLike?.doneTasks ?? 0),
+  );
+
+  if (totalTasks > 0) {
+    return `${Math.min(completedTasks, totalTasks)}/${totalTasks} tasks done`;
+  }
+
+  return fallbackLabel;
+};
+
+const buildDefaultPhases = (count = 4) =>
+  Array.from({ length: Math.max(1, count) }, (_, index) => ({
+    label: `Phase ${index + 1}`,
+    value: Math.round(((index + 1) / Math.max(count, 1)) * 100),
+  }));
+
+const buildProjectPhaseSteps = (project) => {
+  const sop = getSopFromTitle(
+    project?.templateTitle || project?.serviceType || project?.sourceTitle || "",
+  );
+  const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
+  const completedTaskIds = new Set(toTaskIdArray(project?.completedTasks));
+
+  return (Array.isArray(sop?.phases) ? sop.phases : []).map((phase) => {
+    const phaseTasks = Array.isArray(sop?.tasks)
+      ? sop.tasks.filter((task) => String(task?.phase) === String(phase?.id))
+      : [];
+
+    return phaseTasks.map((task, taskIndex) => {
+      const taskKey = `${task.phase}-${task.id}`;
+      const isVerified = verifiedTaskIds.has(taskKey);
+      const isCompleted = completedTaskIds.has(taskKey);
+
+      return {
+        id: taskKey,
+        sequence: taskIndex + 1,
+        title: task?.title || `Step ${taskIndex + 1}`,
+        state: isVerified ? "complete" : isCompleted ? "current" : "pending",
+      };
+    });
+  });
+};
+
+const buildProjectPhases = (project) => {
+  const phaseSteps = buildProjectPhaseSteps(project);
+
+  if (Array.isArray(project?.phases) && project.phases.length > 0) {
+    return project.phases.map((phase, index) => ({
+      label: phase?.label || phase?.name || `Phase ${index + 1}`,
+      value: clampProgress(phase?.progress ?? phase?.value),
+      progress: clampProgress(phase?.phaseProgress ?? phase?.progress ?? phase?.value),
+      subLabel: resolvePhaseSummary(phase),
+      steps: phaseSteps[index] || [],
+    }));
+  }
+
+  if (Array.isArray(project?.milestones) && project.milestones.length > 0) {
+    let completedBefore = 0;
+
+    return project.milestones.map((milestone, index) => {
+      const isCompleted =
+        milestone?.completed || String(milestone?.status || "").toUpperCase() === "COMPLETED";
+      const milestoneProgress = isCompleted ? 1 : clampProgress(milestone?.progress) / 100;
+      const value = Math.round(
+        ((completedBefore + milestoneProgress) / project.milestones.length) * 100,
+      );
+
+      if (isCompleted) {
+        completedBefore += 1;
+      }
+
+      return {
+        label: milestone?.label || milestone?.name || `Phase ${index + 1}`,
+        value,
+        progress: Math.round(milestoneProgress * 100),
+        subLabel: isCompleted
+          ? "Completed"
+          : clampProgress(milestone?.progress) > 0
+            ? `${clampProgress(milestone?.progress)}% complete`
+            : "Pending",
+        steps: phaseSteps[index] || [],
+      };
+    });
+  }
+
+  return buildDefaultPhases(Number(project?.phaseCount) || 4).map((phase, index) => ({
+    ...phase,
+    subLabel: index === 0 ? "Current phase" : "Upcoming",
+    steps: phaseSteps[index] || [],
+  }));
+};
+
+const resolveCurrentPhaseProgress = (phase, steps, fallbackValue = 0) => {
+  const normalizedSteps = Array.isArray(steps) ? steps : [];
+
+  if (normalizedSteps.length > 0) {
+    const completedSteps = normalizedSteps.filter(
+      (step) => String(step?.state || "").toLowerCase() === "complete",
+    ).length;
+
+    return clampProgress((completedSteps / normalizedSteps.length) * 100);
+  }
+
+  const taskSummaryMatch = String(phase?.subLabel || "").match(/(\d+)\s*\/\s*(\d+)\s*tasks?\s*done/i);
+  if (taskSummaryMatch) {
+    const completedTasks = Number(taskSummaryMatch[1]) || 0;
+    const totalTasks = Number(taskSummaryMatch[2]) || 0;
+
+    if (totalTasks > 0) {
+      return clampProgress((completedTasks / totalTasks) * 100);
+    }
+  }
+
+  const explicitPhaseProgress = Number(phase?.phaseProgress ?? phase?.progress);
+  if (Number.isFinite(explicitPhaseProgress)) {
+    return clampProgress(explicitPhaseProgress);
+  }
+
+  return clampProgress(fallbackValue);
+};
+
+const determineCurrentPhaseIndex = (project, phases) => {
+  if (Number.isFinite(project?.currentPhaseIndex) && project.currentPhaseIndex >= 0) {
+    return Math.min(project.currentPhaseIndex, Math.max(phases.length - 1, 0));
+  }
+
+  if (Array.isArray(project?.phases) && project.phases.length > 0) {
+    const firstIncompleteIndex = project.phases.findIndex(
+      (phase) => clampProgress(phase?.progress ?? phase?.value) < 100,
+    );
+    return firstIncompleteIndex === -1 ? project.phases.length - 1 : firstIncompleteIndex;
+  }
+
+  if (Array.isArray(project?.milestones) && project.milestones.length > 0) {
+    const firstIncompleteIndex = project.milestones.findIndex((milestone) => {
+      const status = String(milestone?.status || "").toUpperCase();
+      return !(milestone?.completed || status === "COMPLETED");
+    });
+    return firstIncompleteIndex === -1 ? project.milestones.length - 1 : firstIncompleteIndex;
+  }
+
+  const phaseStep = 100 / Math.max(phases.length, 1);
+  return Math.min(Math.floor(resolveProjectProgress(project) / phaseStep), phases.length - 1);
+};
+
+const normalizeFreelancerProjects = (remote = []) => {
+  const uniqueProjects = new Map();
+
+  remote.forEach((proposal) => {
+    if (String(proposal?.status || "").toUpperCase() !== "ACCEPTED" || !proposal?.project?.id) {
+      return;
+    }
+
+    const project = proposal.project;
+    if (uniqueProjects.has(project.id)) return;
+
+    const businessName = resolveProjectBusinessName(project, proposal);
+    const serviceType = resolveProjectServiceType(project, proposal);
+    const timelineMeta = resolveProjectTimelineMeta(project, proposal);
+    const payoutValue = getFreelancerVisibleBudgetValue(project?.budget ?? proposal?.budget);
+    const clientName =
+      project?.owner?.fullName ||
+      project?.owner?.name ||
+      project?.owner?.email?.split("@")[0] ||
+      "Client";
+    const rawStatus = String(project?.status || proposal?.status || "").toUpperCase();
+
+    uniqueProjects.set(project.id, {
+      id: project.id,
+      rawStatus,
+      title:
+        (businessName ? toDisplayTitleCase(businessName) : "") ||
+        project?.title ||
+        serviceType ||
+        "Untitled Project",
+      businessName,
+      serviceType,
+      sectionLabel: rawStatus === "COMPLETED" ? "Completed Project" : "Assigned Project",
+      clientName,
+      clientAvatar: project?.owner?.avatar || "",
+      clientRole:
+        businessName &&
+        normalizeComparableText(businessName) !== normalizeComparableText(project?.title)
+          ? toDisplayTitleCase(businessName)
+          : "Project Owner",
+      clientInitial: getInitials(clientName),
+      payoutValue: Number.isFinite(Number(payoutValue)) ? Math.max(0, Number(payoutValue)) : 0,
+      payoutLabel:
+        Number.isFinite(Number(payoutValue)) && Number(payoutValue) > 0
+          ? formatINR(payoutValue)
+          : "TBD",
+      timelineLabel: timelineMeta.value || "To be finalized",
+      timelineDisplayLabel: timelineMeta.label,
+      progress: Number(project?.progress) || 0,
+      phases: Array.isArray(project?.phases) ? project.phases : [],
+      milestones: Array.isArray(project?.milestones) ? project.milestones : [],
+      phaseCount: Number(project?.phaseCount) || 0,
+      currentPhaseIndex: Number(project?.currentPhaseIndex),
+      completedTasks: project?.completedTasks ?? null,
+      verifiedTasks: project?.verifiedTasks ?? null,
+      sourceTitle: project?.title || serviceType || "",
+      templateTitle: serviceType || project?.title || "",
+      statusBucket:
+        rawStatus === "COMPLETED" || clampProgress(project?.progress) >= 100
+          ? "completed"
+          : "ongoing",
+      sortDate:
+        project?.updatedAt ||
+        project?.createdAt ||
+        proposal?.updatedAt ||
+        proposal?.createdAt ||
+        "",
+    });
+  });
+
+  return Array.from(uniqueProjects.values()).toSorted((left, right) => {
+    const leftDate = new Date(left.sortDate || 0).getTime();
+    const rightDate = new Date(right.sortDate || 0).getTime();
+    return rightDate - leftDate;
+  });
+};
+
+const buildFreelancerProjectCardModel = (project) => {
+  const statusMeta = resolveProjectStatusMeta(project);
+  const progressValue = resolveProjectProgress(project);
+  const phases = buildProjectPhases(project);
+  const currentPhaseIndex = determineCurrentPhaseIndex(project, phases);
+  const currentPhase = phases[currentPhaseIndex] || {
+    label: "Phase 1",
+    subLabel: "Current phase",
+    steps: [],
+  };
+  const currentPhaseSteps = Array.isArray(currentPhase?.steps)
+    ? currentPhase.steps.map((step, stepIndex, collection) => {
+        const firstPendingIndex = collection.findIndex(
+          (entry) => String(entry?.state || "").toLowerCase() !== "complete",
+        );
+
+        return {
+          ...step,
+          state:
+            String(step?.state || "").toLowerCase() === "pending" && firstPendingIndex === stepIndex
+              ? "current"
+              : step.state,
+        };
+      })
+    : [];
+  const phaseProgressValue = resolveCurrentPhaseProgress(currentPhase, currentPhaseSteps, progressValue);
+  const totalPhases = Math.max(phases.length, 1);
+  const phaseNumber = Math.min(currentPhaseIndex + 1, totalPhases);
+  const showServiceType =
+    Boolean(project.serviceType) &&
+    normalizeComparableText(project.serviceType) !== normalizeComparableText(project.title);
+
+  return {
+    ...project,
+    statusMeta,
+    progressValue,
+    phaseProgressValue,
+    currentPhase,
+    currentPhaseSteps,
+    currentPhaseCountLabel: `Phase ${phaseNumber} of ${totalPhases}`,
+    showServiceType,
+    actionHref: `/freelancer/project/${project.id}`,
+    actionLabel: statusMeta.label === "Completed" ? "View Summary" : "Open Workspace",
+    actionTone: statusMeta.label === "Completed" ? "slate" : "amber",
+  };
+};
+
+const ProjectCardSkeleton = () => (
+  <div className="rounded-[28px] border border-white/[0.06] bg-accent p-6">
+    <div className="flex items-start justify-between gap-4">
+      <Skeleton className="h-6 w-32 bg-white/8" />
+      <Skeleton className="h-7 w-24 rounded-full bg-white/8" />
+    </div>
+    <Skeleton className="mt-5 h-10 w-56 bg-white/8" />
+    <Skeleton className="mt-3 h-4 w-36 bg-white/8" />
+    <div className="mt-6 flex items-center gap-3">
+      <Skeleton className="size-11 rounded-full bg-white/8" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-36 bg-white/8" />
+        <Skeleton className="h-4 w-24 bg-white/8" />
+      </div>
+    </div>
+    <div className="mt-6 grid grid-cols-2 gap-4">
+      <Skeleton className="h-24 rounded-[14px] bg-white/8" />
+      <Skeleton className="h-24 rounded-[14px] bg-white/8" />
+    </div>
+    <Skeleton className="mt-7 h-2 w-full rounded-full bg-white/8" />
+    <div className="mt-6 rounded-[18px] border border-white/[0.06] bg-white/[0.035] p-4">
+      <Skeleton className="h-4 w-32 bg-white/8" />
+      <Skeleton className="mt-4 h-4 w-44 bg-white/8" />
+      <div className="mt-4 space-y-2">
+        <Skeleton className="h-4 w-full bg-white/8" />
+        <Skeleton className="h-4 w-[88%] bg-white/8" />
+        <Skeleton className="h-4 w-[78%] bg-white/8" />
+      </div>
+    </div>
+    <Skeleton className="mt-8 h-12 w-full rounded-[14px] bg-white/8" />
+  </div>
+);
+
+const ProjectPhaseStep = ({ item }) => {
+  const state = String(item?.state || "").toLowerCase();
+  const isComplete = state === "complete";
+  const isCurrent = state === "current" || state === "in_progress";
+  const statusMeta = isComplete
+    ? {
+        label: "Completed",
+        Icon: CheckCircle2,
+        badgeClassName: "border-[#166534]/50 bg-[#052e16] text-[#4ade80]",
+        textClassName: "text-[#f3f4f6]",
+        iconClassName: "text-[#22c55e]",
+      }
+    : isCurrent
+      ? {
+          label: "In Progress",
+          Icon: Clock3,
+          badgeClassName: "border-[#ffc107]/25 bg-[#3a2800] text-[#ffc107]",
+          textClassName: "text-[#f3f4f6]",
+          iconClassName: "text-[#ffc107]",
+        }
+      : {
+          label: "Pending",
+          Icon: Circle,
+          badgeClassName: "border-white/[0.08] bg-white/[0.04] text-[#94a3b8]",
+          textClassName: "text-[#6b7280]",
+          iconClassName: "text-[#94a3b8]",
+        };
+  const StatusIcon = statusMeta.Icon;
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="text-muted/40"
-        />
-        <motion.circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          className="text-primary"
-          style={{
-            stroke: "url(#progressGradient)",
-          }}
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
-          strokeDasharray={circumference}
-        />
-        <defs>
-          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" />
-            <stop offset="100%" stopColor="#facc15" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xs font-bold text-foreground">{progress}%</span>
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <StatusIcon className={cn("size-5 shrink-0", statusMeta.iconClassName)} />
+
+        <span
+          title={item.title || item.label}
+          className={cn("truncate text-[0.88rem] leading-5", statusMeta.textClassName)}
+        >
+          {item.title || item.label}
+        </span>
       </div>
+
+      <span
+        className={cn(
+          "inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em]",
+          statusMeta.badgeClassName,
+        )}
+      >
+        {statusMeta.label}
+      </span>
     </div>
   );
 };
 
-const ProjectCard = ({ project }) => {
-  const config = statusConfig[project.status];
-  const StatusIcon = config.icon;
-  const budgetValue =
-    typeof project.budget === "number"
-      ? project.budget
-      : Number(project.budget) || 0;
-  const deadlineValue =
-    project.deadline && typeof project.deadline === "string"
-      ? project.deadline
-      : "";
+const FreelancerProjectCard = ({ project }) => {
+  const detailPanelClassName =
+    "border border-white/[0.06] bg-white/[0.035] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+  const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
+  const actionClassName = cn(
+    "flex w-full items-center justify-center gap-2 rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors",
+    projectActionToneMap[project.actionTone] || projectActionToneMap.slate,
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-      whileHover={{ y: -8, transition: { duration: 0.25 } }}
-      className="h-full"
-    >
-      <Card className="group relative h-full overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/95 via-card/80 to-card/60 shadow-lg backdrop-blur-xl transition-all duration-500 hover:border-primary/50 hover:shadow-[0_20px_60px_-15px_rgba(253,200,0,0.25)]">
-        {/* Animated top accent */}
-        <div className="absolute inset-x-0 top-0 h-[2px] overflow-hidden">
-          <motion.div
-            className={`h-full w-[200%] bg-gradient-to-r ${config.gradient} via-transparent`}
-            animate={{ x: ["-50%", "0%"] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
+    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-accent p-6 transition-transform duration-200 hover:-translate-y-1 [content-visibility:auto]">
+      <div className="flex flex-1 flex-col">
+        <div className="flex items-start justify-between gap-4">
+          <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#9ca3af]">
+            {project.sectionLabel}
+          </span>
 
-        {/* Hover shine sweep */}
-        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-          <motion.div
-            className="absolute -top-1/2 left-0 h-[200%] w-16 rotate-12 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
-            initial={{ x: "-100px" }}
-            whileInView={{ x: "500px" }}
-            transition={{ duration: 1.2, ease: "easeInOut" }}
-          />
-        </div>
-
-        {/* Corner glow */}
-        <div className={`pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br ${config.gradient} opacity-[0.07] blur-2xl transition-opacity duration-500 group-hover:opacity-[0.15]`} />
-
-        <CardContent className="relative z-10 flex h-full flex-col gap-5 p-6">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-primary/60">
-                Active project
-              </p>
-              <h3 className="line-clamp-2 text-lg font-bold tracking-tight text-foreground transition-colors duration-300 group-hover:text-primary">
-                {project.title}
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                for{" "}
-                <span className="font-semibold text-foreground/80">
-                  {project.client}
-                </span>
-              </p>
-            </div>
-            <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}>
-              <Badge
-                variant="outline"
-                className={`flex shrink-0 items-center gap-1.5 border px-2.5 py-1 text-[10px] font-semibold backdrop-blur-sm ${config.badgeClass}`}
-              >
-                <StatusIcon className="h-3 w-3" />
-                {config.label}
-              </Badge>
-            </motion.div>
-          </div>
-
-          {/* Stats row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="group/stat rounded-xl border border-border/20 bg-muted/20 px-4 py-3 transition-colors duration-200 hover:border-border/40 hover:bg-muted/30">
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">
-                Budget
-              </p>
-              <p className="text-lg font-bold tabular-nums text-foreground">
-                {budgetValue
-                  ? `₹${Math.floor(budgetValue * 0.7).toLocaleString()}`
-                  : "TBD"}
-              </p>
-            </div>
-            <div className="group/stat rounded-xl border border-border/20 bg-muted/20 px-4 py-3 transition-colors duration-200 hover:border-border/40 hover:bg-muted/30">
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">
-                Deadline
-              </p>
-              <p className="text-sm font-bold text-foreground">
-                {deadlineValue || "TBD"}
-              </p>
-            </div>
-          </div>
-
-          {/* Progress section */}
-          <div className="flex items-center gap-4 rounded-xl border border-border/20 bg-muted/10 px-4 py-3">
-            <CircularProgress
-              progress={project.progress}
-              gradient={config.gradient}
-            />
-            <div className="flex-1 space-y-1.5">
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">
-                Progress
-              </p>
-              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
-                <motion.div
-                  className={`h-full rounded-full bg-gradient-to-r ${config.gradient}`}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${project.progress}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* CTA Button */}
-          <Button
-            asChild
-            className={`mt-auto w-full gap-2 rounded-xl bg-gradient-to-r ${config.gradient} py-5 text-sm font-bold text-background shadow-md transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 hover:brightness-110`}
+          <span
+            className={cn(
+              "inline-flex rounded-full border px-3 py-1 text-[0.82rem] font-semibold",
+              projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
+            )}
           >
-            <Link to={`/freelancer/project/${project.id}`}>
-              View details
-              <motion.div
-                animate={{ x: [0, 5, 0] }}
-                transition={{
-                  duration: 1.8,
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: "easeInOut",
-                }}
-              >
-                <ArrowRight className="h-4 w-4" />
-              </motion.div>
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </motion.div>
+            {project.statusMeta.label}
+          </span>
+        </div>
+
+        <h2 className="mt-5 text-[clamp(1.75rem,2vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
+          {project.title}
+        </h2>
+
+        {project.showServiceType ? (
+          <p className="mt-2 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+            {project.serviceType}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex items-center gap-3">
+          <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_12px_24px_rgba(0,0,0,0.24)]">
+            <AvatarImage src={project.clientAvatar} alt={project.clientName} />
+            <AvatarFallback className="bg-[#1f2937] text-sm text-white">
+              {project.clientInitial}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="min-w-0">
+            <p className="truncate text-[1rem] font-medium text-white">{project.clientName}</p>
+            <p className="truncate text-sm text-[#8f96a3]">{project.clientRole}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
+            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">Your Payout</p>
+            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+              {project.payoutLabel}
+            </p>
+          </div>
+
+          <div className={cn("rounded-[14px] p-4", detailPanelClassName)}>
+            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-[#7f8794]">
+              {project.timelineDisplayLabel}
+            </p>
+            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-white">
+              {project.timelineLabel}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-7 flex items-center justify-between gap-3">
+          <span className="text-sm text-[#9ca3af]">Current Phase Progress</span>
+          <span className="text-sm font-semibold text-[#ffc107]">{project.phaseProgressValue}%</span>
+        </div>
+
+        <div className="mt-3 h-2 rounded-full bg-white/[0.08]">
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.62))]"
+            style={{ width: `${project.phaseProgressValue}%` }}
+          />
+        </div>
+
+        <div className={cn("mt-5 flex min-h-[174px] flex-col rounded-[18px] p-3.5", detailPanelClassName)}>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#7f8794]">
+              Current Phase
+            </p>
+            <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+              {project.currentPhaseCountLabel}
+            </span>
+          </div>
+
+          <p
+            title={project.currentPhase?.label || "Phase 1"}
+            className="mt-2 line-clamp-1 text-[0.98rem] font-semibold tracking-[-0.02em] text-white"
+          >
+            {project.currentPhase?.label || "Phase 1"}
+          </p>
+
+          {project.currentPhase?.subLabel ? (
+            <p title={project.currentPhase.subLabel} className="mt-1 truncate text-sm text-[#8f96a3]">
+              {project.currentPhase.subLabel}
+            </p>
+          ) : null}
+
+          {phaseSteps.length > 0 ? (
+            <div className="mt-3 max-h-[104px] space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
+              {phaseSteps.map((step) => (
+                <ProjectPhaseStep key={`${project.id}-${step.id || step.title}`} item={step} />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-[#8f96a3]">
+              Phase steps will appear here once the project SOP is configured.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-auto pt-6">
+          <Link to={project.actionHref} className={actionClassName}>
+            {project.actionLabel}
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
+      </div>
+    </article>
   );
 };
 
+const EmptyProjectsState = ({
+  title = "No projects yet",
+  description = "Accepted projects will appear here once a client moves your proposal into delivery.",
+  actionLabel = "View Proposals",
+  actionHref = "/freelancer/proposals",
+}) => (
+  <div className="rounded-[28px] border border-white/[0.06] bg-accent p-8 text-center">
+    <div className="mx-auto flex max-w-md flex-col items-center">
+      <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
+        <ClipboardList className="size-7" />
+      </div>
+      <h2 className="mt-6 text-[1.35rem] font-semibold tracking-[-0.03em] text-white">
+        {title}
+      </h2>
+      <p className="mt-3 text-sm leading-6 text-[#94a3b8]">{description}</p>
+      <Link
+        to={actionHref}
+        className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[#ffc107] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+      >
+        {actionLabel}
+      </Link>
+    </div>
+  </div>
+);
+
 const FreelancerProjectsContent = () => {
   const { authFetch, isAuthenticated } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const view = (searchParams.get("view") || "").toLowerCase();
-  const showOnlyOngoing = view === "ongoing";
-  const visibleProjects = useMemo(() => {
-    if (!showOnlyOngoing) return projects;
-    return projects.filter((project) => project.status !== "completed");
-  }, [projects, showOnlyOngoing]);
+
+  const activeFilter = searchParams.get("view") === "completed" ? "completed" : "ongoing";
+
+  const loadProjects = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const response = await authFetch("/proposals");
+      const payload = await response.json().catch(() => null);
+      const remote = Array.isArray(payload?.data) ? payload.data : [];
+      setProjects(normalizeFreelancerProjects(remote));
+    } catch (error) {
+      console.error("Failed to load freelancer projects:", error);
+      setProjects([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authFetch]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    void loadProjects();
+  }, [isAuthenticated, loadProjects]);
 
-    const fetchProjects = async () => {
-      setIsLoading(true);
-      try {
-        const response = await authFetch("/proposals");
-        const payload = await response.json().catch(() => null);
-        const proposals = Array.isArray(payload?.data) ? payload.data : [];
-        const accepted = proposals.filter(
-          (p) => (p.status || "").toUpperCase() === "ACCEPTED" && p.project
-        );
-        const uniqueProjects = new Map();
-        accepted.forEach((p) => {
-          const project = p.project;
-          if (!project?.id) return;
-          if (!uniqueProjects.has(project.id)) {
-            // Calculate progress - use project.progress if available, default to 0
-            const projectProgress = typeof project.progress === "number"
-              ? project.progress
-              : 0;
+  const setActiveFilter = useCallback(
+    (nextFilter) => {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("view", nextFilter);
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
-            // Determine status based on progress
-            let projectStatus = "pending";
-            if (projectProgress === 100) {
-              projectStatus = "completed";
-            } else if (projectProgress > 0) {
-              projectStatus = "in-progress";
-            }
+  const projectCards = useMemo(
+    () => projects.map((project) => buildFreelancerProjectCardModel(project)),
+    [projects],
+  );
+  const ongoingProjectCount = useMemo(
+    () => projectCards.filter((project) => project.statusBucket !== "completed").length,
+    [projectCards],
+  );
+  const completedProjectCount = useMemo(
+    () => projectCards.filter((project) => project.statusBucket === "completed").length,
+    [projectCards],
+  );
+  const visibleProjectCards = useMemo(
+    () =>
+      projectCards.filter((project) =>
+        activeFilter === "completed"
+          ? project.statusBucket === "completed"
+          : project.statusBucket !== "completed",
+      ),
+    [activeFilter, projectCards],
+  );
 
-            uniqueProjects.set(project.id, {
-              id: project.id,
-              title: project.title || "Project",
-              client:
-                project.owner?.fullName ||
-                project.owner?.name ||
-                project.owner?.email ||
-                "Client",
-              status: projectStatus,
-              budget: project.budget || 0,
-              deadline: project.deadline || "",
-              progress: projectProgress,
-            });
-          }
-        });
-        setProjects(Array.from(uniqueProjects.values()));
-      } catch (error) {
-        console.error("Failed to load projects from API:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (isLoading) return;
 
-    fetchProjects();
-  }, [authFetch, isAuthenticated]);
+    if (activeFilter === "ongoing" && ongoingProjectCount === 0 && completedProjectCount > 0) {
+      setActiveFilter("completed");
+    }
+
+    if (activeFilter === "completed" && completedProjectCount === 0 && ongoingProjectCount > 0) {
+      setActiveFilter("ongoing");
+    }
+  }, [
+    activeFilter,
+    completedProjectCount,
+    isLoading,
+    ongoingProjectCount,
+    setActiveFilter,
+  ]);
 
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
       <FreelancerTopBar />
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
-        <div className="max-w-[1600px] mx-auto space-y-6">
-          <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-sm uppercase tracking-[0.4em] text-primary/70">
-                Freelancer projects
-              </p>
-              <h1 className="text-2xl font-black tracking-tight text-foreground">
-                {showOnlyOngoing ? "Ongoing Projects" : "All Projects"}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {showOnlyOngoing
-                  ? "Showing active and pending projects only."
-                  : "Showing every project in your pipeline."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                asChild
-                size="sm"
-                variant={showOnlyOngoing ? "default" : "outline"}
-                className="rounded-full px-4"
-              >
-                <Link to="/freelancer/project?view=ongoing">Ongoing</Link>
-              </Button>
-              <Button
-                asChild
-                size="sm"
-                variant={showOnlyOngoing ? "outline" : "default"}
-                className="rounded-full px-4"
-              >
-                <Link to="/freelancer/project">All</Link>
-              </Button>
-            </div>
-          </header>
-
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {isLoading ? (
-              [1, 2, 3].map((i) => <ProjectCardSkeleton key={i} />)
-            ) : visibleProjects.length ? (
-              visibleProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))
-            ) : (
-              <div className="col-span-full rounded-xl border border-dashed border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
-                {showOnlyOngoing ? "No ongoing projects yet." : "No projects yet."}
+        <div className="max-w-[1600px] mx-auto">
+          <section className="space-y-4">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[0.84rem] font-semibold uppercase tracking-[0.34em] text-[#ffc107]/80">
+                  Freelancer Projects
+                </p>
+                <h1 className="mt-3 text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
+                  Project Workspace
+                </h1>
+                <p className="mt-2 max-w-[38rem] text-sm text-[#94a3b8]">
+                  Track active delivery work, review completed handovers, and keep every client project in one place.
+                </p>
               </div>
+
+              <div className="flex justify-start lg:justify-end">
+                <div className="inline-flex h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  {projectFilterOptions.map((option) => {
+                    const count =
+                      option.key === "completed" ? completedProjectCount : ongoingProjectCount;
+                    const isActive = activeFilter === option.key;
+
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        onClick={() => setActiveFilter(option.key)}
+                        className={cn(
+                          "h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold transition",
+                          isActive
+                            ? "border-[#ffc107]/70 bg-[#ffc107] text-[#141414]"
+                            : "text-[#a3a6ad] hover:text-white",
+                        )}
+                      >
+                        {option.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-12">
+            {isLoading ? (
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3].map((item) => (
+                  <ProjectCardSkeleton key={item} />
+                ))}
+              </div>
+            ) : visibleProjectCards.length > 0 ? (
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {visibleProjectCards.map((project) => (
+                  <FreelancerProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            ) : projectCards.length > 0 ? (
+              <EmptyProjectsState
+                title={
+                  activeFilter === "completed"
+                    ? "No completed projects yet"
+                    : "No ongoing projects right now"
+                }
+                description={
+                  activeFilter === "completed"
+                    ? "Completed delivery work will appear here once a project is fully wrapped up."
+                    : "Ongoing client work will appear here as soon as an accepted proposal becomes an active project."
+                }
+              />
+            ) : (
+              <EmptyProjectsState
+                title="No project work yet"
+                description="Accepted collaborations will show up here once a client starts the project workspace."
+                actionLabel="Go To Proposals"
+              />
             )}
-          </div>
+          </section>
         </div>
       </main>
     </div>
   );
 };
 
-const FreelancerProjects = () => {
-  return (
-    <RoleAwareSidebar>
-      <FreelancerProjectsContent />
-    </RoleAwareSidebar>
-  );
-};
+const FreelancerProjects = () => <FreelancerProjectsContent />;
 
 export default FreelancerProjects;
