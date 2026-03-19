@@ -222,12 +222,21 @@ const mapApiProposal = (proposal = {}) => {
   };
 };
 
-const ProposalRowCard = ({ proposal, onOpen, onDelete }) => {
+const ProposalRowCard = ({
+  proposal,
+  onOpen,
+  onDelete,
+  onAccept,
+  onReject,
+  processingId,
+}) => {
   const config = statusConfig[proposal.status] || statusConfig.pending;
   const { budget, timeline } = extractProposalDetails(
     proposal.content,
     proposal.budget
   );
+  const isPendingProposal = proposal.status === "pending";
+  const isProcessing = processingId === proposal.id;
 
   return (
     <div className="group relative flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-xl border border-border/50 bg-card/40 hover:bg-card hover:border-primary/20 transition-all duration-300 shadow-sm">
@@ -311,9 +320,28 @@ const ProposalRowCard = ({ proposal, onOpen, onDelete }) => {
       </div>
 
       {/* Right Action Section */}
-      <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
+      <div className="flex w-full flex-wrap items-center justify-end gap-3 md:w-auto md:mt-0">
+        {isPendingProposal ? (
+          <Button
+            variant="outline"
+            className="w-full border-red-500/30 text-red-300 hover:bg-red-500/10 hover:text-red-200 md:w-auto"
+            onClick={() => onReject(proposal)}
+            disabled={isProcessing}
+          >
+            Reject Proposal
+          </Button>
+        ) : null}
+        {isPendingProposal ? (
+          <Button
+            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 md:w-auto"
+            onClick={() => onAccept(proposal.id)}
+            disabled={isProcessing}
+          >
+            {isProcessing ? "Accepting..." : "Accept Proposal"}
+          </Button>
+        ) : null}
         <Button
-          className="w-full md:w-auto bg-amber-400 hover:bg-amber-500 text-black font-semibold rounded-lg px-6"
+          className="w-full bg-amber-400 px-6 font-semibold text-black hover:bg-amber-500 md:w-auto"
           onClick={() => onOpen(proposal)}
         >
           <ExternalLink className="w-4 h-4 mr-2" />
@@ -407,6 +435,16 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
     setRejectReasonKey("");
     setRejectCustomReason("");
   }, []);
+
+  const handleOpenRejectFlow = useCallback(
+    (proposal) => {
+      setSelectedProposal(proposal);
+      setIsRejectReasonStep(true);
+      setRejectReasonKey("");
+      setRejectCustomReason("");
+    },
+    []
+  );
 
   const handleStatusChange = useCallback(
     async (id, nextStatus, rejectionReason = "", rejectionReasonKeyValue = "") => {
@@ -627,6 +665,9 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                           proposal={proposal}
                           onOpen={setSelectedProposal}
                           onDelete={handleDelete}
+                          onAccept={(id) => handleStatusChange(id, "accepted")}
+                          onReject={handleOpenRejectFlow}
+                          processingId={processingId}
                         />
                       ))}
                     </div>

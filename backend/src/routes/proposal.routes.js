@@ -3,13 +3,15 @@ import {
   createProposal,
   getProposal,
   listProposals,
+  updateProposal,
   updateProposalStatus
 } from "../controllers/proposal.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
 import { validateResource } from "../middlewares/validate-resource.js";
 import {
   createProposalSchema,
-  listProposalsSchema
+  listProposalsSchema,
+  updateProposalSchema,
 } from "../modules/proposals/proposal.schema.js";
 import { z } from "zod";
 import { deleteProposal } from "../controllers/proposal.controller.js";
@@ -29,6 +31,13 @@ proposalRouter.post(
   requireAuth,
   validateResource(createProposalSchema),
   createProposal
+);
+
+proposalRouter.patch(
+  "/:id",
+  requireAuth,
+  validateResource(updateProposalSchema),
+  updateProposal
 );
 
 const updateProposalStatusSchema = z.object({

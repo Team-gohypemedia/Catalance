@@ -218,11 +218,45 @@ const resolveProjectProgress = (project) => {
   return PROJECT_PROGRESS_BY_STATUS[project?.rawStatus] ?? 18;
 };
 
+const isProjectFullyCompleted = (project) => {
+  const normalizedStatus = String(project?.rawStatus || project?.status || "").toUpperCase();
+  const paymentPlan =
+    project?.paymentPlan && typeof project.paymentPlan === "object"
+      ? project.paymentPlan
+      : null;
+
+  if (paymentPlan && paymentPlan.isFullyPaid !== true) {
+    return false;
+  }
+
+  return normalizedStatus === "COMPLETED" || paymentPlan?.isFullyPaid === true;
+};
+
+const resolvePendingPaymentLabel = (project) => {
+  const installmentSequence = Number(
+    project?.dueInstallment?.sequence || project?.paymentPlan?.nextDueInstallment?.sequence || 0,
+  );
+
+  if (installmentSequence === 3) {
+    return "Final Payment Pending";
+  }
+
+  if (installmentSequence > 0) {
+    return "Awaiting Payment";
+  }
+
+  return "In Progress";
+};
+
 const resolveProjectStatusMeta = (project) => {
   const progressValue = resolveProjectProgress(project);
 
-  if (project?.rawStatus === "COMPLETED" || progressValue >= 100) {
+  if (isProjectFullyCompleted(project)) {
     return { label: "Completed", tone: "success" };
+  }
+
+  if (project?.paymentPending) {
+    return { label: resolvePendingPaymentLabel(project), tone: "warning" };
   }
 
   if (progressValue > 0) {
@@ -258,6 +292,56 @@ const resolvePhaseSummary = (phaseLike, fallbackLabel = "Upcoming") => {
   return fallbackLabel;
 };
 
+const resolveProjectTemplateSource = (project = {}) =>
+  getFirstNonEmptyText(
+    project?.sourceTitle,
+    project?.templateTitle,
+    project?.serviceType,
+    project?.title,
+  );
+
+const isPhaseMarkedComplete = (phaseLike, fallbackLabel = "Upcoming") => {
+  const normalizedStatus = String(
+    phaseLike?.status || phaseLike?.state || phaseLike?.phaseStatus || "",
+  ).toUpperCase();
+  if (phaseLike?.isComplete || phaseLike?.completed || normalizedStatus === "COMPLETED") {
+    return true;
+  }
+
+  const explicitProgress = Number(phaseLike?.phaseProgress ?? phaseLike?.progress ?? phaseLike?.value);
+  if (Number.isFinite(explicitProgress) && clampProgress(explicitProgress) >= 100) {
+    return true;
+  }
+
+  const totalTasks = Math.max(0, Number(phaseLike?.totalTasks || phaseLike?.taskCount || 0));
+  const completedTasks = Math.max(
+    0,
+    Number(phaseLike?.verifiedTasks ?? phaseLike?.completedTasks ?? phaseLike?.doneTasks ?? 0),
+  );
+  if (totalTasks > 0 && completedTasks >= totalTasks) {
+    return true;
+  }
+
+  const summary = resolvePhaseSummary(phaseLike, fallbackLabel);
+  const taskSummaryMatch = String(summary).match(/(\d+)\s*\/\s*(\d+)\s*tasks?\s*done/i);
+  if (taskSummaryMatch) {
+    const completedTaskCount = Number(taskSummaryMatch[1]) || 0;
+    const totalTaskCount = Number(taskSummaryMatch[2]) || 0;
+    return totalTaskCount > 0 && completedTaskCount >= totalTaskCount;
+  }
+
+  return normalizeComparableText(summary) === "completed";
+};
+
+const resolvePhaseStepsForDisplay = (steps, phaseLike, fallbackLabel = "Upcoming") => {
+  const normalizedSteps = Array.isArray(steps) ? steps : [];
+  if (!isPhaseMarkedComplete(phaseLike, fallbackLabel)) {
+    return normalizedSteps;
+  }
+
+  return normalizedSteps.map((step) => ({ ...step, state: "complete" }));
+};
+
 const buildDefaultPhases = (count = 4) =>
   Array.from({ length: Math.max(1, count) }, (_, index) => ({
     label: `Phase ${index + 1}`,
@@ -265,9 +349,7 @@ const buildDefaultPhases = (count = 4) =>
   }));
 
 const buildProjectPhaseSteps = (project) => {
-  const sop = getSopFromTitle(
-    project?.templateTitle || project?.serviceType || project?.sourceTitle || "",
-  );
+  const sop = getSopFromTitle(resolveProjectTemplateSource(project));
   const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
   const completedTaskIds = new Set(toTaskIdArray(project?.completedTasks));
 
@@ -295,13 +377,17 @@ const buildProjectPhases = (project) => {
   const phaseSteps = buildProjectPhaseSteps(project);
 
   if (Array.isArray(project?.phases) && project.phases.length > 0) {
-    return project.phases.map((phase, index) => ({
-      label: phase?.label || phase?.name || `Phase ${index + 1}`,
-      value: clampProgress(phase?.progress ?? phase?.value),
-      progress: clampProgress(phase?.phaseProgress ?? phase?.progress ?? phase?.value),
-      subLabel: resolvePhaseSummary(phase),
-      steps: phaseSteps[index] || [],
-    }));
+    return project.phases.map((phase, index) => {
+      const subLabel = resolvePhaseSummary(phase);
+
+      return {
+        label: phase?.label || phase?.name || `Phase ${index + 1}`,
+        value: clampProgress(phase?.progress ?? phase?.value),
+        progress: clampProgress(phase?.phaseProgress ?? phase?.progress ?? phase?.value),
+        subLabel,
+        steps: resolvePhaseStepsForDisplay(phaseSteps[index], phase, subLabel),
+      };
+    });
   }
 
   if (Array.isArray(project?.milestones) && project.milestones.length > 0) {
@@ -319,25 +405,31 @@ const buildProjectPhases = (project) => {
         completedBefore += 1;
       }
 
+      const subLabel = isCompleted
+        ? "Completed"
+        : clampProgress(milestone?.progress) > 0
+          ? `${clampProgress(milestone?.progress)}% complete`
+          : "Pending";
+
       return {
         label: milestone?.label || milestone?.name || `Phase ${index + 1}`,
         value,
         progress: Math.round(milestoneProgress * 100),
-        subLabel: isCompleted
-          ? "Completed"
-          : clampProgress(milestone?.progress) > 0
-            ? `${clampProgress(milestone?.progress)}% complete`
-            : "Pending",
-        steps: phaseSteps[index] || [],
+        subLabel,
+        steps: resolvePhaseStepsForDisplay(phaseSteps[index], milestone, subLabel),
       };
     });
   }
 
-  return buildDefaultPhases(Number(project?.phaseCount) || 4).map((phase, index) => ({
-    ...phase,
-    subLabel: index === 0 ? "Current phase" : "Upcoming",
-    steps: phaseSteps[index] || [],
-  }));
+  return buildDefaultPhases(Number(project?.phaseCount) || 4).map((phase, index) => {
+    const subLabel = index === 0 ? "Current phase" : "Upcoming";
+
+    return {
+      ...phase,
+      subLabel,
+      steps: resolvePhaseStepsForDisplay(phaseSteps[index], phase, subLabel),
+    };
+  });
 };
 
 const resolveCurrentPhaseProgress = (phase, steps, fallbackValue = 0) => {
@@ -408,12 +500,19 @@ const normalizeFreelancerProjects = (remote = []) => {
     const serviceType = resolveProjectServiceType(project, proposal);
     const timelineMeta = resolveProjectTimelineMeta(project, proposal);
     const payoutValue = getFreelancerVisibleBudgetValue(project?.budget ?? proposal?.budget);
+    const paymentPlan =
+      project?.paymentPlan && typeof project.paymentPlan === "object"
+        ? project.paymentPlan
+        : null;
+    const dueInstallment = paymentPlan?.nextDueInstallment || null;
+    const paymentPending = Boolean(dueInstallment);
     const clientName =
       project?.owner?.fullName ||
       project?.owner?.name ||
       project?.owner?.email?.split("@")[0] ||
       "Client";
     const rawStatus = String(project?.status || proposal?.status || "").toUpperCase();
+    const isFullyCompleted = isProjectFullyCompleted({ rawStatus, paymentPlan });
 
     uniqueProjects.set(project.id, {
       id: project.id,
@@ -425,7 +524,7 @@ const normalizeFreelancerProjects = (remote = []) => {
         "Untitled Project",
       businessName,
       serviceType,
-      sectionLabel: rawStatus === "COMPLETED" ? "Completed Project" : "Assigned Project",
+      sectionLabel: isFullyCompleted ? "Completed Project" : "Assigned Project",
       clientName,
       clientAvatar: project?.owner?.avatar || "",
       clientRole:
@@ -442,6 +541,9 @@ const normalizeFreelancerProjects = (remote = []) => {
       timelineLabel: timelineMeta.value || "To be finalized",
       timelineDisplayLabel: timelineMeta.label,
       progress: Number(project?.progress) || 0,
+      paymentPlan,
+      dueInstallment,
+      paymentPending,
       phases: Array.isArray(project?.phases) ? project.phases : [],
       milestones: Array.isArray(project?.milestones) ? project.milestones : [],
       phaseCount: Number(project?.phaseCount) || 0,
@@ -449,11 +551,8 @@ const normalizeFreelancerProjects = (remote = []) => {
       completedTasks: project?.completedTasks ?? null,
       verifiedTasks: project?.verifiedTasks ?? null,
       sourceTitle: project?.title || serviceType || "",
-      templateTitle: serviceType || project?.title || "",
-      statusBucket:
-        rawStatus === "COMPLETED" || clampProgress(project?.progress) >= 100
-          ? "completed"
-          : "ongoing",
+      templateTitle: project?.title || serviceType || "",
+      statusBucket: isFullyCompleted ? "completed" : "ongoing",
       sortDate:
         project?.updatedAt ||
         project?.createdAt ||
@@ -475,11 +574,13 @@ const buildFreelancerProjectCardModel = (project) => {
   const progressValue = resolveProjectProgress(project);
   const phases = buildProjectPhases(project);
   const currentPhaseIndex = determineCurrentPhaseIndex(project, phases);
+  const projectCompleted = isProjectFullyCompleted(project);
   const currentPhase = phases[currentPhaseIndex] || {
     label: "Phase 1",
     subLabel: "Current phase",
     steps: [],
   };
+  const currentPhaseCompleted = isPhaseMarkedComplete(currentPhase, currentPhase?.subLabel);
   const currentPhaseSteps = Array.isArray(currentPhase?.steps)
     ? currentPhase.steps.map((step, stepIndex, collection) => {
         const firstPendingIndex = collection.findIndex(
@@ -489,7 +590,10 @@ const buildFreelancerProjectCardModel = (project) => {
         return {
           ...step,
           state:
-            String(step?.state || "").toLowerCase() === "pending" && firstPendingIndex === stepIndex
+            !projectCompleted &&
+            !currentPhaseCompleted &&
+            String(step?.state || "").toLowerCase() === "pending" &&
+            firstPendingIndex === stepIndex
               ? "current"
               : step.state,
         };
@@ -512,8 +616,8 @@ const buildFreelancerProjectCardModel = (project) => {
     currentPhaseCountLabel: `Phase ${phaseNumber} of ${totalPhases}`,
     showServiceType,
     actionHref: `/freelancer/project/${project.id}`,
-    actionLabel: statusMeta.label === "Completed" ? "View Summary" : "Open Workspace",
-    actionTone: statusMeta.label === "Completed" ? "slate" : "amber",
+    actionLabel: project.statusBucket === "completed" ? "View Summary" : "Open Workspace",
+    actionTone: project.statusBucket === "completed" ? "slate" : "amber",
   };
 };
 
@@ -762,6 +866,7 @@ const FreelancerProjectsContent = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const hasUserSelectedFilterRef = React.useRef(false);
 
   const activeFilter = searchParams.get("view") === "completed" ? "completed" : "ongoing";
 
@@ -819,6 +924,7 @@ const FreelancerProjectsContent = () => {
 
   useEffect(() => {
     if (isLoading) return;
+    if (hasUserSelectedFilterRef.current) return;
 
     if (activeFilter === "ongoing" && ongoingProjectCount === 0 && completedProjectCount > 0) {
       setActiveFilter("completed");
@@ -866,7 +972,10 @@ const FreelancerProjectsContent = () => {
                       <button
                         key={option.key}
                         type="button"
-                        onClick={() => setActiveFilter(option.key)}
+                        onClick={() => {
+                          hasUserSelectedFilterRef.current = true;
+                          setActiveFilter(option.key);
+                        }}
                         className={cn(
                           "h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold transition",
                           isActive

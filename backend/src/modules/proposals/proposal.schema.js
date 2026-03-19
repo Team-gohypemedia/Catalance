@@ -17,3 +17,20 @@ export const listProposalsSchema = z.object({
     as: z.enum(["owner", "freelancer"]).optional()
   })
 });
+
+export const updateProposalSchema = z.object({
+  params: z.object({
+    id: z.string().min(1)
+  }),
+  body: z
+    .object({
+      coverLetter: z.string().min(1).optional(),
+      amount: z.coerce.number().int().nonnegative().optional()
+    })
+    .refine(
+      (value) => value.coverLetter !== undefined || value.amount !== undefined,
+      {
+        message: "At least one proposal field must be provided"
+      }
+    )
+});

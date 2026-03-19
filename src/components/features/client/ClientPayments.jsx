@@ -14,6 +14,7 @@ import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
 import { useNavigate } from "react-router-dom";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
+import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import {
   DropdownMenu,
@@ -1156,6 +1157,9 @@ const ClientPaymentsContent = () => {
   const recentTransactions = useMemo(() => recentReceipts.slice(0, 4), [recentReceipts]);
 
   const latestPaidInvoice = recentReceipts[0] || null;
+  const paymentsHeaderSupportingText = selectedProject
+    ? `Showing billing activity for ${selectedProject.projectLabel}.`
+    : `${billingProjects.length} project${billingProjects.length === 1 ? "" : "s"} with billing activity available.`;
 
   const billingTools = useMemo(
     () => [
@@ -1290,7 +1294,7 @@ const ClientPaymentsContent = () => {
 
   return (
     <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={{
             avatar: user?.avatar,
@@ -1302,22 +1306,18 @@ const ClientPaymentsContent = () => {
         />
 
         <main className="flex-1 pb-12">
-          <section className="mt-14 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
-                Financial Overview
-              </h1>
-              <p className="mt-2 text-sm text-[#94a3b8]">
-                Manage your freelance earnings and project milestones.
-              </p>
-            </div>
-
-            <ProjectFilterMenu
-              projects={billingProjects}
-              value={projectFilter}
-              onValueChange={setProjectFilter}
-            />
-          </section>
+          <ClientPageHeader
+            title="Financial Overview"
+            description="Track project budgets, milestone payments, and escrow activity in one place."
+            supportingText={paymentsHeaderSupportingText}
+            actions={
+              <ProjectFilterMenu
+                projects={billingProjects}
+                value={projectFilter}
+                onValueChange={setProjectFilter}
+              />
+            }
+          />
 
           {isLoading ? (
             <PaymentsLoadingState />
