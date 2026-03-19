@@ -1678,9 +1678,9 @@ Task:
 Task:
 1) Act like a human expert casually chatting with a client.
 2) Acknowledge the user's last answer in 1-2 natural sentences.
-3) Give one concise suggestion based on previously shared answers/user context.
-4) Give one concise recommendation for the required next question based on its context.
-5) If options exist, mention exactly one recommended option with one short reason.
+3) Give one informative previous-context suggestion that feels personal by referencing one or two earlier confirmed answers or goals.
+4) Give one informative, neutral guidance line for the required next question based on its context.
+5) If options exist, explain what kind of choice matters here, but do NOT present any option as the best or recommended one unless the user explicitly asks for a recommendation.
 6) Ask the required next question naturally (rephrase it; do not copy it verbatim).
 7) If options exist, show them as numbered list using the exact labels provided.
 `
@@ -1688,11 +1688,12 @@ Task:
 Task:
 1) Act like a human expert casually chatting with a client.
 2) Enthusiastically acknowledge their last answer in 2-3 sentences.
-3) Explain briefly why their choice is a great idea for their project.
-4) If options exist, give a thoughtful recommendation for this next question and explain why naturally.
-5) If user seems unsure/confused, add helpful guidance before asking.
-6) Ask the required next question naturally (rephrase it; do not copy it verbatim).
-7) If options exist, show them as numbered list using the exact labels provided.
+3) Explain with 1-2 concrete reasons why their choice is a strong fit for their project.
+4) If options exist, give thoughtful but neutral guidance for this next question and explain it with a practical reason, benefit, or tradeoff.
+5) Do NOT tell the user which option is best, which one people should lean toward, or which option you recommend unless the user explicitly asks for a recommendation.
+6) If user seems unsure/confused, add helpful guidance before asking.
+7) Ask the required next question naturally (rephrase it; do not copy it verbatim).
+8) If options exist, show them as numbered list using the exact labels provided.
 `;
 
     const responseLengthRule = isOpeningIntakeQuestion
@@ -1706,6 +1707,11 @@ Task:
 - This is post-question-5 mode: avoid duplicate acknowledgements/suggestions.
 - Keep exactly one acknowledgement + one previous-context suggestion + one current-question recommendation before asking the question.
 - Use current_question_context and next_question_context to shape these two suggestion lines.
+- Make the previous-context line feel personal: reference one or two earlier confirmed answers, goals, constraints, or preferences in natural language.
+- Keep the previous-context line generic across all services. Do NOT assume this is web development unless the user's earlier answers explicitly say so.
+- If the latest answer seems inconsistent with earlier answers, handle it softly with phrases like "if that direction is still right" or "based on what you shared earlier" instead of saying the user is wrong.
+- Make both suggestion lines informative: each should include one concrete reason, likely benefit, or practical tradeoff tied to the user's context.
+- Keep the current-question line neutral by default. Do NOT label one option as "best" or "recommended" unless the user explicitly asks for that help.
 - Do not repeat the same reason in both suggestion lines.
 `
         : "";
@@ -1715,7 +1721,7 @@ Task:
 Return strict JSON only:
 {
   "ack": "one short sentence",
-  "previousSuggestion": "one short sentence tied to previous answers",
+  "previousSuggestion": "one personalized sentence tied to one or two previous confirmed answers; use soft correction if needed",
   "currentRecommendation": "one short sentence tied to the current question/options",
   "questionLead": "one short sentence that asks the next question"
 }
@@ -1765,6 +1771,7 @@ ${responseLengthRule}
 - Use simple English with clear sentences.
 - Keep the tone polite, friendly, and enthusiastic in every response.
 - Avoid repeating the same idea in multiple lines.
+- In normal guided flow, avoid phrases like "I recommend", "best option", "people usually choose", or "people often lean toward" unless the user explicitly asks for a recommendation.
 - Do not skip or replace the required next question.
 - Do not ask extra unrelated questions.
 - If options are provided for the required next question, ask user to choose from those options.
@@ -1812,8 +1819,8 @@ ${outputFormatBlock}
             );
             const previousSuggestionRaw = structured.previousSuggestion
                 || (fallbackRecentContext
-                    ? `since you shared ${fallbackRecentContext}, this direction will stay aligned with your flow.`
-                    : "this direction will keep your scope practical based on your earlier inputs.");
+                    ? `based on what you shared earlier about ${fallbackRecentContext}, this next choice should stay aligned with that direction.`
+                    : "based on what you've already shared, this next choice should stay consistent with your direction.");
             const previousSuggestion = clipSentence(
                 normalizeGuidanceSentence(previousSuggestionRaw),
                 190
@@ -2562,7 +2569,8 @@ export const guestChat = asyncHandler(async (req, res) => {
               2) Give one recommendation and why it fits their known context.
               3) Then ask the Current Question again so we can continue the flow.
               4) If Current Question has options, include them as numbered list (1., 2., 3.).
-            - If VALID: Acknowledge the answer enthusiastically, providing a short but thoughtful conversational response relating to their answer before asking the "Next Question in Script" naturally.
+            - If VALID: Acknowledge the answer enthusiastically, providing a short but informative conversational response relating to their answer before asking the "Next Question in Script" naturally.
+              Include at least one concrete reason, benefit, or tradeoff tied to the user's known context when relevant.
               (If it's the final question, just say "Thanks! Let me put that together for you.")
             - If INVALID: Politely ask for clarification or the specific details needed. But be sure to write a warm, friendly response before re-asking the question.
             - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
