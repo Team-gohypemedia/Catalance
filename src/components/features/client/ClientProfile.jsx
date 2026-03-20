@@ -1,71 +1,447 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
-import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
-import { ClientTopBar } from "@/components/features/client/ClientTopBar";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/shared/context/AuthContext";
-import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
-import { toast } from "sonner";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import User from "lucide-react/dist/esm/icons/user";
-import Building2 from "lucide-react/dist/esm/icons/building-2";
-import MapPin from "lucide-react/dist/esm/icons/map-pin";
-import Globe from "lucide-react/dist/esm/icons/globe";
-import Mail from "lucide-react/dist/esm/icons/mail";
-import Phone from "lucide-react/dist/esm/icons/phone";
-import Camera from "lucide-react/dist/esm/icons/camera";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
-import Star from "lucide-react/dist/esm/icons/star";
+import Building2 from "lucide-react/dist/esm/icons/building-2";
+import Camera from "lucide-react/dist/esm/icons/camera";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
-import Link2 from "lucide-react/dist/esm/icons/link-2";
+import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import MapPin from "lucide-react/dist/esm/icons/map-pin";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import User from "lucide-react/dist/esm/icons/user";
+import { useNavigate } from "react-router-dom";
+import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
+import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
+import ClientPageHeader from "@/components/features/client/ClientPageHeader";
+import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/shared/context/AuthContext";
+import { useNotifications } from "@/shared/context/NotificationContext";
+import { cn } from "@/shared/lib/utils";
+import { toast } from "sonner";
 
 const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+const NOTIFICATION_PREFS_STORAGE_KEY = "catalance:client-profile:notification-prefs";
+
+const defaultNotificationPrefs = Object.freeze({
+  projectUpdates: true,
+  messages: true,
+  milestoneReviews: true,
+  smsAlerts: false,
+});
+
+const emptyFormData = Object.freeze({
+  fullName: "",
+  email: "",
+  bio: "",
+  companyName: "",
+  phoneNumber: "",
+  location: "",
+  website: "",
+  avatar: "",
+});
+
+const getDisplayName = (user) =>
+  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+
+const getInitials = (value = "") => {
+  const parts = String(value)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return "C";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const formatCompactNumber = (value = 0) =>
+  new Intl.NumberFormat("en-IN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value) || 0);
+
+const formatCompactCurrency = (value = 0) => {
+  const numericValue = Number(value) || 0;
+
+  if (numericValue >= 10000000) {
+    return `Rs.${(numericValue / 10000000).toFixed(numericValue >= 100000000 ? 0 : 1)}Cr`;
+  }
+
+  if (numericValue >= 100000) {
+    return `Rs.${(numericValue / 100000).toFixed(numericValue >= 1000000 ? 0 : 1)}L`;
+  }
+
+  if (numericValue >= 1000) {
+    return `Rs.${Math.round(numericValue / 1000)}k`;
+  }
+
+  return `Rs.${numericValue}`;
+};
+
+const parseEmbeddedProfileData = (value = "") => {
+  const rawValue = String(value || "").trim();
+
+  if (!rawValue || (!rawValue.startsWith("{") && !rawValue.startsWith("["))) {
+    return { bioText: rawValue, metadata: {} };
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { bioText: rawValue, metadata: {} };
+    }
+
+    return {
+      bioText: String(parsed.bio || parsed.about || parsed.description || "").trim(),
+      metadata: parsed,
+    };
+  } catch {
+    return { bioText: rawValue, metadata: {} };
+  }
+};
+
+const readStoredNotificationPrefs = (userId) => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const suffix = userId ? `:${userId}` : "";
+    const rawValue = window.localStorage.getItem(
+      `${NOTIFICATION_PREFS_STORAGE_KEY}${suffix}`,
+    );
+    if (!rawValue) return null;
+
+    const parsedValue = JSON.parse(rawValue);
+    if (!parsedValue || typeof parsedValue !== "object" || Array.isArray(parsedValue)) {
+      return null;
+    }
+
+    return {
+      ...defaultNotificationPrefs,
+      ...parsedValue,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredNotificationPrefs = (userId, notificationPrefs) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const suffix = userId ? `:${userId}` : "";
+    window.localStorage.setItem(
+      `${NOTIFICATION_PREFS_STORAGE_KEY}${suffix}`,
+      JSON.stringify(notificationPrefs),
+    );
+  } catch {
+    // Ignore local persistence failures.
+  }
+};
+
+const buildProfileStateFromUser = (user) => {
+  const { bioText, metadata } = parseEmbeddedProfileData(user?.bio);
+  const storedNotificationPrefs = readStoredNotificationPrefs(user?.id);
+
+  return {
+    formData: {
+      fullName: user?.fullName || user?.name || metadata.fullName || "",
+      email: user?.email || metadata.email || "",
+      bio: bioText,
+      companyName: user?.companyName || metadata.companyName || "",
+      phoneNumber:
+        user?.phoneNumber ||
+        user?.phone ||
+        metadata.phoneNumber ||
+        metadata.phone ||
+        "",
+      location: user?.location || metadata.location || "",
+      website:
+        user?.website ||
+        user?.portfolio?.portfolioUrl ||
+        user?.portfolio ||
+        metadata.website ||
+        metadata.portfolio ||
+        "",
+      avatar: user?.avatar || "",
+    },
+    notificationPrefs: storedNotificationPrefs || {
+      ...defaultNotificationPrefs,
+      ...(metadata.notificationPrefs && typeof metadata.notificationPrefs === "object"
+        ? metadata.notificationPrefs
+        : {}),
+    },
+  };
+};
+
+const getProfileCompletionPercentage = (formData = emptyFormData) => {
+  const trackedFields = [
+    formData.avatar,
+    formData.fullName,
+    formData.email,
+    formData.phoneNumber,
+    formData.location,
+    formData.companyName,
+    formData.website,
+    formData.bio,
+  ];
+
+  const filledFields = trackedFields.filter((value) => String(value || "").trim()).length;
+  return Math.round((filledFields / trackedFields.length) * 100);
+};
+
+const ProfileSurface = ({ className, children }) => (
+  <section
+    className={cn(
+      "rounded-[32px] border border-white/[0.05] bg-[#333333] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]",
+      className,
+    )}
+  >
+    {children}
+  </section>
+);
+
+const SectionHeader = ({ icon: Icon, title, description, onEdit }) => (
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex items-start gap-4">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Icon className="size-5" />
+      </div>
+      <div className="space-y-1">
+        <h2 className="text-[1.1rem] font-semibold tracking-[-0.02em] text-white">{title}</h2>
+        {description ? <p className="text-sm text-[#94a3b8]">{description}</p> : null}
+      </div>
+    </div>
+    {onEdit ? (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onEdit}
+        className="h-10 rounded-full border-white/[0.08] bg-white/[0.04] px-4 text-white hover:bg-white/[0.08]"
+      >
+        <Edit2 className="mr-2 size-4 text-primary" />
+        Edit
+      </Button>
+    ) : null}
+  </div>
+);
+
+const StatBlock = ({ value, label, tone = "default" }) => (
+  <div className="space-y-1">
+    <p
+      className={cn(
+        "text-[1.9rem] font-semibold leading-none tracking-[-0.05em]",
+        tone === "accent" ? "text-primary" : "text-white",
+      )}
+    >
+      {value}
+    </p>
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#94a3b8]">
+      {label}
+    </p>
+  </div>
+);
+
+const ProfileField = ({
+  icon: Icon,
+  label,
+  id,
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+  type = "text",
+}) => (
+  <div className="space-y-3">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+      {label}
+    </p>
+    <div className="relative">
+      <Icon className="pointer-events-none absolute left-5 top-1/2 size-4 -translate-y-1/2 text-primary" />
+      <Input
+        id={id}
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={cn(
+          "h-12 rounded-[14px] border-white/[0.06] bg-white/[0.03] pl-12 text-sm text-white placeholder:text-[#677489] focus-visible:border-primary/35 focus-visible:ring-primary/15",
+          disabled && "cursor-not-allowed text-[#b6b6b6] opacity-80",
+        )}
+      />
+    </div>
+  </div>
+);
+
+const ProfileDisplayField = ({ icon: Icon, label, value, placeholder }) => (
+  <div className="space-y-3">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+      {label}
+    </p>
+    <div className="flex min-h-12 items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-5">
+      <Icon className="size-4 shrink-0 text-primary" />
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-sm",
+          value ? "text-white" : "text-[#677489]",
+        )}
+      >
+        {value || placeholder}
+      </span>
+    </div>
+  </div>
+);
+
+const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
+  <div className="space-y-3">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+      {label}
+    </p>
+    <div
+      className={cn(
+        "rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-6 py-5 text-sm leading-7 whitespace-pre-wrap",
+        value ? "text-white" : "text-[#677489]",
+        className,
+      )}
+    >
+      {value || placeholder}
+    </div>
+  </div>
+);
+
+const ReadonlyActionField = ({ icon: Icon, label, value, actionLabel, onClick }) => (
+  <div className="space-y-3">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+      {label}
+    </p>
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex h-12 w-full items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-5 text-left transition hover:border-white/[0.1] hover:bg-white/[0.05]"
+    >
+      <Icon className="size-4 shrink-0 text-primary" />
+      <span className="min-w-0 flex-1 truncate text-sm text-white">{value}</span>
+      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+        {actionLabel}
+        <ExternalLink className="size-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      </span>
+    </button>
+  </div>
+);
+
+const BillingShortcutCard = ({
+  icon: Icon,
+  title,
+  description,
+  meta,
+  actionLabel,
+  onClick,
+  loading = false,
+  accent = "primary",
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group flex w-full flex-col rounded-[28px] border border-white/[0.06] bg-white/[0.03] p-5 text-left transition hover:border-white/[0.1] hover:bg-white/[0.05]"
+  >
+    <div
+      className={cn(
+        "flex size-12 items-center justify-center rounded-full",
+        accent === "primary"
+          ? "bg-primary text-primary-foreground"
+          : "border border-primary/25 bg-primary/10 text-primary",
+      )}
+    >
+      {loading ? <Loader2 className="size-5 animate-spin" /> : <Icon className="size-5" />}
+    </div>
+
+    <div className="mt-6">
+      <p className="text-[1.75rem] font-semibold tracking-[-0.04em] text-white">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-[#94a3b8]">{description}</p>
+    </div>
+
+    <div className="mt-8 flex items-center justify-between gap-3">
+      <p className="text-sm text-[#7f8ca1]">{meta}</p>
+      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+        {actionLabel}
+        <ExternalLink className="size-3.5 transition group-hover:translate-x-0.5" />
+      </span>
+    </div>
+  </button>
+);
+
+const NotificationToggleRow = ({
+  icon: Icon,
+  title,
+  description,
+  checked,
+  onCheckedChange,
+  readOnly = false,
+}) => (
+  <div className="flex items-center justify-between gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-5 py-4">
+    <div className="flex min-w-0 items-center gap-4">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] border border-primary/20 bg-primary/10 text-primary">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-white">{title}</p>
+        <p className="truncate text-xs text-[#7a7a7a]">{description}</p>
+      </div>
+    </div>
+
+    <Switch
+      checked={checked}
+      disabled={readOnly}
+      onCheckedChange={readOnly ? undefined : onCheckedChange}
+      className={cn(
+        "scale-125 data-[state=unchecked]:bg-white/[0.15]",
+        readOnly && "pointer-events-none",
+      )}
+    />
+  </div>
+);
 
 const ClientProfileContent = () => {
   const { user, authFetch, refreshUser } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [projects, setProjects] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [pendingProfilePhotoFile, setPendingProfilePhotoFile] = useState(null);
   const [isProfileCropOpen, setIsProfileCropOpen] = useState(false);
+  const [formData, setFormData] = useState({ ...emptyFormData });
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    ...defaultNotificationPrefs,
+  });
+  const [initialProfileState, setInitialProfileState] = useState(null);
+  const [activeEditor, setActiveEditor] = useState(null);
+  const [editorSnapshot, setEditorSnapshot] = useState(null);
   const fileInputRef = useRef(null);
   const avatarUrlRef = useRef("");
-  const [notificationPrefs, setNotificationPrefs] = useState({
-    projectUpdates: true,
-    messages: true,
-    milestoneReviews: true,
-    smsAlerts: false,
-  });
-  const [completedProjects, setCompletedProjects] = useState([]);
-  const [reviewDrafts, setReviewDrafts] = useState({});
-  const [submittingReviews, setSubmittingReviews] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    bio: "",
-    companyName: "",
-    phoneNumber: "",
-    location: "",
-    website: "",
-    avatar: "",
-  });
 
   const setAvatarPreview = (nextAvatar) => {
     setFormData((prev) => {
@@ -94,121 +470,119 @@ const ClientProfileContent = () => {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      let parsedBio = {};
-      let bioText = user.bio || "";
+    if (!user) return;
 
-      // Attempt to parse bio if it looks like JSON
+    const nextProfileState = buildProfileStateFromUser(user);
+
+    setFormData((prev) => {
       if (
-        bioText &&
-        typeof bioText === "string" &&
-        (bioText.startsWith("{") || bioText.startsWith("["))
+        prev.avatar &&
+        prev.avatar.startsWith("blob:") &&
+        prev.avatar !== nextProfileState.formData.avatar
       ) {
-        try {
-          const parsed = JSON.parse(bioText);
-          // If parsing succeeds, check if it has known keys
-          if (parsed && typeof parsed === "object") {
-            parsedBio = parsed;
-            // specific logic: if the parsed object has a 'bio' field, that is the real bio text
-            if (parsed.bio !== undefined) {
-              bioText = parsed.bio;
-            } else {
-              // If no 'bio' key, but it was JSON, maybe the whole thing is metadata?
-              // user probably doesn't want to see JSON in the bio box anyway.
-              bioText = "";
-            }
-          }
-        } catch (e) {
-          // Not valid JSON, treat as normal string
-          console.log("Bio is not JSON", e);
-        }
+        URL.revokeObjectURL(prev.avatar);
       }
 
-      setFormData((prev) => {
-        const resolvedAvatar = user.avatar || "";
-
-        if (
-          prev.avatar &&
-          prev.avatar.startsWith("blob:") &&
-          prev.avatar !== resolvedAvatar
-        ) {
-          URL.revokeObjectURL(prev.avatar);
-        }
-
-        return {
-          fullName: user.fullName || user.name || parsedBio.fullName || "",
-          email: user.email || parsedBio.email || "",
-          bio: bioText,
-          companyName: user.companyName || parsedBio.companyName || "",
-          phoneNumber:
-            user.phoneNumber ||
-            user.phone ||
-            parsedBio.phone ||
-            parsedBio.phoneNumber ||
-            "",
-          location: user.location || parsedBio.location || "",
-          website:
-            user.portfolio?.portfolioUrl ||
-            user.portfolio ||
-            user.website ||
-            parsedBio.website ||
-            "",
-          avatar: resolvedAvatar,
-        };
-      });
-
-      const persistedPrefs = parsedBio.notificationPrefs;
-      if (persistedPrefs && typeof persistedPrefs === "object") {
-        setNotificationPrefs((prev) => ({
-          ...prev,
-          ...persistedPrefs,
-        }));
-      }
-    }
+      return nextProfileState.formData;
+    });
+    setNotificationPrefs(nextProfileState.notificationPrefs);
+    setInitialProfileState(nextProfileState);
   }, [user]);
 
   useEffect(() => {
     if (!authFetch) return;
 
     let isMounted = true;
-    const loadCompletedProjects = async () => {
+
+    const loadProjects = async () => {
       try {
         const response = await authFetch("/projects");
         const payload = await response.json().catch(() => null);
-        if (!isMounted) return;
-
-        const projects = Array.isArray(payload?.data) ? payload.data : [];
-        const completed = projects.filter(
-          (project) => String(project.status || "").toUpperCase() === "COMPLETED"
-        );
-
-        setCompletedProjects(completed);
-        setReviewDrafts((prev) => {
-          const next = { ...prev };
-          completed.forEach((project) => {
-            if (!next[project.id]) {
-              next[project.id] = {
-                freelancerRating: 0,
-                managerRating: 0,
-                feedback: "",
-              };
-            }
-          });
-          return next;
-        });
+        if (isMounted) {
+          setProjects(Array.isArray(payload?.data) ? payload.data : []);
+        }
       } catch (error) {
-        console.error("Failed to load completed projects for review", error);
+        console.error("Failed to load client projects for profile metrics:", error);
+        if (isMounted) {
+          setProjects([]);
+        }
       }
     };
 
-    loadCompletedProjects();
+    void loadProjects();
+
     return () => {
       isMounted = false;
     };
   }, [authFetch]);
 
-  const handleChange = (e) => {
-    const { id, value } = e.target;
+  const headerDisplayName = useMemo(() => getDisplayName(user), [user]);
+  const completedProjects = useMemo(
+    () =>
+      projects.filter(
+        (project) => String(project?.status || "").toUpperCase() === "COMPLETED",
+      ),
+    [projects],
+  );
+  const activeProjects = useMemo(
+    () =>
+      projects.filter(
+        (project) => String(project?.status || "").toUpperCase() !== "COMPLETED",
+      ),
+    [projects],
+  );
+  const totalProjectBudget = useMemo(
+    () => projects.reduce((sum, project) => sum + (Number(project?.budget) || 0), 0),
+    [projects],
+  );
+  const enabledNotificationCount = useMemo(
+    () => Object.values(notificationPrefs).filter(Boolean).length,
+    [notificationPrefs],
+  );
+  const profileCompletion = useMemo(
+    () => getProfileCompletionPercentage(formData),
+    [formData],
+  );
+  const workspaceLink = useMemo(() => {
+    const activeProject = projects.find((project) => project?.id);
+    return activeProject ? `/client/project/${activeProject.id}` : "/client/project";
+  }, [projects]);
+  const identityStats = useMemo(
+    () => [
+      { label: "Profile", value: `${profileCompletion}%`, tone: "accent" },
+      {
+        label: "Active Projects",
+        value: formatCompactNumber(activeProjects.length),
+        tone: "default",
+      },
+      {
+        label: "Completed Projects",
+        value: formatCompactNumber(completedProjects.length),
+        tone: "default",
+      },
+    ],
+    [activeProjects.length, completedProjects.length, profileCompletion],
+  );
+  const hasUnsavedChanges = useMemo(() => {
+    if (!initialProfileState) return Boolean(selectedFile);
+
+    const formChanged = Object.keys(initialProfileState.formData).some((key) => {
+      const currentValue = String(formData[key] || "").trim();
+      const initialValue = String(initialProfileState.formData[key] || "").trim();
+      return currentValue !== initialValue;
+    });
+
+    const prefsChanged = Object.keys(defaultNotificationPrefs).some(
+      (key) =>
+        Boolean(notificationPrefs[key]) !==
+        Boolean(initialProfileState.notificationPrefs?.[key]),
+    );
+
+    return formChanged || prefsChanged || Boolean(selectedFile);
+  }, [formData, initialProfileState, notificationPrefs, selectedFile]);
+
+  const handleChange = (event) => {
+    const { id, value } = event.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
@@ -236,11 +610,11 @@ const ClientProfileContent = () => {
     return true;
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
+  const handleImageUpload = (event) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    e.target.value = "";
+    event.target.value = "";
 
     if (!String(file.type || "").startsWith("image/")) {
       toast.error("Please choose an image file.");
@@ -248,7 +622,7 @@ const ClientProfileContent = () => {
     }
 
     if (file.size > PROFILE_PHOTO_MAX_BYTES) {
-      toast.error("File size must be less than 5MB");
+      toast.error("File size must be less than 5MB.");
       return;
     }
 
@@ -256,592 +630,677 @@ const ClientProfileContent = () => {
     setIsProfileCropOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleNotificationToggle = (key, checked) => {
+    setNotificationPrefs((prev) => {
+      const nextPrefs = { ...prev, [key]: checked };
+      writeStoredNotificationPrefs(user?.id, nextPrefs);
+      return nextPrefs;
+    });
+    setInitialProfileState((prev) =>
+      prev
+        ? {
+            ...prev,
+            notificationPrefs: {
+              ...prev.notificationPrefs,
+              [key]: checked,
+            },
+          }
+        : prev,
+    );
+  };
+
+  const openSectionEditor = (sectionKey) => {
+    setEditorSnapshot({
+      formData: { ...formData },
+      notificationPrefs: { ...notificationPrefs },
+      selectedFile,
+    });
+    setActiveEditor(sectionKey);
+  };
+
+  const closeSectionEditor = () => {
+    if (loading) return;
+
+    if (editorSnapshot) {
+      setFormData((prev) => {
+        if (
+          prev.avatar &&
+          prev.avatar.startsWith("blob:") &&
+          prev.avatar !== editorSnapshot.formData.avatar
+        ) {
+          URL.revokeObjectURL(prev.avatar);
+        }
+
+        return { ...editorSnapshot.formData };
+      });
+      setNotificationPrefs({ ...editorSnapshot.notificationPrefs });
+      setSelectedFile(editorSnapshot.selectedFile || null);
+    }
+
+    closeProfileCropDialog();
+    setActiveEditor(null);
+    setEditorSnapshot(null);
+  };
+
+  const handleDiscardChanges = () => {
+    if (!initialProfileState) return;
+
+    setSelectedFile(null);
+    closeProfileCropDialog();
+    setFormData((prev) => {
+      if (
+        prev.avatar &&
+        prev.avatar.startsWith("blob:") &&
+        prev.avatar !== initialProfileState.formData.avatar
+      ) {
+        URL.revokeObjectURL(prev.avatar);
+      }
+
+      return { ...initialProfileState.formData };
+    });
+    setNotificationPrefs({ ...initialProfileState.notificationPrefs });
+  };
+
+  const handleOpenCustomerPortal = async () => {
+    setPortalLoading(true);
+
+    try {
+      const response = await authFetch("/payments/customer-portal", {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => null);
+      const portalUrl = payload?.data?.url || payload?.url;
+
+      if (response.ok && portalUrl) {
+        window.open(portalUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      toast.info(
+        "Customer portal endpoint is not wired yet. Connect the billing portal URL to enable it.",
+      );
+    } catch (error) {
+      console.error("Failed to open customer portal:", error);
+      toast.info(
+        "Customer portal endpoint is not wired yet. Connect the billing portal URL to enable it.",
+      );
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
     setLoading(true);
+
     try {
       let currentAvatarUrl = formData.avatar;
 
-      // Check if we need to upload an image first
       if (selectedFile) {
         setUploadingImage(true);
+
         try {
           const uploadData = new FormData();
           uploadData.append("file", selectedFile);
 
-          const uploadRes = await authFetch("/upload", {
+          const uploadResponse = await authFetch("/upload", {
             method: "POST",
             body: uploadData,
           });
 
-          if (!uploadRes.ok) {
-            const err = await uploadRes.json();
-            throw new Error(err.message || "Image upload failed");
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json().catch(() => ({}));
+            throw new Error(errorData.message || "Image upload failed");
           }
 
-          const data = await uploadRes.json();
-          currentAvatarUrl = data.data.url;
+          const uploadPayload = await uploadResponse.json();
+          currentAvatarUrl = uploadPayload?.data?.url || uploadPayload?.url || currentAvatarUrl;
         } finally {
           setUploadingImage(false);
         }
       }
 
       const payload = {
-        personal: {
-          name: formData.fullName,
-          email: formData.email,
-          phone: formData.phoneNumber,
-          location: formData.location,
-          avatar: currentAvatarUrl,
-        },
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        location: formData.location,
         companyName: formData.companyName,
-        website: formData.website,
         bio: formData.bio,
-        notificationPrefs,
+        portfolio: formData.website,
+        avatar: currentAvatarUrl,
       };
 
-      const response = await authFetch("/profile", {
-        method: "POST",
+      const response = await authFetch("/auth/profile", {
+        method: "PUT",
         body: JSON.stringify(payload),
       });
+      const responsePayload = await response.json().catch(() => null);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to update profile");
+        throw new Error(
+          responsePayload?.message ||
+            responsePayload?.error?.message ||
+            "Failed to update profile",
+        );
       }
+
+      const updatedUser = responsePayload?.data;
+      const nextProfileState = buildProfileStateFromUser({
+        ...user,
+        ...(updatedUser && typeof updatedUser === "object" ? updatedUser : {}),
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        phone: formData.phoneNumber,
+        location: formData.location,
+        companyName: formData.companyName,
+        bio: formData.bio,
+        portfolio: formData.website,
+        avatar: currentAvatarUrl || "",
+      });
+      const nextFormData = {
+        ...nextProfileState.formData,
+        email: formData.email || nextProfileState.formData.email,
+      };
 
       setSelectedFile(null);
       setAvatarPreview(currentAvatarUrl || "");
-      toast.success("Profile updated successfully");
-      await refreshUser();
+      setFormData(nextFormData);
+      setInitialProfileState({
+        formData: nextFormData,
+        notificationPrefs: { ...notificationPrefs },
+      });
+      writeStoredNotificationPrefs(user?.id, notificationPrefs);
+      toast.success("Profile updated successfully.");
+      await refreshUser().catch(() => null);
+      setActiveEditor(null);
+      setEditorSnapshot(null);
+      return true;
     } catch (error) {
-      console.error("Profile update error:", error);
-      toast.error(error.message || "Something went wrong");
+      console.error("Client profile update failed:", error);
+      toast.error(error.message || "Something went wrong.");
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const handleNotificationToggle = (key, checked) => {
-    setNotificationPrefs((prev) => ({
-      ...prev,
-      [key]: checked,
-    }));
+  const billingHubMeta =
+    totalProjectBudget > 0
+      ? `${formatCompactCurrency(totalProjectBudget)} in tracked project value`
+      : projects.length > 0
+        ? `${projects.length} project${projects.length === 1 ? "" : "s"} linked`
+        : "No billing activity yet";
+
+  const workspaceSummaryText = projects.length
+    ? "Open your active project workspace"
+    : "Start your first client workspace";
+
+  const activeEditorMeta = {
+    personal: {
+      title: "Edit Personal Information",
+      description: "Update the contact and identity details you want to show across your client workspace.",
+      saveLabel: "Save Personal Info",
+    },
+    bio: {
+      title: "Edit Bio & Expertise",
+      description: "Refine how collaborators understand your business, working style, and project goals.",
+      saveLabel: "Save Bio",
+    },
+    company: {
+      title: "Edit Company & Presence",
+      description: "Keep your company name and website ready for project conversations and billing references.",
+      saveLabel: "Save Company Details",
+    },
   };
 
-  const handleReviewDraftChange = (projectId, key, value) => {
-    setReviewDrafts((prev) => ({
-      ...prev,
-      [projectId]: {
-        freelancerRating: 0,
-        managerRating: 0,
-        feedback: "",
-        ...prev[projectId],
-        [key]: value,
-      },
-    }));
-  };
+  const renderEditorContent = () => {
+    if (activeEditor === "personal") {
+      return (
+        <div className="space-y-6">
+          <div className="flex flex-col items-center gap-4 rounded-[24px] border border-white/[0.06] bg-white/[0.03] p-6 text-center">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative"
+            >
+              <Avatar className="h-28 w-28 border-2 border-[#334155] shadow-[0_24px_60px_-34px_rgba(0,0,0,0.65)]">
+                <AvatarImage
+                  src={formData.avatar || user?.avatar}
+                  alt={formData.fullName || headerDisplayName}
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-[#10262d] text-3xl font-semibold text-[#f5f5f5]">
+                  {getInitials(formData.fullName || headerDisplayName)}
+                </AvatarFallback>
+              </Avatar>
 
-  const handleSubmitReview = async (projectId) => {
-    const review = reviewDrafts[projectId];
-    if (!review) return;
-    if (!review.freelancerRating || !review.managerRating) {
-      toast.error("Rate both freelancer and project manager before submitting.");
-      return;
+              <span className="absolute bottom-1 right-1 flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/20 text-white shadow-lg backdrop-blur-sm transition group-hover:bg-white/30">
+                {uploadingImage ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Camera className="size-4" />
+                )}
+              </span>
+            </button>
+
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-white">Profile Photo</p>
+              <p className="text-xs text-[#94a3b8]">Upload a clear square image up to 5MB.</p>
+            </div>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <ProfileField
+              icon={User}
+              label="Full Name"
+              id="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              placeholder="Alex Rivers"
+            />
+            <ProfileField
+              icon={Mail}
+              label="Email Address"
+              id="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="alex@company.com"
+              disabled
+              type="email"
+            />
+            <ProfileField
+              icon={Phone}
+              label="Phone Number"
+              id="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              placeholder="+91 98765 43210"
+            />
+            <ProfileField
+              icon={MapPin}
+              label="Location"
+              id="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="San Francisco, CA"
+            />
+          </div>
+        </div>
+      );
     }
 
-    setSubmittingReviews(true);
-    try {
-      // Placeholder persistence. Connect this to a dedicated review endpoint.
-      await new Promise((resolve) => {
-        setTimeout(resolve, 400);
-      });
-      toast.success("Review submitted");
-    } finally {
-      setSubmittingReviews(false);
+    if (activeEditor === "bio") {
+      return (
+        <div className="space-y-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9aa6ba]">
+            Professional Bio
+          </p>
+          <Textarea
+            id="bio"
+            value={formData.bio}
+            onChange={handleChange}
+            placeholder="Share the kind of projects you run, the outcomes you care about, and how your team likes to collaborate."
+            className="min-h-[220px] rounded-[14px] border-white/[0.06] bg-white/[0.03] px-6 py-5 text-sm leading-7 text-white placeholder:text-[#677489] focus-visible:border-primary/35 focus-visible:ring-primary/15"
+          />
+        </div>
+      );
     }
-  };
 
-  // Background style (Dotted Noise)
-  const backgroundStyle = {
-    backgroundImage: `radial-gradient(var(--grid-line-color) 1px, transparent 1px)`,
-    backgroundSize: "24px 24px",
-    maskImage: "linear-gradient(to bottom, black 40%, transparent 100%)",
-    WebkitMaskImage: "linear-gradient(to bottom, black 40%, transparent 100%)",
+    if (activeEditor === "company") {
+      return (
+        <div className="space-y-5">
+          <ProfileField
+            icon={Building2}
+            label="Company Name"
+            id="companyName"
+            value={formData.companyName}
+            onChange={handleChange}
+            placeholder="Rivers Digital Labs"
+          />
+          <ProfileField
+            icon={Globe}
+            label="Website"
+            id="website"
+            value={formData.website}
+            onChange={handleChange}
+            placeholder="https://company.com"
+            type="url"
+          />
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
-    <div className="flex-1 flex flex-col relative h-full overflow-hidden bg-background transition-colors duration-300">
-      {/* Background Texture */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.15]"
-        style={backgroundStyle}
-      />
+    <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+        <ClientWorkspaceHeader
+          profile={{
+            avatar: user?.avatar,
+            name: headerDisplayName,
+            initial: getInitials(headerDisplayName),
+          }}
+          activeWorkspaceKey="profile"
+          unreadCount={unreadCount}
+        />
 
-      <ClientTopBar />
+        <main className="flex-1 pb-12">
+          <ClientPageHeader
+            title="Profile Settings"
+            description="Manage your professional identity and workspace preferences."
+            dateLabel={false}
+            supportingText={
+              <>
+                <span>Profile {profileCompletion}% complete</span>
+                <span className="h-1 w-1 rounded-full bg-[#59606d]" aria-hidden="true" />
+                <span>
+                  {completedProjects.length} completed project
+                  {completedProjects.length === 1 ? "" : "s"}
+                </span>
+                <span className="h-1 w-1 rounded-full bg-[#59606d]" aria-hidden="true" />
+                <span>
+                  {enabledNotificationCount} active alert channel
+                  {enabledNotificationCount === 1 ? "" : "s"}
+                </span>
+              </>
+            }
+          />
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
-        <div className="max-w-[1600px] mx-auto">
-          <div className="grid gap-8 lg:grid-cols-[280px_1fr] animate-in fade-in slide-in-from-bottom-4 duration-700">
-          {/* Left Column: Identity Card */}
-          <div className="space-y-6">
-            <Card className="border-border/60 bg-card/60 backdrop-blur-xl overflow-hidden relative group">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <CardContent className="pt-8 pb-8 flex flex-col items-center text-center relative z-10">
-                <div
-                  className="relative mb-4 group/avatar cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Avatar className="h-32 w-32 ring-4 ring-background shadow-xl transition-transform duration-300 group-hover/avatar:scale-105">
-                    <AvatarImage
-                      src={formData.avatar || user?.avatar}
-                      alt={formData.fullName}
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="text-4xl bg-primary text-primary-foreground font-bold">
-                      {formData.fullName?.[0] || "C"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-background opacity-0 scale-95 group-hover/avatar:opacity-100 group-hover/avatar:scale-100 transition-all duration-300">
-                    {uploadingImage ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Camera className="h-4 w-4" />
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
-                </div>
-                <h3 className="text-2xl font-bold text-foreground mb-1">
-                  {formData.fullName || "User"}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {formData.email}
-                </p>
-
-                <div className="w-full space-y-2 text-sm text-left mt-4 bg-muted/30 p-4 rounded-xl">
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <Building2 className="h-4 w-4 shrink-0" />
-                    <span className="truncate">
-                      {formData.companyName || "No Company"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <MapPin className="h-4 w-4 shrink-0" />
-                    <span className="truncate">
-                      {formData.location || "No Location"}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column: Edit Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tight text-foreground">
-                Profile Settings
-              </h2>
-              <p className="text-muted-foreground">
-                Manage your personal information and preferences.
-              </p>
-            </div>
-
-            <Card className="border-border/60 bg-card/40 backdrop-blur-md shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary" />
-                  Personal Information
-                </CardTitle>
-                <CardDescription>
-                  Update your personal details here.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      className="bg-background/50 focus:bg-background transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="email"
-                        value={formData.email}
-                        disabled
-                        className="pl-9 bg-muted/50 text-muted-foreground cursor-not-allowed"
+          <div className="mt-8 space-y-8">
+            <section className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+              <div className="space-y-6">
+                <ProfileSurface className="overflow-hidden p-7">
+                  <div className="flex flex-col items-center text-center">
+                    <Avatar className="h-36 w-36 border-2 border-[#334155] shadow-[0_24px_60px_-34px_rgba(0,0,0,0.65)]">
+                      <AvatarImage
+                        src={formData.avatar || user?.avatar}
+                        alt={formData.fullName || headerDisplayName}
+                        className="object-cover"
                       />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">Phone Number</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
-                        placeholder="+1 (555) 000-0000"
-                        className="pl-9 bg-background/50 focus:bg-background transition-colors"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="location"
-                        value={formData.location}
-                        onChange={handleChange}
-                        placeholder="New York, USA"
-                        className="pl-9 bg-background/50 focus:bg-background transition-colors"
-                      />
-                    </div>
-                  </div>
-                </div>
+                      <AvatarFallback className="bg-[#10262d] text-4xl font-semibold text-[#f5f5f5]">
+                        {getInitials(formData.fullName || headerDisplayName)}
+                      </AvatarFallback>
+                    </Avatar>
 
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={handleChange}
-                    placeholder="Tell us about yourself..."
-                    className="min-h-[100px] bg-background/50 focus:bg-background transition-colors resize-y"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/60 bg-card/40 backdrop-blur-md shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-primary" />
-                  Company Details
-                </CardTitle>
-                <CardDescription>
-                  Manage your business information.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="companyName"
-                        value={formData.companyName}
-                        onChange={handleChange}
-                        placeholder="Acme Inc."
-                        className="pl-9 bg-background/50 focus:bg-background transition-colors"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="website"
-                        value={formData.website}
-                        onChange={handleChange}
-                        placeholder="https://example.com"
-                        className="pl-9 bg-background/50 focus:bg-background transition-colors"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/60 bg-card/40 backdrop-blur-md shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-primary" />
-                  Billing & Payments
-                </CardTitle>
-                <CardDescription>
-                  Open your billing hub to manage cards, receipts, and escrow visibility.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border border-border/60 bg-background/40 p-4">
-                  <p className="text-sm font-semibold text-foreground">Customer Portal</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Use secure hosted checkout and card management for PCI compliance.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    onClick={() => navigate("/client/payments")}
-                    className="gap-2"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    Open Billing Hub
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() =>
-                      toast.info(
-                        "Wire this action to your Stripe Customer Portal session endpoint."
-                      )
-                    }
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Launch Customer Portal
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/60 bg-card/40 backdrop-blur-md shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-primary" />
-                  Notification Preferences
-                </CardTitle>
-                <CardDescription>
-                  Control where project, milestone, and chat alerts are delivered.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Project updates</p>
-                    <p className="text-xs text-muted-foreground">
-                      Status changes, approvals, and timeline updates
+                    <h2 className="mt-8 text-[2.15rem] font-semibold tracking-[-0.05em] text-white">
+                      {formData.fullName || headerDisplayName}
+                    </h2>
+                    <p className="mt-2 text-base text-[#94a3b8]">
+                      {formData.email || "Add an email address"}
+                    </p>
+                    <p className="mt-5 text-sm text-[#7f8ca1]">
+                      {formData.companyName || "Workspace identity ready for new client projects."}
                     </p>
                   </div>
-                  <Switch
+
+                  <div className="mt-8 border-t border-white/[0.05] pt-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      {identityStats.map((item, index) => (
+                        <StatBlock
+                          key={item.label}
+                          value={item.value}
+                          label={item.label}
+                          tone={index === 0 ? "accent" : item.tone}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </ProfileSurface>
+
+                <ProfileSurface className="p-6">
+                  <SectionHeader
+                    icon={CreditCard}
+                    title="Billing & Payments"
+                    description="Open your billing hub to manage cards, invoices, and escrow visibility."
+                  />
+
+                  <div className="mt-6 space-y-4">
+                    <BillingShortcutCard
+                      icon={CreditCard}
+                      title="Billing Hub"
+                      description="Manage invoices, milestone payments, and secure billing records from one place."
+                      meta={billingHubMeta}
+                      actionLabel="Open"
+                      onClick={() => navigate("/client/payments")}
+                    />
+
+                    <BillingShortcutCard
+                      icon={ShieldCheck}
+                      title="Customer Portal"
+                      description="Launch saved card management and hosted billing controls when your payment portal is connected."
+                      meta="Secure card and billing preference management"
+                      actionLabel="Launch"
+                      onClick={() => {
+                        void handleOpenCustomerPortal();
+                      }}
+                      loading={portalLoading}
+                      accent="secondary"
+                    />
+                  </div>
+                </ProfileSurface>
+              </div>
+
+              <div className="space-y-6">
+                <ProfileSurface className="p-6 sm:p-8">
+                  <SectionHeader
+                    icon={User}
+                    title="Personal Information"
+                    description="Keep your workspace contact details accurate for projects and billing."
+                    onEdit={() => openSectionEditor("personal")}
+                  />
+
+                  <div className="mt-8 grid gap-5 md:grid-cols-2">
+                    <ProfileDisplayField
+                      icon={User}
+                      label="Full Name"
+                      value={formData.fullName}
+                      placeholder="Add your full name"
+                    />
+                    <ProfileDisplayField
+                      icon={Mail}
+                      label="Email Address"
+                      value={formData.email}
+                      placeholder="Add your email address"
+                    />
+                    <ProfileDisplayField
+                      icon={Phone}
+                      label="Phone Number"
+                      value={formData.phoneNumber}
+                      placeholder="Add your phone number"
+                    />
+                    <ProfileDisplayField
+                      icon={MapPin}
+                      label="Location"
+                      value={formData.location}
+                      placeholder="Add your location"
+                    />
+                  </div>
+                </ProfileSurface>
+
+                <ProfileSurface className="p-6 sm:p-8">
+                  <SectionHeader
+                    icon={FileText}
+                    title="Bio & Expertise"
+                    description="Describe your business, the type of work you run through Catalance, and how collaborators should work with you."
+                    onEdit={() => openSectionEditor("bio")}
+                  />
+
+                  <div className="mt-8">
+                    <ProfileTextDisplay
+                      label="Professional Bio"
+                      value={formData.bio}
+                      placeholder="Add a short professional bio about how you run projects and collaborate."
+                    />
+                  </div>
+                </ProfileSurface>
+
+                <ProfileSurface className="p-6 sm:p-8">
+                  <SectionHeader
+                    icon={Building2}
+                    title="Company & Presence"
+                    description="Keep your company identity and workspace links ready for new project conversations."
+                    onEdit={() => openSectionEditor("company")}
+                  />
+
+                  <div className="mt-8 space-y-5">
+                    <ProfileDisplayField
+                      icon={Building2}
+                      label="Company Name"
+                      value={formData.companyName}
+                      placeholder="Add your company name"
+                    />
+                    <ProfileDisplayField
+                      icon={Globe}
+                      label="Website"
+                      value={formData.website}
+                      placeholder="Add your website"
+                    />
+                    <ReadonlyActionField
+                      icon={ExternalLink}
+                      label="Workspace"
+                      value={workspaceSummaryText}
+                      actionLabel={projects.length ? "Launch" : "Start"}
+                      onClick={() => navigate(projects.length ? workspaceLink : "/service")}
+                    />
+                  </div>
+                </ProfileSurface>
+              </div>
+            </section>
+
+            <ProfileSurface className="p-6 sm:p-8">
+              <SectionHeader
+                icon={Bell}
+                title="Notification Preferences"
+                description="Configure how you receive project updates."
+              />
+
+              <div className="mt-8 space-y-8">
+                <div className="space-y-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d2d0cb]">
+                    Project Notifications
+                  </p>
+                  <NotificationToggleRow
+                    icon={Bell}
+                    title="Project updates"
+                    description="Real-time alerts for project phase changes"
                     checked={notificationPrefs.projectUpdates}
                     onCheckedChange={(checked) =>
                       handleNotificationToggle("projectUpdates", checked)
                     }
                   />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Messages</p>
-                    <p className="text-xs text-muted-foreground">
-                      New chat messages from freelancer or project manager
-                    </p>
-                  </div>
-                  <Switch
-                    checked={notificationPrefs.messages}
-                    onCheckedChange={(checked) =>
-                      handleNotificationToggle("messages", checked)
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Milestone review reminders</p>
-                    <p className="text-xs text-muted-foreground">
-                      Nudges when deliverables are waiting for approval
-                    </p>
-                  </div>
-                  <Switch
+                  <NotificationToggleRow
+                    icon={FileText}
+                    title="Milestone reminders"
+                    description="Get notified before approvals and due reviews"
                     checked={notificationPrefs.milestoneReviews}
                     onCheckedChange={(checked) =>
                       handleNotificationToggle("milestoneReviews", checked)
                     }
                   />
                 </div>
-                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">SMS alerts</p>
-                    <p className="text-xs text-muted-foreground">
-                      Critical disputes and payment alerts by SMS
-                    </p>
-                  </div>
-                  <Switch
+
+                <div className="space-y-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d2d0cb]">
+                    Communication
+                  </p>
+                  <NotificationToggleRow
+                    icon={Mail}
+                    title="Messages"
+                    description="New message alerts from your project lead"
+                    checked={notificationPrefs.messages}
+                    onCheckedChange={(checked) =>
+                      handleNotificationToggle("messages", checked)
+                    }
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d2d0cb]">
+                    Alerts
+                  </p>
+                  <NotificationToggleRow
+                    icon={Phone}
+                    title="SMS alerts"
+                    description="Important emergency updates via text"
                     checked={notificationPrefs.smsAlerts}
                     onCheckedChange={(checked) =>
                       handleNotificationToggle("smsAlerts", checked)
                     }
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </ProfileSurface>
+          </div>
+        </main>
 
-            <Card className="border-border/60 bg-card/40 backdrop-blur-md shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-primary" />
-                  Post-Project Reviews
-                </CardTitle>
-                <CardDescription>
-                  Rate freelancer execution and project manager communication after delivery.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {completedProjects.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
-                    Completed projects will appear here for reviews.
-                  </div>
-                ) : (
-                  completedProjects.slice(0, 3).map((project) => {
-                    const draft = reviewDrafts[project.id] || {
-                      freelancerRating: 0,
-                      managerRating: 0,
-                      feedback: "",
-                    };
-                    return (
-                      <div
-                        key={project.id}
-                        className="rounded-lg border border-border/60 bg-background/40 p-4 space-y-3"
-                      >
-                        <p className="text-sm font-semibold text-foreground">
-                          {project.title || "Completed project"}
-                        </p>
+        <ClientDashboardFooter variant="workspace" />
+      </div>
 
-                        <div className="space-y-2">
-                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                            Freelancer rating
-                          </p>
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: 5 }).map((_, index) => {
-                              const score = index + 1;
-                              const active = draft.freelancerRating >= score;
-                              return (
-                                <Button
-                                  key={`freelancer-${project.id}-${score}`}
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() =>
-                                    handleReviewDraftChange(
-                                      project.id,
-                                      "freelancerRating",
-                                      score
-                                    )
-                                  }
-                                >
-                                  <Star
-                                    className={`h-4 w-4 ${
-                                      active ? "text-amber-500 fill-amber-500" : "text-muted-foreground"
-                                    }`}
-                                  />
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageUpload}
+      />
 
-                        <div className="space-y-2">
-                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                            Project manager rating
-                          </p>
-                          <div className="flex items-center gap-1">
-                            {Array.from({ length: 5 }).map((_, index) => {
-                              const score = index + 1;
-                              const active = draft.managerRating >= score;
-                              return (
-                                <Button
-                                  key={`manager-${project.id}-${score}`}
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() =>
-                                    handleReviewDraftChange(
-                                      project.id,
-                                      "managerRating",
-                                      score
-                                    )
-                                  }
-                                >
-                                  <Star
-                                    className={`h-4 w-4 ${
-                                      active ? "text-amber-500 fill-amber-500" : "text-muted-foreground"
-                                    }`}
-                                  />
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor={`feedback-${project.id}`}>Feedback</Label>
-                          <Textarea
-                            id={`feedback-${project.id}`}
-                            value={draft.feedback}
-                            onChange={(event) =>
-                              handleReviewDraftChange(
-                                project.id,
-                                "feedback",
-                                event.target.value
-                              )
-                            }
-                            placeholder="Share what went well and what can improve."
-                            className="min-h-[90px] bg-background/50"
-                          />
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="gap-2"
-                          onClick={() => handleSubmitReview(project.id)}
-                          disabled={submittingReviews}
-                        >
-                          {submittingReviews ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Link2 className="h-4 w-4" />
-                          )}
-                          Submit Review
-                        </Button>
-                      </div>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="flex items-center justify-end gap-4 sticky bottom-6 z-20">
-              <Button
-                type="submit"
-                disabled={loading}
-                size="lg"
-                className="min-w-[150px] shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </div>
-          </form>
+      <Dialog
+        open={Boolean(activeEditor)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeSectionEditor();
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl gap-0 overflow-hidden rounded-[32px] border-white/[0.08] bg-[#2d2d2d] p-0 text-white">
+          <div className="border-b border-white/[0.06] px-6 py-5 sm:px-8">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold tracking-[-0.03em] text-white">
+                {activeEditor ? activeEditorMeta[activeEditor]?.title : ""}
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-6 text-[#94a3b8]">
+                {activeEditor ? activeEditorMeta[activeEditor]?.description : ""}
+              </DialogDescription>
+            </DialogHeader>
           </div>
 
-          <ClientDashboardFooter variant="workspace" />
-        </div>
-      </main>
+          <div className="max-h-[70vh] overflow-y-auto px-6 py-6 sm:px-8">
+            {renderEditorContent()}
+          </div>
+
+          <DialogFooter className="border-t border-white/[0.06] px-6 py-5 sm:px-8">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeSectionEditor}
+              disabled={loading}
+              className="h-12 rounded-full border-white/[0.12] bg-white/[0.04] px-6 text-sm font-semibold text-white hover:bg-white/[0.08]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void handleSubmit();
+              }}
+              disabled={loading}
+              className="h-12 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-[0_16px_40px_-20px_color-mix(in_srgb,var(--primary)_60%,transparent)] hover:bg-primary/90"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : activeEditor ? (
+                activeEditorMeta[activeEditor]?.saveLabel
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ProfileImageCropDialog
         open={isProfileCropOpen}
@@ -854,14 +1313,6 @@ const ClientProfileContent = () => {
   );
 };
 
-const ClientProfile = () => {
-  return (
-    <RoleAwareSidebar>
-      <ClientProfileContent />
-    </RoleAwareSidebar>
-  );
-};
+const ClientProfile = () => <ClientProfileContent />;
 
 export default ClientProfile;
-
-
