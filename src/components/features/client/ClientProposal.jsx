@@ -7,11 +7,13 @@ import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Send from "lucide-react/dist/esm/icons/send";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
+import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
@@ -570,57 +572,6 @@ const resolveProposalServiceLabel = (proposal) => {
   );
 };
 
-const resolveProposalProjectName = (proposal) => {
-  const normalizedProposal = normalizeProposalRecord(proposal);
-  const proposalContext =
-    normalizedProposal.proposalContext &&
-    typeof normalizedProposal.proposalContext === "object"
-      ? normalizedProposal.proposalContext
-      : {};
-  const questionnaireAnswersBySlug =
-    proposalContext.questionnaireAnswersBySlug &&
-    typeof proposalContext.questionnaireAnswersBySlug === "object"
-      ? proposalContext.questionnaireAnswersBySlug
-      : {};
-  const questionnaireAnswers =
-    proposalContext.questionnaireAnswers &&
-    typeof proposalContext.questionnaireAnswers === "object"
-      ? proposalContext.questionnaireAnswers
-      : {};
-  const serviceLabel = resolveProposalServiceLabel(normalizedProposal);
-  const contentProjectName = extractProposalLabeledValue(
-    normalizedProposal.content || normalizedProposal.summary || "",
-    ["Project Name", "Project Title", "Project"],
-  );
-  const questionnaireProjectName = getFirstNonEmptyText(
-    proposalContext.projectTitle,
-    proposalContext.projectName,
-    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
-      /project[-_\s]?name/i,
-      /project[-_\s]?title/i,
-      /^title$/i,
-    ]),
-    extractProposalQuestionAnswer(questionnaireAnswers, [
-      /project name/i,
-      /project title/i,
-    ]),
-  );
-  const projectTitle = getFirstNonEmptyText(
-    normalizedProposal.project?.title,
-    normalizedProposal.project?.name,
-    normalizedProposal.projectTitle,
-    normalizedProposal.projectName,
-    questionnaireProjectName,
-    contentProjectName,
-    normalizedProposal.title,
-  );
-  const cleanedProjectTitle = stripServiceNameFromProjectTitle(projectTitle, serviceLabel);
-
-  return cleanedProjectTitle || serviceLabel || "Proposal";
-};
-
-const resolveProposalTitle = (proposal) => resolveProposalProjectName(proposal);
-
 const resolveProposalBusinessName = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
   const proposalContext =
@@ -662,39 +613,484 @@ const resolveProposalBusinessName = (proposal) => {
   );
 };
 
-const ProposalContentRenderer = ({ content }) => {
-  if (!content) {
-    return <p className="text-sm text-muted-foreground">No content available.</p>;
+const resolveProposalProjectName = (proposal) => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const proposalContext =
+    normalizedProposal.proposalContext &&
+    typeof normalizedProposal.proposalContext === "object"
+      ? normalizedProposal.proposalContext
+      : {};
+  const questionnaireAnswersBySlug =
+    proposalContext.questionnaireAnswersBySlug &&
+    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      ? proposalContext.questionnaireAnswersBySlug
+      : {};
+  const questionnaireAnswers =
+    proposalContext.questionnaireAnswers &&
+    typeof proposalContext.questionnaireAnswers === "object"
+      ? proposalContext.questionnaireAnswers
+      : {};
+  const serviceLabel = resolveProposalServiceLabel(normalizedProposal);
+  const businessNameFallback = resolveProposalBusinessName(normalizedProposal);
+  const contentProjectName = extractProposalLabeledValue(
+    normalizedProposal.content || normalizedProposal.summary || "",
+    ["Project Name", "Project Title", "Project"],
+  );
+  const questionnaireProjectName = getFirstNonEmptyText(
+    proposalContext.projectTitle,
+    proposalContext.projectName,
+    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+      /project[-_\s]?name/i,
+      /project[-_\s]?title/i,
+      /^title$/i,
+    ]),
+    extractProposalQuestionAnswer(questionnaireAnswers, [
+      /project name/i,
+      /project title/i,
+    ]),
+  );
+  const projectTitle = getFirstNonEmptyText(
+    normalizedProposal.project?.title,
+    normalizedProposal.project?.name,
+    normalizedProposal.projectTitle,
+    normalizedProposal.projectName,
+    questionnaireProjectName,
+    contentProjectName,
+    businessNameFallback,
+    normalizedProposal.title,
+  );
+  const cleanedProjectTitle = stripServiceNameFromProjectTitle(projectTitle, serviceLabel);
+
+  if (
+    cleanedProjectTitle &&
+    normalizeComparableText(cleanedProjectTitle) !== normalizeComparableText(serviceLabel)
+  ) {
+    return cleanedProjectTitle;
+  }
+
+  if (
+    businessNameFallback &&
+    normalizeComparableText(businessNameFallback) !== normalizeComparableText(serviceLabel)
+  ) {
+    return businessNameFallback;
+  }
+
+  return cleanedProjectTitle || serviceLabel || "Proposal";
+};
+
+const resolveProposalTitle = (proposal) => resolveProposalProjectName(proposal);
+
+const PROPOSAL_NARRATIVE_SECTION_ALIASES = Object.freeze({
+  overview: [
+    "project overview",
+    "overview",
+    "project summary",
+    "solution overview",
+  ],
+  objectives: [
+    "primary objectives",
+    "objectives",
+    "project objectives",
+    "goals",
+  ],
+  deliverables: [
+    "deliverables",
+    "deliverables included",
+    "features/deliverables included",
+    "features included",
+    "scope",
+    "scope of work",
+  ],
+  techStack: [
+    "tech stack",
+    "technical stack",
+    "technology stack",
+    "stack",
+  ],
+  notes: [
+    "delivery notes",
+    "notes",
+    "additional notes",
+    "implementation notes",
+    "handover notes",
+  ],
+});
+
+const PROPOSAL_METADATA_LABELS = new Set([
+  "client name",
+  "business name",
+  "company name",
+  "brand name",
+  "service type",
+  "service",
+  "category",
+  "timeline",
+  "budget",
+  "project name",
+  "project title",
+  "project",
+]);
+
+const normalizeProposalSectionLabel = (value = "") =>
+  normalizeComparableText(String(value || "").replace(/^#+\s*/, "").replace(/[:：]\s*$/, ""));
+
+const normalizeProposalListItem = (value = "") =>
+  String(value || "")
+    .replace(/^(?:[-*•]+|\d+[.)])\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const dedupeProposalTextItems = (values = []) => {
+  const seen = new Set();
+  const items = [];
+
+  values.forEach((value) => {
+    const normalized = normalizeProposalListItem(value);
+    const key = normalizeComparableText(normalized);
+    if (!normalized || !key || seen.has(key)) return;
+    seen.add(key);
+    items.push(normalized);
+  });
+
+  return items;
+};
+
+const parseProposalEditableList = (value = "", options = {}) => {
+  const { splitCommas = false } = options;
+  const source = String(value || "");
+  if (!source.trim()) return [];
+
+  const normalizedSource = splitCommas ? source.replace(/,\s*/g, "\n") : source;
+  return dedupeProposalTextItems(
+    normalizedSource
+      .split(/\r?\n|[•]/)
+      .map((entry) => normalizeProposalListItem(entry))
+      .filter(Boolean),
+  );
+};
+
+const serializeProposalEditableList = (values = []) =>
+  dedupeProposalTextItems(values).join("\n");
+
+const resolveProposalNarrativeSectionKey = (label = "") => {
+  const normalizedLabel = normalizeProposalSectionLabel(label);
+
+  return (
+    Object.entries(PROPOSAL_NARRATIVE_SECTION_ALIASES).find(([, aliases]) =>
+      aliases.some((alias) => normalizeComparableText(alias) === normalizedLabel),
+    )?.[0] || null
+  );
+};
+
+const compactProposalSectionText = (lines = []) =>
+  String(
+    (Array.isArray(lines) ? lines : [])
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim(),
+  );
+
+const parseProposalNarrativeSections = (content = "") => {
+  const sections = {
+    intro: [],
+    overview: [],
+    objectives: [],
+    deliverables: [],
+    techStack: [],
+    notes: [],
+  };
+  let activeSectionKey = null;
+
+  String(content || "")
+    .split(/\r?\n/)
+    .forEach((rawLine) => {
+      const trimmedLine = rawLine.trim();
+
+      if (!trimmedLine) {
+        if (activeSectionKey) {
+          const targetSection = sections[activeSectionKey];
+          if (targetSection[targetSection.length - 1] !== "") {
+            targetSection.push("");
+          }
+        }
+        return;
+      }
+
+      const markdownHeadingMatch = trimmedLine.match(/^#{1,6}\s*(.+)$/);
+      const labeledLineMatch = trimmedLine.match(/^([A-Za-z][A-Za-z\s/&()'-]{2,60})\s*:\s*(.*)$/);
+      const detectedLabel = markdownHeadingMatch?.[1] || labeledLineMatch?.[1] || "";
+      const sectionKey = resolveProposalNarrativeSectionKey(detectedLabel);
+
+      if (sectionKey) {
+        activeSectionKey = sectionKey;
+        const inlineValue = labeledLineMatch?.[2]?.trim();
+        if (inlineValue) {
+          sections[sectionKey].push(inlineValue);
+        }
+        return;
+      }
+
+      if (
+        labeledLineMatch &&
+        PROPOSAL_METADATA_LABELS.has(normalizeProposalSectionLabel(labeledLineMatch[1]))
+      ) {
+        activeSectionKey = null;
+        return;
+      }
+
+      if (activeSectionKey) {
+        sections[activeSectionKey].push(trimmedLine);
+        return;
+      }
+
+      sections.intro.push(trimmedLine);
+    });
+
+  return sections;
+};
+
+const buildProposalStructuredData = (proposal, clientNameFallback = "Client") => {
+  const normalizedProposal = normalizeProposalRecord(proposal);
+  const proposalContext =
+    normalizedProposal.proposalContext &&
+    typeof normalizedProposal.proposalContext === "object"
+      ? normalizedProposal.proposalContext
+      : {};
+  const questionnaireAnswersBySlug =
+    proposalContext.questionnaireAnswersBySlug &&
+    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      ? proposalContext.questionnaireAnswersBySlug
+      : {};
+  const questionnaireAnswers =
+    proposalContext.questionnaireAnswers &&
+    typeof proposalContext.questionnaireAnswers === "object"
+      ? proposalContext.questionnaireAnswers
+      : {};
+  const content = normalizedProposal.content || normalizedProposal.summary || "";
+  const narrativeSections = parseProposalNarrativeSections(content);
+  const extractedBudget =
+    normalizedProposal.budget !== undefined && normalizedProposal.budget !== null
+      ? String(normalizedProposal.budget)
+      : "";
+  const extractedTimeline = getFirstNonEmptyText(
+    normalizedProposal.timeline,
+    proposalContext.timeline,
+    proposalContext.launchTimeline,
+    extractProposalLabeledValue(content, ["Timeline", "Delivery", "Deadline"]),
+    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+      /launch[-_\s]?timeline/i,
+      /timeline/i,
+      /delivery/i,
+      /deadline/i,
+    ]),
+    extractProposalQuestionAnswer(questionnaireAnswers, [
+      /launch timeline/i,
+      /timeline/i,
+      /delivery/i,
+      /deadline/i,
+    ]),
+  );
+
+  const objectives = dedupeProposalTextItems([
+    ...parseProposalEditableList(compactProposalSectionText(narrativeSections.objectives)),
+    ...parseProposalEditableList(
+      extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+        /objective/i,
+        /goal/i,
+      ]),
+    ),
+    ...parseProposalEditableList(
+      extractProposalQuestionAnswer(questionnaireAnswers, [/objective/i, /goal/i]),
+    ),
+  ]);
+
+  const deliverables = dedupeProposalTextItems([
+    ...parseProposalEditableList(compactProposalSectionText(narrativeSections.deliverables)),
+    ...parseProposalEditableList(
+      extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+        /deliverables?/i,
+        /features?/i,
+        /scope/i,
+      ]),
+    ),
+    ...parseProposalEditableList(
+      extractProposalQuestionAnswer(questionnaireAnswers, [
+        /deliverables?/i,
+        /features?/i,
+        /scope/i,
+      ]),
+    ),
+  ]);
+
+  const techStack = dedupeProposalTextItems([
+    ...parseProposalEditableList(compactProposalSectionText(narrativeSections.techStack), {
+      splitCommas: true,
+    }),
+    ...extractProjectRequiredSkills(normalizedProposal),
+  ]);
+
+  const overview = getFirstNonEmptyText(
+    compactProposalSectionText(narrativeSections.overview),
+    compactProposalSectionText(narrativeSections.intro),
+    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+      /project[-_\s]?(overview|summary|description)/i,
+      /overview/i,
+      /project brief/i,
+    ]),
+    extractProposalQuestionAnswer(questionnaireAnswers, [
+      /project overview/i,
+      /project summary/i,
+      /project description/i,
+      /overview/i,
+    ]),
+    content,
+  );
+
+  const notes = getFirstNonEmptyText(
+    compactProposalSectionText(narrativeSections.notes),
+    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+      /delivery[-_\s]?notes?/i,
+      /notes?/i,
+      /special instructions/i,
+    ]),
+    extractProposalQuestionAnswer(questionnaireAnswers, [
+      /delivery notes/i,
+      /notes?/i,
+      /special instructions/i,
+    ]),
+  );
+
+  return {
+    title: resolveProposalTitle(normalizedProposal),
+    businessName: resolveProposalBusinessName(normalizedProposal),
+    clientName: getFirstNonEmptyText(
+      normalizedProposal.clientName,
+      proposalContext.clientName,
+      extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+        /client[-_\s]?name/i,
+        /owner[-_\s]?name/i,
+      ]),
+      extractProposalQuestionAnswer(questionnaireAnswers, [
+        /client name/i,
+        /owner name/i,
+      ]),
+      clientNameFallback,
+    ),
+    service: resolveProposalServiceLabel(normalizedProposal),
+    budget: extractedBudget,
+    timeline: extractedTimeline,
+    projectOverview: overview,
+    objectives,
+    objectivesText: serializeProposalEditableList(objectives),
+    deliverables,
+    deliverablesText: serializeProposalEditableList(deliverables),
+    techStack,
+    techStackText: serializeProposalEditableList(techStack),
+    notes,
+    content,
+  };
+};
+
+const buildProposalContentFromDraft = (draft = {}) => {
+  const objectives = parseProposalEditableList(draft.objectivesText);
+  const deliverables = parseProposalEditableList(draft.deliverablesText);
+  const techStack = parseProposalEditableList(draft.techStackText, { splitCommas: true });
+  const sections = [];
+
+  const pushSection = (label, value) => {
+    const cleanedValue = String(value || "").trim();
+    if (!cleanedValue) return;
+    sections.push(`${label}: ${cleanedValue}`);
+  };
+
+  pushSection("Client Name", draft.clientName);
+  pushSection("Business Name", draft.businessName);
+  pushSection("Service Type", draft.service);
+  pushSection("Timeline", draft.timeline);
+  pushSection("Budget", draft.budget);
+
+  const overview = String(draft.projectOverview || "").trim();
+  if (overview) {
+    sections.push("");
+    sections.push("Project Overview:");
+    sections.push(overview);
+  }
+
+  if (objectives.length > 0) {
+    sections.push("");
+    sections.push("Primary Objectives:");
+    objectives.forEach((item) => sections.push(`- ${item}`));
+  }
+
+  if (deliverables.length > 0) {
+    sections.push("");
+    sections.push("Deliverables Included:");
+    deliverables.forEach((item) => sections.push(`- ${item}`));
+  }
+
+  if (techStack.length > 0) {
+    sections.push("");
+    sections.push(`Tech Stack: ${techStack.join(", ")}`);
+  }
+
+  const notes = String(draft.notes || "").trim();
+  if (notes) {
+    sections.push("");
+    sections.push("Delivery Notes:");
+    sections.push(notes);
+  }
+
+  return sections.join("\n").trim();
+};
+
+const buildUpdatedProposalContext = (currentContext = null, draft = {}, clientNameFallback = "Client") => {
+  const nextContext =
+    currentContext && typeof currentContext === "object" ? { ...currentContext } : {};
+
+  nextContext.projectTitle = String(draft.title || "").trim();
+  nextContext.projectName = String(draft.title || "").trim();
+  nextContext.businessName = String(draft.businessName || "").trim();
+  nextContext.companyName = String(draft.businessName || "").trim();
+  nextContext.clientName = String(draft.clientName || "").trim() || clientNameFallback;
+  nextContext.serviceName = String(draft.service || "").trim();
+  nextContext.serviceType = String(draft.service || "").trim();
+  nextContext.timeline = String(draft.timeline || "").trim();
+
+  return nextContext;
+};
+
+const ProposalSectionCard = ({ title, description, children, className }) => (
+  <Card className={cn("border-border/60 bg-background/35 shadow-none", className)}>
+    <CardContent className="space-y-4 p-5 sm:p-6">
+      <div className="space-y-1">
+        <h4 className="text-base font-semibold tracking-tight text-white">{title}</h4>
+        {description ? (
+          <p className="text-sm leading-6 text-[#94a3b8]">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </CardContent>
+  </Card>
+);
+
+const ProposalStructuredList = ({ items, emptyMessage = "No items added yet." }) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return <p className="text-sm leading-6 text-[#94a3b8]">{emptyMessage}</p>;
   }
 
   return (
-    <div className="space-y-2 text-sm leading-6 text-foreground">
-      {content.split("\n").map((line, index) => {
-        const trimmed = line.trim();
-
-        if (trimmed.startsWith("##")) {
-          return (
-            <h3
-              key={`heading-${index}`}
-              className="pt-3 text-base font-semibold tracking-tight text-foreground"
-            >
-              {trimmed.replace(/^#+\s*/, "")}
-            </h3>
-          );
-        }
-
-        if (trimmed.startsWith("-")) {
-          return (
-            <div key={`bullet-${index}`} className="flex items-start gap-2">
-              <span className="mt-1 text-primary">&bull;</span>
-              <span>{trimmed.replace(/^-\s*/, "")}</span>
-            </div>
-          );
-        }
-
-        if (!trimmed) return <div key={`spacer-${index}`} className="h-2" />;
-        return <p key={`copy-${index}`}>{trimmed}</p>;
-      })}
+    <div className="space-y-3">
+      {items.map((item, index) => (
+        <div
+          key={`${item}-${index}`}
+          className="flex items-start gap-3 rounded-2xl border border-white/8 bg-background/40 px-4 py-3"
+        >
+          <span className="mt-0.5 text-xs font-semibold text-[#ffc107]">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <p className="text-sm leading-6 text-white">{item}</p>
+        </div>
+      ))}
     </div>
   );
 };
@@ -731,7 +1127,7 @@ const extractProposalDetails = (proposal) => {
 };
 
 const ProposalMetric = ({ icon: Icon, label, value, valueClassName }) => (
-  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+  <div className="rounded-2xl border border-border/60 bg-background/35 p-4">
     <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
       <Icon className="h-3.5 w-3.5 text-primary" />
       <span>{label}</span>
@@ -742,8 +1138,14 @@ const ProposalMetric = ({ icon: Icon, label, value, valueClassName }) => (
   </div>
 );
 
-const ProposalSummaryItem = ({ label, value, valueClassName }) => (
-  <div className="space-y-2">
+const ProposalSummaryItem = ({ label, value, valueClassName, className, bordered = true }) => (
+  <div
+    className={cn(
+      "space-y-2",
+      bordered && "border-b border-white/8 pb-3 last:border-b-0 last:pb-0",
+      className,
+    )}
+  >
     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
       {label}
     </p>
@@ -757,7 +1159,7 @@ const ProposalFreelancerAvatars = ({
   proposal,
   avatarClassName = "h-10 w-10",
   stackClassName,
-  maxVisible = 4,
+  maxVisible = 5,
 }) => {
   const sentFreelancers = Array.isArray(proposal?.sentFreelancers)
     ? proposal.sentFreelancers.filter(Boolean)
@@ -766,6 +1168,7 @@ const ProposalFreelancerAvatars = ({
     ? proposal.recipientName
     : "Not assigned";
   const initials = getInitials(fallbackAvatarName);
+  const additionalCount = Math.max(sentFreelancers.length - maxVisible, 0);
 
   if (sentFreelancers.length > 0) {
     return (
@@ -784,6 +1187,16 @@ const ProposalFreelancerAvatars = ({
             </AvatarFallback>
           </Avatar>
         ))}
+        {additionalCount > 0 ? (
+          <div
+            className={cn(
+              "flex items-center justify-center rounded-full border-2 border-[#2b2b2d] bg-[#171718] text-[11px] font-semibold text-white",
+              avatarClassName,
+            )}
+          >
+            +{additionalCount}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -919,8 +1332,10 @@ const ProposalRowCard = ({
   const displayBusinessName = businessName ? toDisplayTitleCase(businessName) : "";
   const projectName = resolveProposalProjectName(proposal);
   const serviceLabel = resolveProposalServiceLabel(proposal);
-  const cardTitle = displayBusinessName || projectName || serviceLabel || "Proposal";
-  const useBusinessNameTitle = Boolean(displayBusinessName);
+  const cardTitle = projectName || displayBusinessName || serviceLabel || "Proposal";
+  const useBusinessNameTitle =
+    Boolean(displayBusinessName) &&
+    normalizeComparableText(cardTitle) === normalizeComparableText(displayBusinessName);
   const showServiceLabel =
     Boolean(serviceLabel) &&
     normalizeComparableText(serviceLabel) !== normalizeComparableText(cardTitle);
@@ -938,7 +1353,7 @@ const ProposalRowCard = ({
   return (
     <Card className="overflow-hidden rounded-[2.9rem] border border-white/6 bg-[#2b2b2d] shadow-none transition duration-200 hover:border-white/10">
       <CardContent className="p-7 sm:p-8 lg:p-9">
-        <div className="space-y-8">
+        <div className="space-y-2">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 space-y-4">
               <div className="flex flex-wrap items-center gap-4 text-sm text-[#9a9ea8]">
@@ -1002,9 +1417,10 @@ const ProposalRowCard = ({
             ) : null}
           </div>
 
-          <div className="grid gap-6 border-t border-white/6 pt-7 lg:grid-cols-[1.25fr_1fr_1fr_auto] lg:items-center">
+          <div className="grid gap-6 border-t border-white/6 pt-6 lg:grid-cols-[1.25fr_1fr_1fr_auto] lg:items-start">
             <ProposalSummaryItem
-              label="Freelancer"
+              bordered={false}
+              label="Proposal Sent To"
               value={
                 <div className="flex flex-col items-start gap-2.5">
                   <ProposalFreelancerAvatars proposal={proposal} />
@@ -1021,12 +1437,14 @@ const ProposalRowCard = ({
               }
             />
             <ProposalSummaryItem
-              label="Agreed Amount"
+              bordered={false}
+              label="Budget"
               value={details.budget}
               valueClassName="text-[1.9rem] font-semibold tracking-[-0.03em] text-primary"
             />
             <ProposalSummaryItem
-              label="Delivery"
+              bordered={false}
+              label="Timeline"
               value={
                 <span className="inline-flex items-center gap-2 text-lg font-semibold text-[#d8dbe2]">
                   <Clock3 className="h-4 w-4 text-[#97a1b2]" />
@@ -1341,12 +1759,32 @@ const mapLocalDraftProposal = (proposal) => {
   };
 };
 
-const buildEditableProposalDraft = (proposal) => {
+const buildEditableProposalDraft = (proposal, clientNameFallback = "Client") => {
+  if (!proposal) {
+    return {
+      title: "",
+      businessName: "",
+      clientName: clientNameFallback,
+      service: "",
+      budget: "",
+      timeline: "",
+      projectOverview: "",
+      objectivesText: "",
+      deliverablesText: "",
+      techStackText: "",
+      notes: "",
+      content: "",
+    };
+  }
+
   const details = extractProposalDetails(proposal);
+  const structuredDraft = buildProposalStructuredData(proposal, clientNameFallback);
 
   return {
-    title: resolveProposalTitle(proposal),
-    service: resolveProposalServiceLabel(proposal),
+    title: structuredDraft.title,
+    businessName: structuredDraft.businessName,
+    clientName: structuredDraft.clientName,
+    service: structuredDraft.service,
     budget:
       proposal?.budget !== undefined && proposal?.budget !== null
         ? String(proposal.budget)
@@ -1354,9 +1792,14 @@ const buildEditableProposalDraft = (proposal) => {
           ? ""
           : String(details.budget),
     timeline:
-      proposal?.timeline ||
+      structuredDraft.timeline ||
       (details.delivery === "Not set" ? "" : details.delivery),
-    content: proposal?.content || "",
+    projectOverview: structuredDraft.projectOverview,
+    objectivesText: structuredDraft.objectivesText,
+    deliverablesText: structuredDraft.deliverablesText,
+    techStackText: structuredDraft.techStackText,
+    notes: structuredDraft.notes,
+    content: proposal?.content || structuredDraft.content || "",
   };
 };
 
@@ -1429,6 +1872,7 @@ const ClientProposalContent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("draft");
   const [isEditingProposal, setIsEditingProposal] = useState(false);
+  const [isSavingProposal, setIsSavingProposal] = useState(false);
   const [editableProposalDraft, setEditableProposalDraft] = useState(() =>
     buildEditableProposalDraft(null),
   );
@@ -1647,9 +2091,9 @@ const ClientProposalContent = () => {
   }, [deepLinkTab, deepLinkProjectId]);
 
   useEffect(() => {
-    setEditableProposalDraft(buildEditableProposalDraft(activeProposal));
+    setEditableProposalDraft(buildEditableProposalDraft(activeProposal, getDisplayName(user)));
     setIsEditingProposal(false);
-  }, [activeProposal]);
+  }, [activeProposal, user]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -1929,146 +2373,242 @@ const ClientProposalContent = () => {
     }));
   }, []);
 
-  const handleSaveProposalChanges = useCallback(() => {
-    if (!activeProposal) return;
+  const handleSaveProposalChanges = useCallback(async () => {
+    if (!activeProposal || isSavingProposal) return;
 
+    const clientNameFallback = getDisplayName(user);
     const nextTitle = String(editableProposalDraft.title || "").trim();
+    const nextBusinessName = String(editableProposalDraft.businessName || "").trim();
+    const nextClientName =
+      String(editableProposalDraft.clientName || "").trim() || clientNameFallback;
     const nextService = String(editableProposalDraft.service || "").trim();
     const nextBudget = String(editableProposalDraft.budget || "").trim();
     const nextTimeline = String(editableProposalDraft.timeline || "").trim();
-    const nextContent = String(editableProposalDraft.content || "").trim();
+    const nextProjectOverview = String(editableProposalDraft.projectOverview || "").trim();
+    const nextObjectives = parseProposalEditableList(editableProposalDraft.objectivesText);
+    const nextDeliverables = parseProposalEditableList(editableProposalDraft.deliverablesText);
+    const nextTechStack = parseProposalEditableList(editableProposalDraft.techStackText, {
+      splitCommas: true,
+    });
+    const nextNotes = String(editableProposalDraft.notes || "").trim();
+    const nextContent = buildProposalContentFromDraft({
+      ...editableProposalDraft,
+      clientName: nextClientName,
+    });
 
     if (!nextTitle) {
       toast.error("Proposal title cannot be empty.");
       return;
     }
 
-    if (!nextContent) {
-      toast.error("Proposal content cannot be empty.");
+    if (!nextProjectOverview && !nextObjectives.length && !nextDeliverables.length) {
+      toast.error("Add an overview, objectives, or deliverables before saving.");
       return;
     }
 
-    const now = new Date().toISOString();
-    const storageKeys = getProposalStorageKeys(user?.id);
-    const { proposals: savedProposals, activeId } = loadSavedProposalsFromStorage(user?.id);
-    const draftGroupKey = getProposalDraftGroupKey(activeProposal);
+    setIsSavingProposal(true);
 
-    const localDraftPayload = {
-      id:
-        activeProposal.isLocalDraft
-          ? activeProposal.id
-          : `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      ownerId: user?.id || null,
-      projectTitle: nextTitle,
-      title: nextTitle,
-      service: nextService || resolveProposalServiceLabel(activeProposal),
-      serviceKey:
-        nextService || activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
-      summary: nextContent,
-      content: nextContent,
-      budget: nextBudget,
-      timeline: nextTimeline,
-      recipientName: activeProposal.recipientName || "Not assigned",
-      recipientId: activeProposal.recipientId || "LOCAL_DRAFT",
-      freelancerId: activeProposal.freelancerId || null,
-      avatar: activeProposal.avatar || "",
-      projectId: activeProposal.projectId || activeProposal.syncedProjectId || null,
-      syncedProjectId:
-        activeProposal.syncedProjectId || activeProposal.projectId || null,
-      syncedAt: activeProposal.syncedAt || null,
-      proposalContext: activeProposal.proposalContext || null,
-      createdAt: activeProposal.createdAt || now,
-      updatedAt: now,
-    };
-
-    let nextActiveId = localDraftPayload.id;
-    let hasMatchedSavedDraft = false;
-
-    const updatedSavedProposals = savedProposals.map((savedProposal) => {
-      const isSameDraft =
-        savedProposal.id === activeProposal.id ||
-        getProposalDraftGroupKey(savedProposal) === draftGroupKey;
-
-      if (!isSameDraft) return savedProposal;
-
-      hasMatchedSavedDraft = true;
-      nextActiveId = savedProposal.id || localDraftPayload.id;
-
-      return {
-        ...savedProposal,
-        ...localDraftPayload,
-        id: savedProposal.id || localDraftPayload.id,
-        createdAt: savedProposal.createdAt || localDraftPayload.createdAt,
+    try {
+      const now = new Date().toISOString();
+      const storageKeys = getProposalStorageKeys(user?.id);
+      const { proposals: savedProposals, activeId } = loadSavedProposalsFromStorage(user?.id);
+      const draftGroupKey = getProposalDraftGroupKey(activeProposal);
+      const nextProposalContext = buildUpdatedProposalContext(
+        activeProposal.proposalContext,
+        {
+          ...editableProposalDraft,
+          clientName: nextClientName,
+        },
+        clientNameFallback,
+      );
+      const localDraftPayload = {
+        id:
+          activeProposal.isLocalDraft
+            ? activeProposal.id
+            : `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        ownerId: user?.id || null,
+        projectTitle: nextTitle,
+        title: nextTitle,
+        businessName: nextBusinessName,
+        clientName: nextClientName,
+        service: nextService || resolveProposalServiceLabel(activeProposal),
+        serviceKey:
+          nextService || activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
+        summary: nextContent,
+        content: nextContent,
+        projectOverview: nextProjectOverview,
+        objectives: nextObjectives,
+        deliverables: nextDeliverables,
+        techStack: nextTechStack,
+        notes: nextNotes,
+        budget: nextBudget,
+        timeline: nextTimeline,
+        recipientName: activeProposal.recipientName || "Not assigned",
+        recipientId: activeProposal.recipientId || "LOCAL_DRAFT",
+        freelancerId: activeProposal.freelancerId || null,
+        avatar: activeProposal.avatar || "",
+        projectId: activeProposal.projectId || activeProposal.syncedProjectId || null,
+        syncedProjectId: activeProposal.syncedProjectId || activeProposal.projectId || null,
+        syncedAt: activeProposal.syncedAt || null,
+        proposalContext: nextProposalContext,
+        createdAt: activeProposal.createdAt || now,
+        updatedAt: now,
       };
-    });
 
-    const nextSavedProposals = hasMatchedSavedDraft
-      ? updatedSavedProposals
-      : [...updatedSavedProposals, localDraftPayload];
+      let nextActiveId = localDraftPayload.id;
+      let hasMatchedSavedDraft = false;
 
-    const resolvedActiveId = resolveActiveProposalId(
-      nextSavedProposals,
-      nextActiveId,
-      activeId,
-    );
+      const updatedSavedProposals = savedProposals.map((savedProposal) => {
+        const isSameDraft =
+          savedProposal.id === activeProposal.id ||
+          getProposalDraftGroupKey(savedProposal) === draftGroupKey;
 
-    persistSavedProposalsToStorage(nextSavedProposals, resolvedActiveId, storageKeys);
+        if (!isSameDraft) return savedProposal;
 
-    const savedDraftRecord =
-      nextSavedProposals.find((proposal) => proposal.id === resolvedActiveId) ||
-      nextSavedProposals.find(
-        (proposal) => getProposalDraftGroupKey(proposal) === draftGroupKey,
-      ) ||
-      localDraftPayload;
+        hasMatchedSavedDraft = true;
+        nextActiveId = savedProposal.id || localDraftPayload.id;
 
-    const mappedLocalDraft = mapLocalDraftProposal(savedDraftRecord);
-
-    setProposals((current) => {
-      let didReplaceLocalDraft = false;
-
-      const next = current.map((entry) => {
-        const isSameLocalDraft =
-          entry.isLocalDraft && getProposalDraftGroupKey(entry) === draftGroupKey;
-
-        if (!isSameLocalDraft) return entry;
-
-        didReplaceLocalDraft = true;
         return {
-          ...entry,
-          ...mappedLocalDraft,
+          ...savedProposal,
+          ...localDraftPayload,
+          id: savedProposal.id || localDraftPayload.id,
+          createdAt: savedProposal.createdAt || localDraftPayload.createdAt,
         };
       });
 
-      if (!didReplaceLocalDraft) {
-        next.push(mappedLocalDraft);
+      const nextSavedProposals = hasMatchedSavedDraft
+        ? updatedSavedProposals
+        : [...updatedSavedProposals, localDraftPayload];
+
+      const resolvedActiveId = resolveActiveProposalId(
+        nextSavedProposals,
+        nextActiveId,
+        activeId,
+      );
+
+      persistSavedProposalsToStorage(nextSavedProposals, resolvedActiveId, storageKeys);
+
+      const savedDraftRecord =
+        nextSavedProposals.find((proposal) => proposal.id === resolvedActiveId) ||
+        nextSavedProposals.find(
+          (proposal) => getProposalDraftGroupKey(proposal) === draftGroupKey,
+        ) ||
+        localDraftPayload;
+
+      const mappedLocalDraft = mapLocalDraftProposal(savedDraftRecord);
+
+      setProposals((current) => {
+        let didReplaceDraft = false;
+
+        const next = current.map((entry) => {
+          const isSameDraft =
+            getProposalDraftGroupKey(entry) === draftGroupKey &&
+            (entry.isLocalDraft || entry.status === "draft");
+
+          if (!isSameDraft) return entry;
+
+          didReplaceDraft = true;
+          return {
+            ...entry,
+            ...mappedLocalDraft,
+          };
+        });
+
+        if (!didReplaceDraft) {
+          next.push(mappedLocalDraft);
+        }
+
+        return next;
+      });
+
+      setSelectedProposalForSend((current) =>
+        current && getProposalDraftGroupKey(current) === draftGroupKey
+          ? {
+              ...current,
+              ...mappedLocalDraft,
+              sentFreelancers: current.sentFreelancers,
+            }
+          : current,
+      );
+
+      setActiveProposal((current) =>
+        current
+          ? {
+              ...current,
+              ...mappedLocalDraft,
+              sentFreelancers: current.sentFreelancers,
+            }
+          : current,
+      );
+
+      const linkedProjectId =
+        activeProposal?.syncedProjectId || activeProposal?.projectId || null;
+      const nextBudgetValue = parseProposalBudgetValue(nextBudget);
+      const syncTasks = [];
+
+      if (linkedProjectId) {
+        syncTasks.push(
+          (async () => {
+            const response = await authFetch(`/projects/${linkedProjectId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: nextTitle,
+                description: nextContent,
+                ...(nextBudget ? { budget: nextBudgetValue } : {}),
+              }),
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+              throw new Error(payload?.message || "Failed to sync project details.");
+            }
+            return payload?.data || null;
+          })(),
+        );
       }
 
-      return next;
-    });
+      if (!activeProposal?.isLocalDraft && activeProposal?.id) {
+        syncTasks.push(
+          (async () => {
+            const response = await authFetch(`/proposals/${activeProposal.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                coverLetter: nextContent,
+                ...(nextBudget ? { amount: nextBudgetValue } : {}),
+              }),
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) {
+              throw new Error(payload?.message || "Failed to sync proposal details.");
+            }
+            return payload?.data ? mapApiProposal(payload.data) : null;
+          })(),
+        );
+      }
 
-    setSelectedProposalForSend((current) =>
-      current && getProposalDraftGroupKey(current) === draftGroupKey
-        ? {
-            ...current,
-            ...mappedLocalDraft,
-            sentFreelancers: current.sentFreelancers,
-          }
-        : current,
-    );
+      let hasSyncFailure = false;
+      if (syncTasks.length > 0) {
+        const syncResults = await Promise.allSettled(syncTasks);
+        hasSyncFailure = syncResults.some((result) => result.status === "rejected");
+      }
 
-    setActiveProposal((current) =>
-      current
-        ? {
-            ...current,
-            ...mappedLocalDraft,
-            sentFreelancers: current.sentFreelancers,
-          }
-        : current,
-    );
+      setIsEditingProposal(false);
+      await fetchProposals();
 
-    setIsEditingProposal(false);
-    toast.success("Proposal updated.");
-  }, [activeProposal, editableProposalDraft, user?.id]);
+      if (hasSyncFailure) {
+        toast.error("Proposal saved locally, but some database updates failed.");
+        return;
+      }
+
+      toast.success("Proposal updated.");
+    } catch (error) {
+      console.error("Failed to save proposal changes:", error);
+      toast.error(error?.message || "Failed to save proposal changes.");
+    } finally {
+      setIsSavingProposal(false);
+    }
+  }, [activeProposal, authFetch, editableProposalDraft, fetchProposals, isSavingProposal, user]);
 
   const sendProposalToFreelancer = useCallback(
     async (freelancer) => {
@@ -2337,24 +2877,6 @@ const ClientProposalContent = () => {
     },
     [scopedProposals],
   );
-
-  const unassignedDraftCount = useMemo(
-    () =>
-      grouped.draft.filter(
-        (proposal) => {
-          if (Array.isArray(proposal.sentFreelancers) && proposal.sentFreelancers.length > 0) {
-            return false;
-          }
-
-          return (
-            !proposal.freelancerId ||
-            !isAssignedFreelancerName(proposal.recipientName)
-          );
-        },
-      ).length,
-    [grouped.draft],
-  );
-
   const proposalForFreelancerSelection = useMemo(() => {
     if (!selectedProposalForSend) return null;
 
@@ -2594,10 +3116,35 @@ const ClientProposalContent = () => {
   const currentTabMeta = tabCopy[activeTab] || tabCopy.draft;
   const headerDisplayName = getDisplayName(user);
   const activeProposalDetails = activeProposal ? extractProposalDetails(activeProposal) : null;
+  const activeProposalStructuredData = activeProposal
+    ? buildProposalStructuredData(activeProposal, headerDisplayName)
+    : null;
+  const canEditActiveProposal = useMemo(() => {
+    const normalizedStatus = normalizeProposalStatus(activeProposal?.status || "");
+    return (
+      Boolean(activeProposal) &&
+      !activeProposal?.requiresPayment &&
+      (normalizedStatus === "draft" || normalizedStatus === "pending" || normalizedStatus === "sent")
+    );
+  }, [activeProposal]);
+  const proposalModalTitle = useMemo(() => {
+    const baseTitle = resolveProposalTitle(activeProposal) || "Proposal";
+    if (!isEditingProposal) return baseTitle;
+    return String(editableProposalDraft.title || "").trim() || baseTitle;
+  }, [activeProposal, editableProposalDraft.title, isEditingProposal]);
+  const handleCancelProposalEditing = useCallback(() => {
+    if (!activeProposal) {
+      setIsEditingProposal(false);
+      return;
+    }
+
+    setEditableProposalDraft(buildEditableProposalDraft(activeProposal, headerDisplayName));
+    setIsEditingProposal(false);
+  }, [activeProposal, headerDisplayName]);
 
   return (
     <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={{
             avatar: user?.avatar,
@@ -2621,56 +3168,29 @@ const ClientProposalContent = () => {
             defaultValue="draft"
             value={activeTab}
             onValueChange={setActiveTab}
-            className="mt-14 w-full space-y-8"
+            className="w-full space-y-8"
           >
-            <section className="space-y-4">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-[#f1f5f9]">
-                    Project Proposals
-                  </h1>
-                  <p className="mt-2 max-w-[34rem] text-sm text-[#94a3b8]">
-                    Manage your draft, pending, and rejected proposals. Keep your
-                    potential collaborations moving.
-                  </p>
-                </div>
-
-                <div className="flex justify-start lg:justify-end">
-                  <TabsList className="inline-flex h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                    {[
-                      { value: "draft", label: "Draft" },
-                      { value: "pending", label: "Pending Approval" },
-                      { value: "rejected", label: "Rejected" },
-                    ].map((item) => (
-                      <TabsTrigger
-                        key={item.value}
-                        value={item.value}
-                        className="h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold text-[#a3a6ad] shadow-none transition hover:text-white data-[state=active]:!border-[#ffc107]/70 data-[state=active]:!bg-[#ffc107] data-[state=active]:!text-[#141414] data-[state=active]:!shadow-none"
-                      >
-                        {item.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </div>
-              </div>
-
-              <div className="flex min-h-7 flex-wrap items-center gap-3 text-sm text-[#94a3b8]">
-                {deepLinkProjectId ? (
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-primary/20 bg-primary/10 px-4 py-1.5 text-primary"
-                  >
-                    Filtered to the selected project
-                  </Badge>
-                ) : null}
-                {activeTab === "draft" && grouped.draft.length > 0 ? (
-                  <span>
-                    {unassignedDraftCount} draft
-                    {unassignedDraftCount === 1 ? "" : "s"} ready for freelancer outreach.
-                  </span>
-                ) : null}
-              </div>
-            </section>
+            <ClientPageHeader
+              title="Project Proposals"
+              description="Manage your draft, pending, and rejected proposals. Keep your potential collaborations moving."
+              actions={
+                <TabsList className="inline-flex h-auto flex-wrap gap-2 rounded-full border border-white/[0.08] bg-accent p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  {[
+                    { value: "draft", label: "Draft" },
+                    { value: "pending", label: "Pending Approval" },
+                    { value: "rejected", label: "Rejected" },
+                  ].map((item) => (
+                    <TabsTrigger
+                      key={item.value}
+                      value={item.value}
+                      className="h-11 rounded-full border border-transparent px-5 text-[0.95rem] font-semibold text-[#a3a6ad] shadow-none transition hover:text-white data-[state=active]:!border-[#ffc107]/70 data-[state=active]:!bg-[#ffc107] data-[state=active]:!text-[#141414] data-[state=active]:!shadow-none"
+                    >
+                      {item.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              }
+            />
 
             <TabsContent value="draft" className="m-0">
               {isLoading ? (
@@ -2765,209 +3285,401 @@ const ClientProposalContent = () => {
         open={isViewing && Boolean(activeProposal)}
         onOpenChange={(open) => {
           setIsViewing(open);
-          if (!open) setActiveProposal(null);
+          if (!open) {
+            setIsEditingProposal(false);
+            setActiveProposal(null);
+          }
         }}
       >
-        <DialogContent className="max-h-[92vh] overflow-hidden border border-border/60 bg-[linear-gradient(180deg,rgba(12,12,14,0.98),rgba(18,18,24,0.98))] p-0 sm:max-w-[820px]">
-          <div className="border-b border-white/10 px-6 py-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  {activeProposal?.status === "draft" && isEditingProposal ? (
-                    <>
-                      <DialogTitle className="sr-only">Edit Proposal</DialogTitle>
-                      <Input
-                        value={editableProposalDraft.title}
-                        onChange={(event) =>
-                          handleEditableProposalDraftChange("title", event.target.value)
-                        }
-                        className="h-11 min-w-[16rem] border-white/10 bg-[#111214] text-xl font-semibold tracking-tight text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20 sm:min-w-[22rem]"
-                        placeholder="Proposal title"
-                      />
-                    </>
-                  ) : (
+        <DialogContent className="flex max-h-[92vh] w-[min(92vw,820px)] flex-col overflow-hidden border border-border/60 bg-accent p-0 sm:max-w-[820px] [&>button]:right-5 [&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 [&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4">
+          <div className="shrink-0 border-b border-white/10 px-6 py-5">
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
-                      {resolveProposalTitle(activeProposal) || "Proposal"}
+                      {proposalModalTitle}
                     </DialogTitle>
-                  )}
-                  {activeProposal?.status ? (
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]",
-                        statusColors[activeProposal.status] || statusColors.pending,
-                      )}
-                    >
-                      {statusLabels[activeProposal.status] || activeProposal.status}
-                    </Badge>
-                  ) : null}
-                </div>
-                <DialogDescription className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  {activeProposal?.status === "draft"
-                    ? "Review the draft, polish the scope, and send it to the right freelancer."
-                    : "Review the proposal details, payment status, and delivery expectations."}
-                </DialogDescription>
-              </div>
-
-              <Badge
-                variant="outline"
-                className="w-fit rounded-full border-white/10 bg-white/[0.04] px-3 py-1.5 text-muted-foreground"
-              >
-                {activeProposal?.submittedDate || "No date"}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="space-y-6 overflow-y-auto px-6 py-6">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <ProposalMetric
-                icon={FileText}
-                label="Budget"
-                value={
-                  isEditingProposal ? (
-                    <Input
-                      value={editableProposalDraft.budget}
-                      onChange={(event) =>
-                        handleEditableProposalDraftChange("budget", event.target.value)
-                      }
-                      className="h-11 border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
-                      placeholder="e.g. 40000"
-                    />
-                  ) : (
-                    activeProposalDetails?.budget || "Not set"
-                  )
-                }
-              />
-              <ProposalMetric
-                icon={Clock3}
-                label="Timeline"
-                value={
-                  isEditingProposal ? (
-                    <Input
-                      value={editableProposalDraft.timeline}
-                      onChange={(event) =>
-                        handleEditableProposalDraftChange("timeline", event.target.value)
-                      }
-                      className="h-11 border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
-                      placeholder="e.g. 3+ months"
-                    />
-                  ) : (
-                    activeProposalDetails?.delivery || "Not set"
-                  )
-                }
-              />
-              <ProposalMetric
-                icon={UserRound}
-                label="Freelancer"
-                value={
-                  activeProposal ? (
-                    <ProposalFreelancerAvatars
-                      proposal={activeProposal}
-                      avatarClassName="h-11 w-11"
-                    />
-                  ) : (
-                    "Not assigned"
-                  )
-                }
-              />
-              <ProposalMetric
-                icon={Layers3}
-                label="Service"
-                value={
-                  isEditingProposal ? (
-                    <Input
-                      value={editableProposalDraft.service}
-                      onChange={(event) =>
-                        handleEditableProposalDraftChange("service", event.target.value)
-                      }
-                      className="h-11 border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
-                      placeholder="Service"
-                    />
-                  ) : (
-                    resolveProposalServiceLabel(activeProposal)
-                  )
-                }
-              />
-            </div>
-
-            <Card className="border-border/60 bg-card/55">
-              <CardContent className="space-y-4 p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <h4 className="text-lg font-semibold tracking-tight text-foreground">
-                      Proposal Details
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Full scope, delivery notes, and proposal narrative.
-                    </p>
+                    {activeProposal?.status ? (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]",
+                          statusColors[activeProposal.status] || statusColors.pending,
+                        )}
+                      >
+                        {statusLabels[activeProposal.status] || activeProposal.status}
+                      </Badge>
+                    ) : null}
                   </div>
 
-                  {activeProposal?.status === "draft" ? (
-                    <div className="flex flex-wrap gap-2">
-                      {isEditingProposal ? (
-                        <>
-                          <Button
-                            variant="outline"
-                            className="rounded-full border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06]"
-                            onClick={() => {
-                              setEditableProposalDraft(buildEditableProposalDraft(activeProposal));
-                              setIsEditingProposal(false);
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            className="rounded-full bg-primary text-[#141414] hover:bg-primary/90"
-                            onClick={handleSaveProposalChanges}
-                          >
-                            Save Changes
-                          </Button>
-                        </>
-                      ) : (
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                    <Badge
+                      variant="outline"
+                      className="h-9 w-fit rounded-full border-white/10 bg-background/40 px-3.5 text-[#a6adbb]"
+                    >
+                      {activeProposal?.submittedDate || "No date"}
+                    </Badge>
+                    <span className="text-xs uppercase tracking-[0.18em] text-[#64748b]">
+                      Last updated
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pr-10 sm:justify-end sm:pr-12">
+                  {canEditActiveProposal ? (
+                    isEditingProposal ? (
+                      <>
                         <Button
                           variant="outline"
-                          className="rounded-full border-primary/25 bg-primary/10 text-primary hover:bg-primary/15"
-                          onClick={() => setIsEditingProposal(true)}
+                          className="h-11 rounded-full border-white/10 bg-background/30 px-5 text-white hover:bg-background/50"
+                          onClick={handleCancelProposalEditing}
+                          disabled={isSavingProposal}
                         >
-                          Edit Proposal
+                          Cancel
                         </Button>
-                      )}
-                    </div>
+                        <Button
+                          className="h-11 rounded-full bg-primary px-5 text-[#141414] hover:bg-primary/90"
+                          onClick={handleSaveProposalChanges}
+                          disabled={isSavingProposal}
+                        >
+                          {isSavingProposal ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          {isSavingProposal ? "Saving..." : "Save Changes"}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
+                        onClick={() => setIsEditingProposal(true)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Proposal
+                      </Button>
+                    )
                   ) : null}
                 </div>
+              </div>
 
-                <div className="max-h-[48vh] overflow-y-auto rounded-2xl border border-white/10 bg-black/20 p-4">
-                  {isLoadingProposal ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading details...
-                    </div>
-                  ) : isEditingProposal ? (
-                    <Textarea
-                      value={editableProposalDraft.content}
-                      onChange={(event) =>
-                        handleEditableProposalDraftChange("content", event.target.value)
-                      }
-                      className="min-h-[320px] border-white/10 bg-[#111214] text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
-                      placeholder="Update the proposal content here..."
-                    />
-                  ) : (
-                    <ProposalContentRenderer content={activeProposal?.content} />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+              <DialogDescription className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                {activeProposal?.status === "draft"
+                  ? "Review the draft, polish the scope, and send it to the right freelancer."
+                  : canEditActiveProposal
+                    ? "Review the proposal details and update the scope while the freelancer decision is still pending."
+                    : "Review the proposal details, payment status, and delivery expectations."}
+              </DialogDescription>
+            </div>
           </div>
 
-          <DialogFooter className="flex flex-col gap-3 border-t border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
+            <div className="space-y-8 pb-2">
+              <section className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
+                    01 Project Summary
+                  </p>
+                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                    Start with the essentials
+                  </h3>
+                  <p className="text-sm leading-6 text-[#94a3b8]">
+                    Review the project name, client details, service, and budget before diving
+                    into the full scope.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <ProposalMetric
+                    icon={FileText}
+                    label="Project Name"
+                    value={
+                      isEditingProposal ? (
+                        <Input
+                          value={editableProposalDraft.title}
+                          onChange={(event) =>
+                            handleEditableProposalDraftChange("title", event.target.value)
+                          }
+                          className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                          placeholder="Project name"
+                        />
+                      ) : (
+                        resolveProposalTitle(activeProposal) || "Not set"
+                      )
+                    }
+                  />
+                  <ProposalMetric
+                    icon={UserRound}
+                    label="Client Name"
+                    value={
+                      isEditingProposal ? (
+                        <Input
+                          value={editableProposalDraft.clientName}
+                          onChange={(event) =>
+                            handleEditableProposalDraftChange("clientName", event.target.value)
+                          }
+                          className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                          placeholder="Client name"
+                        />
+                      ) : (
+                        activeProposalStructuredData?.clientName || headerDisplayName
+                      )
+                    }
+                  />
+                  <ProposalMetric
+                    icon={Layers3}
+                    label="Service"
+                    value={
+                      isEditingProposal ? (
+                        <Input
+                          value={editableProposalDraft.service}
+                          onChange={(event) =>
+                            handleEditableProposalDraftChange("service", event.target.value)
+                          }
+                          className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                          placeholder="Service"
+                        />
+                      ) : (
+                        resolveProposalServiceLabel(activeProposal)
+                      )
+                    }
+                  />
+                  <ProposalMetric
+                    icon={CreditCard}
+                    label="Budget"
+                    value={
+                      isEditingProposal ? (
+                        <Input
+                          value={editableProposalDraft.budget}
+                          onChange={(event) =>
+                            handleEditableProposalDraftChange("budget", event.target.value)
+                          }
+                          className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                          placeholder="e.g. 40000"
+                        />
+                      ) : (
+                        activeProposalDetails?.budget || "Not set"
+                      )
+                    }
+                  />
+                </div>
+              </section>
+
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)]">
+                <section className="space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
+                      02 Project Scope
+                    </p>
+                    <h3 className="text-lg font-semibold tracking-tight text-white">
+                      What the project includes
+                    </h3>
+                  </div>
+                  <ProposalSectionCard
+                    title="Project Overview"
+                    description="A clean summary of the project direction and business context."
+                  >
+                    {isLoadingProposal ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading details...
+                      </div>
+                    ) : isEditingProposal ? (
+                      <Textarea
+                        value={editableProposalDraft.projectOverview}
+                        onChange={(event) =>
+                          handleEditableProposalDraftChange("projectOverview", event.target.value)
+                        }
+                        className="min-h-[180px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        placeholder="Summarize the project, business context, and intended outcome."
+                      />
+                    ) : (
+                      <p className="text-sm leading-7 text-white">
+                        {activeProposalStructuredData?.projectOverview || "No overview added yet."}
+                      </p>
+                    )}
+                  </ProposalSectionCard>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <ProposalSectionCard
+                      title="Primary Objectives"
+                      description="Key goals this proposal is meant to deliver."
+                      className="h-full"
+                    >
+                      {isEditingProposal ? (
+                        <Textarea
+                          value={editableProposalDraft.objectivesText}
+                          onChange={(event) =>
+                            handleEditableProposalDraftChange("objectivesText", event.target.value)
+                          }
+                          className="min-h-[220px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                          placeholder={"One objective per line\nExample: Launch MVP for internal testing"}
+                        />
+                      ) : (
+                        <ProposalStructuredList
+                          items={activeProposalStructuredData?.objectives || []}
+                          emptyMessage="No objectives added yet."
+                        />
+                      )}
+                    </ProposalSectionCard>
+
+                    <ProposalSectionCard
+                      title="Deliverables"
+                      description="The concrete scope and outputs expected from this proposal."
+                      className="h-full"
+                    >
+                      {isEditingProposal ? (
+                        <Textarea
+                          value={editableProposalDraft.deliverablesText}
+                          onChange={(event) =>
+                            handleEditableProposalDraftChange("deliverablesText", event.target.value)
+                          }
+                          className="min-h-[220px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                          placeholder={"One deliverable per line\nExample: Admin dashboard with analytics"}
+                        />
+                      ) : (
+                        <ProposalStructuredList
+                          items={activeProposalStructuredData?.deliverables || []}
+                          emptyMessage="No deliverables added yet."
+                        />
+                      )}
+                    </ProposalSectionCard>
+                  </div>
+                </section>
+
+                <section className="space-y-4 xl:sticky xl:top-0">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#64748b]">
+                      03 Technical And Delivery
+                    </p>
+                    <h3 className="text-lg font-semibold tracking-tight text-white">
+                      Supporting details
+                    </h3>
+                  </div>
+                  <ProposalSectionCard
+                    title={isEditingProposal ? "Delivery Details" : "Project Details"}
+                    description={
+                      isEditingProposal
+                        ? "Update the timeline and review the current proposal status."
+                        : "Keep track of the delivery window and proposal state."
+                    }
+                  >
+                    {isEditingProposal ? (
+                      <div className="space-y-4">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2 sm:col-span-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748b]">
+                              Timeline
+                            </p>
+                            <Input
+                              value={editableProposalDraft.timeline}
+                              onChange={(event) =>
+                                handleEditableProposalDraftChange("timeline", event.target.value)
+                              }
+                              className="h-11 border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                              placeholder="e.g. 3+ months"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid gap-4 border-t border-white/8 pt-4 sm:grid-cols-2">
+                          <ProposalSummaryItem
+                            label="Current Status"
+                            value={activeProposalDetails?.statusDisplay || "Draft"}
+                          />
+                          <ProposalSummaryItem
+                            label="Last Updated"
+                            value={activeProposal?.submittedDate || "No date"}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                        <ProposalSummaryItem
+                          label="Project Name"
+                          value={resolveProposalTitle(activeProposal) || "Not set"}
+                        />
+                        <ProposalSummaryItem
+                          label="Timeline"
+                          value={activeProposalDetails?.delivery || "Not set"}
+                        />
+                        <ProposalSummaryItem
+                          label="Current Status"
+                          value={activeProposalDetails?.statusDisplay || "Draft"}
+                        />
+                        <ProposalSummaryItem
+                          label="Last Updated"
+                          value={activeProposal?.submittedDate || "No date"}
+                        />
+                      </div>
+                    )}
+                  </ProposalSectionCard>
+
+                  <ProposalSectionCard
+                    title="Tech Stack"
+                    description="Preferred platforms, frameworks, and tools."
+                  >
+                    {isEditingProposal ? (
+                      <Textarea
+                        value={editableProposalDraft.techStackText}
+                        onChange={(event) =>
+                          handleEditableProposalDraftChange("techStackText", event.target.value)
+                        }
+                        className="min-h-[160px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        placeholder={"One technology per line\nExample: Next.js"}
+                      />
+                    ) : Array.isArray(activeProposalStructuredData?.techStack) &&
+                      activeProposalStructuredData.techStack.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {activeProposalStructuredData.techStack.map((item) => (
+                          <Badge
+                            key={item}
+                            variant="outline"
+                            className="rounded-full border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
+                          >
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-6 text-[#94a3b8]">
+                        No tech stack added yet.
+                      </p>
+                    )}
+                  </ProposalSectionCard>
+
+                  <ProposalSectionCard
+                    title="Delivery Notes"
+                    description="Extra constraints, assumptions, or handover expectations."
+                  >
+                    {isEditingProposal ? (
+                      <Textarea
+                        value={editableProposalDraft.notes}
+                        onChange={(event) =>
+                          handleEditableProposalDraftChange("notes", event.target.value)
+                        }
+                        className="min-h-[180px] border-white/10 bg-background/60 text-white placeholder:text-[#6f7785] focus-visible:border-[#ffc107]/45 focus-visible:ring-[#ffc107]/20"
+                        placeholder="Add any assumptions, dependencies, or special notes."
+                      />
+                    ) : (
+                      <p className="text-sm leading-7 text-white">
+                        {activeProposalStructuredData?.notes || "No delivery notes added yet."}
+                      </p>
+                    )}
+                  </ProposalSectionCard>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="shrink-0 flex flex-col gap-4 border-t border-white/10 bg-accent/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-6 text-muted-foreground">
               Use the action buttons to continue the proposal lifecycle from here.
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               {activeProposal?.status === "draft" && !activeProposal?.requiresPayment ? (
                 <Button
                   variant="outline"
-                  className="rounded-full border-primary/25 bg-primary/10 text-primary hover:bg-primary/15"
+                  className="h-11 rounded-full border-primary/25 bg-primary/10 px-5 text-primary hover:bg-primary/15"
                   onClick={() => openFreelancerSelection(activeProposal)}
                   disabled={sendingProposalId === activeProposal?.id}
                 >
@@ -3004,7 +3716,7 @@ const ClientProposalContent = () => {
               !activeProposal.isGroupedPending ? (
                 <Button
                   variant="ghost"
-                  className="rounded-full text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
+                  className="h-11 rounded-full px-3 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-300"
                   onClick={() => handleDelete(activeProposal)}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />

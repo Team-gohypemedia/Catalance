@@ -98,6 +98,14 @@ const getProposalStorageKeys = (userId) => {
 const buildLocalProposalId = () =>
     `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+const normalizeComparableText = (value = "") =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/[_/\\-]+/g, " ")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
 const formatProposalContent = (text = "") =>
     normalizeBudgetText(stripUnavailableSections(text));
 
@@ -165,14 +173,160 @@ const parseProposalContent = (text = "", fallbackService = "") => {
     };
 };
 
+const stripServiceNameFromProjectTitle = (projectTitle = "", serviceLabel = "") => {
+    const normalizedProjectTitle = String(projectTitle || "").trim();
+    const normalizedServiceLabel = String(serviceLabel || "").trim();
+
+    if (!normalizedProjectTitle) return "";
+    if (!normalizedServiceLabel) return normalizedProjectTitle;
+
+    const titleParts = normalizedProjectTitle
+        .split("/")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+    if (titleParts.length === 2) {
+        const normalizedService = normalizeComparableText(normalizedServiceLabel);
+
+        if (normalizeComparableText(titleParts[0]) === normalizedService) {
+            return titleParts[1];
+        }
+
+        if (normalizeComparableText(titleParts[1]) === normalizedService) {
+            return titleParts[0];
+        }
+    }
+
+    return normalizedProjectTitle;
+};
+
+const resolveProposalServiceValue = (proposal = {}) =>
+    proposal.serviceKey ||
+    proposal.service ||
+    proposal.serviceName ||
+    proposal.category ||
+    proposal.project?.serviceKey ||
+    proposal.project?.service ||
+    proposal.project?.serviceName ||
+    "";
+
+const resolveProposalTitleValue = (proposal = {}) => {
+    const rawTitle =
+        proposal.projectTitle ||
+        proposal.title ||
+        proposal.project?.title ||
+        proposal.project?.name ||
+        "";
+    const serviceValue = resolveProposalServiceValue(proposal);
+
+    return stripServiceNameFromProjectTitle(rawTitle, serviceValue) || rawTitle;
+};
+
+const resolveProposalProjectLink = (proposal = {}) =>
+    String(
+        proposal.syncedProjectId || proposal.projectId || proposal.project?.id || "",
+    ).trim();
+
+const mergeProposalRecords = (current = {}, incoming = {}) => {
+    const currentTimestamp = new Date(
+        current.updatedAt || current.createdAt || 0,
+    ).getTime();
+    const incomingTimestamp = new Date(
+        incoming.updatedAt || incoming.createdAt || 0,
+    ).getTime();
+    const preferIncoming = incomingTimestamp >= currentTimestamp;
+    const preferred = preferIncoming ? incoming : current;
+    const fallback = preferIncoming ? current : incoming;
+
+    return {
+        ...fallback,
+        ...preferred,
+        id: current.id || incoming.id || buildLocalProposalId(),
+    };
+};
+
 const getProposalSignature = (proposal = {}) => {
-    const title = (proposal.projectTitle || proposal.title || "").trim().toLowerCase();
-    const service = (proposal.serviceKey || proposal.service || "").trim().toLowerCase();
-    const summary = (proposal.summary || proposal.content || "").trim().toLowerCase();
+    const title = normalizeComparableText(resolveProposalTitleValue(proposal));
+    const service = normalizeComparableText(resolveProposalServiceValue(proposal));
+    const summary = normalizeComparableText(
+        proposal.summary || proposal.content || proposal.description || "",
+    );
     if (!title && !service) {
-        return `${title}::${service}::${summary.slice(0, 120)}`;
+        return `${title}::${service}::${summary.slice(0, 160)}`;
     }
     return `${title}::${service}`;
+};
+
+const getProposalDedupKeys = (proposal = {}) => {
+    const keys = [];
+    const linkedProjectId = resolveProposalProjectLink(proposal);
+    const signature = getProposalSignature(proposal);
+    const summaryKey = normalizeComparableText(
+        proposal.summary || proposal.content || proposal.description || "",
+    );
+    const serviceKey = normalizeComparableText(resolveProposalServiceValue(proposal));
+    const budgetKey = normalizeComparableText(
+        proposal.budget || proposal.amount || proposal.project?.budget || "",
+    );
+
+    if (proposal.id) {
+        keys.push(`id:${String(proposal.id).trim()}`);
+    }
+
+    if (linkedProjectId) {
+        keys.push(`project:${linkedProjectId}`);
+    }
+
+    if (signature && signature !== "::") {
+        keys.push(`signature:${signature}`);
+    }
+
+    if (summaryKey) {
+        keys.push(`summary:${serviceKey}::${budgetKey}::${summaryKey.slice(0, 160)}`);
+    }
+
+    return keys;
+};
+
+const dedupeSavedProposals = (proposals = []) => {
+    const deduped = [];
+    const keyToIndex = new Map();
+
+    proposals
+        .map((proposal) => ({
+            ...proposal,
+            id: proposal.id || proposal.localId || buildLocalProposalId(),
+        }))
+        .forEach((proposal) => {
+            const proposalKeys = getProposalDedupKeys(proposal);
+            let existingIndex = -1;
+
+            for (const key of proposalKeys) {
+                const matchIndex = keyToIndex.get(key);
+                if (typeof matchIndex === "number") {
+                    existingIndex = matchIndex;
+                    break;
+                }
+            }
+
+            if (existingIndex === -1) {
+                const nextIndex = deduped.length;
+                deduped.push(proposal);
+                proposalKeys.forEach((key) => keyToIndex.set(key, nextIndex));
+                return;
+            }
+
+            const mergedProposal = mergeProposalRecords(
+                deduped[existingIndex],
+                proposal,
+            );
+            deduped[existingIndex] = mergedProposal;
+            getProposalDedupKeys(mergedProposal).forEach((key) =>
+                keyToIndex.set(key, existingIndex),
+            );
+        });
+
+    return deduped;
 };
 
 const loadSavedProposals = (storageKeys) => {
@@ -204,33 +358,14 @@ const loadSavedProposals = (storageKeys) => {
         }
     }
 
-    return proposals.map((proposal) => ({
-        ...proposal,
-        id: proposal.id || proposal.localId || buildLocalProposalId()
-    }));
+    return dedupeSavedProposals(proposals);
 };
 
 const upsertSavedProposals = (existing, incoming) => {
-    const next = Array.isArray(existing) ? [...existing] : [];
-    const additions = Array.isArray(incoming) ? incoming : [];
-
-    additions.forEach((proposal) => {
-        if (!proposal) return;
-        const normalized = {
-            ...proposal,
-            id: proposal.id || proposal.localId || buildLocalProposalId()
-        };
-        const signature = getProposalSignature(normalized);
-        const index = next.findIndex((item) => getProposalSignature(item) === signature);
-        if (index >= 0) {
-            const current = next[index];
-            next[index] = { ...current, ...normalized, id: current.id || normalized.id };
-        } else {
-            next.push(normalized);
-        }
-    });
-
-    return next;
+    return dedupeSavedProposals([
+        ...(Array.isArray(existing) ? existing : []),
+        ...(Array.isArray(incoming) ? incoming : []),
+    ]);
 };
 
 const persistSavedProposals = (proposals, activeId, storageKeys) => {
@@ -242,9 +377,10 @@ const persistSavedProposals = (proposals, activeId, storageKeys) => {
         return;
     }
 
-    window.localStorage.setItem(keys.listKey, JSON.stringify(proposals));
+    const normalized = dedupeSavedProposals(proposals);
+    window.localStorage.setItem(keys.listKey, JSON.stringify(normalized));
     const active =
-        proposals.find((proposal) => proposal.id === activeId) || proposals[0];
+        normalized.find((proposal) => proposal.id === activeId) || normalized[0];
     if (active) {
         window.localStorage.setItem(keys.singleKey, JSON.stringify(active));
     }

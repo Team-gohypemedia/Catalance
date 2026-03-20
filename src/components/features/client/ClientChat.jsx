@@ -38,6 +38,7 @@ import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import Smile from "lucide-react/dist/esm/icons/smile";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
+import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
@@ -252,6 +253,9 @@ const formatDayDivider = (value) => {
 const getDisplayName = (user) =>
   user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
 
+const getUserBusinessName = (user) =>
+  getFirstNonEmptyText(user?.companyName, user?.businessName, user?.brandName);
+
 const getInitials = (value = "") => {
   const parts = String(value)
     .trim()
@@ -404,6 +408,10 @@ const resolveConversationAvatarSrc = (item = {}) =>
   );
 
 const getConversationDisplayTitle = (conversation = {}) => {
+  if (typeof conversation?.businessName === "string" && conversation.businessName.trim()) {
+    return conversation.businessName.trim();
+  }
+
   if (typeof conversation?.projectTitle === "string" && conversation.projectTitle.trim()) {
     return conversation.projectTitle.trim();
   }
@@ -419,22 +427,24 @@ const getConversationDisplayTitle = (conversation = {}) => {
   return "Project chat";
 };
 
-const getConversationDisplaySubtitle = (conversation = {}) => {
-  const title = getConversationDisplayTitle(conversation);
-  const serviceLabel = getFirstNonEmptyText(
-    conversation?.projectServiceLabel,
-    conversation?.label,
+const getConversationDisplaySubtitle = (conversation = {}, currentUser = null) => {
+  const subtitleParts = [
+    getFirstNonEmptyText(conversation?.clientName, getDisplayName(currentUser)),
+    getFirstNonEmptyText(
+      conversation?.serviceType,
+      conversation?.projectServiceLabel,
+      conversation?.label,
+    ),
+  ].filter(Boolean);
+
+  const uniqueParts = subtitleParts.filter(
+    (value, index, list) =>
+      list.findIndex(
+        (candidate) => normalizeComparableText(candidate) === normalizeComparableText(value),
+      ) === index,
   );
 
-  if (serviceLabel && normalizeComparableText(serviceLabel) !== normalizeComparableText(title)) {
-    return serviceLabel;
-  }
-
-  if (typeof conversation?.name === "string" && conversation.name.trim()) {
-    return conversation.name.trim();
-  }
-
-  return serviceLabel || "Project chat";
+  return uniqueParts.join(" • ") || "Project chat";
 };
 
 const getMessageSignature = (message = {}) =>
@@ -693,7 +703,7 @@ const ChatArea = ({
   const shouldAutoScrollRef = useRef(true);
   const lastConversationKeyRef = useRef("");
   const conversationTitle = getConversationDisplayTitle(conversation);
-  const conversationSubtitle = getConversationDisplaySubtitle(conversation);
+  const conversationSubtitle = getConversationDisplaySubtitle(conversation, currentUser);
   const conversationAvatarLabel = conversationTitle || "Project chat";
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
@@ -1528,6 +1538,9 @@ const ClientChat = () => {
   const { user, authFetch, token, isAuthenticated, isLoading: authLoading } = useAuth();
   const { socket: notificationSocket, unreadCount } = useNotifications();
   const [searchParams] = useSearchParams();
+  const currentUserId = user?.id || null;
+  const currentClientName = getDisplayName(user);
+  const currentClientBusinessName = getUserBusinessName(user);
   const requestedProjectId = useMemo(
     () => searchParams.get("projectId"),
     [searchParams],
@@ -1755,9 +1768,9 @@ const ClientChat = () => {
             item.freelancerId ||
             acceptedProposal?.freelancerId;
 
-          if (!freelancerId || freelancerId === user?.id) continue;
+          if (!freelancerId || freelancerId === currentUserId) continue;
 
-          const serviceKey = `CHAT:${projectId}:${user?.id}:${freelancerId}`;
+          const serviceKey = `CHAT:${projectId}:${currentUserId}:${freelancerId}`;
           const conversationMeta = conversationsByService.get(serviceKey) || null;
           const conversationSource = {
             ...item,
@@ -1779,10 +1792,12 @@ const ClientChat = () => {
 
           if (seen.has(serviceKey)) continue;
           seen.add(serviceKey);
-          const businessName = resolveConversationBusinessName(conversationSource);
+          const businessName =
+            resolveConversationBusinessName(conversationSource) || currentClientBusinessName;
           const serviceLabel =
             resolveConversationServiceLabel(conversationSource) || SERVICE_LABEL;
-          const projectTitle = businessName ? toDisplayTitleCase(businessName) : serviceLabel;
+          const displayBusinessName = businessName ? toDisplayTitleCase(businessName) : "";
+          const projectTitle = displayBusinessName || serviceLabel;
           const projectAvatar = resolveConversationAvatarSrc(conversationSource);
           const previewSource = conversationMeta?.lastMessage
             ? conversationMeta.lastMessage
@@ -1799,10 +1814,13 @@ const ClientChat = () => {
               conversationSource.freelancer?.email ||
               acceptedProposal?.freelancerName ||
               "Freelancer",
+            clientName: currentClientName,
             avatar: projectAvatar,
+            businessName: displayBusinessName,
             label: serviceLabel,
             projectTitle: projectTitle || SERVICE_LABEL,
             projectServiceLabel: serviceLabel,
+            serviceType: serviceLabel,
             previewText: getMessagePreview(previewSource),
             chatUnlocked,
             serviceKey,
@@ -1864,7 +1882,16 @@ const ClientChat = () => {
     return () => {
       cancelled = true;
     };
-  }, [authFetch, authLoading, isAuthenticated, requestedProjectId, token, user?.id]);
+  }, [
+    authFetch,
+    authLoading,
+    currentClientBusinessName,
+    currentClientName,
+    currentUserId,
+    isAuthenticated,
+    requestedProjectId,
+    token,
+  ]);
 
   useEffect(() => {
     if (!activeConversation || !selectedConversationChatUnlocked) {
@@ -2374,10 +2401,13 @@ const ClientChat = () => {
       return haystack.includes(query);
     });
   }, [conversations, deferredConversationSearch]);
+  const messagesHeaderSupportingText = loading
+    ? "Syncing your conversations."
+    : `${filteredConversations.length} conversation${filteredConversations.length === 1 ? "" : "s"} ready to review${conversationSearch.trim() ? " for the current search." : "."}`;
 
   return (
     <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={{
             avatar: user?.avatar,
@@ -2393,8 +2423,15 @@ const ClientChat = () => {
         <main className="flex min-h-0 flex-1 flex-col pb-12">
           <h1 className="sr-only">Messages</h1>
 
-          <section className="mt-7 flex min-h-0 flex-1">
-            <div className="flex h-[calc(100vh-13.5rem)] min-h-[720px] w-full flex-col overflow-hidden rounded-[28px] border border-white/[0.05] bg-accent lg:flex-row">
+          <ClientPageHeader
+            className="shrink-0"
+            title="Messages"
+            description="Keep project conversations, proposal replies, and live updates in one clear workspace."
+            supportingText={messagesHeaderSupportingText}
+          />
+
+          <section className="mt-8 flex min-h-0 flex-1">
+            <div className="flex min-h-[680px] w-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-white/[0.05] bg-accent lg:min-h-[720px] lg:flex-row">
               <aside className="flex w-full shrink-0 flex-col border-b border-white/[0.06] bg-accent lg:w-[360px] lg:border-b-0 lg:border-r lg:border-white/[0.06]">
                 <div className="px-6 pb-5 pt-7">
                   <p className="text-[1.05rem] font-semibold text-white">

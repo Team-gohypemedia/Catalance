@@ -2,6 +2,8 @@
 
 import React from "react";
 import Bell from "lucide-react/dist/esm/icons/bell";
+import Menu from "lucide-react/dist/esm/icons/menu";
+import X from "lucide-react/dist/esm/icons/x";
 import { Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -10,6 +12,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
 
@@ -255,6 +263,37 @@ const HeaderNav = ({ activeKey, items, mobile = false, onSelect, variant = "mark
   </nav>
 );
 
+const MobileMenuLink = ({ active, item, onSelect, priority = "primary" }) => {
+  const className =
+    priority === "primary"
+      ? cn(
+          "block w-full py-1 text-left text-[1.75rem] font-semibold uppercase tracking-[0.12em] transition-colors",
+          active ? "text-[#ffc107]" : "text-white hover:text-[#ffc107]",
+        )
+      : cn(
+          "block w-full py-1 text-left text-base font-semibold uppercase tracking-[0.14em] transition-colors",
+          active ? "text-[#ffc107]" : "text-white/70 hover:text-white",
+        );
+
+  if (typeof onSelect === "function") {
+    return (
+      <SheetClose asChild>
+        <button type="button" onClick={() => onSelect(item.key)} className={className}>
+          {item.label}
+        </button>
+      </SheetClose>
+    );
+  }
+
+  return (
+    <SheetClose asChild>
+      <Link to={item.to} className={className}>
+        {item.label}
+      </Link>
+    </SheetClose>
+  );
+};
+
 const NotificationPopoverButton = ({
   notifications = [],
   unreadCount = 0,
@@ -337,8 +376,8 @@ const FreelancerWorkspaceHeader = ({
   activeWorkspaceKey = "dashboard",
   onSiteNav,
   onWorkspaceNav,
-  onOpenProfile,
-  profileTo = "/freelancer/profile",
+  onOpenProfile: _onOpenProfile,
+  profileTo: _profileTo = "/freelancer/profile",
   onPrimaryAction,
   primaryActionLabel = "Proposals",
   primaryActionTo = "/freelancer/proposals",
@@ -350,94 +389,182 @@ const FreelancerWorkspaceHeader = ({
 }) => {
   const displayName = String(profile?.name || "Freelancer").trim() || "Freelancer";
   const profileInitial = profile?.initial || getInitials(displayName);
-
-  const profileContent = (
-    <>
-      <Avatar className="size-7 border border-black/10">
-        <AvatarImage src={profile?.avatar} alt={displayName} />
-        <AvatarFallback className="bg-black/5 text-xs font-semibold text-black">
-          {profileInitial}
-        </AvatarFallback>
-      </Avatar>
-      <span className="max-w-[120px] truncate">{displayName}</span>
-    </>
-  );
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const primaryActionContent = <span>{primaryActionLabel}</span>;
 
+  const notificationButton = (
+    <NotificationPopoverButton
+      notifications={notifications}
+      unreadCount={unreadCount}
+      markAllAsRead={markAllAsRead}
+      onNotificationClick={onNotificationClick}
+    />
+  );
+
+  const handleMobilePrimaryAction = () => {
+    setMobileMenuOpen(false);
+    onPrimaryAction?.();
+  };
+
   return (
-    <header className={cn("sticky top-0 z-50 space-y-4 bg-[#212121] pb-3 pt-3", className)}>
-      <div className="mx-auto w-full rounded-[40px] border border-white/10 bg-[#171717]/70 p-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:p-4 xl:w-[70%]">
+    <header className={cn("sticky top-0 z-50 bg-[#212121]", className)}>
+      <div className="border-b border-white/10 px-4 py-5 lg:hidden">
         <div className="flex items-center justify-between gap-4">
           <Link to="/">
             <BrandMark />
           </Link>
 
-          <HeaderNav
-            items={marketingNavItems}
-            activeKey={activeMarketingKey}
-            onSelect={onSiteNav}
-          />
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                aria-label="Open navigation menu"
+                className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5"
+              >
+                <Menu className="size-6" />
+              </button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              showCloseButton={false}
+              className="w-full max-w-none border-l-0 bg-[#212121] p-0 text-white sm:max-w-none"
+            >
+              <div className="flex items-center justify-between px-6 py-6">
+                <SheetClose asChild>
+                  <Link to="/">
+                    <BrandMark />
+                  </Link>
+                </SheetClose>
 
-          <ProfileDropdown
-            profile={profile}
-            displayName={displayName}
-            profileInitial={profileInitial}
-          />
-        </div>
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close navigation menu"
+                    className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/5"
+                  >
+                    <X className="size-6" />
+                  </button>
+                </SheetClose>
+              </div>
 
-        <div className="mt-4 lg:hidden">
-          <HeaderNav
-            items={marketingNavItems}
-            activeKey={activeMarketingKey}
-            onSelect={onSiteNav}
-            mobile
-          />
+              <ScrollArea className="flex-1 px-6 pb-8">
+                <div className="flex min-h-full flex-col">
+                  <div className="space-y-7 pt-10">
+                    {workspaceNavItems.map((item) => (
+                      <MobileMenuLink
+                        key={item.key}
+                        item={item}
+                        active={item.key === activeWorkspaceKey}
+                        onSelect={onWorkspaceNav}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="mt-12 border-t border-white/10 pt-8">
+                    <div className="space-y-5">
+                      {marketingNavItems.map((item) => (
+                        <MobileMenuLink
+                          key={item.key}
+                          item={item}
+                          active={item.key === activeMarketingKey}
+                          onSelect={onSiteNav}
+                          priority="secondary"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-auto space-y-4 pb-2 pt-12">
+                    {typeof onPrimaryAction === "function" ? (
+                      <button
+                        type="button"
+                        onClick={handleMobilePrimaryAction}
+                        className="flex w-full items-center justify-center gap-2 rounded-[18px] bg-[#ffc107] px-4 py-3 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                      >
+                        {primaryActionContent}
+                      </button>
+                    ) : (
+                      <SheetClose asChild>
+                        <Link
+                          to={primaryActionTo}
+                          className="flex w-full items-center justify-center gap-2 rounded-[18px] bg-[#ffc107] px-4 py-3 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                        >
+                          {primaryActionContent}
+                        </Link>
+                      </SheetClose>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <ProfileDropdown
+                          profile={profile}
+                          displayName={displayName}
+                          profileInitial={profileInitial}
+                        />
+                      </div>
+                      <div className="shrink-0">{notificationButton}</div>
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
-      <div className="mt-7 border-b border-[#ffc107]/10 pb-3">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-3">
+      <div className="hidden space-y-4 pb-3 pt-3 lg:block">
+        <div className="mx-auto w-full rounded-[40px] border border-white/10 bg-[#171717]/70 p-3 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[6px] sm:p-4 xl:w-[70%]">
+          <div className="flex items-center justify-between gap-4">
+            <Link to="/">
+              <BrandMark />
+            </Link>
+
             <HeaderNav
-              items={workspaceNavItems}
-              activeKey={activeWorkspaceKey}
-              onSelect={onWorkspaceNav}
-              variant="workspace"
+              items={marketingNavItems}
+              activeKey={activeMarketingKey}
+              onSelect={onSiteNav}
             />
-            <HeaderNav
-              items={workspaceNavItems}
-              activeKey={activeWorkspaceKey}
-              onSelect={onWorkspaceNav}
-              mobile
-              variant="workspace"
+
+            <ProfileDropdown
+              profile={profile}
+              displayName={displayName}
+              profileInitial={profileInitial}
             />
           </div>
+        </div>
 
-          <div className="flex items-center gap-5">
-            {typeof onPrimaryAction === "function" ? (
-              <button
-                type="button"
-                onClick={onPrimaryAction}
-                className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
-              >
-                {primaryActionContent}
-              </button>
-            ) : (
-              <Link
-                to={primaryActionTo}
-                className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
-              >
-                {primaryActionContent}
-              </Link>
-            )}
+        <div className="mt-7 border-b border-[#ffc107]/10 pb-3">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-3">
+              <HeaderNav
+                items={workspaceNavItems}
+                activeKey={activeWorkspaceKey}
+                onSelect={onWorkspaceNav}
+                variant="workspace"
+              />
+            </div>
 
-            <NotificationPopoverButton
-              notifications={notifications}
-              unreadCount={unreadCount}
-              markAllAsRead={markAllAsRead}
-              onNotificationClick={onNotificationClick}
-            />
+            <div className="flex items-center gap-5">
+              {typeof onPrimaryAction === "function" ? (
+                <button
+                  type="button"
+                  onClick={onPrimaryAction}
+                  className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                >
+                  {primaryActionContent}
+                </button>
+              ) : (
+                <Link
+                  to={primaryActionTo}
+                  className="flex items-center gap-2 rounded-[16px] bg-[#ffc107] px-4 py-2 text-sm font-bold text-[#0a0a0a] transition-colors hover:bg-[#ffd54f]"
+                >
+                  {primaryActionContent}
+                </Link>
+              )}
+
+              {notificationButton}
+            </div>
           </div>
         </div>
       </div>

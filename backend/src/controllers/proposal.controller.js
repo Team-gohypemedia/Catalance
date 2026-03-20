@@ -236,6 +236,78 @@ export const getProposal = asyncHandler(async (req, res) => {
   res.json({ data: proposal });
 });
 
+export const updateProposal = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+  const proposalId = req.params.id;
+  const { coverLetter, amount } = req.body || {};
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: proposalId },
+    include: {
+      project: {
+        select: {
+          ownerId: true,
+        },
+      },
+      freelancer: true,
+    },
+  });
+
+  if (!proposal) {
+    throw new AppError("Proposal not found", 404);
+  }
+
+  const isOwner = String(proposal.project?.ownerId || "") === String(userId);
+  const isFreelancer = String(proposal.freelancerId || "") === String(userId);
+
+  if (!isOwner && !isFreelancer) {
+    throw new AppError("You do not have permission to update this proposal", 403);
+  }
+
+  const normalizedStatus = String(proposal.status || "").toUpperCase();
+  if (["ACCEPTED", "REPLACED"].includes(normalizedStatus)) {
+    throw new AppError("This proposal can no longer be edited.", 409);
+  }
+
+  const updates = {};
+
+  if (typeof coverLetter === "string") {
+    const trimmedCoverLetter = coverLetter.trim();
+    if (!trimmedCoverLetter) {
+      throw new AppError("Proposal details cannot be empty.", 400);
+    }
+
+    updates.coverLetter = trimmedCoverLetter;
+  }
+
+  if (amount !== undefined) {
+    updates.amount = normalizeAmount(amount);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new AppError("No changes supplied.", 400);
+  }
+
+  const updatedProposal = await prisma.proposal.update({
+    where: { id: proposalId },
+    data: updates,
+    include: {
+      project: {
+        include: {
+          owner: true,
+        },
+      },
+      freelancer: true,
+    },
+  });
+
+  res.json({ data: updatedProposal });
+});
+
 export const listProposals = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
 

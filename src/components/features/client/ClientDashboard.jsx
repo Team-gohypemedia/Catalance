@@ -83,18 +83,94 @@ const getProposalStorageKeys = (userId) => {
 const buildLocalProposalId = () =>
   `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+const normalizeComparableText = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[_/\\-]+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const resolveProposalServiceValue = (proposal = {}) =>
+  proposal.serviceKey ||
+  proposal.service ||
+  proposal.serviceName ||
+  proposal.category ||
+  proposal.project?.serviceKey ||
+  proposal.project?.service ||
+  proposal.project?.serviceName ||
+  "";
+
+const stripServiceNameFromStorageTitle = (projectTitle = "", serviceLabel = "") => {
+  const normalizedProjectTitle = String(projectTitle || "").trim();
+  const normalizedServiceLabel = String(serviceLabel || "").trim();
+
+  if (!normalizedProjectTitle) return "";
+  if (!normalizedServiceLabel) return normalizedProjectTitle;
+
+  const titleParts = normalizedProjectTitle
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (titleParts.length === 2) {
+    const normalizedService = normalizeComparableText(normalizedServiceLabel);
+
+    if (normalizeComparableText(titleParts[0]) === normalizedService) {
+      return titleParts[1];
+    }
+
+    if (normalizeComparableText(titleParts[1]) === normalizedService) {
+      return titleParts[0];
+    }
+  }
+
+  return normalizedProjectTitle;
+};
+
+const resolveProposalStorageTitle = (proposal = {}) => {
+  const rawTitle =
+    proposal.projectTitle ||
+    proposal.title ||
+    proposal.project?.title ||
+    proposal.project?.name ||
+    "";
+  const serviceValue = resolveProposalServiceValue(proposal);
+
+  return stripServiceNameFromStorageTitle(rawTitle, serviceValue) || rawTitle;
+};
+
+const resolveProposalProjectLink = (proposal = {}) =>
+  String(
+    proposal.syncedProjectId || proposal.projectId || proposal.project?.id || "",
+  ).trim();
+
+const mergeSavedProposalRecords = (current = {}, incoming = {}) => {
+  const currentTimestamp = new Date(
+    current.updatedAt || current.createdAt || 0,
+  ).getTime();
+  const incomingTimestamp = new Date(
+    incoming.updatedAt || incoming.createdAt || 0,
+  ).getTime();
+  const preferIncoming = incomingTimestamp >= currentTimestamp;
+  const preferred = preferIncoming ? incoming : current;
+  const fallback = preferIncoming ? current : incoming;
+
+  return {
+    ...fallback,
+    ...preferred,
+    id: current.id || incoming.id || buildLocalProposalId(),
+  };
+};
+
 const getProposalSignature = (proposal = {}) => {
-  const title = (proposal.projectTitle || proposal.title || "")
-    .trim()
-    .toLowerCase();
-  const service = (proposal.serviceKey || proposal.service || "")
-    .trim()
-    .toLowerCase();
-  const summary = (proposal.summary || proposal.content || "")
-    .trim()
-    .toLowerCase();
+  const title = normalizeComparableText(resolveProposalStorageTitle(proposal));
+  const service = normalizeComparableText(resolveProposalServiceValue(proposal));
+  const summary = normalizeComparableText(
+    proposal.summary || proposal.content || proposal.description || "",
+  );
   if (!title && !service) {
-    return `${title}::${service}::${summary.slice(0, 120)}`;
+    return `${title}::${service}::${summary.slice(0, 160)}`;
   }
   return `${title}::${service}`;
 };
@@ -143,6 +219,75 @@ const normalizeSavedProposal = (proposal = {}) => {
     }
   }
   return next;
+};
+
+const getProposalDedupKeys = (proposal = {}) => {
+  const keys = [];
+  const linkedProjectId = resolveProposalProjectLink(proposal);
+  const signature = getProposalSignature(proposal);
+  const summaryKey = normalizeComparableText(
+    proposal.summary || proposal.content || proposal.description || "",
+  );
+  const serviceKey = normalizeComparableText(resolveProposalServiceValue(proposal));
+  const budgetKey = normalizeComparableText(
+    proposal.budget || proposal.amount || proposal.project?.budget || "",
+  );
+
+  if (proposal.id) {
+    keys.push(`id:${String(proposal.id).trim()}`);
+  }
+
+  if (linkedProjectId) {
+    keys.push(`project:${linkedProjectId}`);
+  }
+
+  if (signature && signature !== "::") {
+    keys.push(`signature:${signature}`);
+  }
+
+  if (summaryKey) {
+    keys.push(`summary:${serviceKey}::${budgetKey}::${summaryKey.slice(0, 160)}`);
+  }
+
+  return keys;
+};
+
+const dedupeSavedProposals = (proposals = []) => {
+  const deduped = [];
+  const keyToIndex = new Map();
+
+  proposals
+    .map(normalizeSavedProposal)
+    .forEach((proposal) => {
+      const proposalKeys = getProposalDedupKeys(proposal);
+      let existingIndex = -1;
+
+      for (const key of proposalKeys) {
+        const matchIndex = keyToIndex.get(key);
+        if (typeof matchIndex === "number") {
+          existingIndex = matchIndex;
+          break;
+        }
+      }
+
+      if (existingIndex === -1) {
+        const nextIndex = deduped.length;
+        deduped.push(proposal);
+        proposalKeys.forEach((key) => keyToIndex.set(key, nextIndex));
+        return;
+      }
+
+      const mergedProposal = mergeSavedProposalRecords(
+        deduped[existingIndex],
+        proposal,
+      );
+      deduped[existingIndex] = mergedProposal;
+      getProposalDedupKeys(mergedProposal).forEach((key) =>
+        keyToIndex.set(key, existingIndex),
+      );
+    });
+
+  return deduped;
 };
 
 const resolveProposalTitle = (proposal) => {
@@ -279,6 +424,67 @@ const resolveProposalServiceLabel = (proposal = {}) =>
   proposal?.serviceName ||
   proposal?.serviceKey ||
   "General";
+
+const extractProposalQuestionAnswer = (answers = {}, patterns = []) => {
+  if (!answers || typeof answers !== "object") return "";
+
+  for (const [question, answer] of Object.entries(answers)) {
+    const normalizedQuestion = String(question || "").trim();
+    if (!normalizedQuestion) continue;
+
+    const isMatch = patterns.some((pattern) => pattern.test(normalizedQuestion));
+    if (!isMatch) continue;
+
+    const extracted = collectStringValues(answer)
+      .map((value) => String(value || "").trim())
+      .find(Boolean);
+
+    if (extracted) return extracted;
+  }
+
+  return "";
+};
+
+const resolveProposalBusinessName = (proposal = {}) => {
+  const proposalContext =
+    proposal?.proposalContext && typeof proposal.proposalContext === "object"
+      ? proposal.proposalContext
+      : {};
+  const questionnaireAnswersBySlug =
+    proposalContext.questionnaireAnswersBySlug &&
+    typeof proposalContext.questionnaireAnswersBySlug === "object"
+      ? proposalContext.questionnaireAnswersBySlug
+      : {};
+  const questionnaireAnswers =
+    proposalContext.questionnaireAnswers &&
+    typeof proposalContext.questionnaireAnswers === "object"
+      ? proposalContext.questionnaireAnswers
+      : {};
+
+  return getFirstNonEmptyText(
+    proposalContext.businessName,
+    proposalContext.companyName,
+    proposal?.businessName,
+    proposal?.companyName,
+    proposal?.project?.businessName,
+    proposal?.project?.companyName,
+    extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
+      /business[-_\s]?name/i,
+      /company[-_\s]?name/i,
+      /brand[-_\s]?name/i,
+    ]),
+    extractProposalQuestionAnswer(questionnaireAnswers, [
+      /business name/i,
+      /company name/i,
+      /brand name/i,
+    ]),
+    extractLabeledValue(proposal?.content || proposal?.summary || "", [
+      "Business Name",
+      "Company Name",
+      "Brand Name",
+    ]),
+  );
+};
 
 const formatProposalUpdatedAt = (proposal = {}) => {
   const timestamp = proposal?.updatedAt || proposal?.createdAt;
@@ -535,7 +741,7 @@ const readSavedProposalsFromKeys = (listKey, singleKey) => {
     }
   }
 
-  const normalized = proposals.map(normalizeSavedProposal);
+  const normalized = dedupeSavedProposals(proposals);
   let activeId = null;
   if (singleRaw) {
     try {
@@ -555,17 +761,7 @@ const readSavedProposalsFromKeys = (listKey, singleKey) => {
 };
 
 const mergeProposalsBySignature = (base = [], incoming = []) => {
-  const merged = [...base];
-  incoming.forEach((proposal) => {
-    const signature = getProposalSignature(proposal);
-    const exists = merged.some(
-      (item) => getProposalSignature(item) === signature,
-    );
-    if (!exists) {
-      merged.push(proposal);
-    }
-  });
-  return merged;
+  return dedupeSavedProposals([...base, ...incoming]);
 };
 
 const loadSavedProposalsFromStorage = (userId) => {
@@ -603,7 +799,21 @@ const loadSavedProposalsFromStorage = (userId) => {
     }
   }
 
-  return { proposals, activeId };
+  const dedupedProposals = dedupeSavedProposals(proposals);
+  const nextActiveId = resolveActiveProposalId(
+    dedupedProposals,
+    activeId,
+    null,
+  );
+
+  if (
+    dedupedProposals.length !== proposals.length ||
+    nextActiveId !== activeId
+  ) {
+    persistSavedProposalsToStorage(dedupedProposals, nextActiveId, storageKeys);
+  }
+
+  return { proposals: dedupedProposals, activeId: nextActiveId };
 };
 
 const persistSavedProposalsToStorage = (proposals, activeId, storageKeys) => {
@@ -614,9 +824,10 @@ const persistSavedProposalsToStorage = (proposals, activeId, storageKeys) => {
     window.localStorage.removeItem(keys.singleKey);
     return;
   }
-  window.localStorage.setItem(keys.listKey, JSON.stringify(proposals));
+  const normalized = dedupeSavedProposals(proposals);
+  window.localStorage.setItem(keys.listKey, JSON.stringify(normalized));
   const active =
-    proposals.find((proposal) => proposal.id === activeId) || proposals[0];
+    normalized.find((proposal) => proposal.id === activeId) || normalized[0];
   if (active) {
     window.localStorage.setItem(keys.singleKey, JSON.stringify(active));
   }
@@ -1460,7 +1671,7 @@ const ClientDashboardContent = () => {
   const persistSavedProposalState = useCallback(
     (nextProposals, preferredActiveId = null) => {
       const normalized = Array.isArray(nextProposals)
-        ? nextProposals.map(normalizeSavedProposal)
+        ? dedupeSavedProposals(nextProposals)
         : [];
       const resolvedActiveId = resolveActiveProposalId(
         normalized,
@@ -2362,9 +2573,11 @@ const ClientDashboardContent = () => {
   const draftProposalRows = useMemo(() => {
     const toneCycle = ["amber", "blue", "green", "violet"];
 
-    return savedProposals.slice(0, 4).map((proposal, index) => ({
+    return dedupeSavedProposals(savedProposals).slice(0, 4).map((proposal, index) => ({
       id: proposal.id,
-      title: resolveProposalTitle(proposal),
+      title:
+        toDisplayTitleCase(resolveProposalBusinessName(proposal)) ||
+        resolveProposalTitle(proposal),
       tag: resolveProposalServiceLabel(proposal).toUpperCase(),
       tagTone: toneCycle[index % toneCycle.length],
       budget: formatBudget(proposal.budget),

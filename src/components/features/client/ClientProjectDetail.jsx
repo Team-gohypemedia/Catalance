@@ -73,6 +73,7 @@ import isToday from "date-fns/isToday";
 import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
 import { cn } from "@/shared/lib/utils";
+import { formatINR } from "@/shared/lib/currency";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { hasUnlockedProjectChat } from "@/shared/lib/project-chat-access";
 import {
@@ -96,34 +97,10 @@ const DEFAULT_MEETING_TIME_SLOTS = [
 ];
 
 const MAX_FREELANCER_CHANGE_REQUESTS = 2;
-
-const FREELANCER_CHANGE_CUSTOM_REASON_VALUE = "CUSTOM";
-const FREELANCER_CHANGE_REASON_PRESETS = [
-  {
-    value: "Poor communication / slow responses",
-    label: "Poor communication / slow responses",
-  },
-  {
-    value: "Missed deadlines or delayed progress",
-    label: "Missed deadlines or delayed progress",
-  },
-  {
-    value: "Quality of work not meeting expectations",
-    label: "Quality of work not meeting expectations",
-  },
-  {
-    value: "Not following the agreed scope/requirements",
-    label: "Not following the agreed scope/requirements",
-  },
-  {
-    value: "Unprofessional behavior or conduct",
-    label: "Unprofessional behavior or conduct",
-  },
-  {
-    value: FREELANCER_CHANGE_CUSTOM_REASON_VALUE,
-    label: "Other (custom)",
-  },
-];
+const CATALYST_REQUEST_TYPES = {
+  GENERAL: "general",
+  FREELANCER_CHANGE: "freelancer-change",
+};
 
 // Skeleton Loading Component
 const ProjectDetailSkeleton = () => (
@@ -362,20 +339,20 @@ const ProjectDashboard = () => {
   const [input, setInput] = useState("");
   const [completedTaskIds, setCompletedTaskIds] = useState(new Set());
   const [verifiedTaskIds, setVerifiedTaskIds] = useState(new Set());
+  const [verifyingTaskIds, setVerifyingTaskIds] = useState(() => new Set());
   const fileInputRef = useRef(null);
   const reportDialogContentRef = useRef(null);
+  const completedTaskIdsRef = useRef(new Set());
+  const verifiedTaskIdsRef = useRef(new Set());
+  const latestProgressMutationIdRef = useRef(0);
 
-  // Dispute Report State
+  // Catalyst Request State
   const [reportOpen, setReportOpen] = useState(false);
+  const [catalystRequestType, setCatalystRequestType] = useState(
+    CATALYST_REQUEST_TYPES.GENERAL
+  );
   const [issueText, setIssueText] = useState("");
   const [isReporting, setIsReporting] = useState(false);
-  const [freelancerChangeOpen, setFreelancerChangeOpen] = useState(false);
-  const [freelancerChangeReasonPreset, setFreelancerChangeReasonPreset] =
-    useState("");
-  const [freelancerChangeCustomReason, setFreelancerChangeCustomReason] =
-    useState("");
-  const [isSubmittingFreelancerChange, setIsSubmittingFreelancerChange] =
-    useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [date, setDate] = useState();
   const [time, setTime] = useState("");
@@ -398,13 +375,25 @@ const ProjectDashboard = () => {
     setProject(data);
 
     if (Array.isArray(data.completedTasks)) {
-      setCompletedTaskIds(new Set(data.completedTasks));
+      const nextCompletedTaskIds = new Set(data.completedTasks);
+      completedTaskIdsRef.current = nextCompletedTaskIds;
+      setCompletedTaskIds(nextCompletedTaskIds);
     }
 
     if (Array.isArray(data.verifiedTasks)) {
-      setVerifiedTaskIds(new Set(data.verifiedTasks));
+      const nextVerifiedTaskIds = new Set(data.verifiedTasks);
+      verifiedTaskIdsRef.current = nextVerifiedTaskIds;
+      setVerifiedTaskIds(nextVerifiedTaskIds);
     }
   }, []);
+
+  useEffect(() => {
+    completedTaskIdsRef.current = completedTaskIds;
+  }, [completedTaskIds]);
+
+  useEffect(() => {
+    verifiedTaskIdsRef.current = verifiedTaskIds;
+  }, [verifiedTaskIds]);
 
   useEffect(() => {
     if (!date || !authFetch) {
@@ -472,12 +461,6 @@ const ProjectDashboard = () => {
     }
   }, [effectiveTimeSlots, time]);
 
-  useEffect(() => {
-    if (!reportOpen) {
-      setDatePopoverOpen(false);
-    }
-  }, [reportOpen]);
-
   const activeProjectManager = useMemo(() => {
     if (
       project?.manager?.role === "PROJECT_MANAGER" &&
@@ -493,6 +476,45 @@ const ProjectDashboard = () => {
     }
     return null;
   }, [project?.manager, availabilityManager]);
+
+  const isFreelancerChangeRequest =
+    catalystRequestType === CATALYST_REQUEST_TYPES.FREELANCER_CHANGE;
+
+  const resetCatalystDialog = useCallback(
+    (nextRequestType = CATALYST_REQUEST_TYPES.GENERAL) => {
+      setCatalystRequestType(nextRequestType);
+      setIssueText("");
+      setDate(undefined);
+      setTime("");
+      setDatePopoverOpen(false);
+    },
+    []
+  );
+
+  const openCatalystDialog = useCallback(
+    (nextRequestType = CATALYST_REQUEST_TYPES.GENERAL) => {
+      resetCatalystDialog(nextRequestType);
+      setReportOpen(true);
+    },
+    [resetCatalystDialog]
+  );
+
+  const handleCatalystRequestTypeChange = useCallback(
+    (nextRequestType) => {
+      if (nextRequestType === catalystRequestType) {
+        return;
+      }
+
+      resetCatalystDialog(nextRequestType);
+    },
+    [catalystRequestType, resetCatalystDialog]
+  );
+
+  useEffect(() => {
+    if (!reportOpen) {
+      resetCatalystDialog();
+    }
+  }, [reportOpen, resetCatalystDialog]);
 
   // Book Appointment State
   const [bookAppointmentOpen, setBookAppointmentOpen] = useState(false);
@@ -743,13 +765,79 @@ const ProjectDashboard = () => {
     );
   };
 
-  const handleReport = async () => {
-    if (!issueText.trim()) {
-      toast.error("Please describe the issue");
+  const handleCatalystSubmit = async () => {
+    const note = issueText.trim();
+
+    if (!note) {
+      toast.error(
+        isFreelancerChangeRequest
+          ? "Please explain why you want the Project Manager to change the freelancer."
+          : "Please describe the issue."
+      );
       return;
     }
 
-    let fullDescription = issueText;
+    if (isFreelancerChangeRequest) {
+      if (!freelancer) {
+        toast.error("There is no assigned freelancer to replace yet.");
+        return;
+      }
+
+      if (pendingFreelancerChangeRequest) {
+        toast.error("A freelancer change request is already pending review.");
+        return;
+      }
+
+      if (remainingFreelancerChanges <= 0) {
+        toast.error(
+          "You have already used both freelancer change requests for this project."
+        );
+        return;
+      }
+
+      if (note.length < 10) {
+        toast.error("Please provide a clear reason with at least 10 characters.");
+        return;
+      }
+
+      setIsReporting(true);
+      try {
+        const res = await authFetch(
+          `/projects/${project?.id || projectId}/request-freelancer-change`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason: note }),
+          }
+        );
+        const payload = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error(
+            payload?.message || "Failed to submit freelancer change request."
+          );
+        }
+
+        if (payload?.data) {
+          syncProjectState(payload.data);
+        }
+
+        setReportOpen(false);
+        toast.success(
+          payload?.message ||
+            "Your request has been sent to the Project Catalyst. The Project Manager will review it and handle the freelancer change."
+        );
+      } catch (error) {
+        console.error("Failed to request freelancer change:", error);
+        toast.error(error.message || "Failed to request freelancer change.");
+      } finally {
+        setIsReporting(false);
+      }
+
+      return;
+    }
+
+    let fullDescription = note;
     let meetingDateIso = undefined;
     let meetingHour = undefined;
     const meetingDateLocal = date ? format(date, "yyyy-MM-dd") : undefined;
@@ -792,10 +880,6 @@ const ProjectDashboard = () => {
           "Dispute raised. A Project Manager will review it shortly."
         );
         setReportOpen(false);
-        setIssueText("");
-        setDate(undefined);
-        setTime("");
-        setDatePopoverOpen(false);
       } else {
         toast.error("Failed to raise dispute");
       }
@@ -804,87 +888,6 @@ const ProjectDashboard = () => {
       toast.error("Error raising dispute");
     } finally {
       setIsReporting(false);
-    }
-  };
-
-  const computedFreelancerChangeReason = useMemo(() => {
-    const preset = String(freelancerChangeReasonPreset || "").trim();
-    const detail = String(freelancerChangeCustomReason || "").trim();
-
-    if (!preset) {
-      return "";
-    }
-
-    if (preset === FREELANCER_CHANGE_CUSTOM_REASON_VALUE) {
-      return detail;
-    }
-
-    return detail ? `${preset} - ${detail}` : preset;
-  }, [freelancerChangeReasonPreset, freelancerChangeCustomReason]);
-
-  const handleFreelancerChangeRequest = async () => {
-    const preset = String(freelancerChangeReasonPreset || "").trim();
-    const reason = computedFreelancerChangeReason.trim();
-
-    if (!preset) {
-      toast.error("Please select a reason for the change.");
-      return;
-    }
-
-    if (!freelancer) {
-      toast.error("There is no assigned freelancer to replace yet.");
-      return;
-    }
-
-    if (pendingFreelancerChangeRequest) {
-      toast.error("A freelancer change request is already pending.");
-      return;
-    }
-
-    if (remainingFreelancerChanges <= 0) {
-      toast.error("You have already used both freelancer change requests.");
-      return;
-    }
-
-    if (reason.length < 10) {
-      toast.error("Please provide a clear reason with at least 10 characters.");
-      return;
-    }
-
-    setIsSubmittingFreelancerChange(true);
-    try {
-      const res = await authFetch(
-        `/projects/${project?.id || projectId}/request-freelancer-change`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason }),
-        }
-      );
-      const payload = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(
-          payload?.message || "Failed to submit freelancer change request."
-        );
-      }
-
-      if (payload?.data) {
-        syncProjectState(payload.data);
-      }
-
-      setFreelancerChangeOpen(false);
-      setFreelancerChangeReasonPreset("");
-      setFreelancerChangeCustomReason("");
-      toast.success(
-        payload?.message ||
-          "Your freelancer change request has been sent to the Project Manager."
-      );
-    } catch (error) {
-      console.error("Failed to request freelancer change:", error);
-      toast.error(error.message || "Failed to request freelancer change.");
-    } finally {
-      setIsSubmittingFreelancerChange(false);
     }
   };
 
@@ -927,6 +930,9 @@ const ProjectDashboard = () => {
     notificationMeta = null
   ) => {
     if (!project?.id) return;
+    const requestId = ++latestProgressMutationIdRef.current;
+    const nextCompletedTaskIds = new Set(completedArr);
+    const nextVerifiedTaskIds = new Set(verifiedArr);
 
     // Optimistic update keeps task status stable while request is in-flight.
     setProject((prev) =>
@@ -939,8 +945,10 @@ const ProjectDashboard = () => {
           }
         : prev
     );
-    setCompletedTaskIds(new Set(completedArr));
-    setVerifiedTaskIds(new Set(verifiedArr));
+    completedTaskIdsRef.current = nextCompletedTaskIds;
+    verifiedTaskIdsRef.current = nextVerifiedTaskIds;
+    setCompletedTaskIds(nextCompletedTaskIds);
+    setVerifiedTaskIds(nextVerifiedTaskIds);
 
     try {
       const payload = {
@@ -961,7 +969,11 @@ const ProjectDashboard = () => {
 
       const updatePayload = await updateRes.json().catch(() => null);
 
-      if (updateRes.ok && updatePayload?.data) {
+      if (
+        updateRes.ok &&
+        updatePayload?.data &&
+        requestId === latestProgressMutationIdRef.current
+      ) {
         syncProjectState(updatePayload.data);
       }
     } catch (error) {
@@ -1445,6 +1457,19 @@ const ProjectDashboard = () => {
   const existingFreelancerReview = project?.clientFreelancerReview || null;
   const isProjectCompleted = String(project?.status || "").toUpperCase() === "COMPLETED";
   const shouldCollectFreelancerReview = isProjectCompleted && Boolean(freelancer);
+  const catalystDialogTitle = "Contact your Project Catalyst";
+  const catalystDialogDescription = isFreelancerChangeRequest
+    ? "Ask Catalyst to review a freelancer change request. The Project Manager reviews the request and assigns the replacement freelancer if approved."
+    : "Reach out for project support, disputes, or anything that needs Project Manager attention.";
+  const catalystDialogNoteLabel = isFreelancerChangeRequest
+    ? "Reason for freelancer change"
+    : "Add Note";
+  const catalystDialogNotePlaceholder = isFreelancerChangeRequest
+    ? "Explain what is not working with the current freelancer and why you want the Project Manager to replace them."
+    : "Add a note...";
+  const catalystDialogSubmitLabel = isFreelancerChangeRequest
+    ? "Send change request"
+    : "Submit";
 
   const setReviewDeferredState = useCallback(
     (isDeferred) => {
@@ -1488,11 +1513,6 @@ const ProjectDashboard = () => {
     shouldCollectFreelancerReview &&
     !existingFreelancerReview &&
     reviewPromptDeferred;
-
-  const canRequestFreelancerChange =
-    Boolean(freelancer) &&
-    !pendingFreelancerChangeRequest &&
-    remainingFreelancerChanges > 0;
 
   // Render ...
   // Update Documents Card to use `docs`
@@ -1694,6 +1714,7 @@ const ProjectDashboard = () => {
     e.stopPropagation();
     e.preventDefault();
     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+    if (verifyingTaskIds.has(uniqueKey)) return;
 
     setPendingVerifyTask({
       uniqueKey,
@@ -1709,11 +1730,22 @@ const ProjectDashboard = () => {
     taskTitle,
     _isCurrentlyVerified
   ) => {
+    if (verifyingTaskIds.has(uniqueKey)) {
+      setVerifyConfirmOpen(false);
+      setPendingVerifyTask(null);
+      return;
+    }
+
     setVerifyConfirmOpen(false);
     setPendingVerifyTask(null);
+    setVerifyingTaskIds((prev) => {
+      const next = new Set(prev);
+      next.add(uniqueKey);
+      return next;
+    });
 
     // Compute new verified list synchronously BEFORE updating state
-    const currentVerified = Array.from(verifiedTaskIds);
+    const currentVerified = Array.from(verifiedTaskIdsRef.current);
     let newVerified;
     let isMarkingVerified = false;
 
@@ -1726,9 +1758,6 @@ const ProjectDashboard = () => {
       newVerified = [...currentVerified, uniqueKey];
       isMarkingVerified = true;
     }
-
-    // Update local state
-    setVerifiedTaskIds(new Set(newVerified));
 
     // Calculate new progress
     const allTasks = activeSOP.tasks;
@@ -1749,13 +1778,22 @@ const ProjectDashboard = () => {
     }
 
     // Save to database
-    const currentCompleted = Array.from(completedTaskIds);
-    await updateProjectProgress(
-      newProgress,
-      currentCompleted,
-      newVerified,
-      notificationMeta
-    );
+    const currentCompleted = Array.from(completedTaskIdsRef.current);
+
+    try {
+      await updateProjectProgress(
+        newProgress,
+        currentCompleted,
+        newVerified,
+        notificationMeta
+      );
+    } finally {
+      setVerifyingTaskIds((prev) => {
+        const next = new Set(prev);
+        next.delete(uniqueKey);
+        return next;
+      });
+    }
   };
 
   const pageTitle = project?.title
@@ -1805,7 +1843,9 @@ const ProjectDashboard = () => {
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => setReportOpen(true)}
+                      onClick={() =>
+                        openCatalystDialog(CATALYST_REQUEST_TYPES.GENERAL)
+                      }
                     >
                       <Headset /> Catalyst
                     </Button>
@@ -1946,7 +1986,7 @@ const ProjectDashboard = () => {
                     {derivedTasks.length} tasks verified
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <Accordion
                     type="single"
                     collapsible
@@ -1956,165 +1996,227 @@ const ProjectDashboard = () => {
                     {tasksByPhase.map((phaseGroup) => {
                       const phaseInstallments =
                         phaseGateInstallmentsByPhase[String(phaseGroup.phaseId)] || [];
+                      const shouldShowPhaseMilestones =
+                        phaseGroup.phaseStatus === "completed" &&
+                        phaseInstallments.length > 0;
 
                       return (
-                        <AccordionItem
-                          key={phaseGroup.phaseId}
-                          value={phaseGroup.phaseId}
-                          className="border-border/60"
-                        >
-                          <AccordionTrigger className="hover:no-underline py-3">
-                            <div className="flex items-center gap-3 flex-1">
-                              {getPhaseIcon(phaseGroup.phaseStatus)}
-                              <div className="flex-1 text-left">
-                                <div className="font-semibold text-sm text-foreground">
-                                  Phase {phaseGroup.phaseId}:{" "}
-                                  {phaseGroup.phaseName}
+                        <React.Fragment key={phaseGroup.phaseId}>
+                          <AccordionItem
+                            value={phaseGroup.phaseId}
+                            className="border-border/60"
+                          >
+                            <AccordionTrigger className="hover:no-underline py-3">
+                              <div className="flex items-center gap-3 flex-1">
+                                {getPhaseIcon(phaseGroup.phaseStatus)}
+                                <div className="flex-1 text-left">
+                                  <div className="font-semibold text-sm text-foreground">
+                                    Phase {phaseGroup.phaseId}:{" "}
+                                    {phaseGroup.phaseName}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {
+                                      phaseGroup.tasks.filter((t) => t.verified)
+                                        .length
+                                    }{" "}
+                                    of {phaseGroup.tasks.length} verified
+                                  </div>
                                 </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {
-                                    phaseGroup.tasks.filter((t) => t.verified)
-                                      .length
-                                  }{" "}
-                                  of {phaseGroup.tasks.length} verified
-                                </div>
-                              </div>
-                              <Badge
-                                variant={
-                                  phaseGroup.phaseStatus === "completed"
-                                    ? "default"
-                                    : "outline"
-                                }
-                                className={
-                                  phaseGroup.phaseStatus === "completed"
-                                    ? "bg-emerald-500 text-white"
-                                    : ""
-                                }
-                              >
-                                {phaseGroup.phaseStatus === "completed"
-                                  ? "Completed"
-                                  : phaseGroup.phaseStatus === "in-progress"
-                                  ? "In Progress"
-                                  : "Pending"}
-                              </Badge>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-2 pt-2">
-                              {phaseGroup.tasks.map((task) => (
-                                <div
-                                  key={task.uniqueKey}
-                                  className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
-                                    phaseGroup.isLocked
-                                      ? "opacity-50 pointer-events-none bg-muted/50"
-                                      : "hover:bg-accent/60 cursor-pointer"
-                                  }`}
-                                  onClick={(e) =>
-                                    !phaseGroup.isLocked &&
-                                    handleTaskClick(e, task.uniqueKey)
+                                <Badge
+                                  variant={
+                                    phaseGroup.phaseStatus === "completed"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  className={
+                                    phaseGroup.phaseStatus === "completed"
+                                      ? "bg-emerald-500 text-white"
+                                      : ""
                                   }
                                 >
-                                  {task.status === "completed" ? (
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                                  ) : (
-                                    <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
-                                  )}
-                                  <span
-                                    className={`flex-1 text-sm ${
-                                      task.status === "completed"
-                                        ? "line-through text-muted-foreground"
-                                        : "text-foreground"
-                                    }`}
-                                  >
-                                    {task.title}
-                                    {phaseGroup.isLocked && (
-                                      <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
-                                        (Locked)
-                                      </span>
-                                    )}
-                                  </span>
-                                  {task.status === "completed" && (
-                                    <Button
-                                      size="sm"
-                                      variant={
-                                        task.verified ? "default" : "outline"
-                                      }
-                                      disabled={phaseGroup.isLocked}
-                                      className={`h-7 px-3 text-xs transition-all ${
-                                        task.verified
-                                          ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent"
-                                          : "border-primary text-primary hover:bg-primary/10"
-                                      }`}
-                                      onClick={(e) =>
-                                        !phaseGroup.isLocked &&
-                                        promptVerifyTask(
-                                          e,
-                                          task.uniqueKey,
-                                          task.title,
-                                          task.verified
-                                        )
-                                      }
-                                    >
-                                      {task.verified ? "Verified" : "Verify"}
-                                    </Button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-
-                            {phaseInstallments.length > 0 ? (
-                              <div className="mt-4 space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Payment Checkpoint
-                                </p>
-                                {phaseInstallments.map((installment) => {
-                                  const isDueNow = Boolean(installment?.isDue);
-                                  const isPaid = Boolean(installment?.isPaid);
-                                  const canPayInstallment =
-                                    isDueNow &&
-                                    dueInstallment?.sequence === installment.sequence;
+                                  {phaseGroup.phaseStatus === "completed"
+                                    ? "Completed"
+                                    : phaseGroup.phaseStatus === "in-progress"
+                                    ? "In Progress"
+                                    : "Pending"}
+                                </Badge>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="space-y-2 pt-2">
+                                {phaseGroup.tasks.map((task) => {
+                                  const isTaskVerificationPending =
+                                    verifyingTaskIds.has(task.uniqueKey);
 
                                   return (
                                     <div
-                                      key={`installment-${phaseGroup.phaseId}-${installment.sequence}`}
-                                      className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/70 px-3 py-2"
+                                      key={task.uniqueKey}
+                                      className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
+                                        phaseGroup.isLocked
+                                          ? "opacity-50 pointer-events-none bg-muted/50"
+                                          : "hover:bg-accent/60 cursor-pointer"
+                                      }`}
+                                      onClick={(e) =>
+                                        !phaseGroup.isLocked &&
+                                        handleTaskClick(e, task.uniqueKey)
+                                      }
                                     >
-                                      <div>
-                                        <p className="text-sm font-semibold text-foreground">
-                                          {installment.label}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {installment.dueLabel || "Auto-unlocked at this phase gate."}
-                                        </p>
-                                      </div>
-                                      <div className="flex items-center gap-2">
+                                      {task.status === "completed" ? (
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                                      ) : (
+                                        <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
+                                      )}
+                                      <span
+                                        className={`flex-1 text-sm ${
+                                          task.status === "completed"
+                                            ? "line-through text-muted-foreground"
+                                            : "text-foreground"
+                                        }`}
+                                      >
+                                        {task.title}
+                                        {phaseGroup.isLocked && (
+                                          <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
+                                            (Locked)
+                                          </span>
+                                        )}
+                                      </span>
+                                      {task.status === "completed" && (
+                                        <Button
+                                          size="sm"
+                                          variant={
+                                            task.verified ? "default" : "outline"
+                                          }
+                                          disabled={
+                                            phaseGroup.isLocked ||
+                                            isTaskVerificationPending
+                                          }
+                                          className={`h-7 px-3 text-xs transition-all ${
+                                            task.verified
+                                              ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent"
+                                              : "border-primary text-primary hover:bg-primary/10"
+                                          }`}
+                                          onClick={(e) =>
+                                            !phaseGroup.isLocked &&
+                                            promptVerifyTask(
+                                              e,
+                                              task.uniqueKey,
+                                              task.title,
+                                              task.verified
+                                            )
+                                          }
+                                        >
+                                          {isTaskVerificationPending ? (
+                                            <>
+                                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                              Saving
+                                            </>
+                                          ) : task.verified ? (
+                                            "Verified"
+                                          ) : (
+                                            "Verify"
+                                          )}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+
+                          {shouldShowPhaseMilestones ? (
+                            <div className="mt-4 space-y-3 border-b border-border/60 pb-4">
+                              {phaseInstallments.map((installment) => {
+                                const isDueNow = Boolean(installment?.isDue);
+                                const isPaid = Boolean(installment?.isPaid);
+                                const canPayInstallment =
+                                  isDueNow &&
+                                  dueInstallment?.sequence === installment.sequence;
+                                const milestoneStatusLabel = isPaid
+                                  ? "Paid"
+                                  : isDueNow
+                                  ? "Due now"
+                                  : "Scheduled";
+
+                                return (
+                                  <div
+                                    key={`installment-${phaseGroup.phaseId}-${installment.sequence}`}
+                                    className={cn(
+                                      "rounded-xl border px-3.5 py-2 transition-colors",
+                                      isPaid
+                                        ? "border-emerald-500/20 bg-accent/85"
+                                        : isDueNow
+                                        ? "border-emerald-500/30 bg-accent/90"
+                                        : "border-border/60 bg-accent/65"
+                                    )}
+                                  >
+                                    <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                                      <div className="flex items-start gap-2 sm:items-center">
+                                        <div
+                                          className={cn(
+                                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+                                            isPaid || isDueNow
+                                              ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-400"
+                                              : "border-border/60 bg-background/70 text-muted-foreground"
+                                          )}
+                                        >
+                                          <CreditCard className="h-3 w-3" />
+                                        </div>
+                                        <div className="min-w-0 flex-1 space-y-0">
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                                              Payment Milestone
+                                            </p>
+                                          </div>
+                                          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                            <p className="text-sm font-semibold leading-tight text-foreground sm:text-[15px]">
+                                              {installment.label}
+                                            </p>
+                                            <span className="inline-flex items-center rounded-full border border-border/50 bg-background/50 px-2 py-0 text-[10px] font-medium leading-5 text-muted-foreground">
+                                              {installment.percentage}% of project budget
+                                            </span>
+                                          </div>
+                                          <p className="pt-0.5 text-xs leading-snug text-muted-foreground sm:text-[13px]">
+                                            {installment.dueLabel ||
+                                              "This payment unlocks once the phase is fully completed."}
+                                          </p>
+                                        </div>
                                         <Badge
                                           variant={isDueNow ? "secondary" : "outline"}
-                                          className={
+                                          className={cn(
+                                            "mt-0.5 shrink-0 self-start sm:mt-0 sm:self-center",
                                             isPaid
                                               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
                                               : isDueNow
-                                              ? "border-primary/30 bg-primary/20 text-foreground"
-                                              : ""
-                                          }
+                                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                                              : "border-border/60 bg-background/70 text-muted-foreground"
+                                          )}
                                         >
-                                          {isPaid
-                                            ? "Paid"
-                                            : isDueNow
-                                            ? "Due now"
-                                            : "Scheduled"}
+                                          {milestoneStatusLabel}
                                         </Badge>
+                                      </div>
+
+                                      <div className="flex flex-col gap-1 sm:min-w-[118px] sm:border-l sm:border-border/50 sm:pl-3 sm:items-end">
+                                        <div className="text-left sm:text-right">
+                                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                            Amount
+                                          </p>
+                                          <p className="text-base font-semibold leading-tight text-foreground sm:text-[17px]">
+                                            {formatINR(installment.amount || 0)}
+                                          </p>
+                                        </div>
+
                                         {canPayInstallment ? (
                                           <Button
                                             size="sm"
-                                            className="h-8 px-3 text-xs"
+                                            className="h-7 w-fit px-2.5 text-[11px] sm:self-end"
                                             onClick={handlePayDueInstallment}
                                             disabled={isProcessingInstallment}
                                           >
                                             {isProcessingInstallment ? (
-                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                              <Loader2 className="h-3 w-3 animate-spin" />
                                             ) : (
-                                              <CreditCard className="h-3.5 w-3.5" />
+                                              <CreditCard className="h-3 w-3" />
                                             )}
                                             {isProcessingInstallment
                                               ? "Processing"
@@ -2123,12 +2225,12 @@ const ProjectDashboard = () => {
                                         ) : null}
                                       </div>
                                     </div>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
-                          </AccordionContent>
-                        </AccordionItem>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </React.Fragment>
                       );
                     })}
                   </Accordion>
@@ -2140,91 +2242,6 @@ const ProjectDashboard = () => {
               {/* Freelancer Info Card */}
               <FreelancerInfoCard freelancer={freelancer} />
               <FreelancerAboutCard freelancer={freelancer} project={project} />
-
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base text-foreground">
-                    Freelancer Change
-                  </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    You can request a replacement freelancer up to{" "}
-                    {MAX_FREELANCER_CHANGE_REQUESTS} times for this project.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 px-3 py-3">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Requests Used
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {freelancerChangeCount}/{MAX_FREELANCER_CHANGE_REQUESTS}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={
-                        pendingFreelancerChangeRequest
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
-                          : remainingFreelancerChanges > 0
-                          ? "border-border/60 bg-background/50 text-foreground"
-                          : "border-red-500/40 bg-red-500/10 text-red-400"
-                      }
-                    >
-                      {pendingFreelancerChangeRequest
-                        ? "Pending Review"
-                        : remainingFreelancerChanges > 0
-                        ? `${remainingFreelancerChanges} Left`
-                        : "Limit Reached"}
-                    </Badge>
-                  </div>
-
-                  {pendingFreelancerChangeRequest ? (
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-400">
-                        Pending Request
-                      </p>
-                      <p className="mt-2 text-sm text-foreground">
-                        {pendingFreelancerChangeRequest.reason}
-                      </p>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Your Project Catalyst is reviewing request{" "}
-                        {pendingFreelancerChangeRequest.requestNumber || 1} of{" "}
-                        {MAX_FREELANCER_CHANGE_REQUESTS}.
-                      </p>
-                    </div>
-                  ) : latestFreelancerChangeRequest ? (
-                    <div className="rounded-lg border border-border/60 bg-background/30 p-3 text-sm text-muted-foreground">
-                      Last request {latestFreelancerChangeRequest.requestNumber || freelancerChangeCount}{" "}
-                      was completed
-                      {latestFreelancerChangeRequest.replacementFreelancerName
-                        ? ` and reassigned to ${latestFreelancerChangeRequest.replacementFreelancerName}.`
-                        : "."}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      If the current freelancer is not a fit, you can ask your
-                      Project Catalyst to replace them. A written reason is
-                      required.
-                    </p>
-                  )}
-
-                  {!freelancer && (
-                    <p className="text-xs text-muted-foreground">
-                      A freelancer must be assigned before you can request a
-                      replacement.
-                    </p>
-                  )}
-
-                  <Button
-                    className="w-full"
-                    onClick={() => setFreelancerChangeOpen(true)}
-                    disabled={!canRequestFreelancerChange}
-                  >
-                    Request Freelancer Change
-                  </Button>
-                </CardContent>
-              </Card>
 
               {/* Project Chat - First */}
               <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
@@ -2772,126 +2789,9 @@ const ProjectDashboard = () => {
         </div>
       </div>
 
-      <Dialog
-        open={freelancerChangeOpen}
-        onOpenChange={(open) => {
-          if (!isSubmittingFreelancerChange) {
-            setFreelancerChangeOpen(open);
-            if (!open) {
-              setFreelancerChangeReasonPreset("");
-              setFreelancerChangeCustomReason("");
-            }
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Request Freelancer Change</DialogTitle>
-            <DialogDescription>
-              Tell your Project Catalyst why the current freelancer should be
-              replaced. This request is capped at{" "}
-              {MAX_FREELANCER_CHANGE_REQUESTS} times per project.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Requests Remaining
-              </p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {remainingFreelancerChanges} of {MAX_FREELANCER_CHANGE_REQUESTS}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Reason for change
-              </label>
-              <Select
-                value={freelancerChangeReasonPreset}
-                onValueChange={setFreelancerChangeReasonPreset}
-                disabled={isSubmittingFreelancerChange}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a reason" />
-                </SelectTrigger>
-                <SelectContent>
-                  {FREELANCER_CHANGE_REASON_PRESETS.map((presetOption) => (
-                    <SelectItem
-                      key={presetOption.value}
-                      value={presetOption.value}
-                    >
-                      {presetOption.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                {freelancerChangeReasonPreset ===
-                FREELANCER_CHANGE_CUSTOM_REASON_VALUE
-                  ? "Custom reason"
-                  : "Additional details (optional)"}
-              </label>
-              <Textarea
-                placeholder={
-                  freelancerChangeReasonPreset ===
-                  FREELANCER_CHANGE_CUSTOM_REASON_VALUE
-                    ? "Explain why you want a different freelancer assigned to this project."
-                    : "Add any additional context (optional)."
-                }
-                value={freelancerChangeCustomReason}
-                onChange={(event) =>
-                  setFreelancerChangeCustomReason(event.target.value)
-                }
-                rows={6}
-                disabled={!freelancerChangeReasonPreset || isSubmittingFreelancerChange}
-              />
-              <p className="text-xs text-muted-foreground">
-                {freelancerChangeReasonPreset ===
-                FREELANCER_CHANGE_CUSTOM_REASON_VALUE
-                  ? "Minimum 10 characters."
-                  : "Optional."}{" "}
-                This note is sent to the assigned Project Catalyst.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setFreelancerChangeOpen(false);
-                setFreelancerChangeReasonPreset("");
-                setFreelancerChangeCustomReason("");
-              }}
-              disabled={isSubmittingFreelancerChange}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleFreelancerChangeRequest}
-              disabled={
-                isSubmittingFreelancerChange ||
-                !freelancerChangeReasonPreset ||
-                computedFreelancerChangeReason.trim().length < 10
-              }
-            >
-              {isSubmittingFreelancerChange ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending Request
-                </>
-              ) : (
-                "Send Request"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Verification Confirmation Dialog */}
       <Dialog open={verifyConfirmOpen} onOpenChange={setVerifyConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent disableScrollLock className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {pendingVerifyTask?.isVerified
@@ -2936,17 +2836,21 @@ const ProjectDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+      <Dialog
+        open={reportOpen}
+        onOpenChange={(open) => {
+          if (!isReporting) {
+            setReportOpen(open);
+          }
+        }}
+      >
         <DialogContent
           ref={reportDialogContentRef}
-          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+          className="sm:max-w-md max-h-[90vh] overflow-x-hidden overflow-y-auto"
         >
           <DialogHeader>
-            <DialogTitle>Contact your Project Catalyst</DialogTitle>
-            <DialogDescription>
-              Describe the issue or dispute regarding this project. A Project
-              Manager will get involved to resolve it.
-            </DialogDescription>
+            <DialogTitle>{catalystDialogTitle}</DialogTitle>
+            <DialogDescription>{catalystDialogDescription}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {activeProjectManager && (
@@ -2979,112 +2883,240 @@ const ProjectDashboard = () => {
             )}
             {!activeProjectManager && (
               <div className="rounded-md border border-dashed border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                No active project manager is assigned to this project yet.
+                {isFreelancerChangeRequest
+                  ? "No active Project Manager is assigned yet. Your request will be queued for review once the project manager is available."
+                  : "No active project manager is assigned to this project yet."}
+              </div>
+            )}
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Request type
+              </p>
+              <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/60 bg-background/40 p-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCatalystRequestTypeChange(
+                      CATALYST_REQUEST_TYPES.GENERAL
+                    )
+                  }
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-left transition-colors",
+                    !isFreelancerChangeRequest
+                      ? "bg-accent text-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <span className="block text-sm font-semibold">
+                    General support
+                  </span>
+                  <span className="mt-1 block text-xs">
+                    Ask for help, raise an issue, or request PM support.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCatalystRequestTypeChange(
+                      CATALYST_REQUEST_TYPES.FREELANCER_CHANGE
+                    )
+                  }
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-left transition-colors",
+                    isFreelancerChangeRequest
+                      ? "bg-accent text-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <span className="block text-sm font-semibold">
+                    Change freelancer
+                  </span>
+                  <span className="mt-1 block text-xs">
+                    Request PM review for a freelancer replacement.
+                  </span>
+                </button>
+              </div>
+            </div>
+            {isFreelancerChangeRequest && (
+              <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-3">
+                <div className="flex items-start gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Reassignment Flow
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">
+                      The Project Catalyst collects your reason, then the Project
+                      Manager reviews and handles the freelancer change.
+                    </p>
+                  </div>
+                </div>
+                {freelancer && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Current freelancer:{" "}
+                    <span className="font-medium text-foreground">
+                      {freelancer.fullName}
+                    </span>
+                  </p>
+                )}
+                {pendingFreelancerChangeRequest ? (
+                  <div className="mt-3 rounded-md border border-amber-500/20 bg-amber-500/10 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-400">
+                      Pending request
+                    </p>
+                    <p className="mt-2 text-sm text-foreground">
+                      {pendingFreelancerChangeRequest.reason}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Project Catalyst has already shared this with the Project
+                      Manager for review.
+                    </p>
+                  </div>
+                ) : latestFreelancerChangeRequest ? (
+                  <div className="mt-3 rounded-md border border-border/60 bg-background/40 p-3 text-sm text-muted-foreground">
+                    Last request{" "}
+                    {latestFreelancerChangeRequest.requestNumber ||
+                      freelancerChangeCount}{" "}
+                    was completed
+                    {latestFreelancerChangeRequest.replacementFreelancerName
+                      ? ` and reassigned to ${latestFreelancerChangeRequest.replacementFreelancerName}.`
+                      : "."}
+                  </div>
+                ) : null}
               </div>
             )}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Add Note</label>
+              <label className="text-sm font-medium">
+                {catalystDialogNoteLabel}
+              </label>
               <Textarea
-                placeholder="Add a note..."
+                placeholder={catalystDialogNotePlaceholder}
                 value={issueText}
                 onChange={(e) => setIssueText(e.target.value)}
-                className="min-h-25 whitespace-pre-wrap break-all"
+                className="subtle-scrollbar field-sizing-fixed min-h-32 max-h-56 resize-none overflow-y-auto whitespace-pre-wrap break-words pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-button]:h-0 [&::-webkit-scrollbar-button]:w-0"
               />
+              {isFreelancerChangeRequest && (
+                <p className="text-xs text-muted-foreground">
+                  Share clear delivery, communication, or quality concerns so
+                  the Project Manager has enough context to evaluate the change.
+                </p>
+              )}
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">
-                Project Manager Availability
-              </label>
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Popover
-                    open={datePopoverOpen}
-                    onOpenChange={setDatePopoverOpen}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn(
-                          "w-60 justify-start text-left font-normal",
-                          !date && "text-muted-foreground"
-                        )}
+            {!isFreelancerChangeRequest && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">
+                  Project Manager Availability
+                </label>
+                <div className="space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,9rem)]">
+                    <Popover
+                      open={datePopoverOpen}
+                      onOpenChange={setDatePopoverOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn(
+                            "w-full min-w-0 justify-start rounded-xl border-border/70 bg-background/60 text-left font-normal",
+                            !date && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date ? format(date, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        container={reportDialogContentRef.current ?? undefined}
+                        align="start"
+                        className="w-auto p-0 z-70"
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      container={reportDialogContentRef.current ?? undefined}
-                      align="start"
-                      className="w-auto p-0 z-70"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={(selectedDate) => {
-                          setDate(selectedDate);
-                          setTime("");
-                          if (selectedDate) {
-                            setDatePopoverOpen(false);
-                          }
-                        }}
-                        initialFocus
-                        disabled={[
-                          { dayOfWeek: [0] },
-                          { before: new Date(new Date().setHours(0, 0, 0, 0)) },
-                        ]}
-                        className="rounded-md"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={(selectedDate) => {
+                            setDate(selectedDate);
+                            setTime("");
+                            if (selectedDate) {
+                              setDatePopoverOpen(false);
+                            }
+                          }}
+                          initialFocus
+                          disabled={[
+                            { dayOfWeek: [0] },
+                            {
+                              before: new Date(
+                                new Date().setHours(0, 0, 0, 0)
+                              ),
+                            },
+                          ]}
+                          className="rounded-md"
+                        />
+                      </PopoverContent>
+                    </Popover>
 
-                  <div className="w-35">
-                    <select
-                      value={time}
-                      onChange={(event) => setTime(event.target.value)}
-                      disabled={!date}
-                      className={cn(
-                        "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm",
-                        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none",
-                        "disabled:cursor-not-allowed disabled:opacity-50",
-                        !time && "text-muted-foreground"
-                      )}
-                    >
-                      <option value="">
-                        {date
-                          ? effectiveTimeSlots.length > 0
-                            ? "Select time"
-                            : "No slots"
-                          : "Select date first"}
-                      </option>
-                      {effectiveTimeSlots.map((slot) => (
-                        <option key={slot} value={slot}>
-                          {slot}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="min-w-0">
+                      <Select
+                        value={time || undefined}
+                        onValueChange={setTime}
+                        disabled={!date}
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            "h-10 w-full rounded-xl border-border/70 bg-background/60 px-3 text-sm shadow-none",
+                            !time && "text-muted-foreground"
+                          )}
+                        >
+                          <SelectValue
+                            placeholder={
+                              date ? "Select time" : "Select date first"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent className="z-[80] rounded-xl border-border/70 bg-popover/95 backdrop-blur supports-[backdrop-filter]:bg-popover/90">
+                          {effectiveTimeSlots.map((slot) => (
+                            <SelectItem
+                              key={slot}
+                              value={slot}
+                              className="cursor-pointer rounded-lg"
+                            >
+                              {slot}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                  {date && availableTimeSlots.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Manager has no configured slots for this date. Using
+                      default working-hour options.
+                    </p>
+                  )}
                 </div>
-                {date && availableTimeSlots.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Manager has no configured slots for this date. Using default
-                    working-hour options.
-                  </p>
-                )}
               </div>
-            </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReportOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setReportOpen(false)}
+              disabled={isReporting}
+            >
               Cancel
             </Button>
             <Button
               variant="default"
-              onClick={handleReport}
+              onClick={handleCatalystSubmit}
               disabled={isReporting || !issueText.trim()}
             >
-              {isReporting ? "Submit" : "Submit"}
+              {isReporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending
+                </>
+              ) : (
+                catalystDialogSubmitLabel
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

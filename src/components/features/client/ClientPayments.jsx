@@ -2,8 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Download from "lucide-react/dist/esm/icons/download";
 import FileText from "lucide-react/dist/esm/icons/file-text";
@@ -15,10 +14,21 @@ import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
 import { useNavigate } from "react-router-dom";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
+import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import { downloadInvoicePdf } from "@/shared/lib/invoice-pdf";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
@@ -46,6 +56,9 @@ const formatCompactCurrency = (value = 0) => {
 
 const maskCurrency = (value, visible) => (visible ? formatCurrency(value) : "Rs. --,--");
 
+const PROJECT_FILTER_ALL_VALUE = "ALL";
+const ALL_PROJECT_BILLING_PREVIEW_COUNT = 4;
+
 const formatShortDate = (value) => {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);
@@ -69,46 +82,83 @@ const getInitials = (value = "") => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
+const getFirstNonEmptyText = (...values) => {
+  for (const value of values.flat()) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+
+  return "";
+};
+
+const escapeRegExp = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const extractLabeledValue = (value = "", labels = []) => {
+  const source = String(value || "");
+  if (!source) return "";
+
+  for (const label of labels) {
+    const match = source.match(
+      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
+    );
+    const extracted = match?.[1]?.trim();
+    if (extracted) return extracted;
+  }
+
+  return "";
+};
+
+const toDisplayTitleCase = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s/-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
+
+const resolveProjectBusinessName = (project = {}, acceptedProposal = null) =>
+  getFirstNonEmptyText(
+    project?.businessName,
+    project?.companyName,
+    acceptedProposal?.businessName,
+    acceptedProposal?.companyName,
+    extractLabeledValue(project?.description || "", [
+      "Business Name",
+      "Company Name",
+      "Brand Name",
+    ]),
+    extractLabeledValue(
+      acceptedProposal?.coverLetter || acceptedProposal?.description || "",
+      ["Business Name", "Company Name", "Brand Name"],
+    ),
+  );
+
+const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
+  getFirstNonEmptyText(
+    project?.service,
+    project?.serviceName,
+    project?.serviceKey,
+    project?.category,
+    acceptedProposal?.service,
+    acceptedProposal?.serviceName,
+    acceptedProposal?.serviceKey,
+    acceptedProposal?.category,
+    extractLabeledValue(project?.description || "", [
+      "Service Type",
+      "Service",
+      "Category",
+    ]),
+    extractLabeledValue(
+      acceptedProposal?.coverLetter || acceptedProposal?.description || "",
+      ["Service Type", "Service", "Category"],
+    ),
+    project?.title,
+  );
+
 const getAcceptedProposal = (project) => {
   const proposals = Array.isArray(project?.proposals) ? project.proposals : [];
   return proposals.find(
     (proposal) => String(proposal?.status || "").toUpperCase() === "ACCEPTED",
   );
-};
-
-const createReceiptFileName = (projectTitle = "", invoiceId = "") => {
-  const safeTitle = String(projectTitle || "project")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-  return `catalance-receipt-${safeTitle || "project"}-${invoiceId || "invoice"}.txt`;
-};
-
-const downloadReceipt = (invoice) => {
-  const issuedAt = invoice?.issuedAt
-    ? new Date(invoice.issuedAt).toLocaleDateString("en-IN", { dateStyle: "medium" })
-    : "-";
-  const receiptContent = [
-    "Catalance Receipt",
-    "-----------------",
-    `Invoice ID: ${invoice.id}`,
-    `Project: ${invoice.projectTitle}`,
-    `Installment: ${invoice.installmentLabel}`,
-    `Issued On: ${issuedAt}`,
-    `Status: ${invoice.statusLabel}`,
-    `Scheduled Amount: ${formatCurrency(invoice.amountDue)}`,
-    `Amount Paid: ${formatCurrency(invoice.amountPaid)}`,
-    `Held in Escrow: ${formatCurrency(invoice.escrowHeld)}`,
-  ].join("\n");
-  const blob = new Blob([receiptContent], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = createReceiptFileName(invoice.projectTitle, invoice.id);
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
 };
 
 const PaymentSummaryCard = ({
@@ -172,25 +222,107 @@ const BillingToolRow = ({
   </button>
 );
 
-const getProjectBillingState = (project) => {
-  if (project?.nextDueInstallment) {
-    return {
-      label: "Payment due",
-      className: "border-[#ffc107]/20 bg-[#ffc107]/10 text-[#ffc107]",
-    };
+const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
+  const selectedProject =
+    value === PROJECT_FILTER_ALL_VALUE
+      ? null
+      : projects.find((project) => String(project.id) === String(value)) || null;
+  const selectedProjectLabel =
+    (selectedProject?.businessName ? toDisplayTitleCase(selectedProject.businessName) : "") ||
+    selectedProject?.title ||
+    "All projects";
+
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+        >
+          <FolderOpen className="size-4 shrink-0" />
+          <span>Project Filter</span>
+          <span
+            className="max-w-[10rem] truncate rounded-full border border-border/60 bg-background px-2.5 py-0.5 text-[11px] font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+          >
+            {selectedProjectLabel}
+          </span>
+          <ChevronDown className="size-4 shrink-0 opacity-80" />
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        align="end"
+        sideOffset={10}
+        className="w-[min(22rem,calc(100vw-2rem))] rounded-[18px] border border-white/[0.08] bg-[#1f1f1f] p-2 text-white shadow-[0_18px_45px_rgba(0,0,0,0.35)]"
+      >
+        <DropdownMenuLabel className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">
+          Filter projects
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+
+        <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+          <DropdownMenuRadioItem
+            value={PROJECT_FILTER_ALL_VALUE}
+            className="items-start rounded-[14px] px-3 py-2.5 pl-3 transition-colors hover:bg-white/[0.04] data-[state=checked]:bg-white/[0.06] [&>span:first-child]:hidden"
+          >
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-semibold text-white">All Projects</span>
+              <span className="text-xs text-[#8f96a3]">
+                Show the combined payment dashboard
+              </span>
+            </div>
+          </DropdownMenuRadioItem>
+
+          {projects.map((project) => (
+            <DropdownMenuRadioItem
+              key={project.id}
+              value={String(project.id)}
+              className="items-start rounded-[14px] px-3 py-2.5 pl-3 transition-colors hover:bg-white/[0.04] data-[state=checked]:bg-white/[0.06] [&>span:first-child]:hidden"
+            >
+              <div className="flex min-w-0 flex-col items-start">
+                <span className="truncate text-sm font-semibold text-white">
+                  {project.businessName ? toDisplayTitleCase(project.businessName) : project.title}
+                </span>
+                <span className="truncate text-xs text-[#8f96a3]">
+                  {project.businessName ? project.title : project.freelancerName}
+                </span>
+              </div>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+const ProjectMetaStack = ({ serviceType, freelancerName, compact = false }) => {
+  const hasServiceType = Boolean(serviceType);
+  const hasFreelancerName = Boolean(freelancerName);
+
+  if (!hasServiceType && !hasFreelancerName) {
+    return null;
   }
 
-  if (project?.isFullyPaid) {
-    return {
-      label: "Fully funded",
-      className: "border-[#22c55e]/20 bg-[#22c55e]/10 text-[#22c55e]",
-    };
-  }
+  return (
+    <div className={cn("min-w-0", compact ? "mt-1" : "mt-1.5")}>
+      <div
+        className={cn(
+          "flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 leading-tight",
+          compact ? "text-[11px]" : "text-[0.82rem]",
+        )}
+      >
+        {hasServiceType ? (
+          <div className="min-w-0 truncate font-medium text-[#dbe3f1]">{serviceType}</div>
+        ) : null}
 
-  return {
-    label: "On track",
-    className: "border-white/[0.08] bg-white/[0.03] text-[#d4d4d8]",
-  };
+        {hasServiceType && hasFreelancerName ? (
+          <span className="h-3 w-px shrink-0 bg-white/[0.12]" aria-hidden="true" />
+        ) : null}
+
+        {hasFreelancerName ? <div className="min-w-0 truncate text-[#8f96a3]">{freelancerName}</div> : null}
+      </div>
+    </div>
+  );
 };
 
 const TransactionRow = ({ transaction, visible, onOpenProject }) => {
@@ -204,7 +336,11 @@ const TransactionRow = ({ transaction, visible, onOpenProject }) => {
     >
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-white">{transaction.installmentLabel}</p>
-        <p className="truncate text-xs text-[#8f96a3]">{transaction.freelancerName}</p>
+        <p className="truncate text-xs text-[#8f96a3]">
+          {transaction.projectLabel}
+          <span className="px-1 text-[#5f6673]">/</span>
+          {transaction.freelancerName}
+        </p>
       </div>
       <div className="text-right">
         <p
@@ -265,25 +401,40 @@ const ActiveProjectPaymentsPanel = ({
   }
 
   const dueInstallment = project.nextDueInstallment;
-  const releasePaymentId = dueInstallment ? `${project.id}-${dueInstallment.sequence}` : null;
-  const isProcessingRelease = Boolean(releasePaymentId && processingInvoiceId === releasePaymentId);
+  const hasDueInstallment = Boolean(dueInstallment);
+  const duePaymentId = dueInstallment ? `${project.id}-${dueInstallment.sequence}` : null;
+  const isProcessingDuePayment = Boolean(duePaymentId && processingInvoiceId === duePaymentId);
   const scheduleItems = Array.isArray(project.installments)
     ? project.installments.slice(0, 4)
     : [];
+  const projectHeadline =
+    (project?.businessName ? toDisplayTitleCase(project.businessName) : "") ||
+    project?.serviceType ||
+    project?.title ||
+    "Untitled Project";
 
   return (
     <div className="rounded-[24px] border border-white/[0.05] bg-accent p-6">
       <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Active Project Payments</h2>
 
-      <div className="mt-5 rounded-[18px] border border-white/[0.05] bg-[#2a2a2a] p-5">
+      <div className="mt-5 rounded-[18px] border border-white/[0.05] bg-accent p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h3 className="truncate text-[1.45rem] font-semibold tracking-[-0.02em] text-white">
-              {project.title}
+              {projectHeadline}
             </h3>
-            <p className="mt-1 truncate text-xs text-[#8f96a3]">Freelancer: {project.freelancerName}</p>
+            <ProjectMetaStack
+              serviceType={project.serviceType}
+              freelancerName={project.freelancerName}
+              compact
+            />
           </div>
-          <p className="shrink-0 text-[1.6rem] font-semibold text-[#facc15]">
+          <p
+            className={cn(
+              "shrink-0 text-[1.6rem] font-semibold",
+              hasDueInstallment ? "text-[#34d399]" : "text-[#facc15]",
+            )}
+          >
             {maskCurrency(dueInstallment?.amount || project.remainingAmount, showAmounts)}
           </p>
         </div>
@@ -315,26 +466,42 @@ const ActiveProjectPaymentsPanel = ({
             onClick={() => onOpenProject(project.id)}
             className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
           >
-            View Project
+            View details
           </button>
           <button
             type="button"
             onClick={() =>
               dueInstallment &&
               onPay({
-                id: releasePaymentId,
+                id: duePaymentId,
                 projectId: project.id,
                 projectTitle: project.title,
                 installmentLabel: dueInstallment.label,
               })
             }
-            disabled={!dueInstallment || isProcessingRelease}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-white/[0.08] px-5 text-sm font-semibold text-white transition hover:border-white/[0.14] hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!dueInstallment || isProcessingDuePayment}
+            className={cn(
+              "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
+              hasDueInstallment
+                ? "bg-[#34d399] text-[#052e16] hover:bg-[#4ade80]"
+                : "border border-white/[0.08] text-white hover:border-white/[0.14] hover:bg-white/[0.03]",
+            )}
           >
-            {isProcessingRelease ? <Loader2 className="size-4 animate-spin" /> : null}
-            {dueInstallment ? "Release Milestone" : "No Milestone Due"}
+            {isProcessingDuePayment ? <Loader2 className="size-4 animate-spin" /> : null}
+            {dueInstallment ? "Pay Due Milestone" : "No Milestone Due"}
           </button>
         </div>
+
+        <p
+          className={cn(
+            "mt-3 text-xs",
+            hasDueInstallment ? "text-[#8ee7bc]" : "text-[#8f96a3]",
+          )}
+        >
+          {dueInstallment
+            ? `This will pay the currently due installment: ${dueInstallment.label}.`
+            : "All current milestones are settled. The next payment will unlock when the project reaches the next billing checkpoint."}
+        </p>
 
         <div className="mt-6 border-t border-white/[0.06] pt-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8f96a3]">Payment Schedule</p>
@@ -343,13 +510,24 @@ const ActiveProjectPaymentsPanel = ({
               const statusDotClass = installment?.isPaid
                 ? "bg-[#22c55e]"
                 : installment?.isDue
-                  ? "bg-[#facc15]"
+                  ? "bg-[#34d399]"
                   : "bg-[#6b7280]";
+              const scheduleRowClass = installment?.isDue
+                ? "border-[#34d399]/18 bg-[#34d399]/[0.04]"
+                : "border-white/[0.05] bg-white/[0.02]";
+              const scheduleStatusClass = installment?.isPaid
+                ? "text-[#8f96a3]"
+                : installment?.isDue
+                  ? "font-medium text-[#8ee7bc]"
+                  : "text-[#8f96a3]";
 
               return (
                 <div
                   key={`${project.id}-${installment?.sequence || index + 1}`}
-                  className="flex items-center justify-between gap-3 rounded-[10px] border border-white/[0.05] bg-[#262626] px-3 py-2"
+                  className={cn(
+                    "flex items-center justify-between gap-3 rounded-[10px] border px-3 py-2",
+                    scheduleRowClass,
+                  )}
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <span className={cn("size-2.5 rounded-full", statusDotClass)} />
@@ -361,7 +539,7 @@ const ActiveProjectPaymentsPanel = ({
                     <p className="text-sm font-semibold text-white">
                       {maskCurrency(Number(installment?.amount) || 0, showAmounts)}
                     </p>
-                    <p className="text-[10px] text-[#8f96a3]">
+                    <p className={cn("text-[10px]", scheduleStatusClass)}>
                       {installment?.isPaid ? "Paid" : installment?.isDue ? "Due now" : "Upcoming"}
                     </p>
                   </div>
@@ -375,127 +553,180 @@ const ActiveProjectPaymentsPanel = ({
   );
 };
 
-const ProjectBillingCard = ({ project, showAmounts, onDownloadReceipt, onOpenProject }) => {
-  const billingState = getProjectBillingState(project);
-  const installments = Array.isArray(project.installments) ? project.installments.slice(0, 3) : [];
-  const statusChipClass = project?.isFullyPaid
-    ? "bg-[#0f3220] text-[#34d399]"
-    : project?.nextDueInstallment
-      ? "bg-[#3f2e0b] text-[#facc15]"
-      : "bg-[#3a3328] text-[#f59e0b]";
-  const activityDate = formatShortDate(project.updatedAt);
+const getBillingStatusMeta = (invoice) => {
+  if (invoice?.isPaid) {
+    return {
+      label: "Paid",
+      badgeClass: "bg-[#22c55e]/12 text-[#4ade80]",
+    };
+  }
+
+  if (invoice?.amountPaid > 0) {
+    return {
+      label: "Part paid",
+      badgeClass: "bg-[#60a5fa]/12 text-[#93c5fd]",
+    };
+  }
+
+  if (invoice?.isDue) {
+    return {
+      label: "Pending",
+      badgeClass: "bg-[#facc15]/12 text-[#facc15]",
+    };
+  }
+
+  return {
+    label: "Scheduled",
+    badgeClass: "bg-white/[0.05] text-[#cbd5e1]",
+  };
+};
+
+const BillingAmountCell = ({ label, value, visible, tone = "default", className = "" }) => {
+  const valueClass =
+    tone === "success"
+      ? "text-[#86efac]"
+      : tone === "warning"
+        ? "text-[#facc15]"
+        : tone === "muted"
+          ? "text-[#dbe3f1]"
+          : "text-white";
 
   return (
-    <article className="h-full min-h-[700px] rounded-[22px] border border-white/[0.06] bg-[#2f2f30] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h3 className="truncate text-[clamp(1.55rem,1.9vw,2rem)] font-semibold leading-none tracking-[-0.03em] text-white">
-            {project.title}
-          </h3>
-          <p className="mt-1.5 truncate text-[0.9rem] text-[#9ca3af]">{project.freelancerName}</p>
-        </div>
-        <span
-          className={cn("inline-flex shrink-0 rounded-[10px] px-3 py-1 text-xs font-semibold", statusChipClass)}
-        >
-          {billingState.label}
-        </span>
-      </div>
-
-      <div className="mt-5 grid grid-cols-3 text-[10px] uppercase tracking-[0.12em] text-[#8f96a3]">
-        <div className="min-w-0 pr-3">
-          <p>Total budget</p>
-          <p className="mt-1 text-[1.35rem] font-semibold tracking-[-0.02em] normal-case text-white">
-            {maskCurrency(project.totalAmount, showAmounts)}
-          </p>
-        </div>
-        <div className="min-w-0 border-l border-white/[0.08] px-3">
-          <p>Paid so far</p>
-          <p className="mt-1 text-[1.35rem] font-semibold tracking-[-0.02em] normal-case text-white">
-            {maskCurrency(project.paidAmount, showAmounts)}
-          </p>
-        </div>
-        <div className="min-w-0 border-l border-white/[0.08] pl-3">
-          <p>Remaining</p>
-          <p className="mt-1 text-[1.35rem] font-semibold tracking-[-0.02em] normal-case text-white">
-            {maskCurrency(project.remainingAmount, showAmounts)}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#334155]">
-        <div
-          className="h-full rounded-full bg-[#facc15] transition-[width]"
-          style={{ width: `${Math.max(0, Math.min(project.paidPercentage, 100))}%` }}
-        />
-      </div>
-      <p className="mt-2 text-[0.9rem] text-[#9ca3af]">{project.paidPercentage}% funded</p>
-
-      <div className="mt-5 space-y-2.5">
-        {installments.map((installment, index) => (
-          <div
-            key={`${project.id}-${installment?.sequence || index + 1}`}
-            className="flex items-center justify-between gap-3 text-[0.9rem]"
-          >
-            <div className="flex min-w-0 items-center gap-2.5 text-[#d4d4d8]">
-              <span
-                className={cn(
-                  "size-2 rounded-full",
-                  installment?.isPaid
-                    ? "bg-[#22c55e]"
-                    : installment?.isDue
-                      ? "bg-[#facc15]"
-                      : "bg-[#6b7280]",
-                )}
-              />
-              <span className="truncate text-[0.9rem] text-[#d4d4d8]">
-                {installment?.label || `Milestone ${installment?.sequence || index + 1}`}
-              </span>
-            </div>
-            <span
-              className={cn(
-                "shrink-0 text-[0.9rem]",
-                installment?.isPaid
-                  ? "text-[#34d399]"
-                  : installment?.isDue
-                    ? "text-[#facc15]"
-                    : "text-[#9ca3af]",
-              )}
-            >
-              {installment?.isPaid ? "Paid" : installment?.isDue ? "Due" : "Upcoming"}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <p className="mt-6 text-[0.95rem] leading-7 text-[#e5e7eb]">
-        {project.nextDueInstallment
-          ? project.nextDueInstallment.dueLabel
-          : "No payment is due right now. The next installment will unlock after the required phase is verified."}
+    <div className={cn("min-w-0 px-1 py-1", className)}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7c828d]">{label}</p>
+      <p className={cn("mt-1.5 text-[1.45rem] font-semibold tracking-[-0.03em]", valueClass)}>
+        {maskCurrency(value, visible)}
       </p>
-      <p className="mt-1 text-xs text-[#8f96a3]">Last billing activity on {activityDate}.</p>
+    </div>
+  );
+};
 
-      <div className="mt-6 flex items-center justify-between gap-4">
-        <button
-          type="button"
-          onClick={() => onOpenProject(project.id)}
-          className="inline-flex h-10 items-center justify-center rounded-full bg-[#facc15] px-7 text-[0.95rem] font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
-        >
-          View project
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            project.latestPaidReceipt
-              ? onDownloadReceipt(project.latestPaidReceipt)
-              : onOpenProject(project.id)
-          }
-          className="inline-flex items-center gap-1.5 text-[0.9rem] text-[#a1a1aa] transition hover:text-white"
-        >
-          <Download className="size-3.5" />
-          {project.latestPaidReceipt ? "Latest receipt" : "Open details"}
-        </button>
+const ProjectBillingList = ({
+  invoices,
+  showAmounts,
+  onDownloadInvoice,
+  onOpenProject,
+  compact = false,
+  previewCount = ALL_PROJECT_BILLING_PREVIEW_COUNT,
+}) => {
+  const [showAllInvoices, setShowAllInvoices] = useState(false);
+
+  const hasCollapsedInvoices = compact && invoices.length > previewCount;
+  const displayedInvoices =
+    hasCollapsedInvoices && !showAllInvoices ? invoices.slice(0, previewCount) : invoices;
+
+  useEffect(() => {
+    setShowAllInvoices(false);
+  }, [compact, previewCount, invoices.length]);
+
+  if (!invoices.length) {
+    return (
+      <div className="mt-5 rounded-[18px] border border-dashed border-white/[0.08] bg-accent px-5 py-8 text-sm text-[#8f96a3]">
+        Billing entries will appear here once your project invoices are created.
       </div>
-    </article>
+    );
+  }
+
+  return (
+    <div className="mt-5 space-y-4 [content-visibility:auto]">
+      {displayedInvoices.map((invoice) => {
+        const statusMeta = getBillingStatusMeta(invoice);
+        const balanceTone = invoice.balanceDue > 0 ? "warning" : "muted";
+
+        return (
+          <article
+            key={invoice.id}
+            className="rounded-[18px] border border-white/[0.05] bg-accent px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-5 sm:py-5"
+          >
+            <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.95fr)_190px] xl:items-center">
+              <div className="min-w-0 rounded-[16px] px-4 py-4">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h3 className="truncate text-[1.2rem] font-semibold tracking-[-0.03em] text-white">
+                    {invoice.projectLabel}
+                  </h3>
+                  <span
+                    className={cn(
+                      "inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold",
+                      statusMeta.badgeClass,
+                    )}
+                  >
+                    {statusMeta.label}
+                  </span>
+                </div>
+
+                <p className="mt-2 truncate text-[1.02rem] font-semibold text-[#dbe3f1]">
+                  {invoice.installmentLabel}
+                </p>
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs">
+                  <span className="inline-flex rounded-lg bg-white/[0.04] px-2.5 py-1 font-medium text-[#dbe3f1]">
+                    {invoice.serviceType || "Project service"}
+                  </span>
+                  <span className="text-[#5f6673]">•</span>
+                  <span className="truncate text-[#8f96a3]">{invoice.freelancerName}</span>
+                </div>
+
+                <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-[#6b7280]">
+                  Issued {formatShortDate(invoice.issuedAt)}
+                </p>
+              </div>
+
+              <div className="grid flex-1 gap-4 rounded-[16px] border border-white/[0.04] bg-white/[0.02] px-4 py-4 sm:grid-cols-3">
+                <BillingAmountCell
+                  label="Scheduled"
+                  value={invoice.amountDue}
+                  visible={showAmounts}
+                />
+                <BillingAmountCell
+                  label="Paid"
+                  value={invoice.amountPaid}
+                  visible={showAmounts}
+                  tone={invoice.amountPaid > 0 ? "success" : "muted"}
+                />
+                <BillingAmountCell
+                  label="Balance"
+                  value={invoice.balanceDue}
+                  visible={showAmounts}
+                  tone={balanceTone}
+                />
+              </div>
+
+              <div className="flex shrink-0 flex-col gap-2 rounded-[16px] p-2 sm:flex-row xl:flex-col">
+                <button
+                  type="button"
+                  onClick={() => onDownloadInvoice(invoice)}
+                  className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-[12px] border border-white/[0.08] px-4 text-sm font-semibold text-white transition hover:bg-white/[0.05] hover:border-white/[0.12]"
+                >
+                  <Download className="size-4" />
+                  Download invoice
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenProject(invoice.projectId)}
+                  className="inline-flex h-11 items-center justify-center rounded-[12px] bg-[#facc15] px-4 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d]"
+                >
+                  View details
+                </button>
+              </div>
+            </div>
+          </article>
+        );
+      })}
+
+      {hasCollapsedInvoices ? (
+        <div className="flex justify-center pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              setShowAllInvoices((currentValue) => !currentValue);
+            }}
+            className="inline-flex h-11 items-center justify-center rounded-[12px] border border-white/[0.06] bg-white/[0.03] px-5 text-sm font-semibold text-[#dbe3f1] transition hover:bg-white/[0.06] hover:text-white"
+          >
+            {showAllInvoices ? "Show fewer invoices" : `Show all ${invoices.length} invoices`}
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 };
 
@@ -634,11 +865,12 @@ const ClientPaymentsContent = () => {
   const navigate = useNavigate();
   const { user, authFetch, isAuthenticated } = useAuth();
   const { unreadCount } = useNotifications();
-  const projectBillingCarouselRef = React.useRef(null);
+  const headerDisplayName = useMemo(() => getDisplayName(user), [user]);
   const [isLoading, setIsLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [processingInvoiceId, setProcessingInvoiceId] = useState(null);
+  const [projectFilter, setProjectFilter] = useState(PROJECT_FILTER_ALL_VALUE);
   const [showAmounts] = useState(true);
 
   const loadProjects = useCallback(async () => {
@@ -681,6 +913,12 @@ const ClientPaymentsContent = () => {
           acceptedProposal?.freelancer?.name ||
           acceptedProposal?.freelancerName ||
           "Assigned Freelancer";
+        const businessName = resolveProjectBusinessName(project, acceptedProposal);
+        const serviceType = resolveProjectServiceType(project, acceptedProposal);
+        const projectLabel =
+          (businessName ? toDisplayTitleCase(businessName) : "") ||
+          project?.title ||
+          "Untitled Project";
         const paidInstallmentCount = installments.filter((installment) =>
           Boolean(installment?.isPaid),
         ).length;
@@ -690,6 +928,9 @@ const ClientPaymentsContent = () => {
         return {
           id: project.id,
           title: project?.title || "Untitled Project",
+          businessName,
+          projectLabel,
+          serviceType,
           updatedAt: project?.updatedAt || project?.createdAt,
           createdAt: project?.createdAt,
           freelancerName,
@@ -709,6 +950,8 @@ const ClientPaymentsContent = () => {
                 id: `${project.id}-${latestPaidInstallment.sequence}`,
                 projectId: project.id,
                 projectTitle: project?.title || "Untitled Project",
+                projectLabel,
+                serviceType,
                 freelancerName,
                 installmentLabel:
                   latestPaidInstallment.label ||
@@ -716,10 +959,13 @@ const ClientPaymentsContent = () => {
                 issuedAt: project?.updatedAt || project?.createdAt,
                 amountDue: Number(latestPaidInstallment.amount) || 0,
                 amountPaid: Number(latestPaidInstallment.amount) || 0,
+                balanceDue: 0,
                 escrowHeld:
                   projectStatus === "COMPLETED"
                     ? 0
                     : Number(latestPaidInstallment.amount) || 0,
+                projectPaidSoFar: Number(paymentPlan.paidAmount) || 0,
+                projectRemainingAmount: Number(paymentPlan.remainingAmount) || 0,
                 statusLabel: "Paid",
                 isPaid: true,
                 isDue: false,
@@ -743,26 +989,63 @@ const ClientPaymentsContent = () => {
       });
   }, [projects]);
 
+  useEffect(() => {
+    if (projectFilter === PROJECT_FILTER_ALL_VALUE) return;
+
+    const isFilterStillAvailable = billingProjects.some(
+      (project) => String(project.id) === projectFilter,
+    );
+
+    if (!isFilterStillAvailable) {
+      setProjectFilter(PROJECT_FILTER_ALL_VALUE);
+    }
+  }, [billingProjects, projectFilter]);
+
+  const selectedProject = useMemo(() => {
+    if (projectFilter === PROJECT_FILTER_ALL_VALUE) return null;
+
+    return billingProjects.find((project) => String(project.id) === projectFilter) || null;
+  }, [billingProjects, projectFilter]);
+
+  const visibleProjects = useMemo(
+    () => (selectedProject ? [selectedProject] : billingProjects),
+    [billingProjects, selectedProject],
+  );
+
   const paymentRows = useMemo(() => {
     return billingProjects
       .flatMap((project) =>
         project.installments.map((installment, index) => {
           const amountValue = Number(installment?.amount) || 0;
-          const isPaid = Boolean(installment?.isPaid);
+          const amountPaid = Math.max(
+            0,
+            Math.min(
+              amountValue,
+              Number(installment?.amountPaid ?? (installment?.isPaid ? amountValue : 0)) || 0,
+            ),
+          );
+          const balanceDue = Math.max(amountValue - amountPaid, 0);
+          const isPaid = Boolean(installment?.isPaid) || (amountValue > 0 && balanceDue === 0);
           const isDue = Boolean(installment?.isDue);
+          const hasPartialPayment = !isPaid && amountPaid > 0;
 
           return {
             id: `${project.id}-${installment?.sequence || index + 1}`,
             projectId: project.id,
             projectTitle: project.title,
+            projectLabel: project.projectLabel,
+            serviceType: project.serviceType,
             freelancerName: project.freelancerName,
             installmentLabel:
               installment?.label || `Milestone ${installment?.sequence || index + 1}`,
             issuedAt: project.updatedAt || project.createdAt,
             amountDue: amountValue,
-            amountPaid: isPaid ? amountValue : 0,
-            escrowHeld: isPaid ? Math.min(project.escrowProtected, amountValue) : 0,
-            statusLabel: isPaid ? "Paid" : isDue ? "Pending" : "Scheduled",
+            amountPaid,
+            balanceDue,
+            escrowHeld: amountPaid > 0 ? Math.min(project.escrowProtected, amountPaid) : 0,
+            projectPaidSoFar: project.paidAmount,
+            projectRemainingAmount: project.remainingAmount,
+            statusLabel: isPaid ? "Paid" : hasPartialPayment ? "Part paid" : isDue ? "Pending" : "Scheduled",
             isPaid,
             isDue,
           };
@@ -781,10 +1064,28 @@ const ClientPaymentsContent = () => {
       });
   }, [billingProjects]);
 
+  const visiblePaymentRows = useMemo(
+    () =>
+      selectedProject
+        ? paymentRows.filter((row) => String(row.projectId) === String(selectedProject.id))
+        : paymentRows,
+    [paymentRows, selectedProject],
+  );
+
+  const activeProject = useMemo(
+    () =>
+      selectedProject ||
+      billingProjects.find((project) => project.nextDueInstallment) ||
+      billingProjects.find((project) => !project.isFullyPaid) ||
+      billingProjects[0] ||
+      null,
+    [billingProjects, selectedProject],
+  );
+
   const summary = useMemo(() => {
     const now = new Date();
 
-    return billingProjects.reduce(
+    return visibleProjects.reduce(
       (accumulator, project) => {
         accumulator.totalBudgeted += project.totalAmount;
         accumulator.paidSoFar += project.paidAmount;
@@ -815,7 +1116,7 @@ const ClientPaymentsContent = () => {
         thisMonthSpent: 0,
       },
     );
-  }, [billingProjects]);
+  }, [visibleProjects]);
 
   const monthlySeries = useMemo(() => {
     const now = new Date();
@@ -832,7 +1133,7 @@ const ClientPaymentsContent = () => {
 
     const monthMap = new Map(months.map((month) => [month.key, month]));
 
-    paymentRows.forEach((row) => {
+    visiblePaymentRows.forEach((row) => {
       if (!row.isPaid) return;
 
       const issuedAt = row.issuedAt ? new Date(row.issuedAt) : null;
@@ -846,29 +1147,19 @@ const ClientPaymentsContent = () => {
     });
 
     return months;
-  }, [paymentRows]);
-
-  const nextDueInvoice = useMemo(
-    () => paymentRows.find((row) => row.isDue) || null,
-    [paymentRows],
-  );
-
-  const nextDueProject = useMemo(
-    () =>
-      billingProjects.find((project) => project.nextDueInstallment) ||
-      billingProjects.find((project) => !project.isFullyPaid) ||
-      null,
-    [billingProjects],
-  );
-
-  const recentTransactions = useMemo(() => paymentRows.slice(0, 4), [paymentRows]);
+  }, [visiblePaymentRows]);
 
   const recentReceipts = useMemo(
-    () => paymentRows.filter((row) => row.isPaid).slice(0, 4),
-    [paymentRows],
+    () => visiblePaymentRows.filter((row) => row.isPaid).slice(0, 4),
+    [visiblePaymentRows],
   );
 
+  const recentTransactions = useMemo(() => recentReceipts.slice(0, 4), [recentReceipts]);
+
   const latestPaidInvoice = recentReceipts[0] || null;
+  const paymentsHeaderSupportingText = selectedProject
+    ? `Showing billing activity for ${selectedProject.projectLabel}.`
+    : `${billingProjects.length} project${billingProjects.length === 1 ? "" : "s"} with billing activity available.`;
 
   const billingTools = useMemo(
     () => [
@@ -882,10 +1173,10 @@ const ClientPaymentsContent = () => {
       },
       {
         id: "receipts",
-        label: "Receipts & invoices",
+        label: "Invoices",
         subtitle: latestPaidInvoice
-          ? "Download your most recent billing receipt instantly."
-          : "Receipts will appear here after your first completed installment.",
+          ? "Download your most recent billing invoice instantly."
+          : "Invoices will appear here after your first completed installment.",
         icon: FileText,
         onClick: "latest-receipt",
         disabled: !latestPaidInvoice,
@@ -964,19 +1255,21 @@ const ClientPaymentsContent = () => {
     [navigate],
   );
 
-  const handleProjectBillingCarouselScroll = useCallback((direction) => {
-    const container = projectBillingCarouselRef.current;
-    if (!container) return;
+  const handleDownloadInvoice = useCallback(
+    async (invoice) => {
+      if (!invoice) return;
 
-    const firstCard = container.querySelector("[data-project-billing-card='true']");
-    const cardWidth = firstCard?.getBoundingClientRect().width || container.clientWidth * 0.9;
-    const gap = 16;
-
-    container.scrollBy({
-      left: (cardWidth + gap) * direction,
-      behavior: "smooth",
-    });
-  }, []);
+      try {
+        await downloadInvoicePdf(invoice, {
+          clientName: headerDisplayName,
+        });
+      } catch (error) {
+        console.error("Failed to download invoice PDF", error);
+        toast.error("Failed to download invoice PDF.");
+      }
+    },
+    [headerDisplayName],
+  );
 
   const handleMethodAction = async (action) => {
     if (action === "portal") {
@@ -986,11 +1279,11 @@ const ClientPaymentsContent = () => {
 
     if (action === "latest-receipt") {
       if (latestPaidInvoice) {
-        downloadReceipt(latestPaidInvoice);
+        await handleDownloadInvoice(latestPaidInvoice);
         return;
       }
 
-      toast.info("Your latest receipt will appear here after the first completed payment.");
+      toast.info("Your latest invoice will appear here after the first completed payment.");
       return;
     }
 
@@ -999,11 +1292,9 @@ const ClientPaymentsContent = () => {
     );
   };
 
-  const headerDisplayName = useMemo(() => getDisplayName(user), [user]);
-
   return (
     <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 pt-5 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
         <ClientWorkspaceHeader
           profile={{
             avatar: user?.avatar,
@@ -1015,40 +1306,18 @@ const ClientPaymentsContent = () => {
         />
 
         <main className="flex-1 pb-12">
-          <section className="mt-14 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
-                Financial Overview
-              </h1>
-              <p className="mt-2 text-sm text-[#94a3b8]">
-                Manage your freelance earnings and project milestones.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (nextDueInvoice) {
-                  void handlePayInstallment(nextDueInvoice);
-                  return;
-                }
-
-                if (nextDueProject) {
-                  handleOpenProject(nextDueProject.id);
-                  return;
-                }
-
-                void handleOpenCustomerPortal();
-              }}
-              disabled={Boolean(nextDueInvoice && processingInvoiceId === nextDueInvoice.id)}
-              className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-[10px] bg-[#facc15] px-5 text-sm font-semibold text-[#141414] transition hover:bg-[#ffd84d] disabled:cursor-not-allowed disabled:opacity-60 lg:self-auto"
-            >
-              {nextDueInvoice && processingInvoiceId === nextDueInvoice.id ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : null}
-              Approve Payment
-            </button>
-          </section>
+          <ClientPageHeader
+            title="Financial Overview"
+            description="Track project budgets, milestone payments, and escrow activity in one place."
+            supportingText={paymentsHeaderSupportingText}
+            actions={
+              <ProjectFilterMenu
+                projects={billingProjects}
+                value={projectFilter}
+                onValueChange={setProjectFilter}
+              />
+            }
+          />
 
           {isLoading ? (
             <PaymentsLoadingState />
@@ -1062,7 +1331,7 @@ const ClientPaymentsContent = () => {
                   value={summary.totalBudgeted}
                   visible={showAmounts}
                   icon={Wallet}
-                  helper={`Across ${billingProjects.length} active project${billingProjects.length === 1 ? "" : "s"}`}
+                  helper={`Across ${visibleProjects.length} active project${visibleProjects.length === 1 ? "" : "s"}`}
                 />
                 <PaymentSummaryCard
                   label="Paid So Far"
@@ -1087,7 +1356,7 @@ const ClientPaymentsContent = () => {
               <section className="mt-7 grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.78fr)]">
                 <div className="flex h-full flex-col gap-6">
                   <ActiveProjectPaymentsPanel
-                    project={nextDueProject}
+                    project={activeProject}
                     showAmounts={showAmounts}
                     processingInvoiceId={processingInvoiceId}
                     onPay={handlePayInstallment}
@@ -1097,55 +1366,24 @@ const ClientPaymentsContent = () => {
                   />
 
                   <div className="flex-1 rounded-[24px] border border-white/[0.05] bg-accent p-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
+                    <div className="flex flex-col gap-3">
+                      <div className="space-y-2">
                         <h2 className="text-[2rem] font-semibold tracking-[-0.03em] text-white">Project billing</h2>
-                        <p className="mt-2 text-sm text-[#8f96a3]">
-                          Each accepted project keeps its own payment schedule, receipts, and funding progress.
+                        <p className="text-sm text-[#8f96a3]">
+                          {selectedProject
+                            ? `Showing every invoice, paid amount, and outstanding balance for ${selectedProject.projectLabel}.`
+                            : "Showing a shorter billing preview across all projects. Expand the list or pick a project to focus on one billing schedule."}
                         </p>
                       </div>
-
-                      {billingProjects.length > 1 ? (
-                        <div className="flex items-center gap-2 self-start sm:self-auto">
-                          <button
-                            type="button"
-                            onClick={() => handleProjectBillingCarouselScroll(-1)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-transparent text-[#cbd5e1] transition hover:border-white/[0.14] hover:bg-white/[0.03] hover:text-white"
-                            aria-label="Previous project billing cards"
-                          >
-                            <ChevronLeft className="size-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleProjectBillingCarouselScroll(1)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-transparent text-[#cbd5e1] transition hover:border-white/[0.14] hover:bg-white/[0.03] hover:text-white"
-                            aria-label="Next project billing cards"
-                          >
-                            <ChevronRight className="size-4" />
-                          </button>
-                        </div>
-                      ) : null}
                     </div>
 
-                    <div
-                      ref={projectBillingCarouselRef}
-                      className="mt-5 flex items-start snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-0 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                    >
-                      {billingProjects.map((project) => (
-                        <div
-                          key={project.id}
-                          data-project-billing-card="true"
-                          className="h-full w-[92%] shrink-0 snap-start sm:w-[78%] md:w-[calc((100%-1rem)/2)]"
-                        >
-                          <ProjectBillingCard
-                            project={project}
-                            showAmounts={showAmounts}
-                            onDownloadReceipt={downloadReceipt}
-                            onOpenProject={handleOpenProject}
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <ProjectBillingList
+                      invoices={visiblePaymentRows}
+                      showAmounts={showAmounts}
+                      onDownloadInvoice={handleDownloadInvoice}
+                      onOpenProject={handleOpenProject}
+                      compact={!selectedProject}
+                    />
                   </div>
                 </div>
 
@@ -1167,7 +1405,8 @@ const ClientPaymentsContent = () => {
                         ))
                       ) : (
                         <p className="rounded-[12px] border border-white/[0.05] bg-[#262626] px-3 py-4 text-sm text-[#8f96a3]">
-                          Transactions will appear here after your first payment.
+                          Transactions will appear here after your first payment
+                          {selectedProject ? " for this project." : "."}
                         </p>
                       )}
                     </div>
@@ -1189,7 +1428,7 @@ const ClientPaymentsContent = () => {
                   <div className="rounded-[24px] border border-white/[0.05] bg-accent p-5">
                     <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Billing tools</h2>
                     <p className="mt-1 text-sm text-[#8f96a3]">
-                      Quick access to payment methods, receipts, and escrow visibility.
+                      Quick access to payment methods, invoices, and escrow visibility.
                     </p>
 
                     <div className="mt-5 space-y-3">
@@ -1222,7 +1461,9 @@ const ClientPaymentsContent = () => {
                   <div className="rounded-[24px] border border-white/[0.05] bg-accent p-5">
                     <h2 className="text-[1.8rem] font-semibold tracking-[-0.03em] text-white">Monthly spend</h2>
                     <p className="mt-1 text-xs text-[#8f96a3]">
-                      A simple view of your funded project budget movement.
+                      {selectedProject
+                        ? `Showing spend only for ${selectedProject.title}.`
+                        : "A simple view of your funded project budget movement."}
                     </p>
 
                     <MonthlyPaymentsChart points={monthlySeries} visible={showAmounts} compact />
