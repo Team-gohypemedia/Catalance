@@ -16,6 +16,7 @@ const CONTEXT_SUGGESTION_REGEX =
 const AGENT_IDENTITY_REGEX =
     /\b(what(?:'s| is)\s+your\s+name|your\s+name\??|who\s+are\s+you|are\s+you\s+(?:an?\s+)?(?:ai|bot|human))\b/i;
 const GRATITUDE_REGEX = /\b(thanks|thank you|thx|ty)\b/i;
+const ATTACHMENT_REFERENCE_REGEX = /\b(pdf|document|doc|file|attachment|uploaded|upload|proposal|brochure|resume|deck|sheet)\b/i;
 const EXTRACTION_CONFIDENCE_MIN = 0.7;
 const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.86;
 const FRIENDLY_BRIDGES = [
@@ -135,6 +136,21 @@ const parseAttachmentTokensFromMessage = (messageText = "") => {
         plainText: plainLines.join("\n").trim(),
         attachments,
     };
+};
+
+const getMostRecentAttachmentsFromMessages = (messages = []) => {
+    if (!Array.isArray(messages) || messages.length === 0) return [];
+
+    for (let idx = messages.length - 1; idx >= 0; idx -= 1) {
+        const message = messages[idx];
+        if (String(message?.role || "").toLowerCase() !== "user") continue;
+        const parsed = parseAttachmentTokensFromMessage(String(message?.content || ""));
+        if (parsed.attachments.length > 0) {
+            return parsed.attachments;
+        }
+    }
+
+    return [];
 };
 
 const clipAttachmentText = (text = "", limit = MAX_SINGLE_ATTACHMENT_TEXT_CHARS) =>
@@ -575,42 +591,54 @@ const buildAttachmentInsightForUser = ({
     const visibleText = cleanLineValue(visibleTextLine, /^Visible text:\s*/i);
     const summary = cleanLineValue(summaryLine, /^Summary:\s*/i);
     const designCues = cleanLineValue(designCuesLine, /^Design cues:\s*/i);
-    const extractedText = cleanLineValue(extractedTextLine, /^Extracted text:\s*/i);
+    const extractedText = clipAttachmentText(
+        String(context.split(/Extracted text:\s*/i)[1] || "")
+            .replace(/\s+/g, " ")
+            .trim(),
+        180
+    );
+    const hasExtractedBodyText = /Extracted text:\s*\S+/s.test(context);
+    const hasReadableDocumentContent = Boolean(
+        possibleBrand
+        || visibleText
+        || summary
+        || designCues
+        || subject
+        || keywords
+        || hasExtractedBodyText
+    );
 
-    const insightSentences = [];
-    if (title) {
-        insightSentences.push(`I reviewed ${fileLabel} and found a document titled "${clipAttachmentText(title, 90)}".`);
-    } else {
-        insightSentences.push(`I reviewed ${fileLabel} and found useful details in it.`);
+    if (!hasReadableDocumentContent && (title || pageCount)) {
+        const basicSummary = [
+            title,
+            pageCount ? `${pageCount} pages` : ""
+        ]
+            .filter(Boolean)
+            .join(" - ");
+        return `File summary: ${basicSummary || "basic document details detected."}`;
     }
 
-    if (pageCount) {
-        insightSentences.push(`It looks like a ${clipAttachmentText(pageCount, 20)}-page document.`);
+    let summaryText = summary
+        || extractedText
+        || visibleText
+        || subject
+        || keywords
+        || designCues
+        || title;
+
+    if (possibleBrand && summaryText && !containsNormalizedText(summaryText, possibleBrand)) {
+        summaryText = `${possibleBrand}. ${summaryText}`;
     }
 
-    if (possibleBrand) {
-        insightSentences.push(`I noticed the brand or company name "${clipAttachmentText(possibleBrand, 70)}".`);
-    } else if (subject) {
-        insightSentences.push(`It appears to focus on ${clipAttachmentText(subject, 100)}.`);
-    } else if (keywords) {
-        insightSentences.push(`It seems to cover ${clipAttachmentText(keywords, 100)}.`);
+    if (!summaryText && pageCount) {
+        summaryText = `${pageCount} pages`;
     }
 
-    if (summary) {
-        insightSentences.push(clipAttachmentText(summary, 160));
-    } else if (visibleText) {
-        insightSentences.push(`I could read key text like "${clipAttachmentText(visibleText, 120)}."`);
-    } else if (designCues) {
-        insightSentences.push(`I also noticed ${clipAttachmentText(designCues, 120)}.`);
-    } else if (extractedText) {
-        insightSentences.push(`I found readable content in it and will use that context as we continue.`);
+    if (!summaryText) {
+        return `File summary: ${fileLabel}`;
     }
 
-    if (insightSentences.length === 0) {
-        return `I reviewed ${fileLabel} and will use any reliable details I could identify from it.`;
-    }
-
-    return clipAttachmentText(insightSentences.join(" "), 420);
+    return `File summary: ${clipAttachmentText(summaryText, 260)}`;
 };
 
 const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
@@ -2579,17 +2607,29 @@ export const guestChat = asyncHandler(async (req, res) => {
         );
     }
 
+    const rememberedAttachments = uploadedAttachments.length > 0
+        ? []
+        : getMostRecentAttachmentsFromMessages(session.messages);
+    const activeAttachments = uploadedAttachments.length > 0
+        ? uploadedAttachments
+        : rememberedAttachments;
+    const isReferencingStoredAttachment = uploadedAttachments.length === 0
+        && activeAttachments.length > 0
+        && ATTACHMENT_REFERENCE_REGEX.test(`${userMessageText} ${safeMessageText}`.trim());
+
     let attachmentContextText = "";
     let attachmentInferredAnswer = "";
     let attachmentInsightNote = "";
-    if (uploadedAttachments.length > 0) {
+    if (activeAttachments.length > 0) {
         attachmentContextText = await buildAttachmentContextBlock({
-            attachments: uploadedAttachments,
+            attachments: activeAttachments,
         });
-        attachmentInsightNote = buildAttachmentInsightForUser({
-            attachments: uploadedAttachments,
-            attachmentContextText,
-        });
+        if (uploadedAttachments.length > 0 || isReferencingStoredAttachment) {
+            attachmentInsightNote = buildAttachmentInsightForUser({
+                attachments: activeAttachments,
+                attachmentContextText,
+            });
+        }
         if (attachmentInsightNote) {
             console.log(`[Attachment Insight] ${attachmentInsightNote}`);
         }
