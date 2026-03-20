@@ -1,3 +1,5 @@
+import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
+
 const getProposalStorageKeys = (userId) => {
   const suffix = userId ? `:${userId}` : "";
   return {
@@ -132,10 +134,13 @@ const normalizeSavedProposal = (proposal = {}) => {
   }
 
   const text = String(next.content || next.summary || "");
-  if (!next.timeline && text) {
-    const timelineMatch = text.match(/Timeline[:\s\-\n\u2022]*([^\n]+)/i);
-    if (timelineMatch) {
-      next.timeline = timelineMatch[1].trim();
+  if (text) {
+    const extractedTimeline = extractLabeledLineValue(text, [
+      "Timeline",
+      "Launch Timeline",
+    ]);
+    if (extractedTimeline) {
+      next.timeline = extractedTimeline;
     }
   }
 

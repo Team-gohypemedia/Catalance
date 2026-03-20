@@ -51,6 +51,7 @@ import {
 import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
 import { rankFreelancersForProposal } from "@/shared/lib/freelancer-matching";
 import { listFreelancers } from "@/shared/lib/api-client";
+import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import { openRazorpayCheckout } from "@/shared/lib/razorpay-checkout";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
@@ -357,23 +358,8 @@ const getFirstNonEmptyText = (...values) => {
   return "";
 };
 
-const escapeRegExp = (value = "") =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const extractProposalLabeledValue = (value = "", labels = []) => {
-  const source = String(value || "");
-  if (!source) return "";
-
-  for (const label of labels) {
-    const match = source.match(
-      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
-    );
-    const extracted = match?.[1]?.trim();
-    if (extracted) return extracted;
-  }
-
-  return "";
-};
+const extractProposalLabeledValue = (value = "", labels = []) =>
+  extractLabeledLineValue(value, labels);
 
 const extractProposalQuestionAnswer = (answers = {}, patterns = []) => {
   if (!answers || typeof answers !== "object") return "";
@@ -872,11 +858,17 @@ const buildProposalStructuredData = (proposal, clientNameFallback = "Client") =>
     normalizedProposal.budget !== undefined && normalizedProposal.budget !== null
       ? String(normalizedProposal.budget)
       : "";
+  const extractedTimelineFromContent = extractProposalLabeledValue(content, [
+    "Timeline",
+    "Launch Timeline",
+    "Delivery",
+    "Deadline",
+  ]);
   const extractedTimeline = getFirstNonEmptyText(
-    normalizedProposal.timeline,
+    extractedTimelineFromContent,
     proposalContext.timeline,
     proposalContext.launchTimeline,
-    extractProposalLabeledValue(content, ["Timeline", "Delivery", "Deadline"]),
+    normalizedProposal.timeline,
     extractProposalQuestionAnswer(questionnaireAnswersBySlug, [
       /launch[-_\s]?timeline/i,
       /timeline/i,
@@ -1105,10 +1097,11 @@ const extractProposalDetails = (proposal) => {
     "Not set";
 
   if (delivery === "Not set" && normalizedProposal.content) {
-    const timelineMatch = normalizedProposal.content.match(
-      /Timeline[:\s-]*(.+?)(?:\n|$)/i,
+    const extractedTimeline = extractProposalLabeledValue(
+      normalizedProposal.content,
+      ["Timeline", "Launch Timeline"],
     );
-    if (timelineMatch) delivery = timelineMatch[1].trim();
+    if (extractedTimeline) delivery = extractedTimeline;
   }
 
   return {

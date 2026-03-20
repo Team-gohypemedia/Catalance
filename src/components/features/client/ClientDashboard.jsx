@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { getSession } from "@/shared/lib/auth-storage";
 import { rankFreelancersForProposal } from "@/shared/lib/freelancer-matching";
+import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import {
   listFreelancers,
   fetchChatConversations,
@@ -192,10 +193,13 @@ const normalizeSavedProposal = (proposal = {}) => {
   }
 
   const text = next.content || next.summary || "";
-  if (!next.timeline && text) {
-    const timelineMatch = text.match(/Timeline[:\s\-\n\u2022]*([^\n]+)/i);
-    if (timelineMatch) {
-      next.timeline = timelineMatch[1]
+  if (text) {
+    const extractedTimeline = extractLabeledLineValue(text, [
+      "Timeline",
+      "Launch Timeline",
+    ]);
+    if (extractedTimeline) {
+      next.timeline = extractedTimeline
         .trim()
         .replace(/\(with buffer\)/gi, "")
         .trim();
@@ -1231,23 +1235,8 @@ const getFirstNonEmptyText = (...values) => {
   return "";
 };
 
-const escapeRegExp = (value = "") =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const extractLabeledValue = (value = "", labels = []) => {
-  const source = String(value || "");
-  if (!source) return "";
-
-  for (const label of labels) {
-    const match = source.match(
-      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
-    );
-    const extracted = match?.[1]?.trim();
-    if (extracted) return extracted;
-  }
-
-  return "";
-};
+const extractLabeledValue = (value = "", labels = []) =>
+  extractLabeledLineValue(value, labels);
 
 const toTaskIdArray = (value) => {
   if (Array.isArray(value)) {

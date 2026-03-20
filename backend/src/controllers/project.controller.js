@@ -5,6 +5,10 @@ import { attachProjectPaymentPlan, resolveProjectPaymentPlan } from "../modules/
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { env } from "../config/env.js";
 import { getRazorpayClient, hasRazorpayCredentials } from "../lib/razorpay.js";
+import {
+  buildPhaseOrderMap,
+  isTaskPhaseLockedByPayment,
+} from "../../../src/shared/lib/project-verification-gates.js";
 import crypto from "crypto";
 
 const MAX_INT = 2147483647; // PostgreSQL INT4 upper bound
@@ -36,6 +40,25 @@ const normalizeAmount = (value) => {
   }
 
   return 0;
+};
+
+const normalizeTaskIdArray = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
 };
 
 const normalizeBudget = (value) => {
@@ -595,6 +618,42 @@ export const updateProject = asyncHandler(async (req, res) => {
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, "verifiedTasks")) {
+      const nextProjectState = {
+        ...existing,
+        ...sanitizedUpdates,
+      };
+      const paymentPlan = resolveProjectPaymentPlan(nextProjectState);
+      const currentVerifiedTaskIds = new Set(
+        normalizeTaskIdArray(existing?.verifiedTasks)
+      );
+      const proposedVerifiedTaskIds = normalizeTaskIdArray(
+        sanitizedUpdates.verifiedTasks
+      );
+      const phaseOrderMap = buildPhaseOrderMap(paymentPlan?.phases || []);
+      const blockedTaskId = proposedVerifiedTaskIds.find((taskId) => {
+        if (currentVerifiedTaskIds.has(taskId)) {
+          return false;
+        }
+
+        const taskPhaseId = String(taskId).split("-")[0];
+        return isTaskPhaseLockedByPayment({
+          phaseId: taskPhaseId,
+          phaseOrderMap,
+          paymentPlan,
+        });
+      });
+
+      if (blockedTaskId) {
+        const installmentLabel =
+          paymentPlan?.nextDueInstallment?.label || "the pending milestone payment";
+        throw new AppError(
+          `Complete ${installmentLabel} before verifying tasks in later phases.`,
+          400
+        );
+      }
+    }
+
     if (sanitizedUpdates.managerId) {
       // Admin manual assignment - enforce 10 cap
       const targetManager = await prisma.user.findUnique({
@@ -661,6 +720,9 @@ export const updateProject = asyncHandler(async (req, res) => {
 
     res.json({ data: hydratedProject });
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     console.error("Update project error:", error);
     console.error("Error code:", error.code);
     console.error("Error meta:", error.meta);

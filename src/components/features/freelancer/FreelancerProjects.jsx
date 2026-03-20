@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { formatINR, getFreelancerVisibleBudgetValue } from "@/shared/lib/currency";
+import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import { cn } from "@/shared/lib/utils";
 
 const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
@@ -73,23 +74,8 @@ const getFirstNonEmptyText = (...values) => {
   return "";
 };
 
-const escapeRegExp = (value = "") =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const extractLabeledValue = (value = "", labels = []) => {
-  const source = String(value || "");
-  if (!source) return "";
-
-  for (const label of labels) {
-    const match = source.match(
-      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
-    );
-    const extracted = match?.[1]?.trim();
-    if (extracted) return extracted;
-  }
-
-  return "";
-};
+const extractLabeledValue = (value = "", labels = []) =>
+  extractLabeledLineValue(value, labels);
 
 const cleanDisplayText = (value = "") =>
   String(value || "")
@@ -161,10 +147,10 @@ const resolveProjectTimelineMeta = (project = {}, acceptedProposal = null) => {
   const timelineText = getFirstNonEmptyText(
     project?.timeline,
     acceptedProposal?.timeline,
-    extractLabeledValue(project?.description || "", ["Timeline"]),
+    extractLabeledValue(project?.description || "", ["Timeline", "Launch Timeline"]),
     extractLabeledValue(
       acceptedProposal?.coverLetter || acceptedProposal?.description || "",
-      ["Timeline"],
+      ["Timeline", "Launch Timeline"],
     ),
   );
 

@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { downloadInvoicePdf } from "@/shared/lib/invoice-pdf";
+import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
@@ -91,23 +92,8 @@ const getFirstNonEmptyText = (...values) => {
   return "";
 };
 
-const escapeRegExp = (value = "") =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const extractLabeledValue = (value = "", labels = []) => {
-  const source = String(value || "");
-  if (!source) return "";
-
-  for (const label of labels) {
-    const match = source.match(
-      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
-    );
-    const extracted = match?.[1]?.trim();
-    if (extracted) return extracted;
-  }
-
-  return "";
-};
+const extractLabeledValue = (value = "", labels = []) =>
+  extractLabeledLineValue(value, labels);
 
 const toDisplayTitleCase = (value = "") =>
   String(value || "")

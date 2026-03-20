@@ -72,6 +72,13 @@ import format from "date-fns/format";
 import isToday from "date-fns/isToday";
 import isYesterday from "date-fns/isYesterday";
 import isSameDay from "date-fns/isSameDay";
+import { extractStructuredFieldValue } from "@/shared/lib/labeled-fields";
+import {
+  buildPhaseOrderMap,
+  getPhaseOrder,
+  isPhaseOrderLockedByPayment,
+  isTaskPhaseLockedByPayment,
+} from "@/shared/lib/project-verification-gates";
 import { cn } from "@/shared/lib/utils";
 import { formatINR } from "@/shared/lib/currency";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
@@ -306,7 +313,7 @@ const FreelancerAboutCard = ({ freelancer, project }) => {
         {(() => {
           const desc = (project?.description || "").trim();
           const summaryMatch = desc.match(
-            /Summary[:\s]+(.+?)(?=(?:\r?\n\s*(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps|Integrations|Designs|Hosting|Domain|Timeline)[:\s])|$)/is
+            /Summary[:\s]+(.+?)(?=(?:\r?\n\s*(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps|Integrations|Designs|Hosting|Domain|Timeline|Launch Timeline)[:\s])|$)/is
           );
           const summary = summaryMatch
             ? summaryMatch[1]
@@ -542,6 +549,7 @@ const ProjectDashboard = () => {
       "Tech stack",
       "Pages",
       "Timeline",
+      "Launch Timeline",
       "Budget",
       "Next Steps",
       "Summary",
@@ -556,28 +564,15 @@ const ProjectDashboard = () => {
       "Domain",
       "Deployment",
     ];
-    const fieldPattern = fieldNames.join("|");
-    const extractField = (fieldName) => {
-      const regex = new RegExp(
-        `${fieldName}[:\\s]+(.+?)(?=(?:${fieldPattern})[:\\s]|$)`,
-        "is"
-      );
-      const match = desc.match(regex);
-      if (match) {
-        return match[1]
-          .replace(/^[\s-]+/, "")
-          .replace(/[\s-]+$/, "")
-          .trim();
-      }
-      return null;
-    };
+    const extractField = (fieldName) =>
+      extractStructuredFieldValue(desc, fieldName, fieldNames) || null;
 
     const service = extractField("Service");
     const projectName = extractField("Project");
     const client = extractField("Client");
     const websiteType = extractField("Website type");
     const techStack = extractField("Tech stack");
-    const timeline = extractField("Timeline");
+    const timeline = extractField("Timeline") || extractField("Launch Timeline");
     const budget = extractField("Budget");
     const hosting = extractField("Hosting");
     const domain = extractField("Domain");
@@ -585,7 +580,7 @@ const ProjectDashboard = () => {
     const deployment = extractField("Deployment");
 
     const summaryMatch = desc.match(
-      /Summary[:\s]+(.+?)(?=(?:\r?\n\s*(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps|Integrations|Designs|Hosting|Domain|Timeline)[:\s])|$)/is
+      /Summary[:\s]+(.+?)(?=(?:\r?\n\s*(?:Pages & Features|Core pages|Deliverables|Budget|Next Steps|Integrations|Designs|Hosting|Domain|Timeline|Launch Timeline)[:\s])|$)/is
     );
     const summary = summaryMatch
       ? summaryMatch[1]
@@ -931,6 +926,11 @@ const ProjectDashboard = () => {
   ) => {
     if (!project?.id) return;
     const requestId = ++latestProgressMutationIdRef.current;
+    const previousProgress = Number(project?.progress || 0);
+    const previousCompletedArr = Array.from(completedTaskIdsRef.current);
+    const previousVerifiedArr = Array.from(verifiedTaskIdsRef.current);
+    const previousCompletedTaskIds = new Set(previousCompletedArr);
+    const previousVerifiedTaskIds = new Set(previousVerifiedArr);
     const nextCompletedTaskIds = new Set(completedArr);
     const nextVerifiedTaskIds = new Set(verifiedArr);
 
@@ -969,6 +969,12 @@ const ProjectDashboard = () => {
 
       const updatePayload = await updateRes.json().catch(() => null);
 
+      if (!updateRes.ok) {
+        throw new Error(
+          updatePayload?.message || "Failed to save project progress."
+        );
+      }
+
       if (
         updateRes.ok &&
         updatePayload?.data &&
@@ -978,6 +984,23 @@ const ProjectDashboard = () => {
       }
     } catch (error) {
       console.error("Failed to update project progress:", error);
+      if (requestId === latestProgressMutationIdRef.current) {
+        setProject((prev) =>
+          prev
+            ? {
+                ...prev,
+                progress: previousProgress,
+                completedTasks: previousCompletedArr,
+                verifiedTasks: previousVerifiedArr,
+              }
+            : prev
+        );
+        completedTaskIdsRef.current = previousCompletedTaskIds;
+        verifiedTaskIdsRef.current = previousVerifiedTaskIds;
+        setCompletedTaskIds(previousCompletedTaskIds);
+        setVerifiedTaskIds(previousVerifiedTaskIds);
+      }
+      toast.error(error?.message || "Failed to update project progress.");
     }
   };
 
@@ -1585,6 +1608,35 @@ const ProjectDashboard = () => {
     });
   }, [activeSOP, verifiedTaskIds]);
 
+  const verificationDueInstallment = useMemo(() => {
+    const installments = Array.isArray(paymentPlan?.installments)
+      ? paymentPlan.installments
+      : [];
+    const completedPhaseCount = derivedPhases.filter(
+      (phase) => phase.status === "completed"
+    ).length;
+
+    let allPreviousPaid = true;
+    for (const installment of installments) {
+      const isPaid = Boolean(installment?.isPaid);
+      const dueAfterCompletedPhases = Number(
+        installment?.dueAfterCompletedPhases || 0
+      );
+      const phaseGateReached =
+        Number.isFinite(dueAfterCompletedPhases) &&
+        completedPhaseCount >= dueAfterCompletedPhases;
+      const isDueNow = !isPaid && allPreviousPaid && phaseGateReached;
+
+      if (isDueNow) {
+        return installment;
+      }
+
+      allPreviousPaid = allPreviousPaid && isPaid;
+    }
+
+    return paymentPlan?.nextDueInstallment || null;
+  }, [derivedPhases, paymentPlan]);
+
   // Find the current active phase (first non-completed phase)
   const currentActivePhase = useMemo(() => {
     return (
@@ -1635,6 +1687,24 @@ const ProjectDashboard = () => {
     });
   }, [derivedPhases, activeSOP, completedTaskIds, verifiedTaskIds]);
 
+  const phaseOrderMap = useMemo(
+    () => buildPhaseOrderMap(derivedPhases),
+    [derivedPhases]
+  );
+
+  const verificationGatePaymentPlan = useMemo(
+    () =>
+      paymentPlan
+        ? {
+            ...paymentPlan,
+            nextDueInstallment: verificationDueInstallment,
+          }
+        : {
+            nextDueInstallment: verificationDueInstallment,
+          },
+    [paymentPlan, verificationDueInstallment]
+  );
+
   // Group tasks by phase for display
   const tasksByPhase = useMemo(() => {
     // Group tasks by phase ID
@@ -1649,7 +1719,12 @@ const ProjectDashboard = () => {
 
     return derivedPhases.map((phase) => {
       const tasks = grouped[phase.id] || [];
-      const isLocked = !isPrevPhaseComplete;
+      const phaseOrder = getPhaseOrder(phase.id, phaseOrderMap);
+      const isPaymentLocked = isPhaseOrderLockedByPayment({
+        phaseOrder,
+        paymentPlan: verificationGatePaymentPlan,
+      });
+      const isLocked = !isPrevPhaseComplete || isPaymentLocked;
 
       // Determine completion for THIS phase (for next iteration)
       // A phase is complete if it has tasks AND all are verified
@@ -1664,9 +1739,17 @@ const ProjectDashboard = () => {
         phaseStatus: phase.status,
         tasks,
         isLocked,
+        isPaymentLocked,
+        lockedInstallment: isPaymentLocked ? verificationDueInstallment : null,
       };
     });
-  }, [derivedTasks, derivedPhases]);
+  }, [
+    derivedTasks,
+    derivedPhases,
+    phaseOrderMap,
+    verificationDueInstallment,
+    verificationGatePaymentPlan,
+  ]);
 
   // Handle task click to toggle completion (just marks as checked, not verified)
   const handleTaskClick = async (e, uniqueKey) => {
@@ -1754,6 +1837,27 @@ const ProjectDashboard = () => {
       newVerified = currentVerified.filter((id) => id !== uniqueKey);
       isMarkingVerified = false;
     } else {
+      const taskToVerify = derivedTasks.find((task) => task.uniqueKey === uniqueKey);
+      const isPaymentLocked = isTaskPhaseLockedByPayment({
+        phaseId: taskToVerify?.phase,
+        phaseOrderMap,
+        paymentPlan: verificationGatePaymentPlan,
+      });
+
+      if (isPaymentLocked) {
+        const pendingPaymentLabel =
+          verificationDueInstallment?.label || "the pending milestone payment";
+        toast.error(
+          `Pay ${pendingPaymentLabel} before verifying tasks in later phases.`
+        );
+        setVerifyingTaskIds((prev) => {
+          const next = new Set(prev);
+          next.delete(uniqueKey);
+          return next;
+        });
+        return;
+      }
+
       // Adding verification
       newVerified = [...currentVerified, uniqueKey];
       isMarkingVerified = true;
@@ -2000,8 +2104,8 @@ const ProjectDashboard = () => {
                         phaseGroup.phaseStatus === "completed" &&
                         phaseInstallments.length > 0;
 
-                      return (
-                        <React.Fragment key={phaseGroup.phaseId}>
+        return (
+          <React.Fragment key={phaseGroup.phaseId}>
                           <AccordionItem
                             value={phaseGroup.phaseId}
                             className="border-border/60"
@@ -2076,7 +2180,9 @@ const ProjectDashboard = () => {
                                         {task.title}
                                         {phaseGroup.isLocked && (
                                           <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
-                                            (Locked)
+                                            {phaseGroup.isPaymentLocked
+                                              ? "(Payment required)"
+                                              : "(Locked)"}
                                           </span>
                                         )}
                                       </span>

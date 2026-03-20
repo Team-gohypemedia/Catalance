@@ -34,6 +34,7 @@ import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shar
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { useSearchParams } from "react-router-dom";
+import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import { cn } from "@/shared/lib/utils";
 
 const SERVICE_LABEL = "Project Chat";
@@ -105,23 +106,8 @@ const getFirstNonEmptyText = (...values) => {
   return "";
 };
 
-const escapeRegExp = (value = "") =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const extractLabeledValue = (value = "", labels = []) => {
-  const source = String(value || "");
-  if (!source) return "";
-
-  for (const label of labels) {
-    const match = source.match(
-      new RegExp(`${escapeRegExp(label)}[:\\s\\-\\n\\u2022]*([^\\n]+)`, "i"),
-    );
-    const extracted = match?.[1]?.trim();
-    if (extracted) return extracted;
-  }
-
-  return "";
-};
+const extractLabeledValue = (value = "", labels = []) =>
+  extractLabeledLineValue(value, labels);
 
 const normalizeComparableText = (value = "") =>
   String(value || "").trim().toLowerCase();
