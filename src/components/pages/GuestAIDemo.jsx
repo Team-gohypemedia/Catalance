@@ -1300,6 +1300,7 @@ const GuestAIDemo = () => {
     const recognitionRef = useRef(null);
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
+    const suppressSpeechCommitRef = useRef(false);
     const normalizedInputType = (inputConfig.type || 'text').toLowerCase();
     const isSidebarCompact = sidebarSize === 'small';
     const isMultiInput = normalizedInputType === 'multi_select'
@@ -1384,6 +1385,11 @@ const GuestAIDemo = () => {
             field.setSelectionRange(textLength, textLength);
         }
     }, [shouldShowTextInput]);
+
+    const clearSpeechDraftRefs = useCallback(() => {
+        speechBaseInputRef.current = "";
+        speechFinalRef.current = "";
+    }, []);
 
     const normalizeOptionToken = (value = '') =>
         String(value || '').trim().toLowerCase();
@@ -1616,6 +1622,10 @@ const GuestAIDemo = () => {
         };
 
         recognition.onresult = (event) => {
+            if (suppressSpeechCommitRef.current) {
+                return;
+            }
+
             let interimTranscript = '';
             let finalTranscript = '';
 
@@ -1648,6 +1658,11 @@ const GuestAIDemo = () => {
         recognition.onerror = (event) => {
             setIsListening(false);
             const error = event?.error;
+            if (suppressSpeechCommitRef.current) {
+                suppressSpeechCommitRef.current = false;
+                clearSpeechDraftRefs();
+                return;
+            }
             if (error === 'not-allowed' || error === 'service-not-allowed') {
                 toast.error('Microphone access is blocked. Please allow microphone access in your browser settings.');
                 return;
@@ -1668,6 +1683,11 @@ const GuestAIDemo = () => {
 
         recognition.onend = () => {
             setIsListening(false);
+            if (suppressSpeechCommitRef.current) {
+                suppressSpeechCommitRef.current = false;
+                clearSpeechDraftRefs();
+                return;
+            }
             setInput(
                 appendSpeechTranscript(
                     speechBaseInputRef.current,
@@ -1692,7 +1712,7 @@ const GuestAIDemo = () => {
             }
             recognitionRef.current = null;
         };
-    }, []);
+    }, [clearSpeechDraftRefs]);
 
     const toggleVoiceInput = useCallback(() => {
         const recognition = recognitionRef.current;
@@ -1712,6 +1732,7 @@ const GuestAIDemo = () => {
             return;
         }
 
+        suppressSpeechCommitRef.current = false;
         speechBaseInputRef.current = input;
         speechFinalRef.current = '';
 
@@ -1984,6 +2005,8 @@ const GuestAIDemo = () => {
         if (isArrayPayload && normalizedArray.length === 0 && !hasAttachments) return;
 
         if (isListening && recognitionRef.current) {
+            suppressSpeechCommitRef.current = true;
+            clearSpeechDraftRefs();
             try {
                 recognitionRef.current.stop();
             } catch {
@@ -2008,6 +2031,7 @@ const GuestAIDemo = () => {
             const userMsg = { role: 'user', content: composedContent };
             setMessages((prev) => [...prev, userMsg]);
             setInput("");
+            clearSpeechDraftRefs();
             setPendingAttachments([]);
             setInputConfig({ type: 'text', options: [] });
             setSelectedOptions([]);
