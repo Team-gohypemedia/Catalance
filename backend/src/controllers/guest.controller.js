@@ -45,6 +45,34 @@ const safeDecodeURIComponent = (value = "") => {
     }
 };
 
+const countLikelyMojibakeArtifacts = (value = "") =>
+    (String(value || "").match(/Ã.|â.|Â|�/g) || []).length;
+
+const normalizeAttachmentDisplayText = (value = "") => {
+    const source = String(value || "").trim();
+    if (!source) return "";
+
+    const candidates = [source];
+    if (countLikelyMojibakeArtifacts(source) > 0) {
+        try {
+            const repaired = Buffer.from(source, "latin1").toString("utf8").trim();
+            if (repaired) {
+                candidates.push(repaired);
+            }
+        } catch {
+            // Keep the original string if repair fails.
+        }
+    }
+
+    return candidates
+        .map((text) => ({
+            text,
+            artifactCount: countLikelyMojibakeArtifacts(text),
+            length: text.length
+        }))
+        .sort((a, b) => a.artifactCount - b.artifactCount || b.length - a.length)[0]?.text || source;
+};
+
 const parseJsonObjectFromRaw = (raw = "") => {
     const source = String(raw || "").trim();
     if (!source) return null;
@@ -89,7 +117,7 @@ const parseAttachmentTokensFromMessage = (messageText = "") => {
             continue;
         }
 
-        const name = safeDecodeURIComponent(match[1] || "") || "Attachment";
+        const name = normalizeAttachmentDisplayText(safeDecodeURIComponent(match[1] || "")) || "Attachment";
         const url = safeDecodeURIComponent(match[2] || "");
         const type = safeDecodeURIComponent(match[3] || "");
         const size = Number.parseInt(match[4] || "0", 10);
@@ -163,11 +191,22 @@ const fetchAttachmentResponse = async (url) => {
     return response;
 };
 
-const extractPdfTextFromBuffer = async (buffer) => {
+const extractPdfContextFromBuffer = async (buffer) => {
     const pdfJs = await loadPdfJs();
     const loadingTask = pdfJs.getDocument({ data: new Uint8Array(buffer) });
     const pdf = await loadingTask.promise;
     let extracted = "";
+    const metadata = await pdf.getMetadata().catch(() => null);
+    const info = metadata?.info || {};
+    const metadataMap = metadata?.metadata;
+    const title = normalizeAttachmentDisplayText(
+        metadataMap?.get?.("dc:title")
+        || metadataMap?.get?.("pdf:Title")
+        || info.Title
+        || ""
+    );
+    const subject = normalizeAttachmentDisplayText(info.Subject || "");
+    const keywords = normalizeAttachmentDisplayText(info.Keywords || "");
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
         const page = await pdf.getPage(pageNum);
@@ -182,7 +221,14 @@ const extractPdfTextFromBuffer = async (buffer) => {
         if (extracted.length >= MAX_SINGLE_ATTACHMENT_TEXT_CHARS) break;
     }
 
-    return clipAttachmentText(extracted);
+    const contextParts = [];
+    if (title) contextParts.push(`Document title: ${title}`);
+    if (subject) contextParts.push(`Document subject: ${subject}`);
+    if (keywords) contextParts.push(`Document keywords: ${keywords}`);
+    if (pdf.numPages) contextParts.push(`Page count: ${pdf.numPages}`);
+    if (extracted) contextParts.push(`Extracted text:\n${extracted}`);
+
+    return clipAttachmentText(contextParts.join("\n"));
 };
 
 const extractDocxTextFromBuffer = async (buffer) => {
@@ -290,7 +336,9 @@ const analyzeImageAttachmentWithVision = async ({ url = "", name = "", type = ""
 };
 
 const extractAttachmentContext = async ({ attachment = {}, index = 0 }) => {
-    const name = String(attachment.name || `Attachment ${index + 1}`).trim();
+    const name = normalizeAttachmentDisplayText(
+        String(attachment.name || `Attachment ${index + 1}`).trim()
+    );
     const type = String(attachment.type || "").trim();
     const descriptor = `[Attachment ${index + 1}] ${name}${type ? ` (${type})` : ""}`;
 
@@ -329,11 +377,15 @@ const extractAttachmentContext = async ({ attachment = {}, index = 0 }) => {
             const response = await fetchAttachmentResponse(attachment.url);
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            const extractedText = isPdfAttachment(attachment)
-                ? await extractPdfTextFromBuffer(buffer)
-                : await extractDocxTextFromBuffer(buffer);
+            let extractedDocumentContext = "";
+            if (isPdfAttachment(attachment)) {
+                extractedDocumentContext = await extractPdfContextFromBuffer(buffer);
+            } else {
+                const text = clipAttachmentText(await extractDocxTextFromBuffer(buffer));
+                extractedDocumentContext = text ? `Extracted text:\n${text}` : "";
+            }
 
-            if (!extractedText) {
+            if (!extractedDocumentContext) {
                 return {
                     descriptor,
                     extractedContext: "Document uploaded, but no readable text was extracted.",
@@ -341,7 +393,7 @@ const extractAttachmentContext = async ({ attachment = {}, index = 0 }) => {
             }
             return {
                 descriptor,
-                extractedContext: `Extracted text:\n${extractedText}`,
+                extractedContext: extractedDocumentContext,
             };
         }
     } catch (error) {
@@ -445,49 +497,120 @@ const buildAttachmentInsightForUser = ({
 }) => {
     if (!Array.isArray(attachments) || attachments.length === 0) return "";
     const context = clipAttachmentText(attachmentContextText, 650);
-    if (!context) return "";
+    const fileNames = attachments
+        .map((file) => normalizeAttachmentDisplayText(file?.name || ""))
+        .filter(Boolean)
+        .slice(0, 2);
+    const fileLabel = fileNames.length > 0 ? fileNames.join(", ") : "your uploaded file";
+    const containsPdf = attachments.some((file) => isPdfAttachment(file));
+
+    if (!context) {
+        return `I received ${fileLabel}. I will use it if I can pull out useful details from it.`;
+    }
 
     const lines = context
         .split("\n")
-        .map((line) => String(line || "").trim())
+        .map((line) => normalizeAttachmentDisplayText(String(line || "").trim()))
         .filter(Boolean);
 
     const pickByPrefix = (prefix) =>
         lines.find((line) => line.toLowerCase().startsWith(prefix.toLowerCase()));
+
+    const cleanLineValue = (line = "", prefixRegex = /^/) =>
+        normalizeAttachmentDisplayText(String(line || "").replace(prefixRegex, "").trim());
 
     const summaryLine = pickByPrefix("Summary:");
     const visibleTextLine = pickByPrefix("Visible text:");
     const possibleBrandLine = pickByPrefix("Possible brand/company name:");
     const designCuesLine = pickByPrefix("Design cues:");
     const extractedTextLine = pickByPrefix("Extracted text:");
+    const titleLine = pickByPrefix("Document title:");
+    const subjectLine = pickByPrefix("Document subject:");
+    const keywordsLine = pickByPrefix("Document keywords:");
+    const pageCountLine = pickByPrefix("Page count:");
 
-    const insightParts = [];
-    if (possibleBrandLine) insightParts.push(possibleBrandLine);
-    if (visibleTextLine) insightParts.push(visibleTextLine);
-    if (designCuesLine) insightParts.push(designCuesLine);
-    if (summaryLine) insightParts.push(summaryLine);
-    if (extractedTextLine && !visibleTextLine) {
-        insightParts.push(
-            `Extracted text snippet: ${clipAttachmentText(
-                extractedTextLine.replace(/^Extracted text:\s*/i, ""),
-                160
-            )}`
-        );
+    const hasUnreadableDocument = lines.some((line) =>
+        /document uploaded, but no readable text was extracted\./i.test(line)
+    );
+    const hasUnreadableTextFile = lines.some((line) =>
+        /text file uploaded, but no readable text was found\./i.test(line)
+    );
+    const hasImageExtractionFailure = lines.some((line) =>
+        /image uploaded\. could not extract image details automatically\./i.test(line)
+    );
+    const hasExtractionFailure = lines.some((line) =>
+        /attachment uploaded, but extraction failed\./i.test(line)
+    );
+    const hasUnsupportedType = lines.some((line) =>
+        /attachment uploaded\. this file type is not currently extractable\./i.test(line)
+    );
+
+    if (hasUnreadableDocument) {
+        return containsPdf
+            ? `I received ${fileLabel}, but I could not reliably read text from it yet. It may be a scanned or image-based PDF. If you upload a text-based copy or clear screenshots of the key pages, I can use that more accurately.`
+            : `I received ${fileLabel}, but I could not reliably read enough text from it to use it yet. If you upload a clearer copy, I can try again.`;
     }
 
-    const fallbackInsight = clipAttachmentText(context, 200);
-    const finalInsight = insightParts.length > 0
-        ? insightParts.join(" | ")
-        : fallbackInsight;
+    if (hasUnreadableTextFile) {
+        return `I received ${fileLabel}, but it did not contain readable text that I could use yet.`;
+    }
 
-    const fileNames = attachments
-        .map((file) => String(file?.name || "").trim())
-        .filter(Boolean)
-        .slice(0, 2)
-        .join(", ");
+    if (hasImageExtractionFailure) {
+        return `I received ${fileLabel}, but I could not clearly read the important details from it. If you upload a sharper image or a closer view of the key section, I can try again.`;
+    }
 
-    const fileLabel = fileNames || "your uploaded file";
-    return `I analyzed ${fileLabel} and detected: ${finalInsight}`;
+    if (hasExtractionFailure) {
+        return `I received ${fileLabel}, but something went wrong while reading it. Please try uploading it again.`;
+    }
+
+    if (hasUnsupportedType) {
+        return `I received ${fileLabel}. I can work best with PDFs, DOCX files, text files, and images right now.`;
+    }
+
+    const title = cleanLineValue(titleLine, /^Document title:\s*/i);
+    const subject = cleanLineValue(subjectLine, /^Document subject:\s*/i);
+    const keywords = cleanLineValue(keywordsLine, /^Document keywords:\s*/i);
+    const pageCount = cleanLineValue(pageCountLine, /^Page count:\s*/i);
+    const possibleBrand = cleanLineValue(possibleBrandLine, /^Possible brand\/company name:\s*/i);
+    const visibleText = cleanLineValue(visibleTextLine, /^Visible text:\s*/i);
+    const summary = cleanLineValue(summaryLine, /^Summary:\s*/i);
+    const designCues = cleanLineValue(designCuesLine, /^Design cues:\s*/i);
+    const extractedText = cleanLineValue(extractedTextLine, /^Extracted text:\s*/i);
+
+    const insightSentences = [];
+    if (title) {
+        insightSentences.push(`I reviewed ${fileLabel} and found a document titled "${clipAttachmentText(title, 90)}".`);
+    } else {
+        insightSentences.push(`I reviewed ${fileLabel} and found useful details in it.`);
+    }
+
+    if (pageCount) {
+        insightSentences.push(`It looks like a ${clipAttachmentText(pageCount, 20)}-page document.`);
+    }
+
+    if (possibleBrand) {
+        insightSentences.push(`I noticed the brand or company name "${clipAttachmentText(possibleBrand, 70)}".`);
+    } else if (subject) {
+        insightSentences.push(`It appears to focus on ${clipAttachmentText(subject, 100)}.`);
+    } else if (keywords) {
+        insightSentences.push(`It seems to cover ${clipAttachmentText(keywords, 100)}.`);
+    }
+
+    if (summary) {
+        insightSentences.push(clipAttachmentText(summary, 160));
+    } else if (visibleText) {
+        insightSentences.push(`I could read key text like "${clipAttachmentText(visibleText, 120)}."`);
+    } else if (designCues) {
+        insightSentences.push(`I also noticed ${clipAttachmentText(designCues, 120)}.`);
+    } else if (extractedText) {
+        insightSentences.push(`I found readable content in it and will use that context as we continue.`);
+    }
+
+    if (insightSentences.length === 0) {
+        return `I reviewed ${fileLabel} and will use any reliable details I could identify from it.`;
+    }
+
+    return clipAttachmentText(insightSentences.join(" "), 420);
 };
 
 const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
