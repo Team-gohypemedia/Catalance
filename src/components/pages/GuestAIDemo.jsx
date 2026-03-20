@@ -1527,6 +1527,11 @@ const GuestAIDemo = () => {
     }, []);
 
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }, []);
+
+    useEffect(() => {
         refreshPreviousChats();
     }, [refreshPreviousChats]);
 
@@ -1544,6 +1549,17 @@ const GuestAIDemo = () => {
         const nextProposals = upsertStoredGeneratedProposal(latestProposalMessage.content, user?.id);
         setGeneratedProposals(nextProposals);
     }, [messages, user?.id]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+        const viewport = getScrollViewport();
+        if (viewport) {
+            viewport.scrollTop = 0;
+        }
+    }, [selectedService, getScrollViewport]);
 
     useEffect(() => {
         if (!sessionId || !selectedService || messages.length === 0) return;
