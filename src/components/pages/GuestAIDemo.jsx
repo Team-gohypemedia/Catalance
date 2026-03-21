@@ -1463,7 +1463,7 @@ const GuestAIDemo = () => {
         });
 
         if (!matched) return raw;
-        return String(typeof matched === 'string' ? matched : (matched.value ?? matched.label ?? raw));
+        return String(typeof matched === 'string' ? matched : (matched.label ?? matched.value ?? raw));
     };
 
     const isOptionSelectedByText = (optionText = '') => {
@@ -1902,6 +1902,7 @@ const GuestAIDemo = () => {
                 : [];
 
             setSessionId(chatMeta.sessionId);
+            setInputConfig(data?.inputConfig || { type: 'text', options: [] });
             if (restored.length > 0) {
                 setMessages(restored);
             } else {
