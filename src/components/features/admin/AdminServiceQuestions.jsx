@@ -281,19 +281,18 @@ const AdminServiceQuestions = () => {
 
     return (
         <AdminLayout>
-            <div className="relative flex flex-col gap-8 p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)]">
+            <div className="relative flex flex-col gap-8 p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)] overflow-hidden">
                 <AdminTopBar label="Service Questions" />
 
-                <div className="flex flex-col md:flex-row h-full gap-8 overflow-hidden">
+                <div className="flex-1 flex flex-col md:flex-row gap-8 overflow-hidden min-h-0">
 
                     {/* Sidebar Service List */}
-                    <div className="w-full md:w-1/4 flex flex-col gap-4 bg-card border rounded-xl p-4 shadow-sm h-full max-h-full">
-                        <div className="flex flex-col gap-1">
+                    <div className="w-full md:w-1/4 flex flex-col gap-4 bg-card border rounded-xl p-4 shadow-sm h-full overflow-hidden shrink-0">
+                        <div className="flex flex-col gap-1 shrink-0">
                             <h2 className="text-xl font-bold tracking-tight">Services</h2>
                             <p className="text-sm text-muted-foreground">Select a service to manage its questions.</p>
                         </div>
-                        <Separator />
-                        <ScrollArea className="flex-1 -mr-3 pr-3 h-full">
+                        <div className="flex-1 overflow-y-auto -mr-2 pr-2 custom-scrollbar">
                             <div className="flex flex-col gap-1 pr-1 pb-12">
                                 {loadingServices ? (
                                     <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">
@@ -329,11 +328,11 @@ const AdminServiceQuestions = () => {
                                     })
                                 )}
                             </div>
-                        </ScrollArea>
+                        </div>
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="flex-1 flex flex-col gap-6 h-full overflow-hidden">
+                    <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-hidden">
                         <div className="flex justify-between items-center bg-card p-6 rounded-xl border shadow-sm shrink-0">
                             <div>
                                 <h1 className="text-2xl font-bold tracking-tight">
@@ -390,7 +389,7 @@ const AdminServiceQuestions = () => {
                                     />
                                 </div>
                             ) : (
-                                <ScrollArea className="h-full p-6">
+                                <div className="h-full overflow-y-auto p-6 custom-scrollbar">
                                     {!selectedServiceId ? (
                                         <div className="flex flex-col items-center justify-center h-[400px] text-center opacity-50">
                                             <LucideIcons.MousePointer2 className="h-16 w-16 mb-4 text-muted-foreground" />
@@ -496,7 +495,7 @@ const AdminServiceQuestions = () => {
                                             <div className="h-20" /> {/* Bottom Spacer */}
                                         </div>
                                     )}
-                                </ScrollArea>
+                                </div>
                             )}
                         </div>
                     </div>
