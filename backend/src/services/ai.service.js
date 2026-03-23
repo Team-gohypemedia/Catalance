@@ -2459,17 +2459,14 @@ const extractProposalSections = (markdown = "") => {
   let activeKey = null;
 
   for (const rawLine of String(markdown || "").replace(/\r/g, "").split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
+    let line = rawLine.trim();
+    if (!line) continue;
+    
+    // Strip markdown formatting like code blocks and headers to expose the plain key-value pair
+    if (line.startsWith("```")) continue;
+    line = line.replace(/^[#\s]+/, "").trim();
 
-    const bulletMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
-    if (bulletMatch) {
-      if (!activeKey) continue;
-      sections.get(activeKey).items.push(bulletMatch[1].trim());
-      continue;
-    }
-
-    const keyValueMatch = line.match(/^\*{0,2}([^:*]+?)\*{0,2}:\s*(.*)$/);
+    const keyValueMatch = line.match(/^\*{0,2}(?:[-*]\s+)?(?:\d+\.\s+)?([^:*]+?)\*{0,2}:\s*(.*)$/);
     if (keyValueMatch) {
       const key = String(keyValueMatch[1] || "").replace(/\*+/g, "").trim();
       const value = String(keyValueMatch[2] || "").replace(/\*+/g, "").trim();
@@ -2480,6 +2477,13 @@ const extractProposalSections = (markdown = "") => {
       if (value) {
         sections.get(key).value = value;
       }
+      continue;
+    }
+
+    const bulletMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
+    if (bulletMatch) {
+      if (!activeKey) continue;
+      sections.get(activeKey).items.push(bulletMatch[1].trim());
       continue;
     }
 
@@ -3141,6 +3145,9 @@ export const generateProposalMarkdown = async (
     proposalContext: contextPayload,
     selectedServiceName
   });
+
+  console.log("[DEBUG] Raw AI Proposal Markdown:\n", proposalMarkdown);
+  console.log("[DEBUG] Completeness Needs Repair:", completeness.needsRepair, "Missing:", completeness.missingFields);
 
   if (completeness.needsRepair) {
     try {

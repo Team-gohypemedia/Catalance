@@ -1088,10 +1088,18 @@ const stripNameNotedRecap = (message = "") => {
         return firstPersonRecap || sharedRecap || soFarRecap;
     };
 
-    cleaned = cleaned
-        .split(/(?<=[.?!])\s+/)
-        .filter((sentence) => !isNameBrandRecapSentence(sentence))
-        .join(" ");
+    const parts = cleaned.split(/((?<=[.?!])(?:[ \t]*\n+[ \t]*|[ \t]+))/);
+    let result = "";
+    for (let i = 0; i < parts.length; i += 2) {
+        const sentence = parts[i] || "";
+        const whitespace = parts[i+1] || "";
+        if (!isNameBrandRecapSentence(sentence)) {
+            result += sentence + whitespace;
+        } else if (whitespace.includes("\n")) {
+            result += whitespace.replace(/[ \t]/g, "");
+        }
+    }
+    cleaned = result;
 
     return cleaned
         .replace(/[ \t]{2,}/g, " ")
@@ -1471,11 +1479,17 @@ const hasAnswerValue = (value) => {
 };
 
 const toComparableAnswer = (value) => {
+    const stripParens = (str) => String(str).replace(/\([^)]*\)/g, "").trim();
+
     if (Array.isArray(value)) {
-        return value.map((item) => normalizeTextToken(item)).filter(Boolean).sort().join(" | ");
+        return value
+            .map((item) => stripParens(normalizeTextToken(item)))
+            .filter(Boolean)
+            .sort()
+            .join(" | ");
     }
 
-    const normalized = normalizeTextToken(value);
+    const normalized = stripParens(normalizeTextToken(value));
     if (!normalized) return "";
 
     return normalized
@@ -2313,6 +2327,7 @@ ${responseLengthRule}
 - Use simple English with clear sentences.
 - Keep the tone polite, friendly, and enthusiastic in every response.
 - Avoid repeating the same idea in multiple lines.
+- IMPORTANT: If 'side_reply' asks a different question or lists different options than the 'Required next question', you MUST ignore the conflicting parts of 'side_reply' and ONLY ask the 'Required next question'.
 - In normal guided flow, avoid phrases like "I recommend", "best option", "people usually choose", or "people often lean toward" unless the user explicitly asks for a recommendation.
 - Do not skip or replace the required next question.
 - Do not ask extra unrelated questions.
@@ -2429,6 +2444,60 @@ ${outputFormatBlock}
         console.error("[buildAiGuidedQuestionMessage] Fatal error:", e);
         return "";
     }
+};
+
+const checkMeaningfulChangeWithAI = async ({ questionText, oldAnswer, newAnswer }) => {
+    const prompt = `
+You are an AI assistant helping a user build a project. The user had previously answered this question:
+Question: "${questionText}"
+Old Answer: "${oldAnswer}"
+
+Based on the latest conversation, we naturally extracted a new answer for that question:
+New Answer: "${newAnswer}"
+
+Decide if the new answer represents a genuine, disruptive change of mind (e.g., they specifically chose "WordPress" earlier, but now want "Shopify", and they actively decided to switch paths).
+
+CRITICAL EXCEPTIONS that are NOT considered a "meaningful change of mind" (return is_meaningful_change: false):
+1. If the Old Answer implies the user was "Not sure", "Undecided", "Suggest best option", "I don't know", etc., and the New Answer is a concrete choice they just made based on our advice. This is a natural progression, NOT a change of mind!
+2. If the New Answer is just a trivial rewording, elaboration, or synonymous expression of their Old Answer.
+
+If it IS a genuine change, write a friendly confirmation message asking if they want to update their answer. Ask it conversationally ("I noticed you mentioned... Should we switch your choice to...?"). Do not force them to reply "Yes" or "No" in the text.
+
+Return ONLY strict valid JSON in this exact format:
+{
+  "is_meaningful_change": boolean,
+  "confirmation_message": "string (or empty if false)"
+}
+`;
+
+    try {
+        const evalResponse = await chatWithAI(
+            [{ role: "user", content: prompt }],
+            [{ role: "system", content: "You are a strict JSON-only evaluator. Output valid JSON." }],
+            "system_evaluator"
+        );
+        if (evalResponse?.success) {
+            const rawMsg = evalResponse.message.replace(/```(?:json)?|```/g, "").trim();
+            const firstBrace = rawMsg.indexOf('{');
+            const lastBrace = rawMsg.lastIndexOf('}');
+            const cleanJson = (firstBrace >= 0 && lastBrace >= firstBrace) 
+                ? rawMsg.substring(firstBrace, lastBrace + 1)
+                : rawMsg;
+            const parsed = JSON.parse(cleanJson.replace(/\*\*/g, ""));
+            return {
+                isMeaningful: !!parsed.is_meaningful_change,
+                confirmMessage: parsed.confirmation_message || ""
+            };
+        }
+    } catch (e) {
+        console.error("[checkMeaningfulChangeWithAI] Failed:", e);
+    }
+    
+    // Fallback
+    return {
+        isMeaningful: true,
+        confirmMessage: `Are you sure you want to update your answer for "${questionText}" to "${newAnswer}"?`
+    };
 };
 
 const getChangedAnswerDetails = (questions = [], previousAnswersBySlug = {}, nextAnswersBySlug = {}) => {
@@ -3032,6 +3101,117 @@ export const guestChat = asyncHandler(async (req, res) => {
     const currentStep = session.currentStep;
     const currentQuestion = questions[currentStep];
     const sessionRuntimeOptionsByQuestionSlug = getRuntimeOptionsByQuestionSlug(session.answers || {});
+
+    // --- CONFIRMATION INTERCEPT ---
+    if (session.answers && session.answers.pendingCorrectionState) {
+        // We are waiting for a Yes/No answer regarding the proposed update
+        const intentObj = await chatWithAI(
+            [{ role: "system", content: "You extract intent from user confirmation responses." },
+             { role: "user", content: `The assistant asked: "Are you sure you want to update your answer?"\nThe user replied: "${trimmedMessageText}"\nDoes the user confirm the update (YES), reject the update (NO), or did they say something completely unrelated (UNKNOWN)? Return ONLY JSON: {"intent": "yes" | "no" | "unknown"}` }],
+            [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+            "system_validator"
+        );
+        let intent = "unknown";
+        if (intentObj.success) {
+            try {
+                const parsed = JSON.parse(intentObj.message);
+                intent = parsed.intent?.toLowerCase() || "unknown";
+            } catch (e) {
+                intent = trimmedMessageText.toLowerCase().includes("yes") || trimmedMessageText.toLowerCase().includes("yeah") || trimmedMessageText.toLowerCase().includes("sure") ? "yes" 
+                         : (trimmedMessageText.toLowerCase().includes("no") || trimmedMessageText.toLowerCase().includes("nope") ? "no" : "unknown");
+            }
+        }
+
+        const persistedUserMessageContent = attachmentUploads.length > 0 && !trimmedMessageText
+            ? "[Uploaded Attachments]"
+            : trimmedMessageText;
+
+        await prisma.aiGuestMessage.create({
+            data: { sessionId, role: "user", content: persistedUserMessageContent }
+        });
+
+        if (intent === "unknown") {
+            const unknownMsg = "I didn't quite catch that. Do you want me to update your previous answer? (Yes / No)";
+            await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: unknownMsg } });
+            const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
+            return res.json({
+                success: true, message: unknownMsg,
+                inputConfig: { type: "text", options: ["Yes", "No"] },
+                history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+            });
+        }
+
+        if (intent === "no") {
+            const nextAnswers = { ...session.answers };
+            delete nextAnswers.pendingCorrectionState;
+            await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
+            
+            const cancelMsg = "No problem, I'll keep your original answer.";
+            const followQuestionBlock = formatQuestionWithOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug);
+            const fullCancelMsg = `${cancelMsg}\n\n${followQuestionBlock}`;
+            await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: fullCancelMsg } });
+            const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
+            return res.json({
+                success: true, message: fullCancelMsg,
+                inputConfig: { type: currentQuestion?.type || "text", options: getDisplayedQuestionOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug) },
+                history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+            });
+        }
+
+        // intent === "yes"
+        const state = session.answers.pendingCorrectionState;
+        let correctedAnswersBySlug = state.proposedAnswersBySlug;
+        const correctionChanges = state.changes;
+        
+        let correctedRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
+        const dependentIndexes = getDependentIndexesForChanges(questions, correctionChanges);
+        if (dependentIndexes.length > 0) {
+            correctedAnswersBySlug = clearAnswersByIndexes(correctedAnswersBySlug, questions, dependentIndexes);
+            correctedRuntimeOptionsByQuestionSlug = clearRuntimeOptionsByIndexes(correctedRuntimeOptionsByQuestionSlug, questions, dependentIndexes);
+        }
+        
+        const correctionNextStep = findNextUnansweredStep(questions, correctedAnswersBySlug);
+        let correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions, {
+            runtimeOptionsByQuestionSlug: correctedRuntimeOptionsByQuestionSlug,
+            existingPayload: session.answers || {}
+        });
+        
+        if (correctionNextStep < questions.length) {
+            const correctionNextQuestion = questions[correctionNextStep];
+            const runtimeOptions = await generateRuntimeOptionsForQuestion({
+                serviceName: service.name, question: correctionNextQuestion,
+                answersByQuestionText: correctedPayload.byQuestionText,
+                answersBySlug: correctedAnswersBySlug, allQuestions: questions
+            });
+            if (correctionNextQuestion?.slug && runtimeOptions.length > 0) {
+                correctedRuntimeOptionsByQuestionSlug[correctionNextQuestion.slug] = runtimeOptions;
+            }
+            correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions, {
+                runtimeOptionsByQuestionSlug: correctedRuntimeOptionsByQuestionSlug, existingPayload: session.answers || {}
+            });
+        }
+
+        // Implicitly drops pendingCorrectionState since we rebuild it from scratch
+        await prisma.aiGuestSession.update({
+            where: { id: sessionId },
+            data: { answers: correctedPayload, currentStep: correctionNextStep }
+        });
+
+        const followQuestionText = correctionNextStep < questions.length 
+            ? formatQuestionWithOptions(questions[correctionNextStep], correctedRuntimeOptionsByQuestionSlug) 
+            : "Thanks, I updated that. Let me generate your proposal now.";
+        const correctionBridgeCore = dependentIndexes.length > 0 ? `All set. I updated your earlier answer and adjusted related steps.` : `All set. I updated your earlier answer.`;
+        const correctionMessage = buildFriendlyMessage(followQuestionText, correctionBridgeCore);
+
+        await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: correctionMessage } });
+        const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
+        return res.json({
+            success: true, message: correctionMessage,
+            inputConfig: correctionNextStep < questions.length ? { type: questions[correctionNextStep].type || "text", options: getDisplayedQuestionOptions(questions[correctionNextStep], correctedRuntimeOptionsByQuestionSlug) } : { type: "text", options: [] },
+            history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+        });
+    }
+    // --- END CONFIRMATION INTERCEPT ---
     const numericSelection = mapNumericReplyToOptions(
         currentQuestion,
         trimmedMessageText,
@@ -3129,8 +3309,6 @@ export const guestChat = asyncHandler(async (req, res) => {
         });
     }
 
-    // 3. Save User Answer (Preliminary)
-    // We will save it, but we might not advance step if invalid.
 
     // --- VALIDATION STEP ---
     let validationResult = null;
@@ -3154,23 +3332,15 @@ export const guestChat = asyncHandler(async (req, res) => {
             sessionRuntimeOptionsByQuestionSlug
         );
 
-        // Prepare context for the NEXT question if it exists
-        const nextStepIndex = currentStep + 1;
-        const nextQuestionSubtitle = (nextStepIndex < questions.length)
-            ? String(questions[nextStepIndex]?.subtitle || "").trim()
-            : "";
-        const nextQuestionText = (nextStepIndex < questions.length)
-            ? questions[nextStepIndex].text
-            : "This was the final question. I will now generate the proposal.";
         const validationResponseRules = isOpeningIntakeStep
             ? `
             - This is one of the first three questions.
             - Keep the full response under 50 words total.
-            - Use up to two short lead-in sentences before the question: one natural acknowledgement or warm opener, plus one short friendly bridge sentence.
+            - Use up to two short sentences: one natural acknowledgement or warm opener, plus one short friendly bridge sentence.
             - Do NOT give suggestions, recommendations, best practices, feature ideas, or strategic advice.
-            - If VALID: use one short natural acknowledgement sentence, one short warm bridge sentence, then ask the "Next Question in Script" naturally.
+            - If VALID: use one short natural acknowledgement sentence and one short warm bridge sentence. DO NOT ASK ANY QUESTIONS.
             - If INVALID: use one short natural acknowledgement sentence, one short warm bridge sentence, then re-ask the Current Question naturally.
-            - If INFO_REQUEST: answer in at most one short sentence, add one short warm bridge sentence if helpful, then ask the Current Question again. Do NOT add recommendations.
+            - If INFO_REQUEST or if the user answers with "not sure", "other", or asks for advice: Give a practical helpful answer. Provide a short, tailored recommendation with concrete examples based on their known context and the service type. Then ask the Current Question again. Do NOT give long, unrelated strategic advice.
             - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
             - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
             `
@@ -3179,18 +3349,19 @@ export const guestChat = asyncHandler(async (req, res) => {
             - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
             - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
             - Do not sound corrective or robotic. Avoid phrases like "invalid response", "I caught", "still need", or "wrong answer".
-            - If INFO_REQUEST: Give a practical helpful answer with more detail:
+            - If INFO_REQUEST or if the user answers with "not sure", "other", or asks for advice: Give a practical helpful answer with more detail:
               1) Answer the user's confusion/question clearly (2-4 short sentences).
-              2) Give one recommendation and why it fits their known context.
+              2) Give a highly tailored recommendation with concrete examples based on their known context and the service type.
               3) Then ask the Current Question again so we can continue the flow.
               4) If Current Question has options, include them as numbered list (1., 2., 3.).
-            - If VALID: Acknowledge the answer enthusiastically, providing a short but informative conversational response relating to their answer before asking the "Next Question in Script" naturally.
+            - If VALID: Acknowledge the answer enthusiastically, providing a short but informative conversational response relating to their answer.
               Include at least one concrete reason, benefit, or tradeoff tied to the user's known context when relevant.
+              DO NOT ASK ANY QUESTIONS. Stop after your short conversational bridge.
               (If it's the final question, just say "Thanks! Let me put that together for you.")
             - If INVALID: Politely ask for clarification or the specific details needed. But be sure to write a warm, friendly response before re-asking the question.
             - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
             - Keep wording polite, friendly, and engaging.
-            - Keep the total response under 150 words.
+            - Keep the total response under 100 words.
             `;
 
         const validationPrompt = `
@@ -3205,17 +3376,16 @@ export const guestChat = asyncHandler(async (req, res) => {
             User's Answer: "${userMessageText}"
             Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
             Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
-             
-            Next Question in Script: "${nextQuestionText}"
-            Next Question Internal Context: ${JSON.stringify(nextQuestionSubtitle || "None")}
-
+            
             Task:
             1. Validate the user's answer to the Current Question.
             - If it's a greeting (hi, hello) but the question expects details -> INVALID.
             - If it's irrelevant/gibberish -> INVALID.
             - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
             - If direct text is empty but attachment context clearly answers the current question, treat as VALID.
-            - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming a specific tool like "webflow" or "framer" when asked a broader question), you MUST immediately accept it as VALID. 
+            - **REGISTERED COMPANY NAME CHECK**: If the Current Question asks for a company or brand name, and the user's answer is a well-known registered or famous company name (e.g., Google, Apple, Microsoft, Amazon, Catalance, or any other widely known brand), you MUST treat it as INVALID. The response \`message\` MUST politely state that the name is already registered and in use for this type of service in their region, and ask them to provide a different name.
+            - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming "Elementor" making WordPress obvious), you MUST immediately accept it as VALID.
+            - UNSUPPORTED PLATFORMS: If the user requests a fundamentally unsupported platform or tool that conflicts with all available options (e.g., asking for Webflow, Framer, Wix, or Squarespace when the only options are WordPress, Shopify, or Custom React/Node Development), do NOT forcibly map it to "Custom Development". Instead, treat it as an INFO_REQUEST. Your response \`message\` should politely explain that we primarily specialize in the listed technologies, briefly explain how one of our options (like Custom Development or WordPress) might still achieve their design goals, and ask which of our supported options they would like to explore so we can align the project correctly.
             - Do not be pedantic or rigid. Do NOT force them to pick the literal option or repeat themselves.
             - Map the implied choice to the most advanced/closest matching option's value in "normalizedAnswer" and proceed.
             - In general, if the user's answer logically provides the requested information in their own words for any question, treat it as VALID and map it to the closest option.
@@ -3335,123 +3505,64 @@ ${validationResponseRules}
                 correctionCapture.answersBySlug
             );
 
+            let activeCorrectionChange = null;
+            let activeCorrectionConfirmMsg = "";
+
             if (correctionChanges.length > 0) {
-                let correctedAnswersBySlug = correctionCapture.answersBySlug;
-                let correctedRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
-                const dependentIndexes = getDependentIndexesForChanges(questions, correctionChanges);
-
-                if (dependentIndexes.length > 0) {
-                    correctedAnswersBySlug = clearAnswersByIndexes(
-                        correctedAnswersBySlug,
-                        questions,
-                        dependentIndexes
-                    );
-                    correctedRuntimeOptionsByQuestionSlug = clearRuntimeOptionsByIndexes(
-                        correctedRuntimeOptionsByQuestionSlug,
-                        questions,
-                        dependentIndexes
-                    );
-                    const dependentSlugs = dependentIndexes
-                        .map((index) => questions[index]?.slug)
-                        .filter(Boolean)
-                        .join(", ");
-                    console.log(
-                        `[Correction Flow] Cleared dependent answers after correction: ${dependentSlugs}`
-                    );
-                }
-
-                const correctionNextStep = findNextUnansweredStep(questions, correctedAnswersBySlug);
-                let correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions, {
-                    runtimeOptionsByQuestionSlug: correctedRuntimeOptionsByQuestionSlug,
-                    existingPayload: session.answers || {}
-                });
-
-                if (correctionNextStep < questions.length) {
-                    const correctionNextQuestion = questions[correctionNextStep];
-                    const runtimeOptions = await generateRuntimeOptionsForQuestion({
-                        serviceName: service.name,
-                        question: correctionNextQuestion,
-                        answersByQuestionText: correctedPayload.byQuestionText,
-                        answersBySlug: correctedAnswersBySlug,
-                        allQuestions: questions
+                for (const change of correctionChanges) {
+                    const rawQText = questions[change.index]?.text || "an earlier question";
+                    const qText = rawQText.split('\n').filter(Boolean).pop().trim();
+                    const evalResult = await checkMeaningfulChangeWithAI({
+                        questionText: qText,
+                        oldAnswer: change.previousValue,
+                        newAnswer: change.nextValue
                     });
-                    if (correctionNextQuestion?.slug && runtimeOptions.length > 0) {
-                        correctedRuntimeOptionsByQuestionSlug[correctionNextQuestion.slug] = runtimeOptions;
+                    if (evalResult.isMeaningful) {
+                        activeCorrectionChange = change;
+                        activeCorrectionConfirmMsg = evalResult.confirmMessage || `I noticed a change for "${qText}". Do you want to update it to "${change.nextValue}"?`;
+                        break;
                     }
-                    correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions, {
-                        runtimeOptionsByQuestionSlug: correctedRuntimeOptionsByQuestionSlug,
-                        existingPayload: session.answers || {}
-                    });
                 }
+            }
 
+            if (activeCorrectionChange) {
+                // Feature 3: Pause and ask for confirmation before applying past question updates
+                const change = activeCorrectionChange;
+                
+                // Save pending corrections state 
+                const nextAnswers = { ...(session.answers || {}) };
+                nextAnswers.pendingCorrectionState = {
+                    proposedAnswersBySlug: correctionCapture.answersBySlug,
+                    changes: correctionChanges
+                };
+                
                 await prisma.aiGuestSession.update({
                     where: { id: sessionId },
-                    data: {
-                        answers: correctedPayload,
-                        currentStep: correctionNextStep
-                    }
+                    data: { answers: nextAnswers }
                 });
-
+                
                 await prisma.aiGuestMessage.create({
-                    data: {
-                        sessionId,
-                        role: "user",
-                        content: persistedUserMessageContent,
-                    },
+                    data: { sessionId, role: "user", content: persistedUserMessageContent }
                 });
 
-                const followQuestion = correctionNextStep < questions.length
-                    ? formatQuestionWithOptions(
-                        questions[correctionNextStep],
-                        correctedRuntimeOptionsByQuestionSlug
-                    )
-                    : "Thanks, I updated that. Let me generate your proposal now.";
-                const personalizedFollowBridge = buildPersonalizedQuestionBridge({
-                    nextQuestionText: questions[correctionNextStep]?.text || followQuestion,
-                    answersByQuestionText: correctedPayload.byQuestionText,
-                    serviceName: service.name
-                });
-                const correctionBridgeCore = dependentIndexes.length > 0
-                    ? `Got it - I updated your earlier answer and adjusted related steps. ${personalizedFollowBridge}`
-                    : `Got it - I updated your earlier answer. ${personalizedFollowBridge}`;
-                const correctionBridge = [attachmentInsightNote, correctionBridgeCore]
-                    .map((part) => String(part || "").trim())
-                    .filter(Boolean)
-                    .join("\n\n");
-                const correctionMessage = stripNameNotedRecap(
-                    buildFriendlyMessage(followQuestion, correctionBridge)
-                );
-
+                const confirmMsg = activeCorrectionConfirmMsg;
                 await prisma.aiGuestMessage.create({
-                    data: {
-                        sessionId,
-                        role: "assistant",
-                        content: correctionMessage,
-                    },
+                    data: { sessionId, role: "assistant", content: confirmMsg }
                 });
 
                 const sessionReload = await prisma.aiGuestSession.findUnique({
                     where: { id: sessionId },
-                    include: { messages: { orderBy: { createdAt: 'asc' } } },
+                    include: { messages: { orderBy: { createdAt: 'asc' } } }
                 });
-
-                const correctionInputConfig = correctionNextStep < questions.length
-                    ? {
-                        type: questions[correctionNextStep].type || "text",
-                        options: getDisplayedQuestionOptions(
-                            questions[correctionNextStep],
-                            correctedRuntimeOptionsByQuestionSlug
-                        )
-                    }
-                    : { type: "text", options: [] };
 
                 return res.json({
                     success: true,
-                    message: correctionMessage,
-                    inputConfig: correctionInputConfig,
+                    message: confirmMsg,
+                    inputConfig: { type: "text", options: ["Yes", "No"] },
                     history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
                 });
             }
+
 
             let invalidFlowAnswersBySlug = existingAnswersBySlug;
             let capturedFutureNote = "";
@@ -3611,6 +3722,72 @@ ${validationResponseRules}
         existingAnswersBySlug,
         updatedAnswersBySlug
     );
+
+    const pastChanges = changedAnswers.filter(c => c.index < currentStep);
+    let activePastChange = null;
+    let activePastConfirmMsg = "";
+
+    if (pastChanges.length > 0) {
+        for (const change of pastChanges) {
+            const rawQText = questions[change.index]?.text || "an earlier question";
+            const qText = rawQText.split('\n').filter(Boolean).pop().trim();
+            const evalResult = await checkMeaningfulChangeWithAI({
+                questionText: qText,
+                oldAnswer: change.previousValue,
+                newAnswer: change.nextValue
+            });
+            if (evalResult.isMeaningful) {
+                activePastChange = change;
+                activePastConfirmMsg = evalResult.confirmMessage || `I noticed a change for "${qText}". Do you want to update it to "${change.nextValue}"?`;
+                break;
+            }
+        }
+    }
+
+    if (activePastChange) {
+        // Feature 3: Pause to confirm a past answer update, even if the current answer is valid
+        const change = activePastChange;
+
+        // Revert the past changes from the current save so they remain pending
+        const safeUpdatedAnswersBySlug = { ...updatedAnswersBySlug };
+        for (const pc of pastChanges) {
+            safeUpdatedAnswersBySlug[pc.slug] = pc.previousValue;
+        }
+
+        const nextStep = findNextUnansweredStep(questions, safeUpdatedAnswersBySlug);
+        let persistedAnswers = buildPersistedAnswersPayload(safeUpdatedAnswersBySlug, questions, {
+            runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+            existingPayload: session.answers || {}
+        });
+
+        // Save pending corrections state 
+        persistedAnswers.pendingCorrectionState = {
+            proposedAnswersBySlug: updatedAnswersBySlug, // This has both the current answer AND the past change
+            changes: pastChanges
+        };
+
+        await prisma.aiGuestSession.update({
+            where: { id: sessionId },
+            data: { answers: persistedAnswers, currentStep: nextStep }
+        });
+
+        const confirmMsg = activePastConfirmMsg;
+        await prisma.aiGuestMessage.create({
+            data: { sessionId, role: "assistant", content: confirmMsg }
+        });
+
+        const sessionReload = await prisma.aiGuestSession.findUnique({
+            where: { id: sessionId },
+            include: { messages: { orderBy: { createdAt: 'asc' } } }
+        });
+
+        return res.json({
+            success: true,
+            message: confirmMsg,
+            inputConfig: { type: "text", options: ["Yes", "No"] },
+            history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+        });
+    }
     const dependentIndexes = getDependentIndexesForChanges(questions, changedAnswers);
     const dependentResetApplied = dependentIndexes.length > 0;
 
@@ -3919,6 +4096,68 @@ export const getGuestHistory = asyncHandler(async (req, res) => {
         success: true,
         messages: session.messages,
         inputConfig,
+    });
+});
+
+// @desc    Get ad-hoc advice for a specific option and context
+// @route   POST /api/guest/advice
+// @access  Public
+export const getGuestAdvice = asyncHandler(async (req, res) => {
+    const { serviceId, option, context, currentQuestion } = req.body;
+
+    const advicePrompt = `
+You are a friendly, conversational AI assistant directly helping a user fill out a questionnaire for their "${serviceId || 'digital'}" project.
+
+Current Question: "${currentQuestion || ''}"
+User Selected Option: "${option || 'Not sure'}"
+Recent Chat Context: "${context || ''}"
+
+Task:
+The user clicked "${option || 'Not sure'}" and needs a quick hint on what to type next.
+Provide a VERY SHORT, highly personalized helper message (1-2 sentences maximum).
+It MUST be written directly to the user in a conversational tone. Use any specific details from their context (like their business name or goal) naturally.
+Do not write a long paragraph of advice! Instead, give a quick guide with 2-3 short, concrete examples of what they could tell you.
+For example, use a format like: "No problem! For [Business Name], you might want [A] (like Shopify) or [B] (like Custom). What sounds best to you?"
+Keep it extremely concise, warm, and direct.
+
+Also, provide a short placeholder text (starting with "e.g. ") that acts as a hint in a text input box.
+
+Return ONLY a raw JSON object (with double quotes) with this structure:
+{
+    "notice": string,
+    "placeholder": string
+}
+Do not use markdown formatting, code fences, or bold text.`;
+
+    try {
+        const adviceResponse = await chatWithAI(
+            [{ role: "user", content: advicePrompt }],
+            [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+            "system_validator"
+        );
+
+        if (adviceResponse.success) {
+            const rawMsg = adviceResponse.message || "";
+            const firstBrace = rawMsg.indexOf('{');
+            const lastBrace = rawMsg.lastIndexOf('}');
+            const cleanJson = (firstBrace >= 0 && lastBrace >= firstBrace) 
+                ? rawMsg.substring(firstBrace, lastBrace + 1)
+                : rawMsg;
+            const parsed = JSON.parse(cleanJson.replace(/\*\*/g, ""));
+            return res.json({
+                success: true,
+                notice: parsed.notice,
+                placeholder: parsed.placeholder
+            });
+        }
+    } catch (e) {
+        console.warn("Failed to generate guest advice", e);
+    }
+
+    res.json({
+        success: true,
+        notice: `Got it. Tell me what you have in mind for ${option || 'this'}.`,
+        placeholder: "Tell me a bit more..."
     });
 });
 
