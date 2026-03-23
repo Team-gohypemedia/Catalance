@@ -838,11 +838,15 @@ const findMatchingOptionsFromText = (answerValue = "", options = []) => {
     const seen = new Set();
 
     for (const token of answerTokens) {
+        const isPureNumber = /^\d+$/.test(token);
+        
         const matchedOption = (options || []).find((option) => {
             const aliases = getComparableOptionAliases(option);
-            return aliases.some((alias) =>
-                token === alias || token.includes(alias) || alias.includes(token)
-            );
+            return aliases.some((alias) => {
+                if (token === alias) return true;
+                if (isPureNumber) return false;
+                return token.includes(alias) || alias.includes(token);
+            });
         });
 
         if (!matchedOption) continue;
