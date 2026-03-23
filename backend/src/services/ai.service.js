@@ -2298,6 +2298,7 @@ CRITICAL INSTRUCTIONS:
 - Use bullet list items for objectives, features, and deliverables.
 - The Project Overview should be a well-written paragraph summarizing the entire project scope.
 - Never let a numeric value appear under the wrong field label.
+- NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.
 `;
 
 const buildProposalUserPrompt = (proposalContext, chatHistory) =>
@@ -3085,7 +3086,8 @@ For missing design, build, hosting, technology, audience, or engagement fields, 
 Put each field label on its own line. Never combine two field labels or headings on the same line.
 Keep the same proposal structure and return markdown only.
 Convert numeric words into digits for numeric-only fields.
-Budget must always be numeric with currency.`;
+Budget must always be numeric with currency.
+NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.`;
 
 const buildProposalRepairUserPrompt = ({
   proposalContext = {},
