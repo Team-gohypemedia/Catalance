@@ -1788,17 +1788,19 @@ export const updateUserProfile = async (userId, updates) => {
   });
 
   if (cleanUpdates.profileDetails) {
+    const hasExplicitSkillsUpdate = Object.prototype.hasOwnProperty.call(
+      cleanUpdates,
+      "skills"
+    );
     const profileDerivedSkills = extractSkillsFromProfileDetails(
       cleanUpdates.profileDetails,
       { strictTech: true, max: 120 }
     );
 
-    if (profileDerivedSkills.length) {
-      const mergedSkillCandidates = [
-        ...(Array.isArray(cleanUpdates.skills) ? cleanUpdates.skills : []),
-        ...profileDerivedSkills
-      ];
-      cleanUpdates.skills = normalizeSkills(mergedSkillCandidates, {
+    // Respect explicit skill edits from the profile UI (add/remove/reorder).
+    // Only derive skills from profileDetails when a direct skills update is not supplied.
+    if (!hasExplicitSkillsUpdate && profileDerivedSkills.length) {
+      cleanUpdates.skills = normalizeSkills(profileDerivedSkills, {
         strictTech: true,
         max: 120
       });

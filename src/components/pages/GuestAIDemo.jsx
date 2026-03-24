@@ -55,10 +55,19 @@ import { API_BASE_URL, request } from '@/shared/lib/api-client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
 import { getSession } from '@/shared/lib/auth-storage';
+import {
+    getGuestChatSidebarSizeStorageKeys,
+    getGuestChatStorageKeys,
+    getProposalListStoragePrefixes,
+    getProposalStorageKeys,
+    migrateGuestAiStorageNamespace,
+    migrateProposalStorageNamespace,
+} from '@/shared/lib/storage-keys';
 import cataLogo from '@/assets/logos/logo.svg';
 
-const GUEST_CHAT_STORAGE_KEY = 'markify:guestAiSessions:v1';
-const GUEST_CHAT_SIDEBAR_SIZE_KEY = 'markify:guestAiSidebarSize:v1';
+const { primaryKey: GUEST_CHAT_STORAGE_KEY } = getGuestChatStorageKeys();
+const { primaryKey: GUEST_CHAT_SIDEBAR_SIZE_KEY } =
+    getGuestChatSidebarSizeStorageKeys();
 const MAX_PREVIOUS_CHAT_ITEMS = 30;
 const ATTACHMENT_TOKEN_PREFIX = '[[ATTACHMENT]]';
 const ATTACHMENT_TOKEN_REGEX = /^\[\[ATTACHMENT\]\]([^|]+)\|([^|]+)\|([^|]*)\|(\d+)$/;
@@ -177,11 +186,13 @@ const safeParseArray = (value) => {
 
 const readStoredGuestSessions = () => {
     if (!isBrowser) return [];
+    migrateGuestAiStorageNamespace();
     return safeParseArray(window.localStorage.getItem(GUEST_CHAT_STORAGE_KEY));
 };
 
 const readStoredSidebarSize = () => {
     if (!isBrowser) return 'large';
+    migrateGuestAiStorageNamespace();
     const value = window.localStorage.getItem(GUEST_CHAT_SIDEBAR_SIZE_KEY);
     return value === 'small' ? 'small' : 'large';
 };
@@ -328,23 +339,14 @@ const formatPreviousChatTime = (value) => {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
-const getProposalStorageKeys = (userId) => {
-    const suffix = userId ? `:${userId}` : "";
-    return {
-        listKey: `markify:savedProposals${suffix}`,
-        singleKey: `markify:savedProposal${suffix}`,
-        syncedKey: `markify:savedProposalSynced${suffix}`,
-    };
-};
-
-const PROPOSAL_LIST_STORAGE_PREFIX = 'markify:savedProposals';
+const PROPOSAL_LIST_STORAGE_PREFIXES = getProposalListStoragePrefixes();
 
 const readAllStoredGeneratedProposalRows = () => {
     if (!isBrowser) return [];
     const rows = [];
     for (let idx = 0; idx < window.localStorage.length; idx += 1) {
         const key = window.localStorage.key(idx);
-        if (!key || !key.startsWith(PROPOSAL_LIST_STORAGE_PREFIX)) continue;
+        if (!key || !PROPOSAL_LIST_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
         rows.push(...safeParseArray(window.localStorage.getItem(key)));
     }
     return rows;
@@ -373,6 +375,11 @@ const sortStoredGeneratedProposals = (proposals = []) =>
 
 const readStoredGeneratedProposals = (userId) => {
     if (!isBrowser) return [];
+    migrateProposalStorageNamespace();
+    if (userId) {
+        migrateProposalStorageNamespace(userId);
+    }
+
     const scopedKey = getProposalStorageKeys(userId).listKey;
     const scopedRows = safeParseArray(window.localStorage.getItem(scopedKey));
 
@@ -388,6 +395,10 @@ const readStoredGeneratedProposals = (userId) => {
 
 const upsertStoredGeneratedProposal = (proposalContent, userId) => {
     if (!isBrowser) return [];
+    migrateProposalStorageNamespace();
+    if (userId) {
+        migrateProposalStorageNamespace(userId);
+    }
 
     const normalizedContent = normalizeMarkdownContent(proposalContent);
     if (!normalizedContent || !isProposalMessage(normalizedContent)) {

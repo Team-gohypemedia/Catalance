@@ -35,6 +35,10 @@ import {
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { formatINR, INR_PREFIX_PATTERN, normalizeINRText } from "@/shared/lib/currency";
 import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
+import {
+  getProposalStorageKeys,
+  migrateProposalStorageNamespace,
+} from "@/shared/lib/storage-keys";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
@@ -71,15 +75,6 @@ const STORED_BUDGET_LINE_PATTERN = new RegExp(
   String.raw`Budget[\s\n]*[-:]*[\s\n]*${INR_PREFIX_PATTERN.source}?\s*[\d,]+\s*(?:k)?`,
   "gi",
 );
-
-const getProposalStorageKeys = (userId) => {
-  const suffix = userId ? `:${userId}` : "";
-  return {
-    listKey: `markify:savedProposals${suffix}`,
-    singleKey: `markify:savedProposal${suffix}`,
-    syncedKey: `markify:savedProposalSynced${suffix}`,
-  };
-};
 
 const buildLocalProposalId = () =>
   `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -770,6 +765,11 @@ const mergeProposalsBySignature = (base = [], incoming = []) => {
 
 const loadSavedProposalsFromStorage = (userId) => {
   if (typeof window === "undefined") return { proposals: [], activeId: null };
+
+  migrateProposalStorageNamespace();
+  if (userId) {
+    migrateProposalStorageNamespace(userId);
+  }
 
   const storageKeys = getProposalStorageKeys(userId);
   const legacyKeys = getProposalStorageKeys();

@@ -8,6 +8,7 @@ const ProfileSummaryCards = ({
   profileCompletionMessage,
   profileCompletionMissingDetails,
 }) => {
+  const completeColor = "#059669"; // Tailwind emerald-600
   const completion = Math.min(
     100,
     Math.max(0, Number(profileCompletionPercent) || 0)
@@ -35,7 +36,7 @@ const ProfileSummaryCards = ({
         className="pointer-events-none absolute -top-12 left-1/2 h-24 w-3/4 -translate-x-1/2 rounded-full opacity-[0.06] blur-2xl"
         style={{
           background: isComplete
-            ? "radial-gradient(ellipse, #10b981, transparent)"
+            ? `radial-gradient(ellipse, ${completeColor}, transparent)`
             : "radial-gradient(ellipse, hsl(var(--primary)), transparent)",
         }}
         aria-hidden="true"
@@ -49,7 +50,7 @@ const ProfileSummaryCards = ({
               style={{
                 width: `${completion}%`,
                 background: isComplete
-                  ? "linear-gradient(90deg, #10b981, #34d399)"
+                  ? completeColor
                   : "linear-gradient(90deg, hsl(var(--primary)), #8b5cf6, #6366f1)",
               }}
             />
@@ -63,11 +64,11 @@ const ProfileSummaryCards = ({
               className="rounded-lg px-2.5 py-1 text-xs font-bold shadow-sm"
               style={{
                 background: isComplete
-                  ? "linear-gradient(135deg, #10b981, #34d399)"
+                  ? completeColor
                   : "linear-gradient(135deg, hsl(var(--primary)), #8b5cf6)",
                 color: "white",
                 boxShadow: isComplete
-                  ? "0 2px 8px rgba(16,185,129,0.3)"
+                  ? "0 2px 8px rgba(5,150,105,0.3)"
                   : "0 2px 8px hsl(var(--primary) / 0.3)",
               }}
             >
@@ -76,7 +77,7 @@ const ProfileSummaryCards = ({
             <span
               className="-mt-1.5 h-2.5 w-2.5 rotate-45"
               style={{
-                background: isComplete ? "#34d399" : "#8b5cf6",
+                background: isComplete ? completeColor : "#8b5cf6",
               }}
               aria-hidden="true"
             />

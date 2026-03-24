@@ -15,15 +15,10 @@ import Check from "lucide-react/dist/esm/icons/check";
 
 import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/shared/context/AuthContext";
-
-const getProposalStorageKeys = (userId) => {
-  const suffix = userId ? `:${userId}` : "";
-  return {
-    listKey: `markify:savedProposals${suffix}`,
-    singleKey: `markify:savedProposal${suffix}`,
-    syncedKey: `markify:savedProposalSynced${suffix}`,
-  };
-};
+import {
+  getProposalStorageKeys,
+  migrateProposalStorageNamespace,
+} from "@/shared/lib/storage-keys";
 
 const escapeRegExp = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -541,6 +536,7 @@ export function ProposalSidebar({
   // Save proposal to localStorage
   const saveProposalToStorage = () => {
     if (typeof window === "undefined" || !proposalData) return;
+    migrateProposalStorageNamespace(user?.id);
 
     const now = new Date().toISOString();
     const { listKey, singleKey, syncedKey } = getProposalStorageKeys(user?.id);

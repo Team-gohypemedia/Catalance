@@ -23,8 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DashboardHeader } from "@/components/layout/GlobalDashboardHeader";
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
 import ProfileHeroCard from "@/components/features/freelancer/profile/ProfileHeroCard";
 import ProfileSummaryCards from "@/components/features/freelancer/profile/ProfileSummaryCards";
 import ProfileOnboardingSnapshotCard from "@/components/features/freelancer/profile/ProfileOnboardingSnapshotCard";
@@ -33,6 +31,7 @@ import FeaturedProjectsSection from "@/components/features/freelancer/profile/Fe
 import ProjectCoverMedia from "@/components/features/freelancer/profile/ProjectCoverMedia";
 import ProfileSidebarCards from "@/components/features/freelancer/profile/ProfileSidebarCards";
 import ProfileSkillsCard from "@/components/features/freelancer/profile/ProfileSkillsCard";
+import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import FullProfileEditorModalContent from "@/components/features/freelancer/profile/modals/FullProfileEditorModalContent";
 import PersonalDetailsModalContent from "@/components/features/freelancer/profile/modals/PersonalDetailsModalContent";
 import WorkExperienceModalContent from "@/components/features/freelancer/profile/modals/WorkExperienceModalContent";
@@ -189,6 +188,60 @@ const formatFileSize = (bytes) => {
   );
   const value = bytes / 1024 ** exponent;
   return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+};
+
+const formatUtcOffsetLabel = (offsetMinutes) => {
+  if (!Number.isFinite(offsetMinutes)) return "UTC";
+
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absoluteMinutes = Math.abs(offsetMinutes);
+  const hours = Math.floor(absoluteMinutes / 60);
+  const minutes = absoluteMinutes % 60;
+
+  return `UTC${sign}${hours}:${String(minutes).padStart(2, "0")}`;
+};
+
+const normalizeTimeZoneLabel = (value = "") => {
+  const raw = String(value || "").trim();
+
+  if (!raw) return "";
+  if (raw === "Asia/Kolkata" || raw === "Asia/Calcutta") {
+    return "IST (UTC+5:30)";
+  }
+  if (/^(utc|gmt)/i.test(raw) || raw.includes("(")) return raw;
+
+  return raw.replace(/_/g, " ");
+};
+
+const getLocalTimeZoneLabel = () => {
+  if (typeof Intl === "undefined") return "Local timezone";
+
+  try {
+    const now = new Date();
+    const resolvedTimeZone =
+      Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    const offsetLabel = formatUtcOffsetLabel(-now.getTimezoneOffset());
+
+    if (
+      resolvedTimeZone === "Asia/Kolkata" ||
+      resolvedTimeZone === "Asia/Calcutta"
+    ) {
+      return "IST (UTC+5:30)";
+    }
+
+    const shortLabel =
+      new Intl.DateTimeFormat("en-US", { timeZoneName: "short" })
+        .formatToParts(now)
+        .find((part) => part.type === "timeZoneName")?.value || "";
+
+    if (shortLabel && !/^(utc|gmt)/i.test(shortLabel)) {
+      return `${shortLabel} (${offsetLabel})`;
+    }
+
+    return offsetLabel;
+  } catch {
+    return "Local timezone";
+  }
 };
 
 const FreelancerProfile = () => {
@@ -735,11 +788,37 @@ const FreelancerProfile = () => {
     await saveSkillsImmediately(nextSkills, previousSkills);
   };
 
-  const deleteSkill = async (index) => {
+  const deleteSkill = async (skillToRemove) => {
     if (isSaving) return;
 
     const previousSkills = Array.isArray(skills) ? skills : [];
-    const nextSkills = previousSkills.filter((_, rowIndex) => rowIndex !== index);
+    const isIndexInput = Number.isInteger(skillToRemove);
+    const indexedEntry = isIndexInput ? previousSkills[skillToRemove] : null;
+    const targetName = formatSkillLabel(
+      typeof skillToRemove === "string"
+        ? skillToRemove
+        : isIndexInput
+          ? typeof indexedEntry === "string"
+            ? indexedEntry
+            : indexedEntry?.name
+          : skillToRemove?.name
+    );
+    const targetKey = getSkillDedupKey(targetName);
+
+    let nextSkills = previousSkills;
+
+    if (targetKey) {
+      nextSkills = previousSkills.filter((entry) => {
+        const entryName = typeof entry === "string" ? entry : entry?.name;
+        return getSkillDedupKey(entryName) !== targetKey;
+      });
+    } else if (isIndexInput) {
+      nextSkills = previousSkills.filter((_, rowIndex) => rowIndex !== skillToRemove);
+    }
+
+    if (nextSkills.length === previousSkills.length) {
+      return;
+    }
 
     setSkills(nextSkills);
     await saveSkillsImmediately(nextSkills, previousSkills);
@@ -2476,6 +2555,50 @@ const FreelancerProfile = () => {
     "Not set yet";
   const onboardingStartTimelineLabel =
     normalizeValueLabel(onboardingAvailability?.startTimeline) || "Not set yet";
+  const quickResponseTimeLabel =
+    normalizeValueLabel(
+      profileDetails?.responseTime ||
+        profileDetails?.avgResponseTime ||
+        onboardingAvailability?.responseTime
+    ) || "Not set yet";
+  const quickTimeZoneLabel = useMemo(() => {
+    const storedTimeZone = normalizeTimeZoneLabel(
+      onboardingAvailability?.timezone ||
+        onboardingIdentity?.timezone ||
+        profileDetails?.identity?.timezone
+    );
+
+    if (storedTimeZone) return storedTimeZone;
+
+    const countryLabel = String(onboardingIdentity?.country || "")
+      .trim()
+      .toLowerCase();
+    const locationLabel = [
+      personal.location,
+      onboardingIdentity?.location,
+      profileDetails?.identity?.location,
+    ]
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter(Boolean)
+      .join(" ");
+
+    if (countryLabel === "india" || locationLabel.includes("india")) {
+      return "IST (UTC+5:30)";
+    }
+
+    return getLocalTimeZoneLabel();
+  }, [
+    onboardingAvailability?.timezone,
+    onboardingIdentity?.country,
+    onboardingIdentity?.location,
+    onboardingIdentity?.timezone,
+    personal.location,
+    profileDetails?.identity?.location,
+    profileDetails?.identity?.timezone,
+  ]);
+  const quickLanguagesLabel = onboardingLanguages.length
+    ? onboardingLanguages.join(", ")
+    : "Not set yet";
   const deliveryPolicyLabel = profileDetails?.deliveryPolicyAccepted
     ? "Accepted"
     : "Not set yet";
@@ -2796,6 +2919,24 @@ const FreelancerProfile = () => {
     resolveAvatarUrl(personal.coverImage, { allowBlob: true }) ||
     resolveAvatarUrl(onboardingIdentity?.coverImage, { allowBlob: true }) ||
     resolveAvatarUrl(profileDetails?.identity?.coverImage, { allowBlob: true });
+  const headerProfile = useMemo(
+    () => ({
+      avatar: profilePhotoUrl || resolveAvatarUrl(user?.avatar),
+      name: user?.fullName || user?.name || personal.name || "Freelancer",
+      email: user?.email || personal.email || "",
+      initial: initials,
+    }),
+    [
+      initials,
+      personal.email,
+      personal.name,
+      profilePhotoUrl,
+      user?.avatar,
+      user?.email,
+      user?.fullName,
+      user?.name,
+    ]
+  );
   const hasProfilePhoto = Boolean(profilePhotoUrl);
   // If a dedicated cover is missing, accept profile photo as fallback so users
   // are not blocked by an extra image requirement.
@@ -3121,41 +3262,46 @@ const FreelancerProfile = () => {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
-        <DashboardHeader
-          userName={user?.fullName || user?.name || personal.name}
-          tabLabel="Profile"
-          notifications={notifications}
-          unreadCount={unreadCount}
-          markAllAsRead={markAllAsRead}
-          handleNotificationClick={handleDashboardHeaderNotificationClick}
-        />
-        <main className="flex-1 overflow-y-auto pb-20">
-          <div className="w-full px-6 py-8">
-            <div className="rounded-3xl border border-border/50 bg-card p-10">
-              <div className="flex items-center justify-center gap-3 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Loading your profile...</span>
+      <div className="min-h-screen bg-[#212121] text-foreground">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+          <FreelancerWorkspaceHeader
+            profile={headerProfile}
+            activeWorkspaceKey="profile"
+            primaryActionTo="/freelancer/proposals"
+            notifications={notifications}
+            unreadCount={unreadCount}
+            markAllAsRead={markAllAsRead}
+            onNotificationClick={handleDashboardHeaderNotificationClick}
+          />
+          <main className="flex-1 pb-20">
+            <div className="w-full py-8">
+              <div className="rounded-3xl border border-border/50 bg-card p-10">
+                <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Loading your profile...</span>
+                </div>
               </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <DashboardHeader
-        userName={user?.fullName || user?.name || personal.name}
-        tabLabel="Profile"
-        notifications={notifications}
-        unreadCount={unreadCount}
-        markAllAsRead={markAllAsRead}
-        handleNotificationClick={handleDashboardHeaderNotificationClick}
-      />
-      <main className="flex-1 overflow-y-auto pb-20">
-        <div className="w-full px-6 py-6 md:py-8">
+    <div className="min-h-screen bg-[#212121] text-foreground">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+        <FreelancerWorkspaceHeader
+          profile={headerProfile}
+          activeWorkspaceKey="profile"
+          primaryActionTo="/freelancer/proposals"
+          notifications={notifications}
+          unreadCount={unreadCount}
+          markAllAsRead={markAllAsRead}
+          onNotificationClick={handleDashboardHeaderNotificationClick}
+        />
+        <main className="flex-1 pb-20">
+          <div className="w-full py-6 md:py-8">
 
           {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Full-width hero ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
           <ProfileHeroCard
@@ -3239,7 +3385,7 @@ const FreelancerProfile = () => {
             </div>
 
             {/* ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Right: Sidebar ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ */}
-            <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
+            <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
               <ProfileSummaryCards
                 profileCompletionPercent={profileCompletionPercent}
                 completedCompletionSections={completedCompletionSections}
@@ -3258,13 +3404,20 @@ const FreelancerProfile = () => {
                 splitExperienceTitle={splitExperienceTitle}
                 profileDetails={profileDetails}
                 openFullProfileEditor={openFullProfileEditor}
+                quickDetails={{
+                  availability: onboardingHoursLabel,
+                  responseTime: quickResponseTimeLabel,
+                  timezone: quickTimeZoneLabel,
+                  languages: quickLanguagesLabel,
+                }}
                 normalizeValueLabel={normalizeValueLabel}
               />
             </div>
 
           </div>
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
       {/* Modal */}
       {modalType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm transition-all">
@@ -4458,13 +4611,5 @@ const FreelancerProfile = () => {
   );
 };
 
-const FreelancerProfileWrapper = () => {
-  return (
-    <RoleAwareSidebar>
-      <FreelancerProfile />
-    </RoleAwareSidebar>
-  );
-};
-
-export default FreelancerProfileWrapper;
+export default FreelancerProfile;
 

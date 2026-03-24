@@ -13,7 +13,6 @@ import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -219,9 +218,19 @@ const ProfileHeroCard = ({
             className="group/avatar relative shrink-0 cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="rounded-full border-2 border-background bg-background p-0.5 shadow-md">
+            <div
+              className={`rounded-full transition-all duration-200 ${
+                personal.available
+                  ? "bg-background p-1"
+                  : "border-2 border-background bg-background p-0.5 shadow-md"
+              }`}
+            >
               <div
-                className="relative h-32 w-32 overflow-hidden rounded-full border-2 border-border/70 bg-muted md:h-36 md:w-36"
+                className={`relative h-32 w-32 overflow-hidden rounded-full bg-muted md:h-36 md:w-36 ${
+                  personal.available
+                    ? "border border-background bg-background"
+                    : "border-2 border-border/70"
+                }`}
               >
                 {personal.avatar ? (
                   <img
@@ -274,7 +283,7 @@ const ProfileHeroCard = ({
             disabled={availabilitySaving}
             className={`h-10 rounded-md px-3 text-sm font-semibold ${
               personal.available
-                ? "border-emerald-500/40 bg-emerald-500/12 text-emerald-200 hover:bg-emerald-500/18"
+                ? "border-emerald-600 bg-emerald-600 text-white hover:border-emerald-500 hover:bg-emerald-500 dark:border-emerald-600 dark:bg-emerald-600 dark:text-white dark:hover:border-emerald-500 dark:hover:bg-emerald-500"
                 : "border-border/70 bg-background text-muted-foreground hover:bg-muted"
             }`}
             title={`Set profile status to ${
@@ -290,7 +299,7 @@ const ProfileHeroCard = ({
               <>
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${
-                    personal.available ? "bg-emerald-400" : "bg-muted-foreground/80"
+                    personal.available ? "bg-white" : "bg-muted-foreground/80"
                   }`}
                   aria-hidden="true"
                 />
@@ -341,30 +350,12 @@ const ProfileHeroCard = ({
         </div>
 
         <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1
-              title={profileName}
-              className="min-w-0 max-w-full truncate text-3xl font-bold tracking-tight text-foreground md:text-4xl"
-            >
-              {profileName}
-            </h1>
-            <Badge
-              variant="outline"
-              className={`shrink-0 ${
-                personal.available
-                  ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-300"
-                  : "border-border/70 bg-background/40 text-muted-foreground"
-              }`}
-            >
-              <span
-                className={`mr-1.5 h-2 w-2 rounded-full ${
-                  personal.available ? "bg-emerald-400" : "bg-muted-foreground/80"
-                }`}
-                aria-hidden="true"
-              />
-              {availabilityLabel}
-            </Badge>
-          </div>
+          <h1
+            title={profileName}
+            className="min-w-0 max-w-full truncate text-3xl font-bold tracking-tight text-foreground md:text-4xl"
+          >
+            {profileName}
+          </h1>
           <p className="text-base text-muted-foreground">{profileHandle}</p>
           <p className="max-w-5xl text-base leading-relaxed text-foreground">
             {resolvedBio || "Add a short professional bio to showcase your expertise."}

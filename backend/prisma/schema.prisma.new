@@ -177,7 +177,7 @@ model Project {
   appointments    Appointment[]
   payments        Payment[]
   tasks           ProjectTask[]
-  externalLink    String?       // Project link (e.g. markify.io)
+  externalLink    String?       // Project link (e.g. project URL)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

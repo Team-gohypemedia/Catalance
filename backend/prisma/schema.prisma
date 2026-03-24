@@ -211,7 +211,7 @@ model Project {
   internalReviews    InternalFreelancerReview[]
   adminEscalations   AdminEscalation[]
   milestoneApprovals MilestoneApproval[]
-  externalLink       String? // Project link (e.g. markify.io)
+  externalLink       String? // Project link (e.g. project URL)
 
   paymentPlanVersion           String    @default("v1")
   closureHandoverConfirmed     Boolean   @default(false)

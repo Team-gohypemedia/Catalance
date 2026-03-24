@@ -38,6 +38,7 @@ import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import Smile from "lucide-react/dist/esm/icons/smile";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
+import { migrateChatConversationStorageKey } from "@/shared/lib/storage-keys";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -1889,7 +1890,7 @@ const ClientChat = () => {
 
     const ensureConversation = async () => {
       const baseKey = getConversationKey(activeConversation);
-      const storageKey = `markify:chatConversationId:${baseKey}`;
+      const storageKey = migrateChatConversationStorageKey(baseKey);
 
       try {
         if (activeConversation?.conversationId) {
@@ -1958,7 +1959,9 @@ const ClientChat = () => {
   useEffect(() => {
     if (!conversationId || !activeConversation || !selectedConversationChatUnlocked) return;
 
-    const storageKey = `markify:chatConversationId:${getConversationKey(activeConversation)}`;
+    const storageKey = migrateChatConversationStorageKey(
+      getConversationKey(activeConversation),
+    );
     const socket = useSocket && SOCKET_IO_URL ? io(SOCKET_IO_URL, SOCKET_OPTIONS) : null;
     socketRef.current = socket;
 

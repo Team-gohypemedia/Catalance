@@ -1,13 +1,8 @@
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
-
-const getProposalStorageKeys = (userId) => {
-  const suffix = userId ? `:${userId}` : "";
-  return {
-    listKey: `markify:savedProposals${suffix}`,
-    singleKey: `markify:savedProposal${suffix}`,
-    syncedKey: `markify:savedProposalSynced${suffix}`,
-  };
-};
+import {
+  getProposalStorageKeys,
+  migrateProposalStorageNamespace,
+} from "@/shared/lib/storage-keys";
 
 const buildLocalProposalId = () =>
   `saved-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -299,6 +294,11 @@ const persistSavedProposalsToStorage = (proposals, activeId, storageKeys) => {
 const loadSavedProposalsFromStorage = (userId) => {
   if (typeof window === "undefined") {
     return { proposals: [], activeId: null };
+  }
+
+  migrateProposalStorageNamespace();
+  if (userId) {
+    migrateProposalStorageNamespace(userId);
   }
 
   const storageKeys = getProposalStorageKeys(userId);

@@ -21,11 +21,21 @@ import {
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
+import {
+  buildLegacyStorageKeys,
+  buildNamespacedStorageKey,
+  migrateStorageKey,
+} from "@/shared/lib/storage-keys";
 
 const getDraftStorageKeys = (userId) => {
   const suffix = userId ? `:${userId}` : "";
-  const primaryKey = `markify:savedProposal${suffix}`;
-  const legacyKeys = ["markify:savedProposal", "savedProposal"];
+  const primaryKey = buildNamespacedStorageKey("savedProposal", suffix);
+  const legacyKeys = [
+    ...buildLegacyStorageKeys("savedProposal", suffix),
+    buildNamespacedStorageKey("savedProposal"),
+    ...buildLegacyStorageKeys("savedProposal"),
+    "savedProposal",
+  ].filter((key, index, keys) => key && keys.indexOf(key) === index && key !== primaryKey);
   return { primaryKey, legacyKeys };
 };
 
@@ -47,9 +57,11 @@ const loadDrafts = (storageKeys) => {
   const bySignature = new Map();
   const primaryKey = storageKeys?.primaryKey;
   const legacyKeys = storageKeys?.legacyKeys || [
-    "markify:savedProposal",
+    buildNamespacedStorageKey("savedProposal"),
+    ...buildLegacyStorageKeys("savedProposal"),
     "savedProposal",
   ];
+  migrateStorageKey({ key: primaryKey, legacyKeys });
   const hasPrimary = primaryKey
     ? Boolean(window.localStorage.getItem(primaryKey))
     : false;
@@ -299,24 +311,25 @@ const ProposalDraftsContent = () => {
     toast.success("Draft saved.");
   };
 
- const handleRestore = (draft, navigate) => {
-  if (typeof window === "undefined") return;
-  const payload = {
-    ...draft.raw,
-    content: draft.content,
-    summary: draft.content,
-    updatedAt: new Date().toISOString(),
-    // Ensure both flags are explicitly set for restored drafts
-    savedAt: draft.raw?.savedAt || new Date().toISOString(),
-    isSavedDraft: true,
+  const handleRestore = (draft, navigate) => {
+    if (typeof window === "undefined") return;
+    const payload = {
+      ...draft.raw,
+      content: draft.content,
+      summary: draft.content,
+      updatedAt: new Date().toISOString(),
+      // Ensure both flags are explicitly set for restored drafts
+      savedAt: draft.raw?.savedAt || new Date().toISOString(),
+      isSavedDraft: true,
+    };
+    const targetKey =
+      storageKeys?.primaryKey || buildNamespacedStorageKey("savedProposal");
+    window.localStorage.setItem(targetKey, JSON.stringify(payload));
+    // notify dashboard listeners
+    window.dispatchEvent(new StorageEvent("storage", { key: targetKey }));
+    toast.success("Draft restored to dashboard.");
+    if (navigate) navigate("/client");
   };
-  const targetKey = storageKeys?.primaryKey || "markify:savedProposal";
-  window.localStorage.setItem(targetKey, JSON.stringify(payload));
-  // notify dashboard listeners
-  window.dispatchEvent(new StorageEvent("storage", { key: targetKey }));
-  toast.success("Draft restored to dashboard.");
-  if (navigate) navigate("/client");
-};
 
   return (
     <div className="space-y-6 p-6">

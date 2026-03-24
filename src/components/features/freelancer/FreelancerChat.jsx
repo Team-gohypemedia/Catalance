@@ -31,6 +31,7 @@ import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Search from "lucide-react/dist/esm/icons/search";
 import Smile from "lucide-react/dist/esm/icons/smile";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shared/lib/api-client";
+import { migrateChatConversationStorageKey } from "@/shared/lib/storage-keys";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { useSearchParams } from "react-router-dom";
@@ -1176,7 +1177,9 @@ const FreelancerChatContent = () => {
     let cancelled = false;
 
     const ensureConversation = async () => {
-      const storageKey = `markify:chatConversationId:${selectedConversation.serviceKey || selectedConversation.id}`;
+      const storageKey = migrateChatConversationStorageKey(
+        selectedConversation.serviceKey || selectedConversation.id,
+      );
       try {
         const stored =
           typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
@@ -1219,7 +1222,9 @@ const FreelancerChatContent = () => {
   useEffect(() => {
     if (!conversationId || !selectedConversation) return;
 
-    const storageKey = `markify:chatConversationId:${selectedConversation.serviceKey || selectedConversation.id}`;
+    const storageKey = migrateChatConversationStorageKey(
+      selectedConversation.serviceKey || selectedConversation.id,
+    );
     const socket = useSocket && SOCKET_IO_URL ? io(SOCKET_IO_URL, SOCKET_OPTIONS) : null;
     socketRef.current = socket;
 

@@ -139,7 +139,7 @@ const ProfileSkillsCard = ({
                               type="button"
                               disabled={savingChanges}
                               onClick={() => {
-                                deleteSkill(index);
+                                deleteSkill(skill);
                                 closeMenu();
                               }}
                               className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-destructive transition-colors duration-150 hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"

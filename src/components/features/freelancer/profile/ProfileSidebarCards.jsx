@@ -143,6 +143,7 @@ const ProfileSidebarCards = ({
   splitExperienceTitle,
   profileDetails,
   openFullProfileEditor,
+  quickDetails,
   normalizeValueLabel,
 }) => {
   const educationEntries = normalizeEducationEntries(profileDetails);
@@ -152,9 +153,47 @@ const ProfileSidebarCards = ({
   const hasExperience = experienceEntries.length > 0;
   const industryFocusEntries = normalizeIndustryFocusEntries(profileDetails);
   const hasIndustryFocus = industryFocusEntries.length > 0;
+  const quickDetailRows = [
+    {
+      label: "Availability",
+      value: String(quickDetails?.availability || "").trim() || "Not set yet",
+    },
+    {
+      label: "Timezone",
+      value: String(quickDetails?.timezone || "").trim() || "Not set yet",
+    },
+    {
+      label: "Languages",
+      value: String(quickDetails?.languages || "").trim() || "Not set yet",
+    },
+  ];
 
   return (
     <div className="space-y-5">
+      <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
+        <div>
+          <h3 className="text-xl font-bold tracking-tight text-foreground">
+            Quick Details
+          </h3>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          {quickDetailRows.map((row) => (
+            <div
+              key={row.label}
+              className="flex items-start justify-between gap-5"
+            >
+              <span className="text-sm text-muted-foreground md:text-base">
+                {row.label}
+              </span>
+              <span className="max-w-[58%] text-right text-sm font-semibold leading-6 text-foreground md:text-base">
+                {row.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -382,9 +421,9 @@ const ProfileSidebarCards = ({
             educationEntries.map((entry) => (
               <div
                 key={entry.id}
-                className="group rounded-xl border border-border/50 bg-muted/20 p-3.5 transition-all duration-200 hover:border-border/70 hover:bg-muted/30"
+                className="group w-full"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex w-full items-start gap-3">
                   <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                     <GraduationCap className="h-4 w-4 text-primary" aria-hidden="true" />
                   </div>

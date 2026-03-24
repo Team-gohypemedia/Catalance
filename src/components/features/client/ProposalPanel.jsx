@@ -12,6 +12,10 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
+import {
+    getProposalStorageKeys,
+    migrateProposalStorageNamespace,
+} from "@/shared/lib/storage-keys";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 
 const stripUnavailableSections = (text = "") => {
@@ -84,15 +88,6 @@ const normalizeBudgetText = (text = "") => {
 
     return `Budget: ${cleanValue}`;
   });
-};
-
-const getProposalStorageKeys = (userId) => {
-    const suffix = userId ? `:${userId}` : "";
-    return {
-        listKey: `markify:savedProposals${suffix}`,
-        singleKey: `markify:savedProposal${suffix}`,
-        syncedKey: `markify:savedProposalSynced${suffix}`,
-    };
 };
 
 const buildLocalProposalId = () =>
@@ -418,6 +413,7 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
     // Accept and proceed to dashboard - saves to dashboard view only, NOT to drafts
     const handleAccept = () => {
         if (typeof window === "undefined") return;
+        migrateProposalStorageNamespace(user?.id);
 
         const now = new Date().toISOString();
         const hasMultiProposals = Array.isArray(proposals) && proposals.length > 0;
