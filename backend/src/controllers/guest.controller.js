@@ -3152,7 +3152,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             }
         }
 
-        const persistedUserMessageContent = attachmentUploads.length > 0 && !trimmedMessageText
+        const persistedUserMessageContent = uploadedAttachments.length > 0 && !trimmedMessageText
             ? "[Uploaded Attachments]"
             : trimmedMessageText;
 
