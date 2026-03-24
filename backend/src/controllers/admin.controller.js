@@ -623,6 +623,7 @@ export const getServices = asyncHandler(async (req, res) => {
     description: s.description,
     icon: s.icon,
     active: s.active,
+    aiPrompt: s.aiPrompt,
     minBudget: s.minBudget,
     currency: s.currency,
     questionCount: s._count.questions
@@ -632,7 +633,7 @@ export const getServices = asyncHandler(async (req, res) => {
 });
 
 export const upsertService = asyncHandler(async (req, res) => {
-  const { id, name, description, icon, active, minBudget, currency } = req.body; // id here is the SLUG
+  const { id, name, description, icon, active, aiPrompt, minBudget, currency } = req.body; // id here is the SLUG
   if (!id || !name) {
     throw new AppError("Service ID (slug) and Name are required", 400);
   }
@@ -644,6 +645,7 @@ export const upsertService = asyncHandler(async (req, res) => {
       description,
       icon,
       active: active === undefined ? true : active,
+      aiPrompt,
       minBudget: minBudget ? Number(minBudget) : 0,
       currency: currency || "INR"
     },
@@ -653,6 +655,7 @@ export const upsertService = asyncHandler(async (req, res) => {
       description,
       icon,
       active: active === undefined ? true : active,
+      aiPrompt,
       minBudget: minBudget ? Number(minBudget) : 0,
       currency: currency || "INR"
     }

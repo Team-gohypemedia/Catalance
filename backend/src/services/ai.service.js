@@ -2215,7 +2215,11 @@ PROPOSAL HANDOFF:
 REMEMBER: Your #1 job is to make the client feel HEARD. Never make them repeat themselves, and NEVER assume information they did not provide!`;
 };
 
-const buildProposalSystemPrompt = () => `You are a proposal generator for a digital services agency.
+const buildProposalSystemPrompt = (servicePrompt = "") => `You are a proposal generator for a digital services agency.
+
+Service-Specific AI Instructions:
+${servicePrompt || "None"}
+
 Use only the information provided in proposal_context and chat_history as grounding context.
 Preserve confirmed user inputs exactly, but if a useful proposal field is missing, infer the best-fit recommendation from the confirmed business context, scope, service type, and standard delivery patterns for that kind of project.
 If proposal_context contains structured fields (such as questionnaireAnswers, questionnaireAnswersBySlug, appHints), prioritize those over ambiguous chat text.
@@ -3100,7 +3104,8 @@ const buildProposalRepairUserPrompt = ({
 export const generateProposalMarkdown = async (
   proposalContext = {},
   chatHistory = [],
-  selectedServiceName = ""
+  selectedServiceName = "",
+  servicePrompt = ""
 ) => {
   await ensureServicesCatalogLoaded();
 
@@ -3126,7 +3131,7 @@ export const generateProposalMarkdown = async (
     apiKey,
     title: "Catalance AI Proposal Generator",
     messages: [
-      { role: "system", content: buildProposalSystemPrompt() },
+      { role: "system", content: buildProposalSystemPrompt(servicePrompt) },
       {
         role: "user",
         content: buildProposalUserPrompt(contextPayload, historyPayload)

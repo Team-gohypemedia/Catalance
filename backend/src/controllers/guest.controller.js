@@ -153,6 +153,24 @@ const getMostRecentAttachmentsFromMessages = (messages = []) => {
     return [];
 };
 
+const toChronologicalGuestHistory = (messages = []) =>
+    [...(Array.isArray(messages) ? messages : [])]
+        .filter(Boolean)
+        .sort((a, b) => {
+            const aTime = new Date(a?.createdAt || 0).getTime();
+            const bTime = new Date(b?.createdAt || 0).getTime();
+
+            if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) {
+                return aTime - bTime;
+            }
+
+            return 0;
+        })
+        .map((message) => ({
+            role: message.role,
+            content: message.content,
+        }));
+
 const clipAttachmentText = (text = "", limit = MAX_SINGLE_ATTACHMENT_TEXT_CHARS) =>
     String(text || "")
         .split("\0")
@@ -2168,6 +2186,7 @@ const generateRuntimeOptionsForQuestion = async ({
 
 const buildAiGuidedQuestionMessage = async ({
     serviceName = "",
+    servicePrompt = "",
     userLastMessage = "",
     currentQuestion = {},
     nextQuestion = {},
@@ -2297,6 +2316,9 @@ Return strict JSON only:
 You are writing one assistant message in a guided questionnaire.
 
 Service: "${serviceName}"
+Service-Specific AI Instructions:
+${servicePrompt || "None"}
+
 User last message: ${JSON.stringify(userLastMessage)}
 Question just answered: ${JSON.stringify(String(currentQuestion?.text || ""))}
 Required next question (must ask now): ${JSON.stringify(nextQuestionText)}
@@ -3080,7 +3102,11 @@ export const guestChat = asyncHandler(async (req, res) => {
     // 1. Fetch Session
     const session = await prisma.aiGuestSession.findUnique({
         where: { id: sessionId },
-        include: { messages: true },
+        include: {
+            messages: {
+                orderBy: { createdAt: "asc" },
+            },
+        },
     });
 
     if (!session) {
@@ -3368,8 +3394,15 @@ export const guestChat = asyncHandler(async (req, res) => {
             - Keep the total response under 100 words.
             `;
 
+        if (service.aiPrompt) {
+            console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${service.aiPrompt}\n---------------------------\n`);
+        }
+
         const validationPrompt = `
             You are a friendly, professional assistant guiding a user through a questionnaire for a "${service.name}" service.
+            
+            Service-Specific AI Instructions:
+            ${service.aiPrompt || "None"}
             
             Current Question Asked: "${currentQuestionText}"
             Current Question Options: ${JSON.stringify(currentQuestionOptions)}
@@ -3455,6 +3488,7 @@ ${validationResponseRules}
         if (!validationResult) {
             const aiReaskCurrentQuestion = await buildAiGuidedQuestionMessage({
                 serviceName: service.name,
+                servicePrompt: service.aiPrompt || "",
                 userLastMessage: userMessageText,
                 currentQuestion,
                 nextQuestion: currentQuestion,
@@ -3613,6 +3647,7 @@ ${validationResponseRules}
                 ? ""
                 : await buildAiGuidedQuestionMessage({
                     serviceName: service.name,
+                    servicePrompt: service.aiPrompt || "",
                     userLastMessage: userMessageText,
                     currentQuestion,
                     nextQuestion: currentQuestion,
@@ -3680,7 +3715,7 @@ ${validationResponseRules}
     // --- END VALIDATION STEP ---
 
     // 3. Save User Answer (Valid)
-    await prisma.aiGuestMessage.create({
+    const createdUserMessage = await prisma.aiGuestMessage.create({
         data: {
             sessionId,
             role: "user",
@@ -3915,6 +3950,7 @@ ${validationResponseRules}
 
         const aiGuidedQuestionMessage = await buildAiGuidedQuestionMessage({
             serviceName: service.name,
+            servicePrompt: service.aiPrompt || "",
             userLastMessage: userMessageText,
             currentQuestion,
             nextQuestion,
@@ -4019,7 +4055,8 @@ ${validationResponseRules}
             responseContent = await generateProposalMarkdown(
                 proposalContext,
                 proposalHistory,
-                service.name
+                service.name,
+                service.aiPrompt || ""
             );
         } catch (error) {
             console.error("[Proposal] Generation failed:", error?.message || error);
@@ -4032,7 +4069,7 @@ ${validationResponseRules}
 
     // 5. Save Assistant Message
     console.log(`[Assistant]: ${responseContent}`);
-    await prisma.aiGuestMessage.create({
+    const createdAssistantMessage = await prisma.aiGuestMessage.create({
         data: {
             sessionId,
             role: "assistant",
@@ -4041,11 +4078,11 @@ ${validationResponseRules}
     });
 
     // Re-fetch messages for complete history or append manually
-    const newHistory = [
-        ...session.messages.map(m => ({ role: m.role, content: m.content })),
-        { role: "user", content: persistedUserMessageContent },
-        { role: "assistant", content: responseContent }
-    ];
+    const newHistory = toChronologicalGuestHistory([
+        ...session.messages,
+        createdUserMessage,
+        createdAssistantMessage,
+    ]);
 
     res.json({
         success: true,
@@ -4172,4 +4209,5 @@ export const __testables = {
     getRuntimeOptionsByQuestionSlug,
     mapNumericReplyToOptions,
     normalizeAnswerForQuestion,
+    toChronologicalGuestHistory,
 };
