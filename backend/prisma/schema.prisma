@@ -190,6 +190,37 @@ model Project {
   title                    String
   description              String        @db.Text
   budget                   Int?
+  proposalContent          String?       @db.Text
+  serviceKey               String?
+  clientName               String?
+  businessName             String?
+  serviceType              String?
+  projectOverview          String?       @db.Text
+  primaryObjectives        String[]      @default([])
+  featuresDeliverables     String[]      @default([])
+  timeline                 String?
+  budgetSummary            String?
+  websiteType              String?
+  designStyle              String?
+  websiteBuildType         String?
+  frontendFramework        String?
+  backendTechnology        String?
+  databaseType             String?
+  hosting                  String?
+  pageCount                String?
+  creativeType             String?
+  volume                   String?
+  engagementModel          String?
+  brandStage               String?
+  brandDeliverables        String[]      @default([])
+  targetAudience           String?
+  businessCategory         String?
+  targetLocations          String[]      @default([])
+  seoGoals                 String[]      @default([])
+  duration                 String?
+  appType                  String?
+  appFeatures              String[]      @default([])
+  platformRequirements     String[]      @default([])
   status                   ProjectStatus @default(DRAFT)
   progress                 Int           @default(0)
   spent                    Int           @default(0)

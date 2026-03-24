@@ -423,6 +423,7 @@ const upsertStoredGeneratedProposal = (proposalContent, userId) => {
         serviceKey: parsed.fields?.serviceType || "",
         summary: normalizedContent,
         content: normalizedContent,
+        proposalContent: normalizedContent,
         budget: parsed.fields?.budget || "",
         timeline: parsed.fields?.launchTimeline || "",
         ownerId: userId || null,

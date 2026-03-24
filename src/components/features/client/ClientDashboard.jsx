@@ -35,6 +35,7 @@ import {
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { formatINR, INR_PREFIX_PATTERN, normalizeINRText } from "@/shared/lib/currency";
 import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
+import { extractProjectProposalFields } from "@/shared/lib/project-proposal-fields";
 import {
   getProposalStorageKeys,
   migrateProposalStorageNamespace,
@@ -141,6 +142,15 @@ const resolveProposalProjectLink = (proposal = {}) =>
     proposal.syncedProjectId || proposal.projectId || proposal.project?.id || "",
   ).trim();
 
+const getStoredProposalContent = (proposal = {}) =>
+  proposal?.proposalContent || proposal?.content || proposal?.summary || "";
+
+const getStoredProposalSummary = (proposal = {}) =>
+  proposal?.summary ||
+  proposal?.projectOverview ||
+  proposal?.description ||
+  getStoredProposalContent(proposal);
+
 const mergeSavedProposalRecords = (current = {}, incoming = {}) => {
   const currentTimestamp = new Date(
     current.updatedAt || current.createdAt || 0,
@@ -162,9 +172,7 @@ const mergeSavedProposalRecords = (current = {}, incoming = {}) => {
 const getProposalSignature = (proposal = {}) => {
   const title = normalizeComparableText(resolveProposalStorageTitle(proposal));
   const service = normalizeComparableText(resolveProposalServiceValue(proposal));
-  const summary = normalizeComparableText(
-    proposal.summary || proposal.content || proposal.description || "",
-  );
+  const summary = normalizeComparableText(getStoredProposalSummary(proposal));
   if (!title && !service) {
     return `${title}::${service}::${summary.slice(0, 160)}`;
   }
@@ -180,6 +188,9 @@ const normalizeSavedProposal = (proposal = {}) => {
   if (typeof next.content === "string") {
     next.content = normalizeINRText(next.content);
   }
+  if (typeof next.proposalContent === "string") {
+    next.proposalContent = normalizeINRText(next.proposalContent);
+  }
   if (typeof next.summary === "string") {
     next.summary = normalizeINRText(next.summary);
   }
@@ -187,7 +198,11 @@ const normalizeSavedProposal = (proposal = {}) => {
     next.budget = normalizeINRText(next.budget);
   }
 
-  const text = next.content || next.summary || "";
+  if (!next.proposalContent && typeof next.content === "string" && next.content.trim()) {
+    next.proposalContent = next.content;
+  }
+
+  const text = getStoredProposalContent(next) || next.summary || "";
   if (text) {
     const extractedTimeline = extractLabeledLineValue(text, [
       "Timeline",
@@ -224,9 +239,7 @@ const getProposalDedupKeys = (proposal = {}) => {
   const keys = [];
   const linkedProjectId = resolveProposalProjectLink(proposal);
   const signature = getProposalSignature(proposal);
-  const summaryKey = normalizeComparableText(
-    proposal.summary || proposal.content || proposal.description || "",
-  );
+  const summaryKey = normalizeComparableText(getStoredProposalSummary(proposal));
   const serviceKey = normalizeComparableText(resolveProposalServiceValue(proposal));
   const budgetKey = normalizeComparableText(
     proposal.budget || proposal.amount || proposal.project?.budget || "",
@@ -360,7 +373,7 @@ const uniqueProposalItems = (items = []) => {
 };
 
 const parseProposalSections = (proposal = {}) => {
-  const rawContent = proposal?.summary || proposal?.content || "";
+  const rawContent = getStoredProposalContent(proposal) || proposal?.summary || "";
   const cleanContent = stripProposalMarkdown(rawContent);
   const lines = cleanContent.split("\n");
   let overview = "";
@@ -416,6 +429,38 @@ const parseProposalSections = (proposal = {}) => {
     objectives: uniqueProposalItems(objectives),
     features: uniqueProposalItems(features),
   };
+};
+
+const buildProjectWritePayload = (proposal = {}, overrides = {}) => {
+  const proposalContent = String(
+    overrides.proposalContent ?? getStoredProposalContent(proposal),
+  ).trim();
+  const description = String(
+    overrides.description ?? getStoredProposalSummary(proposal),
+  ).trim() || proposalContent || "Proposal draft";
+  const title =
+    String(overrides.title ?? resolveProposalTitle(proposal)).trim() || "Proposal";
+  const budgetSource = overrides.budget ?? proposal?.budget ?? "";
+  const structuredFields = extractProjectProposalFields({
+    ...proposal,
+    ...overrides,
+    description,
+    proposalContent,
+    serviceKey: overrides.serviceKey ?? proposal?.serviceKey ?? "",
+  });
+
+  const payload = {
+    title,
+    description,
+    budget: parseProposalBudgetValue(budgetSource),
+    ...structuredFields,
+  };
+
+  if (overrides.status) {
+    payload.status = overrides.status;
+  }
+
+  return payload;
 };
 
 const resolveProposalServiceLabel = (proposal = {}) =>
@@ -875,10 +920,13 @@ const mapProjectToSavedProposal = (project = {}) =>
     projectId: project.id,
     syncedProjectId: project.id,
     projectTitle: project.title || "Proposal",
-    summary: project.description || "",
-    content: project.description || "",
-    budget: project.budget || "",
+    summary: project.projectOverview || project.description || "",
+    content: project.proposalContent || project.description || "",
+    proposalContent: project.proposalContent || project.description || "",
+    budget: project.budgetSummary || project.budget || "",
     timeline: project.timeline || "",
+    service: project.serviceType || "",
+    serviceKey: project.serviceKey || "",
     createdAt: project.createdAt || new Date().toISOString(),
     updatedAt: project.updatedAt || project.createdAt || new Date().toISOString()
   });
@@ -1695,16 +1743,9 @@ const ClientDashboardContent = () => {
               const response = await authFetch("/projects", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: resolveProposalTitle(proposal),
-                  description:
-                    proposal.summary || proposal.content || "Proposal draft",
-                  budget:
-                    parseInt(
-                      String(proposal.budget || "0").replace(/[^0-9]/g, ""),
-                    ) || 0,
-                  status: "DRAFT",
-                }),
+                body: JSON.stringify(
+                  buildProjectWritePayload(proposal, { status: "DRAFT" }),
+                ),
                 suppressToast: true,
               });
 
@@ -1988,7 +2029,7 @@ const ClientDashboardContent = () => {
     if (!savedProposal) return;
     setEditForm({
       title: resolveProposalTitle(savedProposal),
-      summary: savedProposal.summary || savedProposal.content || "",
+      summary: getStoredProposalSummary(savedProposal),
       budget: savedProposal.budget || "",
       timeline: savedProposal.timeline || "",
     });
@@ -2004,10 +2045,12 @@ const ClientDashboardContent = () => {
     const nextBudget = editForm.budget.trim();
     const nextTimeline = editForm.timeline.trim();
     const nextDescription =
-      nextSummary || savedProposal.summary || savedProposal.content || "";
+      nextSummary || getStoredProposalSummary(savedProposal) || "";
     const nextBudgetValue = parseProposalBudgetValue(
       nextBudget || savedProposal.budget || "",
     );
+    const preservedProposalContent =
+      savedProposal?.proposalContent || savedProposal?.content || nextDescription;
     const linkedProjectId =
       savedProposal?.syncedProjectId || savedProposal?.projectId || null;
     const updatedAt = new Date().toISOString();
@@ -2019,7 +2062,9 @@ const ClientDashboardContent = () => {
             projectTitle: nextTitle,
             title: nextTitle,
             summary: nextDescription,
-            content: nextDescription,
+            content: preservedProposalContent,
+            proposalContent: preservedProposalContent,
+            projectOverview: nextDescription,
             budget: nextBudget || proposal.budget || "",
             timeline: nextTimeline || proposal.timeline || "",
             updatedAt,
@@ -2037,6 +2082,10 @@ const ClientDashboardContent = () => {
                   title: nextTitle,
                   description: nextDescription,
                   budget: nextBudgetValue,
+                  timeline: nextTimeline || project.timeline || "",
+                  projectOverview: nextDescription,
+                  proposalContent:
+                    project.proposalContent || preservedProposalContent,
                   updatedAt,
                 }
               : project,
@@ -2049,11 +2098,16 @@ const ClientDashboardContent = () => {
         const response = await authFetch(`/projects/${linkedProjectId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: nextTitle,
-            description: nextDescription,
-            budget: nextBudgetValue,
-          }),
+          body: JSON.stringify(
+            buildProjectWritePayload(savedProposal, {
+              title: nextTitle,
+              description: nextDescription,
+              projectOverview: nextDescription,
+              budget: nextBudget || savedProposal.budget || "",
+              timeline: nextTimeline || savedProposal.timeline || "",
+              proposalContent: preservedProposalContent,
+            }),
+          ),
         });
 
         if (!response.ok) {
@@ -2142,13 +2196,13 @@ const ClientDashboardContent = () => {
           const publishRes = await authFetch(`/projects/${project.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: resolveProposalTitle(savedProposal),
-              description: savedProposal.summary || savedProposal.content || "",
-              budget: normalizedBudget,
-              timeline: savedProposal.timeline || "1 month",
-              status: "OPEN",
-            }),
+            body: JSON.stringify(
+              buildProjectWritePayload(savedProposal, {
+                status: "OPEN",
+                budget: savedProposal.budget || normalizedBudget,
+                timeline: savedProposal.timeline || "1 month",
+              }),
+            ),
           });
 
           if (!publishRes.ok) {
@@ -2156,29 +2210,29 @@ const ClientDashboardContent = () => {
           }
 
           const publishPayload = await publishRes.json().catch(() => null);
-          project = publishPayload?.data
-            ? { ...project, ...publishPayload.data }
-            : {
-              ...project,
-              title: resolveProposalTitle(savedProposal),
-              description: savedProposal.summary || savedProposal.content || "",
-              budget: normalizedBudget,
-              timeline: savedProposal.timeline || "1 month",
-              status: "OPEN",
-            };
+            project = publishPayload?.data
+              ? { ...project, ...publishPayload.data }
+              : {
+                  ...project,
+                  ...buildProjectWritePayload(savedProposal, {
+                    status: "OPEN",
+                    budget: savedProposal.budget || normalizedBudget,
+                    timeline: savedProposal.timeline || "1 month",
+                  }),
+                };
         }
       } else {
         // Create a project only when this proposal has no synced project yet.
         const projectRes = await authFetch("/projects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: resolveProposalTitle(savedProposal),
-            description: savedProposal.summary || savedProposal.content || "",
-            budget: normalizedBudget,
-            timeline: savedProposal.timeline || "1 month",
-            status: "OPEN",
-          }),
+          body: JSON.stringify(
+            buildProjectWritePayload(savedProposal, {
+              status: "OPEN",
+              budget: savedProposal.budget || normalizedBudget,
+              timeline: savedProposal.timeline || "1 month",
+            }),
+          ),
         });
 
         if (!projectRes.ok) throw new Error("Failed to create project");
