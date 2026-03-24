@@ -2215,7 +2215,11 @@ PROPOSAL HANDOFF:
 REMEMBER: Your #1 job is to make the client feel HEARD. Never make them repeat themselves, and NEVER assume information they did not provide!`;
 };
 
-const buildProposalSystemPrompt = () => `You are a proposal generator for a digital services agency.
+const buildProposalSystemPrompt = (servicePrompt = "") => `You are a proposal generator for a digital services agency.
+
+Service-Specific AI Instructions:
+${servicePrompt || "None"}
+
 Use only the information provided in proposal_context and chat_history as grounding context.
 Preserve confirmed user inputs exactly, but if a useful proposal field is missing, infer the best-fit recommendation from the confirmed business context, scope, service type, and standard delivery patterns for that kind of project.
 If proposal_context contains structured fields (such as questionnaireAnswers, questionnaireAnswersBySlug, appHints), prioritize those over ambiguous chat text.
@@ -2225,8 +2229,8 @@ If proposal_context.serviceQuestionAnswers is present, treat every non-empty ans
 Cross-check proposal fields against serviceQuestionAnswers before finalizing output.
 Never leave an included field blank.
 Never use placeholder text such as "Not specified", "Pending confirmation", "To be finalized", "TBD", "TBA", "N/A", or "Unknown".
-If launch timeline is missing, generate a realistic recommended timeline based on the scope and service type.
-If budget or pricing is missing, generate a realistic recommended budget or budget range in INR based on the scope and service type.
+If launch timeline is missing, generate a single realistic recommended timeline (e.g. "6 weeks") based on the scope and service type. NEVER write a range.
+If budget or pricing is missing, generate a single realistic recommended budget amount in INR based on the scope and service type. NEVER write a budget range.
 If design, build, technology, hosting, engagement, or similar delivery fields are missing, choose practical recommended values that fit the stated requirements.
 Present inferred values directly and professionally inside the field value, not as a question and not as a disclaimer.
 
@@ -2290,8 +2294,9 @@ For APP DEVELOPMENT services, include:
 For other services, extract and include relevant fields from the chat history.
 
 CRITICAL INSTRUCTIONS:
-- ALWAYS extract the actual Launch Timeline value from the chat conversation when it exists. If no actual timeline was discussed, provide a best-fit recommended launch timeline.
-- ALWAYS extract the actual Budget value from the chat conversation when it exists. If no actual budget was discussed, provide a best-fit recommended budget or budget range in INR.
+- ALWAYS extract the actual Launch Timeline value from the chat conversation when it exists. If no actual timeline was discussed, provide a single best-fit recommended launch timeline (e.g. "6 weeks"). NEVER write a range like "4-6 weeks".
+- ALWAYS extract the actual Budget value from the chat conversation when it exists. If no actual budget was discussed, provide a single best-fit recommended budget amount in INR (e.g. "INR 50,000"). NEVER write a budget range like "INR 30,000 - 50,000".
+- NEVER use ranges anywhere in the proposal — not for budget, timeline, page count, or any other field. Always commit to a single definitive value.
 - If the user mentions specific technologies (Flutter, React Native, Node.js, Python, React.js dashboard, etc.), preserve them explicitly in the proposal.
 - Preserve confirmed requirements, but complete any missing proposal fields with sensible recommendations aligned to the user's goals.
 - Use concise, professional, business-ready language.
@@ -2607,12 +2612,13 @@ const extractNumberWordsValue = (text = "") => {
 const normalizeNumericFieldValue = (value = "") => {
   if (typeof value !== "string") return "";
 
+  // Collapse any range (e.g. "4-6", "5 to 10") to the higher value
   const rangeMatch = value.match(/(\d[\d,]*)\s*(?:-|to)\s*(\d[\d,]*)/i);
   if (rangeMatch) {
     const start = Number.parseInt(rangeMatch[1].replace(/,/g, ""), 10);
     const end = Number.parseInt(rangeMatch[2].replace(/,/g, ""), 10);
     if (Number.isFinite(start) && Number.isFinite(end)) {
-      return `${start}-${end}`;
+      return String(Math.max(start, end));
     }
   }
 
@@ -2678,11 +2684,12 @@ const normalizeProposalBudgetValue = (value = "", service = null) => {
 
   const suffix = detectBudgetSuffix(source, service);
   const amounts = parseBudgetAmountTokens(source);
+  // Collapse any budget range to the higher (max) value only
   if (amounts.length >= 2 && /\bbetween\b|\bto\b|-/i.test(source)) {
-    const first = formatCurrencyValue(amounts[0], "INR");
-    const second = formatCurrencyValue(amounts[1], "INR");
-    if (first && second) {
-      return `INR ${first} - ${second}${suffix ? ` ${suffix}` : ""}`;
+    const maxAmount = Math.max(...amounts);
+    const formatted = formatCurrencyValue(maxAmount, "INR");
+    if (formatted) {
+      return `INR ${formatted}${suffix ? ` ${suffix}` : ""}`;
     }
   }
 
@@ -2706,15 +2713,15 @@ const normalizeProposalBudgetValue = (value = "", service = null) => {
 const buildProposalTimelineFallback = (serviceCategory = "") => {
   switch (serviceCategory) {
     case "creative":
-      return "2-3 weeks";
+      return "3 weeks";
     case "seo":
       return "3 months";
     case "app":
-      return "8-12 weeks";
+      return "12 weeks";
     case "web":
-      return "4-6 weeks";
+      return "6 weeks";
     default:
-      return "4-6 weeks";
+      return "6 weeks";
   }
 };
 
@@ -3100,7 +3107,8 @@ const buildProposalRepairUserPrompt = ({
 export const generateProposalMarkdown = async (
   proposalContext = {},
   chatHistory = [],
-  selectedServiceName = ""
+  selectedServiceName = "",
+  servicePrompt = ""
 ) => {
   await ensureServicesCatalogLoaded();
 
@@ -3126,7 +3134,7 @@ export const generateProposalMarkdown = async (
     apiKey,
     title: "Catalance AI Proposal Generator",
     messages: [
-      { role: "system", content: buildProposalSystemPrompt() },
+      { role: "system", content: buildProposalSystemPrompt(servicePrompt) },
       {
         role: "user",
         content: buildProposalUserPrompt(contextPayload, historyPayload)

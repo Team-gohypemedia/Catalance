@@ -34,6 +34,7 @@ const AdminServices = () => {
         description: "",
         icon: "",
         active: true,
+        aiPrompt: "",
         minBudget: 0,
         currency: "INR"
     });
@@ -67,6 +68,7 @@ const AdminServices = () => {
                 description: service.description || "",
                 icon: service.icon || "",
                 active: service.active !== undefined ? service.active : true,
+                aiPrompt: service.aiPrompt || "",
                 minBudget: service.minBudget || 0,
                 currency: service.currency || "INR"
             });
@@ -78,6 +80,7 @@ const AdminServices = () => {
                 description: "",
                 icon: "",
                 active: true,
+                aiPrompt: "",
                 minBudget: 0,
                 currency: "INR"
             });
@@ -253,6 +256,21 @@ const AdminServices = () => {
                                     placeholder="Briefly describe this service..."
                                     className="h-24 resize-none"
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="aiPrompt" className="flex items-center gap-2">
+                                    <LucideIcons.Bot className="h-4 w-4" />
+                                    AI Context / System Prompt
+                                </Label>
+                                <Textarea
+                                    id="aiPrompt"
+                                    value={formData.aiPrompt}
+                                    onChange={(e) => setFormData({ ...formData, aiPrompt: e.target.value })}
+                                    placeholder="Provide specialized instructions or context so the AI remembers the specifics of this service during chat..."
+                                    className="h-32 resize-y font-mono text-sm"
+                                />
+                                <p className="text-xs text-muted-foreground">This prompt is injected into the AI's system memory silently when a user discusses this specific service.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg border">

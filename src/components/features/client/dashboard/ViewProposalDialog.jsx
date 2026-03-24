@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const parseProposalSectionsForView = (proposal) => {
-  const rawContent = proposal?.summary || proposal?.content || "";
+  const rawContent =
+    proposal?.proposalContent || proposal?.content || proposal?.summary || "";
   const cleanContent = rawContent
     .replace(/```markdown\n?/gi, "")
     .replace(/```\n?/g, "")

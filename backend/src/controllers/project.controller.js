@@ -9,6 +9,12 @@ import {
   buildPhaseOrderMap,
   isTaskPhaseLockedByPayment,
 } from "../../../src/shared/lib/project-verification-gates.js";
+import {
+  PROJECT_PROPOSAL_FIELD_KEYS,
+  PROJECT_PROPOSAL_LIST_FIELDS,
+  PROJECT_PROPOSAL_TEXT_FIELDS,
+  extractProjectProposalFields,
+} from "../../../src/shared/lib/project-proposal-fields.js";
 import crypto from "crypto";
 
 const MAX_INT = 2147483647; // PostgreSQL INT4 upper bound
@@ -138,6 +144,94 @@ const buildFreelancerUnsplashAvatarUrl = (user = {}) => {
     ];
   const sig = (seed % 9000) + 1;
   return `https://source.unsplash.com/640x640/?${encodeURIComponent(query)}&sig=${sig}`;
+};
+
+const PROJECT_PROPOSAL_LIST_FIELD_SET = new Set(PROJECT_PROPOSAL_LIST_FIELDS);
+const PROJECT_PROPOSAL_TEXT_FIELD_SET = new Set(PROJECT_PROPOSAL_TEXT_FIELDS);
+
+const normalizeProjectProposalText = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  const normalized = String(value || "").trim();
+  return normalized || null;
+};
+
+const normalizeProjectProposalList = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return [];
+
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|;|,(?=\s*[A-Za-z0-9])/)
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const hasOwnField = (value, key) =>
+  Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
+
+const buildProjectProposalData = (input = {}, { fallback = null, preserveFallback = false } = {}) => {
+  const mergedPayload = fallback ? { ...fallback, ...input } : input;
+  const extractedFields = extractProjectProposalFields(mergedPayload);
+  const proposalData = {};
+
+  PROJECT_PROPOSAL_TEXT_FIELDS.forEach((field) => {
+    if (hasOwnField(input, field)) {
+      proposalData[field] = normalizeProjectProposalText(input[field]);
+      return;
+    }
+
+    if (hasOwnField(extractedFields, field)) {
+      proposalData[field] = normalizeProjectProposalText(extractedFields[field]);
+      return;
+    }
+
+    if (preserveFallback && fallback && hasOwnField(fallback, field)) {
+      proposalData[field] = normalizeProjectProposalText(fallback[field]);
+    }
+  });
+
+  PROJECT_PROPOSAL_LIST_FIELDS.forEach((field) => {
+    if (hasOwnField(input, field)) {
+      proposalData[field] = normalizeProjectProposalList(input[field]);
+      return;
+    }
+
+    if (hasOwnField(extractedFields, field)) {
+      proposalData[field] = normalizeProjectProposalList(extractedFields[field]);
+      return;
+    }
+
+    if (preserveFallback && fallback && hasOwnField(fallback, field)) {
+      proposalData[field] = normalizeProjectProposalList(fallback[field]);
+    }
+  });
+
+  if (hasOwnField(input, "proposalContent")) {
+    proposalData.proposalContent = normalizeProjectProposalText(input.proposalContent);
+  } else if (hasOwnField(extractedFields, "proposalContent")) {
+    proposalData.proposalContent = normalizeProjectProposalText(extractedFields.proposalContent);
+  } else if (preserveFallback && fallback && hasOwnField(fallback, "proposalContent")) {
+    proposalData.proposalContent = normalizeProjectProposalText(fallback.proposalContent);
+  }
+
+  if (hasOwnField(input, "serviceKey")) {
+    proposalData.serviceKey = normalizeProjectProposalText(input.serviceKey);
+  } else if (hasOwnField(extractedFields, "serviceKey")) {
+    proposalData.serviceKey = normalizeProjectProposalText(extractedFields.serviceKey);
+  } else if (preserveFallback && fallback && hasOwnField(fallback, "serviceKey")) {
+    proposalData.serviceKey = normalizeProjectProposalText(fallback.serviceKey);
+  }
+
+  return proposalData;
 };
 
 const flattenFreelancerProfile = (freelancer = null) => {
@@ -430,6 +524,7 @@ export const createProject = asyncHandler(async (req, res) => {
   }
 
   const { title, description, budget, status, proposal } = req.body;
+  const structuredProposalData = buildProjectProposalData(req.body);
 
   console.log("Looking for an available Project Manager...");
   const projectManager = await findLeastLoadedActiveProjectManager();
@@ -440,6 +535,7 @@ export const createProject = asyncHandler(async (req, res) => {
       title,
       description,
       budget: normalizeBudget(budget),
+      ...structuredProposalData,
       status: status || "DRAFT",
       progress: 0,
       ownerId: userId,
@@ -674,6 +770,7 @@ export const updateProject = asyncHandler(async (req, res) => {
     const allowedFields = new Set([
       "title", "description", "budget", "status", "progress",
       "spent", "completedTasks", "verifiedTasks", "notes", "externalLink",
+      ...PROJECT_PROPOSAL_FIELD_KEYS,
     ]);
 
     // Admins can manually set managerId
@@ -684,7 +781,22 @@ export const updateProject = asyncHandler(async (req, res) => {
     const sanitizedUpdates = {};
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.has(key)) {
-        sanitizedUpdates[key] = key === "budget" ? normalizeBudget(value) : value;
+        if (key === "budget") {
+          sanitizedUpdates[key] = normalizeBudget(value);
+          continue;
+        }
+
+        if (PROJECT_PROPOSAL_TEXT_FIELD_SET.has(key) || key === "proposalContent" || key === "serviceKey") {
+          sanitizedUpdates[key] = normalizeProjectProposalText(value);
+          continue;
+        }
+
+        if (PROJECT_PROPOSAL_LIST_FIELD_SET.has(key)) {
+          sanitizedUpdates[key] = normalizeProjectProposalList(value);
+          continue;
+        }
+
+        sanitizedUpdates[key] = value;
       }
     }
 
@@ -716,6 +828,22 @@ export const updateProject = asyncHandler(async (req, res) => {
           );
         }
       }
+    }
+
+    const shouldRefreshProposalFields =
+      hasOwnField(updates, "description")
+      || hasOwnField(updates, "proposalContent")
+      || hasOwnField(updates, "serviceKey")
+      || PROJECT_PROPOSAL_FIELD_KEYS.some((field) => hasOwnField(updates, field));
+
+    if (shouldRefreshProposalFields) {
+      Object.assign(
+        sanitizedUpdates,
+        buildProjectProposalData(updates, {
+          fallback: existing,
+          preserveFallback: true,
+        }),
+      );
     }
 
     if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, "verifiedTasks")) {

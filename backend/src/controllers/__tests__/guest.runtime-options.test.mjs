@@ -9,6 +9,7 @@ const {
   getDisplayedQuestionOptions,
   mapNumericReplyToOptions,
   normalizeAnswerForQuestion,
+  toChronologicalGuestHistory,
 } = __testables;
 
 const question = {
@@ -75,4 +76,30 @@ test("builds displayed answers from runtime option labels", () => {
     getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug)[0].label,
     "Fast Next.js build"
   );
+});
+
+test("sorts guest history chronologically before returning it to the client", () => {
+  const history = toChronologicalGuestHistory([
+    {
+      role: "assistant",
+      content: "Latest reply",
+      createdAt: new Date("2026-03-24T10:00:02.000Z"),
+    },
+    {
+      role: "assistant",
+      content: "First question",
+      createdAt: new Date("2026-03-24T10:00:00.000Z"),
+    },
+    {
+      role: "user",
+      content: "My answer",
+      createdAt: new Date("2026-03-24T10:00:01.000Z"),
+    },
+  ]);
+
+  assert.deepEqual(history, [
+    { role: "assistant", content: "First question" },
+    { role: "user", content: "My answer" },
+    { role: "assistant", content: "Latest reply" },
+  ]);
 });
