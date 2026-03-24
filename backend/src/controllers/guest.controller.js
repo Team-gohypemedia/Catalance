@@ -16,6 +16,7 @@ const CONTEXT_SUGGESTION_REGEX =
 const AGENT_IDENTITY_REGEX =
     /\b(what(?:'s| is)\s+your\s+name|your\s+name\??|who\s+are\s+you|are\s+you\s+(?:an?\s+)?(?:ai|bot|human))\b/i;
 const GRATITUDE_REGEX = /\b(thanks|thank you|thx|ty)\b/i;
+const ATTACHMENT_REFERENCE_REGEX = /\b(pdf|document|doc|file|attachment|uploaded|upload|proposal|brochure|resume|deck|sheet)\b/i;
 const EXTRACTION_CONFIDENCE_MIN = 0.7;
 const EXTRACTION_CONFIDENCE_UPDATE_MIN = 0.86;
 const FRIENDLY_BRIDGES = [
@@ -135,6 +136,21 @@ const parseAttachmentTokensFromMessage = (messageText = "") => {
         plainText: plainLines.join("\n").trim(),
         attachments,
     };
+};
+
+const getMostRecentAttachmentsFromMessages = (messages = []) => {
+    if (!Array.isArray(messages) || messages.length === 0) return [];
+
+    for (let idx = messages.length - 1; idx >= 0; idx -= 1) {
+        const message = messages[idx];
+        if (String(message?.role || "").toLowerCase() !== "user") continue;
+        const parsed = parseAttachmentTokensFromMessage(String(message?.content || ""));
+        if (parsed.attachments.length > 0) {
+            return parsed.attachments;
+        }
+    }
+
+    return [];
 };
 
 const clipAttachmentText = (text = "", limit = MAX_SINGLE_ATTACHMENT_TEXT_CHARS) =>
@@ -575,42 +591,54 @@ const buildAttachmentInsightForUser = ({
     const visibleText = cleanLineValue(visibleTextLine, /^Visible text:\s*/i);
     const summary = cleanLineValue(summaryLine, /^Summary:\s*/i);
     const designCues = cleanLineValue(designCuesLine, /^Design cues:\s*/i);
-    const extractedText = cleanLineValue(extractedTextLine, /^Extracted text:\s*/i);
+    const extractedText = clipAttachmentText(
+        String(context.split(/Extracted text:\s*/i)[1] || "")
+            .replace(/\s+/g, " ")
+            .trim(),
+        180
+    );
+    const hasExtractedBodyText = /Extracted text:\s*\S+/s.test(context);
+    const hasReadableDocumentContent = Boolean(
+        possibleBrand
+        || visibleText
+        || summary
+        || designCues
+        || subject
+        || keywords
+        || hasExtractedBodyText
+    );
 
-    const insightSentences = [];
-    if (title) {
-        insightSentences.push(`I reviewed ${fileLabel} and found a document titled "${clipAttachmentText(title, 90)}".`);
-    } else {
-        insightSentences.push(`I reviewed ${fileLabel} and found useful details in it.`);
+    if (!hasReadableDocumentContent && (title || pageCount)) {
+        const basicSummary = [
+            title,
+            pageCount ? `${pageCount} pages` : ""
+        ]
+            .filter(Boolean)
+            .join(" - ");
+        return `File summary: ${basicSummary || "basic document details detected."}`;
     }
 
-    if (pageCount) {
-        insightSentences.push(`It looks like a ${clipAttachmentText(pageCount, 20)}-page document.`);
+    let summaryText = summary
+        || extractedText
+        || visibleText
+        || subject
+        || keywords
+        || designCues
+        || title;
+
+    if (possibleBrand && summaryText && !containsNormalizedText(summaryText, possibleBrand)) {
+        summaryText = `${possibleBrand}. ${summaryText}`;
     }
 
-    if (possibleBrand) {
-        insightSentences.push(`I noticed the brand or company name "${clipAttachmentText(possibleBrand, 70)}".`);
-    } else if (subject) {
-        insightSentences.push(`It appears to focus on ${clipAttachmentText(subject, 100)}.`);
-    } else if (keywords) {
-        insightSentences.push(`It seems to cover ${clipAttachmentText(keywords, 100)}.`);
+    if (!summaryText && pageCount) {
+        summaryText = `${pageCount} pages`;
     }
 
-    if (summary) {
-        insightSentences.push(clipAttachmentText(summary, 160));
-    } else if (visibleText) {
-        insightSentences.push(`I could read key text like "${clipAttachmentText(visibleText, 120)}."`);
-    } else if (designCues) {
-        insightSentences.push(`I also noticed ${clipAttachmentText(designCues, 120)}.`);
-    } else if (extractedText) {
-        insightSentences.push(`I found readable content in it and will use that context as we continue.`);
+    if (!summaryText) {
+        return `File summary: ${fileLabel}`;
     }
 
-    if (insightSentences.length === 0) {
-        return `I reviewed ${fileLabel} and will use any reliable details I could identify from it.`;
-    }
-
-    return clipAttachmentText(insightSentences.join(" "), 420);
+    return `File summary: ${clipAttachmentText(summaryText, 260)}`;
 };
 
 const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
@@ -636,55 +664,279 @@ const buildServiceAwareOpeningMessage = (serviceName = "") => {
 const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(text || ""));
 const isContextSuggestionRequest = (text = "") => CONTEXT_SUGGESTION_REGEX.test(String(text || ""));
 
-const getQuestionOptionLabels = (question = {}) => {
-    if (!Array.isArray(question?.options)) return [];
-    return question.options
-        .map((option) =>
-            typeof option === "string"
-                ? option
-                : (option?.label || option?.value || "")
-        )
-        .map((value) => String(value || "").trim())
-        .filter(Boolean);
-};
-
-const hasDirectOptionAnswer = (message = "", question = {}) => {
-    const normalizedMessage = normalizeTextToken(message);
-    if (!normalizedMessage) return false;
-
-    const optionLabels = getQuestionOptionLabels(question);
-    if (optionLabels.length === 0) return false;
-
-    return optionLabels.some((label) => {
-        const normalizedLabel = normalizeTextToken(label);
-        if (!normalizedLabel) return false;
-        return (
-            normalizedMessage.includes(normalizedLabel) ||
-            normalizedLabel.includes(normalizedMessage)
-        );
-    });
-};
+const RUNTIME_OPTIONS_STATE_KEY = "runtimeOptionsByQuestionSlug";
+const OPTION_QUESTION_TYPES = new Set([
+    "single option",
+    "multi option",
+    "multi select",
+    "grouped multi select",
+    "single select"
+]);
 
 const normalizeOptionComparableText = (value = "") =>
     String(value || "")
         .toLowerCase()
         .replace(/\*\*/g, "")
-        .replace(/[`_]/g, "")
+        .replace(/[`_]/g, " ")
         .replace(/[\u2013\u2014]/g, "-")
         .replace(/\s*-\s*/g, "-")
         .replace(/[^a-z0-9\s+-]/g, " ")
         .replace(/\s+/g, " ")
         .trim();
 
-const findExactOptionLabelMatches = (rawText = "", optionLabels = []) => {
-    const normalizedInput = normalizeOptionComparableText(rawText);
-    if (!normalizedInput) return [];
+const uniqueTextValues = (values = []) =>
+    Array.from(
+        new Set(
+            (Array.isArray(values) ? values : [])
+                .map((value) => String(value || "").trim())
+                .filter(Boolean)
+        )
+    );
 
-    return optionLabels.filter((label) => {
-        const normalizedLabel = normalizeOptionComparableText(label);
-        if (!normalizedLabel) return false;
-        return normalizedInput === normalizedLabel;
-    });
+const normalizeOptionObject = (option = {}, { fallbackLabel = "", fallbackValue = "" } = {}) => {
+    const rawLabel = typeof option === "string"
+        ? option
+        : (option?.label || option?.displayLabel || option?.text || option?.canonicalLabel || option?.value || fallbackLabel || "");
+    const rawValue = typeof option === "string"
+        ? option
+        : (option?.value || option?.canonicalValue || option?.label || option?.displayLabel || fallbackValue || rawLabel || "");
+    const label = String(rawLabel || "").trim();
+    const value = String(rawValue || "").trim();
+    if (!label && !value) return null;
+
+    const canonicalValue = String(option?.canonicalValue || value || label).trim();
+    const canonicalLabel = String(option?.canonicalLabel || label || value).trim();
+    const aliases = uniqueTextValues([
+        label,
+        value,
+        canonicalLabel,
+        canonicalValue,
+        ...(Array.isArray(option?.aliases) ? option.aliases : [])
+    ]);
+
+    return {
+        label: label || canonicalLabel || canonicalValue,
+        value: canonicalValue || value || label,
+        canonicalLabel: canonicalLabel || label || value,
+        canonicalValue: canonicalValue || value || label,
+        aliases,
+        requiresFollowup: Boolean(option?.requiresFollowup),
+    };
+};
+
+const getRuntimeOptionsByQuestionSlug = (sessionAnswers = {}) => {
+    const runtimeOptions =
+        sessionAnswers?.uiState?.[RUNTIME_OPTIONS_STATE_KEY];
+
+    if (!runtimeOptions || typeof runtimeOptions !== "object" || Array.isArray(runtimeOptions)) {
+        return {};
+    }
+
+    return Object.entries(runtimeOptions).reduce((acc, [slug, options]) => {
+        if (!slug || !Array.isArray(options) || options.length === 0) return acc;
+        const normalized = options
+            .map((option) => normalizeOptionObject(option))
+            .filter(Boolean);
+        if (normalized.length > 0) {
+            acc[slug] = normalized;
+        }
+        return acc;
+    }, {});
+};
+
+const getCanonicalQuestionOptions = (question = {}) => {
+    if (!Array.isArray(question?.options)) return [];
+    return question.options
+        .map((option) => normalizeOptionObject(option))
+        .filter(Boolean);
+};
+
+const mergeUniqueOptionsByValue = (...optionLists) => {
+    const seen = new Set();
+    const merged = [];
+
+    for (const optionList of optionLists) {
+        for (const option of optionList || []) {
+            const normalized = normalizeOptionObject(option);
+            if (!normalized) continue;
+            const key = normalizeTextToken(
+                normalized.canonicalValue || normalized.value || normalized.label
+            );
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            merged.push(normalized);
+        }
+    }
+
+    return merged;
+};
+
+const getDisplayedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug = {}) => {
+    const runtimeOptions = question?.slug
+        ? runtimeOptionsByQuestionSlug?.[question.slug]
+        : null;
+    const normalizedRuntimeOptions = Array.isArray(runtimeOptions)
+        ? runtimeOptions.map((option) => normalizeOptionObject(option)).filter(Boolean)
+        : [];
+
+    if (normalizedRuntimeOptions.length > 0) {
+        return normalizedRuntimeOptions;
+    }
+
+    return getCanonicalQuestionOptions(question);
+};
+
+const getAcceptedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug = {}) =>
+    mergeUniqueOptionsByValue(
+        getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug),
+        getCanonicalQuestionOptions(question)
+    );
+
+const getQuestionOptionLabels = (question = {}, runtimeOptionsByQuestionSlug = {}) =>
+    getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug)
+        .map((option) => String(option?.label || option?.value || "").trim())
+        .filter(Boolean);
+
+const extractComparableAnswerTokens = (answerValue = "") => {
+    if (Array.isArray(answerValue)) {
+        return Array.from(
+            new Set(
+                answerValue
+                    .map((item) => normalizeOptionComparableText(item))
+                    .filter(Boolean)
+            )
+        );
+    }
+
+    const normalized = normalizeOptionComparableText(answerValue);
+    if (!normalized) return [];
+
+    const splitParts = normalized
+        .split(/,|\/|\band\b/gi)
+        .map((part) => normalizeOptionComparableText(part))
+        .filter(Boolean);
+
+    if (!splitParts.includes(normalized)) {
+        splitParts.push(normalized);
+    }
+
+    return Array.from(new Set(splitParts));
+};
+
+const getComparableOptionAliases = (option = {}) =>
+    uniqueTextValues(
+        [option?.label, option?.value, option?.canonicalLabel, option?.canonicalValue, ...(option?.aliases || [])]
+            .map((value) => normalizeOptionComparableText(value))
+            .filter(Boolean)
+    );
+
+const findMatchingOptionsFromText = (answerValue = "", options = []) => {
+    const answerTokens = extractComparableAnswerTokens(answerValue);
+    if (answerTokens.length === 0) return [];
+
+    const matches = [];
+    const seen = new Set();
+
+    for (const token of answerTokens) {
+        const isPureNumber = /^\d+$/.test(token);
+        
+        const matchedOption = (options || []).find((option) => {
+            const aliases = getComparableOptionAliases(option);
+            return aliases.some((alias) => {
+                if (token === alias) return true;
+                if (isPureNumber) return false;
+                return token.includes(alias) || alias.includes(token);
+            });
+        });
+
+        if (!matchedOption) continue;
+
+        const key = normalizeTextToken(
+            matchedOption?.canonicalValue || matchedOption?.value || matchedOption?.label
+        );
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        matches.push(matchedOption);
+    }
+
+    return matches;
+};
+
+const buildQuestionDisplayAnswer = (question = {}, answerValue = "", runtimeOptionsByQuestionSlug = {}) => {
+    if (!question || !hasAnswerValue(answerValue)) return "";
+
+    const questionType = normalizeTextToken(question?.type || "input");
+    if (!OPTION_QUESTION_TYPES.has(questionType)) {
+        return Array.isArray(answerValue)
+            ? answerValue.map((item) => String(item || "").trim()).filter(Boolean).join(", ")
+            : String(answerValue || "").trim();
+    }
+
+    const matchedOptions = findMatchingOptionsFromText(
+        answerValue,
+        getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug)
+    );
+
+    if (matchedOptions.length === 0) {
+        return Array.isArray(answerValue)
+            ? answerValue.map((item) => String(item || "").trim()).filter(Boolean).join(", ")
+            : String(answerValue || "").trim();
+    }
+
+    return matchedOptions
+        .map((option) => option.label || option.canonicalLabel || option.value)
+        .filter(Boolean)
+        .join(", ");
+};
+
+const normalizeAnswerForQuestion = (question = {}, answerValue = "", runtimeOptionsByQuestionSlug = {}) => {
+    if (!question || !hasAnswerValue(answerValue)) {
+        return Array.isArray(answerValue)
+            ? answerValue.map((item) => String(item || "").trim()).filter(Boolean).join(", ")
+            : String(answerValue || "").trim();
+    }
+
+    const questionType = normalizeTextToken(question?.type || "input");
+    if (!OPTION_QUESTION_TYPES.has(questionType)) {
+        return Array.isArray(answerValue)
+            ? answerValue.map((item) => String(item || "").trim()).filter(Boolean).join(", ")
+            : String(answerValue || "").trim();
+    }
+
+    const matchedOptions = findMatchingOptionsFromText(
+        answerValue,
+        getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug)
+    );
+
+    if (matchedOptions.length === 0) {
+        return Array.isArray(answerValue)
+            ? answerValue.map((item) => String(item || "").trim()).filter(Boolean).join(", ")
+            : String(answerValue || "").trim();
+    }
+
+    return matchedOptions
+        .map((option) => option.value || option.canonicalValue || option.label)
+        .filter(Boolean)
+        .join(", ");
+};
+
+const hasDirectOptionAnswer = (message = "", question = {}, runtimeOptionsByQuestionSlug = {}) => {
+    const normalizedMessage = normalizeTextToken(message);
+    if (!normalizedMessage) return false;
+
+    const acceptedOptions = getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug);
+    if (acceptedOptions.length === 0) return false;
+
+    return acceptedOptions.some((option) =>
+        getComparableOptionAliases(option).some((alias) => {
+            const normalizedAlias = normalizeTextToken(alias);
+            if (!normalizedAlias) return false;
+            return (
+                normalizedMessage.includes(normalizedAlias) ||
+                normalizedAlias.includes(normalizedMessage)
+            );
+        })
+    );
 };
 const extractNumericChoiceNumbers = (text = "", maxOptionCount = 0) => {
     const raw = String(text || "");
@@ -714,29 +966,36 @@ const extractNumericChoiceNumbers = (text = "", maxOptionCount = 0) => {
     return numbers;
 };
 
-const mapNumericReplyToOptions = (question = {}, rawText = "") => {
-    const optionLabels = getQuestionOptionLabels(question);
-    if (optionLabels.length === 0) {
+const mapNumericReplyToOptions = (question = {}, rawText = "", runtimeOptionsByQuestionSlug = {}) => {
+    const displayedOptions = getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug);
+    if (displayedOptions.length === 0) {
         return { matched: false, normalizedText: rawText, selectedLabels: [] };
     }
 
-    // Prefer exact label matching first so values like "2-4 weeks" map correctly.
-    const exactMatches = findExactOptionLabelMatches(rawText, optionLabels);
+    const acceptedOptions = getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug);
+
+    // Prefer direct display/canonical label matching first so values like "2-4 weeks" map correctly.
+    const exactMatches = findMatchingOptionsFromText(rawText, acceptedOptions);
     if (exactMatches.length > 0) {
         return {
             matched: true,
-            normalizedText: exactMatches.join(", "),
+            normalizedText: exactMatches
+                .map((option) => option.label || option.canonicalLabel || option.value)
+                .filter(Boolean)
+                .join(", "),
             selectedLabels: exactMatches
+                .map((option) => option.label || option.canonicalLabel || option.value)
+                .filter(Boolean)
         };
     }
 
-    const numbers = extractNumericChoiceNumbers(rawText, optionLabels.length);
+    const numbers = extractNumericChoiceNumbers(rawText, displayedOptions.length);
     if (numbers.length === 0) {
         return { matched: false, normalizedText: rawText, selectedLabels: [] };
     }
 
     const selectedLabels = numbers
-        .map((number) => optionLabels[number - 1])
+        .map((number) => displayedOptions[number - 1]?.label || displayedOptions[number - 1]?.canonicalLabel || displayedOptions[number - 1]?.value)
         .filter(Boolean);
 
     if (selectedLabels.length === 0) {
@@ -750,11 +1009,11 @@ const mapNumericReplyToOptions = (question = {}, rawText = "") => {
     };
 };
 
-const countOptionLabelsMentioned = (message = "", question = {}) => {
+const countOptionLabelsMentioned = (message = "", question = {}, runtimeOptionsByQuestionSlug = {}) => {
     const normalizedMessage = normalizeTextToken(message);
     if (!normalizedMessage) return 0;
 
-    return getQuestionOptionLabels(question).reduce((count, label) => {
+    return getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug).reduce((count, label) => {
         const normalizedLabel = normalizeTextToken(label);
         if (!normalizedLabel) return count;
         return normalizedMessage.includes(normalizedLabel) ? count + 1 : count;
@@ -833,10 +1092,18 @@ const stripNameNotedRecap = (message = "") => {
         return firstPersonRecap || sharedRecap || soFarRecap;
     };
 
-    cleaned = cleaned
-        .split(/(?<=[.?!])\s+/)
-        .filter((sentence) => !isNameBrandRecapSentence(sentence))
-        .join(" ");
+    const parts = cleaned.split(/((?<=[.?!])(?:[ \t]*\n+[ \t]*|[ \t]+))/);
+    let result = "";
+    for (let i = 0; i < parts.length; i += 2) {
+        const sentence = parts[i] || "";
+        const whitespace = parts[i+1] || "";
+        if (!isNameBrandRecapSentence(sentence)) {
+            result += sentence + whitespace;
+        } else if (whitespace.includes("\n")) {
+            result += whitespace.replace(/[ \t]/g, "");
+        }
+    }
+    cleaned = result;
 
     return cleaned
         .replace(/[ \t]{2,}/g, " ")
@@ -1022,8 +1289,8 @@ const buildAgentSideReply = ({ userMessage = "", answersByQuestionText = {} }) =
     return "";
 };
 
-const buildQuickReplyHint = (question = {}) => {
-    const optionLabels = getQuestionOptionLabels(question);
+const buildQuickReplyHint = (question = {}, runtimeOptionsByQuestionSlug = {}) => {
+    const optionLabels = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug);
     if (optionLabels.length === 0 || optionLabels.length > 6) return "";
     return `Quick reply options: ${optionLabels.join(" | ")}`;
 };
@@ -1205,6 +1472,7 @@ const parseValidationResponse = (rawMessage) => {
 const normalizeTextToken = (value = "") =>
     String(value || "")
         .toLowerCase()
+        .replace(/[_-]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
 
@@ -1215,11 +1483,17 @@ const hasAnswerValue = (value) => {
 };
 
 const toComparableAnswer = (value) => {
+    const stripParens = (str) => String(str).replace(/\([^)]*\)/g, "").trim();
+
     if (Array.isArray(value)) {
-        return value.map((item) => normalizeTextToken(item)).filter(Boolean).sort().join(" | ");
+        return value
+            .map((item) => stripParens(normalizeTextToken(item)))
+            .filter(Boolean)
+            .sort()
+            .join(" | ");
     }
 
-    const normalized = normalizeTextToken(value);
+    const normalized = stripParens(normalizeTextToken(value));
     if (!normalized) return "";
 
     return normalized
@@ -1261,36 +1535,17 @@ const extractAnswerTokens = (answerValue) => {
     return Array.from(new Set(splitParts));
 };
 
-const doesExtractedAnswerFitQuestion = (question = {}, answerValue = "") => {
+const doesExtractedAnswerFitQuestion = (question = {}, answerValue = "", runtimeOptionsByQuestionSlug = {}) => {
     if (!question || !hasAnswerValue(answerValue)) return false;
 
     const questionType = normalizeTextToken(question?.type || "input");
-    const optionTypes = new Set([
-        "single_option",
-        "multi_option",
-        "multi_select",
-        "grouped_multi_select",
-        "single_select"
-    ]);
-    const optionLabels = getQuestionOptionLabels(question);
+    const optionLabels = getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug);
 
-    if (!optionTypes.has(questionType) || optionLabels.length === 0) {
+    if (!OPTION_QUESTION_TYPES.has(questionType) || optionLabels.length === 0) {
         return true;
     }
 
-    const normalizedOptionLabels = optionLabels
-        .map((label) => normalizeTextToken(label))
-        .filter(Boolean);
-    const answerTokens = extractAnswerTokens(answerValue);
-    if (answerTokens.length === 0) return false;
-
-    return answerTokens.some((token) =>
-        normalizedOptionLabels.some((optionLabel) =>
-            token === optionLabel
-            || token.includes(optionLabel)
-            || optionLabel.includes(token)
-        )
-    );
+    return findMatchingOptionsFromText(answerValue, optionLabels).length > 0;
 };
 
 const matchesLogicRule = (answerValue, rule = {}) => {
@@ -1371,7 +1626,10 @@ const getAnswersBySlug = (sessionAnswers = {}, questions = []) => {
     return result;
 };
 
-const buildPersistedAnswersPayload = (answersBySlug = {}, questions = []) => {
+const buildPersistedAnswersPayload = (answersBySlug = {}, questions = [], {
+    runtimeOptionsByQuestionSlug = {},
+    existingPayload = {}
+} = {}) => {
     const bySlug = {};
     const byQuestionText = {};
 
@@ -1380,10 +1638,33 @@ const buildPersistedAnswersPayload = (answersBySlug = {}, questions = []) => {
         const value = answersBySlug[question.slug];
         if (!hasAnswerValue(value)) continue;
         bySlug[question.slug] = value;
-        byQuestionText[question.text] = value;
+        byQuestionText[question.text] = buildQuestionDisplayAnswer(
+            question,
+            value,
+            runtimeOptionsByQuestionSlug
+        ) || value;
     }
 
-    return { bySlug, byQuestionText };
+    const payload = { bySlug, byQuestionText };
+    const existingUiState =
+        existingPayload?.uiState && typeof existingPayload.uiState === "object" && !Array.isArray(existingPayload.uiState)
+            ? { ...existingPayload.uiState }
+            : {};
+    const normalizedRuntimeOptions = getRuntimeOptionsByQuestionSlug({
+        uiState: { [RUNTIME_OPTIONS_STATE_KEY]: runtimeOptionsByQuestionSlug }
+    });
+
+    if (Object.keys(normalizedRuntimeOptions).length > 0) {
+        existingUiState[RUNTIME_OPTIONS_STATE_KEY] = normalizedRuntimeOptions;
+    } else {
+        delete existingUiState[RUNTIME_OPTIONS_STATE_KEY];
+    }
+
+    if (Object.keys(existingUiState).length > 0) {
+        payload.uiState = existingUiState;
+    }
+
+    return payload;
 };
 
 const getAnswerBySlugPattern = (answersBySlug = {}, pattern) => {
@@ -1408,16 +1689,17 @@ const pickOptionLabelByPatterns = (optionLabels = [], patterns = []) => {
 const buildContextualSuggestionMessage = ({
     question = {},
     answersBySlug = {},
-    serviceName = ""
+    serviceName = "",
+    runtimeOptionsByQuestionSlug = {}
 }) => {
     const questionText = String(question?.text || "Could you please confirm this?");
-    const optionLabels = getQuestionOptionLabels(question);
+    const optionLabels = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug);
     const normalizedQuestion = normalizeTextToken(questionText);
     const combinedContext = Object.values(answersBySlug || {})
         .map((value) => String(value || ""))
         .join(" ");
     const normalizedContext = normalizeTextToken(combinedContext);
-    const questionWithOptions = formatQuestionWithOptions(question);
+    const questionWithOptions = formatQuestionWithOptions(question, runtimeOptionsByQuestionSlug);
 
     if (optionLabels.length === 0) {
         return [
@@ -1562,13 +1844,17 @@ const stringifyAnswerForContext = (value) => {
     return String(value || "").trim();
 };
 
-const buildSavedResponseContextLines = (answersBySlug = {}, questions = []) =>
+const buildSavedResponseContextLines = (answersBySlug = {}, questions = [], runtimeOptionsByQuestionSlug = {}) =>
     (Array.isArray(questions) ? questions : [])
         .filter((question) => question?.saveResponse && question?.slug)
         .map((question) => {
             const answerValue = answersBySlug?.[question.slug];
             if (!hasAnswerValue(answerValue)) return null;
-            const answerText = stringifyAnswerForContext(answerValue);
+            const answerText = buildQuestionDisplayAnswer(
+                question,
+                answerValue,
+                runtimeOptionsByQuestionSlug
+            ) || stringifyAnswerForContext(answerValue);
             if (!answerText) return null;
             const subtitle = String(question?.subtitle || "").trim();
             return subtitle
@@ -1641,7 +1927,8 @@ const stripInlineOptionListTail = (value = "") => {
 const buildRecentAnswerContextSnippet = ({
     answersBySlug = {},
     questions = [],
-    excludeSlug = ""
+    excludeSlug = "",
+    runtimeOptionsByQuestionSlug = {}
 }) => {
     const answeredRows = (Array.isArray(questions) ? questions : [])
         .filter((question) => question?.slug && question.slug !== excludeSlug)
@@ -1650,7 +1937,11 @@ const buildRecentAnswerContextSnippet = ({
             if (!hasAnswerValue(value)) return null;
             return {
                 question: String(question.text || "").trim(),
-                answer: stringifyAnswerForContext(value)
+                answer: buildQuestionDisplayAnswer(
+                    question,
+                    value,
+                    runtimeOptionsByQuestionSlug
+                ) || stringifyAnswerForContext(value)
             };
         })
         .filter(Boolean)
@@ -1699,16 +1990,16 @@ const parsePostFifthMessageFields = (rawMessage = "") => {
     };
 };
 
-const buildOptionLabelsText = (question = {}) => {
-    const labels = getQuestionOptionLabels(question);
+const buildOptionLabelsText = (question = {}, runtimeOptionsByQuestionSlug = {}) => {
+    const labels = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug);
     if (labels.length === 0) return "No predefined options.";
     return labels.map((label, index) => `${index + 1}. ${label}`).join("\n");
 };
 
-const formatQuestionWithOptions = (question = {}) => {
+const formatQuestionWithOptions = (question = {}, runtimeOptionsByQuestionSlug = {}) => {
     const questionText = String(question?.text || "").trim();
-    const optionsText = buildOptionLabelsText(question);
-    const hasOptions = getQuestionOptionLabels(question).length > 0;
+    const optionsText = buildOptionLabelsText(question, runtimeOptionsByQuestionSlug);
+    const hasOptions = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug).length > 0;
     if (!questionText) return "";
     if (!hasOptions) return questionText;
     return `${questionText}\n${optionsText}`;
@@ -1719,19 +2010,160 @@ const hasNumberedOptionsInMessage = (value = "") =>
 
 const shouldAppendQuestionBlockForInfoRequest = ({
     assistantMessage = "",
-    question = {}
+    question = {},
+    runtimeOptionsByQuestionSlug = {}
 }) => {
     const message = String(assistantMessage || "").trim();
     if (!message) return true;
 
-    const hasOptions = getQuestionOptionLabels(question).length > 0;
+    const hasOptions = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug).length > 0;
     if (hasOptions) {
         if (hasNumberedOptionsInMessage(message)) return false;
-        if (countOptionLabelsMentioned(message, question) >= 2) return false;
+        if (countOptionLabelsMentioned(message, question, runtimeOptionsByQuestionSlug) >= 2) return false;
         return true;
     }
 
     return !/[?؟]/.test(message);
+};
+
+const isCatchAllOption = (option = {}) =>
+    /\b(other|not sure|unsure|something else|custom)\b/i.test(
+        `${option?.label || ""} ${option?.canonicalLabel || ""} ${option?.value || ""} ${option?.canonicalValue || ""}`.trim()
+    );
+
+const buildRuntimeOptionSelectionPrompt = ({
+    serviceName = "",
+    question = {},
+    answersByQuestionText = {},
+    answersBySlug = {},
+    allQuestions = []
+}) => {
+    const canonicalOptions = getCanonicalQuestionOptions(question).map((option) => ({
+        value: option.value,
+        label: option.canonicalLabel || option.label,
+    }));
+    const answersContext = buildAnswersContextLines(answersByQuestionText);
+    const savedResponseContext = buildSavedResponseContextLines(
+        answersBySlug,
+        allQuestions
+    );
+
+    return `
+You are selecting the best UI options for one questionnaire step.
+
+Service: ${JSON.stringify(serviceName)}
+Question: ${JSON.stringify(String(question?.text || ""))}
+Question type: ${JSON.stringify(String(question?.type || "input"))}
+Question context: ${JSON.stringify(String(question?.subtitle || "").trim() || "none")}
+Confirmed user context:
+${answersContext || "- none yet"}
+
+Saved AI memory:
+${savedResponseContext || "- none yet"}
+
+Canonical option pool:
+${JSON.stringify(canonicalOptions)}
+
+Task:
+1. Select the most relevant options to show right now for this user.
+2. You may reorder and relabel options for clarity.
+3. You must keep each "value" exactly from the canonical option pool.
+4. Do not invent new values.
+5. Prefer 2 to 5 options for single-select questions and 3 to 6 for multi-select questions.
+6. If the pool includes "Other" or "Not sure", keep it when it could help.
+7. Avoid options that are clearly irrelevant based on the confirmed context.
+8. Keep labels short, user-facing, and natural.
+9. If context is weak, keep the broadest sensible choices instead of over-filtering.
+
+Return strict JSON only:
+{
+  "options": [
+    { "value": "canonical_value", "label": "User-facing label" }
+  ]
+}
+`;
+};
+
+const generateRuntimeOptionsForQuestion = async ({
+    serviceName = "",
+    question = {},
+    answersByQuestionText = {},
+    answersBySlug = {},
+    allQuestions = []
+}) => {
+    const questionType = normalizeTextToken(question?.type || "input");
+    const canonicalOptions = getCanonicalQuestionOptions(question);
+    if (!OPTION_QUESTION_TYPES.has(questionType) || canonicalOptions.length === 0) {
+        return [];
+    }
+
+    if (canonicalOptions.length <= 2) {
+        return canonicalOptions;
+    }
+
+    const prompt = buildRuntimeOptionSelectionPrompt({
+        serviceName,
+        question,
+        answersByQuestionText,
+        answersBySlug,
+        allQuestions
+    });
+
+    try {
+        const response = await chatWithAI(
+            [{ role: "user", content: prompt }],
+            [{ role: "system", content: "You are a JSON-only assistant. Return strict JSON only." }],
+            "system_runtime_options"
+        );
+
+        if (!response?.success) {
+            return canonicalOptions;
+        }
+
+        const parsed = parseJsonObjectFromRaw(response.message);
+        const rows = Array.isArray(parsed?.options) ? parsed.options : [];
+        if (rows.length === 0) {
+            return canonicalOptions;
+        }
+
+        const canonicalByValue = canonicalOptions.reduce((acc, option) => {
+            const key = normalizeTextToken(option.value || option.canonicalValue || option.label);
+            if (key) acc[key] = option;
+            return acc;
+        }, {});
+
+        const selectedOptions = rows
+            .map((row) => {
+                const canonical = canonicalByValue[normalizeTextToken(row?.value || "")];
+                if (!canonical) return null;
+                return normalizeOptionObject({
+                    value: canonical.value,
+                    canonicalValue: canonical.value,
+                    canonicalLabel: canonical.canonicalLabel || canonical.label,
+                    label: String(row?.label || canonical.label || canonical.canonicalLabel || canonical.value).trim(),
+                    aliases: [
+                        canonical.label,
+                        canonical.canonicalLabel,
+                        canonical.value,
+                        row?.label
+                    ]
+                });
+            })
+            .filter(Boolean);
+
+        const merged = mergeUniqueOptionsByValue(selectedOptions);
+        const catchAllOptions = canonicalOptions.filter((option) => isCatchAllOption(option));
+        const finalOptions = mergeUniqueOptionsByValue(merged, catchAllOptions);
+
+        if (finalOptions.length === 0) {
+            return canonicalOptions;
+        }
+
+        return finalOptions;
+    } catch (error) {
+        console.warn("[Runtime Options] Falling back to canonical options:", error?.message || error);
+        return canonicalOptions;
+    }
 };
 
 const buildAiGuidedQuestionMessage = async ({
@@ -1742,6 +2174,7 @@ const buildAiGuidedQuestionMessage = async ({
     answersByQuestionText = {},
     answersBySlug = {},
     allQuestions = [],
+    runtimeOptionsByQuestionSlug = {},
     sideReply = "",
     bridgeSegments = [],
     isInitial = false
@@ -1749,8 +2182,8 @@ const buildAiGuidedQuestionMessage = async ({
     const nextQuestionText = String(nextQuestion?.text || "").trim();
     if (!nextQuestionText) return "";
 
-    const optionLabelsText = buildOptionLabelsText(nextQuestion);
-    const hasOptions = getQuestionOptionLabels(nextQuestion).length > 0;
+    const optionLabelsText = buildOptionLabelsText(nextQuestion, runtimeOptionsByQuestionSlug);
+    const hasOptions = getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug).length > 0;
     const answeredCount = Object.values(answersBySlug || {}).filter((value) => hasAnswerValue(value)).length;
     const isPostFifthAckSuggestionMode = !isInitial && answeredCount >= 5;
     const nextQuestionIndex = nextQuestion?.slug
@@ -1759,7 +2192,11 @@ const buildAiGuidedQuestionMessage = async ({
     const isOpeningIntakeQuestion =
         Number.isInteger(nextQuestionIndex) && nextQuestionIndex >= 0 && nextQuestionIndex < 3;
     const answersContext = buildAnswersContextLines(answersByQuestionText);
-    const savedResponseContext = buildSavedResponseContextLines(answersBySlug, allQuestions);
+    const savedResponseContext = buildSavedResponseContextLines(
+        answersBySlug,
+        allQuestions,
+        runtimeOptionsByQuestionSlug
+    );
     const subtitleMapContext = buildQuestionSubtitleMapLines(allQuestions);
     const currentQuestionSubtitle = String(currentQuestion?.subtitle || "").trim();
     const nextQuestionSubtitle = String(nextQuestion?.subtitle || "").trim();
@@ -1894,6 +2331,7 @@ ${responseLengthRule}
 - Use simple English with clear sentences.
 - Keep the tone polite, friendly, and enthusiastic in every response.
 - Avoid repeating the same idea in multiple lines.
+- IMPORTANT: If 'side_reply' asks a different question or lists different options than the 'Required next question', you MUST ignore the conflicting parts of 'side_reply' and ONLY ask the 'Required next question'.
 - In normal guided flow, avoid phrases like "I recommend", "best option", "people usually choose", or "people often lean toward" unless the user explicitly asks for a recommendation.
 - Do not skip or replace the required next question.
 - Do not ask extra unrelated questions.
@@ -1923,14 +2361,16 @@ ${outputFormatBlock}
                 buildRecentAnswerContextSnippet({
                     answersBySlug,
                     questions: allQuestions,
-                    excludeSlug: currentQuestion?.slug
+                    excludeSlug: currentQuestion?.slug,
+                    runtimeOptionsByQuestionSlug
                 }),
                 170
             );
             const contextualSuggestionDraft = buildContextualSuggestionMessage({
                 question: nextQuestion,
                 answersBySlug,
-                serviceName
+                serviceName,
+                runtimeOptionsByQuestionSlug
             });
             const contextualRecommendation = extractCurrentRecommendationLine(contextualSuggestionDraft);
 
@@ -1959,7 +2399,7 @@ ${outputFormatBlock}
             );
             const strippedQuestionLead = stripExistingOptionLines(
                 stripInlineOptionListTail(structured.questionLead || nextQuestionText),
-                getQuestionOptionLabels(nextQuestion)
+                getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug)
             );
             const questionLead = clipSentence(
                 strippedQuestionLead || nextQuestionText,
@@ -1993,7 +2433,7 @@ ${outputFormatBlock}
         // We removed the strict question mark test because the AI might naturally end with a colon like "Please choose an option below:"
 
         if (hasOptions) {
-            const optionLabels = getQuestionOptionLabels(nextQuestion);
+            const optionLabels = getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug);
             const normalizedParsedMessage = stripInlineOptionListTail(parsedMessage);
             if (!hasNumberedOptionsInMessage(normalizedParsedMessage)) {
                 const cleanedMessage = stripExistingOptionLines(normalizedParsedMessage, optionLabels);
@@ -2008,6 +2448,60 @@ ${outputFormatBlock}
         console.error("[buildAiGuidedQuestionMessage] Fatal error:", e);
         return "";
     }
+};
+
+const checkMeaningfulChangeWithAI = async ({ questionText, oldAnswer, newAnswer }) => {
+    const prompt = `
+You are an AI assistant helping a user build a project. The user had previously answered this question:
+Question: "${questionText}"
+Old Answer: "${oldAnswer}"
+
+Based on the latest conversation, we naturally extracted a new answer for that question:
+New Answer: "${newAnswer}"
+
+Decide if the new answer represents a genuine, disruptive change of mind (e.g., they specifically chose "WordPress" earlier, but now want "Shopify", and they actively decided to switch paths).
+
+CRITICAL EXCEPTIONS that are NOT considered a "meaningful change of mind" (return is_meaningful_change: false):
+1. If the Old Answer implies the user was "Not sure", "Undecided", "Suggest best option", "I don't know", etc., and the New Answer is a concrete choice they just made based on our advice. This is a natural progression, NOT a change of mind!
+2. If the New Answer is just a trivial rewording, elaboration, or synonymous expression of their Old Answer.
+
+If it IS a genuine change, write a friendly confirmation message asking if they want to update their answer. Ask it conversationally ("I noticed you mentioned... Should we switch your choice to...?"). Do not force them to reply "Yes" or "No" in the text.
+
+Return ONLY strict valid JSON in this exact format:
+{
+  "is_meaningful_change": boolean,
+  "confirmation_message": "string (or empty if false)"
+}
+`;
+
+    try {
+        const evalResponse = await chatWithAI(
+            [{ role: "user", content: prompt }],
+            [{ role: "system", content: "You are a strict JSON-only evaluator. Output valid JSON." }],
+            "system_evaluator"
+        );
+        if (evalResponse?.success) {
+            const rawMsg = evalResponse.message.replace(/```(?:json)?|```/g, "").trim();
+            const firstBrace = rawMsg.indexOf('{');
+            const lastBrace = rawMsg.lastIndexOf('}');
+            const cleanJson = (firstBrace >= 0 && lastBrace >= firstBrace) 
+                ? rawMsg.substring(firstBrace, lastBrace + 1)
+                : rawMsg;
+            const parsed = JSON.parse(cleanJson.replace(/\*\*/g, ""));
+            return {
+                isMeaningful: !!parsed.is_meaningful_change,
+                confirmMessage: parsed.confirmation_message || ""
+            };
+        }
+    } catch (e) {
+        console.error("[checkMeaningfulChangeWithAI] Failed:", e);
+    }
+    
+    // Fallback
+    return {
+        isMeaningful: true,
+        confirmMessage: `Are you sure you want to update your answer for "${questionText}" to "${newAnswer}"?`
+    };
 };
 
 const getChangedAnswerDetails = (questions = [], previousAnswersBySlug = {}, nextAnswersBySlug = {}) => {
@@ -2131,6 +2625,16 @@ const clearAnswersByIndexes = (answersBySlug = {}, questions = [], indexes = [])
     return nextAnswers;
 };
 
+const clearRuntimeOptionsByIndexes = (runtimeOptionsByQuestionSlug = {}, questions = [], indexes = []) => {
+    const nextRuntimeOptions = { ...(runtimeOptionsByQuestionSlug || {}) };
+    for (const index of indexes) {
+        const slug = questions[index]?.slug;
+        if (!slug) continue;
+        delete nextRuntimeOptions[slug];
+    }
+    return nextRuntimeOptions;
+};
+
 const applyExtractedAnswerUpdates = ({
     baseAnswersBySlug = {},
     existingAnswersBySlug = {},
@@ -2138,6 +2642,7 @@ const applyExtractedAnswerUpdates = ({
     questionIndexBySlug = new Map(),
     questionsBySlug = new Map(),
     questionSlugSet = new Set(),
+    runtimeOptionsByQuestionSlug = {},
     currentStep = -1,
     ignoreSlug = "",
     correctionIntent = false,
@@ -2154,9 +2659,13 @@ const applyExtractedAnswerUpdates = ({
 
         const targetIndex = questionIndexBySlug.get(slug);
         const targetQuestion = questionsBySlug.get(slug);
-        if (targetQuestion && !doesExtractedAnswerFitQuestion(targetQuestion, extracted.answer)) {
+        if (targetQuestion && !doesExtractedAnswerFitQuestion(targetQuestion, extracted.answer, runtimeOptionsByQuestionSlug)) {
             continue;
         }
+
+        const normalizedExtractedAnswer = targetQuestion
+            ? normalizeAnswerForQuestion(targetQuestion, extracted.answer, runtimeOptionsByQuestionSlug)
+            : extracted.answer;
 
         const confidence = Number(extracted?.confidence);
         const normalizedConfidence = Number.isFinite(confidence) ? confidence : 0;
@@ -2177,12 +2686,12 @@ const applyExtractedAnswerUpdates = ({
 
         if (
             hasExistingAnswer &&
-            toComparableAnswer(existingAnswersBySlug[slug]) === toComparableAnswer(extracted.answer)
+            toComparableAnswer(existingAnswersBySlug[slug]) === toComparableAnswer(normalizedExtractedAnswer)
         ) {
             continue;
         }
 
-        nextAnswers[slug] = extracted.answer;
+        nextAnswers[slug] = normalizedExtractedAnswer;
         updatedSlugs.push(slug);
 
         if (Number.isInteger(targetIndex)) {
@@ -2273,7 +2782,9 @@ const parseAnswerExtractionResponse = (rawMessage) => {
 const mergeExtractedAnswers = ({
     baseAnswers = {},
     extractedAnswers = [],
-    validSlugs = new Set()
+    validSlugs = new Set(),
+    questionsBySlug = new Map(),
+    runtimeOptionsByQuestionSlug = {}
 }) => {
     const merged = { ...(baseAnswers || {}) };
 
@@ -2282,33 +2793,40 @@ const mergeExtractedAnswers = ({
         if (!slug || (validSlugs.size > 0 && !validSlugs.has(slug))) continue;
         if (!hasAnswerValue(extracted?.answer)) continue;
 
+        const question = questionsBySlug.get(slug);
+        const normalizedExtractedAnswer = question
+            ? normalizeAnswerForQuestion(question, extracted.answer, runtimeOptionsByQuestionSlug)
+            : extracted.answer;
+
         const confidence = Number(extracted?.confidence);
         const normalizedConfidence = Number.isFinite(confidence) ? confidence : 0;
         const existing = merged[slug];
 
         if (!hasAnswerValue(existing)) {
             if (normalizedConfidence >= 0.65) {
-                merged[slug] = extracted.answer;
+                merged[slug] = normalizedExtractedAnswer;
             }
             continue;
         }
 
         if (
-            toComparableAnswer(existing) !== toComparableAnswer(extracted.answer) &&
+            toComparableAnswer(existing) !== toComparableAnswer(normalizedExtractedAnswer) &&
             normalizedConfidence >= 0.92
         ) {
-            merged[slug] = extracted.answer;
+            merged[slug] = normalizedExtractedAnswer;
         }
     }
 
     return merged;
 };
 
-const buildQuestionAnswerCoverage = (questions = [], answersBySlug = {}) =>
+const buildQuestionAnswerCoverage = (questions = [], answersBySlug = {}, runtimeOptionsByQuestionSlug = {}) =>
     questions.map((question) => ({
         slug: question?.slug || "",
         question: question?.text || "",
-        answer: hasAnswerValue(answersBySlug[question?.slug]) ? String(answersBySlug[question.slug]) : null
+        answer: hasAnswerValue(answersBySlug[question?.slug])
+            ? (buildQuestionDisplayAnswer(question, answersBySlug[question.slug], runtimeOptionsByQuestionSlug) || String(answersBySlug[question.slug]))
+            : null
     }));
 
 const extractAnswersFromMessage = async ({ serviceName = "", message = "", questions = [] }) => {
@@ -2466,9 +2984,22 @@ export const startGuestSession = asyncHandler(async (req, res) => {
 
     const firstQuestionDefinition = service.questions[0];
     const fallbackFirstQuestion = firstQuestionDefinition?.text || "How can I help you regarding this service?";
+    const initialRuntimeOptionsByQuestionSlug = {};
+    if (firstQuestionDefinition?.slug) {
+        const runtimeOptions = await generateRuntimeOptionsForQuestion({
+            serviceName: service.name,
+            question: firstQuestionDefinition,
+            answersByQuestionText: {},
+            answersBySlug: {},
+            allQuestions: service.questions
+        });
+        if (runtimeOptions.length > 0) {
+            initialRuntimeOptionsByQuestionSlug[firstQuestionDefinition.slug] = runtimeOptions;
+        }
+    }
     const firstQuestionConfig = {
         type: firstQuestionDefinition?.type || "text",
-        options: firstQuestionDefinition?.options || []
+        options: getDisplayedQuestionOptions(firstQuestionDefinition, initialRuntimeOptionsByQuestionSlug)
     };
     const aiFirstQuestion = firstQuestionDefinition
         ? await buildAiGuidedQuestionMessage({
@@ -2479,6 +3010,7 @@ export const startGuestSession = asyncHandler(async (req, res) => {
             answersByQuestionText: {},
             answersBySlug: {},
             allQuestions: service.questions,
+            runtimeOptionsByQuestionSlug: initialRuntimeOptionsByQuestionSlug,
             sideReply: "",
             bridgeSegments: [],
             isInitial: true
@@ -2494,7 +3026,11 @@ export const startGuestSession = asyncHandler(async (req, res) => {
         data: {
             serviceId: service.slug, // Store slug for consistency
             currentStep: 0,
-            answers: {},
+            answers: buildPersistedAnswersPayload(
+                {},
+                service.questions,
+                { runtimeOptionsByQuestionSlug: initialRuntimeOptionsByQuestionSlug }
+            ),
         },
     });
 
@@ -2568,7 +3104,123 @@ export const guestChat = asyncHandler(async (req, res) => {
     const questions = service.questions;
     const currentStep = session.currentStep;
     const currentQuestion = questions[currentStep];
-    const numericSelection = mapNumericReplyToOptions(currentQuestion, trimmedMessageText);
+    const sessionRuntimeOptionsByQuestionSlug = getRuntimeOptionsByQuestionSlug(session.answers || {});
+
+    // --- CONFIRMATION INTERCEPT ---
+    if (session.answers && session.answers.pendingCorrectionState) {
+        // We are waiting for a Yes/No answer regarding the proposed update
+        const intentObj = await chatWithAI(
+            [{ role: "system", content: "You extract intent from user confirmation responses." },
+             { role: "user", content: `The assistant asked: "Are you sure you want to update your answer?"\nThe user replied: "${trimmedMessageText}"\nDoes the user confirm the update (YES), reject the update (NO), or did they say something completely unrelated (UNKNOWN)? Return ONLY JSON: {"intent": "yes" | "no" | "unknown"}` }],
+            [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+            "system_validator"
+        );
+        let intent = "unknown";
+        if (intentObj.success) {
+            try {
+                const parsed = JSON.parse(intentObj.message);
+                intent = parsed.intent?.toLowerCase() || "unknown";
+            } catch (e) {
+                intent = trimmedMessageText.toLowerCase().includes("yes") || trimmedMessageText.toLowerCase().includes("yeah") || trimmedMessageText.toLowerCase().includes("sure") ? "yes" 
+                         : (trimmedMessageText.toLowerCase().includes("no") || trimmedMessageText.toLowerCase().includes("nope") ? "no" : "unknown");
+            }
+        }
+
+        const persistedUserMessageContent = attachmentUploads.length > 0 && !trimmedMessageText
+            ? "[Uploaded Attachments]"
+            : trimmedMessageText;
+
+        await prisma.aiGuestMessage.create({
+            data: { sessionId, role: "user", content: persistedUserMessageContent }
+        });
+
+        if (intent === "unknown") {
+            const unknownMsg = "I didn't quite catch that. Do you want me to update your previous answer? (Yes / No)";
+            await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: unknownMsg } });
+            const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
+            return res.json({
+                success: true, message: unknownMsg,
+                inputConfig: { type: "text", options: ["Yes", "No"] },
+                history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+            });
+        }
+
+        if (intent === "no") {
+            const nextAnswers = { ...session.answers };
+            delete nextAnswers.pendingCorrectionState;
+            await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
+            
+            const cancelMsg = "No problem, I'll keep your original answer.";
+            const followQuestionBlock = formatQuestionWithOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug);
+            const fullCancelMsg = `${cancelMsg}\n\n${followQuestionBlock}`;
+            await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: fullCancelMsg } });
+            const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
+            return res.json({
+                success: true, message: fullCancelMsg,
+                inputConfig: { type: currentQuestion?.type || "text", options: getDisplayedQuestionOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug) },
+                history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+            });
+        }
+
+        // intent === "yes"
+        const state = session.answers.pendingCorrectionState;
+        let correctedAnswersBySlug = state.proposedAnswersBySlug;
+        const correctionChanges = state.changes;
+        
+        let correctedRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
+        const dependentIndexes = getDependentIndexesForChanges(questions, correctionChanges);
+        if (dependentIndexes.length > 0) {
+            correctedAnswersBySlug = clearAnswersByIndexes(correctedAnswersBySlug, questions, dependentIndexes);
+            correctedRuntimeOptionsByQuestionSlug = clearRuntimeOptionsByIndexes(correctedRuntimeOptionsByQuestionSlug, questions, dependentIndexes);
+        }
+        
+        const correctionNextStep = findNextUnansweredStep(questions, correctedAnswersBySlug);
+        let correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions, {
+            runtimeOptionsByQuestionSlug: correctedRuntimeOptionsByQuestionSlug,
+            existingPayload: session.answers || {}
+        });
+        
+        if (correctionNextStep < questions.length) {
+            const correctionNextQuestion = questions[correctionNextStep];
+            const runtimeOptions = await generateRuntimeOptionsForQuestion({
+                serviceName: service.name, question: correctionNextQuestion,
+                answersByQuestionText: correctedPayload.byQuestionText,
+                answersBySlug: correctedAnswersBySlug, allQuestions: questions
+            });
+            if (correctionNextQuestion?.slug && runtimeOptions.length > 0) {
+                correctedRuntimeOptionsByQuestionSlug[correctionNextQuestion.slug] = runtimeOptions;
+            }
+            correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions, {
+                runtimeOptionsByQuestionSlug: correctedRuntimeOptionsByQuestionSlug, existingPayload: session.answers || {}
+            });
+        }
+
+        // Implicitly drops pendingCorrectionState since we rebuild it from scratch
+        await prisma.aiGuestSession.update({
+            where: { id: sessionId },
+            data: { answers: correctedPayload, currentStep: correctionNextStep }
+        });
+
+        const followQuestionText = correctionNextStep < questions.length 
+            ? formatQuestionWithOptions(questions[correctionNextStep], correctedRuntimeOptionsByQuestionSlug) 
+            : "Thanks, I updated that. Let me generate your proposal now.";
+        const correctionBridgeCore = dependentIndexes.length > 0 ? `All set. I updated your earlier answer and adjusted related steps.` : `All set. I updated your earlier answer.`;
+        const correctionMessage = buildFriendlyMessage(followQuestionText, correctionBridgeCore);
+
+        await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: correctionMessage } });
+        const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: 'asc' } } } });
+        return res.json({
+            success: true, message: correctionMessage,
+            inputConfig: correctionNextStep < questions.length ? { type: questions[correctionNextStep].type || "text", options: getDisplayedQuestionOptions(questions[correctionNextStep], correctedRuntimeOptionsByQuestionSlug) } : { type: "text", options: [] },
+            history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+        });
+    }
+    // --- END CONFIRMATION INTERCEPT ---
+    const numericSelection = mapNumericReplyToOptions(
+        currentQuestion,
+        trimmedMessageText,
+        sessionRuntimeOptionsByQuestionSlug
+    );
     let userMessageText = numericSelection.matched
         ? numericSelection.normalizedText
         : trimmedMessageText;
@@ -2579,17 +3231,29 @@ export const guestChat = asyncHandler(async (req, res) => {
         );
     }
 
+    const rememberedAttachments = uploadedAttachments.length > 0
+        ? []
+        : getMostRecentAttachmentsFromMessages(session.messages);
+    const activeAttachments = uploadedAttachments.length > 0
+        ? uploadedAttachments
+        : rememberedAttachments;
+    const isReferencingStoredAttachment = uploadedAttachments.length === 0
+        && activeAttachments.length > 0
+        && ATTACHMENT_REFERENCE_REGEX.test(`${userMessageText} ${safeMessageText}`.trim());
+
     let attachmentContextText = "";
     let attachmentInferredAnswer = "";
     let attachmentInsightNote = "";
-    if (uploadedAttachments.length > 0) {
+    if (activeAttachments.length > 0) {
         attachmentContextText = await buildAttachmentContextBlock({
-            attachments: uploadedAttachments,
+            attachments: activeAttachments,
         });
-        attachmentInsightNote = buildAttachmentInsightForUser({
-            attachments: uploadedAttachments,
-            attachmentContextText,
-        });
+        if (uploadedAttachments.length > 0 || isReferencingStoredAttachment) {
+            attachmentInsightNote = buildAttachmentInsightForUser({
+                attachments: activeAttachments,
+                attachmentContextText,
+            });
+        }
         if (attachmentInsightNote) {
             console.log(`[Attachment Insight] ${attachmentInsightNote}`);
         }
@@ -2620,6 +3284,14 @@ export const guestChat = asyncHandler(async (req, res) => {
         .trim();
 
     const existingAnswersBySlug = getAnswersBySlug(session.answers || {}, questions);
+    const existingAnswersPayload = buildPersistedAnswersPayload(
+        existingAnswersBySlug,
+        questions,
+        {
+            runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+            existingPayload: session.answers || {}
+        }
+    );
     const correctionIntent = hasCorrectionIntent(userMessageText);
     const questionIndexBySlug = new Map(
         questions
@@ -2641,8 +3313,6 @@ export const guestChat = asyncHandler(async (req, res) => {
         });
     }
 
-    // 3. Save User Answer (Preliminary)
-    // We will save it, but we might not advance step if invalid.
 
     // --- VALIDATION STEP ---
     let validationResult = null;
@@ -2650,35 +3320,31 @@ export const guestChat = asyncHandler(async (req, res) => {
 
     if (currentStep < questions.length) {
         const currentQuestionText = currentQuestion?.text || "";
-        const currentQuestionOptions = getQuestionOptionLabels(currentQuestion);
+        const currentQuestionOptions = getQuestionOptionLabels(
+            currentQuestion,
+            sessionRuntimeOptionsByQuestionSlug
+        );
+        const currentQuestionCanonicalOptions = getCanonicalQuestionOptions(currentQuestion)
+            .map((option) => option.canonicalLabel || option.label || option.value)
+            .filter(Boolean);
         const currentQuestionSubtitle = String(currentQuestion?.subtitle || "").trim();
         const isOpeningIntakeStep = currentStep >= 0 && currentStep < 3;
-        const knownContextByQuestion = buildPersistedAnswersPayload(
-            existingAnswersBySlug,
-            questions
-        ).byQuestionText;
+        const knownContextByQuestion = existingAnswersPayload.byQuestionText;
         const savedResponseContext = buildSavedResponseContextLines(
             existingAnswersBySlug,
-            questions
+            questions,
+            sessionRuntimeOptionsByQuestionSlug
         );
 
-        // Prepare context for the NEXT question if it exists
-        const nextStepIndex = currentStep + 1;
-        const nextQuestionSubtitle = (nextStepIndex < questions.length)
-            ? String(questions[nextStepIndex]?.subtitle || "").trim()
-            : "";
-        const nextQuestionText = (nextStepIndex < questions.length)
-            ? questions[nextStepIndex].text
-            : "This was the final question. I will now generate the proposal.";
         const validationResponseRules = isOpeningIntakeStep
             ? `
             - This is one of the first three questions.
             - Keep the full response under 50 words total.
-            - Use up to two short lead-in sentences before the question: one natural acknowledgement or warm opener, plus one short friendly bridge sentence.
+            - Use up to two short sentences: one natural acknowledgement or warm opener, plus one short friendly bridge sentence.
             - Do NOT give suggestions, recommendations, best practices, feature ideas, or strategic advice.
-            - If VALID: use one short natural acknowledgement sentence, one short warm bridge sentence, then ask the "Next Question in Script" naturally.
+            - If VALID: use one short natural acknowledgement sentence and one short warm bridge sentence. DO NOT ASK ANY QUESTIONS.
             - If INVALID: use one short natural acknowledgement sentence, one short warm bridge sentence, then re-ask the Current Question naturally.
-            - If INFO_REQUEST: answer in at most one short sentence, add one short warm bridge sentence if helpful, then ask the Current Question again. Do NOT add recommendations.
+            - If INFO_REQUEST or if the user answers with "not sure", "other", or asks for advice: Give a practical helpful answer. Provide a short, tailored recommendation with concrete examples based on their known context and the service type. Then ask the Current Question again. Do NOT give long, unrelated strategic advice.
             - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
             - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
             `
@@ -2687,18 +3353,19 @@ export const guestChat = asyncHandler(async (req, res) => {
             - For name questions, ask for "name" only. Never ask for "full name" or "real full name".
             - If user sends only a greeting while name is asked, respond warmly and ask their name in a natural way.
             - Do not sound corrective or robotic. Avoid phrases like "invalid response", "I caught", "still need", or "wrong answer".
-            - If INFO_REQUEST: Give a practical helpful answer with more detail:
+            - If INFO_REQUEST or if the user answers with "not sure", "other", or asks for advice: Give a practical helpful answer with more detail:
               1) Answer the user's confusion/question clearly (2-4 short sentences).
-              2) Give one recommendation and why it fits their known context.
+              2) Give a highly tailored recommendation with concrete examples based on their known context and the service type.
               3) Then ask the Current Question again so we can continue the flow.
               4) If Current Question has options, include them as numbered list (1., 2., 3.).
-            - If VALID: Acknowledge the answer enthusiastically, providing a short but informative conversational response relating to their answer before asking the "Next Question in Script" naturally.
+            - If VALID: Acknowledge the answer enthusiastically, providing a short but informative conversational response relating to their answer.
               Include at least one concrete reason, benefit, or tradeoff tied to the user's known context when relevant.
+              DO NOT ASK ANY QUESTIONS. Stop after your short conversational bridge.
               (If it's the final question, just say "Thanks! Let me put that together for you.")
             - If INVALID: Politely ask for clarification or the specific details needed. But be sure to write a warm, friendly response before re-asking the question.
             - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
             - Keep wording polite, friendly, and engaging.
-            - Keep the total response under 150 words.
+            - Keep the total response under 100 words.
             `;
 
         const validationPrompt = `
@@ -2706,22 +3373,29 @@ export const guestChat = asyncHandler(async (req, res) => {
             
             Current Question Asked: "${currentQuestionText}"
             Current Question Options: ${JSON.stringify(currentQuestionOptions)}
+            Valid Canonical Option Pool: ${JSON.stringify(currentQuestionCanonicalOptions)}
             Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
             Saved AI Memory Context: ${JSON.stringify(savedResponseContext || "None")}
             Current Question Internal Context: ${JSON.stringify(currentQuestionSubtitle || "None")}
             User's Answer: "${userMessageText}"
             Attachment Context: ${attachmentContextText ? JSON.stringify(attachmentContextText) : '"None"'}
             Attachment-Inferred Answer: "${attachmentInferredAnswer || ""}"
-             
-            Next Question in Script: "${nextQuestionText}"
-            Next Question Internal Context: ${JSON.stringify(nextQuestionSubtitle || "None")}
-
+            
             Task:
             1. Validate the user's answer to the Current Question.
             - If it's a greeting (hi, hello) but the question expects details -> INVALID.
             - If it's irrelevant/gibberish -> INVALID.
             - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
             - If direct text is empty but attachment context clearly answers the current question, treat as VALID.
+            - **REGISTERED COMPANY NAME CHECK**: If the Current Question asks for a company or brand name, and the user's answer is a well-known registered or famous company name (e.g., Google, Apple, Microsoft, Amazon, Catalance, or any other widely known brand), you MUST treat it as INVALID. The response \`message\` MUST politely state that the name is already registered and in use for this type of service in their region, and ask them to provide a different name.
+            - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming "Elementor" making WordPress obvious), you MUST immediately accept it as VALID.
+            - UNSUPPORTED PLATFORMS: If the user requests a fundamentally unsupported platform or tool that conflicts with all available options (e.g., asking for Webflow, Framer, Wix, or Squarespace when the only options are WordPress, Shopify, or Custom React/Node Development), do NOT forcibly map it to "Custom Development". Instead, treat it as an INFO_REQUEST. Your response \`message\` should politely explain that we primarily specialize in the listed technologies, briefly explain how one of our options (like Custom Development or WordPress) might still achieve their design goals, and ask which of our supported options they would like to explore so we can align the project correctly.
+            - Do not be pedantic or rigid. Do NOT force them to pick the literal option or repeat themselves.
+            - Map the implied choice to the most advanced/closest matching option's value in "normalizedAnswer" and proceed.
+            - In general, if the user's answer logically provides the requested information in their own words for any question, treat it as VALID and map it to the closest option.
+            - Treat "Current Question Options" as the options currently shown to the user.
+            - Treat "Valid Canonical Option Pool" as additional valid matches the user may mention even if not shown.
+            - If you re-list choices to the user, use only "Current Question Options".
             - Otherwise -> VALID.
 
             2. Generate a Response Message:
@@ -2787,6 +3461,7 @@ ${validationResponseRules}
                 answersByQuestionText: knownContextByQuestion,
                 answersBySlug: existingAnswersBySlug,
                 allQuestions: questions,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 sideReply: "",
                 bridgeSegments: [],
                 isInitial: false
@@ -2794,7 +3469,7 @@ ${validationResponseRules}
             validationResult = {
                 isValid: false,
                 status: "invalid_answer",
-                message: aiReaskCurrentQuestion || formatQuestionWithOptions(currentQuestion),
+                message: aiReaskCurrentQuestion || formatQuestionWithOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug),
             };
             aiResponseContent = validationResult.message;
             console.log("[Validation Parse Fallback]:", validationResult);
@@ -2802,12 +3477,13 @@ ${validationResponseRules}
 
         if (!validationResult.isValid) {
             if (validationResult.status === "info_request") {
-                const questionBlock = formatQuestionWithOptions(currentQuestion);
+                const questionBlock = formatQuestionWithOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug);
                 if (
                     questionBlock &&
                     shouldAppendQuestionBlockForInfoRequest({
                         assistantMessage: aiResponseContent,
-                        question: currentQuestion
+                        question: currentQuestion,
+                        runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug
                     })
                 ) {
                     aiResponseContent = `${aiResponseContent}\n\n${questionBlock}`;
@@ -2821,6 +3497,7 @@ ${validationResponseRules}
                 questionIndexBySlug,
                 questionsBySlug,
                 questionSlugSet,
+                runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 currentStep,
                 ignoreSlug: currentQuestion?.slug,
                 correctionIntent: true,
@@ -2832,90 +3509,64 @@ ${validationResponseRules}
                 correctionCapture.answersBySlug
             );
 
+            let activeCorrectionChange = null;
+            let activeCorrectionConfirmMsg = "";
+
             if (correctionChanges.length > 0) {
-                let correctedAnswersBySlug = correctionCapture.answersBySlug;
-                const dependentIndexes = getDependentIndexesForChanges(questions, correctionChanges);
-
-                if (dependentIndexes.length > 0) {
-                    correctedAnswersBySlug = clearAnswersByIndexes(
-                        correctedAnswersBySlug,
-                        questions,
-                        dependentIndexes
-                    );
-                    const dependentSlugs = dependentIndexes
-                        .map((index) => questions[index]?.slug)
-                        .filter(Boolean)
-                        .join(", ");
-                    console.log(
-                        `[Correction Flow] Cleared dependent answers after correction: ${dependentSlugs}`
-                    );
+                for (const change of correctionChanges) {
+                    const rawQText = questions[change.index]?.text || "an earlier question";
+                    const qText = rawQText.split('\n').filter(Boolean).pop().trim();
+                    const evalResult = await checkMeaningfulChangeWithAI({
+                        questionText: qText,
+                        oldAnswer: change.previousValue,
+                        newAnswer: change.nextValue
+                    });
+                    if (evalResult.isMeaningful) {
+                        activeCorrectionChange = change;
+                        activeCorrectionConfirmMsg = evalResult.confirmMessage || `I noticed a change for "${qText}". Do you want to update it to "${change.nextValue}"?`;
+                        break;
+                    }
                 }
+            }
 
-                const correctionNextStep = findNextUnansweredStep(questions, correctedAnswersBySlug);
-                const correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions);
-
+            if (activeCorrectionChange) {
+                // Feature 3: Pause and ask for confirmation before applying past question updates
+                const change = activeCorrectionChange;
+                
+                // Save pending corrections state 
+                const nextAnswers = { ...(session.answers || {}) };
+                nextAnswers.pendingCorrectionState = {
+                    proposedAnswersBySlug: correctionCapture.answersBySlug,
+                    changes: correctionChanges
+                };
+                
                 await prisma.aiGuestSession.update({
                     where: { id: sessionId },
-                    data: {
-                        answers: correctedPayload,
-                        currentStep: correctionNextStep
-                    }
+                    data: { answers: nextAnswers }
                 });
-
+                
                 await prisma.aiGuestMessage.create({
-                    data: {
-                        sessionId,
-                        role: "user",
-                        content: persistedUserMessageContent,
-                    },
+                    data: { sessionId, role: "user", content: persistedUserMessageContent }
                 });
 
-                const followQuestion = correctionNextStep < questions.length
-                    ? questions[correctionNextStep].text
-                    : "Thanks, I updated that. Let me generate your proposal now.";
-                const personalizedFollowBridge = buildPersonalizedQuestionBridge({
-                    nextQuestionText: followQuestion,
-                    answersByQuestionText: correctedPayload.byQuestionText,
-                    serviceName: service.name
-                });
-                const correctionBridgeCore = dependentIndexes.length > 0
-                    ? `Got it - I updated your earlier answer and adjusted related steps. ${personalizedFollowBridge}`
-                    : `Got it - I updated your earlier answer. ${personalizedFollowBridge}`;
-                const correctionBridge = [attachmentInsightNote, correctionBridgeCore]
-                    .map((part) => String(part || "").trim())
-                    .filter(Boolean)
-                    .join("\n\n");
-                const correctionMessage = stripNameNotedRecap(
-                    buildFriendlyMessage(followQuestion, correctionBridge)
-                );
-
+                const confirmMsg = activeCorrectionConfirmMsg;
                 await prisma.aiGuestMessage.create({
-                    data: {
-                        sessionId,
-                        role: "assistant",
-                        content: correctionMessage,
-                    },
+                    data: { sessionId, role: "assistant", content: confirmMsg }
                 });
 
                 const sessionReload = await prisma.aiGuestSession.findUnique({
                     where: { id: sessionId },
-                    include: { messages: { orderBy: { createdAt: 'asc' } } },
+                    include: { messages: { orderBy: { createdAt: 'asc' } } }
                 });
-
-                const correctionInputConfig = correctionNextStep < questions.length
-                    ? {
-                        type: questions[correctionNextStep].type || "text",
-                        options: questions[correctionNextStep].options || []
-                    }
-                    : { type: "text", options: [] };
 
                 return res.json({
                     success: true,
-                    message: correctionMessage,
-                    inputConfig: correctionInputConfig,
+                    message: confirmMsg,
+                    inputConfig: { type: "text", options: ["Yes", "No"] },
                     history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
                 });
             }
+
 
             let invalidFlowAnswersBySlug = existingAnswersBySlug;
             let capturedFutureNote = "";
@@ -2924,7 +3575,11 @@ ${validationResponseRules}
                 invalidFlowAnswersBySlug = correctionCapture.answersBySlug;
                 const capturedPayload = buildPersistedAnswersPayload(
                     invalidFlowAnswersBySlug,
-                    questions
+                    questions,
+                    {
+                        runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                        existingPayload: session.answers || {}
+                    }
                 );
 
                 await prisma.aiGuestSession.update({
@@ -2961,22 +3616,32 @@ ${validationResponseRules}
                     userLastMessage: userMessageText,
                     currentQuestion,
                     nextQuestion: currentQuestion,
-                    answersByQuestionText: buildPersistedAnswersPayload(invalidFlowAnswersBySlug, questions).byQuestionText,
+                    answersByQuestionText: buildPersistedAnswersPayload(invalidFlowAnswersBySlug, questions, {
+                        runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                        existingPayload: session.answers || {}
+                    }).byQuestionText,
                     answersBySlug: invalidFlowAnswersBySlug,
                     allQuestions: questions,
+                    runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                     sideReply: "",
                     bridgeSegments: [],
                     isInitial: false
                 });
-            const feedbackCore = aiResponseContent || fallbackFeedbackFromAi || formatQuestionWithOptions(currentQuestion);
+            const feedbackCore = aiResponseContent || fallbackFeedbackFromAi || formatQuestionWithOptions(
+                currentQuestion,
+                sessionRuntimeOptionsByQuestionSlug
+            );
             const sideReply = buildAgentSideReply({
                 userMessage: userMessageText,
-                answersByQuestionText: buildPersistedAnswersPayload(invalidFlowAnswersBySlug, questions).byQuestionText
+                answersByQuestionText: buildPersistedAnswersPayload(invalidFlowAnswersBySlug, questions, {
+                    runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                    existingPayload: session.answers || {}
+                }).byQuestionText
             });
             const quickReplyHint = hasNumberedOptionsInMessage(feedbackCore)
-                || countOptionLabelsMentioned(feedbackCore, currentQuestion) >= 2
+                || countOptionLabelsMentioned(feedbackCore, currentQuestion, sessionRuntimeOptionsByQuestionSlug) >= 2
                 ? ""
-                : buildQuickReplyHint(currentQuestion);
+                : buildQuickReplyHint(currentQuestion, sessionRuntimeOptionsByQuestionSlug);
             const feedbackMsg = stripNameNotedRecap(
                 [sideReply, capturedFutureNote, attachmentInsightNote, feedbackCore, quickReplyHint]
                     .map((part) => String(part || "").trim())
@@ -3001,6 +3666,13 @@ ${validationResponseRules}
             return res.json({
                 success: true,
                 message: feedbackMsg,
+                inputConfig: {
+                    type: currentQuestion?.type || "text",
+                    options: getDisplayedQuestionOptions(
+                        currentQuestion,
+                        sessionRuntimeOptionsByQuestionSlug
+                    )
+                },
                 history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
             });
         }
@@ -3017,9 +3689,17 @@ ${validationResponseRules}
     });
 
     let updatedAnswersBySlug = { ...existingAnswersBySlug };
+    let nextRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
+    const normalizedCurrentAnswer = currentQuestion
+        ? normalizeAnswerForQuestion(
+            currentQuestion,
+            validationResult?.normalizedAnswer || attachmentInferredAnswer || userMessageText,
+            sessionRuntimeOptionsByQuestionSlug
+        )
+        : userMessageText;
 
     if (currentQuestion?.slug) {
-        updatedAnswersBySlug[currentQuestion.slug] = userMessageText;
+        updatedAnswersBySlug[currentQuestion.slug] = normalizedCurrentAnswer;
     }
 
     let autoCapturedAnswerSlugs = [];
@@ -3031,6 +3711,7 @@ ${validationResponseRules}
             questionIndexBySlug,
             questionsBySlug,
             questionSlugSet,
+            runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
             currentStep,
             ignoreSlug: currentQuestion?.slug,
             correctionIntent,
@@ -3045,11 +3726,82 @@ ${validationResponseRules}
         existingAnswersBySlug,
         updatedAnswersBySlug
     );
+
+    const pastChanges = changedAnswers.filter(c => c.index < currentStep);
+    let activePastChange = null;
+    let activePastConfirmMsg = "";
+
+    if (pastChanges.length > 0) {
+        for (const change of pastChanges) {
+            const rawQText = questions[change.index]?.text || "an earlier question";
+            const qText = rawQText.split('\n').filter(Boolean).pop().trim();
+            const evalResult = await checkMeaningfulChangeWithAI({
+                questionText: qText,
+                oldAnswer: change.previousValue,
+                newAnswer: change.nextValue
+            });
+            if (evalResult.isMeaningful) {
+                activePastChange = change;
+                activePastConfirmMsg = evalResult.confirmMessage || `I noticed a change for "${qText}". Do you want to update it to "${change.nextValue}"?`;
+                break;
+            }
+        }
+    }
+
+    if (activePastChange) {
+        // Feature 3: Pause to confirm a past answer update, even if the current answer is valid
+        const change = activePastChange;
+
+        // Revert the past changes from the current save so they remain pending
+        const safeUpdatedAnswersBySlug = { ...updatedAnswersBySlug };
+        for (const pc of pastChanges) {
+            safeUpdatedAnswersBySlug[pc.slug] = pc.previousValue;
+        }
+
+        const nextStep = findNextUnansweredStep(questions, safeUpdatedAnswersBySlug);
+        let persistedAnswers = buildPersistedAnswersPayload(safeUpdatedAnswersBySlug, questions, {
+            runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+            existingPayload: session.answers || {}
+        });
+
+        // Save pending corrections state 
+        persistedAnswers.pendingCorrectionState = {
+            proposedAnswersBySlug: updatedAnswersBySlug, // This has both the current answer AND the past change
+            changes: pastChanges
+        };
+
+        await prisma.aiGuestSession.update({
+            where: { id: sessionId },
+            data: { answers: persistedAnswers, currentStep: nextStep }
+        });
+
+        const confirmMsg = activePastConfirmMsg;
+        await prisma.aiGuestMessage.create({
+            data: { sessionId, role: "assistant", content: confirmMsg }
+        });
+
+        const sessionReload = await prisma.aiGuestSession.findUnique({
+            where: { id: sessionId },
+            include: { messages: { orderBy: { createdAt: 'asc' } } }
+        });
+
+        return res.json({
+            success: true,
+            message: confirmMsg,
+            inputConfig: { type: "text", options: ["Yes", "No"] },
+            history: sessionReload.messages.map(m => ({ role: m.role, content: m.content }))
+        });
+    }
     const dependentIndexes = getDependentIndexesForChanges(questions, changedAnswers);
     const dependentResetApplied = dependentIndexes.length > 0;
 
     if (dependentResetApplied) {
         updatedAnswersBySlug = clearAnswersByIndexes(updatedAnswersBySlug, questions, dependentIndexes);
+        nextRuntimeOptionsByQuestionSlug = clearRuntimeOptionsByIndexes(
+            nextRuntimeOptionsByQuestionSlug,
+            questions,
+            dependentIndexes
+        );
         autoCapturedAnswerSlugs = [];
         const dependentSlugs = dependentIndexes
             .map((index) => questions[index]?.slug)
@@ -3065,7 +3817,27 @@ ${validationResponseRules}
     }
 
     const nextStep = findNextUnansweredStep(questions, updatedAnswersBySlug);
-    const persistedAnswers = buildPersistedAnswersPayload(updatedAnswersBySlug, questions);
+    let persistedAnswers = buildPersistedAnswersPayload(updatedAnswersBySlug, questions, {
+        runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+        existingPayload: session.answers || {}
+    });
+
+    if (nextStep < questions.length) {
+        const runtimeOptions = await generateRuntimeOptionsForQuestion({
+            serviceName: service.name,
+            question: questions[nextStep],
+            answersByQuestionText: persistedAnswers.byQuestionText,
+            answersBySlug: updatedAnswersBySlug,
+            allQuestions: questions
+        });
+        if (questions[nextStep]?.slug && runtimeOptions.length > 0) {
+            nextRuntimeOptionsByQuestionSlug[questions[nextStep].slug] = runtimeOptions;
+        }
+        persistedAnswers = buildPersistedAnswersPayload(updatedAnswersBySlug, questions, {
+            runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+            existingPayload: session.answers || {}
+        });
+    }
 
     await prisma.aiGuestSession.update({
         where: { id: sessionId },
@@ -3149,6 +3921,7 @@ ${validationResponseRules}
             answersByQuestionText: persistedAnswers.byQuestionText,
             answersBySlug: persistedAnswers.bySlug,
             allQuestions: questions,
+            runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
             sideReply,
             bridgeSegments
         });
@@ -3157,7 +3930,10 @@ ${validationResponseRules}
             responseContent = aiGuidedQuestionMessage;
         } else {
             const combinedBridge = combineInlineMessages(...bridgeSegments);
-            const questionMessage = buildFriendlyMessage(nextQuestionText, combinedBridge);
+            const fallbackQuestionPrompt = getQuestionOptionLabels(nextQuestion, nextRuntimeOptionsByQuestionSlug).length > 0
+                ? formatQuestionWithOptions(nextQuestion, nextRuntimeOptionsByQuestionSlug)
+                : nextQuestionText;
+            const questionMessage = buildFriendlyMessage(fallbackQuestionPrompt, combinedBridge);
             responseContent = sideReply
                 ? buildFriendlyMessage(questionMessage, sideReply)
                 : questionMessage;
@@ -3166,13 +3942,19 @@ ${validationResponseRules}
         // Configure next input
         nextInputConfig = {
             type: nextQuestion.type || "text",
-            options: nextQuestion.options || []
+            options: getDisplayedQuestionOptions(nextQuestion, nextRuntimeOptionsByQuestionSlug)
         };
     } else {
         // CASE B: All questions answered -> Generate Proposal
         try {
+            // Reload messages fresh from DB so we have the full conversation history,
+            // not the stale snapshot that was loaded at the start of the request.
+            const freshSession = await prisma.aiGuestSession.findUnique({
+                where: { id: sessionId },
+                include: { messages: { orderBy: { createdAt: 'asc' } } }
+            });
             const proposalHistory = [
-                ...session.messages.map((m) => ({ role: m.role, content: m.content })),
+                ...(freshSession?.messages || session.messages).map((m) => ({ role: m.role, content: m.content })),
                 { role: "user", content: userMessageForReasoning || userMessageText }
             ];
             const allQuestionSlugs = new Set(questions.map((q) => q.slug).filter(Boolean));
@@ -3184,9 +3966,14 @@ ${validationResponseRules}
             const proposalAnswersBySlug = mergeExtractedAnswers({
                 baseAnswers: persistedAnswers.bySlug,
                 extractedAnswers: extractedFromConversation,
-                validSlugs: allQuestionSlugs
+                validSlugs: allQuestionSlugs,
+                questionsBySlug,
+                runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug
             });
-            const proposalAnswersPayload = buildPersistedAnswersPayload(proposalAnswersBySlug, questions);
+            const proposalAnswersPayload = buildPersistedAnswersPayload(proposalAnswersBySlug, questions, {
+                runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+                existingPayload: session.answers || {}
+            });
 
             if (extractedFromConversation.length > 0) {
                 console.log(
@@ -3209,7 +3996,11 @@ ${validationResponseRules}
                 serviceId: service.slug,
                 questionnaireAnswers: proposalAnswersPayload.byQuestionText,
                 questionnaireAnswersBySlug: proposalAnswersPayload.bySlug,
-                serviceQuestionAnswers: buildQuestionAnswerCoverage(questions, proposalAnswersPayload.bySlug),
+                serviceQuestionAnswers: buildQuestionAnswerCoverage(
+                    questions,
+                    proposalAnswersPayload.bySlug,
+                    nextRuntimeOptionsByQuestionSlug
+                ),
                 capturedFields: Object.entries(proposalAnswersPayload.byQuestionText || {})
                     .filter(([, value]) => hasAnswerValue(value))
                     .map(([question, answer]) => ({
@@ -3283,10 +4074,102 @@ export const getGuestHistory = asyncHandler(async (req, res) => {
         throw new AppError("Session not found", 404);
     }
 
+    const runtimeOptionsByQuestionSlug = getRuntimeOptionsByQuestionSlug(session.answers || {});
+    let inputConfig = { type: "text", options: [] };
+
+    if (Number.isInteger(session.currentStep) && session.currentStep >= 0) {
+        const service = await prisma.service.findUnique({
+            where: { slug: session.serviceId },
+            include: {
+                questions: {
+                    orderBy: { order: "asc" }
+                }
+            }
+        });
+
+        const currentQuestion = service?.questions?.[session.currentStep];
+        if (currentQuestion) {
+            inputConfig = {
+                type: currentQuestion.type || "text",
+                options: getDisplayedQuestionOptions(currentQuestion, runtimeOptionsByQuestionSlug)
+            };
+        }
+    }
+
     res.json({
         success: true,
         messages: session.messages,
+        inputConfig,
     });
 });
 
+// @desc    Get ad-hoc advice for a specific option and context
+// @route   POST /api/guest/advice
+// @access  Public
+export const getGuestAdvice = asyncHandler(async (req, res) => {
+    const { serviceId, option, context, currentQuestion } = req.body;
 
+    const advicePrompt = `
+You are a friendly, conversational AI assistant directly helping a user fill out a questionnaire for their "${serviceId || 'digital'}" project.
+
+Current Question: "${currentQuestion || ''}"
+User Selected Option: "${option || 'Not sure'}"
+Recent Chat Context: "${context || ''}"
+
+Task:
+The user clicked "${option || 'Not sure'}" and needs a quick hint on what to type next.
+Provide a VERY SHORT, highly personalized helper message (1-2 sentences maximum).
+It MUST be written directly to the user in a conversational tone. Use any specific details from their context (like their business name or goal) naturally.
+Do not write a long paragraph of advice! Instead, give a quick guide with 2-3 short, concrete examples of what they could tell you.
+For example, use a format like: "No problem! For [Business Name], you might want [A] (like Shopify) or [B] (like Custom). What sounds best to you?"
+Keep it extremely concise, warm, and direct.
+
+Also, provide a short placeholder text (starting with "e.g. ") that acts as a hint in a text input box.
+
+Return ONLY a raw JSON object (with double quotes) with this structure:
+{
+    "notice": string,
+    "placeholder": string
+}
+Do not use markdown formatting, code fences, or bold text.`;
+
+    try {
+        const adviceResponse = await chatWithAI(
+            [{ role: "user", content: advicePrompt }],
+            [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+            "system_validator"
+        );
+
+        if (adviceResponse.success) {
+            const rawMsg = adviceResponse.message || "";
+            const firstBrace = rawMsg.indexOf('{');
+            const lastBrace = rawMsg.lastIndexOf('}');
+            const cleanJson = (firstBrace >= 0 && lastBrace >= firstBrace) 
+                ? rawMsg.substring(firstBrace, lastBrace + 1)
+                : rawMsg;
+            const parsed = JSON.parse(cleanJson.replace(/\*\*/g, ""));
+            return res.json({
+                success: true,
+                notice: parsed.notice,
+                placeholder: parsed.placeholder
+            });
+        }
+    } catch (e) {
+        console.warn("Failed to generate guest advice", e);
+    }
+
+    res.json({
+        success: true,
+        notice: `Got it. Tell me what you have in mind for ${option || 'this'}.`,
+        placeholder: "Tell me a bit more..."
+    });
+});
+
+export const __testables = {
+    buildPersistedAnswersPayload,
+    buildQuestionDisplayAnswer,
+    getDisplayedQuestionOptions,
+    getRuntimeOptionsByQuestionSlug,
+    mapNumericReplyToOptions,
+    normalizeAnswerForQuestion,
+};

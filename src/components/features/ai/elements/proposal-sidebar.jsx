@@ -1,17 +1,13 @@
-import { useState, useMemo } from "react";
-import React from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import X from "lucide-react/dist/esm/icons/x";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
-import Layers from "lucide-react/dist/esm/icons/layers";
-import ListChecks from "lucide-react/dist/esm/icons/list-checks";
-import Cpu from "lucide-react/dist/esm/icons/cpu";
-import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Check from "lucide-react/dist/esm/icons/check";
+import ListChecks from "lucide-react/dist/esm/icons/list-checks";
 
 import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -23,7 +19,7 @@ import {
 const escapeRegExp = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const PROPOSAL_INLINE_FIELD_LABELS = [
+const PROPOSAL_FIELD_LABELS = [
   "Client Name",
   "Business Name",
   "Service Type",
@@ -51,17 +47,72 @@ const PROPOSAL_INLINE_FIELD_LABELS = [
   "App Type",
   "App Features",
   "Platform Requirements",
-  "Additional Confirmed Inputs",
   "Launch Timeline",
   "Budget",
+  "Additional Confirmed Inputs",
 ];
+
+const SECTION_ALIASES = {
+  clientName: ["client name", "name"],
+  businessName: ["business name", "company name", "company"],
+  serviceType: ["service type", "service"],
+  overview: ["project overview", "overview", "description"],
+  objectives: ["primary objectives", "objectives"],
+  deliverables: [
+    "features/deliverables included",
+    "features included",
+    "deliverables",
+    "features",
+  ],
+  timeline: ["launch timeline", "timeline"],
+  budget: ["budget", "pricing", "investment"],
+  additionalInputs: ["additional confirmed inputs"],
+};
+
+const EXCLUDED_DETAIL_KEYS = new Set(
+  Object.values(SECTION_ALIASES).flat(),
+);
+
+const normalizeKey = (value = "") =>
+  String(value || "")
+    .replace(/\*+/g, "")
+    .replace(/:$/, "")
+    .trim()
+    .toLowerCase();
+
+const cleanText = (value = "") =>
+  String(value || "")
+    .replace(/\*+/g, "")
+    .replace(/["'`~]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const dedupeItems = (items = []) => {
+  const seen = new Set();
+  return (Array.isArray(items) ? items : [])
+    .map((item) => cleanText(item))
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
+
+const splitListValue = (value = "") =>
+  dedupeItems(
+    String(value || "")
+      .split(/\n|;|,(?=\s*[A-Za-z0-9])/)
+      .map((item) => item.trim()),
+  );
 
 const normalizeProposalPreviewContent = (markdown = "") => {
   let normalized = String(markdown || "").replace(/\r/g, "").trim();
 
   normalized = normalized.replace(/([^\n])\s+(#{1,6}\s+)/g, "$1\n$2");
 
-  PROPOSAL_INLINE_FIELD_LABELS.forEach((label) => {
+  PROPOSAL_FIELD_LABELS.forEach((label) => {
     const escaped = escapeRegExp(label);
     const patterns = [
       new RegExp(`([^\\n])\\s+(#{1,6}\\s*${escaped}\\s*:)`, "gi"),
@@ -78,462 +129,315 @@ const normalizeProposalPreviewContent = (markdown = "") => {
   return normalized.replace(/\n{3,}/g, "\n\n").trim();
 };
 
-// --- Parser to extract structured data from markdown ---
-const parseProposalContent = (markdown) => {
-  if (!markdown) return null;
+const parseProposalSections = (markdown = "") => {
+  if (!markdown) return [];
 
   const lines = normalizeProposalPreviewContent(markdown).split("\n");
-  const extracted = {};
-  let currentKey = null;
+  const sections = [];
+  let currentSection = null;
 
-  // Normalize key - remove colons, asterisks, and trim
-  const normalizeKey = (key) => key.toLowerCase().trim().replace(/:$/, "").replace(/\*+/g, "").trim();
+  lines.forEach((rawLine) => {
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.startsWith("#")) return;
 
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    if (trimmed.startsWith("#")) return;
-
-    // Handle various markdown patterns: **Key:** Value, Key: Value, **Key**: **Value**
-    const keyValMatch = trimmed.match(/^\*{0,2}([^:*]+?)\*{0,2}:\s*\*{0,2}(.*?)\*{0,2}$/);
-    const isListItem = trimmed.startsWith("- ") || trimmed.startsWith("* ");
-
-    if (keyValMatch && !isListItem) {
-      const key = normalizeKey(keyValMatch[1]);
-      const value = keyValMatch[2].trim().replace(/\*+/g, "");
-      extracted[key] = { value, items: [] };
-      currentKey = key;
-    } else if (isListItem && currentKey) {
-      extracted[currentKey].items.push(trimmed.replace(/^[-*]\s+/, ""));
-    } else if (currentKey && trimmed) {
-      if (!extracted[currentKey].value) {
-        extracted[currentKey].value = trimmed;
-      } else {
-        extracted[currentKey].value += " " + trimmed;
-      }
-    }
-  });
-
-  // Debug: log extracted keys
-  console.log("[Proposal Parser] Extracted keys:", Object.keys(extracted));
-
-  return extracted;
-};
-
-// Map raw keys to structured data
-const mapToProposalData = (extracted) => {
-  if (!extracted) return null;
-
-  const get = (keys) => {
-    for (const k of keys) {
-      if (extracted[k]?.value) return extracted[k].value;
-    }
-    return "";
-  };
-
-  const getItems = (keys) => {
-    for (const k of keys) {
-      if (extracted[k]?.items?.length) return extracted[k].items;
-    }
-    return [];
-  };
-
-  const projectType = get(["website type", "project type", "type", "creative type", "app type"]);
-  const designStyle = get(["design style", "design experience", "design"]);
-  const scopeItems = getItems(["primary objectives", "objectives", "scope"]);
-  const scopeValue = scopeItems.length > 0
-    ? scopeItems.join("\n")
-    : get(["primary objectives", "objectives", "scope"]);
-  const scopeLines = scopeValue
-    ? scopeValue
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-    : [];
-  const scopeExtras = [projectType, designStyle].filter(Boolean);
-  const scopeLookup = new Set(scopeLines.map((line) => line.toLowerCase()));
-  scopeExtras.forEach((item) => {
-    const key = item.toLowerCase();
-    if (!scopeLookup.has(key)) {
-      scopeLookup.add(key);
-      scopeLines.push(item);
-    }
-  });
-  const scopeObjectives = scopeLines.join("\n");
-
-  const rawBudget = get(["budget"]);
-  const budget = rawBudget
-    ? rawBudget.replace(/["'`~]+/g, "").replace(/\s{2,}/g, " ").trim()
-    : "";
-
-  return {
-    clientName: get(["client name", "name"]),
-    businessName: get(["business name", "company name", "company"]),
-    serviceType: get(["service type", "service"]) || "Project",
-    projectType,
-    overview: get(["project overview", "overview", "description", "website requirement", "requirement"]),
-    scopeObjectives,
-    features: getItems(["features included", "features/deliverables included", "deliverables", "features", "app features", "brand deliverables"]),
-    techstack: [
-      get(["website build type", "build type"]),
-      get(["frontend framework", "frontend"]),
-      get(["backend technology", "backend"]),
-      get(["database"]),
-      get(["hosting"]),
-      get(["platform requirements", "platform"]),
-    ].filter(t => t && !t.toLowerCase().includes("to be finalized")),
-    timeline: get(["launch timeline", "timeline", "duration"]),
-    budget,
-    rawBudget,
-    designStyle,
-    volume: get(["volume"]),
-    engagement: get(["engagement model", "engagement"]),
-  };
-};
-
-const resolveProposalTitle = (data) =>
-  data?.projectType ||
-  data?.serviceType ||
-  data?.businessName ||
-  "Proposal";
-
-const normalizeServiceText = (value = "") =>
-  String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
-const tokenizeServiceText = (value = "") =>
-  normalizeServiceText(value)
-    .split(/\s+/)
-    .filter(Boolean);
-
-const isTechnicalService = (data, services = []) => {
-  if (!data?.serviceType || !Array.isArray(services) || services.length === 0) {
-    return false;
-  }
-
-  const normalized = normalizeServiceText(data.serviceType);
-  const tokens = new Set(tokenizeServiceText(data.serviceType));
-  let bestMatch = null;
-  let bestScore = 0;
-
-  services.forEach((service) => {
-    if (!service?.name && !service?.id) return;
-    const name = normalizeServiceText(service.name || "");
-    const id = normalizeServiceText(service.id || "");
-    let score = 0;
-
-    if (name === normalized || id === normalized) score += 5;
-    if (name && (name.includes(normalized) || normalized.includes(name))) score += 3;
-    if (id && (id.includes(normalized) || normalized.includes(id))) score += 2;
-
-    const candidateTokens = new Set(
-      tokenizeServiceText(`${service.name || ""} ${service.id || ""}`),
+    const keyValueMatch = trimmed.match(
+      /^\*{0,2}([^:*]+?)\*{0,2}:\s*\*{0,2}(.*?)\*{0,2}$/,
     );
-    tokens.forEach((token) => {
-      if (candidateTokens.has(token)) score += 1;
-    });
+    const listMatch =
+      trimmed.match(/^[-*]\s+(.*)$/) || trimmed.match(/^\d+[.)]\s+(.*)$/);
 
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = service;
+    if (keyValueMatch && !listMatch) {
+      const label = cleanText(keyValueMatch[1]);
+      if (!label) return;
+      currentSection = {
+        label,
+        key: normalizeKey(label),
+        value: cleanText(keyValueMatch[2]),
+        items: [],
+      };
+      sections.push(currentSection);
+      return;
+    }
+
+    if (listMatch && currentSection) {
+      const item = cleanText(listMatch[1]);
+      if (item) currentSection.items.push(item);
+      return;
+    }
+
+    if (currentSection) {
+      const nextValue = cleanText(trimmed);
+      if (!nextValue) return;
+      currentSection.value = currentSection.value
+        ? `${currentSection.value} ${nextValue}`
+        : nextValue;
     }
   });
 
-  return Boolean(bestMatch?.show_techstack && bestScore > 0);
+  return sections
+    .map((section) => ({
+      ...section,
+      value: cleanText(section.value),
+      items: dedupeItems(section.items),
+    }))
+    .filter((section) => section.value || section.items.length > 0);
 };
 
-const parseBudgetNumber = (value = "") => {
-  if (typeof value !== "string") return null;
-  const match = value.match(/[\d,]+(?:\.\d+)?/);
-  if (!match) return null;
-  const amount = Number.parseFloat(match[0].replace(/,/g, ""));
-  return Number.isFinite(amount) ? amount : null;
-};
-
-const findQuantityFromText = (text = "", unitLabel = "") => {
-  if (typeof text !== "string") return null;
-  const lowered = text.toLowerCase();
-  const unit = unitLabel ? unitLabel.toLowerCase() : "";
-  if (unit) {
-    const unitRegex = new RegExp(`(\\d+)\\s*(?:${unit}|${unit.replace(/s$/, "")})\\b`, "i");
-    const match = lowered.match(unitRegex);
-    if (match) {
-      const parsed = Number.parseInt(match[1], 10);
-      if (Number.isFinite(parsed)) return parsed;
+const buildSectionMap = (sections = []) => {
+  const map = new Map();
+  sections.forEach((section) => {
+    if (section?.key && !map.has(section.key)) {
+      map.set(section.key, section);
     }
+  });
+  return map;
+};
+
+const findSection = (sectionMap, aliasKey) => {
+  const aliases = SECTION_ALIASES[aliasKey] || [];
+  for (const alias of aliases) {
+    const match = sectionMap.get(alias);
+    if (match) return match;
   }
   return null;
 };
 
-const formatRupees = (amount) => {
-  if (!Number.isFinite(amount)) return "";
-  return `₹${amount.toLocaleString("en-IN")}`;
+const extractSectionItems = (section) => {
+  if (!section) return [];
+  if (section.items?.length) return dedupeItems(section.items);
+  return splitListValue(section.value);
 };
 
-const singularizeUnit = (value = "") =>
-  value ? value.replace(/s$/i, "") : value;
+const mapToProposalData = (sections = [], markdown = "") => {
+  const sectionMap = buildSectionMap(sections);
+  const clientSection = findSection(sectionMap, "clientName");
+  const businessSection = findSection(sectionMap, "businessName");
+  const serviceSection = findSection(sectionMap, "serviceType");
+  const overviewSection = findSection(sectionMap, "overview");
+  const objectivesSection = findSection(sectionMap, "objectives");
+  const deliverablesSection = findSection(sectionMap, "deliverables");
+  const timelineSection = findSection(sectionMap, "timeline");
+  const budgetSection = findSection(sectionMap, "budget");
+  const additionalInputsSection = findSection(sectionMap, "additionalInputs");
 
-const parsePerUnitBudget = (budgetText = "", unitLabel = "") => {
-  if (typeof budgetText !== "string") return null;
-  const lowered = budgetText.toLowerCase();
-  if (!lowered) return null;
-  const unit = unitLabel ? unitLabel.toLowerCase() : "";
-  const hasPer =
-    /\bper\b/i.test(lowered) ||
-    (unit && (lowered.includes(unit) || lowered.includes(unit.replace(/s$/, ""))));
-  if (!hasPer) return null;
-  return parseBudgetNumber(budgetText);
+  if (sections.length === 0) {
+    const fallbackOverview = cleanText(markdown);
+    if (!fallbackOverview) return null;
+    return {
+      clientName: "",
+      businessName: "",
+      serviceType: "Proposal",
+      overview: fallbackOverview,
+      objectives: [],
+      deliverables: [],
+      detailFields: [],
+      additionalInputs: [],
+      timeline: "",
+      budget: "",
+    };
+  }
+
+  const detailFields = sections
+    .filter((section) => !EXCLUDED_DETAIL_KEYS.has(section.key))
+    .map((section) => ({
+      label: section.label,
+      value: section.value,
+      items: section.items,
+    }));
+
+  return {
+    clientName: clientSection?.value || "",
+    businessName: businessSection?.value || "",
+    serviceType: serviceSection?.value || "Proposal",
+    overview: overviewSection?.value || "",
+    objectives: extractSectionItems(objectivesSection),
+    deliverables: extractSectionItems(deliverablesSection),
+    detailFields,
+    additionalInputs: extractSectionItems(additionalInputsSection),
+    timeline: timelineSection?.value || "",
+    budget: budgetSection?.value || "",
+  };
 };
 
-// --- Accordion Component ---
-const AccordionSection = ({ icon: Icon, title, children, defaultOpen = false }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+const resolveProposalTitle = (data) =>
+  data?.serviceType ||
+  data?.businessName ||
+  data?.detailFields?.[0]?.value ||
+  "Proposal";
+
+const EmptyProposalState = () => (
+  <div className="flex h-64 flex-col items-center justify-center px-6 text-center">
+    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800">
+      <FileText className="h-7 w-7 text-slate-500" />
+    </div>
+    <p className="text-sm text-slate-400">
+      Your proposal will appear here once generated.
+    </p>
+  </div>
+);
+
+const MetaCard = ({ label, value, accentClass = "text-white" }) => (
+  <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4">
+    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+      {label}
+    </p>
+    <p className={cn("text-sm font-semibold", accentClass)}>
+      {value || "-"}
+    </p>
+  </div>
+);
+
+const BulletSection = ({ title, items = [] }) => {
+  if (!items.length) return null;
 
   return (
-    <div className="border border-zinc-700/50 rounded-xl overflow-hidden bg-zinc-800/30 backdrop-blur-sm">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 hover:bg-slate-700/30 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Icon className="w-4 h-4 text-primary" />
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+          <ListChecks className="h-4 w-4" />
+        </div>
+        <p className="text-sm font-semibold text-white">{title}</p>
+      </div>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-3">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+            <span className="text-sm leading-relaxed text-slate-300">{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+const DetailFieldsCard = ({ fields = [] }) => {
+  if (!fields.length) return null;
+
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+          <Briefcase className="h-4 w-4" />
+        </div>
+        <p className="text-sm font-semibold text-white">Project Details</p>
+      </div>
+      <div className="space-y-4">
+        {fields.map((field) => (
+          <div
+            key={field.label}
+            className="rounded-xl border border-zinc-800/80 bg-black/30 p-4"
+          >
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              {field.label}
+            </p>
+            {field.items?.length ? (
+              <ul className="space-y-2">
+                {field.items.map((item) => (
+                  <li key={`${field.label}-${item}`} className="flex items-start gap-3">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                    <span className="text-sm leading-relaxed text-slate-300">
+                      {item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm leading-relaxed text-slate-300">
+                {field.value || "-"}
+              </p>
+            )}
           </div>
-          <span className="font-semibold text-slate-200 text-sm">{title}</span>
-        </div>
-        <ChevronDown
-          className={cn(
-            "w-5 h-5 text-slate-400 transition-transform duration-300",
-            isOpen && "rotate-180"
-          )}
-        />
-      </button>
-      <div
-        className={cn(
-          "overflow-hidden transition-all duration-300 ease-in-out",
-          isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
-        )}
-      >
-        <div className="p-4 pt-0 border-t border-zinc-700/50">
-          {children}
-        </div>
+        ))}
       </div>
     </div>
   );
 };
 
-// --- Feature List with Custom Bullets ---
-const FeatureList = ({ items }) => {
-  if (!items?.length) {
-    return <p className="text-slate-400 text-sm">No deliverables specified</p>;
-  }
-
-  return (
-    <ul className="space-y-2 mt-3">
-      {items.map((item, idx) => (
-        <li key={idx} className="flex items-start gap-3">
-          <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
-          <span className="text-slate-300 text-sm leading-relaxed">{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-// --- Tech List (Bullet Points) ---
-const TechTags = ({ items }) => {
-  if (!items?.length) {
-    return <p className="text-slate-400 text-sm">Tech stack to be determined</p>;
-  }
-
-  return (
-    <ul className="space-y-2 mt-3">
-      {items.map((item, idx) => (
-        <li key={idx} className="flex items-start gap-3">
-          <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
-          <span className="text-slate-300 text-sm leading-relaxed">{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-// --- Main Proposal Card ---
-const ProposalCard = ({ data, services = [] }) => {
-  if (!data) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-        <div className="h-14 w-14 rounded-full bg-zinc-800 flex items-center justify-center mb-4 border border-zinc-700">
-          <FileText className="w-7 h-7 text-slate-500" />
-        </div>
-        <p className="text-slate-400 text-sm">
-          Your proposal will appear here once generated.
-        </p>
-      </div>
-    );
-  }
-
-  const normalizedService = data?.serviceType
-    ? data.serviceType.toLowerCase().trim()
-    : "";
-  const serviceMatch = services.find((service) => {
-    if (!service?.name && !service?.id) return false;
-    const name = String(service.name || "").toLowerCase().trim();
-    const id = String(service.id || "").toLowerCase().trim();
-    return name === normalizedService || id === normalizedService;
-  });
-
-  const quantityUnit = serviceMatch?.budget?.quantity_unit_label || "";
-  const isPerDeliverable = serviceMatch?.budget?.pricing_model === "per_deliverable";
-  const quantitySources = [
-    data.volume,
-    data.overview,
-    ...(Array.isArray(data.features) ? data.features : []),
-  ];
-  const quantity =
-    quantitySources.reduce((found, source) => {
-      if (found) return found;
-      return findQuantityFromText(source, quantityUnit);
-    }, null) || null;
-  const perUnitBudget = parsePerUnitBudget(
-    data.rawBudget || data.budget || "",
-    quantityUnit,
-  );
-  const totalBudget =
-    isPerDeliverable && quantity && perUnitBudget
-      ? perUnitBudget * quantity
-      : null;
-  const unitLabel = singularizeUnit(quantityUnit || "deliverables");
-  const budgetSummary =
-    isPerDeliverable && perUnitBudget && unitLabel
-      ? totalBudget
-        ? `${formatRupees(perUnitBudget)}/- per ${unitLabel} (${quantity} ${quantityUnit}, approx. ${formatRupees(totalBudget)} total)`
-        : `${formatRupees(perUnitBudget)}/- per ${unitLabel}`
-      : data.budget || "";
-  const showTimeline = Boolean(data.timeline);
-  const showBudget = Boolean(budgetSummary);
-  const showFooterGrid = showTimeline || showBudget;
+const ProposalCard = ({ data }) => {
+  if (!data) return <EmptyProposalState />;
 
   return (
     <div className="space-y-4">
-      {/* Header Card */}
-      <div className="rounded-2xl overflow-hidden bg-zinc-900/80 border border-zinc-800">
-        {/* Client & Business Row */}
-        <div className="grid grid-cols-2 divide-x divide-zinc-800">
-          <div className="p-5">
-            <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium mb-2">Client</p>
-            <h2 className="text-lg font-bold text-white truncate">{data.clientName || "—"}</h2>
-          </div>
-          <div className="p-5">
-            <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium mb-2">Business</p>
-            <h2 className="text-lg font-bold text-white truncate">{data.businessName || "—"}</h2>
-          </div>
-        </div>
-
-        {/* Service Row */}
-        <div className="border-t border-zinc-800 p-5 bg-zinc-900/50">
-          <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium mb-2">Service</p>
-          <h3 className="text-base font-semibold text-primary">{data.serviceType}</h3>
-        </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <MetaCard label="Client" value={data.clientName} />
+        <MetaCard label="Business" value={data.businessName} />
+        <MetaCard
+          label="Service"
+          value={data.serviceType}
+          accentClass="text-primary"
+        />
       </div>
 
-      {/* Project Type Badge & Overview */}
-      <div className="space-y-4">
-        {data.projectType && (
-          <div className="hidden">
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30 text-primary text-sm font-medium">
-              <Briefcase className="w-4 h-4" />
-              {data.projectType}
-            </span>
-            {data.designStyle && (
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-700/50 border border-zinc-600/50 text-slate-300 text-xs">
-                {data.designStyle}
-              </span>
-            )}
-          </div>
-        )}
+      {data.overview ? (
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+            Project Overview
+          </p>
+          <p className="text-sm leading-relaxed text-slate-300">{data.overview}</p>
+        </div>
+      ) : null}
 
-        {data.overview && (
-          <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mb-2">Project Overview</p>
-            <p className="text-slate-300 text-sm leading-relaxed">{data.overview}</p>
-          </div>
-        )}
-      </div>
+      <BulletSection title="Primary Objectives" items={data.objectives} />
+      <BulletSection
+        title="Features & Deliverables"
+        items={data.deliverables}
+      />
+      <DetailFieldsCard fields={data.detailFields} />
+      <BulletSection
+        title="Additional Confirmed Inputs"
+        items={data.additionalInputs}
+      />
 
-      {/* Accordion Sections */}
-      <div className="space-y-3">
-        {data.scopeObjectives && (
-          <AccordionSection icon={Layers} title="Scope & Objectives" defaultOpen={true}>
-            <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line mt-3">
-              {data.scopeObjectives}
-            </p>
-          </AccordionSection>
-        )}
-
-        <AccordionSection
-          icon={ListChecks}
-          title={isTechnicalService(data, services) ? "Features & Deliverables" : "Content & Deliverables"}
-          defaultOpen={true}
+      {data.timeline || data.budget ? (
+        <div
+          className={cn(
+            "grid gap-3",
+            data.timeline && data.budget ? "md:grid-cols-2" : "grid-cols-1",
+          )}
         >
-          <FeatureList items={data.features} />
-        </AccordionSection>
-
-        {isTechnicalService(data, services) && (
-          <AccordionSection icon={Cpu} title="Platform & Techstack">
-            <TechTags items={data.techstack} />
-          </AccordionSection>
-        )}
-      </div>
-
-      {showFooterGrid && (
-        <div className={`grid gap-3 ${showTimeline && showBudget ? "grid-cols-2" : "grid-cols-1"}`}>
-          {showTimeline && (
-            <div className="group bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50 hover:bg-slate-700/30 transition-colors cursor-default">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="w-4 h-4 text-primary" />
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Timeline</p>
+          {data.timeline ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                  Timeline
+                </p>
               </div>
-              <p className="text-white font-semibold text-sm">
-                {data.timeline}
-              </p>
+              <p className="text-sm font-semibold text-white">{data.timeline}</p>
             </div>
-          )}
-          {showBudget && (
-            <div className="group bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50 hover:bg-slate-700/30 transition-colors cursor-default">
-              <div className="flex items-center gap-2 mb-2">
-                <IndianRupee className="w-4 h-4 text-emerald-400" />
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Budget</p>
+          ) : null}
+          {data.budget ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <IndianRupee className="h-4 w-4 text-emerald-400" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                  Budget
+                </p>
               </div>
-              <p className="text-white font-semibold text-sm">
-                {budgetSummary}
-              </p>
+              <p className="text-sm font-semibold text-white">{data.budget}</p>
             </div>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
 
-// --- Main Export ---
 export function ProposalSidebar({
   proposal,
   isOpen,
   onClose,
   embedded = false,
   inline = false,
-  services = [],
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-
   const proposalData = useMemo(() => {
-    const extracted = parseProposalContent(proposal);
-    return mapToProposalData(extracted);
+    const sections = parseProposalSections(proposal);
+    return mapToProposalData(sections, proposal);
   }, [proposal]);
 
-  // Save proposal to localStorage
   const saveProposalToStorage = () => {
     if (typeof window === "undefined" || !proposalData) return;
     migrateProposalStorageNamespace(user?.id);
@@ -556,7 +460,6 @@ export function ProposalSidebar({
       updatedAt: now,
     };
 
-    // Load existing proposals
     let existingProposals = [];
     try {
       const stored = localStorage.getItem(listKey);
@@ -564,13 +467,10 @@ export function ProposalSidebar({
         existingProposals = JSON.parse(stored);
       }
     } catch {
-      // ignore parse errors
+      existingProposals = [];
     }
 
-    // Add new proposal
     existingProposals.push(proposalToSave);
-
-    // Save to localStorage
     localStorage.setItem(listKey, JSON.stringify(existingProposals));
     localStorage.setItem(singleKey, JSON.stringify(proposalToSave));
     if (syncedKey) {
@@ -580,88 +480,82 @@ export function ProposalSidebar({
     return proposalToSave;
   };
 
-  // Handle proceed button click
   const handleProceed = () => {
     if (!proposalData) {
       toast.error("No proposal data available");
       return;
     }
 
-    // Save proposal to localStorage
     saveProposalToStorage();
 
-    // Check if user is authenticated
     if (user) {
       if (user.role === "CLIENT") {
-        // Already a client - redirect to dashboard
         toast.success("Proposal saved! Redirecting to dashboard...");
         onClose?.();
         navigate("/client");
       } else {
-        // User is a freelancer - redirect to client signup
         toast.info("Please create a client account to proceed with this proposal.");
         onClose?.();
-        navigate("/signup?role=client", { state: { redirectTo: "/client", fromProposal: true } });
+        navigate("/signup?role=client", {
+          state: { redirectTo: "/client", fromProposal: true },
+        });
       }
-    } else {
-      // Not authenticated - redirect to client signup page
-      toast.success("Proposal saved! Please create an account to continue.");
-      onClose?.();
-      navigate("/signup?role=client", { state: { redirectTo: "/client", fromProposal: true } });
+      return;
     }
+
+    toast.success("Proposal saved! Please create an account to continue.");
+    onClose?.();
+    navigate("/signup?role=client", {
+      state: { redirectTo: "/client", fromProposal: true },
+    });
   };
 
-
   const content = (
-    <div className="h-full flex flex-col bg-black">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-zinc-800/50 bg-black flex-none z-10">
-        <div className="flex items-start justify-between">
+    <div className="flex h-full flex-col bg-black">
+      <div className="z-10 flex-none border-b border-zinc-800/50 bg-black px-6 py-5">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">
-                <Check className="w-3 h-3" />
+            <div className="mb-2 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                <Check className="h-3 w-3" />
                 Draft
               </span>
               <span className="text-xs text-slate-500">
                 {new Date().toLocaleDateString()}
               </span>
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="text-xl font-bold tracking-tight text-white">
               {resolveProposalTitle(proposalData)}
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="mt-1 text-xs text-slate-400">
               Generated by Catalance AI
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-slate-500 hover:text-white"
+            className="rounded-full p-2 text-slate-500 transition-colors hover:bg-zinc-800 hover:text-white"
           >
             <X className="size-5" />
           </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto bg-black scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto bg-black scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-800">
         <div className="p-6">
-          <ProposalCard data={proposalData} services={services} />
+          <ProposalCard data={proposalData} />
         </div>
       </div>
 
-      {/* Footer / Actions */}
-      {proposal && (
-        <div className="p-4 border-t border-zinc-800/50 bg-zinc-900/50">
+      {proposal ? (
+        <div className="border-t border-zinc-800/50 bg-zinc-900/50 p-4">
           <button
             onClick={handleProceed}
-            className="w-full py-3 bg-primary text-primary-foreground font-semibold text-sm rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]"
+            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98]"
           >
             Proceed with this proposal
           </button>
         </div>
-      )}
-
+      ) : null}
     </div>
   );
 
@@ -669,17 +563,15 @@ export function ProposalSidebar({
     return content;
   }
 
-
   return (
     <div
       className={cn(
-        "fixed top-0 right-0 h-screen w-full sm:w-[500px] bg-black border-l border-zinc-800 shadow-2xl transform transition-transform duration-300 ease-out",
+        "fixed top-0 right-0 h-screen w-full transform border-l border-zinc-800 bg-black shadow-2xl transition-transform duration-300 ease-out sm:w-[500px]",
         embedded ? "z-30" : "z-50",
-        isOpen ? "translate-x-0" : "translate-x-full"
+        isOpen ? "translate-x-0" : "translate-x-full",
       )}
     >
       {content}
     </div>
   );
 }
-

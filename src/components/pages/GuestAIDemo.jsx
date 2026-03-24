@@ -487,7 +487,7 @@ const appendSpeechTranscript = (
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
 const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|choice|choices|kindly|please|type|tap|reply|which one|which of these|here are)\b/i;
-const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other)\b/i;
+const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
 
 const repairBrokenTechTokens = (text = "") =>
     String(text || "")
@@ -937,82 +937,81 @@ const buildFreeformOptionHelperCopy = ({
 
         return `${personalizationLead}${trimmedNotice}`;
     };
-
     const guidanceByIntent = [
         {
             test: /\b(frontend|framework|next js|react|angular|vue)\b/,
-            notSureNotice: `No problem. Tell me what matters most for the frontend${serviceReference}, like SEO, speed, or flexibility, and I will suggest the best fit.`,
-            notSurePlaceholder: 'Share what matters most for the frontend...',
+            notSureNotice: `No problem! Tell us what matters most — e.g. "I need strong SEO" → Next.js is ideal. "I want a simple interactive app" → React works great. "I prefer no coding" → try a no-code tool. What's your priority?`,
+            notSurePlaceholder: 'e.g. "I need strong SEO and fast load times"...',
             otherNotice: `Got it. Tell me which frontend approach you have in mind${serviceReference}, and I will tailor it around that.`,
             otherPlaceholder: 'Describe the frontend approach you want...',
         },
         {
             test: /\b(backend|server|api|technology)\b/,
-            notSureNotice: `No problem. Tell me what matters most for the backend${serviceReference}, like speed, integrations, or scalability, and I will suggest the best fit.`,
-            notSurePlaceholder: 'Share what matters most for the backend...',
+            notSureNotice: `No problem! Here's a quick guide — "I need real-time features" → Node.js. "I want Python" → Django. "I want serverless" → Firebase or Supabase. What fits your needs?`,
+            notSurePlaceholder: 'e.g. "I need real-time updates and REST APIs"...',
             otherNotice: `Got it. Tell me which backend setup you have in mind${serviceReference}, and I will tailor it around that.`,
             otherPlaceholder: 'Describe the backend setup you want...',
         },
         {
             test: /\b(database|mysql|postgresql|mongodb|firebase|supabase)\b/,
-            notSureNotice: `No problem. Tell me about the kind of data you expect${serviceReference}, and I will suggest a database that fits well.`,
-            notSurePlaceholder: 'Tell me about the data or usage you expect...',
+            notSureNotice: `No problem! Quick guide — "I have structured data like orders/users" → PostgreSQL. "I need flexible documents" → MongoDB. "I want real-time sync" → Firebase. What kind of data will you store?`,
+            notSurePlaceholder: 'e.g. "user profiles, bookings, and payments"...',
             otherNotice: `Got it. Tell me which database or data setup you want${serviceReference}, and I will tailor it around that.`,
             otherPlaceholder: 'Describe the database setup you want...',
         },
         {
             test: /\b(budget|price|pricing|cost)\b/,
-            notSureNotice: `No problem. Tell me your comfort range or budget expectation${serviceReference}, and I will help suggest the right scope.`,
-            notSurePlaceholder: 'Share the budget range you are comfortable with...',
+            notSureNotice: `No problem! To give you the right scope — a basic landing page starts around ₹15K, a booking webapp around ₹80K–₹2L, a full platform ₹3L+. What range feels comfortable for you?`,
+            notSurePlaceholder: 'e.g. "around ₹50,000 to ₹1 lakh"...',
             otherNotice: `Got it. Tell me the budget range you have in mind${serviceReference}, and I will tailor the scope around it.`,
             otherPlaceholder: 'Describe your budget range or expectation...',
         },
         {
             test: /\b(timeline|ready|launch|deadline|when would you like)\b/,
-            notSureNotice: `No problem. Tell me your ideal launch timing${serviceReference}, and I will suggest a timeline that fits.`,
-            notSurePlaceholder: 'Share your ideal launch window...',
+            notSureNotice: `No problem! For reference — a simple site takes 2–4 weeks, a booking app 6–10 weeks, a full platform 3–5 months. When would you ideally want this live?`,
+            notSurePlaceholder: 'e.g. "within 2 months" or "by June 2025"...',
             otherNotice: `Got it. Tell me the timeline you have in mind${serviceReference}, and I will tailor the plan around it.`,
             otherPlaceholder: 'Describe your preferred timeline...',
         },
         {
             test: /\b(design|style|look|feel|visual|branding)\b/,
-            notSureNotice: `No problem. Tell me the kind of look and feel you want${serviceReference}, and I will suggest a direction that fits.`,
-            notSurePlaceholder: 'Describe the look and feel you want...',
+            notSureNotice: `No problem! Examples — "clean and minimal like Apple" → minimalist. "bold and colorful like Zomato" → vibrant. "luxury and elegant" → premium dark. Describe your brand vibe.`,
+            notSurePlaceholder: 'e.g. "modern, minimal, and professional"...',
             otherNotice: `Got it. Tell me the design direction you have in mind${serviceReference}, and I will tailor it around that.`,
             otherPlaceholder: 'Describe your preferred design direction...',
         },
         {
             test: /\b(page count|pages|home|about|contact|service detail)\b/,
-            notSureNotice: `No problem. Tell me which pages feel essential${serviceReference}, and I will suggest a structure that fits.`,
-            notSurePlaceholder: 'List the pages you think you may need...',
+            notSureNotice: `No problem! Most websites start with: Home, About, Services, Contact. E-commerce adds: Products, Cart, Checkout. Which pages feel essential for your project?`,
+            notSurePlaceholder: 'e.g. "home, services, pricing, and contact"...',
             otherNotice: `Got it. Tell me the pages or sections you want${serviceReference}, and I will tailor the structure around them.`,
             otherPlaceholder: 'Describe the pages or sections you want...',
         },
         {
             test: /\b(features|deliverables|include|booking|appointments|functionality)\b/,
-            notSureNotice: `No problem. Tell me the must-have features${serviceReference}, and I will suggest the best fit.`,
-            notSurePlaceholder: 'Tell me the features you definitely want...',
+            notSureNotice: `No problem! Common picks — "user login + bookings" for a service site. "cart + payments + orders" for a store. "admin panel + reports" for an internal tool. What must your users be able to do?`,
+            notSurePlaceholder: 'e.g. "users should book appointments and pay online"...',
             otherNotice: `Got it. Tell me the features or deliverables you have in mind${serviceReference}, and I will tailor it around them.`,
             otherPlaceholder: 'Describe the features or deliverables you want...',
         },
         {
             test: /\b(hosting|deploy|deployment|vercel|aws|render)\b/,
-            notSureNotice: `No problem. Tell me what matters most for hosting${serviceReference}, like simplicity, scale, or budget, and I will suggest the best fit.`,
-            notSurePlaceholder: 'Share what matters most for hosting...',
+            notSureNotice: `No problem! Quick guide — "fast and free for small apps" → Vercel or Netlify. "more control and scale" → AWS or DigitalOcean. "all-in-one" → Render or Railway. What matters most to you?`,
+            notSurePlaceholder: 'e.g. "affordable and easy to manage"...',
             otherNotice: `Got it. Tell me the hosting setup you have in mind${serviceReference}, and I will tailor it around that.`,
             otherPlaceholder: 'Describe the hosting setup you want...',
         },
         {
             test: /\b(what do you want to build|website type|mobile app|what kind of website|what kind of app|project type)\b/,
-            notSureNotice: `No problem. Tell me what you want people to do on the product${serviceReference}, and I will suggest the best fit.`,
-            notSurePlaceholder: 'Tell me what users should be able to do...',
+            notSureNotice: `No problem! Examples — "I want customers to book my services" → Booking webapp. "I want to sell products" → E-commerce store. "I want to share info about my business" → Business website. What do you want your users to do?`,
+            notSurePlaceholder: 'e.g. "users should browse my services and book them"...',
             otherNotice: `Got it. Tell me what kind of product you have in mind${serviceReference}, and I will tailor the direction around it.`,
             otherPlaceholder: 'Describe the kind of product you want to build...',
         },
         {
-            test: /\b(developed|build type|wordpress|shopify|custom development|cms)\b/,
-            notSureNotice: `No problem. Tell me what matters most here${serviceReference}, like flexibility, easier updates, or budget, and I will suggest the best fit.`,
-            notSurePlaceholder: 'Tell me what matters most here, like flexibility or budget...',
+            test: /\b(developed|built|build type|wordpress|shopify|custom development|cms)\b/,
+            notSureNotice: `No problem! Quick guide — "I want easy content edits" → WordPress. "I want to sell products" → Shopify. "I want full custom features and branding" → Custom Development. What matters most to you?`,
+            notSurePlaceholder: 'e.g. "I want full control and custom features"...',
             otherNotice: `Got it. Tell me the website approach you have in mind${serviceReference}, and I will tailor it around that.`,
             otherPlaceholder: 'Describe the website approach you want...',
         },
@@ -1034,8 +1033,8 @@ const buildFreeformOptionHelperCopy = ({
 
     return isNotSure
         ? {
-            notice: personalizeNotice(`No problem. Tell me a little more about what you need here${serviceReference}, and I will suggest the best fit.`),
-            placeholder: 'Tell me a bit more about what you need here...',
+            notice: personalizeNotice(`No problem. Tell me a little more about what you need here${serviceReference}, and I will suggest the best fit. (e.g., "I need a simple booking system" or "I want a custom membership area")`),
+            placeholder: 'e.g. "I need a clean dashboard for my clients"...',
         }
         : {
             notice: personalizeNotice(`Got it. Tell me what you have in mind here${serviceReference}, and I will tailor it for you.`),
@@ -1418,7 +1417,7 @@ const GuestAIDemo = () => {
     const pendingOptionNormalized = normalizeOptionToken(
         pendingOptionLabel.replace(/[—–-]/g, ' ')
     );
-    const isNotSureFollowup = /\bnot sure\b/.test(pendingOptionNormalized);
+    const isNotSureFollowup = /\b(not sure|other|suggest|recommend|advice|help)\b/.test(pendingOptionNormalized);
     const pendingOptionNotice = isPendingOptionFollowup
         ? isNotSureFollowup
             ? "No problem. Tell me a little about what you need, and I will suggest the best fit."
@@ -1448,8 +1447,12 @@ const GuestAIDemo = () => {
             historyContext: recentUserContext,
         })
         : { notice: '', placeholder: 'Message CATA AI...' };
-    const contextualPendingOptionNotice = contextualPendingOptionHelperCopy.notice || pendingOptionNotice;
-    const contextualPendingOptionPlaceholder = contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder;
+    const contextualPendingOptionNotice = pendingOptionFollowup?.loadingAdvice 
+        ? "Asking AI for advice..." 
+        : (pendingOptionFollowup?.notice || contextualPendingOptionHelperCopy.notice || pendingOptionNotice);
+    const contextualPendingOptionPlaceholder = pendingOptionFollowup?.loadingAdvice 
+        ? "Please wait..." 
+        : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder);
 
     const optionIsSelected = (value = '') =>
         selectedOptions.some((selected) => normalizeOptionToken(selected) === normalizeOptionToken(value));
@@ -1474,7 +1477,7 @@ const GuestAIDemo = () => {
         });
 
         if (!matched) return raw;
-        return String(typeof matched === 'string' ? matched : (matched.value ?? matched.label ?? raw));
+        return String(typeof matched === 'string' ? matched : (matched.label ?? matched.value ?? raw));
     };
 
     const isOptionSelectedByText = (optionText = '') => {
@@ -1482,6 +1485,43 @@ const GuestAIDemo = () => {
         if (optionIsSelected(resolvedValue)) return true;
         return isPendingOptionFollowup
             && normalizeOptionToken(pendingOptionValue) === normalizeOptionToken(resolvedValue);
+    };
+
+    const fetchOptionAdvice = async (optionValue) => {
+        try {
+            const contextText = messages
+                .filter((msg) => msg?.role === 'user')
+                .slice(-4)
+                .map((msg) => msg?.content)
+                .join(' ');
+            const currentQ = latestAssistantPrompt.questionText;
+
+            const response = await request('/guest/advice', {
+                method: 'POST',
+                body: JSON.stringify({
+                    sessionId,
+                    serviceId: selectedService?.slug || selectedService?.id,
+                    option: optionValue,
+                    context: contextText,
+                    currentQuestion: currentQ
+                })
+            });
+            const data = unwrapPayload(response);
+            setPendingOptionFollowup((current) => {
+                if (current?.optionValue !== optionValue) return current;
+                return {
+                    ...current,
+                    loadingAdvice: false,
+                    notice: data?.notice || `Got it. ${stripMarkdownDecorators(optionValue)}.`,
+                    placeholder: data?.placeholder || 'Tell me a bit more...'
+                };
+            });
+        } catch (err) {
+            setPendingOptionFollowup((current) => {
+                if (current?.optionValue !== optionValue) return current;
+                return { ...current, loadingAdvice: false };
+            });
+        }
     };
 
     const handleChatOptionClick = (optionText = '') => {
@@ -1512,9 +1552,9 @@ const GuestAIDemo = () => {
                             : current
                     ));
                 } else {
-                    setPendingOptionFollowup({ optionValue: resolvedValue });
+                    setPendingOptionFollowup({ optionValue: resolvedValue, loadingAdvice: true });
                     setInput('');
-                    toast.info(`Add a short detail for "${stripMarkdownDecorators(resolvedValue)}" and send it.`);
+                    fetchOptionAdvice(resolvedValue);
                     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
                         window.requestAnimationFrame(() => focusMessageInput());
                     }
@@ -1525,9 +1565,9 @@ const GuestAIDemo = () => {
 
         if (needsFreeformFollowup) {
             setSelectedOptions([resolvedValue]);
-            setPendingOptionFollowup({ optionValue: resolvedValue });
+            setPendingOptionFollowup({ optionValue: resolvedValue, loadingAdvice: true });
             setInput('');
-            toast.info(`Add a short detail for "${stripMarkdownDecorators(resolvedValue)}" and send it.`);
+            fetchOptionAdvice(resolvedValue);
             if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
                 window.requestAnimationFrame(() => focusMessageInput());
             }
@@ -1913,6 +1953,7 @@ const GuestAIDemo = () => {
                 : [];
 
             setSessionId(chatMeta.sessionId);
+            setInputConfig(data?.inputConfig || { type: 'text', options: [] });
             if (restored.length > 0) {
                 setMessages(restored);
             } else {
@@ -1996,9 +2037,9 @@ const GuestAIDemo = () => {
                     .map(String)
                     .filter((value) => normalizeOptionToken(value) !== normalizeOptionToken(pendingOptionValue));
 
-                contentToSend = [...mergedSelections, `${pendingOptionValue}: ${detailText}`];
+                contentToSend = [...mergedSelections, detailText];
             } else {
-                contentToSend = `${pendingOptionValue}: ${detailText}`;
+                contentToSend = detailText;
             }
         }
 

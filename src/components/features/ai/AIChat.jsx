@@ -320,6 +320,115 @@ const findMatchingService = (
   return bestScore > 0 ? bestMatch : null;
 };
 
+const NUMBER_WORD_UNITS = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+};
+
+const NUMBER_WORD_TENS = {
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+};
+
+const NUMBER_WORD_SCALES = {
+  hundred: 100,
+  thousand: 1000,
+  lakh: 100000,
+  lac: 100000,
+  million: 1000000,
+  crore: 10000000,
+};
+
+const extractWordNumberValue = (text = "") => {
+  if (typeof text !== "string") return null;
+  const tokens = text
+    .toLowerCase()
+    .replace(/-/g, " ")
+    .match(/\b[a-z]+\b/g);
+  if (!tokens?.length) return null;
+
+  let total = 0;
+  let current = 0;
+  let found = false;
+
+  for (const token of tokens) {
+    if (token === "and") continue;
+    if (Object.prototype.hasOwnProperty.call(NUMBER_WORD_UNITS, token)) {
+      current += NUMBER_WORD_UNITS[token];
+      found = true;
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(NUMBER_WORD_TENS, token)) {
+      current += NUMBER_WORD_TENS[token];
+      found = true;
+      continue;
+    }
+    if (token === "hundred") {
+      current = (current || 1) * 100;
+      found = true;
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(NUMBER_WORD_SCALES, token)) {
+      current = (current || 1) * NUMBER_WORD_SCALES[token];
+      total += current;
+      current = 0;
+      found = true;
+      continue;
+    }
+    if (found) break;
+  }
+
+  if (!found) return null;
+  const result = total + current;
+  return Number.isFinite(result) ? result : null;
+};
+
+const normalizeNumericReplyValue = (text = "") => {
+  if (typeof text !== "string") return "";
+
+  const rangeMatch = text.match(/(\d[\d,]*)\s*(?:-|to)\s*(\d[\d,]*)/i);
+  if (rangeMatch) {
+    const start = Number.parseInt(rangeMatch[1].replace(/,/g, ""), 10);
+    const end = Number.parseInt(rangeMatch[2].replace(/,/g, ""), 10);
+    if (Number.isFinite(start) && Number.isFinite(end)) {
+      return `${start}-${end}`;
+    }
+  }
+
+  const numericMatch = text.match(/\d[\d,]*/);
+  if (numericMatch) {
+    const parsed = Number.parseInt(numericMatch[0].replace(/,/g, ""), 10);
+    return Number.isFinite(parsed) ? String(parsed) : "";
+  }
+
+  const wordNumber = extractWordNumberValue(text);
+  return Number.isFinite(wordNumber) ? String(wordNumber) : "";
+};
+
 const parseBudgetValue = (text = "") => {
   if (typeof text !== "string") return null;
   const trimmed = text.trim();
@@ -341,7 +450,10 @@ const parseBudgetValue = (text = "") => {
   const budgetRegex =
     /(?:\u20B9|rs\.?|inr|\$|usd|eur|gbp)?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|l|k|thousand)?/gi;
   const matches = Array.from(trimmed.matchAll(budgetRegex));
-  if (!matches.length) return null;
+  if (!matches.length) {
+    const wordAmount = extractWordNumberValue(trimmed);
+    return Number.isFinite(wordAmount) ? wordAmount : null;
+  }
 
   const values = matches
     .map((match) => {
@@ -1821,6 +1933,17 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
     )
   ) {
     update.hosting = selections.length ? selections[0] : trimmed;
+  }
+
+  if (
+    /additional pages?|page count|number of pages|how many pages/i.test(
+      assistantLower,
+    )
+  ) {
+    const pageCount = normalizeNumericReplyValue(trimmed);
+    if (pageCount) {
+      update.pageCount = pageCount;
+    }
   }
 
   if (

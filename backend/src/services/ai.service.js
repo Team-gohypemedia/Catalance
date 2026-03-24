@@ -874,7 +874,11 @@ const parseBudgetFromText = (text = "") => {
   if (typeof text !== "string") return null;
   const budgetRegex = /(?:(₹|rs\.?|inr|\$|usd|€|eur|£|gbp))?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|k|L|thousand)?\s*(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?/i;
   const match = budgetRegex.exec(text);
-  if (!match) return null;
+  if (!match) {
+    const wordAmount = extractNumberWordsValue(text);
+    if (!Number.isFinite(wordAmount)) return null;
+    return { amount: wordAmount, currency: "INR" };
+  }
 
   const currencyToken = match[1] || match[4] || "";
   let currency = "INR";
@@ -2229,7 +2233,11 @@ Present inferred values directly and professionally inside the field value, not 
 Output requirements:
 - Return clean markdown only.
 - Adapt the structure based on the SERVICE TYPE provided in the context. Include ONLY relevant fields for that service.
+- Use the same professional proposal structure for every service. The only variation should be which service-specific detail fields are included.
 - Put each field label on its own line. Never combine two field labels or headings on the same line.
+- Keep string fields textual and keep numeric-only fields numeric.
+- Convert spelled-out numeric answers into digits when the field expects a number. Example: write "Page Count: 5", not "Page Count: five pages".
+- Budget must always be written numerically with currency, such as "INR 50,000" or "INR 5,000 per video".
 - Always include these core fields in this EXACT order:
   Client Name: ... (the person's name from the conversation; if absent, derive a professional owner label grounded in the project context)
   Business Name: ... (the company/business name; if absent, derive the most plausible working business or project name from the user's description)
@@ -2289,6 +2297,8 @@ CRITICAL INSTRUCTIONS:
 - Use concise, professional, business-ready language.
 - Use bullet list items for objectives, features, and deliverables.
 - The Project Overview should be a well-written paragraph summarizing the entire project scope.
+- Never let a numeric value appear under the wrong field label.
+- NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.
 `;
 
 const buildProposalUserPrompt = (proposalContext, chatHistory) =>
@@ -2296,6 +2306,97 @@ const buildProposalUserPrompt = (proposalContext, chatHistory) =>
 
 const PROPOSAL_PLACEHOLDER_REGEX =
   /\b(not specified|pending confirmation|to be finalized|tbd|tba|n\/a|unknown)\b/i;
+
+const PROPOSAL_ADDITIONAL_FIELD = "Additional Confirmed Inputs";
+const PROPOSAL_MULTI_VALUE_FIELDS = new Set([
+  "Primary Objectives",
+  "Features/Deliverables Included",
+  PROPOSAL_ADDITIONAL_FIELD
+]);
+const PROPOSAL_NUMERIC_ONLY_FIELDS = new Set(["Page Count"]);
+const PROPOSAL_FIELD_ALIASES = {
+  "Client Name": ["Client Name", "Name"],
+  "Business Name": ["Business Name", "Company Name", "Company"],
+  "Service Type": ["Service Type", "Service"],
+  "Project Overview": [
+    "Project Overview",
+    "Overview",
+    "Description",
+    "Requirement",
+    "Website Requirement"
+  ],
+  "Primary Objectives": ["Primary Objectives", "Objectives"],
+  "Features/Deliverables Included": [
+    "Features/Deliverables Included",
+    "Features Included",
+    "Deliverables",
+    "Features"
+  ],
+  "Launch Timeline": ["Launch Timeline", "Timeline"],
+  Budget: ["Budget", "Pricing", "Investment"],
+  "Website Type": ["Website Type", "Project Type"],
+  "Design Style": ["Design Style", "Design Experience", "Design Preference"],
+  "Website Build Type": ["Website Build Type", "Build Type"],
+  "Frontend Framework": ["Frontend Framework", "Frontend"],
+  "Backend Technology": ["Backend Technology", "Backend"],
+  Database: ["Database"],
+  Hosting: ["Hosting"],
+  "Page Count": ["Page Count", "Pages", "Number of Pages"],
+  "Creative Type": ["Creative Type"],
+  Volume: ["Volume"],
+  "Engagement Model": ["Engagement Model"],
+  "Brand Stage": ["Brand Stage"],
+  "Brand Deliverables": ["Brand Deliverables"],
+  "Target Audience": ["Target Audience"],
+  "Business Category": ["Business Category"],
+  "Target Locations": ["Target Locations"],
+  "SEO Goals": ["SEO Goals"],
+  Duration: ["Duration"],
+  "App Type": ["App Type"],
+  "App Features": ["App Features"],
+  "Platform Requirements": ["Platform Requirements"],
+  [PROPOSAL_ADDITIONAL_FIELD]: [PROPOSAL_ADDITIONAL_FIELD]
+};
+const NUMBER_WORD_UNITS = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19
+};
+const NUMBER_WORD_TENS = {
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90
+};
+const NUMBER_WORD_SCALES = {
+  hundred: 100,
+  thousand: 1000,
+  lakh: 100000,
+  lac: 100000,
+  million: 1000000,
+  crore: 10000000
+};
 
 const PROPOSAL_CORE_FIELDS = [
   "Client Name",
@@ -2359,17 +2460,14 @@ const extractProposalSections = (markdown = "") => {
   let activeKey = null;
 
   for (const rawLine of String(markdown || "").replace(/\r/g, "").split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
+    let line = rawLine.trim();
+    if (!line) continue;
+    
+    // Strip markdown formatting like code blocks and headers to expose the plain key-value pair
+    if (line.startsWith("```")) continue;
+    line = line.replace(/^[#\s]+/, "").trim();
 
-    const bulletMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
-    if (bulletMatch) {
-      if (!activeKey) continue;
-      sections.get(activeKey).items.push(bulletMatch[1].trim());
-      continue;
-    }
-
-    const keyValueMatch = line.match(/^\*{0,2}([^:*]+?)\*{0,2}:\s*(.*)$/);
+    const keyValueMatch = line.match(/^\*{0,2}(?:[-*]\s+)?(?:\d+\.\s+)?([^:*]+?)\*{0,2}:\s*(.*)$/);
     if (keyValueMatch) {
       const key = String(keyValueMatch[1] || "").replace(/\*+/g, "").trim();
       const value = String(keyValueMatch[2] || "").replace(/\*+/g, "").trim();
@@ -2383,6 +2481,13 @@ const extractProposalSections = (markdown = "") => {
       continue;
     }
 
+    const bulletMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
+    if (bulletMatch) {
+      if (!activeKey) continue;
+      sections.get(activeKey).items.push(bulletMatch[1].trim());
+      continue;
+    }
+
     if (activeKey) {
       const section = sections.get(activeKey);
       section.value = section.value ? `${section.value} ${line}`.trim() : line;
@@ -2391,6 +2496,403 @@ const extractProposalSections = (markdown = "") => {
 
   return sections;
 };
+
+const normalizeProposalFieldKey = (value = "") =>
+  String(value || "")
+    .replace(/\*+/g, "")
+    .replace(/:$/, "")
+    .trim()
+    .toLowerCase();
+
+const cleanProposalTextValue = (value = "") => {
+  const normalized = String(value || "")
+    .replace(/\*+/g, "")
+    .replace(/["'`~]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized || PROPOSAL_PLACEHOLDER_REGEX.test(normalized)) return "";
+  return normalized;
+};
+
+const cleanProposalListItems = (items = []) =>
+  Array.isArray(items)
+    ? items
+      .map((item) => cleanProposalTextValue(item))
+      .filter(Boolean)
+    : [];
+
+const splitProposalListValue = (value = "") =>
+  String(value || "")
+    .split(/\n|;|,(?=\s*[A-Za-z0-9])/)
+    .map((item) => cleanProposalTextValue(item))
+    .filter(Boolean);
+
+const createNormalizedProposalSectionIndex = (markdown = "") => {
+  const sections = extractProposalSections(markdown);
+  const index = new Map();
+  let order = 0;
+
+  sections.forEach((section, label) => {
+    const normalizedKey = normalizeProposalFieldKey(label);
+    if (!normalizedKey) return;
+    index.set(normalizedKey, {
+      label,
+      normalizedKey,
+      order,
+      value: cleanProposalTextValue(section?.value || ""),
+      items: cleanProposalListItems(section?.items || [])
+    });
+    order += 1;
+  });
+
+  return index;
+};
+
+const getProposalSectionByLabel = (sectionIndex = new Map(), label = "") => {
+  const aliases = PROPOSAL_FIELD_ALIASES[label] || [label];
+  for (const alias of aliases) {
+    const match = sectionIndex.get(normalizeProposalFieldKey(alias));
+    if (match) return match;
+  }
+  return null;
+};
+
+const extractNumberWordsValue = (text = "") => {
+  if (typeof text !== "string") return null;
+  const tokens = text
+    .toLowerCase()
+    .replace(/-/g, " ")
+    .match(/\b[a-z]+\b/g);
+  if (!tokens?.length) return null;
+
+  let total = 0;
+  let current = 0;
+  let found = false;
+
+  for (const token of tokens) {
+    if (token === "and") continue;
+    if (Object.prototype.hasOwnProperty.call(NUMBER_WORD_UNITS, token)) {
+      current += NUMBER_WORD_UNITS[token];
+      found = true;
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(NUMBER_WORD_TENS, token)) {
+      current += NUMBER_WORD_TENS[token];
+      found = true;
+      continue;
+    }
+    if (token === "hundred") {
+      current = (current || 1) * 100;
+      found = true;
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(NUMBER_WORD_SCALES, token)) {
+      const scale = NUMBER_WORD_SCALES[token];
+      current = (current || 1) * scale;
+      total += current;
+      current = 0;
+      found = true;
+      continue;
+    }
+    if (found) {
+      break;
+    }
+  }
+
+  if (!found) return null;
+  const result = total + current;
+  return Number.isFinite(result) ? result : null;
+};
+
+const normalizeNumericFieldValue = (value = "") => {
+  if (typeof value !== "string") return "";
+
+  const rangeMatch = value.match(/(\d[\d,]*)\s*(?:-|to)\s*(\d[\d,]*)/i);
+  if (rangeMatch) {
+    const start = Number.parseInt(rangeMatch[1].replace(/,/g, ""), 10);
+    const end = Number.parseInt(rangeMatch[2].replace(/,/g, ""), 10);
+    if (Number.isFinite(start) && Number.isFinite(end)) {
+      return `${start}-${end}`;
+    }
+  }
+
+  const numericMatch = value.match(/\d[\d,]*/);
+  if (numericMatch) {
+    const parsed = Number.parseInt(numericMatch[0].replace(/,/g, ""), 10);
+    return Number.isFinite(parsed) ? String(parsed) : "";
+  }
+
+  const wordNumber = extractNumberWordsValue(value);
+  return Number.isFinite(wordNumber) ? String(wordNumber) : "";
+};
+
+const detectBudgetSuffix = (value = "", service = null) => {
+  const source = String(value || "");
+  const explicitPerMatch =
+    source.match(/\bper\s+([a-z][a-z\s/-]*)$/i) ||
+    source.match(/\/\s*([a-z][a-z\s-]*)$/i);
+  if (explicitPerMatch?.[1]) {
+    return `per ${cleanProposalTextValue(explicitPerMatch[1]).toLowerCase()}`;
+  }
+
+  const serviceUnit = formatBudgetUnitLabel(service);
+  return serviceUnit || "";
+};
+
+const parseBudgetAmountTokens = (value = "") => {
+  if (typeof value !== "string") return [];
+  const budgetRegex =
+    /(?:₹|rs\.?|inr|\$|usd|€|eur|£|gbp)?\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|k|thousand)?/gi;
+  const amounts = [];
+  let match;
+  while ((match = budgetRegex.exec(value)) !== null) {
+    let multiplier = 1;
+    if (/lakh|lac/i.test(match[2] || "")) multiplier = 100000;
+    else if (/k|thousand/i.test(match[2] || "")) multiplier = 1000;
+
+    const parsed = Number.parseFloat(String(match[1] || "").replace(/,/g, ""));
+    if (Number.isFinite(parsed)) {
+      amounts.push(parsed * multiplier);
+    }
+  }
+  return amounts;
+};
+
+const buildProposalBudgetFallback = (service = null) => {
+  const minimum =
+    Number(service?.budget?.min_required_amount) ||
+    Number(service?.min_budget) ||
+    null;
+  if (Number.isFinite(minimum) && minimum > 0) {
+    const suffix = detectBudgetSuffix("", service);
+    return `INR ${formatCurrencyValue(minimum, "INR")}${suffix ? ` ${suffix}` : ""}`;
+  }
+  return "INR 10,000";
+};
+
+const normalizeProposalBudgetValue = (value = "", service = null) => {
+  const source = cleanProposalTextValue(value);
+  if (!source) {
+    return buildProposalBudgetFallback(service);
+  }
+
+  const suffix = detectBudgetSuffix(source, service);
+  const amounts = parseBudgetAmountTokens(source);
+  if (amounts.length >= 2 && /\bbetween\b|\bto\b|-/i.test(source)) {
+    const first = formatCurrencyValue(amounts[0], "INR");
+    const second = formatCurrencyValue(amounts[1], "INR");
+    if (first && second) {
+      return `INR ${first} - ${second}${suffix ? ` ${suffix}` : ""}`;
+    }
+  }
+
+  const parsedBudget = parseBudgetFromText(source);
+  if (parsedBudget?.amount) {
+    const currency = parsedBudget.currency || "INR";
+    const formatted = formatCurrencyValue(parsedBudget.amount, currency);
+    if (formatted) {
+      return `${currency} ${formatted}${suffix ? ` ${suffix}` : ""}`;
+    }
+  }
+
+  const wordNumber = extractNumberWordsValue(source);
+  if (Number.isFinite(wordNumber)) {
+    return `INR ${formatCurrencyValue(wordNumber, "INR")}${suffix ? ` ${suffix}` : ""}`;
+  }
+
+  return source;
+};
+
+const buildProposalTimelineFallback = (serviceCategory = "") => {
+  switch (serviceCategory) {
+    case "creative":
+      return "2-3 weeks";
+    case "seo":
+      return "3 months";
+    case "app":
+      return "8-12 weeks";
+    case "web":
+      return "4-6 weeks";
+    default:
+      return "4-6 weeks";
+  }
+};
+
+const getLatestTimelineFromHistory = (history = []) => {
+  if (!Array.isArray(history)) return "";
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const msg = history[i];
+    if (!msg || msg.role === "assistant") continue;
+    const extracted = extractTimelineValue(msg.content || "");
+    if (extracted) return extracted;
+  }
+  return "";
+};
+
+const buildProposalOverviewFallback = ({
+  proposalContext = {},
+  serviceLabel = "General Services"
+} = {}) => {
+  const businessContext = cleanProposalTextValue(
+    proposalContext?.companyBackground || proposalContext?.websiteRequirement || ""
+  );
+  const scopeItems = [
+    ...(Array.isArray(proposalContext?.requirements) ? proposalContext.requirements : []),
+    ...(Array.isArray(proposalContext?.scope?.features) ? proposalContext.scope.features : []),
+    ...(Array.isArray(proposalContext?.scope?.deliverables) ? proposalContext.scope.deliverables : [])
+  ]
+    .map((item) => cleanProposalTextValue(item))
+    .filter(Boolean);
+
+  const scopeSummary = scopeItems.slice(0, 3).join(", ");
+  if (businessContext && scopeSummary) {
+    return `${businessContext} The proposal covers ${scopeSummary} as part of the ${serviceLabel} engagement.`;
+  }
+  if (businessContext) {
+    return `${businessContext} This proposal outlines a ${serviceLabel} engagement aligned with the confirmed goals and delivery requirements.`;
+  }
+  if (scopeSummary) {
+    return `This proposal outlines a ${serviceLabel} engagement covering ${scopeSummary}, aligned with the client's stated goals and project requirements.`;
+  }
+  return `This proposal outlines a ${serviceLabel} engagement aligned with the client's stated goals, confirmed scope, and delivery requirements.`;
+};
+
+const buildProposalFieldEntry = ({
+  label,
+  section = null,
+  contextEntry = null,
+  proposalContext = {},
+  chatHistory = [],
+  service = null,
+  serviceLabel = "General Services",
+  serviceCategory = ""
+} = {}) => {
+  const sectionValue = cleanProposalTextValue(section?.value || "");
+  const sectionItems =
+    section?.items?.length
+      ? cleanProposalListItems(section.items)
+      : PROPOSAL_MULTI_VALUE_FIELDS.has(label)
+        ? splitProposalListValue(sectionValue)
+        : [];
+  const contextValue = cleanProposalTextValue(contextEntry?.value || "");
+  const contextItems = cleanProposalListItems(contextEntry?.items || []);
+
+  switch (label) {
+    case "Client Name":
+      return { value: contextValue || sectionValue || "Project Owner", items: [] };
+    case "Business Name":
+      return {
+        value:
+          contextValue ||
+          sectionValue ||
+          cleanProposalTextValue(proposalContext?.companyName || "") ||
+          `${serviceLabel} Project`,
+        items: []
+      };
+    case "Service Type":
+      return {
+        value:
+          contextValue ||
+          sectionValue ||
+          cleanProposalTextValue(proposalContext?.serviceName || "") ||
+          serviceLabel,
+        items: []
+      };
+    case "Project Overview":
+      return {
+        value:
+          contextValue ||
+          sectionValue ||
+          buildProposalOverviewFallback({ proposalContext, serviceLabel }),
+        items: []
+      };
+    case "Primary Objectives": {
+      const items = contextItems.length ? contextItems : sectionItems;
+      return {
+        value: "",
+        items:
+          items.length > 0
+            ? items
+            : [`Deliver the ${serviceLabel} scope in line with the client's stated goals.`]
+      };
+    }
+    case "Features/Deliverables Included": {
+      const items = contextItems.length ? contextItems : sectionItems;
+      return {
+        value: "",
+        items:
+          items.length > 0
+            ? items
+            : [`Provide the confirmed ${serviceLabel} deliverables with a clear execution plan.`]
+      };
+    }
+    case "Launch Timeline":
+      return {
+        value:
+          contextValue ||
+          sectionValue ||
+          getLatestTimelineFromHistory(chatHistory) ||
+          buildProposalTimelineFallback(serviceCategory),
+        items: []
+      };
+    case "Budget":
+      return {
+        value: normalizeProposalBudgetValue(
+          contextValue || sectionValue || "",
+          service
+        ),
+        items: []
+      };
+    default: {
+      const resolvedItems = contextItems.length ? contextItems : sectionItems;
+      if (resolvedItems.length > 0) {
+        return {
+          value: contextValue || sectionValue,
+          items: resolvedItems
+        };
+      }
+
+      const rawValue = contextValue || sectionValue;
+      if (!rawValue) return null;
+
+      if (
+        PROPOSAL_NUMERIC_ONLY_FIELDS.has(label) ||
+        /\b(count|number|quantity)\b/i.test(label)
+      ) {
+        return {
+          value: normalizeNumericFieldValue(rawValue) || rawValue,
+          items: []
+        };
+      }
+
+      return { value: rawValue, items: [] };
+    }
+  }
+};
+
+const renderNormalizedProposalMarkdown = (orderedEntries = []) =>
+  orderedEntries
+    .flatMap(({ label, value = "", items = [] }) => {
+      const cleanValue = cleanProposalTextValue(value);
+      const cleanItems = cleanProposalListItems(items);
+      if (!cleanValue && cleanItems.length === 0) return [];
+
+      const lines = [];
+      if (cleanValue) {
+        lines.push(`${label}: ${cleanValue}`);
+      } else {
+        lines.push(`${label}:`);
+      }
+
+      cleanItems.forEach((item) => {
+        lines.push(`- ${item}`);
+      });
+
+      lines.push("");
+      return lines;
+    })
+    .join("\n")
+    .trim();
 
 const hasMeaningfulProposalSection = (section) => {
   if (!section) return false;
@@ -2438,6 +2940,136 @@ const analyzeProposalCompleteness = ({
   };
 };
 
+const normalizeProposalMarkdown = ({
+  markdown = "",
+  proposalContext = {},
+  chatHistory = [],
+  selectedServiceName = ""
+} = {}) => {
+  const sectionIndex = createNormalizedProposalSectionIndex(markdown);
+  const serviceLabel =
+    cleanProposalTextValue(
+      selectedServiceName ||
+      proposalContext?.serviceName ||
+      getProposalSectionByLabel(sectionIndex, "Service Type")?.value ||
+      ""
+    ) || "General Services";
+  const serviceCategory = resolveProposalServiceCategory(serviceLabel);
+  const service = getServiceDefinition(serviceLabel);
+
+  const contextFields = new Map();
+  const addContextField = (label, entry) => {
+    if (!entry) return;
+    const value = cleanProposalTextValue(entry?.value || "");
+    const items = cleanProposalListItems(entry?.items || []);
+    if (!value && items.length === 0) return;
+    contextFields.set(label, { value, items });
+  };
+
+  addContextField("Client Name", { value: proposalContext?.clientName });
+  addContextField("Business Name", { value: proposalContext?.companyName });
+  addContextField("Service Type", { value: proposalContext?.serviceName || selectedServiceName });
+  addContextField("Primary Objectives", { items: proposalContext?.objectives });
+  addContextField("Features/Deliverables Included", {
+    items: [
+      ...(Array.isArray(proposalContext?.scope?.features) ? proposalContext.scope.features : []),
+      ...(Array.isArray(proposalContext?.scope?.deliverables)
+        ? proposalContext.scope.deliverables
+        : []),
+      ...(Array.isArray(proposalContext?.requirements) ? proposalContext.requirements : [])
+    ]
+  });
+  addContextField("Launch Timeline", { value: proposalContext?.timeline });
+  addContextField("Budget", { value: proposalContext?.budget });
+  addContextField("Website Type", { value: proposalContext?.websiteType });
+  addContextField("Design Style", { value: proposalContext?.designExperience });
+  addContextField("Website Build Type", { value: proposalContext?.buildType });
+  addContextField("Frontend Framework", { value: proposalContext?.frontendFramework });
+  addContextField("Backend Technology", { value: proposalContext?.backendTechnology });
+  addContextField("Database", { value: proposalContext?.database });
+  addContextField("Hosting", { value: proposalContext?.hosting });
+  addContextField("Page Count", { value: proposalContext?.pageCount });
+  addContextField("App Type", { value: proposalContext?.appHints?.appType });
+  addContextField("App Features", {
+    items: Array.isArray(proposalContext?.appHints?.appFeatures)
+      ? proposalContext.appHints.appFeatures
+      : [],
+    value: Array.isArray(proposalContext?.appHints?.appFeatures)
+      ? ""
+      : proposalContext?.appHints?.appFeatures
+  });
+  addContextField("Platform Requirements", {
+    value:
+      proposalContext?.appHints?.platformRequirements ||
+      [
+        proposalContext?.appHints?.mobileTechnology,
+        proposalContext?.appHints?.backendTechnology,
+        proposalContext?.appHints?.dashboardTechnology
+      ]
+        .map((item) => cleanProposalTextValue(item))
+        .filter(Boolean)
+        .join(", ")
+  });
+
+  const additionalInputs = [
+    ...(Array.isArray(proposalContext?.constraints) ? proposalContext.constraints : []),
+    ...(Array.isArray(proposalContext?.preferences) ? proposalContext.preferences : []),
+    cleanProposalTextValue(proposalContext?.notes || "")
+  ].filter(Boolean);
+  if (additionalInputs.length > 0) {
+    addContextField(PROPOSAL_ADDITIONAL_FIELD, { items: additionalInputs });
+  }
+
+  const expectedFields = getExpectedProposalFields({
+    proposalContext,
+    selectedServiceName: serviceLabel
+  });
+  const serviceSpecificFields = expectedFields.filter(
+    (field) => !PROPOSAL_CORE_FIELDS.includes(field)
+  );
+  const knownFieldKeys = new Set(
+    [...PROPOSAL_CORE_FIELDS, ...serviceSpecificFields, PROPOSAL_ADDITIONAL_FIELD]
+      .flatMap((field) => PROPOSAL_FIELD_ALIASES[field] || [field])
+      .map((field) => normalizeProposalFieldKey(field))
+  );
+
+  const unknownFieldEntries = Array.from(sectionIndex.values())
+    .filter((section) => {
+      if (!section?.normalizedKey) return false;
+      return !knownFieldKeys.has(section.normalizedKey);
+    })
+    .sort((a, b) => a.order - b.order)
+    .map((section) => section.label);
+
+  const orderedLabels = [
+    ...PROPOSAL_CORE_FIELDS.slice(0, 6),
+    ...serviceSpecificFields,
+    ...unknownFieldEntries,
+    "Launch Timeline",
+    "Budget",
+    PROPOSAL_ADDITIONAL_FIELD
+  ];
+
+  const seen = new Set();
+  const orderedEntries = orderedLabels.flatMap((label) => {
+    if (!label || seen.has(label)) return [];
+    seen.add(label);
+    const entry = buildProposalFieldEntry({
+      label,
+      section: getProposalSectionByLabel(sectionIndex, label),
+      contextEntry: contextFields.get(label) || null,
+      proposalContext,
+      chatHistory,
+      service,
+      serviceLabel,
+      serviceCategory
+    });
+    return entry ? [{ label, ...entry }] : [];
+  });
+
+  return renderNormalizedProposalMarkdown(orderedEntries);
+};
+
 const buildProposalRepairSystemPrompt = () => `You repair proposal markdown for a digital services agency.
 Rewrite the full proposal in clean markdown.
 Use proposal_context and chat_history as grounding context.
@@ -2452,7 +3084,10 @@ If budget is missing, provide a realistic recommended budget or range in INR.
 If timeline is missing, provide a realistic recommended timeline.
 For missing design, build, hosting, technology, audience, or engagement fields, choose practical recommended values that fit the project.
 Put each field label on its own line. Never combine two field labels or headings on the same line.
-Keep the same proposal structure and return markdown only.`;
+Keep the same proposal structure and return markdown only.
+Convert numeric words into digits for numeric-only fields.
+Budget must always be numeric with currency.
+NEVER use the words "suggest", "suggested", or "suggestion" anywhere in the proposal. Present all inferred recommendations as definitive expert decisions.`;
 
 const buildProposalRepairUserPrompt = ({
   proposalContext = {},
@@ -2513,6 +3148,9 @@ export const generateProposalMarkdown = async (
     selectedServiceName
   });
 
+  console.log("[DEBUG] Raw AI Proposal Markdown:\n", proposalMarkdown);
+  console.log("[DEBUG] Completeness Needs Repair:", completeness.needsRepair, "Missing:", completeness.missingFields);
+
   if (completeness.needsRepair) {
     try {
       const { data: repairedData } = await requestOpenRouterCompletion({
@@ -2543,7 +3181,12 @@ export const generateProposalMarkdown = async (
     }
   }
 
-  return proposalMarkdown;
+  return normalizeProposalMarkdown({
+    markdown: proposalMarkdown,
+    proposalContext: contextPayload,
+    chatHistory: historyPayload,
+    selectedServiceName
+  });
 };
 
 export const chatWithAI = async (
@@ -2669,6 +3312,9 @@ export const invalidateServicesCatalogCache = () => {
 // Test-only helpers for deterministic budget flow regression coverage.
 export const __testables = {
   buildBudgetOverrideMessage,
-  buildUserInputGuardMessage
+  buildUserInputGuardMessage,
+  normalizeProposalMarkdown,
+  normalizeProposalBudgetValue,
+  normalizeNumericFieldValue
 };
 
