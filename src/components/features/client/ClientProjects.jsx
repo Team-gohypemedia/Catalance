@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
@@ -11,7 +12,8 @@ import { Link } from "react-router-dom";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { API_BASE_URL } from "@/shared/lib/api-client";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
@@ -77,6 +79,111 @@ const getFirstNonEmptyText = (...values) => {
   for (const value of values.flat()) {
     const text = String(value ?? "").trim();
     if (text) return text;
+  }
+
+  return "";
+};
+
+const asPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : {};
+
+const getFirstNonEmptyMediaValue = (...values) => {
+  for (const value of values.flat()) {
+    if (typeof value === "string") {
+      const text = value.trim();
+      if (text) return text;
+      continue;
+    }
+
+    if (value && typeof value === "object") {
+      const nestedValue = getFirstNonEmptyMediaValue(
+        value.uploadedUrl,
+        value.url,
+        value.src,
+        value.value,
+      );
+
+      if (nestedValue) {
+        return nestedValue;
+      }
+    }
+  }
+
+  return "";
+};
+
+const normalizeMediaUrl = (value) => {
+  const raw = getFirstNonEmptyMediaValue(value);
+  if (!raw) return "";
+  if (/^(data:|blob:|https?:\/\/)/i.test(raw)) return raw;
+  if (/^\/\//.test(raw)) return `https:${raw}`;
+  if (/^[\w-]+(\.[\w-]+)+/i.test(raw)) return `https://${raw}`;
+
+  const backendOrigin = String(API_BASE_URL || "").replace(/\/api$/, "");
+  const fallbackOrigin =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "";
+  const baseOrigin = backendOrigin || fallbackOrigin;
+
+  if (!baseOrigin) return raw;
+
+  const normalizedPath = raw.startsWith("/")
+    ? raw
+    : `/${raw.replace(/^\.?\//, "")}`;
+
+  return `${baseOrigin}${normalizedPath}`;
+};
+
+const resolveFreelancerAvatarSrc = (...freelancers) => {
+  for (const freelancer of freelancers) {
+    const normalizedFreelancer = asPlainObject(freelancer);
+    const freelancerProfile = asPlainObject(normalizedFreelancer?.freelancerProfile);
+    const profileDetails = asPlainObject(
+      normalizedFreelancer?.profileDetails ||
+        freelancerProfile?.profileDetails ||
+        freelancerProfile,
+    );
+    const identityDetails = asPlainObject(profileDetails?.identity);
+    const personalDetails = asPlainObject(profileDetails?.personal);
+    const accountDetails = asPlainObject(profileDetails?.account);
+    const userDetails = asPlainObject(
+      normalizedFreelancer?.user || normalizedFreelancer?.userDetails,
+    );
+    const avatarSrc = normalizeMediaUrl([
+      normalizedFreelancer?.avatar,
+      normalizedFreelancer?.profilePhoto,
+      normalizedFreelancer?.profileImage,
+      normalizedFreelancer?.image,
+      freelancerProfile?.avatar,
+      freelancerProfile?.profilePhoto,
+      freelancerProfile?.profileImage,
+      freelancerProfile?.image,
+      profileDetails?.avatar,
+      profileDetails?.profilePhoto,
+      profileDetails?.profileImage,
+      profileDetails?.image,
+      identityDetails?.profilePhoto,
+      identityDetails?.avatar,
+      identityDetails?.profileImage,
+      identityDetails?.image,
+      personalDetails?.avatar,
+      personalDetails?.profilePhoto,
+      personalDetails?.profileImage,
+      personalDetails?.image,
+      accountDetails?.avatar,
+      accountDetails?.profilePhoto,
+      accountDetails?.profileImage,
+      accountDetails?.image,
+      userDetails?.avatar,
+      userDetails?.profilePhoto,
+      userDetails?.profileImage,
+      userDetails?.image,
+    ]);
+
+    if (avatarSrc) {
+      return avatarSrc;
+    }
   }
 
   return "";
@@ -563,7 +670,11 @@ export const normalizeClientProjects = (remote = []) =>
           spotlightFreelancer?.fullName ||
           spotlightFreelancer?.name ||
           "Assigned Freelancer",
-        freelancerAvatar: spotlightFreelancer?.avatar || "",
+        freelancerAvatar: resolveFreelancerAvatarSrc(
+          spotlightFreelancer,
+          acceptedProposal?.freelancer,
+          acceptedProposal,
+        ),
         freelancerRole:
           spotlightFreelancer?.jobTitle ||
           spotlightFreelancer?.professionalTitle ||
@@ -648,6 +759,7 @@ export const buildProjectCardModel = (project) => {
       dateLabel: project.timelineDisplayLabel || "Timeline",
       dateValue: project.timelineLabel || "To be finalized",
       actionType: "pay",
+      actionHref: `/client/project/${project.id}`,
       actionLabel: `Pay ${project.dueInstallment?.percentage || ""}%`,
       actionTone: "amber",
     };
@@ -786,6 +898,8 @@ const ProjectPhaseStep = ({ item }) => {
 };
 
 export const ProjectProposalCard = ({ project, onPay, isPaying }) => {
+  const [showPhaseDetails, setShowPhaseDetails] = useState(false);
+  const [hasFreelancerAvatarError, setHasFreelancerAvatarError] = useState(false);
   const progressText = `${project.phaseProgressValue}%`;
   const showServiceType =
     Boolean(project.serviceType) &&
@@ -798,23 +912,47 @@ export const ProjectProposalCard = ({ project, onPay, isPaying }) => {
     "flex w-full items-center justify-center rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
     projectActionToneMap[project.actionTone] || projectActionToneMap.slate,
   );
+  const canRenderFreelancerAvatar =
+    Boolean(project.freelancerAvatar) && !hasFreelancerAvatarError;
+
+  useEffect(() => {
+    setHasFreelancerAvatarError(false);
+  }, [project.freelancerAvatar]);
 
   return (
-    <article className="flex h-full flex-col rounded-[28px] border border-white/[0.06] bg-accent p-6 transition-transform duration-200 hover:-translate-y-1">
-      <div className="flex flex-1 flex-col">
+    <article className="flex self-start flex-col rounded-[28px] border border-white/[0.06] bg-accent p-6 transition-transform duration-200 hover:-translate-y-1">
+      <div className="flex flex-col">
         <div className="flex items-start justify-between gap-4">
-          <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#9ca3af]">
+          <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#23d18b]">
             {project.sectionLabel}
           </span>
 
-          <span
-            className={cn(
-              "inline-flex rounded-full border px-3 py-1 text-[0.82rem] font-semibold",
-              projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
-            )}
-          >
-            {project.statusMeta.label}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "inline-flex rounded-full border px-3 py-1 text-[0.82rem] font-semibold",
+                projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
+              )}
+            >
+              {project.statusMeta.label}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setShowPhaseDetails((current) => !current)}
+              aria-expanded={showPhaseDetails}
+              aria-label={showPhaseDetails ? "Hide phases" : "Show phases"}
+              title={showPhaseDetails ? "Hide phases" : "Show phases"}
+              className="inline-flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-[#94a3b8] transition-colors hover:bg-white/[0.08] hover:text-white"
+            >
+              <ChevronDown
+                className={cn(
+                  "size-4 transition-transform duration-200",
+                  showPhaseDetails ? "rotate-180" : "rotate-0",
+                )}
+              />
+            </button>
+          </div>
         </div>
 
         <h2 className="mt-5 text-[clamp(1.75rem,2vw,2.15rem)] font-semibold tracking-[-0.04em] text-white">
@@ -828,10 +966,20 @@ export const ProjectProposalCard = ({ project, onPay, isPaying }) => {
 
         <div className="mt-6 flex items-center gap-3">
           <Avatar className="size-11 shrink-0 border border-white/10 shadow-[0_12px_24px_rgba(0,0,0,0.24)]">
-            <AvatarImage src={project.freelancerAvatar} alt={project.freelancerName} />
-            <AvatarFallback className="bg-[#1f2937] text-sm text-white">
-              {project.freelancerInitial}
-            </AvatarFallback>
+            {canRenderFreelancerAvatar ? (
+              <img
+                src={project.freelancerAvatar}
+                alt={project.freelancerName}
+                referrerPolicy="no-referrer"
+                className="size-full object-cover"
+                onError={() => setHasFreelancerAvatarError(true)}
+              />
+            ) : null}
+            {!canRenderFreelancerAvatar ? (
+              <AvatarFallback className="bg-[#1f2937] text-sm text-white">
+                {project.freelancerInitial}
+              </AvatarFallback>
+            ) : null}
           </Avatar>
 
           <div className="min-w-0">
@@ -870,63 +1018,87 @@ export const ProjectProposalCard = ({ project, onPay, isPaying }) => {
           />
         </div>
 
-        <div className={cn("mt-5 flex min-h-[174px] flex-col rounded-[18px] p-3.5", detailPanelClassName)}>
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#7f8794]">
-              Current Phase
-            </p>
-            <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
-              {project.currentPhaseCountLabel}
-            </span>
-          </div>
-          <p
-            title={project.currentPhase?.label || "Phase 1"}
-            className="mt-2 line-clamp-1 text-[0.98rem] font-semibold tracking-[-0.02em] text-white"
-          >
-            {project.currentPhase?.label || "Phase 1"}
-          </p>
-          {project.currentPhase?.subLabel ? (
-            <p
-              title={project.currentPhase.subLabel}
-              className="mt-1 truncate text-sm text-[#8f96a3]"
+        {showPhaseDetails ? (
+          <>
+            <div
+              className={cn(
+                "mt-5 flex min-h-[174px] flex-col rounded-[18px] p-3.5",
+                detailPanelClassName,
+              )}
             >
-              {project.currentPhase.subLabel}
-            </p>
-          ) : null}
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#7f8794]">
+                  Current Phase
+                </p>
+                <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[0.63rem] font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+                  {project.currentPhaseCountLabel}
+                </span>
+              </div>
+              <p
+                title={project.currentPhase?.label || "Phase 1"}
+                className="mt-2 line-clamp-1 text-[0.98rem] font-semibold tracking-[-0.02em] text-white"
+              >
+                {project.currentPhase?.label || "Phase 1"}
+              </p>
+              {project.currentPhase?.subLabel ? (
+                <p
+                  title={project.currentPhase.subLabel}
+                  className="mt-1 truncate text-sm text-[#8f96a3]"
+                >
+                  {project.currentPhase.subLabel}
+                </p>
+              ) : null}
 
-          {phaseSteps.length > 0 ? (
-            <div className="mt-3 max-h-[104px] space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
-              {phaseSteps.map((step) => (
-                <ProjectPhaseStep key={`${project.id}-${step.id || step.title}`} item={step} />
-              ))}
+              {phaseSteps.length > 0 ? (
+                <div className="mt-3 max-h-[104px] space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
+                  {phaseSteps.map((step) => (
+                    <ProjectPhaseStep
+                      key={`${project.id}-${step.id || step.title}`}
+                      item={step}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-[#8f96a3]">
+                  No subpoints are available for this phase yet.
+                </p>
+              )}
             </div>
-          ) : (
-            <p className="mt-3 text-sm text-[#8f96a3]">
-              No subpoints are available for this phase yet.
-            </p>
-          )}
-        </div>
+          </>
+        ) : null}
 
         <div className="mt-auto pt-6">
           {project.actionType === "pay" ? (
-            <button
-              type="button"
-              onClick={() => onPay(project)}
-              disabled={isPaying}
-              className={actionClassName}
-            >
-              {isPaying ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 size-4" />
-                  {project.actionLabel}
-                </>
-              )}
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onPay(project)}
+                disabled={isPaying}
+                className={actionClassName}
+              >
+                {isPaying ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="mr-2 size-4" />
+                    {project.actionLabel}
+                  </>
+                )}
+              </button>
+
+              <Link
+                to={project.actionHref || `/client/project/${project.id}`}
+                className={cn(
+                  "flex w-full items-center justify-center rounded-[14px] px-4 py-3.5 text-base font-semibold transition-colors",
+                  projectActionToneMap.slate,
+                )}
+              >
+                View Details
+              </Link>
+            </div>
           ) : (
             <Link to={project.actionHref} className={actionClassName}>
               {project.actionLabel}
@@ -1112,13 +1284,13 @@ const ClientProjects = () => {
 
           <section className="mt-12">
             {isLoading ? (
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {[1, 2, 3].map((item) => (
                   <ProjectCardSkeleton key={item} />
                 ))}
               </div>
             ) : visibleProjectCards.length > 0 ? (
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {visibleProjectCards.map((project) => (
                   <ProjectProposalCard
                     key={project.id}

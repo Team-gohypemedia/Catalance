@@ -90,21 +90,80 @@ const normalizeBudget = (value) => {
   return null;
 };
 
+const extractAvatarUrl = (value) => {
+  if (!value) return "";
+
+  if (typeof value === "string") {
+    const url = value.trim();
+    if (!url || url.startsWith("blob:")) return "";
+    return url;
+  }
+
+  if (typeof value === "object") {
+    return extractAvatarUrl(
+      value.uploadedUrl || value.url || value.src || value.value || ""
+    );
+  }
+
+  return "";
+};
+
+const FREELANCER_UNSPLASH_PROFILE_QUERIES = Object.freeze([
+  "indian,professional,portrait,headshot",
+  "indian,developer,portrait,studio",
+  "indian,designer,portrait,office",
+  "indian,marketer,portrait,creative",
+  "indian,freelancer,portrait,workspace",
+  "india,entrepreneur,portrait,natural-light",
+]);
+
+const hashStringToPositiveInt = (value = "") => {
+  const input = String(value || "");
+  if (!input) return 1;
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash) || 1;
+};
+
+const buildFreelancerUnsplashAvatarUrl = (user = {}) => {
+  const seedSource =
+    user?.id || user?.email || user?.fullName || user?.phoneNumber || "freelancer";
+  const seed = hashStringToPositiveInt(seedSource);
+  const query =
+    FREELANCER_UNSPLASH_PROFILE_QUERIES[
+      seed % FREELANCER_UNSPLASH_PROFILE_QUERIES.length
+    ];
+  const sig = (seed % 9000) + 1;
+  return `https://source.unsplash.com/640x640/?${encodeURIComponent(query)}&sig=${sig}`;
+};
+
 const flattenFreelancerProfile = (freelancer = null) => {
   if (!freelancer || typeof freelancer !== "object") return freelancer;
   const profile =
     freelancer.freelancerProfile && typeof freelancer.freelancerProfile === "object"
       ? freelancer.freelancerProfile
       : {};
+  const profileDetails =
+    profile.profileDetails && typeof profile.profileDetails === "object"
+      ? profile.profileDetails
+      : {};
+  const identityAvatar = extractAvatarUrl(profileDetails?.identity?.profilePhoto);
+  const resolvedAvatar =
+    freelancer.avatar || identityAvatar || buildFreelancerUnsplashAvatarUrl(freelancer);
 
   return {
     ...freelancer,
+    avatar: resolvedAvatar,
     jobTitle: profile.jobTitle || null,
     skills: Array.isArray(profile.skills) ? profile.skills : [],
     bio: profile.bio || null,
     portfolio: profile.portfolio || null,
     linkedin: profile.linkedin || null,
     github: profile.github || null,
+    profileDetails,
   };
 };
 
@@ -170,6 +229,7 @@ const PROJECT_RESPONSE_INCLUDE = {
               portfolio: true,
               linkedin: true,
               github: true,
+              profileDetails: true,
             },
           },
         },
@@ -599,6 +659,16 @@ export const updateProject = asyncHandler(async (req, res) => {
     throw new AppError("Permission denied", 403);
   }
 
+  const hasRequestedUpdates = Object.keys(updates || {}).length > 0;
+  const existingStatus = String(existing.status || "").toUpperCase();
+
+  if (!isAdmin && existingStatus === "COMPLETED" && hasRequestedUpdates) {
+    throw new AppError(
+      "This project has been completed and can no longer be changed.",
+      400
+    );
+  }
+
   try {
     // Whitelist only fields that exist on the Prisma Project model
     const allowedFields = new Set([
@@ -615,6 +685,36 @@ export const updateProject = asyncHandler(async (req, res) => {
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.has(key)) {
         sanitizedUpdates[key] = key === "budget" ? normalizeBudget(value) : value;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, "status")) {
+      const nextStatus = String(sanitizedUpdates.status || "").toUpperCase();
+      sanitizedUpdates.status = nextStatus;
+
+      if (nextStatus === "COMPLETED") {
+        if (!isOwner && !isAdmin) {
+          throw new AppError("Only the project owner can complete this project.", 403);
+        }
+
+        const completionState = {
+          ...existing,
+          ...sanitizedUpdates,
+        };
+        const completionPlan = resolveProjectPaymentPlan(completionState);
+        const completionPhases = Array.isArray(completionPlan?.phases)
+          ? completionPlan.phases
+          : [];
+        const allPhasesComplete =
+          completionPhases.length > 0 &&
+          completionPhases.every((phase) => Boolean(phase?.isComplete));
+
+        if (!allPhasesComplete) {
+          throw new AppError(
+            "All project phases must be verified before marking the project as completed.",
+            400
+          );
+        }
       }
     }
 
@@ -946,7 +1046,7 @@ export const submitProjectFreelancerReview = asyncHandler(async (req, res) => {
     await sendNotificationToUser(acceptedProposal.freelancerId, {
       type: "freelancer_review",
       title: "New Client Review",
-      message: `Client reviewed your work for project \"${project.title}\".`,
+      message: `Client reviewed your work for project "${project.title}".`,
       data: {
         projectId: project.id,
         rating: review.rating,

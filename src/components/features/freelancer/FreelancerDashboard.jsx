@@ -3,9 +3,13 @@ import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Gavel from "lucide-react/dist/esm/icons/gavel";
 import Video from "lucide-react/dist/esm/icons/video";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Clock from "lucide-react/dist/esm/icons/clock";
+import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { getSession } from "@/shared/lib/auth-storage";
@@ -22,7 +26,11 @@ import { useAuth } from "@/shared/context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SuspensionAlert } from "@/components/ui/suspension-alert";
 import { consumeFreelancerWelcomePending } from "@/shared/lib/freelancer-onboarding-flags";
-import { Badge } from "@/components/ui/badge";
+import {
+  ProjectProposalCard,
+  buildProjectCardModel,
+} from "@/components/features/client/ClientProjects";
+import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import {
   toUniqueSkillNames,
   resolveAvatarUrl,
@@ -34,6 +42,269 @@ import {
   normalizeWorkExperienceEntries,
   collectEducationEntriesFromProfileDetails,
 } from "@/components/features/freelancer/profile/freelancerProfileUtils";
+
+// ========== Phase Building Helper Functions (from ClientProjects) ==========
+const toTaskIdArray = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const clampProgress = (value) =>
+  Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+
+const normalizeComparableText = (value = "") =>
+  String(value || "").trim().toLowerCase();
+
+const buildDefaultPhases = (count = 4) =>
+  Array.from({ length: Math.max(1, count) }, (_, index) => ({
+    label: `Phase ${index + 1}`,
+    value: Math.round(((index + 1) / Math.max(count, 1)) * 100),
+  }));
+
+const buildProjectPhaseSteps = (project) => {
+  const sop = getSopFromTitle(project?.sourceTitle || project?.templateTitle || project?.serviceType || project?.title);
+  const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
+  const completedTaskIds = new Set(toTaskIdArray(project?.completedTasks));
+
+  return (Array.isArray(sop?.phases) ? sop.phases : []).map((phase) => {
+    const phaseTasks = Array.isArray(sop?.tasks)
+      ? sop.tasks.filter((task) => String(task?.phase) === String(phase?.id))
+      : [];
+
+    return phaseTasks.map((task, taskIndex) => {
+      const taskKey = `${task.phase}-${task.id}`;
+      const isVerified = verifiedTaskIds.has(taskKey);
+      const isCompleted = completedTaskIds.has(taskKey);
+
+      return {
+        id: taskKey,
+        sequence: taskIndex + 1,
+        title: task?.title || `Step ${taskIndex + 1}`,
+        state: isVerified ? "complete" : isCompleted ? "current" : "pending",
+      };
+    });
+  });
+};
+
+const resolvePhaseSummary = (phaseLike, fallbackLabel = "Upcoming") => {
+  const explicitSummary = [
+    phaseLike?.subLabel,
+    phaseLike?.subtitle,
+    phaseLike?.detail,
+    phaseLike?.description,
+    phaseLike?.summary,
+  ].find((value) => typeof value === "string" && value.trim());
+
+  if (explicitSummary) {
+    return explicitSummary.trim();
+  }
+
+  const totalTasks = Math.max(0, Number(phaseLike?.totalTasks || phaseLike?.taskCount || 0));
+  const completedTasks = Math.max(
+    0,
+    Number(phaseLike?.verifiedTasks ?? phaseLike?.completedTasks ?? phaseLike?.doneTasks ?? 0),
+  );
+
+  if (totalTasks > 0) {
+    return `${Math.min(completedTasks, totalTasks)}/${totalTasks} tasks done`;
+  }
+
+  return fallbackLabel;
+};
+
+const isPhaseMarkedComplete = (phaseLike, fallbackLabel = "Upcoming") => {
+  const normalizedStatus = String(
+    phaseLike?.status || phaseLike?.state || phaseLike?.phaseStatus || "",
+  ).toUpperCase();
+  if (phaseLike?.isComplete || phaseLike?.completed || normalizedStatus === "COMPLETED") {
+    return true;
+  }
+
+  const explicitProgress = Number(
+    phaseLike?.phaseProgress ?? phaseLike?.progress ?? phaseLike?.value
+  );
+  if (Number.isFinite(explicitProgress) && clampProgress(explicitProgress) >= 100) {
+    return true;
+  }
+
+  const totalTasks = Math.max(0, Number(phaseLike?.totalTasks || phaseLike?.taskCount || 0));
+  const completedTasks = Math.max(
+    0,
+    Number(phaseLike?.verifiedTasks ?? phaseLike?.completedTasks ?? phaseLike?.doneTasks ?? 0),
+  );
+  if (totalTasks > 0 && completedTasks >= totalTasks) {
+    return true;
+  }
+
+  const summary = resolvePhaseSummary(phaseLike, fallbackLabel);
+  const taskSummaryMatch = String(summary).match(/(\d+)\s*\/\s*(\d+)\s*tasks?\s*done/i);
+  if (taskSummaryMatch) {
+    const completedTaskCount = Number(taskSummaryMatch[1]) || 0;
+    const totalTaskCount = Number(taskSummaryMatch[2]) || 0;
+    return totalTaskCount > 0 && completedTaskCount >= totalTaskCount;
+  }
+
+  return normalizeComparableText(summary) === "completed";
+};
+
+const resolvePhaseStepsForDisplay = (steps, phaseLike, fallbackLabel = "Upcoming") => {
+  const normalizedSteps = Array.isArray(steps) ? steps : [];
+  if (!isPhaseMarkedComplete(phaseLike, fallbackLabel)) {
+    return normalizedSteps;
+  }
+
+  return normalizedSteps.map((step) => ({ ...step, state: "complete" }));
+};
+
+const buildProjectPhases = (project) => {
+  const phaseSteps = buildProjectPhaseSteps(project);
+  const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
+    ? project.paymentPlan.phases
+    : [];
+
+  if (Array.isArray(project?.phases) && project.phases.length > 0) {
+    return project.phases.map((phase, index) => {
+      const summarySource = paymentPlanPhases[index]
+        ? { ...phase, ...paymentPlanPhases[index] }
+        : phase;
+      const subLabel = resolvePhaseSummary(summarySource);
+
+      return {
+        label: phase?.label || phase?.name || `Phase ${index + 1}`,
+        value: clampProgress(phase?.progress ?? phase?.value),
+        progress: clampProgress(phase?.phaseProgress ?? phase?.progress ?? phase?.value),
+        subLabel,
+        steps: resolvePhaseStepsForDisplay(phaseSteps[index], summarySource, subLabel),
+      };
+    });
+  }
+
+  if (paymentPlanPhases.length > 0) {
+    let completedBefore = 0;
+
+    return paymentPlanPhases.map((phase, index) => {
+      const totalTasks = Math.max(0, Number(phase?.totalTasks || 0));
+      const verifiedTasks = Math.max(0, Number(phase?.verifiedTasks || 0));
+      const phaseCompletion =
+        totalTasks > 0 ? Math.min(verifiedTasks / totalTasks, 1) : phase?.isComplete ? 1 : 0;
+      const value = Math.round(
+        ((completedBefore + phaseCompletion) / paymentPlanPhases.length) * 100,
+      );
+
+      if (phase?.isComplete) {
+        completedBefore += 1;
+      }
+
+      const subLabel = resolvePhaseSummary(phase, phase?.isComplete ? "Completed" : "Pending");
+
+      return {
+        label: phase?.name || `Phase ${index + 1}`,
+        value,
+        progress: Math.round(phaseCompletion * 100),
+        subLabel,
+        steps: resolvePhaseStepsForDisplay(phaseSteps[index], phase, subLabel),
+      };
+    });
+  }
+
+  return buildDefaultPhases(Number(project?.phaseCount) || 4).map((phase, index) => {
+    const subLabel = index === 0 ? "Current phase" : "Upcoming";
+
+    return {
+      ...phase,
+      subLabel,
+      steps: resolvePhaseStepsForDisplay(phaseSteps[index], phase, subLabel),
+    };
+  });
+};
+// ========== End Phase Building Helper Functions ==========
+
+const isProjectCompletedForDashboard = (project = {}) => {
+  const cardModel = buildProjectCardModel(project);
+  return String(cardModel?.statusMeta?.label || "").trim().toUpperCase() === "COMPLETED";
+};
+
+const isProposalCompletedForDashboard = (proposal = {}) => {
+  const project = proposal?.project || {};
+
+  if (isProjectCompletedForDashboard(project)) {
+    return true;
+  }
+
+  const normalizedStatus = String(project?.status || "").trim().toUpperCase();
+  if (normalizedStatus === "COMPLETED") {
+    return true;
+  }
+
+  const explicitProgress = Number(project?.progress ?? proposal?.progress);
+  if (Number.isFinite(explicitProgress) && explicitProgress >= 100) {
+    return true;
+  }
+
+  const proposalAmount = Number(proposal?.amount) || 0;
+  const projectSpent = Number(project?.spent);
+  if (proposalAmount > 0 && Number.isFinite(projectSpent) && projectSpent >= proposalAmount) {
+    return true;
+  }
+
+  const phases = Array.isArray(project?.paymentPlan?.phases) ? project.paymentPlan.phases : [];
+  if (phases.length > 0) {
+    const allPhasesComplete = phases.every((phase) => {
+      if (phase?.isComplete) return true;
+      const totalTasks = Math.max(0, Number(phase?.totalTasks || 0));
+      const verifiedTasks = Math.max(0, Number(phase?.verifiedTasks || 0));
+      return totalTasks > 0 && verifiedTasks >= totalTasks;
+    });
+
+    if (allPhasesComplete) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const resolveProjectFingerprint = (proposal = {}) => {
+  const project = proposal?.project || {};
+  const projectId = String(project?.id || "").trim();
+  if (projectId) {
+    return `project:${projectId}`;
+  }
+
+  const businessKey = String(
+    project?.businessName ||
+      project?.companyName ||
+      project?.brandName ||
+      proposal?.businessName ||
+      proposal?.companyName ||
+      proposal?.brandName ||
+      project?.title ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+  const ownerKey = String(project?.owner?.id || project?.owner?.name || "")
+    .trim()
+    .toLowerCase();
+
+  const amountKey = String(Number(proposal?.amount) || 0);
+  return `fallback:${businessKey}|${ownerKey}|${amountKey}`;
+};
 
 const buildFreelancerProfileCompletion = (payload = {}) => {
   const personal =
@@ -438,6 +709,13 @@ const ACTIVITY_TONE_STYLES = {
   },
 };
 
+const PENDING_PROPOSAL_TONE_STYLES = {
+  amber: "bg-[#40310a] text-[#ffc107]",
+  blue: "bg-[#19345d] text-[#60a5fa]",
+  green: "bg-[#163822] text-[#34d399]",
+  violet: "bg-[#3d2459] text-[#c084fc]",
+};
+
 const formatDashboardActivityTime = (value) => {
   if (!value) return "Now";
 
@@ -463,6 +741,7 @@ export const DashboardContent = ({ _roleOverride }) => {
   const { authFetch, user } = useAuth();
   const [metrics, setMetrics] = useState({
     activeProjects: 0,
+    completedProjects: 0,
     proposalsReceived: 0,
     acceptedProposals: [],
     pendingProposals: [],
@@ -474,6 +753,8 @@ export const DashboardContent = ({ _roleOverride }) => {
   const [upcomingMeeting, setUpcomingMeeting] = useState(null);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const [showPendingPaymentsStat, setShowPendingPaymentsStat] = useState(false);
+  const [projectCarouselIndex, setProjectCarouselIndex] = useState(0);
   const [profileCompletion, setProfileCompletion] = useState({
     percent: 0,
     message: "Loading profile completion...",
@@ -637,11 +918,24 @@ export const DashboardContent = ({ _roleOverride }) => {
         const accepted = list.filter(
           (p) => (p.status || "").toUpperCase() === "ACCEPTED"
         );
+        const uniqueAcceptedByProject = accepted.reduce((acc, proposal) => {
+          const key = resolveProjectFingerprint(proposal);
+          if (!key || acc.has(key)) return acc;
+          acc.set(key, proposal);
+          return acc;
+        }, new Map());
+        const acceptedProjects = Array.from(uniqueAcceptedByProject.values());
+        const completedProjects = acceptedProjects.filter((proposal) =>
+          isProposalCompletedForDashboard(proposal),
+        );
+        const activeProjects = acceptedProjects.filter(
+          (proposal) => !isProposalCompletedForDashboard(proposal),
+        );
 
         let totalReceived = 0;
         let totalPending = 0;
 
-        accepted.forEach((p) => {
+        acceptedProjects.forEach((p) => {
           const amount = Number(p.amount) || 0;
           const status = p.project?.status || "";
 
@@ -658,8 +952,9 @@ export const DashboardContent = ({ _roleOverride }) => {
 
         console.log(
           "DEBUG: Accepted Proposals:",
-          accepted.map((p) => ({
+          acceptedProjects.map((p) => ({
             id: p.id,
+            projectId: p.project?.id,
             amount: p.amount,
             projectSpent: p.project?.spent,
             projectStatus: p.project?.status,
@@ -678,9 +973,10 @@ export const DashboardContent = ({ _roleOverride }) => {
         const totalEarnings = receivedEarnings + pendingEarnings;
 
         setMetrics({
-          activeProjects: accepted.length,
+          activeProjects: activeProjects.length,
+          completedProjects: completedProjects.length,
           proposalsReceived: pending.length,
-          acceptedProposals: accepted,
+          acceptedProposals: acceptedProjects,
           pendingProposals: pending,
           earnings: totalEarnings,
           receivedEarnings,
@@ -1001,28 +1297,28 @@ export const DashboardContent = ({ _roleOverride }) => {
     return rawName.split(/\s+/)[0] || "Freelancer";
   }, [headerProfile?.name]);
 
-  const inquiryCards = useMemo(
+  const pendingProposalRows = useMemo(
     () =>
       metrics.pendingProposals.slice(0, 4).map((proposal, index) => {
-        const ownerName =
-          proposal?.project?.owner?.fullName || proposal?.project?.owner?.name || "Client";
-        const requestTime = formatDashboardActivityTime(
-          proposal?.updatedAt || proposal?.createdAt
-        );
+        const title =
+          proposal?.project?.businessName ||
+          proposal?.project?.companyName ||
+          proposal?.project?.title ||
+          "Untitled proposal";
+        const requestTime = formatDashboardActivityTime(proposal?.updatedAt || proposal?.createdAt);
+        const toneCycle = ["amber", "blue", "green", "violet"];
 
         return {
-          id: proposal.id || `inquiry-${index}`,
-          ownerName,
-          ownerInitial: String(ownerName).charAt(0).toUpperCase(),
-          title: proposal?.project?.title || "Untitled project request",
-          preview:
-            proposal?.project?.description ||
-            "Hi! I am looking for a reliable freelancer to start this project quickly.",
-          requestTime,
+          id: proposal?.id || `pending-proposal-${index}`,
+          title,
+          tag: "Pending",
+          tagTone: toneCycle[index % toneCycle.length],
+          updatedAt: requestTime,
+          budget: formatCurrency(Number(proposal?.amount) || 0),
           projectId: proposal?.project?.id,
         };
       }),
-    [metrics.pendingProposals]
+    [formatCurrency, metrics.pendingProposals]
   );
 
   const recentChatUpdates = useMemo(
@@ -1101,9 +1397,122 @@ export const DashboardContent = ({ _roleOverride }) => {
   );
 
   const activeProjectCards = useMemo(
-    () => metrics.acceptedProposals.slice(0, 3),
+    () =>
+      metrics.acceptedProposals.filter(
+        (proposal) => !isProposalCompletedForDashboard(proposal),
+      ).slice(0, 4),
     [metrics.acceptedProposals]
   );
+
+  const runningProjectCards = useMemo(
+    () =>
+      activeProjectCards.map((proposal, index) => {
+        const project = proposal?.project || {};
+        const projectId = project?.id;
+        const progress = resolveProjectProgress(proposal, index);
+        const ownerName =
+          project?.owner?.fullName ||
+          project?.owner?.name ||
+          "Client";
+        
+        // Build full phase structure with steps using the same logic as client dashboard
+        const phases = buildProjectPhases(project);
+        const completedPhases = phases.filter(
+          (phase) => clampProgress(phase?.progress ?? phase?.value ?? 0) >= 100
+        ).length;
+        const currentPhaseIndex = Math.min(completedPhases, phases.length - 1);
+        const currentPhase = phases[currentPhaseIndex] || {
+          label: "Phase 1",
+          subLabel: "Current phase",
+          steps: [],
+        };
+        
+        const deadline = project?.deadline
+          ? new Date(project.deadline).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "No deadline";
+        const projectDisplayTitle =
+          project?.businessName ||
+          project?.companyName ||
+          project?.brandName ||
+          proposal?.businessName ||
+          proposal?.companyName ||
+          proposal?.brandName ||
+          project?.title ||
+          "Untitled project";
+
+        return {
+          id: proposal?.id || projectId || `running-project-${index}`,
+          sectionLabel: "ACTIVE PROJECT",
+          statusMeta: {
+            tone: "warning",
+            label: "In Progress",
+          },
+          title: projectDisplayTitle,
+          serviceType: proposal?.serviceType || project?.serviceType || "",
+          freelancerName: ownerName,
+          freelancerRole: "Client",
+          freelancerInitial: String(ownerName).charAt(0).toUpperCase(),
+          freelancerAvatar: project?.owner?.avatar || "",
+          budgetLabel: formatCurrency(Number(proposal?.amount) || 0),
+          dateLabel: "Deadline",
+          dateValue: deadline,
+          phaseProgressValue: progress,
+          currentPhase,
+          currentPhaseCountLabel: phases.length
+            ? `${completedPhases}/${phases.length} Done`
+            : "No Phases",
+          currentPhaseSteps: Array.isArray(currentPhase?.steps)
+            ? currentPhase.steps.map((step, stepIndex, collection) => {
+                const firstPendingIndex = collection.findIndex(
+                  (entry) => String(entry?.state || "").toLowerCase() !== "complete",
+                );
+
+                return {
+                  ...step,
+                  state:
+                    !Array.isArray(project?.phases) &&
+                    !String(currentPhase?.subLabel || "").toLowerCase().includes("completed") &&
+                    String(step?.state || "").toLowerCase() === "pending" &&
+                    firstPendingIndex === stepIndex
+                      ? "current"
+                      : step.state,
+                };
+              })
+            : [],
+          actionType: "link",
+          actionLabel: "View Details",
+          actionHref: projectId
+            ? `/freelancer/project/${projectId}`
+            : "/freelancer/project?view=ongoing",
+          actionTone: "slate",
+        };
+      }),
+    [activeProjectCards, formatCurrency, resolveProjectProgress]
+  );
+
+  useEffect(() => {
+    const maxStartIndex = Math.max(0, Math.floor((runningProjectCards.length - 1) / 3) * 3);
+    if (projectCarouselIndex > maxStartIndex) {
+      setProjectCarouselIndex(maxStartIndex);
+    }
+  }, [projectCarouselIndex, runningProjectCards.length]);
+
+  const previewMessages = useMemo(
+    () => recentChatUpdates.slice(0, 2),
+    [recentChatUpdates]
+  );
+
+  const monthlyEarningsBars = useMemo(() => {
+    const max = Math.max(...monthlyEarningsSeries, 1);
+    return monthlyEarningsSeries.map((value) => {
+      const normalized = Math.max(10, Math.round((value / max) * 100));
+      return normalized;
+    });
+  }, [monthlyEarningsSeries]);
 
   return (
     <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
@@ -1185,522 +1594,374 @@ export const DashboardContent = ({ _roleOverride }) => {
             </div>
           ) : null}
 
-          <section>
-            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-[34px]">
+          <section className="mt-2">
+            <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold tracking-[-0.05em] text-white">
               {greeting}, {firstName}
             </h1>
-            <p className="mt-1 text-sm text-zinc-400">
+            <p className="mt-2 text-sm text-[#94a3b8]">
               Here&apos;s a summary of your freelance business.
             </p>
           </section>
 
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-2xl border border-white/[0.06] bg-accent p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2 text-zinc-400">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#3a3d44] bg-[#17191d]">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                  </div>
-                  <p className="text-xs font-medium tracking-wide">Total Earnings</p>
+          <section className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <article
+              className="group min-h-[110px] cursor-pointer rounded-[28px] border border-transparent bg-accent p-5 transition-colors hover:border-[#facc15]/70"
+              onClick={() => navigate("/freelancer/project?view=ongoing")}
+              role="button"
+              aria-label="Open active projects"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af]">
+                  <Sparkles className="size-4" />
                 </div>
-                <span className="rounded-full bg-[#22c55e]/15 px-2 py-0.5 text-[10px] font-semibold text-[#4ade80]">
-                  {metrics.earnings > 0
-                    ? `+${Math.round((metrics.receivedEarnings / metrics.earnings) * 100)}%`
-                    : "New"}
-                </span>
-              </div>
-              <p className="mt-4 text-[30px] font-extrabold tracking-tight text-zinc-100">
-                {formatCurrency(metrics.earnings)}
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-white/[0.06] bg-accent p-5">
-              <div className="flex items-center gap-2 text-zinc-400">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#3a3d44] bg-[#17191d]">
-                  <Sparkles className="h-3.5 w-3.5" />
-                </div>
-                <p className="text-xs font-medium tracking-wide">Active Projects</p>
-              </div>
-              <p className="mt-4 text-[30px] font-extrabold tracking-tight text-zinc-100">
-                {String(metrics.activeProjects).padStart(2, "0")}
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-white/[0.06] bg-accent p-5">
-              <div className="flex items-center gap-2 text-zinc-400">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#3a3d44] bg-[#17191d]">
-                  <Clock className="h-3.5 w-3.5" />
-                </div>
-                <p className="text-xs font-medium tracking-wide">Pending Payments</p>
-              </div>
-              <p className="mt-4 text-[30px] font-extrabold tracking-tight text-zinc-100">
-                {formatCurrency(metrics.pendingEarnings)}
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-white/[0.06] bg-accent p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2 text-zinc-400">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#3a3d44] bg-[#17191d]">
-                    <MessageSquare className="h-3.5 w-3.5" />
-                  </div>
-                  <p className="text-xs font-medium tracking-wide">Client&apos;s Request</p>
-                </div>
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#facc15]" />
-              </div>
-              <p className="mt-4 text-[30px] font-extrabold tracking-tight text-zinc-100">
-                {String(metrics.pendingProposals.length).padStart(2, "0")}
-              </p>
-            </article>
-          </section>
-
-          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_350px]">
-            <article className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-              <h2 className="text-xl font-semibold text-zinc-100">
-                Client Inquiries
-              </h2>
-              <p className="mt-1 text-sm text-zinc-400">
-                Manage your incoming project requests and potential collaborations.
-              </p>
-
-              {inquiryCards.length === 0 ? (
-                <div className="mt-5 rounded-xl border border-dashed border-white/[0.06] bg-background p-6 text-sm text-zinc-400">
-                  No client inquiries yet. New requests will appear here.
-                </div>
-              ) : (
-                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {inquiryCards.map((inquiry) => (
-                    <div
-                      key={inquiry.id}
-                      className="flex flex-col justify-between rounded-2xl border border-white/[0.06] bg-accent p-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2a2d34] text-base font-bold text-zinc-100">
-                          {inquiry.ownerInitial}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-zinc-100">{inquiry.ownerName}</p>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <Badge className="h-5 rounded-full border-0 bg-[#facc15]/15 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#facc15]">
-                              {inquiry.title}
-                            </Badge>
-                            <span className="flex items-center gap-1 text-[11px] text-zinc-500">
-                              <Clock className="h-3 w-3" />
-                              {inquiry.requestTime}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <p className="mt-3 line-clamp-2 text-sm text-zinc-300">
-                        &ldquo;{inquiry.preview}
-                      </p>
-
-                      <div className="mt-4 flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-9 flex-1 rounded-xl border-white/10 bg-transparent text-xs font-semibold text-zinc-200 hover:bg-white/[0.06]"
-                          onClick={() =>
-                            navigate(
-                              inquiry.projectId
-                                ? `/freelancer/messages?projectId=${inquiry.projectId}`
-                                : "/freelancer/messages"
-                            )
-                          }
-                        >
-                          Reply
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-9 flex-1 rounded-xl border-white/10 bg-transparent text-xs font-semibold text-zinc-200 hover:bg-white/[0.06]"
-                          onClick={() =>
-                            navigate(
-                              inquiry.projectId
-                                ? `/freelancer/project/${inquiry.projectId}`
-                                : "/freelancer/proposals"
-                            )
-                          }
-                        >
-                          View Profile
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </article>
-
-            <div className="flex flex-col gap-5">
-              <article className="rounded-2xl border border-white/[0.06] bg-accent p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-zinc-100">Profile Completion</h3>
-                  <span className="text-sm font-bold text-[#facc15]">{profileCompletionPercent}%</span>
-                </div>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-background">
-                  <div
-                    className="h-full rounded-full bg-[#facc15] transition-all duration-700"
-                    style={{ width: `${profileCompletionPercent}%` }}
-                  />
-                </div>
-                <p className="mt-3 text-xs text-zinc-400">{profileCompletion.message}</p>
-                <Button
-                  className="mt-4 h-9 w-full rounded-lg bg-zinc-100 text-xs font-semibold text-zinc-900 hover:bg-zinc-200"
-                  onClick={() => navigate("/freelancer/profile")}
-                >
-                  {profileCompletionComplete ? "View Profile" : "Complete Profile"}
-                </Button>
-              </article>
-
-              <article className="rounded-2xl border border-white/[0.06] bg-accent p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-                <h3 className="text-sm font-semibold text-zinc-100">Monthly Earnings</h3>
-                <div className="mt-4 rounded-xl border border-[#30333a] bg-[#16181b] p-3">
-                  <svg viewBox="0 0 320 120" className="h-28 w-full" role="img" aria-label="Monthly earnings trend">
-                    <defs>
-                      <linearGradient id="freelancerMonthlyArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#facc15" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#facc15" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path d={`${monthlyEarningsPath} L320,120 L0,120 Z`} fill="url(#freelancerMonthlyArea)" />
-                    <path
-                      d={monthlyEarningsPath}
-                      fill="none"
-                      stroke="#facc15"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="mt-1 grid grid-cols-6 text-center text-[11px] text-zinc-500">
-                    {[
-                      "Jan",
-                      "Feb",
-                      "Mar",
-                      "Apr",
-                      "May",
-                      "Jun",
-                    ].map((label) => (
-                      <span key={label}>{label}</span>
-                    ))}
-                  </div>
-                </div>
-              </article>
-
-              <article className="rounded-2xl border border-white/[0.06] bg-accent p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-                <h3 className="text-sm font-semibold text-zinc-100">New Messages</h3>
-                {recentChatUpdates.length === 0 ? (
-                  <p className="mt-3 text-xs text-zinc-400">No new messages right now.</p>
-                ) : (
-                  <ul className="mt-3 space-y-3">
-                    {recentChatUpdates.map((message) => (
-                      <li key={message.id || message.createdAt} className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-200">
-                          {String(message?.title || "M").charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold text-zinc-100">
-                            {message?.title || "New message"}
-                          </p>
-                          <p className="line-clamp-1 text-[11px] text-zinc-500">
-                            {message?.message || "You have a new conversation update."}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </article>
-
-              <article className="rounded-2xl border border-white/[0.06] bg-accent p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-                <h3 className="text-sm font-semibold text-zinc-100">Proposals</h3>
-                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-                  <div>
-                    <p className="text-2xl font-extrabold text-zinc-100">{proposalStats.sent}</p>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Sent</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-extrabold text-[#facc15]">{proposalStats.accepted}</p>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Accepted</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-extrabold text-zinc-100">{proposalStats.pending}</p>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Pending</p>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-xl font-semibold text-zinc-100">Recent Activity</h3>
-              <Button
-                variant="link"
-                className="h-auto p-0 text-xs font-semibold uppercase tracking-[0.16em] text-[#facc15] hover:text-[#facc15]/80"
-                onClick={() => navigate("/freelancer/proposals")}
-              >
-                View all
-              </Button>
-            </div>
-
-            <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-accent">
-              {activityItems.map((item, index) => {
-                const Icon = item.icon;
-                const tone =
-                  ACTIVITY_TONE_STYLES[item.tone] || ACTIVITY_TONE_STYLES.slate;
-
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={item.onClick}
-                    className={`flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.04] ${
-                      index < activityItems.length - 1 ? "border-b border-white/[0.06]" : ""
-                    }`}
-                  >
-                    <div
-                      className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${tone.icon}`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-zinc-100">{item.title}</p>
-                          <p className="line-clamp-1 text-xs text-zinc-400">{item.subtitle}</p>
-                        </div>
-                        <span className="shrink-0 text-[11px] text-zinc-500">{item.timeLabel}</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <p className="mt-3 text-xs text-zinc-500">
-              {unreadActivityCount > 0
-                ? `${unreadActivityCount} unread updates`
-                : "No unread updates"}
-            </p>
-          </section>
-
-          <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_350px]">
-            <article className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-zinc-100">Active Projects</h3>
-                <Button
-                  variant="link"
-                  className="h-auto p-0 text-xs font-semibold uppercase tracking-[0.16em] text-[#facc15] hover:text-[#facc15]/80"
-                  onClick={() => navigate("/freelancer/project?view=ongoing")}
-                >
-                  View all
-                </Button>
-              </div>
-
-              {activeProjectCards.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-[#3a3d44] bg-[#17191d] p-6 text-sm text-zinc-400">
-                  No active projects yet.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {activeProjectCards.map((proposal, index) => {
-                    const projectId = proposal?.project?.id;
-                    const projectTitle = proposal?.project?.title || "Untitled Project";
-                    const progress = resolveProjectProgress(proposal, index);
-                    const budget = formatCurrency((Number(proposal?.amount) || 0) * 0.7);
-                    const dueDate = proposal?.project?.deadline
-                      ? new Date(proposal.project.deadline).toLocaleDateString()
-                      : "Ongoing";
-
-                    return (
-                      <div
-                        key={proposal.id || `active-${index}`}
-                        className="rounded-xl border border-white/[0.06] bg-accent p-4"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-zinc-100">{projectTitle}</p>
-                            <p className="text-xs text-zinc-500">
-                              {budget} • Due {dueDate}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            className="h-8 rounded-lg bg-zinc-100 px-4 text-xs font-semibold text-zinc-900 hover:bg-zinc-200"
-                            onClick={() =>
-                              navigate(
-                                projectId
-                                  ? `/freelancer/project/${projectId}`
-                                  : "/freelancer/project?view=ongoing"
-                              )
-                            }
-                          >
-                            View Project
-                          </Button>
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-3">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-background">
-                            <div
-                              className="h-full rounded-full bg-[#facc15]"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                          <span className="w-10 text-right text-xs font-semibold text-zinc-300">
-                            {progress}%
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </article>
-
-            <article className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-              <h3 className="text-sm font-semibold text-zinc-100">Quick Status</h3>
-              {upcomingMeeting ? (
-                <div className="mt-4 rounded-xl border border-white/[0.06] bg-accent p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#facc15]">
-                    Upcoming Meeting
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-100">
-                    {upcomingMeeting.title || "Client Meeting"}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    {new Date(upcomingMeeting.date).toLocaleDateString()} •
-                    {` ${upcomingMeeting.startHour}:00 - ${upcomingMeeting.endHour}:00`}
-                  </p>
-                  <Button
-                    className="mt-3 h-8 w-full rounded-lg bg-[#facc15] text-xs font-semibold text-black hover:bg-[#eab308]"
-                    onClick={() =>
-                      window.open(
-                        upcomingMeeting.meetingLink || "https://meet.google.com/",
-                        "_blank"
-                      )
-                    }
-                  >
-                    Join Meeting
-                  </Button>
-                </div>
-              ) : (
-                <div className="mt-4 rounded-xl border border-dashed border-white/[0.06] bg-accent p-4 text-xs text-zinc-400">
-                  No upcoming meetings scheduled.
-                </div>
-              )}
-
-              <div className="mt-4 rounded-xl border border-white/[0.06] bg-accent p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">
-                  Payment Split
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6b7280]">
+                  Active Projects
                 </p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between text-xs text-zinc-300">
-                    <span>Received</span>
-                    <span className="font-semibold text-zinc-100">
-                      {formatCurrency(metrics.receivedEarnings)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-zinc-300">
-                    <span>Pending</span>
-                    <span className="font-semibold text-zinc-100">
-                      {formatCurrency(metrics.pendingEarnings)}
-                    </span>
-                  </div>
-                </div>
               </div>
+              <p className="mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[#facc15]">
+                {metrics.activeProjects}
+              </p>
+            </article>
+
+            <article
+              className="group min-h-[110px] cursor-pointer rounded-[28px] border border-transparent bg-accent p-5 transition-colors hover:border-[#facc15]/70"
+              onClick={() => navigate("/freelancer/project?view=completed")}
+              role="button"
+              aria-label="Open completed projects"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af]">
+                  <MessageSquare className="size-4" />
+                </div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6b7280]">
+                  Completed Projects
+                </p>
+              </div>
+              <p className="mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[#facc15]">
+                {metrics.completedProjects}
+              </p>
+            </article>
+
+            <article
+              className="group min-h-[110px] cursor-pointer rounded-[28px] border border-transparent bg-accent p-5 transition-colors hover:border-[#facc15]/70"
+              onClick={() => navigate("/freelancer/proposals?tab=pending")}
+              role="button"
+              aria-label="Open pending proposals"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af]">
+                  <Clock className="size-4" />
+                </div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6b7280]">
+                  Pending Proposals
+                </p>
+              </div>
+              <p className="mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[#facc15]">
+                {metrics.pendingProposals.length}
+              </p>
+            </article>
+
+            <article
+              className="group min-h-[110px] cursor-pointer rounded-[28px] border border-transparent bg-accent p-5 transition-colors hover:border-[#facc15]/70"
+              onClick={() => navigate("/freelancer/payments")}
+              role="button"
+              aria-label="Open payments"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af]">
+                    {showPendingPaymentsStat ? (
+                      <Clock className="size-4" />
+                    ) : (
+                      <TrendingUp className="size-4" />
+                    )}
+                  </div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6b7280]">
+                    {showPendingPaymentsStat ? "Pending Payments" : "Total Earnings"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowPendingPaymentsStat((previous) => !previous);
+                  }}
+                  className="inline-flex size-8 items-center justify-center rounded-full border border-[#facc15]/45 bg-[#2b2b2b] text-[#facc15] transition-colors hover:border-[#facc15]/70 hover:bg-[#323232]"
+                  aria-label={showPendingPaymentsStat ? "Show total earnings" : "Show pending payments"}
+                >
+                  <Repeat2 className="size-4" />
+                </button>
+              </div>
+              <p
+                className="mt-3 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-[#facc15]"
+              >
+                {showPendingPaymentsStat
+                  ? formatCurrency(metrics.pendingEarnings)
+                  : formatCurrency(metrics.earnings)}
+              </p>
             </article>
           </section>
 
-          <section className="rounded-2xl border border-white/[0.06] bg-accent p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-2xl font-semibold text-zinc-100">Active Jobs Overview</h3>
+          <section className="mt-6">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-zinc-100">Active Projects</h2>
               <Button
                 variant="link"
-                className="h-auto p-0 text-xs font-semibold uppercase tracking-[0.16em] text-[#facc15] hover:text-[#facc15]/80"
+                className="h-auto p-0 text-xs font-semibold uppercase tracking-[0.14em] text-[#facc15] hover:text-[#facc15]/80"
                 onClick={() => navigate("/freelancer/project?view=ongoing")}
               >
                 View all
               </Button>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-accent">
-              <table className="min-w-full border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-white/[0.06] bg-accent">
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                      Project Name
-                    </th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                      Client
-                    </th>
-                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                      Budget
-                    </th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.acceptedProposals.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="px-4 py-8 text-center text-sm text-zinc-400">
-                        No active jobs yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    metrics.acceptedProposals.map((proposal) => (
-                      <tr
-                        key={proposal.id}
-                        className="border-b border-white/[0.06] text-sm text-zinc-200 transition-colors last:border-b-0 hover:bg-white/[0.04]"
+            {runningProjectCards.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-white/[0.1] bg-background/40 p-8 text-center text-sm text-zinc-400">
+                No active projects right now.
+              </div>
+            ) : (
+              <div>
+                <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {runningProjectCards.slice(projectCarouselIndex, projectCarouselIndex + 3).map((projectCard) => (
+                    <ProjectProposalCard
+                      key={projectCard.id}
+                      project={projectCard}
+                    />
+                  ))}
+                </div>
+
+                {runningProjectCards.length > 3 && (
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 w-9 rounded-full border-white/15 bg-white/[0.04] p-0 hover:bg-white/[0.08]"
+                      onClick={() => setProjectCarouselIndex(Math.max(0, projectCarouselIndex - 3))}
+                      disabled={projectCarouselIndex === 0}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: Math.ceil(runningProjectCards.length / 3) }).map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setProjectCarouselIndex(index * 3)}
+                          className={`h-2 rounded-full transition-all ${
+                            Math.floor((projectCarouselIndex) / 3) === index
+                              ? "w-6 bg-[#facc15]"
+                              : "w-2 bg-white/[0.2] hover:bg-white/[0.3]"
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 w-9 rounded-full border-white/15 bg-white/[0.04] p-0 hover:bg-white/[0.08]"
+                      onClick={() => setProjectCarouselIndex(Math.min(runningProjectCards.length - 3, projectCarouselIndex + 3))}
+                      disabled={projectCarouselIndex + 3 >= runningProjectCards.length}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <section className="mt-12 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="space-y-5">
+              <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-accent shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
+              <div className="px-6 py-5">
+                <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
+                  Pending Proposals
+                </h2>
+              </div>
+
+              {pendingProposalRows.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+                  <div className="flex size-16 items-center justify-center rounded-full bg-white/[0.06] text-[#94a3b8]">
+                    <ClipboardList className="size-7" />
+                  </div>
+                  <p className="mt-6 text-base font-medium text-white">No pending proposals</p>
+                  <p className="mt-2 max-w-[320px] text-sm text-[#8f96a3]">
+                    New proposal requests from clients will appear here.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/freelancer/proposals")}
+                    className="mt-6 rounded-full bg-[#ffc107] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#ffd54f]"
+                  >
+                    View Proposals
+                  </button>
+                </div>
+              ) : (
+                pendingProposalRows.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-col gap-4 border-b border-white/[0.05] px-5 py-5 last:border-b-0 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <p className="truncate text-lg font-medium text-white">{item.title}</p>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+                            PENDING_PROPOSAL_TONE_STYLES[item.tagTone] || PENDING_PROPOSAL_TONE_STYLES.amber
+                          }`}
+                        >
+                          {item.tag}
+                        </span>
+                      </div>
+                      {item.updatedAt ? (
+                        <p className="mt-2 text-sm text-[#94a3b8]">Received {item.updatedAt}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <span className="min-w-[112px] text-right text-[1.1rem] font-medium text-[#f1f5f9]">
+                        {item.budget}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const query = item.projectId ? `?projectId=${encodeURIComponent(item.projectId)}` : "";
+                          navigate(`/freelancer/proposals${query}`);
+                        }}
+                        className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#f2f2f2]"
                       >
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-zinc-100">
-                            {proposal.project?.title || "Untitled Project"}
-                          </p>
-                          <p className="text-xs text-zinc-500">
-                            Due {proposal.project?.deadline
-                              ? new Date(proposal.project.deadline).toLocaleDateString()
-                              : "soon"}
-                          </p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {proposal.project?.owner?.fullName || "Client"}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-zinc-100">
-                          {formatCurrency((Number(proposal?.amount) || 0) * 0.7)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-full text-zinc-400 hover:bg-[#2f333a] hover:text-[#facc15]"
-                            onClick={() =>
-                              navigate(
-                                proposal.project?.id
-                                  ? `/freelancer/project/${proposal.project.id}`
-                                  : "/freelancer/project?view=ongoing"
-                              )
-                            }
-                          >
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-accent shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
+              <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-5">
+                <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-white">
+                  Recent Activity
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => navigate("/freelancer/proposals")}
+                  className="text-xs font-bold uppercase tracking-[0.18em] text-[#ffc107] transition-colors hover:text-[#ffd54f]"
+                >
+                  View All
+                </button>
+              </div>
+
+              <div>
+                {(activityItems.length > 0 ? activityItems.slice(0, 4) : []).map((item, index) => {
+                  const Icon = item.icon;
+                  const tone = ACTIVITY_TONE_STYLES[item.tone] || ACTIVITY_TONE_STYLES.slate;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={item.onClick}
+                      className="flex w-full items-start gap-3 px-6 py-4 text-left transition-colors hover:bg-white/[0.04]"
+                    >
+                      <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${tone.icon}`}>
+                        <Icon className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-zinc-100">{item.title}</p>
+                            <p className="line-clamp-1 text-xs text-zinc-400">{item.subtitle}</p>
+                          </div>
+                          <span className="shrink-0 text-[11px] text-zinc-500">{item.timeLabel}</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {activityItems.length === 0 ? (
+                  <p className="px-6 py-4 text-sm text-zinc-400">No activity yet.</p>
+                ) : null}
+              </div>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <article className="rounded-2xl border border-white/[0.08] bg-accent p-5 shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-zinc-100">Profile Completion</h3>
+                <span className="text-sm font-bold text-[#facc15]">{profileCompletionPercent}%</span>
+              </div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.12]">
+                <div
+                  className="h-full rounded-full bg-[#facc15] transition-all duration-700"
+                  style={{ width: `${profileCompletionPercent}%` }}
+                />
+              </div>
+              <Button
+                className="mt-4 h-9 w-full rounded-full bg-zinc-100 text-xs font-semibold text-zinc-900 hover:bg-zinc-200"
+                onClick={() => navigate("/freelancer/profile")}
+              >
+                {profileCompletionComplete ? "Finish Setup" : "Finish Setup"}
+              </Button>
+            </article>
+
+              <article className="rounded-2xl border border-white/[0.08] bg-accent p-5 shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
+              <h3 className="text-sm font-semibold text-zinc-100">Messages Preview</h3>
+              {previewMessages.length === 0 ? (
+                <p className="mt-3 text-xs text-zinc-400">No new messages right now.</p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {previewMessages.map((message) => (
+                    <li key={message.id || message.createdAt} className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-100">
+                        {String(message?.title || "M").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-zinc-100">
+                          {message?.title || "New message"}
+                        </p>
+                        <p className="line-clamp-1 text-xs text-zinc-500">
+                          {message?.message || "You have a new conversation update."}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Button
+                variant="outline"
+                className="mt-4 h-8 w-full rounded-full border-white/15 bg-transparent text-xs text-zinc-200 hover:bg-white/[0.06]"
+                onClick={() => navigate("/freelancer/messages")}
+              >
+                Go to inbox
+              </Button>
+              </article>
+
+              <article className="rounded-2xl border border-white/[0.08] bg-accent p-5 shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
+              <h3 className="text-sm font-semibold text-zinc-100">Earnings & Payments</h3>
+              <div className="mt-4 grid h-36 grid-cols-5 items-end gap-2 rounded-xl border border-white/[0.08] bg-background/30 p-3">
+                {monthlyEarningsBars.slice(0, 5).map((value, index) => (
+                  <div key={`bar-${index}`} className="flex h-full flex-col justify-end">
+                    <div
+                      className={
+                        index === 4
+                          ? "w-full rounded-sm bg-[#facc15]"
+                          : "w-full rounded-sm bg-white/[0.08]"
+                      }
+                      style={{ height: `${value}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 grid grid-cols-5 text-center text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                {["Jan", "Feb", "Mar", "Apr", "May"].map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
+              </div>
+              </article>
             </div>
           </section>
         </div>

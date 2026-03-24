@@ -8,6 +8,7 @@ import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import FolderKanban from "lucide-react/dist/esm/icons/folder-kanban";
 import MessageSquareText from "lucide-react/dist/esm/icons/message-square-text";
+import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
 import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
@@ -85,21 +86,61 @@ const DashboardPanel = ({ className, children }) => (
 
 const OverviewMetricCard = ({ item }) => {
   const Icon = metricIconMap[item.iconKey] || ClipboardList;
+  const hasValueSwitch = Boolean(item.hasValueSwitch && item.alternateValue);
+  const [showPrimaryValue, setShowPrimaryValue] = React.useState(
+    item.defaultMode !== "alternate",
+  );
+
+  React.useEffect(() => {
+    setShowPrimaryValue(item.defaultMode !== "alternate");
+  }, [item.defaultMode, item.value, item.alternateValue]);
+
+  const displayedTitle =
+    hasValueSwitch && !showPrimaryValue
+      ? item.alternateTitle || item.title
+      : item.title;
+  const displayedValue =
+    hasValueSwitch && !showPrimaryValue
+      ? item.alternateValue
+      : item.value;
 
   return (
-    <DashboardPanel className="min-h-[110px] border-transparent bg-accent p-5">
+    <DashboardPanel className="group min-h-[110px] border border-transparent bg-accent p-5 transition-colors hover:border-primary/70">
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af]">
-            <Icon className="size-4" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#9ca3af]">
+              <Icon className="size-4" />
+            </div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6b7280]">
+              {displayedTitle}
+            </p>
           </div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#6b7280]">
-            {item.title}
-          </p>
+
+          {hasValueSwitch ? (
+            <button
+              type="button"
+              onClick={() => setShowPrimaryValue((current) => !current)}
+              className="inline-flex h-6 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.03] px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#94a3b8] transition-colors hover:border-primary/70 hover:text-primary"
+              aria-label={
+                showPrimaryValue
+                  ? "Show pending payments"
+                  : "Show total paid"
+              }
+              title={
+                showPrimaryValue
+                  ? "Switch to pending payments"
+                  : "Switch to total paid"
+              }
+            >
+              <Repeat2 className="size-3" />
+              Switch
+            </button>
+          ) : null}
         </div>
         <div className="flex items-baseline gap-2">
-          <p className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white">
-            {item.value}
+          <p className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-white transition-colors group-hover:text-primary">
+            {displayedValue}
           </p>
           {item.detail ? (
             <p className="text-xs text-[#6b7280]">{item.detail}</p>
@@ -157,8 +198,8 @@ const ActivityRow = ({ item }) => {
             activityToneMap[item.tone] || activityToneMap.slate,
           )}
         >
-          <Icon className="size-4" />
-        </div>
+            <Icon className="size-4" />
+          </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-white">{item.title}</p>
           <p className="truncate text-xs text-[#94a3b8]">{item.subtitle}</p>
@@ -718,7 +759,7 @@ const ClientDashboardShell = ({
 
         <section className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {metrics.map((item) => (
-            <OverviewMetricCard key={item.title} item={item} />
+            <OverviewMetricCard key={item.id || item.title} item={item} />
           ))}
         </section>
 
@@ -734,7 +775,7 @@ const ClientDashboardShell = ({
         <section className="mt-14">
           <div className="mb-6 flex items-center gap-3">
             <h2 className="text-[1.7rem] font-semibold tracking-[-0.04em] text-white">
-              Running Projects
+              Active Projects
             </h2>
             <span className="size-[15px] rounded-full bg-[#10b981]/10 p-[4.5px]">
               <span className="block size-[6px] rounded-full bg-[#10b981]" />
@@ -742,7 +783,7 @@ const ClientDashboardShell = ({
           </div>
 
           {showcaseItems.length > 0 ? (
-            <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid items-start gap-7 md:grid-cols-2 xl:grid-cols-3">
               {showcaseItems.map((item) => (
                 <ProjectProposalCard
                   key={item.id}

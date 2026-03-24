@@ -33,8 +33,7 @@ import { ProjectNotepad } from "@/components/ui/notepad";
 import BookAppointment from "@/components/features/appointments/BookAppointment";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import { Input } from "@/components/ui/input";
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
-import { ClientTopBar } from "@/components/features/client/ClientTopBar";
+import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
@@ -108,6 +107,9 @@ const CATALYST_REQUEST_TYPES = {
   GENERAL: "general",
   FREELANCER_CHANGE: "freelancer-change",
 };
+
+const projectPanelClassName =
+  "rounded-[20px] border border-white/[0.08] bg-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
 // Skeleton Loading Component
 const ProjectDetailSkeleton = () => (
@@ -243,7 +245,7 @@ const FreelancerInfoCard = ({ freelancer }) => {
   if (!freelancer) return null;
 
   return (
-    <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+    <Card className={projectPanelClassName}>
       <CardHeader className="pb-3">
         <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
           Freelancer Information
@@ -370,6 +372,7 @@ const ProjectDashboard = () => {
   const [deliverableReviews, setDeliverableReviews] = useState({});
   const [reviewingDeliverableId, setReviewingDeliverableId] = useState(null);
   const [isProcessingInstallment, setIsProcessingInstallment] = useState(false);
+  const [isCompletingProject, setIsCompletingProject] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmittingFreelancerReview, setIsSubmittingFreelancerReview] =
@@ -1413,12 +1416,21 @@ const ProjectDashboard = () => {
       : null;
   }, [project]);
 
+  const paymentPlanInstallments = Array.isArray(paymentPlan?.installments)
+    ? paymentPlan.installments
+    : [];
   const dueInstallment = paymentPlan?.nextDueInstallment || null;
+  const initialInstallment =
+    paymentPlanInstallments.find(
+      (installment) =>
+        Number(installment?.sequence || 0) === 1 ||
+        Number(installment?.dueAfterCompletedPhases || 0) === 0
+    ) || null;
+  const isInitialPaymentPaid = Boolean(initialInstallment?.isPaid);
+  const isInitialPaymentDue = Number(dueInstallment?.sequence || 0) === 1;
   const phaseGateInstallmentsByPhase = useMemo(() => {
     const grouped = {};
-    const installments = Array.isArray(paymentPlan?.installments)
-      ? paymentPlan.installments
-      : [];
+    const installments = paymentPlanInstallments;
 
     installments.forEach((installment) => {
       const gate = Number(installment?.dueAfterCompletedPhases || 0);
@@ -1432,7 +1444,7 @@ const ProjectDashboard = () => {
     });
 
     return grouped;
-  }, [paymentPlan]);
+  }, [paymentPlanInstallments]);
 
   const freelancerChangeRequests = useMemo(
     () =>
@@ -1608,6 +1620,15 @@ const ProjectDashboard = () => {
     });
   }, [activeSOP, verifiedTaskIds]);
 
+  const allPhasesCompleted =
+    derivedPhases.length > 0 &&
+    derivedPhases.every((phase) => phase.status === "completed");
+  const canMarkProjectCompleted =
+    !isProjectCompleted &&
+    allPhasesCompleted &&
+    Boolean(project?.ownerId) &&
+    project.ownerId === user?.id;
+
   const verificationDueInstallment = useMemo(() => {
     const installments = Array.isArray(paymentPlan?.installments)
       ? paymentPlan.installments
@@ -1756,6 +1777,11 @@ const ProjectDashboard = () => {
     e.stopPropagation();
     e.preventDefault();
 
+    if (isProjectCompleted) {
+      toast.info("This project is completed and tasks are now locked.");
+      return;
+    }
+
     let newCompleted, newVerified;
 
     setCompletedTaskIds((prev) => {
@@ -1797,6 +1823,10 @@ const ProjectDashboard = () => {
     e.stopPropagation();
     e.preventDefault();
     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+    if (isProjectCompleted) {
+      toast.info("This project is completed and verification is locked.");
+      return;
+    }
     if (verifyingTaskIds.has(uniqueKey)) return;
 
     setPendingVerifyTask({
@@ -1813,6 +1843,10 @@ const ProjectDashboard = () => {
     taskTitle,
     _isCurrentlyVerified
   ) => {
+    if (isProjectCompleted) {
+      return;
+    }
+
     if (verifyingTaskIds.has(uniqueKey)) {
       setVerifyConfirmOpen(false);
       setPendingVerifyTask(null);
@@ -1900,6 +1934,36 @@ const ProjectDashboard = () => {
     }
   };
 
+  const handleMarkProjectCompleted = useCallback(async () => {
+    if (!project?.id || !canMarkProjectCompleted || isCompletingProject) {
+      return;
+    }
+
+    setIsCompletingProject(true);
+    try {
+      const response = await authFetch(`/projects/${project.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to mark project as completed.");
+      }
+
+      if (payload?.data) {
+        syncProjectState(payload.data);
+      }
+
+      toast.success("Project marked as completed. Editing is now locked.");
+    } catch (error) {
+      toast.error(error?.message || "Failed to mark project as completed.");
+    } finally {
+      setIsCompletingProject(false);
+    }
+  }, [authFetch, canMarkProjectCompleted, isCompletingProject, project?.id, syncProjectState]);
+
   const pageTitle = project?.title
     ? `Project: ${project.title}`
     : "Project Dashboard";
@@ -1907,33 +1971,50 @@ const ProjectDashboard = () => {
   // Show skeleton while loading
   if (isLoading) {
     return (
-      <RoleAwareSidebar>
-        <div className="mt-5 ml-5">
-          <ClientTopBar title="Loading..." />
+      <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+          <ClientWorkspaceHeader
+            profile={{
+              avatar: user?.avatar,
+              name: String(user?.fullName || user?.name || "Client").trim() || "Client",
+            }}
+            activeWorkspaceKey="projects"
+            primaryActionLabel="Projects"
+            primaryActionTo="/client/project"
+          />
         </div>
         <ProjectDetailSkeleton />
-      </RoleAwareSidebar>
+      </div>
     );
   }
 
   return (
-    <RoleAwareSidebar>
-      <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full">
-        <div className="w-full max-w-full mx-auto space-y-6">
-          <ClientTopBar title={pageTitle} />
+    <>
+      <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+          <ClientWorkspaceHeader
+            profile={{
+              avatar: user?.avatar,
+              name: String(user?.fullName || user?.name || "Client").trim() || "Client",
+            }}
+            activeWorkspaceKey="projects"
+            primaryActionLabel="Projects"
+            primaryActionTo="/client/project"
+          />
 
+          <main className="flex-1 space-y-6 pb-12 pt-6">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+              <h1 className="text-3xl font-semibold tracking-[-0.02em] text-white">
                 {pageTitle}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-[#9aa3af]">
                 {isLoading
                   ? "Loading project details..."
                   : "Track project progress and manage tasks efficiently"}
               </p>
               {!isLoading && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-[#7f8794]">
                   {activeProjectManager
                     ? `Project Catalyst: ${activeProjectManager.fullName}`
                     : "Project Catalyst: Not assigned yet"}
@@ -1947,6 +2028,7 @@ const ProjectDashboard = () => {
                     <Button
                       variant="default"
                       size="sm"
+                      className="h-9 rounded-full bg-[#ffc107] px-4 text-black hover:bg-[#ffd54f]"
                       onClick={() =>
                         openCatalystDialog(CATALYST_REQUEST_TYPES.GENERAL)
                       }
@@ -1979,9 +2061,9 @@ const ProjectDashboard = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle className="text-lg font-semibold text-foreground">
+                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                     Project Progress
                   </CardTitle>
                   <span className="text-lg font-semibold text-amber-500">
@@ -1990,14 +2072,14 @@ const ProjectDashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="relative">
-                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-2 overflow-hidden rounded-full bg-white/[0.12]">
                       <div
                         className="h-full rounded-full transition-all duration-300 bg-linear-to-r from-amber-500 via-yellow-400 to-amber-400"
                         style={{ width: `${overallProgress}%` }}
                       />
                     </div>
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-gray-300 rounded-full shadow-md transition-all duration-300"
+                      className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white/70 bg-white shadow-md transition-all duration-300"
                       style={{ left: `calc(${overallProgress}% - 8px)` }}
                     />
                   </div>
@@ -2012,33 +2094,33 @@ const ProjectDashboard = () => {
                           key={phase?.id || `phase-${index}`}
                           className={`p-4 rounded-lg border-l-4 ${
                             isCompleted
-                              ? "bg-emerald-50 dark:bg-emerald-950/30 border-l-emerald-500"
+                              ? "border-l-emerald-500 bg-emerald-500/10"
                               : isActive
-                              ? "bg-blue-50 dark:bg-blue-950/30 border-l-blue-500"
-                              : "bg-gray-50 dark:bg-gray-800/30 border-l-transparent"
+                              ? "border-l-amber-500 bg-amber-500/10"
+                              : "border-l-transparent bg-white/[0.03]"
                           }`}
                         >
                           <div
                             className={`text-xs font-medium uppercase tracking-wider mb-1 ${
                               isCompleted
-                                ? "text-emerald-600 dark:text-emerald-400"
+                                ? "text-emerald-300"
                                 : isActive
-                                ? "text-blue-600 dark:text-blue-400"
-                                : "text-gray-500"
+                                ? "text-amber-300"
+                                : "text-[#7f8794]"
                             }`}
                           >
                             Phase {index + 1}
                           </div>
-                          <div className="font-semibold text-foreground mb-1 text-sm">
+                          <div className="mb-1 text-sm font-semibold text-white">
                             {phase?.name || "Phase"}
                           </div>
                           <div
                             className={`text-xs flex items-center gap-1.5 ${
                               isCompleted
-                                ? "text-emerald-600 dark:text-emerald-400"
+                                ? "text-emerald-300"
                                 : isActive
-                                ? "text-blue-600 dark:text-blue-400"
-                                : "text-gray-500"
+                                ? "text-amber-300"
+                                : "text-[#7f8794]"
                             }`}
                           >
                             {isCompleted && (
@@ -2059,9 +2141,9 @@ const ProjectDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-lg font-semibold text-foreground">
+                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                     Project Description
                   </CardTitle>
                   <Button
@@ -2080,17 +2162,93 @@ const ProjectDashboard = () => {
               </Card>
 
               {/* All Tasks Grouped by Phase - Accordion */}
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-foreground">
+                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                     Project Tasks
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
+                  <CardDescription className="text-[#8b94a1]">
                     {derivedTasks.filter((t) => t.verified).length} of{" "}
                     {derivedTasks.length} tasks verified
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
+                  {canMarkProjectCompleted ? (
+                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                            Final Step
+                          </p>
+                          <p className="mt-1 text-sm text-foreground">
+                            All phases are verified. Mark this project as completed to lock further changes.
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="h-8 px-3 sm:self-end"
+                          onClick={handleMarkProjectCompleted}
+                          disabled={isCompletingProject}
+                        >
+                          {isCompletingProject ? (
+                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                          )}
+                          {isCompletingProject ? "Saving" : "Mark Project Completed"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isInitialPaymentDue ? (
+                    <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-400">
+                            Payment Required Before Phase 1
+                          </p>
+                          <p className="mt-1 text-sm text-foreground">
+                            {dueInstallment?.label || "Initial project payment"} is due to unlock
+                            Phase 1 tasks.
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={handlePayDueInstallment}
+                          disabled={isProcessingInstallment}
+                          className="h-8 px-3 sm:self-end"
+                        >
+                          {isProcessingInstallment ? (
+                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <CreditCard className="mr-1 h-3.5 w-3.5" />
+                          )}
+                          {isProcessingInstallment
+                            ? "Processing"
+                            : `Pay ${dueInstallment?.percentage || ""}%`}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isInitialPaymentPaid ? (
+                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                            Initial Payment Confirmed
+                          </p>
+                          <p className="mt-1 text-sm text-foreground">
+                            {initialInstallment?.label || "Initial 20% payment"} is completed. Phase
+                            1 is unlocked.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <Accordion
                     type="single"
                     collapsible
@@ -2156,12 +2314,13 @@ const ProjectDashboard = () => {
                                     <div
                                       key={task.uniqueKey}
                                       className={`flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card transition-colors ${
-                                        phaseGroup.isLocked
+                                        phaseGroup.isLocked || isProjectCompleted
                                           ? "opacity-50 pointer-events-none bg-muted/50"
                                           : "hover:bg-accent/60 cursor-pointer"
                                       }`}
                                       onClick={(e) =>
                                         !phaseGroup.isLocked &&
+                                        !isProjectCompleted &&
                                         handleTaskClick(e, task.uniqueKey)
                                       }
                                     >
@@ -2194,6 +2353,7 @@ const ProjectDashboard = () => {
                                           }
                                           disabled={
                                             phaseGroup.isLocked ||
+                                            isProjectCompleted ||
                                             isTaskVerificationPending
                                           }
                                           className={`h-7 px-3 text-xs transition-all ${
@@ -2350,12 +2510,12 @@ const ProjectDashboard = () => {
               <FreelancerAboutCard freelancer={freelancer} project={project} />
 
               {/* Project Chat - First */}
-              <Card className="flex flex-col h-96 border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={`${projectPanelClassName} flex h-96 flex-col`}>
                 <CardHeader className="border-b border-border/60">
-                  <CardTitle className="text-base text-foreground">
+                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                     Project Chat
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
+                  <CardDescription className="text-[#8b94a1]">
                     Ask questions and share documents
                   </CardDescription>
                 </CardHeader>
@@ -2526,9 +2686,9 @@ const ProjectDashboard = () => {
               </Card>
 
               {/* Documents - Second */}
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                  <CardTitle className="flex items-center gap-2 text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                     <FileText className="w-4 h-4" />
                     Documents
                   </CardTitle>
@@ -2558,12 +2718,12 @@ const ProjectDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base text-foreground">
+                  <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                     Deliverables Approval
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
+                  <CardDescription className="text-[#8b94a1]">
                     Review freelancer submissions and approve or request revisions.
                   </CardDescription>
                 </CardHeader>
@@ -2655,9 +2815,9 @@ const ProjectDashboard = () => {
               </Card>
 
               {/* Budget Summary - Third */}
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                  <CardTitle className="flex items-center gap-2 text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                     <IndianRupee className="w-4 h-4" />
                     Budget Summary
                   </CardTitle>
@@ -2683,13 +2843,13 @@ const ProjectDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+              <Card className={projectPanelClassName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                  <CardTitle className="flex items-center gap-2 text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                     <CreditCard className="w-4 h-4" />
-                    Payment Schedule
+                    Billing Roadmap
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-[#8b94a1]">
                     20% to start, 40% after phase 2, and the final 40% after phase 4.
                   </CardDescription>
                 </CardHeader>
@@ -2766,12 +2926,12 @@ const ProjectDashboard = () => {
               </Card>
 
               {shouldCollectFreelancerReview ? (
-                <Card className="border border-border/60 bg-card/80 shadow-sm backdrop-blur">
+                <Card className={projectPanelClassName}>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base text-foreground">
+                    <CardTitle className="text-[0.76rem] font-semibold uppercase tracking-[0.2em] text-[#9aa3af]">
                       Freelancer Review
                     </CardTitle>
-                    <CardDescription className="text-muted-foreground">
+                    <CardDescription className="text-[#8b94a1]">
                       {existingFreelancerReview
                         ? "Thanks for sharing your feedback for this completed project."
                         : "Project completed. Please rate your freelancer experience."}
@@ -2891,7 +3051,8 @@ const ProjectDashboard = () => {
             </div>
           </div>
 
-          <ClientDashboardFooter variant="workspace" />
+            <ClientDashboardFooter variant="workspace" />
+          </main>
         </div>
       </div>
 
@@ -3240,7 +3401,8 @@ const ProjectDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </RoleAwareSidebar>
+
+    </>
   );
 };
 

@@ -36,7 +36,7 @@ const projectActionToneMap = {
 };
 
 const projectFilterOptions = [
-  { key: "ongoing", label: "Ongoing Projects" },
+  { key: "ongoing", label: "Active Projects" },
   { key: "completed", label: "Completed Projects" },
 ];
 
@@ -211,11 +211,47 @@ const isProjectFullyCompleted = (project) => {
       ? project.paymentPlan
       : null;
 
-  if (paymentPlan && paymentPlan.isFullyPaid !== true) {
-    return false;
+  if (normalizedStatus === "COMPLETED") {
+    return true;
   }
 
-  return normalizedStatus === "COMPLETED" || paymentPlan?.isFullyPaid === true;
+  const explicitProgress = Number(project?.progress);
+  if (Number.isFinite(explicitProgress) && clampProgress(explicitProgress) >= 100) {
+    return true;
+  }
+
+  if (paymentPlan?.isFullyPaid === true) {
+    return true;
+  }
+
+  const paymentPlanPhases = Array.isArray(paymentPlan?.phases) ? paymentPlan.phases : [];
+  if (paymentPlanPhases.length > 0) {
+    const allPhasesComplete = paymentPlanPhases.every((phase) => {
+      if (phase?.isComplete) return true;
+      const totalTasks = Math.max(0, Number(phase?.totalTasks || 0));
+      const verifiedTasks = Math.max(0, Number(phase?.verifiedTasks || 0));
+      return totalTasks > 0 && verifiedTasks >= totalTasks;
+    });
+
+    if (allPhasesComplete) {
+      return true;
+    }
+  }
+
+  const milestones = Array.isArray(project?.milestones) ? project.milestones : [];
+  if (milestones.length > 0) {
+    const allMilestonesComplete = milestones.every((milestone) =>
+      Boolean(milestone?.completed) ||
+      String(milestone?.status || "").toUpperCase() === "COMPLETED" ||
+      clampProgress(milestone?.progress) >= 100,
+    );
+
+    if (allMilestonesComplete) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 const resolvePendingPaymentLabel = (project) => {
@@ -498,7 +534,11 @@ const normalizeFreelancerProjects = (remote = []) => {
       project?.owner?.email?.split("@")[0] ||
       "Client";
     const rawStatus = String(project?.status || proposal?.status || "").toUpperCase();
-    const isFullyCompleted = isProjectFullyCompleted({ rawStatus, paymentPlan });
+    const isFullyCompleted = isProjectFullyCompleted({
+      ...project,
+      rawStatus,
+      paymentPlan,
+    });
 
     uniqueProjects.set(project.id, {
       id: project.id,

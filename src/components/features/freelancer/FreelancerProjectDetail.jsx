@@ -48,8 +48,7 @@ import Flag from "lucide-react/dist/esm/icons/flag";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { ProjectNotepad } from "@/components/ui/notepad";
 
-import { RoleAwareSidebar } from "@/components/layout/RoleAwareSidebar";
-import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTopBar";
+import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { useAuth } from "@/shared/context/AuthContext";
 import { SOP_TEMPLATES, getSopFromTitle } from "@/shared/data/sopTemplates";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1521,18 +1520,38 @@ const FreelancerProjectDetailContent = () => {
   // Show skeleton while loading
   if (isLoading) {
     return (
-      <RoleAwareSidebar>
-        <div className="mt-5 ml-5 mr-5">
-          <FreelancerTopBar label="Loading..." />
+      <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+          <FreelancerWorkspaceHeader
+            profile={{
+              avatar: user?.avatar,
+              name: String(user?.fullName || user?.name || "Freelancer").trim() || "Freelancer",
+            }}
+            activeWorkspaceKey="projects"
+            primaryActionLabel="Projects"
+            primaryActionTo="/freelancer/project"
+          />
         </div>
         <ProjectDetailSkeleton />
-      </RoleAwareSidebar>
+      </div>
     );
   }
 
   return (
-    <RoleAwareSidebar>
-      <div className="min-h-screen bg-background text-foreground p-6 md:p-8 w-full relative">
+    <>
+      <div className="min-h-screen bg-[#212121] text-[#f1f5f9]">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[85%] xl:max-w-none">
+          <FreelancerWorkspaceHeader
+            profile={{
+              avatar: user?.avatar,
+              name: String(user?.fullName || user?.name || "Freelancer").trim() || "Freelancer",
+            }}
+            activeWorkspaceKey="projects"
+            primaryActionLabel="Projects"
+            primaryActionTo="/freelancer/project"
+          />
+
+          <main className="relative flex-1 space-y-6 pb-12 pt-6">
         {project?.status === "AWAITING_PAYMENT" && (
           <div className="absolute inset-0 z-50 backdrop-blur-md bg-background/60">
             <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-center p-6 text-center">
@@ -1564,8 +1583,6 @@ const FreelancerProjectDetailContent = () => {
           </div>
         )}
         <div className="w-full max-w-full mx-auto space-y-6">
-          <FreelancerTopBar label={pageTitle} />
-
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h1 className="text-3xl font-semibold tracking-tight text-foreground">
@@ -2654,6 +2671,8 @@ const FreelancerProjectDetailContent = () => {
             </div>
           </div>
         </div>
+      </main>
+        </div>
       </div>
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent
@@ -2821,7 +2840,7 @@ const FreelancerProjectDetailContent = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </RoleAwareSidebar>
+    </>
   );
 };
 
