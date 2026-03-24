@@ -27,8 +27,23 @@ export const createProjectSchema = z.object({
     projectOverview: optionalTextField,
     primaryObjectives: optionalTextListField,
     featuresDeliverables: optionalTextListField,
-    timeline: optionalTextField,
-    budgetSummary: optionalTextField,
+    timeline: z.string().trim().optional().transform(val => {
+      if (!val) return undefined;
+      const match = val.match(/\d[\d,]*/);
+      return match ? String(parseInt(match[0].replace(/,/g, ""), 10)) : undefined;
+    }),
+    budgetSummary: z.string().trim().optional().transform(val => {
+      if (!val) return undefined;
+      // Extract largest numeric value (handles "INR 50,000", "50000 per video", etc.)
+      const nums = [];
+      const rx = /[\d,]+/g;
+      let m;
+      while ((m = rx.exec(val)) !== null) {
+        const n = parseInt(m[0].replace(/,/g, ""), 10);
+        if (!isNaN(n)) nums.push(n);
+      }
+      return nums.length ? String(Math.max(...nums)) : undefined;
+    }),
     websiteType: optionalTextField,
     designStyle: optionalTextField,
     websiteBuildType: optionalTextField,
