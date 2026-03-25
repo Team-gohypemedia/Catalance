@@ -956,76 +956,6 @@ const hasDirectOptionAnswer = (message = "", question = {}, runtimeOptionsByQues
         })
     );
 };
-const extractNumericChoiceNumbers = (text = "", maxOptionCount = 0) => {
-    const raw = String(text || "");
-    const regex = /\d+/g;
-    const numbers = [];
-    let match = null;
-
-    while ((match = regex.exec(raw)) !== null) {
-        const token = match[0];
-        const start = match.index;
-        const end = start + token.length;
-
-        // Ignore digits that are part of range-like text (e.g. "2-4 weeks", "1-2 months")
-        const leftWindow = raw.slice(Math.max(0, start - 3), start);
-        const rightWindow = raw.slice(end, end + 3);
-        const isRangeFragment =
-            /[\u2013\u2014-]\s*$/.test(leftWindow) ||
-            /^\s*[\u2013\u2014-]/.test(rightWindow);
-        if (isRangeFragment) continue;
-
-        const value = Number.parseInt(token, 10);
-        if (!Number.isFinite(value)) continue;
-        if (value < 1 || value > maxOptionCount) continue;
-        if (!numbers.includes(value)) numbers.push(value);
-    }
-
-    return numbers;
-};
-
-const mapNumericReplyToOptions = (question = {}, rawText = "", runtimeOptionsByQuestionSlug = {}) => {
-    const displayedOptions = getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug);
-    if (displayedOptions.length === 0) {
-        return { matched: false, normalizedText: rawText, selectedLabels: [] };
-    }
-
-    const acceptedOptions = getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug);
-
-    // Prefer direct display/canonical label matching first so values like "2-4 weeks" map correctly.
-    const exactMatches = findMatchingOptionsFromText(rawText, acceptedOptions);
-    if (exactMatches.length > 0) {
-        return {
-            matched: true,
-            normalizedText: exactMatches
-                .map((option) => option.label || option.canonicalLabel || option.value)
-                .filter(Boolean)
-                .join(", "),
-            selectedLabels: exactMatches
-                .map((option) => option.label || option.canonicalLabel || option.value)
-                .filter(Boolean)
-        };
-    }
-
-    const numbers = extractNumericChoiceNumbers(rawText, displayedOptions.length);
-    if (numbers.length === 0) {
-        return { matched: false, normalizedText: rawText, selectedLabels: [] };
-    }
-
-    const selectedLabels = numbers
-        .map((number) => displayedOptions[number - 1]?.label || displayedOptions[number - 1]?.canonicalLabel || displayedOptions[number - 1]?.value)
-        .filter(Boolean);
-
-    if (selectedLabels.length === 0) {
-        return { matched: false, normalizedText: rawText, selectedLabels: [] };
-    }
-
-    return {
-        matched: true,
-        normalizedText: selectedLabels.join(", "),
-        selectedLabels
-    };
-};
 
 const countOptionLabelsMentioned = (message = "", question = {}, runtimeOptionsByQuestionSlug = {}) => {
     const normalizedMessage = normalizeTextToken(message);
@@ -3242,20 +3172,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         });
     }
     // --- END CONFIRMATION INTERCEPT ---
-    const numericSelection = mapNumericReplyToOptions(
-        currentQuestion,
-        trimmedMessageText,
-        sessionRuntimeOptionsByQuestionSlug
-    );
-    let userMessageText = numericSelection.matched
-        ? numericSelection.normalizedText
-        : trimmedMessageText;
-
-    if (numericSelection.matched) {
-        console.log(
-            `[Numeric Selection] mapped "${trimmedMessageText}" -> "${userMessageText}"`
-        );
-    }
+    let userMessageText = trimmedMessageText;
 
     const rememberedAttachments = uploadedAttachments.length > 0
         ? []
@@ -3350,6 +3267,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             currentQuestion,
             sessionRuntimeOptionsByQuestionSlug
         );
+        const currentQuestionNumberedOptions = currentQuestionOptions
+            .map((optionLabel, index) => `${index + 1}. ${optionLabel}`);
         const currentQuestionCanonicalOptions = getCanonicalQuestionOptions(currentQuestion)
             .map((option) => option.canonicalLabel || option.label || option.value)
             .filter(Boolean);
@@ -3389,7 +3308,7 @@ export const guestChat = asyncHandler(async (req, res) => {
               DO NOT ASK ANY QUESTIONS. Stop after your short conversational bridge.
               (If it's the final question, just say "Thanks! Let me put that together for you.")
             - If INVALID: Politely ask for clarification or the specific details needed. But be sure to write a warm, friendly response before re-asking the question.
-            - If the question has options, ask the user to choose from listed options; do not ask to type a custom text answer.
+            - If the question has options, you may re-list them as helpful guidance, but do not imply that custom text answers are forbidden unless the question explicitly says only fixed options are allowed.
             - Keep wording polite, friendly, and engaging.
             - Keep the total response under 100 words.
             `;
@@ -3406,6 +3325,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             
             Current Question Asked: "${currentQuestionText}"
             Current Question Options: ${JSON.stringify(currentQuestionOptions)}
+            Current Question Numbered Options: ${JSON.stringify(currentQuestionNumberedOptions)}
             Valid Canonical Option Pool: ${JSON.stringify(currentQuestionCanonicalOptions)}
             Known Context From Earlier Answers: ${JSON.stringify(knownContextByQuestion)}
             Saved AI Memory Context: ${JSON.stringify(savedResponseContext || "None")}
@@ -3420,15 +3340,20 @@ export const guestChat = asyncHandler(async (req, res) => {
             - If it's irrelevant/gibberish -> INVALID.
             - If the user is asking an informational side-question (e.g., "what is Flutter?", "which is best for me?") instead of directly answering the current question -> INFO_REQUEST.
             - If direct text is empty but attachment context clearly answers the current question, treat as VALID.
+            - If the user replies with a numbered choice such as "1", "2", "option 3", or "go with 2", interpret it using the 1-based order from "Current Question Options" / "Current Question Numbered Options".
+            - If the user's message contains a number as part of a descriptive answer (for example "1 month", "2-4 weeks", "10 pages"), do NOT assume it is a menu selection unless the wording clearly shows they are choosing by option number.
             - **REGISTERED COMPANY NAME CHECK**: If the Current Question asks for a company or brand name, and the user's answer is a well-known registered or famous company name (e.g., Google, Apple, Microsoft, Amazon, Catalance, or any other widely known brand), you MUST treat it as INVALID. The response \`message\` MUST politely state that the name is already registered and in use for this type of service in their region, and ask them to provide a different name.
             - CRITICAL UNIVERSAL PREDICTION: You are a smart AI. If the user's answer (for ANY question) contains specific keywords or details that logically imply they belong to one of the options (e.g. naming "Elementor" making WordPress obvious), you MUST immediately accept it as VALID.
             - UNSUPPORTED PLATFORMS: If the user requests a fundamentally unsupported platform or tool that conflicts with all available options (e.g., asking for Webflow, Framer, Wix, or Squarespace when the only options are WordPress, Shopify, or Custom React/Node Development), do NOT forcibly map it to "Custom Development". Instead, treat it as an INFO_REQUEST. Your response \`message\` should politely explain that we primarily specialize in the listed technologies, briefly explain how one of our options (like Custom Development or WordPress) might still achieve their design goals, and ask which of our supported options they would like to explore so we can align the project correctly.
             - Do not be pedantic or rigid. Do NOT force them to pick the literal option or repeat themselves.
-            - Map the implied choice to the most advanced/closest matching option's value in "normalizedAnswer" and proceed.
-            - In general, if the user's answer logically provides the requested information in their own words for any question, treat it as VALID and map it to the closest option.
+            - For option-based questions, only map to an option when the user's meaning clearly matches one of the available choices.
+            - If the user gives a direct custom value that still answers the question, treat it as VALID even when it is not one of the listed options. Example: if options are "3 months", "6 months", and "12 months", and the user says "1 month" or "4 months", accept it as VALID.
+            - For those custom off-menu answers, preserve the user's exact value in "normalizedAnswer" instead of rejecting it or forcing the nearest option.
+            - Put the selected option label/value in "normalizedAnswer" only when the match is clear. Otherwise, keep the direct user value that answers the question.
+            - In general, if the user's answer logically provides the requested information in their own words for any question, treat it as VALID.
             - Treat "Current Question Options" as the options currently shown to the user.
             - Treat "Valid Canonical Option Pool" as additional valid matches the user may mention even if not shown.
-            - If you re-list choices to the user, use only "Current Question Options".
+            - If you re-list choices to the user, use only "Current Question Options" and present them as examples/guidance, not as the only acceptable answers unless the question explicitly says that.
             - Otherwise -> VALID.
 
             2. Generate a Response Message:
@@ -4207,7 +4132,6 @@ export const __testables = {
     buildQuestionDisplayAnswer,
     getDisplayedQuestionOptions,
     getRuntimeOptionsByQuestionSlug,
-    mapNumericReplyToOptions,
     normalizeAnswerForQuestion,
     toChronologicalGuestHistory,
 };

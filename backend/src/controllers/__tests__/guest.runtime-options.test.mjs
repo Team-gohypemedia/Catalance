@@ -7,7 +7,6 @@ const {
   buildPersistedAnswersPayload,
   buildQuestionDisplayAnswer,
   getDisplayedQuestionOptions,
-  mapNumericReplyToOptions,
   normalizeAnswerForQuestion,
   toChronologicalGuestHistory,
 } = __testables;
@@ -42,13 +41,6 @@ test("normalizes runtime option labels back to canonical values", () => {
   );
 });
 
-test("maps numeric replies against displayed runtime options", () => {
-  const mapped = mapNumericReplyToOptions(question, "1", runtimeOptionsByQuestionSlug);
-  assert.equal(mapped.matched, true);
-  assert.equal(mapped.normalizedText, "Fast Next.js build");
-  assert.deepEqual(mapped.selectedLabels, ["Fast Next.js build"]);
-});
-
 test("persists canonical bySlug answers and readable byQuestionText answers", () => {
   const payload = buildPersistedAnswersPayload(
     { frontend_framework: "nextjs" },
@@ -76,6 +68,22 @@ test("builds displayed answers from runtime option labels", () => {
     getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug)[0].label,
     "Fast Next.js build"
   );
+});
+
+test("keeps custom off-menu option answers as-is", () => {
+  const durationQuestion = {
+    slug: "duration",
+    text: "How long would you like to continue SEO services?",
+    type: "single_select",
+    options: [
+      { label: "3 months", value: "3_months" },
+      { label: "6 months", value: "6_months" },
+      { label: "12 months", value: "12_months" },
+    ],
+  };
+
+  assert.equal(normalizeAnswerForQuestion(durationQuestion, "4 months", {}), "4 months");
+  assert.equal(buildQuestionDisplayAnswer(durationQuestion, "4 months", {}), "4 months");
 });
 
 test("sorts guest history chronologically before returning it to the client", () => {
