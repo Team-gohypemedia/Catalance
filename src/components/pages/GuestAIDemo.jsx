@@ -1345,15 +1345,16 @@ const GuestAIDemo = () => {
         });
     }, []);
 
-    const persistCurrentSessionSummary = useCallback((history) => {
-        if (!sessionId || !selectedService) return;
+    const persistCurrentSessionSummary = useCallback((history, serviceOverride = null) => {
+        const activeService = serviceOverride || selectedService;
+        if (!sessionId || !activeService) return;
 
         const list = Array.isArray(history) ? history : [];
         const nextSessions = upsertStoredGuestSession({
             sessionId,
-            serviceId: selectedService.slug || selectedService.id || '',
-            serviceName: selectedService.name || 'AI Consultation',
-            serviceDescription: selectedService.description || '',
+            serviceId: activeService.slug || activeService.id || '',
+            serviceName: activeService.name || 'AI Consultation',
+            serviceDescription: activeService.description || '',
             preview: toPreviewText(list),
             messageCount: list.length,
             updatedAt: new Date().toISOString(),
@@ -2101,14 +2102,32 @@ const GuestAIDemo = () => {
                 })
             });
             const data = unwrapPayload(response);
+            const responseServiceId = data?.serviceMeta?.serviceId || '';
+            const responseServiceName = data?.serviceMeta?.serviceName || '';
+            let activeService = selectedService;
+
+            if (responseServiceId || responseServiceName) {
+                const matchedService = services.find((service) => {
+                    const slug = service?.slug || service?.id || '';
+                    return slug === responseServiceId;
+                });
+                activeService = matchedService || {
+                    ...(selectedService || {}),
+                    slug: responseServiceId || selectedService?.slug || selectedService?.id || '',
+                    id: responseServiceId || selectedService?.id || selectedService?.slug || '',
+                    name: responseServiceName || selectedService?.name || 'AI Consultation',
+                    description: matchedService?.description || selectedService?.description || '',
+                };
+                setSelectedService(activeService);
+            }
 
             if (data?.history) {
                 setMessages(data.history);
-                persistCurrentSessionSummary(data.history);
+                persistCurrentSessionSummary(data.history, activeService);
             } else if (typeof data?.message === 'string' && data.message.trim()) {
                 const aiMsg = { role: 'assistant', content: data.message };
                 setMessages(prev => [...prev, aiMsg]);
-                persistCurrentSessionSummary([...messages, userMsg, aiMsg]);
+                persistCurrentSessionSummary([...messages, userMsg, aiMsg], activeService);
             } else {
                 console.warn('[GuestAIDemo] Unexpected chat payload:', response);
             }
