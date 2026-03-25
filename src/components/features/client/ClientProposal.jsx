@@ -2429,6 +2429,7 @@ const ClientProposalContent = () => {
           nextService || activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
         summary: nextContent,
         content: nextContent,
+        proposalContent: nextContent,
         projectOverview: nextProjectOverview,
         objectives: nextObjectives,
         deliverables: nextDeliverables,
@@ -2548,7 +2549,10 @@ const ClientProposalContent = () => {
               body: JSON.stringify({
                 title: nextTitle,
                 description: nextContent,
+                proposalContent: nextContent,
                 ...(nextBudget ? { budget: nextBudgetValue } : {}),
+                serviceKey:
+                  activeProposal.serviceKey || resolveProposalServiceLabel(activeProposal),
               }),
             });
             const payload = await response.json().catch(() => null);
@@ -2645,8 +2649,15 @@ const ClientProposalContent = () => {
             body: JSON.stringify({
               title: resolveProposalTitle(proposal),
               description: proposal.summary || proposal.content || "",
+              proposalContent:
+                proposal.proposalContent
+                || proposal.content
+                || proposal.summary
+                || "",
               budget: normalizedBudget,
               timeline: proposal.timeline || "1 month",
+              serviceKey:
+                proposal.serviceKey || resolveProposalServiceLabel(proposal),
               status: "OPEN",
             }),
           });
@@ -2671,8 +2682,15 @@ const ClientProposalContent = () => {
             body: JSON.stringify({
               title: resolveProposalTitle(proposal),
               description: proposal.summary || proposal.content || "",
+              proposalContent:
+                proposal.proposalContent
+                || proposal.content
+                || proposal.summary
+                || "",
               budget: normalizedBudget,
               timeline: proposal.timeline || "1 month",
+              serviceKey:
+                proposal.serviceKey || resolveProposalServiceLabel(proposal),
               status: "OPEN",
             }),
           });

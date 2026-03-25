@@ -191,6 +191,7 @@ model Project {
   description              String        @db.Text
   budget                   Int?
   proposalContent          String?       @db.Text
+  proposalJson             Json?
   serviceKey               String?
   clientName               String?
   businessName             String?

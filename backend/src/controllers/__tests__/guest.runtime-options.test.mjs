@@ -4,9 +4,14 @@ import assert from "node:assert/strict";
 const { __testables } = await import("../guest.controller.js");
 
 const {
+  applyExtractedAnswerUpdates,
+  buildLockedServiceReply,
   buildPersistedAnswersPayload,
   buildQuestionDisplayAnswer,
   getDisplayedQuestionOptions,
+  getQuestionIdentityType,
+  getSemanticDependentIndexesForChanges,
+  getServiceScopedMessages,
   normalizeAnswerForQuestion,
   toChronologicalGuestHistory,
 } = __testables;
@@ -82,8 +87,46 @@ test("keeps custom off-menu option answers as-is", () => {
     ],
   };
 
+  assert.equal(normalizeAnswerForQuestion(durationQuestion, "2 months", {}), "2 months");
+  assert.equal(buildQuestionDisplayAnswer(durationQuestion, "2 months", {}), "2 months");
   assert.equal(normalizeAnswerForQuestion(durationQuestion, "4 months", {}), "4 months");
   assert.equal(buildQuestionDisplayAnswer(durationQuestion, "4 months", {}), "4 months");
+});
+
+test("locks the chat to the originally selected service when another service is mentioned", () => {
+  assert.equal(
+    buildLockedServiceReply({
+      currentServiceName: "SEO (Search Engine Optimisation)",
+      targetServiceName: "Web Development",
+    }),
+    "Web Development is a different service from the current SEO (Search Engine Optimisation) service. This chat will stay on SEO (Search Engine Optimisation)."
+  );
+});
+
+test("scopes proposal history to the active service boundary", () => {
+  const messages = [
+    {
+      role: "assistant",
+      content: "Old SEO proposal",
+      createdAt: new Date("2026-03-25T09:00:00.000Z"),
+    },
+    {
+      role: "user",
+      content: "Create website proposal",
+      createdAt: new Date("2026-03-25T09:05:00.000Z"),
+    },
+    {
+      role: "assistant",
+      content: "What are your website requirements?",
+      createdAt: new Date("2026-03-25T09:10:00.000Z"),
+    },
+  ];
+
+  const scoped = getServiceScopedMessages(messages, "2026-03-25T09:06:00.000Z");
+  assert.deepEqual(
+    scoped.map((message) => message.content),
+    ["What are your website requirements?"]
+  );
 });
 
 test("sorts guest history chronologically before returning it to the client", () => {
@@ -110,4 +153,67 @@ test("sorts guest history chronologically before returning it to the client", ()
     { role: "user", content: "My answer" },
     { role: "assistant", content: "Latest reply" },
   ]);
+});
+
+test("classifies personal-name and business-name questions separately", () => {
+  assert.equal(
+    getQuestionIdentityType({ slug: "client_name", text: "What is your name?" }),
+    "person_name",
+  );
+  assert.equal(
+    getQuestionIdentityType({ slug: "company_name", text: "What is your company or brand name?" }),
+    "business_name",
+  );
+});
+
+test("does not backfill a personal-name field from a business-name answer", () => {
+  const questions = [
+    { slug: "client_name", text: "What is your name?" },
+    { slug: "company_name", text: "What is your company or brand name?" },
+  ];
+
+  const result = applyExtractedAnswerUpdates({
+    baseAnswersBySlug: { company_name: "Sohan" },
+    existingAnswersBySlug: {},
+    extractedAnswers: [{ slug: "client_name", answer: "Sohan", confidence: 0.99 }],
+    questionIndexBySlug: new Map(questions.map((question, index) => [question.slug, index])),
+    questionsBySlug: new Map(questions.map((question) => [question.slug, question])),
+    questionSlugSet: new Set(questions.map((question) => question.slug)),
+    runtimeOptionsByQuestionSlug: {},
+    currentStep: 1,
+    currentQuestion: questions[1],
+    ignoreSlug: "company_name",
+    correctionIntent: false,
+    logPrefix: "[Test Auto Capture]",
+  });
+
+  assert.deepEqual(result.answersBySlug, { company_name: "Sohan" });
+  assert.deepEqual(result.updatedSlugs, []);
+});
+
+test("reopens the business-name step when a corrected personal name matches it", () => {
+  const questions = [
+    { slug: "client_name", text: "What is your name?" },
+    { slug: "company_name", text: "What is your company or brand name?" },
+    { slug: "about_business", text: "Briefly describe your business and what you offer?" },
+  ];
+
+  const result = getSemanticDependentIndexesForChanges(
+    questions,
+    [
+      {
+        index: 0,
+        slug: "client_name",
+        previousValue: "Ravindra",
+        nextValue: "Rohan",
+      },
+    ],
+    {
+      client_name: "Rohan",
+      company_name: "Rohan",
+      about_business: "We create CGI videos.",
+    },
+  );
+
+  assert.deepEqual(result, [1]);
 });

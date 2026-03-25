@@ -11,6 +11,7 @@ import {
   isTaskPhaseLockedByPayment,
 } from "../../../src/shared/lib/project-verification-gates.js";
 import {
+  buildProjectProposalJson,
   PROJECT_PROPOSAL_FIELD_KEYS,
   PROJECT_PROPOSAL_LIST_FIELDS,
   PROJECT_PROPOSAL_TEXT_FIELDS,
@@ -230,6 +231,13 @@ const buildProjectProposalData = (input = {}, { fallback = null, preserveFallbac
     proposalData.serviceKey = normalizeProjectProposalText(extractedFields.serviceKey);
   } else if (preserveFallback && fallback && hasOwnField(fallback, "serviceKey")) {
     proposalData.serviceKey = normalizeProjectProposalText(fallback.serviceKey);
+  }
+
+  const proposalJson = buildProjectProposalJson(mergedPayload);
+  if (proposalJson) {
+    proposalData.proposalJson = proposalJson;
+  } else if (preserveFallback && fallback && hasOwnField(fallback, "proposalJson")) {
+    proposalData.proposalJson = fallback.proposalJson;
   }
 
   return proposalData;

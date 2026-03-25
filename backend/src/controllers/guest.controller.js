@@ -10,7 +10,7 @@ const GREETING_SMALLTALK_REGEX =
     /\b(hi|hello|hey|yo|hola|namaste|salam|how are you|what'?s up|kya\s*hal|kaise\s*ho)\b/i;
 const NAME_INTRO_REGEX = /\b(my name is|i am|i'm|this is)\b/i;
 const CORRECTION_INTENT_REGEX =
-    /\b(change|changed|update|updated|correct|correction|revise|replace|instead|not\s+.*\s+but)\b/i;
+    /\b(change|changed|update|updated|correct|correction|revise|replace|instead|not\s+.*\s+but|it'?s?\s+my\s+(brand|company|business)\s+name|this\s+is\s+my\s+(brand|company|business)\s+name|that'?s?\s+my\s+(brand|company|business)\s+name|not\s+my\s+name)\b/i;
 const CONTEXT_SUGGESTION_REGEX =
     /\b(suggest|suggestion|recommend|recommended|best|which is better|according to|as per|based on|shared earlier|from earlier|my startup|my case|possible|is it possible|can we build|can this be built|feasible|not sure|confused|difference|explain)\b/i;
 const AGENT_IDENTITY_REGEX =
@@ -683,6 +683,9 @@ const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(t
 const isContextSuggestionRequest = (text = "") => CONTEXT_SUGGESTION_REGEX.test(String(text || ""));
 
 const RUNTIME_OPTIONS_STATE_KEY = "runtimeOptionsByQuestionSlug";
+const ACTIVE_SERVICE_STARTED_AT_KEY = "activeServiceStartedAt";
+const PROPOSAL_GENERATED_AT_KEY = "proposalGeneratedAt";
+const PENDING_PROPOSAL_STATE_KEY = "pendingProposalState";
 const OPTION_QUESTION_TYPES = new Set([
     "single option",
     "multi option",
@@ -690,6 +693,71 @@ const OPTION_QUESTION_TYPES = new Set([
     "grouped multi select",
     "single select"
 ]);
+
+const getAnswersUiState = (answers = {}) =>
+    answers?.uiState && typeof answers.uiState === "object" && !Array.isArray(answers.uiState)
+        ? answers.uiState
+        : {};
+
+const mergeAnswersUiState = (answers = {}, updates = {}) => {
+    const nextAnswers =
+        answers && typeof answers === "object" && !Array.isArray(answers)
+            ? { ...answers }
+            : {};
+    const nextUiState = { ...getAnswersUiState(nextAnswers) };
+
+    for (const [key, value] of Object.entries(updates || {})) {
+        if (value === undefined || value === null || value === "") {
+            delete nextUiState[key];
+        } else {
+            nextUiState[key] = value;
+        }
+    }
+
+    if (Object.keys(nextUiState).length > 0) {
+        nextAnswers.uiState = nextUiState;
+    } else {
+        delete nextAnswers.uiState;
+    }
+
+    return nextAnswers;
+};
+
+const getActiveServiceStartedAt = (answers = {}) => {
+    const rawValue = getAnswersUiState(answers)?.[ACTIVE_SERVICE_STARTED_AT_KEY];
+    const parsed = new Date(rawValue || "").getTime();
+    return Number.isFinite(parsed) ? new Date(parsed).toISOString() : "";
+};
+
+const hasGeneratedProposal = (answers = {}) =>
+    Boolean(getAnswersUiState(answers)?.[PROPOSAL_GENERATED_AT_KEY]);
+
+const getPendingProposalState = (answers = {}) => {
+    const pendingState = getAnswersUiState(answers)?.[PENDING_PROPOSAL_STATE_KEY];
+    return pendingState && typeof pendingState === "object" && !Array.isArray(pendingState)
+        ? pendingState
+        : null;
+};
+
+const getServiceScopedMessages = (messages = [], activeServiceStartedAt = "") => {
+    if (!Array.isArray(messages) || messages.length === 0) return [];
+
+    const boundary = new Date(activeServiceStartedAt || "").getTime();
+    if (!Number.isFinite(boundary)) return messages;
+
+    const filtered = messages.filter((message) => {
+        const createdAtTime = new Date(message?.createdAt || 0).getTime();
+        return Number.isFinite(createdAtTime) && createdAtTime >= boundary;
+    });
+
+    return filtered.length > 0 ? filtered : messages;
+};
+
+const buildLockedServiceReply = ({ currentServiceName = "", targetServiceName = "" }) => {
+    const currentLabel = String(currentServiceName || "this service").trim() || "this service";
+    const targetLabel = String(targetServiceName || "That").trim() || "That";
+    return `${targetLabel} is a different service from the current ${currentLabel} service. This chat will stay on ${currentLabel}.`;
+};
 
 const normalizeOptionComparableText = (value = "") =>
     String(value || "")
@@ -848,6 +916,27 @@ const getComparableOptionAliases = (option = {}) =>
             .filter(Boolean)
     );
 
+const comparablePhraseContainsWholeWords = (source = "", target = "") => {
+    const sourceWords = normalizeOptionComparableText(source).split(/\s+/).filter(Boolean);
+    const targetWords = normalizeOptionComparableText(target).split(/\s+/).filter(Boolean);
+
+    if (sourceWords.length === 0 || targetWords.length === 0) return false;
+    if (targetWords.length > sourceWords.length) return false;
+
+    for (let start = 0; start <= sourceWords.length - targetWords.length; start += 1) {
+        let matched = true;
+        for (let offset = 0; offset < targetWords.length; offset += 1) {
+            if (sourceWords[start + offset] !== targetWords[offset]) {
+                matched = false;
+                break;
+            }
+        }
+        if (matched) return true;
+    }
+
+    return false;
+};
+
 const findMatchingOptionsFromText = (answerValue = "", options = []) => {
     const answerTokens = extractComparableAnswerTokens(answerValue);
     if (answerTokens.length === 0) return [];
@@ -863,7 +952,10 @@ const findMatchingOptionsFromText = (answerValue = "", options = []) => {
             return aliases.some((alias) => {
                 if (token === alias) return true;
                 if (isPureNumber) return false;
-                return token.includes(alias) || alias.includes(token);
+                return (
+                    comparablePhraseContainsWholeWords(token, alias) ||
+                    comparablePhraseContainsWholeWords(alias, token)
+                );
             });
         });
 
@@ -1494,6 +1586,34 @@ const doesExtractedAnswerFitQuestion = (question = {}, answerValue = "", runtime
     }
 
     return findMatchingOptionsFromText(answerValue, optionLabels).length > 0;
+};
+
+const getQuestionIdentityType = (question = {}) => {
+    const content = [
+        question?.slug || "",
+        question?.id || "",
+        question?.text || "",
+        question?.subtitle || "",
+    ]
+        .join(" ")
+        .toLowerCase();
+
+    if (
+        /\b(company|brand|business|project)\s+name\b/.test(content)
+        || /\b(company_name|brand_name|business_name|project_name)\b/.test(content)
+    ) {
+        return "business_name";
+    }
+
+    if (
+        /\b(client|contact|full|first|your|person(?:al)?)\s+name\b/.test(content)
+        || /\b(may i know your name|what(?:'s| is) your name|your name)\b/.test(content)
+        || /\b(client_name|full_name|first_name|contact_name|q_client_full_name)\b/.test(content)
+    ) {
+        return "person_name";
+    }
+
+    return "other";
 };
 
 const matchesLogicRule = (answerValue, rule = {}) => {
@@ -2567,6 +2687,40 @@ const getDependentIndexesForChanges = (questions = [], changes = []) => {
     return Array.from(dependentIndexes).sort((a, b) => a - b);
 };
 
+const getSemanticDependentIndexesForChanges = (
+    questions = [],
+    changes = [],
+    answersBySlug = {},
+) => {
+    const dependentIndexes = new Set();
+
+    for (const change of changes) {
+        const changedQuestion = questions[change?.index];
+        if (!changedQuestion) continue;
+
+        const changedIdentity = getQuestionIdentityType(changedQuestion);
+        if (changedIdentity !== "person_name") continue;
+
+        const nextComparableAnswer = toComparableAnswer(change?.nextValue);
+        if (!nextComparableAnswer) continue;
+
+        for (let index = change.index + 1; index < questions.length; index += 1) {
+            const question = questions[index];
+            if (!question?.slug) continue;
+            if (getQuestionIdentityType(question) !== "business_name") continue;
+
+            const candidateAnswer = answersBySlug[question.slug];
+            if (!hasAnswerValue(candidateAnswer)) continue;
+
+            if (toComparableAnswer(candidateAnswer) === nextComparableAnswer) {
+                dependentIndexes.add(index);
+            }
+        }
+    }
+
+    return Array.from(dependentIndexes).sort((a, b) => a - b);
+};
+
 const clearAnswersByIndexes = (answersBySlug = {}, questions = [], indexes = []) => {
     const nextAnswers = { ...(answersBySlug || {}) };
     for (const index of indexes) {
@@ -2596,12 +2750,14 @@ const applyExtractedAnswerUpdates = ({
     questionSlugSet = new Set(),
     runtimeOptionsByQuestionSlug = {},
     currentStep = -1,
+    currentQuestion = null,
     ignoreSlug = "",
     correctionIntent = false,
     logPrefix = "[Auto Capture]"
 }) => {
     const nextAnswers = { ...(baseAnswersBySlug || {}) };
     const updatedSlugs = [];
+    const currentQuestionIdentity = getQuestionIdentityType(currentQuestion);
 
     for (const extracted of extractedAnswers || []) {
         const slug = extracted?.slug;
@@ -2612,6 +2768,19 @@ const applyExtractedAnswerUpdates = ({
         const targetIndex = questionIndexBySlug.get(slug);
         const targetQuestion = questionsBySlug.get(slug);
         if (targetQuestion && !doesExtractedAnswerFitQuestion(targetQuestion, extracted.answer, runtimeOptionsByQuestionSlug)) {
+            continue;
+        }
+
+        const targetQuestionIdentity = getQuestionIdentityType(targetQuestion);
+        if (
+            !correctionIntent
+            && Number.isInteger(currentStep)
+            && currentStep >= 0
+            && Number.isInteger(targetIndex)
+            && targetIndex < currentStep
+            && currentQuestionIdentity === "business_name"
+            && targetQuestionIdentity === "person_name"
+        ) {
             continue;
         }
 
@@ -2813,6 +2982,7 @@ Rules:
 - If a question is not clearly answered, skip it.
 - Do not force a match when multiple options seem plausible.
 - Keep free-text answers short and close to what the user said.
+- Never map a company/brand/business name to a personal/client/contact name question, and never map a personal name to a company/brand/business name question, unless the user explicitly labels both in the same message.
 - You may mark later questions as answered if this single message clearly answers them.
 - Use higher confidence only when the answer is clear enough that the question can be safely skipped.
 - If the message clearly answers the immediate next question, confidence should usually be 0.90 or higher.
@@ -2904,6 +3074,307 @@ Return strict JSON only:
     }
 };
 
+const determineConfirmationIntent = async ({ assistantPrompt = "", userMessage = "" }) => {
+    const intentObj = await chatWithAI(
+        [{ role: "system", content: "You extract intent from user confirmation responses." },
+         { role: "user", content: `The assistant asked: "${assistantPrompt}"\nThe user replied: "${userMessage}"\nDoes the user confirm the request (YES), reject it (NO), or say something unrelated (UNKNOWN)? Return ONLY JSON: {"intent": "yes" | "no" | "unknown"}` }],
+        [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
+        "system_validator"
+    );
+
+    if (intentObj.success) {
+        const parsed = parseJsonObjectFromRaw(intentObj.message);
+        const intent = String(parsed?.intent || "").toLowerCase().trim();
+        if (intent === "yes" || intent === "no" || intent === "unknown") {
+            return intent;
+        }
+    }
+
+    const normalized = String(userMessage || "").toLowerCase();
+    if (/\b(yes|yeah|yep|sure|okay|ok|go ahead|continue|start)\b/.test(normalized)) return "yes";
+    if (/\b(no|nope|stop|cancel|not now|don't|do not)\b/.test(normalized)) return "no";
+    return "unknown";
+};
+
+const analyzePostProposalFollowup = async ({
+    currentService = {},
+    userMessage = "",
+    activeServices = [],
+}) => {
+    const cleanUserMessage = String(userMessage || "").trim();
+    if (!cleanUserMessage) {
+        return {
+            action: "reply_only",
+            targetServiceSlug: "",
+            targetServiceName: "",
+            reply: "I already shared the current proposal. If you want another proposal for this service, tell me and I will confirm before generating it."
+        };
+    }
+
+    const availableServices = (Array.isArray(activeServices) ? activeServices : [])
+        .map((service) => ({
+            slug: String(service?.slug || "").trim(),
+            name: String(service?.name || "").trim(),
+        }))
+        .filter((service) => service.slug && service.name);
+
+    const prompt = `
+You are classifying a follow-up message that arrived AFTER a proposal was already generated.
+
+Current Service:
+${JSON.stringify({ slug: currentService?.slug || "", name: currentService?.name || "" })}
+
+Available Services:
+${JSON.stringify(availableServices)}
+
+User Message:
+"${cleanUserMessage}"
+
+Rules:
+- If the user wants another proposal/update/regeneration for the CURRENT service, set action to "regenerate_current".
+- If the user wants a proposal for a DIFFERENT service from the available list, set action to "different_service" and return the exact targetServiceSlug/targetServiceName from the list.
+- If the message is only a general follow-up or clarification and is NOT asking to create/start another proposal, set action to "reply_only".
+- If the user mentions a different service, the reply should clearly say it is a different service from the current one and that this chat will stay on the current selected service.
+- Never say the proposal is already being generated.
+- Keep reply short, clear, and conversational.
+
+Return strict JSON only:
+{
+  "action": "reply_only" | "regenerate_current" | "different_service",
+  "targetServiceSlug": string,
+  "targetServiceName": string,
+  "reply": string
+}
+`;
+
+    try {
+        const aiResponse = await chatWithAI(
+            [{ role: "user", content: prompt }],
+            [{ role: "system", content: "You are a JSON-only classifier. Output strict JSON only." }],
+            "system_validator"
+        );
+
+        if (!aiResponse?.success) {
+            throw new Error("AI follow-up classification failed");
+        }
+
+        const parsed = parseJsonObjectFromRaw(aiResponse.message);
+        const action = String(parsed?.action || "").trim().toLowerCase();
+        const targetServiceSlug = String(parsed?.targetServiceSlug || "").trim();
+        const targetServiceName = String(parsed?.targetServiceName || "").trim();
+        const reply = String(parsed?.reply || "").trim();
+        const validAction = ["reply_only", "regenerate_current", "different_service"].includes(action)
+            ? action
+            : "reply_only";
+
+        const matchedService = availableServices.find((service) => service.slug === targetServiceSlug)
+            || availableServices.find((service) => normalizeTextToken(service.name) === normalizeTextToken(targetServiceName));
+
+        if (validAction === "different_service" && matchedService) {
+            return {
+                action: "different_service",
+                targetServiceSlug: matchedService.slug,
+                targetServiceName: matchedService.name,
+                reply: buildLockedServiceReply({
+                    currentServiceName: currentService?.name || "current service",
+                    targetServiceName: matchedService.name,
+                })
+            };
+        }
+
+        if (validAction === "regenerate_current") {
+            return {
+                action: "regenerate_current",
+                targetServiceSlug: String(currentService?.slug || "").trim(),
+                targetServiceName: String(currentService?.name || "").trim(),
+                reply: reply || `I can prepare a fresh ${currentService?.name || "service"} proposal based on your latest message.`
+            };
+        }
+
+        return {
+            action: "reply_only",
+            targetServiceSlug: "",
+            targetServiceName: "",
+            reply: reply || "I already shared the current proposal. If you want another proposal for this service, tell me and I will confirm before generating it."
+        };
+    } catch {
+        return {
+            action: "reply_only",
+            targetServiceSlug: "",
+            targetServiceName: "",
+            reply: "I already shared the current proposal. If you want another proposal for this service, tell me and I will confirm before generating it."
+        };
+    }
+};
+
+const buildServiceStartState = async ({
+    service,
+    existingPayload = {},
+}) => {
+    const firstQuestionDefinition = service?.questions?.[0];
+    const runtimeOptionsByQuestionSlug = {};
+
+    if (firstQuestionDefinition?.slug) {
+        const runtimeOptions = await generateRuntimeOptionsForQuestion({
+            serviceName: service.name,
+            question: firstQuestionDefinition,
+            answersByQuestionText: {},
+            answersBySlug: {},
+            allQuestions: service.questions
+        });
+        if (runtimeOptions.length > 0) {
+            runtimeOptionsByQuestionSlug[firstQuestionDefinition.slug] = runtimeOptions;
+        }
+    }
+
+    const firstQuestionConfig = {
+        type: firstQuestionDefinition?.type || "text",
+        options: getDisplayedQuestionOptions(firstQuestionDefinition, runtimeOptionsByQuestionSlug)
+    };
+    const aiFirstQuestion = firstQuestionDefinition
+        ? await buildAiGuidedQuestionMessage({
+            serviceName: service.name,
+            userLastMessage: "",
+            currentQuestion: {},
+            nextQuestion: firstQuestionDefinition,
+            answersByQuestionText: {},
+            answersBySlug: {},
+            allQuestions: service.questions,
+            runtimeOptionsByQuestionSlug,
+            sideReply: "",
+            bridgeSegments: [],
+            isInitial: true
+        })
+        : "";
+    const isNameFirstQuestion = NAME_QUESTION_REGEX.test(String(firstQuestionDefinition?.text || ""));
+    const firstQuestion = isNameFirstQuestion
+        ? buildServiceAwareOpeningMessage(service.name)
+        : (aiFirstQuestion || firstQuestionDefinition?.text || "How can I help you regarding this service?");
+
+    const answersPayload = buildPersistedAnswersPayload(
+        {},
+        service.questions,
+        {
+            runtimeOptionsByQuestionSlug,
+            existingPayload
+        }
+    );
+
+    return {
+        answersPayload,
+        firstQuestion,
+        firstQuestionConfig,
+        runtimeOptionsByQuestionSlug
+    };
+};
+
+const generateProposalResponseForSession = async ({
+    sessionId,
+    session,
+    service,
+    questions,
+    runtimeOptionsByQuestionSlug = {},
+    persistedAnswers,
+    userMessageForReasoning = "",
+    userMessageText = "",
+}) => {
+    // Reload messages fresh from DB so we have the full conversation history.
+    const freshSession = await prisma.aiGuestSession.findUnique({
+        where: { id: sessionId },
+        include: { messages: { orderBy: { createdAt: "asc" } } }
+    });
+
+    const scopedMessages = getServiceScopedMessages(
+        freshSession?.messages || session.messages,
+        getActiveServiceStartedAt(session?.answers || {})
+    );
+    const proposalHistory = [
+        ...scopedMessages.map((message) => ({ role: message.role, content: message.content })),
+        ...((userMessageForReasoning || userMessageText)
+            ? [{ role: "user", content: userMessageForReasoning || userMessageText }]
+            : [])
+    ];
+    const questionsBySlug = new Map(
+        (questions || [])
+            .filter((question) => question?.slug)
+            .map((question) => [question.slug, question])
+    );
+    const allQuestionSlugs = new Set((questions || []).map((question) => question.slug).filter(Boolean));
+    const extractedFromConversation = await extractAnswersFromConversation({
+        serviceName: service.name,
+        history: proposalHistory,
+        questions
+    });
+    const proposalAnswersBySlug = mergeExtractedAnswers({
+        baseAnswers: persistedAnswers.bySlug,
+        extractedAnswers: extractedFromConversation,
+        validSlugs: allQuestionSlugs,
+        questionsBySlug,
+        runtimeOptionsByQuestionSlug
+    });
+    const proposalAnswersPayload = buildPersistedAnswersPayload(proposalAnswersBySlug, questions, {
+        runtimeOptionsByQuestionSlug,
+        existingPayload: session.answers || {}
+    });
+
+    if (extractedFromConversation.length > 0) {
+        console.log(
+            `[Proposal Enrichment] merged ${extractedFromConversation.length} transcript-derived answer(s).`
+        );
+    }
+
+    const proposalContext = {
+        serviceName: service.name,
+        serviceId: service.slug,
+        questionnaireAnswers: proposalAnswersPayload.byQuestionText,
+        questionnaireAnswersBySlug: proposalAnswersPayload.bySlug,
+        serviceQuestionAnswers: buildQuestionAnswerCoverage(
+            questions,
+            proposalAnswersPayload.bySlug,
+            runtimeOptionsByQuestionSlug
+        ),
+        capturedFields: Object.entries(proposalAnswersPayload.byQuestionText || {})
+            .filter(([, value]) => hasAnswerValue(value))
+            .map(([question, answer]) => ({
+                question,
+                answer: String(answer)
+            }))
+    };
+    const appHints = buildAppProposalHints({
+        history: proposalHistory,
+        answersByQuestionText: proposalAnswersPayload.byQuestionText
+    });
+    if (appHints) {
+        proposalContext.appHints = appHints;
+    }
+
+    const responseContent = await generateProposalMarkdown(
+        proposalContext,
+        proposalHistory,
+        service.name,
+        service.aiPrompt || ""
+    );
+
+    const nextAnswers = mergeAnswersUiState(
+        proposalAnswersPayload,
+        {
+            [PROPOSAL_GENERATED_AT_KEY]: new Date().toISOString(),
+            [PENDING_PROPOSAL_STATE_KEY]: null
+        }
+    );
+
+    if (
+        JSON.stringify(nextAnswers) !== JSON.stringify(session.answers || {})
+    ) {
+        await prisma.aiGuestSession.update({
+            where: { id: sessionId },
+            data: { answers: nextAnswers }
+        });
+    }
+
+    return responseContent;
+};
+
 // @desc    Start a new guest session with guided questions
 // @route   POST /api/guest/start
 // @access  Public
@@ -2934,55 +3405,26 @@ export const startGuestSession = asyncHandler(async (req, res) => {
         throw new AppError("Service not found or inactive", 404);
     }
 
-    const firstQuestionDefinition = service.questions[0];
-    const fallbackFirstQuestion = firstQuestionDefinition?.text || "How can I help you regarding this service?";
-    const initialRuntimeOptionsByQuestionSlug = {};
-    if (firstQuestionDefinition?.slug) {
-        const runtimeOptions = await generateRuntimeOptionsForQuestion({
-            serviceName: service.name,
-            question: firstQuestionDefinition,
-            answersByQuestionText: {},
-            answersBySlug: {},
-            allQuestions: service.questions
-        });
-        if (runtimeOptions.length > 0) {
-            initialRuntimeOptionsByQuestionSlug[firstQuestionDefinition.slug] = runtimeOptions;
+    const startedAt = new Date().toISOString();
+    const {
+        answersPayload,
+        firstQuestion,
+        firstQuestionConfig,
+    } = await buildServiceStartState({
+        service,
+        existingPayload: {
+            uiState: {
+                [ACTIVE_SERVICE_STARTED_AT_KEY]: startedAt
+            }
         }
-    }
-    const firstQuestionConfig = {
-        type: firstQuestionDefinition?.type || "text",
-        options: getDisplayedQuestionOptions(firstQuestionDefinition, initialRuntimeOptionsByQuestionSlug)
-    };
-    const aiFirstQuestion = firstQuestionDefinition
-        ? await buildAiGuidedQuestionMessage({
-            serviceName: service.name,
-            userLastMessage: "",
-            currentQuestion: {},
-            nextQuestion: firstQuestionDefinition,
-            answersByQuestionText: {},
-            answersBySlug: {},
-            allQuestions: service.questions,
-            runtimeOptionsByQuestionSlug: initialRuntimeOptionsByQuestionSlug,
-            sideReply: "",
-            bridgeSegments: [],
-            isInitial: true
-        })
-        : "";
-    const isNameFirstQuestion = NAME_QUESTION_REGEX.test(String(firstQuestionDefinition?.text || ""));
-    const firstQuestion = isNameFirstQuestion
-        ? buildServiceAwareOpeningMessage(service.name)
-        : (aiFirstQuestion || fallbackFirstQuestion);
+    });
 
     // 2. Create Session
     const session = await prisma.aiGuestSession.create({
         data: {
             serviceId: service.slug, // Store slug for consistency
             currentStep: 0,
-            answers: buildPersistedAnswersPayload(
-                {},
-                service.questions,
-                { runtimeOptionsByQuestionSlug: initialRuntimeOptionsByQuestionSlug }
-            ),
+            answers: answersPayload,
         },
     });
 
@@ -3065,22 +3507,10 @@ export const guestChat = asyncHandler(async (req, res) => {
     // --- CONFIRMATION INTERCEPT ---
     if (session.answers && session.answers.pendingCorrectionState) {
         // We are waiting for a Yes/No answer regarding the proposed update
-        const intentObj = await chatWithAI(
-            [{ role: "system", content: "You extract intent from user confirmation responses." },
-             { role: "user", content: `The assistant asked: "Are you sure you want to update your answer?"\nThe user replied: "${trimmedMessageText}"\nDoes the user confirm the update (YES), reject the update (NO), or did they say something completely unrelated (UNKNOWN)? Return ONLY JSON: {"intent": "yes" | "no" | "unknown"}` }],
-            [{ role: "system", content: "You are a JSON-only API. Output strictly valid JSON." }],
-            "system_validator"
-        );
-        let intent = "unknown";
-        if (intentObj.success) {
-            try {
-                const parsed = JSON.parse(intentObj.message);
-                intent = parsed.intent?.toLowerCase() || "unknown";
-            } catch (e) {
-                intent = trimmedMessageText.toLowerCase().includes("yes") || trimmedMessageText.toLowerCase().includes("yeah") || trimmedMessageText.toLowerCase().includes("sure") ? "yes" 
-                         : (trimmedMessageText.toLowerCase().includes("no") || trimmedMessageText.toLowerCase().includes("nope") ? "no" : "unknown");
-            }
-        }
+        const intent = await determineConfirmationIntent({
+            assistantPrompt: "Are you sure you want to update your answer?",
+            userMessage: trimmedMessageText
+        });
 
         const persistedUserMessageContent = uploadedAttachments.length > 0 && !trimmedMessageText
             ? "[Uploaded Attachments]"
@@ -3124,7 +3554,16 @@ export const guestChat = asyncHandler(async (req, res) => {
         const correctionChanges = state.changes;
         
         let correctedRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
-        const dependentIndexes = getDependentIndexesForChanges(questions, correctionChanges);
+        const dependentIndexes = Array.from(
+            new Set([
+                ...getDependentIndexesForChanges(questions, correctionChanges),
+                ...getSemanticDependentIndexesForChanges(
+                    questions,
+                    correctionChanges,
+                    correctedAnswersBySlug,
+                ),
+            ]),
+        ).sort((a, b) => a - b);
         if (dependentIndexes.length > 0) {
             correctedAnswersBySlug = clearAnswersByIndexes(correctedAnswersBySlug, questions, dependentIndexes);
             correctedRuntimeOptionsByQuestionSlug = clearRuntimeOptionsByIndexes(correctedRuntimeOptionsByQuestionSlug, questions, dependentIndexes);
@@ -3172,6 +3611,165 @@ export const guestChat = asyncHandler(async (req, res) => {
         });
     }
     // --- END CONFIRMATION INTERCEPT ---
+
+    const pendingProposalState = getPendingProposalState(session.answers || {});
+    if (pendingProposalState) {
+        if (pendingProposalState.action !== "regenerate_current") {
+            const nextAnswers = mergeAnswersUiState(session.answers || {}, {
+                [PENDING_PROPOSAL_STATE_KEY]: null
+            });
+            await prisma.aiGuestMessage.create({
+                data: { sessionId, role: "user", content: persistedUserMessageContent }
+            });
+            await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
+
+            const lockedServiceMsg = `${buildLockedServiceReply({
+                currentServiceName: service.name,
+                targetServiceName: pendingProposalState.targetServiceName || "That",
+            })} If you want another ${service.name} proposal, tell me and I will confirm before generating it.`;
+            await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: lockedServiceMsg } });
+            const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: "asc" } } } });
+            return res.json({
+                success: true,
+                message: lockedServiceMsg,
+                inputConfig: { type: "text", options: [] },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+                serviceMeta: { serviceId: service.slug, serviceName: service.name }
+            });
+        }
+
+        const targetServiceName = pendingProposalState.targetServiceName || service.name;
+        const confirmationPrompt = `Do you want me to generate a new ${targetServiceName} proposal now?`;
+        const intent = await determineConfirmationIntent({
+            assistantPrompt: confirmationPrompt,
+            userMessage: trimmedMessageText
+        });
+
+        await prisma.aiGuestMessage.create({
+            data: { sessionId, role: "user", content: persistedUserMessageContent }
+        });
+
+        if (intent === "unknown") {
+            const unknownMsg = `${confirmationPrompt} (Yes / No)`;
+            await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: unknownMsg } });
+            const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: "asc" } } } });
+            return res.json({
+                success: true,
+                message: unknownMsg,
+                inputConfig: { type: "text", options: ["Yes", "No"] },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+                serviceMeta: { serviceId: service.slug, serviceName: service.name }
+            });
+        }
+
+        if (intent === "no") {
+            const nextAnswers = mergeAnswersUiState(session.answers || {}, {
+                [PENDING_PROPOSAL_STATE_KEY]: null
+            });
+            await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
+
+            const cancelMsg = "Alright, I will not generate a new proposal automatically. If you want another one for this service later, tell me and I will confirm first.";
+            await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: cancelMsg } });
+            const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: "asc" } } } });
+            return res.json({
+                success: true,
+                message: cancelMsg,
+                inputConfig: { type: "text", options: [] },
+                history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+                serviceMeta: { serviceId: service.slug, serviceName: service.name }
+            });
+        }
+
+        const nextAnswers = mergeAnswersUiState(session.answers || {}, {
+            [PENDING_PROPOSAL_STATE_KEY]: null
+        });
+        await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
+
+        const regeneratedProposal = await generateProposalResponseForSession({
+            sessionId,
+            session: {
+                ...session,
+                answers: nextAnswers
+            },
+            service,
+            questions,
+            runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+            persistedAnswers: buildPersistedAnswersPayload(
+                getAnswersBySlug(nextAnswers, questions),
+                questions,
+                {
+                    runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                    existingPayload: nextAnswers
+                }
+            ),
+            userMessageForReasoning: "",
+            userMessageText: ""
+        });
+
+        console.log(`[Assistant]: ${regeneratedProposal}`);
+        await prisma.aiGuestMessage.create({
+            data: { sessionId, role: "assistant", content: regeneratedProposal }
+        });
+        const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: "asc" } } } });
+        return res.json({
+            success: true,
+            message: regeneratedProposal,
+            inputConfig: { type: "text", options: [] },
+            history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            serviceMeta: { serviceId: service.slug, serviceName: service.name }
+        });
+    }
+
+    if (currentStep >= questions.length && hasGeneratedProposal(session.answers || {})) {
+        await prisma.aiGuestMessage.create({
+            data: { sessionId, role: "user", content: persistedUserMessageContent }
+        });
+
+        const activeServices = await prisma.service.findMany({
+            where: { active: true },
+            select: {
+                slug: true,
+                name: true
+            }
+        });
+        const followupPlan = await analyzePostProposalFollowup({
+            currentService: service,
+            userMessage: trimmedMessageText,
+            activeServices
+        });
+
+        let responseMessage = followupPlan.reply || `I already shared the current ${service.name} proposal. If you want another proposal for this service, tell me and I will confirm before generating it.`;
+        let nextInputConfig = { type: "text", options: [] };
+        let nextAnswers = session.answers || {};
+
+        if (followupPlan.action === "regenerate_current") {
+            nextAnswers = mergeAnswersUiState(nextAnswers, {
+                [PENDING_PROPOSAL_STATE_KEY]: {
+                    action: "regenerate_current",
+                    targetServiceSlug: service.slug,
+                    targetServiceName: service.name,
+                    sourceMessage: trimmedMessageText
+                }
+            });
+            await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
+            responseMessage = `${responseMessage}\n\nDo you want me to generate a new ${service.name} proposal now?`;
+            nextInputConfig = { type: "text", options: ["Yes", "No"] };
+        }
+
+        console.log(`[Assistant]: ${responseMessage}`);
+        await prisma.aiGuestMessage.create({
+            data: { sessionId, role: "assistant", content: responseMessage }
+        });
+        const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: "asc" } } } });
+        return res.json({
+            success: true,
+            message: responseMessage,
+            inputConfig: nextInputConfig,
+            history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+            serviceMeta: { serviceId: service.slug, serviceName: service.name }
+        });
+    }
+
     let userMessageText = trimmedMessageText;
 
     const rememberedAttachments = uploadedAttachments.length > 0
@@ -3458,6 +4056,7 @@ ${validationResponseRules}
                 questionSlugSet,
                 runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 currentStep,
+                currentQuestion,
                 ignoreSlug: currentQuestion?.slug,
                 correctionIntent: true,
                 logPrefix: "[Correction Capture]"
@@ -3673,6 +4272,7 @@ ${validationResponseRules}
             questionSlugSet,
             runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
             currentStep,
+            currentQuestion,
             ignoreSlug: currentQuestion?.slug,
             correctionIntent,
             logPrefix: "[Auto Capture]"
@@ -3908,81 +4508,16 @@ ${validationResponseRules}
     } else {
         // CASE B: All questions answered -> Generate Proposal
         try {
-            // Reload messages fresh from DB so we have the full conversation history,
-            // not the stale snapshot that was loaded at the start of the request.
-            const freshSession = await prisma.aiGuestSession.findUnique({
-                where: { id: sessionId },
-                include: { messages: { orderBy: { createdAt: 'asc' } } }
-            });
-            const proposalHistory = [
-                ...(freshSession?.messages || session.messages).map((m) => ({ role: m.role, content: m.content })),
-                { role: "user", content: userMessageForReasoning || userMessageText }
-            ];
-            const allQuestionSlugs = new Set(questions.map((q) => q.slug).filter(Boolean));
-            const extractedFromConversation = await extractAnswersFromConversation({
-                serviceName: service.name,
-                history: proposalHistory,
-                questions
-            });
-            const proposalAnswersBySlug = mergeExtractedAnswers({
-                baseAnswers: persistedAnswers.bySlug,
-                extractedAnswers: extractedFromConversation,
-                validSlugs: allQuestionSlugs,
-                questionsBySlug,
-                runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug
-            });
-            const proposalAnswersPayload = buildPersistedAnswersPayload(proposalAnswersBySlug, questions, {
+            responseContent = await generateProposalResponseForSession({
+                sessionId,
+                session,
+                service,
+                questions,
                 runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
-                existingPayload: session.answers || {}
+                persistedAnswers,
+                userMessageForReasoning,
+                userMessageText
             });
-
-            if (extractedFromConversation.length > 0) {
-                console.log(
-                    `[Proposal Enrichment] merged ${extractedFromConversation.length} transcript-derived answer(s).`
-                );
-            }
-
-            if (
-                JSON.stringify(proposalAnswersPayload.bySlug) !==
-                JSON.stringify(persistedAnswers.bySlug)
-            ) {
-                await prisma.aiGuestSession.update({
-                    where: { id: sessionId },
-                    data: { answers: proposalAnswersPayload }
-                });
-            }
-
-            const proposalContext = {
-                serviceName: service.name,
-                serviceId: service.slug,
-                questionnaireAnswers: proposalAnswersPayload.byQuestionText,
-                questionnaireAnswersBySlug: proposalAnswersPayload.bySlug,
-                serviceQuestionAnswers: buildQuestionAnswerCoverage(
-                    questions,
-                    proposalAnswersPayload.bySlug,
-                    nextRuntimeOptionsByQuestionSlug
-                ),
-                capturedFields: Object.entries(proposalAnswersPayload.byQuestionText || {})
-                    .filter(([, value]) => hasAnswerValue(value))
-                    .map(([question, answer]) => ({
-                        question,
-                        answer: String(answer)
-                    }))
-            };
-            const appHints = buildAppProposalHints({
-                history: proposalHistory,
-                answersByQuestionText: proposalAnswersPayload.byQuestionText
-            });
-            if (appHints) {
-                proposalContext.appHints = appHints;
-            }
-
-            responseContent = await generateProposalMarkdown(
-                proposalContext,
-                proposalHistory,
-                service.name,
-                service.aiPrompt || ""
-            );
         } catch (error) {
             console.error("[Proposal] Generation failed:", error?.message || error);
             responseContent = "I have saved your requirements, but I cannot generate the proposal right now. Please sign up and connect with an expert.";
@@ -4128,9 +4663,14 @@ Do not use markdown formatting, code fences, or bold text.`;
 });
 
 export const __testables = {
+    applyExtractedAnswerUpdates,
+    buildLockedServiceReply,
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
     getDisplayedQuestionOptions,
+    getSemanticDependentIndexesForChanges,
+    getQuestionIdentityType,
+    getServiceScopedMessages,
     getRuntimeOptionsByQuestionSlug,
     normalizeAnswerForQuestion,
     toChronologicalGuestHistory,

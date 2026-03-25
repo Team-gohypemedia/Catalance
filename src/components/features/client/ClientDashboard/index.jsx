@@ -868,8 +868,11 @@ const mapProjectToSavedProposal = (project = {}) =>
     projectId: project.id,
     syncedProjectId: project.id,
     projectTitle: project.title || "Proposal",
-    summary: project.description || "",
-    content: project.description || "",
+    serviceKey: project.serviceKey || project.serviceType || "",
+    summary: project.proposalContent || project.description || "",
+    content: project.proposalContent || project.description || "",
+    proposalContent: project.proposalContent || project.description || "",
+    proposalJson: project.proposalJson || null,
     budget: project.budget || "",
     timeline: project.timeline || "",
     createdAt: project.createdAt || new Date().toISOString(),
@@ -1524,10 +1527,16 @@ const ClientDashboardContent = () => {
                   title: resolveProposalTitle(proposal),
                   description:
                     proposal.summary || proposal.content || "Proposal draft",
+                  proposalContent:
+                    proposal.proposalContent
+                    || proposal.content
+                    || proposal.summary
+                    || "Proposal draft",
                   budget:
                     parseInt(
                       String(proposal.budget || "0").replace(/[^0-9]/g, ""),
                     ) || 0,
+                  serviceKey: resolveProposalServiceValue(proposal) || undefined,
                   status: "DRAFT",
                 }),
                 suppressToast: true,
@@ -1913,6 +1922,7 @@ const ClientDashboardContent = () => {
             title: nextTitle,
             summary: nextDescription,
             content: nextDescription,
+            proposalContent: nextDescription,
             budget: nextBudget || proposal.budget || "",
             timeline: nextTimeline || proposal.timeline || "",
             updatedAt,
@@ -1945,7 +1955,9 @@ const ClientDashboardContent = () => {
           body: JSON.stringify({
             title: nextTitle,
             description: nextDescription,
+            proposalContent: nextDescription,
             budget: nextBudgetValue,
+            serviceKey: resolveProposalServiceValue(savedProposal) || undefined,
           }),
         });
 
@@ -2038,8 +2050,14 @@ const ClientDashboardContent = () => {
             body: JSON.stringify({
               title: resolveProposalTitle(savedProposal),
               description: savedProposal.summary || savedProposal.content || "",
+              proposalContent:
+                savedProposal.proposalContent
+                || savedProposal.content
+                || savedProposal.summary
+                || "",
               budget: normalizedBudget,
               timeline: savedProposal.timeline || "1 month",
+              serviceKey: resolveProposalServiceValue(savedProposal) || undefined,
               status: "OPEN",
             }),
           });
@@ -2068,8 +2086,14 @@ const ClientDashboardContent = () => {
           body: JSON.stringify({
             title: resolveProposalTitle(savedProposal),
             description: savedProposal.summary || savedProposal.content || "",
+            proposalContent:
+              savedProposal.proposalContent
+              || savedProposal.content
+              || savedProposal.summary
+              || "",
             budget: normalizedBudget,
             timeline: savedProposal.timeline || "1 month",
+            serviceKey: resolveProposalServiceValue(savedProposal) || undefined,
             status: "OPEN",
           }),
         });

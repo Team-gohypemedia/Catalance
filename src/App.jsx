@@ -520,9 +520,9 @@ const App = () => {
             <Route
               path="/service"
               element={
-                <LayoutWithNavbar>
+                <LayoutNavbarOnly>
                   <GuestAIDemo />
-                </LayoutWithNavbar>
+                </LayoutNavbarOnly>
               }
             />
             <Route
@@ -720,6 +720,17 @@ const LayoutWithNavbar = ({ children }) => (
 );
 
 LayoutWithNavbar.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+const LayoutNavbarOnly = ({ children }) => (
+  <>
+    <Navbar />
+    {children}
+  </>
+);
+
+LayoutNavbarOnly.propTypes = {
   children: PropTypes.node.isRequired,
 };
 

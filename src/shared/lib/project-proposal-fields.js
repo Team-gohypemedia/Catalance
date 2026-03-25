@@ -166,6 +166,9 @@ export const PROJECT_PROPOSAL_FIELD_KEYS = [
   "serviceKey",
 ];
 
+const hasOwnField = (value, key) =>
+  Object.prototype.hasOwnProperty.call(value ?? {}, key);
+
 export const extractProjectProposalFields = (payload = {}) => {
   const rawProposalSource =
     payload?.proposalContent
@@ -232,4 +235,71 @@ export const extractProjectProposalFields = (payload = {}) => {
   }
 
   return result;
+};
+
+export const buildProjectProposalJson = (payload = {}) => {
+  const extractedFields = extractProjectProposalFields(payload);
+  const rawProposalSource =
+    payload?.proposalContent
+    || payload?.content
+    || payload?.summary
+    || payload?.description
+    || "";
+  const proposalContent =
+    extractedFields?.proposalContent || stripProposalCodeFences(rawProposalSource);
+  const sectionMap = extractProposalSectionMap(
+    proposalContent || payload?.description || "",
+  );
+  const sections = Array.from(sectionMap.values())
+    .map((section) => {
+      const label = cleanProposalText(section?.label || "");
+      const value = cleanProposalText(section?.value || "");
+      const items = uniqueItems(Array.isArray(section?.items) ? section.items : []);
+
+      if (!label || (!value && items.length === 0)) {
+        return null;
+      }
+
+      return {
+        key: normalizeFieldLabel(label),
+        label,
+        value,
+        items,
+      };
+    })
+    .filter(Boolean);
+
+  const fields = PROPOSAL_FIELD_DEFINITIONS.reduce((acc, definition) => {
+    if (hasOwnField(extractedFields, definition.key)) {
+      acc[definition.key] = extractedFields[definition.key];
+    }
+    return acc;
+  }, {});
+
+  const serviceKey = cleanProposalText(payload?.serviceKey || extractedFields?.serviceKey || "");
+  const title = cleanProposalText(payload?.title || "");
+  const status = cleanProposalText(payload?.status || "");
+  const budget =
+    payload?.budget === undefined || payload?.budget === null
+      ? ""
+      : String(payload.budget).trim();
+
+  if (
+    !proposalContent
+    && Object.keys(fields).length === 0
+    && sections.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    version: 1,
+    title: title || null,
+    serviceKey: serviceKey || null,
+    status: status || null,
+    budget: budget || null,
+    proposalContent: proposalContent || "",
+    fields,
+    sections,
+  };
 };

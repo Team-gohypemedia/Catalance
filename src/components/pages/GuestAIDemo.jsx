@@ -1346,15 +1346,16 @@ const GuestAIDemo = () => {
         });
     }, []);
 
-    const persistCurrentSessionSummary = useCallback((history) => {
-        if (!sessionId || !selectedService) return;
+    const persistCurrentSessionSummary = useCallback((history, serviceOverride = null) => {
+        const activeService = serviceOverride || selectedService;
+        if (!sessionId || !activeService) return;
 
         const list = Array.isArray(history) ? history : [];
         const nextSessions = upsertStoredGuestSession({
             sessionId,
-            serviceId: selectedService.slug || selectedService.id || '',
-            serviceName: selectedService.name || 'AI Consultation',
-            serviceDescription: selectedService.description || '',
+            serviceId: activeService.slug || activeService.id || '',
+            serviceName: activeService.name || 'AI Consultation',
+            serviceDescription: activeService.description || '',
             preview: toPreviewText(list),
             messageCount: list.length,
             updatedAt: new Date().toISOString(),
@@ -1449,11 +1450,11 @@ const GuestAIDemo = () => {
             historyContext: recentUserContext,
         })
         : { notice: '', placeholder: 'Message CATA AI...' };
-    const contextualPendingOptionNotice = pendingOptionFollowup?.loadingAdvice 
-        ? "Asking AI for advice..." 
+    const contextualPendingOptionNotice = pendingOptionFollowup?.loadingAdvice
+        ? "Asking AI for advice..."
         : (pendingOptionFollowup?.notice || contextualPendingOptionHelperCopy.notice || pendingOptionNotice);
-    const contextualPendingOptionPlaceholder = pendingOptionFollowup?.loadingAdvice 
-        ? "Please wait..." 
+    const contextualPendingOptionPlaceholder = pendingOptionFollowup?.loadingAdvice
+        ? "Please wait..."
         : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder);
 
     const optionIsSelected = (value = '') =>
@@ -2102,14 +2103,32 @@ const GuestAIDemo = () => {
                 })
             });
             const data = unwrapPayload(response);
+            const responseServiceId = data?.serviceMeta?.serviceId || '';
+            const responseServiceName = data?.serviceMeta?.serviceName || '';
+            let activeService = selectedService;
+
+            if (responseServiceId || responseServiceName) {
+                const matchedService = services.find((service) => {
+                    const slug = service?.slug || service?.id || '';
+                    return slug === responseServiceId;
+                });
+                activeService = matchedService || {
+                    ...(selectedService || {}),
+                    slug: responseServiceId || selectedService?.slug || selectedService?.id || '',
+                    id: responseServiceId || selectedService?.id || selectedService?.slug || '',
+                    name: responseServiceName || selectedService?.name || 'AI Consultation',
+                    description: matchedService?.description || selectedService?.description || '',
+                };
+                setSelectedService(activeService);
+            }
 
             if (data?.history) {
                 setMessages(data.history);
-                persistCurrentSessionSummary(data.history);
+                persistCurrentSessionSummary(data.history, activeService);
             } else if (typeof data?.message === 'string' && data.message.trim()) {
                 const aiMsg = { role: 'assistant', content: data.message };
                 setMessages(prev => [...prev, aiMsg]);
-                persistCurrentSessionSummary([...messages, userMsg, aiMsg]);
+                persistCurrentSessionSummary([...messages, userMsg, aiMsg], activeService);
             } else {
                 console.warn('[GuestAIDemo] Unexpected chat payload:', response);
             }
@@ -2280,6 +2299,59 @@ const GuestAIDemo = () => {
                                 ))
                             )}
                         </div>
+
+                        {/* WHY CATALANCE AI */}
+                        <div className="relative z-10 mt-24">
+                            <div className="text-center mb-12">
+                                <p className="text-xs font-bold uppercase tracking-[0.35em] text-[#ffc800] mb-3">Our Edge</p>
+                                <h2 className="text-4xl font-bold text-white">Why Catalance AI?</h2>
+                                <p className="text-zinc-400 mt-3 text-base max-w-xl mx-auto">We&apos;ve reimagined how businesses discover and hire freelance talent.</p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {[
+                                    { icon: '⚡', title: 'Instant Qualification', desc: 'AI filters your requirements in real-time — no back-and-forth emails, no wasted calls.', gradient: 'from-amber-500/10 to-orange-500/5', border: 'border-amber-500/20' },
+                                    { icon: '🔒', title: 'Verified Professionals', desc: 'Every freelancer is vetted with portfolio review, skill assessments, and client references.', gradient: 'from-blue-500/10 to-indigo-500/5', border: 'border-blue-500/20' },
+                                    { icon: '💰', title: 'Transparent Pricing', desc: 'No hidden fees. Budgets are defined upfront in your AI-generated proposal.', gradient: 'from-green-500/10 to-emerald-500/5', border: 'border-green-500/20' },
+                                    { icon: '📈', title: 'Scope-Driven Matching', desc: 'Your project scope drives freelancer matching — we connect you with specialists.', gradient: 'from-purple-500/10 to-violet-500/5', border: 'border-purple-500/20' },
+                                    { icon: '🕐', title: 'Save Hours of Discovery', desc: 'CATA AI compresses the entire discovery and briefing phase into minutes.', gradient: 'from-rose-500/10 to-pink-500/5', border: 'border-rose-500/20' },
+                                    { icon: '🌐', title: 'Multi-Service Support', desc: 'From SEO to app dev, branding to CRM — one platform, one AI, unlimited combinations.', gradient: 'from-cyan-500/10 to-teal-500/5', border: 'border-cyan-500/20' },
+                                ].map((card, i) => (
+                                    <div key={i} className={`relative overflow-hidden rounded-2xl border ${card.border} bg-gradient-to-br ${card.gradient} p-6 hover:scale-[1.02] transition-transform duration-300 group`}>
+                                        <div className="text-3xl mb-4">{card.icon}</div>
+                                        <h3 className="text-white font-bold text-base mb-2">{card.title}</h3>
+                                        <p className="text-zinc-400 text-sm leading-relaxed">{card.desc}</p>
+                                        <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-20 bg-white group-hover:opacity-30 transition-opacity duration-500" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* STATS BAR */}
+                        <div className="relative z-10 mt-24">
+                            <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-md px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                                {[
+                                    { value: '500+', label: 'Verified Freelancers' },
+                                    { value: '1,200+', label: 'Projects Delivered' },
+                                    { value: '4.9★', label: 'Average Client Rating' },
+                                    { value: '15+', label: 'Service Categories' },
+                                ].map((stat, i) => (
+                                    <div key={i} className="flex flex-col items-center gap-1">
+                                        <span className="text-4xl font-extrabold text-[#ffc800] tracking-tight">{stat.value}</span>
+                                        <span className="text-zinc-400 text-sm font-medium">{stat.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* CTA */}
+                        <div className="relative z-10 mt-14 mb-8 text-center space-y-4">
+                            <h3 className="text-2xl font-bold text-white">Ready to get started?</h3>
+                            <p className="text-zinc-400 text-sm max-w-md mx-auto">Pick a service above, chat with CATA AI, and receive a professional proposal — completely free.</p>
+                            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-[#ffc800] text-black font-bold text-sm hover:bg-[#ffd740] transition-colors shadow-[0_8px_30px_-8px_rgba(255,200,0,0.6)]">
+                                Choose a Service
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                            </button>
+                        </div>
                     </div>
                 </main>
                 <Footer />
@@ -2316,19 +2388,21 @@ const GuestAIDemo = () => {
                     </Button>
                 </div>
 
-                <div className={`mb-3 rounded-2xl border p-3.5 ${isDark ? 'border-white/12 bg-white/[0.04]' : 'border-slate-300/70 bg-white/95'}`}>
-                    <div className="flex items-start gap-3">
-                        <div className={`flex items-center justify-center overflow-hidden rounded-xl ${isDark ? 'bg-amber-300/15' : 'bg-amber-300/20'} ${isSidebarCompact ? 'h-10 w-10' : 'h-11 w-11'}`}>
-                            <img src={cataLogo} alt="CATA AI logo" className={`${isSidebarCompact ? 'h-5 w-5' : 'h-6 w-6'} object-contain`} />
+                <div className={`relative mb-3 overflow-hidden rounded-2xl border p-4 ${isDark ? 'border-white/10 bg-gradient-to-br from-amber-300/[0.08] via-white/[0.03] to-transparent' : 'border-amber-200/70 bg-gradient-to-br from-amber-50 to-white'}`}>
+                    {/* Decorative glow */}
+                    <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#ffc800]/15 blur-2xl" />
+                    <div className="relative flex items-start gap-3">
+                        <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border ${isDark ? 'border-amber-300/30 bg-amber-300/15 shadow-[0_0_12px_-3px_rgba(251,191,36,0.4)]' : 'border-amber-300/50 bg-amber-100'} ${isSidebarCompact ? 'h-10 w-10' : 'h-12 w-12'}`}>
+                            <img src={cataLogo} alt="CATA AI logo" className={`${isSidebarCompact ? 'h-5 w-5' : 'h-7 w-7'} object-contain`} />
                         </div>
                         <div className="min-w-0">
-                            <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
+                            <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isDark ? 'text-amber-300/80' : 'text-amber-600'}`}>
                                 AI Assistant
                             </p>
-                            <h2 className={`mt-1 truncate font-bold leading-tight ${isSidebarCompact ? 'text-lg' : 'text-xl'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            <h2 className={`mt-0.5 truncate font-bold leading-tight ${isSidebarCompact ? 'text-base' : 'text-lg'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                 {selectedService.name}
                             </h2>
-                            <p className={`mt-1 text-[11px] leading-5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                            <p className={`mt-1 text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                 {sidebarServiceDescription || 'Guided consultation'}
                             </p>
                         </div>
@@ -2336,18 +2410,18 @@ const GuestAIDemo = () => {
                 </div>
 
                 <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
-                    <div className={`flex min-h-0 flex-[1.05] flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/12 bg-white/[0.035]' : 'border-slate-300/70 bg-white/90'}`}>
+                    <div className={`flex min-h-0 flex-[1.05] flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/90'}`}>
                         <div className="mb-3 flex items-center justify-between gap-2">
-                            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                Generated proposals
+                            <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${isDark ? 'bg-primary/15 text-primary' : 'bg-amber-100 text-amber-700'}`}>
+                                <Sparkles className="h-3 w-3" />
+                                Proposals
                             </div>
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'border border-white/15 bg-white/10 text-slate-300' : 'border border-black/10 bg-black/5 text-slate-600'}`}>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isDark ? 'border border-white/15 bg-white/10 text-slate-300' : 'border border-black/10 bg-black/5 text-slate-600'}`}>
                                 {generatedProposals.length}
                             </span>
                         </div>
                         {generatedProposals.length === 0 ? (
-                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                 No proposals generated yet.
                             </p>
                         ) : (
@@ -2396,9 +2470,9 @@ const GuestAIDemo = () => {
                         )}
                     </div>
 
-                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/12 bg-white/[0.035]' : 'border-slate-300/70 bg-white/90'}`}>
-                        <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-                            <History className="h-3.5 w-3.5" />
+                    <div className={`flex min-h-0 flex-1 flex-col rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/90'}`}>
+                        <div className={`mb-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${isDark ? 'bg-white/[0.06] text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                            <History className="h-3 w-3" />
                             Previous chats
                         </div>
                         {visiblePreviousChats.length === 0 ? (
@@ -2418,36 +2492,36 @@ const GuestAIDemo = () => {
                                         return (
                                             <div
                                                 key={chat.sessionId}
-                                                className={`relative rounded-lg border transition ${isCurrent
+                                                className={`group relative overflow-hidden rounded-xl border transition-all duration-300 ${isCurrent
                                                     ? isDark
-                                                        ? 'border-primary/40 bg-primary/10'
-                                                        : 'border-primary/40 bg-primary/10'
+                                                        ? 'border-[#ffc800]/40 bg-gradient-to-r from-[#ffc800]/10 to-transparent shadow-[inset_2px_0_0_0_#ffc800]'
+                                                        : 'border-amber-400/40 bg-gradient-to-r from-amber-100/50 to-transparent shadow-[inset_2px_0_0_0_#fbbf24]'
                                                     : isDark
-                                                        ? 'border-white/12 bg-white/[0.03] hover:bg-white/[0.06]'
-                                                        : 'border-black/10 bg-white hover:bg-slate-100/80'
+                                                        ? 'border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.05]'
+                                                        : 'border-black/5 bg-white hover:border-black/10 hover:bg-slate-50'
                                                     }`}
                                             >
-                                                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-2 py-1.5">
+                                                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
                                                     <button
                                                         type="button"
                                                         onClick={() => handleLoadPreviousChat(chat)}
                                                         disabled={isLoadingHistory || isCurrent}
-                                                        className={`min-w-0 rounded-md px-2 py-1.5 text-left ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-100/80'}`}
+                                                        className={`min-w-0 rounded-md text-left outline-none ${isCurrent ? 'cursor-default' : ''}`}
                                                     >
-                                                        <p className={`truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                                                        <p className={`truncate ${isSidebarCompact ? 'text-[11px]' : 'text-xs'} font-medium transition-colors ${isCurrent ? (isDark ? 'text-amber-300' : 'text-amber-700') : (isDark ? 'text-slate-300 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900')}`}>
                                                             {compactPreview || 'No preview available'}
                                                         </p>
                                                     </button>
-                                                    <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    <span className={`shrink-0 text-[10px] font-medium transition-colors ${isCurrent ? (isDark ? 'text-amber-300/60' : 'text-amber-700/60') : (isDark ? 'text-slate-500 group-hover:text-slate-400' : 'text-slate-400 group-hover:text-slate-500')}`}>
                                                         {isLoadingHistory ? 'Loading...' : formatPreviousChatTime(chat.updatedAt)}
                                                     </span>
                                                     <button
                                                         type="button"
                                                         onClick={(event) => handleDeletePreviousChat(event, chat)}
                                                         disabled={isLoadingHistory}
-                                                        className={`relative z-30 shrink-0 rounded-md border p-1.5 shadow-sm transition ${isDark
-                                                            ? 'border-red-300/30 bg-red-500/10 text-red-200 hover:border-red-300/55 hover:bg-red-500/20 hover:text-red-100'
-                                                            : 'border-red-300 bg-red-50 text-red-600 hover:border-red-400 hover:bg-red-100 hover:text-red-700'
+                                                        className={`relative z-30 shrink-0 rounded-lg p-1.5 opacity-0 transition-all focus-visible:opacity-100 group-hover:opacity-100 ${isDark
+                                                            ? 'text-slate-500 hover:bg-red-500/20 hover:text-red-400'
+                                                            : 'text-slate-400 hover:bg-red-50 hover:text-red-500'
                                                             }`}
                                                         aria-label="Delete previous chat"
                                                         title="Delete chat"
@@ -2464,94 +2538,60 @@ const GuestAIDemo = () => {
                     </div>
                 </div>
 
-                <div className={`mt-3 shrink-0 rounded-2xl border ${isSidebarCompact ? 'p-2.5' : 'p-3'} ${isDark ? 'border-white/12 bg-white/[0.04]' : 'border-slate-300/70 bg-white/95'}`}>
+                <div className={`mt-3 shrink-0 overflow-hidden rounded-2xl border ${isSidebarCompact ? 'p-3' : 'p-4'} ${isDark ? 'border-none bg-gradient-to-t from-[#ffc800]/10 to-white/[0.02]' : 'border-amber-200/50 bg-gradient-to-t from-amber-50 to-white'}`}>
                     {isAuthLoading ? (
                         <div className="flex items-center gap-2">
-                            <span className={`h-2.5 w-2.5 animate-pulse rounded-full ${isDark ? 'bg-slate-400' : 'bg-slate-500'}`} />
-                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                Checking login status...
+                            <span className={`h-2.5 w-2.5 animate-pulse rounded-full ${isDark ? 'bg-amber-400/50' : 'bg-amber-500/50'}`} />
+                            <p className={`text-xs font-medium ${isDark ? 'text-amber-200/50' : 'text-amber-700/60'}`}>
+                                Checking status...
                             </p>
                         </div>
                     ) : isUserLoggedIn ? (
                         <div>
                             <div className="flex items-center gap-3">
-                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border ${isDark ? 'border-white/20 bg-white/10' : 'border-black/10 bg-slate-100'}`}>
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 ${isDark ? 'border-[#ffc800]/20 bg-black' : 'border-amber-200 bg-white'}`}>
                                     {userAvatar ? (
                                         <img src={userAvatar} alt={userDisplayName} className="h-full w-full object-cover" />
                                     ) : (
-                                        <User className={`h-4 w-4 ${isDark ? 'text-slate-200' : 'text-slate-600'}`} />
+                                        <User className={`h-4 w-4 ${isDark ? 'text-[#ffc800]' : 'text-amber-600'}`} />
                                     )}
                                 </div>
                                 <div className="min-w-0">
-                                    <p className={`truncate ${isSidebarCompact ? 'text-xs' : 'text-sm'} font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                    <p className={`truncate ${isSidebarCompact ? 'text-[11px]' : 'text-xs'} font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
                                         {userDisplayName}
                                     </p>
-                                    <p className={`truncate text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    <p className={`truncate text-[10px] font-medium ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
                                         {userDisplayEmail || 'Authenticated user'}
                                     </p>
                                 </div>
                             </div>
                             <Button
                                 type="button"
-                                variant="outline"
+                                variant="ghost"
                                 onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
-                                className={`mt-3 w-full rounded-xl ${isDark
-                                    ? 'border-white/20 bg-white/[0.03] text-slate-100 hover:bg-white/10'
-                                    : 'border-black/10 bg-white text-slate-700 hover:bg-slate-100'
+                                className={`mt-3 w-full h-8 rounded-lg text-xs font-medium transition-colors ${isDark
+                                    ? 'bg-white/[0.05] text-white hover:bg-white/[0.1]'
+                                    : 'bg-black/5 text-slate-700 hover:bg-black/10'
                                     }`}
                             >
-                                <LogIn className="mr-2 h-4 w-4" />
-                                Login with another account
+                                <LogIn className="mr-2 h-3.5 w-3.5" />
+                                Switch account
                             </Button>
                         </div>
                     ) : (
                         <Button
                             type="button"
                             onClick={() => navigate('/login', { state: { redirectTo: '/ai-demo' } })}
-                            className="w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                            className={`w-full h-10 rounded-xl font-bold shadow-none transition-all ${isDark ? 'bg-[#ffc800] text-black hover:bg-[#ffc800]/90 hover:shadow-[0_0_15px_-3px_rgba(255,200,0,0.4)]' : 'bg-amber-400 text-amber-950 hover:bg-amber-500'}`}
                         >
                             <LogIn className="mr-2 h-4 w-4" />
-                            Login
+                            Login to save progress
                         </Button>
                     )}
                 </div>
             </aside>
 
-            <section className={`relative flex min-w-0 flex-1 flex-col ${isDark ? 'bg-transparent' : 'bg-transparent'}`}>
-                <div className={`border-b px-4 py-4 backdrop-blur-xl md:px-8 ${isDark ? 'border-white/10 bg-black/35' : 'border-slate-300/70 bg-white/75'}`}>
-                    <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="md:hidden">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="rounded-full"
-                                    onClick={handleBackToServices}
-                                >
-                                    <ArrowLeft className="h-4 w-4" />
-                                </Button>
-                            </div>
-                            <div className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border ${isDark ? 'border-amber-300/35 bg-amber-300/15' : 'border-amber-400/35 bg-amber-100'}`}>
-                                <img src={cataLogo} alt="CATA AI logo" className="h-6 w-6 object-contain" />
-                            </div>
-                            <div>
-                                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>CATA AI Workspace</h2>
-                                <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                    {selectedService?.name} consultation
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider ${isDark ? 'border-amber-300/30 bg-amber-300/10 text-amber-100' : 'border-amber-400/35 bg-amber-100 text-amber-800'}`}>
-                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
-                                Active
-                            </span>
-                            <span className={`hidden rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider lg:inline-flex ${isDark ? 'border-white/15 text-slate-300' : 'border-black/10 text-slate-600'}`}>
-                                {messages.length} messages
-                            </span>
-                        </div>
-                    </div>
-                </div>
+            <section className={`relative flex min-w-0 flex-1 flex-col pt-3 ${isDark ? 'bg-transparent' : 'bg-transparent'}`}>
 
                 <ScrollArea ref={scrollRef} className="flex-1 min-h-0 px-4 pt-2 pb-6 md:px-8 md:pt-3 md:pb-8">
                     <div className="mx-auto w-full max-w-6xl space-y-5 pb-8">

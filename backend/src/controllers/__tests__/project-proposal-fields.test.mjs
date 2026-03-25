@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { extractProjectProposalFields } from "../../../../src/shared/lib/project-proposal-fields.js";
+import {
+  buildProjectProposalJson,
+  extractProjectProposalFields,
+} from "../../../../src/shared/lib/project-proposal-fields.js";
 
 test("extractProjectProposalFields maps proposal markdown into structured project columns", () => {
   const proposalContent = `
@@ -88,4 +91,50 @@ test("extractProjectProposalFields falls back to explicit payload fields when ma
     "More consultation requests",
   ]);
   assert.equal(result.serviceKey, "seo-optimization");
+});
+
+test("buildProjectProposalJson captures raw proposal content and parsed sections", () => {
+  const proposalContent = `
+Client Name: Ravindra
+Business Name: cleclo
+Service Type: SEO (Search Engine Optimisation)
+Project Overview: Build search visibility for a new clothing brand.
+Primary Objectives:
+- Improve local keyword rankings
+- Increase organic traffic
+Features/Deliverables Included:
+- Technical SEO audit
+- On-page optimization
+Duration: 2 months
+Budget: INR 10,000 per month
+  `;
+
+  const result = buildProjectProposalJson({
+    title: "SEO / cleclo",
+    proposalContent,
+    serviceKey: "seo-optimization",
+    status: "DRAFT",
+    budget: 10000,
+  });
+
+  assert.equal(result.version, 1);
+  assert.equal(result.title, "SEO / cleclo");
+  assert.equal(result.serviceKey, "seo-optimization");
+  assert.equal(result.status, "DRAFT");
+  assert.equal(result.budget, "10000");
+  assert.match(result.proposalContent, /Client Name: Ravindra/);
+  assert.equal(result.fields.clientName, "Ravindra");
+  assert.equal(result.fields.businessName, "cleclo");
+  assert.equal(result.fields.duration, "2 months");
+  assert.deepEqual(result.fields.primaryObjectives, [
+    "Improve local keyword rankings",
+    "Increase organic traffic",
+  ]);
+  assert.ok(
+    result.sections.some(
+      (section) =>
+        section.label === "Primary Objectives"
+        && section.items.includes("Increase organic traffic"),
+    ),
+  );
 });
