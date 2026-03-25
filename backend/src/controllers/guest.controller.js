@@ -10,7 +10,7 @@ const GREETING_SMALLTALK_REGEX =
     /\b(hi|hello|hey|yo|hola|namaste|salam|how are you|what'?s up|kya\s*hal|kaise\s*ho)\b/i;
 const NAME_INTRO_REGEX = /\b(my name is|i am|i'm|this is)\b/i;
 const CORRECTION_INTENT_REGEX =
-    /\b(change|changed|update|updated|correct|correction|revise|replace|instead|not\s+.*\s+but)\b/i;
+    /\b(change|changed|update|updated|correct|correction|revise|replace|instead|not\s+.*\s+but|it'?s?\s+my\s+(brand|company|business)\s+name|this\s+is\s+my\s+(brand|company|business)\s+name|that'?s?\s+my\s+(brand|company|business)\s+name|not\s+my\s+name)\b/i;
 const CONTEXT_SUGGESTION_REGEX =
     /\b(suggest|suggestion|recommend|recommended|best|which is better|according to|as per|based on|shared earlier|from earlier|my startup|my case|possible|is it possible|can we build|can this be built|feasible|not sure|confused|difference|explain)\b/i;
 const AGENT_IDENTITY_REGEX =
@@ -1588,6 +1588,34 @@ const doesExtractedAnswerFitQuestion = (question = {}, answerValue = "", runtime
     return findMatchingOptionsFromText(answerValue, optionLabels).length > 0;
 };
 
+const getQuestionIdentityType = (question = {}) => {
+    const content = [
+        question?.slug || "",
+        question?.id || "",
+        question?.text || "",
+        question?.subtitle || "",
+    ]
+        .join(" ")
+        .toLowerCase();
+
+    if (
+        /\b(company|brand|business|project)\s+name\b/.test(content)
+        || /\b(company_name|brand_name|business_name|project_name)\b/.test(content)
+    ) {
+        return "business_name";
+    }
+
+    if (
+        /\b(client|contact|full|first|your|person(?:al)?)\s+name\b/.test(content)
+        || /\b(may i know your name|what(?:'s| is) your name|your name)\b/.test(content)
+        || /\b(client_name|full_name|first_name|contact_name|q_client_full_name)\b/.test(content)
+    ) {
+        return "person_name";
+    }
+
+    return "other";
+};
+
 const matchesLogicRule = (answerValue, rule = {}) => {
     const condition = normalizeTextToken(rule.condition || "equals");
     const ruleValue = normalizeTextToken(rule.value || "");
@@ -2659,6 +2687,40 @@ const getDependentIndexesForChanges = (questions = [], changes = []) => {
     return Array.from(dependentIndexes).sort((a, b) => a - b);
 };
 
+const getSemanticDependentIndexesForChanges = (
+    questions = [],
+    changes = [],
+    answersBySlug = {},
+) => {
+    const dependentIndexes = new Set();
+
+    for (const change of changes) {
+        const changedQuestion = questions[change?.index];
+        if (!changedQuestion) continue;
+
+        const changedIdentity = getQuestionIdentityType(changedQuestion);
+        if (changedIdentity !== "person_name") continue;
+
+        const nextComparableAnswer = toComparableAnswer(change?.nextValue);
+        if (!nextComparableAnswer) continue;
+
+        for (let index = change.index + 1; index < questions.length; index += 1) {
+            const question = questions[index];
+            if (!question?.slug) continue;
+            if (getQuestionIdentityType(question) !== "business_name") continue;
+
+            const candidateAnswer = answersBySlug[question.slug];
+            if (!hasAnswerValue(candidateAnswer)) continue;
+
+            if (toComparableAnswer(candidateAnswer) === nextComparableAnswer) {
+                dependentIndexes.add(index);
+            }
+        }
+    }
+
+    return Array.from(dependentIndexes).sort((a, b) => a - b);
+};
+
 const clearAnswersByIndexes = (answersBySlug = {}, questions = [], indexes = []) => {
     const nextAnswers = { ...(answersBySlug || {}) };
     for (const index of indexes) {
@@ -2688,12 +2750,14 @@ const applyExtractedAnswerUpdates = ({
     questionSlugSet = new Set(),
     runtimeOptionsByQuestionSlug = {},
     currentStep = -1,
+    currentQuestion = null,
     ignoreSlug = "",
     correctionIntent = false,
     logPrefix = "[Auto Capture]"
 }) => {
     const nextAnswers = { ...(baseAnswersBySlug || {}) };
     const updatedSlugs = [];
+    const currentQuestionIdentity = getQuestionIdentityType(currentQuestion);
 
     for (const extracted of extractedAnswers || []) {
         const slug = extracted?.slug;
@@ -2704,6 +2768,19 @@ const applyExtractedAnswerUpdates = ({
         const targetIndex = questionIndexBySlug.get(slug);
         const targetQuestion = questionsBySlug.get(slug);
         if (targetQuestion && !doesExtractedAnswerFitQuestion(targetQuestion, extracted.answer, runtimeOptionsByQuestionSlug)) {
+            continue;
+        }
+
+        const targetQuestionIdentity = getQuestionIdentityType(targetQuestion);
+        if (
+            !correctionIntent
+            && Number.isInteger(currentStep)
+            && currentStep >= 0
+            && Number.isInteger(targetIndex)
+            && targetIndex < currentStep
+            && currentQuestionIdentity === "business_name"
+            && targetQuestionIdentity === "person_name"
+        ) {
             continue;
         }
 
@@ -2905,6 +2982,7 @@ Rules:
 - If a question is not clearly answered, skip it.
 - Do not force a match when multiple options seem plausible.
 - Keep free-text answers short and close to what the user said.
+- Never map a company/brand/business name to a personal/client/contact name question, and never map a personal name to a company/brand/business name question, unless the user explicitly labels both in the same message.
 - You may mark later questions as answered if this single message clearly answers them.
 - Use higher confidence only when the answer is clear enough that the question can be safely skipped.
 - If the message clearly answers the immediate next question, confidence should usually be 0.90 or higher.
@@ -3476,7 +3554,16 @@ export const guestChat = asyncHandler(async (req, res) => {
         const correctionChanges = state.changes;
         
         let correctedRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
-        const dependentIndexes = getDependentIndexesForChanges(questions, correctionChanges);
+        const dependentIndexes = Array.from(
+            new Set([
+                ...getDependentIndexesForChanges(questions, correctionChanges),
+                ...getSemanticDependentIndexesForChanges(
+                    questions,
+                    correctionChanges,
+                    correctedAnswersBySlug,
+                ),
+            ]),
+        ).sort((a, b) => a - b);
         if (dependentIndexes.length > 0) {
             correctedAnswersBySlug = clearAnswersByIndexes(correctedAnswersBySlug, questions, dependentIndexes);
             correctedRuntimeOptionsByQuestionSlug = clearRuntimeOptionsByIndexes(correctedRuntimeOptionsByQuestionSlug, questions, dependentIndexes);
@@ -3969,6 +4056,7 @@ ${validationResponseRules}
                 questionSlugSet,
                 runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 currentStep,
+                currentQuestion,
                 ignoreSlug: currentQuestion?.slug,
                 correctionIntent: true,
                 logPrefix: "[Correction Capture]"
@@ -4184,6 +4272,7 @@ ${validationResponseRules}
             questionSlugSet,
             runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
             currentStep,
+            currentQuestion,
             ignoreSlug: currentQuestion?.slug,
             correctionIntent,
             logPrefix: "[Auto Capture]"
@@ -4574,10 +4663,13 @@ Do not use markdown formatting, code fences, or bold text.`;
 });
 
 export const __testables = {
+    applyExtractedAnswerUpdates,
     buildLockedServiceReply,
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
     getDisplayedQuestionOptions,
+    getSemanticDependentIndexesForChanges,
+    getQuestionIdentityType,
     getServiceScopedMessages,
     getRuntimeOptionsByQuestionSlug,
     normalizeAnswerForQuestion,

@@ -4,10 +4,13 @@ import assert from "node:assert/strict";
 const { __testables } = await import("../guest.controller.js");
 
 const {
+  applyExtractedAnswerUpdates,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
   buildQuestionDisplayAnswer,
   getDisplayedQuestionOptions,
+  getQuestionIdentityType,
+  getSemanticDependentIndexesForChanges,
   getServiceScopedMessages,
   normalizeAnswerForQuestion,
   toChronologicalGuestHistory,
@@ -150,4 +153,67 @@ test("sorts guest history chronologically before returning it to the client", ()
     { role: "user", content: "My answer" },
     { role: "assistant", content: "Latest reply" },
   ]);
+});
+
+test("classifies personal-name and business-name questions separately", () => {
+  assert.equal(
+    getQuestionIdentityType({ slug: "client_name", text: "What is your name?" }),
+    "person_name",
+  );
+  assert.equal(
+    getQuestionIdentityType({ slug: "company_name", text: "What is your company or brand name?" }),
+    "business_name",
+  );
+});
+
+test("does not backfill a personal-name field from a business-name answer", () => {
+  const questions = [
+    { slug: "client_name", text: "What is your name?" },
+    { slug: "company_name", text: "What is your company or brand name?" },
+  ];
+
+  const result = applyExtractedAnswerUpdates({
+    baseAnswersBySlug: { company_name: "Sohan" },
+    existingAnswersBySlug: {},
+    extractedAnswers: [{ slug: "client_name", answer: "Sohan", confidence: 0.99 }],
+    questionIndexBySlug: new Map(questions.map((question, index) => [question.slug, index])),
+    questionsBySlug: new Map(questions.map((question) => [question.slug, question])),
+    questionSlugSet: new Set(questions.map((question) => question.slug)),
+    runtimeOptionsByQuestionSlug: {},
+    currentStep: 1,
+    currentQuestion: questions[1],
+    ignoreSlug: "company_name",
+    correctionIntent: false,
+    logPrefix: "[Test Auto Capture]",
+  });
+
+  assert.deepEqual(result.answersBySlug, { company_name: "Sohan" });
+  assert.deepEqual(result.updatedSlugs, []);
+});
+
+test("reopens the business-name step when a corrected personal name matches it", () => {
+  const questions = [
+    { slug: "client_name", text: "What is your name?" },
+    { slug: "company_name", text: "What is your company or brand name?" },
+    { slug: "about_business", text: "Briefly describe your business and what you offer?" },
+  ];
+
+  const result = getSemanticDependentIndexesForChanges(
+    questions,
+    [
+      {
+        index: 0,
+        slug: "client_name",
+        previousValue: "Ravindra",
+        nextValue: "Rohan",
+      },
+    ],
+    {
+      client_name: "Rohan",
+      company_name: "Rohan",
+      about_business: "We create CGI videos.",
+    },
+  );
+
+  assert.deepEqual(result, [1]);
 });
