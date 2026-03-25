@@ -818,8 +818,13 @@ export const buildProjectCardModel = (project) => {
   };
 };
 
-const ProjectCardSkeleton = () => (
-  <div className="rounded-[28px] border border-white/[0.06] bg-accent p-6">
+export const ProjectCardSkeleton = ({ className }) => (
+  <div
+    className={cn(
+      "rounded-[28px] border border-white/[0.06] bg-accent p-6",
+      className,
+    )}
+  >
     <Skeleton className="h-6 w-32 bg-white/8" />
     <Skeleton className="mt-5 h-10 w-56 bg-white/8" />
     <div className="mt-6 flex items-center gap-3">
@@ -897,7 +902,12 @@ const ProjectPhaseStep = ({ item }) => {
   );
 };
 
-export const ProjectProposalCard = ({ project, onPay, isPaying }) => {
+export const ProjectProposalCard = ({
+  project,
+  onPay,
+  isPaying,
+  className,
+}) => {
   const [showPhaseDetails, setShowPhaseDetails] = useState(false);
   const [hasFreelancerAvatarError, setHasFreelancerAvatarError] = useState(false);
   const progressText = `${project.phaseProgressValue}%`;
@@ -920,7 +930,12 @@ export const ProjectProposalCard = ({ project, onPay, isPaying }) => {
   }, [project.freelancerAvatar]);
 
   return (
-    <article className="flex self-start flex-col rounded-[28px] border border-white/[0.06] bg-accent p-6 transition-transform duration-200 hover:-translate-y-1">
+    <article
+      className={cn(
+        "flex self-start flex-col rounded-[28px] border border-white/[0.06] bg-accent p-6 transition-transform duration-200 hover:-translate-y-1",
+        className,
+      )}
+    >
       <div className="flex flex-col">
         <div className="flex items-start justify-between gap-4">
           <span className="rounded-[8px] bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#23d18b]">

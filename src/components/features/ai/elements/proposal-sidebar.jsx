@@ -15,6 +15,7 @@ import {
   getProposalStorageKeys,
   migrateProposalStorageNamespace,
 } from "@/shared/lib/storage-keys";
+import { CLIENT_DASHBOARD_SEND_PROPOSAL_PATH } from "@/shared/lib/proposal-dashboard-intent";
 
 const escapeRegExp = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -489,24 +490,19 @@ export function ProposalSidebar({
     saveProposalToStorage();
 
     if (user) {
-      if (user.role === "CLIENT") {
-        toast.success("Proposal saved! Redirecting to dashboard...");
-        onClose?.();
-        navigate("/client");
-      } else {
-        toast.info("Please create a client account to proceed with this proposal.");
-        onClose?.();
-        navigate("/signup?role=client", {
-          state: { redirectTo: "/client", fromProposal: true },
-        });
-      }
+      toast.success("Proposal saved! Redirecting to dashboard...");
+      onClose?.();
+      navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
       return;
     }
 
     toast.success("Proposal saved! Please create an account to continue.");
     onClose?.();
     navigate("/signup?role=client", {
-      state: { redirectTo: "/client", fromProposal: true },
+      state: {
+        redirectTo: CLIENT_DASHBOARD_SEND_PROPOSAL_PATH,
+        fromProposal: true,
+      },
     });
   };
 

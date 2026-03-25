@@ -10,7 +10,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,12 +29,17 @@ import {
   fetchChatConversations,
 } from "@/shared/lib/api-client";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
+import { hasUnlockedProjectChat } from "@/shared/lib/project-chat-access";
 import { formatINR, INR_PREFIX_PATTERN, normalizeINRText } from "@/shared/lib/currency";
 import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
 import {
   getProposalStorageKeys,
   migrateProposalStorageNamespace,
 } from "@/shared/lib/storage-keys";
+import {
+  CLIENT_DASHBOARD_PROPOSAL_ACTION_PARAM,
+  CLIENT_DASHBOARD_PROPOSAL_ACTION_SEND,
+} from "@/shared/lib/proposal-dashboard-intent";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
@@ -49,6 +54,12 @@ import ClientDashboardDialogs from "@/components/features/client/ClientDashboard
 const MIN_FREELANCER_MATCH_SCORE = 50;
 const PROPOSAL_BLOCKED_STATUSES = new Set(["PENDING", "ACCEPTED"]);
 const CLOSED_PROJECT_STATUSES = new Set(["COMPLETED", "PAUSED"]);
+const ACTIVE_PROJECT_CHAT_STATUSES = new Set([
+  "IN_PROGRESS",
+  "ONGOING",
+  "ACTIVE",
+  "IN_REVIEW",
+]);
 const PROPOSAL_BUDGET_PATTERN = new RegExp(
   String.raw`Budget[:\s\-\n\u2022]*${INR_PREFIX_PATTERN.source}?\s*([\d,]+)\s*(k)?`,
   "i",
@@ -1077,6 +1088,31 @@ const resolveProjectBusinessName = (project = {}) => {
   );
 };
 
+const resolveProjectServiceLabel = (project = {}) => {
+  const acceptedProposal = getProjectAcceptedProposal(project);
+
+  return getFirstNonEmptyText(
+    project?.service,
+    project?.serviceName,
+    project?.serviceKey,
+    project?.category,
+    acceptedProposal?.service,
+    acceptedProposal?.serviceName,
+    acceptedProposal?.serviceKey,
+    acceptedProposal?.category,
+    extractLabeledValue(project?.description || "", [
+      "Service Type",
+      "Service",
+      "Category",
+    ]),
+    extractLabeledValue(acceptedProposal?.coverLetter || "", [
+      "Service Type",
+      "Service",
+      "Category",
+    ]),
+  );
+};
+
 const scheduleIdleTask = (callback, timeout = 400) => {
   if (typeof window === "undefined" || typeof callback !== "function") {
     return () => {};
@@ -1097,6 +1133,7 @@ const ClientDashboardContent = () => {
   const { authFetch } = useAuth();
   const { notifications, unreadCount } = useNotifications();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const storageKeys = useMemo(
     () => getProposalStorageKeys(sessionUser?.id),
     [sessionUser?.id],
@@ -1104,10 +1141,11 @@ const ClientDashboardContent = () => {
   const [projects, setProjects] = useState([]);
   const [freelancers, setFreelancers] = useState([]); // Chat freelancers
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]); // All freelancers for suggestions
-  const [, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [showSuspensionAlert, setShowSuspensionAlert] = useState(false);
   const [savedProposals, setSavedProposals] = useState([]);
   const [activeProposalId, setActiveProposalId] = useState(null);
+  const [hasHydratedSavedProposals, setHasHydratedSavedProposals] = useState(false);
   const [isSendingProposal, setIsSendingProposal] = useState(false);
   const [sendingFreelancerId, setSendingFreelancerId] = useState(null);
   const [isSyncingDrafts, setIsSyncingDrafts] = useState(false);
@@ -1143,6 +1181,10 @@ const ClientDashboardContent = () => {
     data: [],
   });
   const freelancerPoolPromiseRef = useRef(null);
+  const hasAutoOpenedProposalIntentRef = useRef(false);
+  const proposalDashboardAction = searchParams.get(
+    CLIENT_DASHBOARD_PROPOSAL_ACTION_PARAM,
+  );
 
   const savedProposal = useMemo(() => {
     if (!savedProposals.length) return null;
@@ -1400,15 +1442,45 @@ const ClientDashboardContent = () => {
 
   // Load saved proposal from localStorage
   useEffect(() => {
+    setHasHydratedSavedProposals(false);
     const { proposals, activeId } = loadSavedProposalsFromStorage(
       sessionUser?.id,
     );
     startTransition(() => {
       setSavedProposals(proposals);
       setActiveProposalId(activeId);
+      setHasHydratedSavedProposals(true);
     });
     persistSavedProposalsToStorage(proposals, activeId, storageKeys);
   }, [sessionUser?.id, storageKeys]);
+
+  useEffect(() => {
+    if (proposalDashboardAction !== CLIENT_DASHBOARD_PROPOSAL_ACTION_SEND) {
+      hasAutoOpenedProposalIntentRef.current = false;
+      return;
+    }
+
+    if (!sessionUser || !hasHydratedSavedProposals) return;
+    if (hasAutoOpenedProposalIntentRef.current) return;
+
+    hasAutoOpenedProposalIntentRef.current = true;
+
+    if (savedProposal) {
+      openFreelancerSelection();
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete(CLIENT_DASHBOARD_PROPOSAL_ACTION_PARAM);
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [
+    hasHydratedSavedProposals,
+    openFreelancerSelection,
+    proposalDashboardAction,
+    savedProposal,
+    searchParams,
+    sessionUser,
+    setSearchParams,
+  ]);
 
   const persistSavedProposalState = useCallback(
     (nextProposals, preferredActiveId = null) => {
@@ -2290,6 +2362,10 @@ const ClientDashboardContent = () => {
     navigate("/client/project");
   }, [navigate]);
 
+  const handleOpenMessages = useCallback(() => {
+    navigate("/client/messages");
+  }, [navigate]);
+
   const profile = useMemo(
     () => ({
       name: sessionUser?.fullName || sessionUser?.name || "Client",
@@ -2414,59 +2490,87 @@ const ClientDashboardContent = () => {
     }));
   }, [persistSavedProposalState, savedProposals, storageKeys]);
 
-  const interestedFreelancerRows = useMemo(() => {
-    const source = Array.isArray(freelancers) && freelancers.length > 0
-      ? freelancers
-      : suggestedFreelancers;
+  const acceptedFreelancerSection = useMemo(() => {
+    const rows = uniqueProjects
+      .map((project, index) => {
+        const normalizedProjectStatus = String(project?.status || "").toUpperCase();
+        const acceptedProposal = getProjectAcceptedProposal(project);
+        if (
+          !ACTIVE_PROJECT_CHAT_STATUSES.has(normalizedProjectStatus) ||
+          !acceptedProposal ||
+          !hasUnlockedProjectChat(project)
+        ) {
+          return null;
+        }
 
-    return source.slice(0, 3).map((freelancer, index) => {
-      const displayName =
-        freelancer?.fullName || freelancer?.name || `Freelancer ${index + 1}`;
-      const numericRate =
-        Number(
-          freelancer?.dailyRate ||
-            freelancer?.ratePerDay ||
-            freelancer?.hourlyRate ||
-            freelancer?.rate ||
-            0,
-        ) || 0;
-      const rating =
-        Number(freelancer?.rating || freelancer?.averageRating || freelancer?.avgRating || 4.8) ||
-        4.8;
-      const projectsCount =
-        Number(
-          freelancer?.completedProjects ||
-            freelancer?.projectsCompleted ||
-            freelancer?.projectsCount ||
-            0,
-        ) || 0;
+        const assignedFreelancer = acceptedProposal?.freelancer || null;
+        const displayName =
+          assignedFreelancer?.fullName ||
+          assignedFreelancer?.name ||
+          acceptedProposal?.freelancerName ||
+          assignedFreelancer?.email ||
+          `Freelancer ${index + 1}`;
+        const serviceLabel = resolveProjectServiceLabel(project);
+        const projectLabel =
+          toDisplayTitleCase(resolveProjectBusinessName(project)) ||
+          project?.title ||
+          toDisplayTitleCase(serviceLabel) ||
+          "Project collaboration";
+        const activityTime =
+          acceptedProposal?.updatedAt ||
+          acceptedProposal?.createdAt ||
+          project?.updatedAt ||
+          project?.createdAt;
+        const activityTimestamp = new Date(activityTime || 0).getTime();
 
-      return {
-        id: freelancer?.id || freelancer?.chatId || `freelancer-${index}`,
-        name: displayName,
-        initial: displayName.charAt(0).toUpperCase(),
-        avatar: freelancer?.avatar || "",
-        role:
-          freelancer?.professionalTitle ||
-          freelancer?.headline ||
-          freelancer?.projectTitle ||
-          (Array.isArray(freelancer?.skills) && freelancer.skills.length > 0
-            ? freelancer.skills[0]
-            : "Creative specialist"),
-        rating: rating.toFixed(1),
-        projectsLabel: `${projectsCount} ${projectsCount === 1 ? "Project" : "Projects"}`,
-        rateLabel: numericRate > 0 ? formatINR(numericRate) : "Available",
-        rateSuffix: numericRate > 0 ? "/day" : "",
-        onView: () => navigate("/marketplace"),
-        onMessage: () =>
-          navigate(
-            freelancer?.projectId
-              ? `/client/messages?projectId=${encodeURIComponent(freelancer.projectId)}`
-              : "/client/messages",
+        return {
+          id:
+            project?.id ||
+            acceptedProposal?.id ||
+            assignedFreelancer?.id ||
+            `accepted-freelancer-${index}`,
+          sortValue: Number.isNaN(activityTimestamp) ? 0 : activityTimestamp,
+          name: displayName,
+          initial: displayName.charAt(0).toUpperCase(),
+          avatar: getFirstNonEmptyText(
+            assignedFreelancer?.avatar,
+            assignedFreelancer?.avatarUrl,
+            assignedFreelancer?.profilePhoto,
+            acceptedProposal?.freelancerAvatar,
+            acceptedProposal?.avatar,
           ),
-      };
-    });
-  }, [freelancers, navigate, suggestedFreelancers]);
+          role:
+            assignedFreelancer?.professionalTitle ||
+            assignedFreelancer?.jobTitle ||
+            assignedFreelancer?.headline ||
+            toDisplayTitleCase(serviceLabel) ||
+            "Active collaboration",
+          statusLabel: "Active",
+          projectLabel,
+          activityLabel: `Updated ${formatDashboardRelativeTime(activityTime)}`,
+          viewLabel: "Project",
+          onView: () =>
+            navigate(
+              project?.id
+                ? `/client/project/${encodeURIComponent(project.id)}`
+                : "/client/project",
+            ),
+          onMessage: () =>
+            navigate(
+              project?.id
+                ? `/client/messages?projectId=${encodeURIComponent(project.id)}`
+                : "/client/messages",
+            ),
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => right.sortValue - left.sortValue);
+
+    return {
+      rows: rows.slice(0, 3),
+      count: rows.length,
+    };
+  }, [navigate, uniqueProjects]);
 
   const progressProjects = useMemo(() => {
     const clampProgress = (value) => {
@@ -2969,8 +3073,7 @@ const ClientDashboardContent = () => {
   const showcaseItems = useMemo(() => {
     return normalizeClientProjects(uniqueProjects)
       .map((project) => buildProjectCardModel(project))
-      .filter((project) => project.statusMeta.label !== "Completed")
-      .slice(0, 3);
+      .filter((project) => project.statusMeta.label !== "Completed");
   }, [uniqueProjects]);
 
   return (
@@ -2979,15 +3082,13 @@ const ClientDashboardContent = () => {
         profile={profile}
         metrics={dashboardMetricCards}
         showcaseItems={showcaseItems}
+        isProjectsLoading={isLoading}
         recentActivities={recentActivities}
         hero={hero}
         unreadCount={unreadCount}
         draftProposalRows={draftProposalRows}
-        interestedFreelancers={interestedFreelancerRows}
-        interestedFreelancersCount={Math.max(
-          interestedFreelancerRows.length,
-          Array.isArray(freelancers) ? freelancers.length : 0,
-        )}
+        acceptedFreelancers={acceptedFreelancerSection.rows}
+        acceptedFreelancersCount={acceptedFreelancerSection.count}
         progressProjects={progressProjects}
         onSiteNav={handleSiteNav}
         onDashboardNav={handleDashboardNav}
@@ -2996,6 +3097,7 @@ const ClientDashboardContent = () => {
         onOpenQuickProject={handleOpenQuickProject}
         onOpenViewProposals={handleOpenViewProposals}
         onOpenViewProjects={handleOpenViewProjects}
+        onOpenMessages={handleOpenMessages}
         onOpenHireFreelancer={handleOpenHireFreelancer}
         onPayRunningProject={handlePaymentClick}
         runningProjectProcessingId={isProcessingPayment ? projectToPay?.id : null}

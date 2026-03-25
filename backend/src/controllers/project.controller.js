@@ -7,6 +7,7 @@ import { env } from "../config/env.js";
 import { getRazorpayClient, hasRazorpayCredentials } from "../lib/razorpay.js";
 import {
   buildPhaseOrderMap,
+  isCompletedPhaseLockedAfterAdvance,
   isTaskPhaseLockedByPayment,
 } from "../../../src/shared/lib/project-verification-gates.js";
 import {
@@ -847,18 +848,48 @@ export const updateProject = asyncHandler(async (req, res) => {
     }
 
     if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, "verifiedTasks")) {
+      const currentPaymentPlan = resolveProjectPaymentPlan(existing);
       const nextProjectState = {
         ...existing,
         ...sanitizedUpdates,
       };
       const paymentPlan = resolveProjectPaymentPlan(nextProjectState);
+      const currentCompletedTaskIds = normalizeTaskIdArray(
+        existing?.completedTasks
+      );
       const currentVerifiedTaskIds = new Set(
         normalizeTaskIdArray(existing?.verifiedTasks)
       );
+      const currentVerifiedTaskIdList = Array.from(currentVerifiedTaskIds);
       const proposedVerifiedTaskIds = normalizeTaskIdArray(
         sanitizedUpdates.verifiedTasks
       );
+      const currentPhaseOrderMap = buildPhaseOrderMap(
+        currentPaymentPlan?.phases || []
+      );
       const phaseOrderMap = buildPhaseOrderMap(paymentPlan?.phases || []);
+      const lockedRemovedTaskId = currentVerifiedTaskIdList.find((taskId) => {
+        if (proposedVerifiedTaskIds.includes(taskId)) {
+          return false;
+        }
+
+        const taskPhaseId = String(taskId).split("-")[0];
+        return isCompletedPhaseLockedAfterAdvance({
+          phaseId: taskPhaseId,
+          completedPhaseIds: currentPaymentPlan?.completedPhaseIds || [],
+          phaseOrderMap: currentPhaseOrderMap,
+          completedTaskIds: currentCompletedTaskIds,
+          verifiedTaskIds: currentVerifiedTaskIdList,
+        });
+      });
+
+      if (lockedRemovedTaskId) {
+        throw new AppError(
+          "Verified tasks from a completed phase cannot be changed once a later phase has started.",
+          400
+        );
+      }
+
       const blockedTaskId = proposedVerifiedTaskIds.find((taskId) => {
         if (currentVerifiedTaskIds.has(taskId)) {
           return false;
@@ -910,6 +941,7 @@ export const updateProject = asyncHandler(async (req, res) => {
       if (notificationMeta.type === "TASK_COMPLETED" && isAcceptedFreelancer) {
         // Freelancer completed a task -> notify client
         await sendNotificationToUser(existing.ownerId, {
+          audience: "client",
           type: "task_completed",
           title: "Task Completed",
           message: `Freelancer marked "${taskName}" as completed. Please verify.`,
@@ -920,6 +952,7 @@ export const updateProject = asyncHandler(async (req, res) => {
         // Client verified a task -> notify freelancer
         if (acceptedProposal?.freelancerId) {
           await sendNotificationToUser(acceptedProposal.freelancerId, {
+            audience: "freelancer",
             type: "task_verified",
             title: "Task Verified",
             message: `Client verified "${taskName}".`,
@@ -931,6 +964,7 @@ export const updateProject = asyncHandler(async (req, res) => {
         // Client un-verified a task -> notify freelancer
         if (acceptedProposal?.freelancerId) {
           await sendNotificationToUser(acceptedProposal.freelancerId, {
+            audience: "freelancer",
             type: "task_unverified",
             title: "Task Un-verified",
             message: `Client removed verification for "${taskName}". Please review.`,
@@ -1172,6 +1206,7 @@ export const submitProjectFreelancerReview = asyncHandler(async (req, res) => {
 
   try {
     await sendNotificationToUser(acceptedProposal.freelancerId, {
+      audience: "freelancer",
       type: "freelancer_review",
       title: "New Client Review",
       message: `Client reviewed your work for project "${project.title}".`,
@@ -1403,6 +1438,7 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
 
   try {
     await sendNotificationToUser(acceptedProposal.freelancerId, {
+      audience: "freelancer",
       type: "payment",
       title: "Client Payment Completed",
       message: paymentMessage,
@@ -1943,6 +1979,7 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
 
   try {
     await sendNotificationToUser(project.ownerId, {
+      audience: "client",
       type: "freelancer_change_resolved",
       title: "Freelancer updated",
       message: `${freelancer.fullName} has been assigned to "${project.title}".`,
@@ -1957,6 +1994,7 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
 
   try {
     await sendNotificationToUser(freelancer.id, {
+      audience: "freelancer",
       type: "proposal",
       title: "You were assigned to a project",
       message: `You have been assigned to "${project.title}".`,
@@ -1978,6 +2016,7 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
   ) {
     try {
       await sendNotificationToUser(currentAssignment.freelancerId, {
+        audience: "freelancer",
         type: "proposal",
         title: "Project assignment updated",
         message: `You have been removed from "${project.title}".`,
@@ -2010,6 +2049,7 @@ export const reassignFreelancer = asyncHandler(async (req, res) => {
     });
 
     await sendNotificationToUser(pendingApprovalRequest.raisedById, {
+      audience: "client",
       type: "freelancer_change_resolved",
       title: "Admin approved reassignment",
       message: `${freelancer.fullName} has been approved and assigned to "${project.title}".`,

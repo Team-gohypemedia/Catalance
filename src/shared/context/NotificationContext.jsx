@@ -7,9 +7,10 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
   useRef,
+  useState,
 } from "react";
+import { useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -30,20 +31,191 @@ NotificationContext.displayName = "NotificationContext";
 // Maximum notifications to store
 const MAX_NOTIFICATIONS = 50;
 
+const normalizeNotificationAudience = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) return null;
+  if (["client", "owner", "customer"].includes(normalized)) return "client";
+  if (["freelancer", "contractor"].includes(normalized)) return "freelancer";
+
+  return null;
+};
+
+const getAudienceFromPathname = (pathname = "") => {
+  if (pathname.startsWith("/client")) return "client";
+  if (pathname.startsWith("/freelancer")) return "freelancer";
+
+  return null;
+};
+
+const inferChatAudience = (notification, currentUserId) => {
+  const service = String(notification?.data?.service || "");
+  const parts = service.split(":");
+
+  if (parts[0] !== "CHAT") {
+    return null;
+  }
+
+  if (parts.length >= 4) {
+    const clientId = String(parts[2] || "");
+    const freelancerId = String(parts[3] || "");
+    const normalizedUserId = String(currentUserId || "");
+
+    if (
+      normalizedUserId &&
+      clientId &&
+      freelancerId &&
+      clientId !== freelancerId
+    ) {
+      if (normalizedUserId === clientId) return "client";
+      if (normalizedUserId === freelancerId) return "freelancer";
+    }
+  }
+
+  return null;
+};
+
+const inferProposalAudience = (notification) => {
+  const title = String(notification?.title || "")
+    .trim()
+    .toLowerCase();
+  const message = String(notification?.message || "")
+    .trim()
+    .toLowerCase();
+  const status = String(notification?.data?.status || "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    title.includes("new proposal application") ||
+    title.includes("proposal rejected by freelancer") ||
+    title.includes("your proposal is still pending") ||
+    title.includes("proposal expired")
+  ) {
+    return "client";
+  }
+
+  if (
+    message.includes("pay the initial 20%") ||
+    message.includes("has accepted your proposal")
+  ) {
+    return "client";
+  }
+
+  if (
+    title.includes("new proposal received") ||
+    title.includes("proposal update") ||
+    title.includes("proposal rejected") ||
+    title.includes("project assignment updated") ||
+    title.includes("you were assigned")
+  ) {
+    return "freelancer";
+  }
+
+  if (
+    message.includes("your proposal for") ||
+    message.includes("you have been assigned") ||
+    message.includes("another proposal was accepted")
+  ) {
+    return "freelancer";
+  }
+
+  if (status === "REPLACED") {
+    return "freelancer";
+  }
+
+  if (status === "ACCEPTED" && message.includes("congratulations")) {
+    return "freelancer";
+  }
+
+  return null;
+};
+
+const inferNotificationAudience = (notification, currentUserId) => {
+  const explicitAudience =
+    normalizeNotificationAudience(notification?.audience) ||
+    normalizeNotificationAudience(notification?.data?.audience) ||
+    normalizeNotificationAudience(notification?.data?.dashboard) ||
+    normalizeNotificationAudience(notification?.data?.targetDashboard) ||
+    normalizeNotificationAudience(notification?.data?.recipientRole) ||
+    normalizeNotificationAudience(notification?.data?.recipientAudience);
+
+  if (explicitAudience) {
+    return explicitAudience;
+  }
+
+  const type = String(notification?.type || "")
+    .trim()
+    .toLowerCase();
+
+  if (type === "chat") {
+    return inferChatAudience(notification, currentUserId);
+  }
+
+  if (type === "proposal" || type === "proposal_expired") {
+    return inferProposalAudience(notification) || (type === "proposal_expired" ? "client" : null);
+  }
+
+  if (type === "task_completed") {
+    return "client";
+  }
+
+  if (type === "budget_suggestion") {
+    return "client";
+  }
+
+  if (
+    type === "task_verified" ||
+    type === "task_unverified" ||
+    type === "payment" ||
+    type === "freelancer_review"
+  ) {
+    return "freelancer";
+  }
+
+  if (type === "freelancer_change_resolved") {
+    return "client";
+  }
+
+  return null;
+};
+
+const notificationMatchesAudience = (notification, audience, currentUserId) => {
+  if (!audience) {
+    return true;
+  }
+
+  const resolvedAudience = inferNotificationAudience(notification, currentUserId);
+
+  if (!resolvedAudience) {
+    return true;
+  }
+
+  return resolvedAudience === audience;
+};
+
 export const NotificationProvider = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { pathname } = useLocation();
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [chatUnreadCount, setChatUnreadCount] = useState(0);
-  const [proposalUnreadCount, setProposalUnreadCount] = useState(0);
   const [socket, setSocket] = useState(null);
   const [fcmToken, setFcmToken] = useState(null);
   const [pushEnabled, setPushEnabled] = useState(false);
   const connectedRef = useRef(false);
   const fcmListenerRef = useRef(null);
+  const activeAudience = useMemo(
+    () => getAudienceFromPathname(pathname),
+    [pathname],
+  );
 
   // Add a new notification
   const addNotification = useCallback((notification) => {
+    const audience =
+      normalizeNotificationAudience(notification?.audience) ||
+      normalizeNotificationAudience(notification?.data?.audience);
+
     const newNotification = {
       id:
         notification.id ||
@@ -53,7 +225,10 @@ export const NotificationProvider = ({ children }) => {
       message: notification.message || "",
       read: Boolean(notification.read),
       createdAt: notification.createdAt || new Date().toISOString(),
-      data: notification.data || {},
+      audience,
+      data: audience
+        ? { ...(notification.data || {}), audience }
+        : notification.data || {},
     };
 
     setNotifications((prev) => {
@@ -64,15 +239,6 @@ export const NotificationProvider = ({ children }) => {
       const updated = [newNotification, ...prev].slice(0, MAX_NOTIFICATIONS);
       return updated;
     });
-    setUnreadCount((prev) => prev + 1);
-    // Track chat-specific notifications for Messages badge
-    if (notification.type === "chat") {
-      setChatUnreadCount((prev) => prev + 1);
-    }
-    // Track proposal-specific notifications
-    if (notification.type === "proposal") {
-      setProposalUnreadCount((prev) => prev + 1);
-    }
   }, []);
 
   // Mark a notification as read while keeping it visible in the list
@@ -82,15 +248,6 @@ export const NotificationProvider = ({ children }) => {
       const target = prev.find((n) => n.id === notificationId);
 
       if (target && !target.read) {
-        setUnreadCount((prevCount) => Math.max(0, prevCount - 1));
-
-        if (target.type === "chat") {
-          setChatUnreadCount((prevCount) => Math.max(0, prevCount - 1));
-        }
-        if (target.type === "proposal") {
-          setProposalUnreadCount((prevCount) => Math.max(0, prevCount - 1));
-        }
-
         return prev.map((notification) =>
           notification.id === notificationId
             ? { ...notification, read: true }
@@ -111,79 +268,88 @@ export const NotificationProvider = ({ children }) => {
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
-    // Optimistically mark every notification as read while keeping history visible
-    setNotifications((prev) => {
-      const hasUnreadNotifications = prev.some((notification) => !notification.read);
+    const notificationIdsToMark = notifications
+      .filter(
+        (notification) =>
+          !notification.read &&
+          notificationMatchesAudience(notification, activeAudience, user?.id),
+      )
+      .map((notification) => notification.id)
+      .filter(Boolean);
 
-      if (!hasUnreadNotifications) {
-        return prev;
-      }
+    if (!notificationIdsToMark.length) {
+      return;
+    }
 
-      setUnreadCount(0);
-      setChatUnreadCount(0);
-      setProposalUnreadCount(0);
-
-      return prev.map((notification) =>
-        notification.read ? notification : { ...notification, read: true },
-      );
-    });
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notificationIdsToMark.includes(notification.id)
+          ? { ...notification, read: true }
+          : notification,
+      ),
+    );
 
     try {
-      await apiClient("/notifications/read-all", { method: "PATCH" });
+      await Promise.allSettled(
+        notificationIdsToMark.map((notificationId) =>
+          apiClient(`/notifications/${notificationId}/read`, {
+            method: "PATCH",
+          }),
+        ),
+      );
     } catch (error) {
       console.error("Failed to mark all as read", error);
     }
-  }, []);
+  }, [activeAudience, notifications, user?.id]);
 
   // Clear all notifications
   const clearAll = useCallback(() => {
     setNotifications([]);
-    setUnreadCount(0);
-    setChatUnreadCount(0);
-    setProposalUnreadCount(0);
   }, []);
 
   const markTypeAsRead = useCallback(async (type) => {
     const normalizedType = String(type || "").trim().toLowerCase();
     if (!normalizedType) return;
 
-    setNotifications((prev) => {
-      const removedCount = prev.filter(
-        (notification) =>
-          !notification.read &&
-          String(notification.type || "").toLowerCase() === normalizedType
-      ).length;
+    const notificationIdsToMark = notifications
+      .filter((notification) => {
+        const isTargetType =
+          String(notification.type || "").toLowerCase() === normalizedType;
+        const matchesAudience = notificationMatchesAudience(
+          notification,
+          activeAudience,
+          user?.id,
+        );
 
-      if (!removedCount) {
-        return prev;
-      }
+        return !notification.read && isTargetType && matchesAudience;
+      })
+      .map((notification) => notification.id)
+      .filter(Boolean);
 
-      setUnreadCount((current) => Math.max(0, current - removedCount));
+    if (!notificationIdsToMark.length) {
+      return;
+    }
 
-      if (normalizedType === "chat") {
-        setChatUnreadCount(0);
-      }
-
-      if (normalizedType === "proposal") {
-        setProposalUnreadCount(0);
-      }
-
-      return prev.filter(
-        (notification) =>
-          notification.read ||
-          String(notification.type || "").toLowerCase() !== normalizedType
-      );
-    });
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notificationIdsToMark.includes(notification.id)
+          ? { ...notification, read: true }
+          : notification,
+      ),
+    );
 
     try {
-      await apiClient("/notifications/read-by-type", {
-        method: "PATCH",
-        body: JSON.stringify({ type: normalizedType }),
-      });
+      await Promise.allSettled(
+        notificationIdsToMark.map((notificationId) =>
+          apiClient(`/notifications/${notificationId}/read`, {
+            method: "PATCH",
+          }),
+        ),
+      );
     } catch (error) {
       console.error(`Failed to mark ${normalizedType} notifications as read`, error);
     }
-  }, []);
+  }, [activeAudience, notifications, user?.id]);
 
   // Request push notification permission
   const requestPushPermission = useCallback(async () => {
@@ -280,9 +446,6 @@ export const NotificationProvider = ({ children }) => {
         const data = await apiClient("/notifications");
 
         setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-        setChatUnreadCount(data.chatUnreadCount || 0);
-        setProposalUnreadCount(data.proposalUnreadCount || 0);
       } catch (error) {
         // Silently ignore 401 errors - user is not authenticated or session expired
         if (
@@ -391,12 +554,55 @@ export const NotificationProvider = ({ children }) => {
     return markTypeAsRead("proposal");
   }, [markTypeAsRead]);
 
+  const scopedNotifications = useMemo(() => {
+    if (!activeAudience) {
+      return notifications;
+    }
+
+    return notifications.filter((notification) =>
+      notificationMatchesAudience(notification, activeAudience, user?.id),
+    );
+  }, [activeAudience, notifications, user?.id]);
+
+  const unreadCount = useMemo(
+    () => scopedNotifications.filter((notification) => !notification.read).length,
+    [scopedNotifications],
+  );
+
+  const chatUnreadCount = useMemo(
+    () =>
+      scopedNotifications.filter(
+        (notification) =>
+          !notification.read &&
+          String(notification.type || "").toLowerCase() === "chat",
+      ).length,
+    [scopedNotifications],
+  );
+
+  const proposalUnreadCount = useMemo(
+    () =>
+      scopedNotifications.filter(
+        (notification) =>
+          !notification.read &&
+          String(notification.type || "").toLowerCase() === "proposal",
+      ).length,
+    [scopedNotifications],
+  );
+
+  const allUnreadCount = useMemo(
+    () => notifications.filter((notification) => !notification.read).length,
+    [notifications],
+  );
+
   const value = useMemo(
     () => ({
-      notifications,
+      notifications: scopedNotifications,
       unreadCount,
       chatUnreadCount,
       proposalUnreadCount,
+      allNotifications: notifications,
+      allUnreadCount,
+      activeAudience,
       socket,
       fcmToken,
       pushEnabled,
@@ -409,10 +615,13 @@ export const NotificationProvider = ({ children }) => {
       requestPushPermission,
     }),
     [
-      notifications,
+      scopedNotifications,
       unreadCount,
       chatUnreadCount,
       proposalUnreadCount,
+      notifications,
+      allUnreadCount,
+      activeAudience,
       socket,
       fcmToken,
       pushEnabled,

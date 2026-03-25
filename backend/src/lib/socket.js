@@ -379,6 +379,7 @@ export const initSocket = (server) => {
                   ? content.trim()
                   : attachment?.name || "Sent an attachment";
               sendNotificationToUser(recipientId, {
+                audience: null,
                 type: "chat",
                 title: "New Message",
                 message: `${senderName || "Someone"}: ${preview.slice(0, 50)}${preview.length > 50 ? "..." : ""}`,

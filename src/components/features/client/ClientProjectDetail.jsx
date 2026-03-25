@@ -75,6 +75,7 @@ import { extractStructuredFieldValue } from "@/shared/lib/labeled-fields";
 import {
   buildPhaseOrderMap,
   getPhaseOrder,
+  isCompletedPhaseLockedAfterAdvance,
   isPhaseOrderLockedByPayment,
   isTaskPhaseLockedByPayment,
 } from "@/shared/lib/project-verification-gates";
@@ -1600,6 +1601,9 @@ const ProjectDashboard = () => {
       const verifiedCount = phaseTasks.filter((t) =>
         verifiedTaskIds.has(`${t.phase}-${t.id}`)
       ).length;
+      const completedCount = phaseTasks.filter((t) =>
+        completedTaskIds.has(`${t.phase}-${t.id}`)
+      ).length;
 
       const progress =
         totalPhaseTasks > 0
@@ -1608,7 +1612,7 @@ const ProjectDashboard = () => {
 
       let status = "pending";
       if (progress >= 100) status = "completed";
-      else if (verifiedCount > 0) status = "in-progress";
+      else if (verifiedCount > 0 || completedCount > 0) status = "in-progress";
 
       return {
         ...phase,
@@ -1618,7 +1622,7 @@ const ProjectDashboard = () => {
         index: phases.indexOf(phase),
       };
     });
-  }, [activeSOP, verifiedTaskIds]);
+  }, [activeSOP, completedTaskIds, verifiedTaskIds]);
 
   const allPhasesCompleted =
     derivedPhases.length > 0 &&
@@ -1735,6 +1739,12 @@ const ProjectDashboard = () => {
       grouped[task.phase].push(task);
     });
 
+    const completedPhaseIds = derivedPhases
+      .filter((phase) => phase.status === "completed")
+      .map((phase) => phase.id);
+    const completedTaskIdList = Array.from(completedTaskIds);
+    const verifiedTaskIdList = Array.from(verifiedTaskIds);
+
     // Iterate sorted phases to build groups and calculate locks
     let isPrevPhaseComplete = true; // First phase is always unlocked
 
@@ -1745,7 +1755,16 @@ const ProjectDashboard = () => {
         phaseOrder,
         paymentPlan: verificationGatePaymentPlan,
       });
-      const isLocked = !isPrevPhaseComplete || isPaymentLocked;
+      const isHistoricalLock = isCompletedPhaseLockedAfterAdvance({
+        phaseId: phase.id,
+        completedPhaseIds,
+        phaseOrderMap,
+        completedTaskIds: completedTaskIdList,
+        verifiedTaskIds: verifiedTaskIdList,
+      });
+      const isPhaseSequenceLocked = !isPrevPhaseComplete;
+      const isLocked =
+        isPhaseSequenceLocked || isPaymentLocked || isHistoricalLock;
 
       // Determine completion for THIS phase (for next iteration)
       // A phase is complete if it has tasks AND all are verified
@@ -1760,25 +1779,63 @@ const ProjectDashboard = () => {
         phaseStatus: phase.status,
         tasks,
         isLocked,
+        isHistoricalLock,
         isPaymentLocked,
+        lockReason: isHistoricalLock
+          ? "This phase is locked because the next phase has already started."
+          : isPaymentLocked
+          ? `Complete ${
+              verificationDueInstallment?.label || "the pending milestone payment"
+            } before verifying tasks in later phases.`
+          : isPhaseSequenceLocked
+          ? "Complete the previous phase before changing tasks here."
+          : null,
         lockedInstallment: isPaymentLocked ? verificationDueInstallment : null,
       };
     });
   }, [
+    completedTaskIds,
     derivedTasks,
     derivedPhases,
     phaseOrderMap,
+    verifiedTaskIds,
     verificationDueInstallment,
     verificationGatePaymentPlan,
   ]);
+
+  const taskLockReasonByUniqueKey = useMemo(() => {
+    const lockMap = {};
+
+    tasksByPhase.forEach((phaseGroup) => {
+      const lockReason = isProjectCompleted
+        ? "This project is completed and tasks are now locked."
+        : phaseGroup.lockReason;
+
+      if (!lockReason) {
+        return;
+      }
+
+      phaseGroup.tasks.forEach((task) => {
+        lockMap[task.uniqueKey] = lockReason;
+      });
+    });
+
+    return lockMap;
+  }, [isProjectCompleted, tasksByPhase]);
+
+  const getTaskLockReason = useCallback(
+    (uniqueKey) => taskLockReasonByUniqueKey[uniqueKey] || null,
+    [taskLockReasonByUniqueKey]
+  );
 
   // Handle task click to toggle completion (just marks as checked, not verified)
   const handleTaskClick = async (e, uniqueKey) => {
     e.stopPropagation();
     e.preventDefault();
 
-    if (isProjectCompleted) {
-      toast.info("This project is completed and tasks are now locked.");
+    const lockReason = getTaskLockReason(uniqueKey);
+    if (lockReason) {
+      toast.info(lockReason);
       return;
     }
 
@@ -1823,8 +1880,9 @@ const ProjectDashboard = () => {
     e.stopPropagation();
     e.preventDefault();
     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-    if (isProjectCompleted) {
-      toast.info("This project is completed and verification is locked.");
+    const lockReason = getTaskLockReason(uniqueKey);
+    if (lockReason) {
+      toast.info(lockReason);
       return;
     }
     if (verifyingTaskIds.has(uniqueKey)) return;
@@ -1843,7 +1901,11 @@ const ProjectDashboard = () => {
     taskTitle,
     _isCurrentlyVerified
   ) => {
-    if (isProjectCompleted) {
+    const lockReason = getTaskLockReason(uniqueKey);
+    if (lockReason) {
+      setVerifyConfirmOpen(false);
+      setPendingVerifyTask(null);
+      toast.info(lockReason);
       return;
     }
 
@@ -2341,6 +2403,8 @@ const ProjectDashboard = () => {
                                           <span className="ml-2 text-xs text-amber-500 font-medium no-underline inline-block">
                                             {phaseGroup.isPaymentLocked
                                               ? "(Payment required)"
+                                              : phaseGroup.isHistoricalLock
+                                              ? "(Locked after next phase started)"
                                               : "(Locked)"}
                                           </span>
                                         )}

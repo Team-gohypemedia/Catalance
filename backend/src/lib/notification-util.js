@@ -15,12 +15,69 @@ const getSendPushNotification = async () => {
   return sendPushNotificationImpl;
 };
 
+const normalizeAudience = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+
+  if (!normalized) return null;
+  if (["client", "owner", "customer"].includes(normalized)) return "client";
+  if (["freelancer", "contractor"].includes(normalized)) return "freelancer";
+
+  return null;
+};
+
+const inferChatAudience = (recipientUserId, notification) => {
+  const service = String(notification?.data?.service || "");
+  const parts = service.split(":");
+
+  if (parts[0] !== "CHAT" || parts.length < 4) {
+    return null;
+  }
+
+  const clientId = String(parts[2] || "");
+  const freelancerId = String(parts[3] || "");
+  const normalizedRecipientId = String(recipientUserId || "");
+
+  if (normalizedRecipientId && normalizedRecipientId === clientId) {
+    return "client";
+  }
+
+  if (normalizedRecipientId && normalizedRecipientId === freelancerId) {
+    return "freelancer";
+  }
+
+  return null;
+};
+
+const enrichNotificationPayload = (recipientUserId, notification = {}) => {
+  const explicitAudience =
+    normalizeAudience(notification?.audience) ||
+    normalizeAudience(notification?.data?.audience);
+
+  const inferredAudience =
+    explicitAudience ||
+    (String(notification?.type || "").trim().toLowerCase() === "chat"
+      ? inferChatAudience(recipientUserId, notification)
+      : null);
+
+  const data = inferredAudience
+    ? { ...(notification.data || {}), audience: inferredAudience }
+    : notification.data || {};
+
+  return {
+    ...notification,
+    audience: inferredAudience,
+    data,
+  };
+};
+
 // Send a notification to a specific user via DB, Firebase Push AND Socket.io
 export const sendNotificationToUser = async (userId, notification, shouldEmail = true) => {
   if (!userId) {
     console.log(`[NotificationUtil] ❌ Cannot send - no userId provided`);
     return false;
   }
+
+  const notificationPayload = enrichNotificationPayload(userId, notification);
 
   // Fetch user to get email and settings
   let user = null;
@@ -34,7 +91,11 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
   }
 
   console.log(`[NotificationUtil] 📤 Sending to user: ${userId} (${user?.email})`);
-  console.log(`[NotificationUtil] 📦 Payload:`, { type: notification.type, title: notification.title });
+  console.log(`[NotificationUtil] 📦 Payload:`, {
+    type: notificationPayload.type,
+    title: notificationPayload.title,
+    audience: notificationPayload.audience,
+  });
 
   // 1. Persist to Database
   let dbNotification = null;
@@ -42,18 +103,18 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
     dbNotification = await prisma.notification.create({
       data: {
         userId,
-        type: notification.type || "general",
-        title: notification.title,
-        message: notification.message || notification.body || "",
-        data: notification.data || {},
+        type: notificationPayload.type || "general",
+        title: notificationPayload.title,
+        message: notificationPayload.message || notificationPayload.body || "",
+        data: notificationPayload.data || {},
         read: false
       }
     });
     console.log(`[NotificationUtil] 💾 Saved to DB: ${dbNotification.id}`);
     
     // Enrich notification with DB ID
-    notification.id = dbNotification.id;
-    notification.createdAt = dbNotification.createdAt;
+    notificationPayload.id = dbNotification.id;
+    notificationPayload.createdAt = dbNotification.createdAt;
   } catch (dbError) {
     console.error(`[NotificationUtil] ⚠️ Failed to save to DB:`, dbError);
   }
@@ -64,9 +125,12 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
     try {
       const emailSent = await sendEmail({
         to: user.email,
-        subject: notification.title || "New Notification - Catalance",
-        title: notification.title,
-        text: notification.message || notification.body || "You have a new notification."
+        subject: notificationPayload.title || "New Notification - Catalance",
+        title: notificationPayload.title,
+        text:
+          notificationPayload.message ||
+          notificationPayload.body ||
+          "You have a new notification."
       });
       if (emailSent) {
         console.log(`[NotificationUtil] ✅ Email sent successfully to: ${user.email}`);
@@ -83,7 +147,7 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
   // 3. Send via Socket.io
   let sentViaSocket = false;
   try {
-    sentViaSocket = sendSocketNotification(userId, notification);
+    sentViaSocket = sendSocketNotification(userId, notificationPayload);
     if (sentViaSocket) {
       console.log(`[NotificationUtil] ✅ Socket sent`);
     } else {
@@ -96,7 +160,7 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
   // 4. Send via Firebase Cloud Messaging
   try {
     const sendPushNotification = await getSendPushNotification();
-    const pushResult = await sendPushNotification(userId, notification);
+    const pushResult = await sendPushNotification(userId, notificationPayload);
     if (pushResult.success) {
       console.log(`[NotificationUtil] ✅ Push sent`);
       return true;

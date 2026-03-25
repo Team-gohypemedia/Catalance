@@ -63,6 +63,7 @@ import {
     migrateGuestAiStorageNamespace,
     migrateProposalStorageNamespace,
 } from '@/shared/lib/storage-keys';
+import { CLIENT_DASHBOARD_SEND_PROPOSAL_PATH } from '@/shared/lib/proposal-dashboard-intent';
 import cataLogo from '@/assets/logos/logo.svg';
 
 const { primaryKey: GUEST_CHAT_STORAGE_KEY } = getGuestChatStorageKeys();
@@ -2130,16 +2131,16 @@ const GuestAIDemo = () => {
         setGeneratedProposals(nextProposals);
 
         if (user) {
-            if (user.role === "CLIENT") {
-                toast.success("Proposal saved! Redirecting to dashboard...");
-                navigate("/client");
-            } else {
-                toast.info("Please create a client account to proceed with this proposal.");
-                navigate("/signup?role=client", { state: { redirectTo: "/client", fromProposal: true } });
-            }
+            toast.success("Proposal saved! Redirecting to dashboard...");
+            navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
         } else {
             toast.success("Proposal saved! Please create an account to continue.");
-            navigate("/signup?role=client", { state: { redirectTo: "/client", fromProposal: true } });
+            navigate("/signup?role=client", {
+                state: {
+                    redirectTo: CLIENT_DASHBOARD_SEND_PROPOSAL_PATH,
+                    fromProposal: true,
+                },
+            });
         }
     };
 

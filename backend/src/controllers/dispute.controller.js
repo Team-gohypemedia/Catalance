@@ -341,6 +341,7 @@ export const updateDispute = asyncHandler(async (req, res) => {
       // Notify freelancer
       if (freelancer?.id) {
         await sendNotificationToUser(freelancer.id, {
+          audience: "freelancer",
           type: "meeting_scheduled",
           title: "Meeting Scheduled",
           message: `A meeting has been scheduled for project "${project.title}" on ${meetingDateStr}. Join: ${finalMeetingLink}`,
@@ -356,6 +357,7 @@ export const updateDispute = asyncHandler(async (req, res) => {
       // Notify client
       if (client?.id) {
         await sendNotificationToUser(client.id, {
+          audience: "client",
           type: "meeting_scheduled",
           title: "Meeting Scheduled",
           message: `A meeting has been scheduled for project "${project.title}" on ${meetingDateStr}. Join: ${finalMeetingLink}`,

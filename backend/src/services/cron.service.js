@@ -242,6 +242,7 @@ export const startCronJobs = () => {
                 try {
                     const { sendNotificationToUser } = await import('../lib/notification-util.js');
                     const notifResult = await sendNotificationToUser(owner.id, {
+                        audience: 'client',
                         type: 'budget_suggestion',
                         title: 'Consider Increasing Budget',
                         message: `Your proposal for "${projectTitle}" has been pending for over 24 hours. Consider increasing your budget to attract freelancers.`,
@@ -343,6 +344,7 @@ export const startCronJobs = () => {
                     try {
                         const { sendNotificationToUser } = await import('../lib/notification-util.js');
                         await sendNotificationToUser(owner.id, {
+                            audience: 'client',
                             type: 'proposal_expired',
                             title: 'Proposal Expired',
                             message: `Your proposal to ${freelancerName} for "${projectTitle}" has expired. You can now send to another freelancer.`,

@@ -16,6 +16,7 @@ import {
     getProposalStorageKeys,
     migrateProposalStorageNamespace,
 } from "@/shared/lib/storage-keys";
+import { CLIENT_DASHBOARD_SEND_PROPOSAL_PATH } from "@/shared/lib/proposal-dashboard-intent";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 
 const stripUnavailableSections = (text = "") => {
@@ -472,11 +473,13 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
                 : "Proposal accepted! Redirecting to dashboard..."
         );
         
-        if (user?.role === "CLIENT") {
-            navigate("/client");
+        if (user) {
+            navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
             return;
         }
-        navigate("/login", { state: { redirectTo: "/client" } });
+        navigate("/login", {
+            state: { redirectTo: CLIENT_DASHBOARD_SEND_PROPOSAL_PATH },
+        });
     };
 
     const handleSaveEdit = () => {

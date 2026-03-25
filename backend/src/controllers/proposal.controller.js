@@ -166,6 +166,7 @@ export const createProposal = asyncHandler(async (req, res) => {
     console.log(`[Proposal] Client sending to freelancer - notifying freelancer: ${freelancerId}`);
     try {
       await sendNotificationToUser(freelancerId, {
+        audience: "freelancer",
         type: "proposal",
         title: "New Proposal Received",
         message: `You have received a new proposal for project "${project.title}".`,
@@ -183,6 +184,7 @@ export const createProposal = asyncHandler(async (req, res) => {
     console.log(`[Proposal] Freelancer sending to client - notifying owner: ${project.ownerId}`);
     try {
       sendNotificationToUser(project.ownerId, {
+        audience: "client",
         type: "proposal",
         title: "New Proposal Application",
         message: `A freelancer has submitted a proposal for your project "${project.title}".`,
@@ -688,6 +690,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       for (const freelancerId of rejectedFreelancerIds) {
         try {
           sendNotificationToUser(freelancerId, {
+            audience: "freelancer",
             type: "proposal",
             title: "Project Awarded to Another",
             message: `The project "${projectTitle}" has been awarded to another freelancer.`,
@@ -717,6 +720,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
 
       try {
         sendNotificationToUser(proposal.freelancerId, {
+          audience: "freelancer",
           type: "proposal",
           title,
           message,
@@ -747,6 +751,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
           : "";
 
         sendNotificationToUser(updated.project.ownerId, {
+          audience: "client",
           type: "proposal",
           title: "Proposal Rejected by Freelancer",
           message: `${freelancerName} declined your proposal for "${updated.project.title}".${reasonLine}`,
@@ -768,6 +773,7 @@ export const updateProposalStatus = asyncHandler(async (req, res) => {
       try {
         const freelancerName = updated.freelancer?.fullName || updated.freelancer?.name || "A freelancer";
         await sendNotificationToUser(updated.project.ownerId, {
+          audience: "client",
           type: "proposal",
           title: "Proposal Accepted! 🎉",
           message: `${freelancerName} has accepted your proposal for "${updated.project.title}". Pay the initial 20% to start the project.`,
